@@ -1,0 +1,18 @@
+name = "lean-dfr"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["DFR"]
+
+[leanOptions]
+pp.unicode.fun = true
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "lean_spherical"
+git = "https://github.com/roos-j/lean-spherical.git"
+rev = "d45bcdce0a6b68a3fea0581cba6dd84fdce31186"
+
+[[lean_lib]]
+name = "DFR"

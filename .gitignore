@@ -1,0 +1,9 @@
+.lake/
+build/
+*.olean
+*.ilean
+*.log
+*.aux
+*.c
+*.h
+*.trace
