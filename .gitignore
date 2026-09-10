@@ -7,3 +7,47 @@ build/
 *.c
 *.h
 *.trace
+
+automation/raw.md
+
+*.pdf
+# LaTeX auxiliary files and bibliography build products.
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.run.xml
+*.toc
+*.lof
+*.lot
+*.loa
+*.lol
+*.synctex
+*.synctex.gz
+*.synctex(busy)
+*.synctex.gz(busy)
+*.pdfsync
+*.dvi
+*.xdv
+
+# LaTeX indices, glossaries, presentations, and minted caches.
+*.idx
+*.ilg
+*.ind
+*.glo
+*.glg
+*.gls
+*.glsdefs
+*.acn
+*.acr
+*.alg
+*.ist
+*.nav
+*.snm
+*.vrb
+*.pyg
+_minted*/
+
+# Keep .tex, .bib, and source PDFs trackable.
