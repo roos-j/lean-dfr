@@ -98,7 +98,7 @@ For direct source verification use lake env lean Auto/SmoothingIneq2D/Smoothing2
 
 ## Next step
 
-Assign a future proof agent Task 1 and have it read Theorem 5 and its prerequisites.
+Task 1 remains assigned and active. Continue the second refinement after (3.44), using the documented coordinate and constant corrections while preserving Lemma 3.3 and Theorem 5. The renewed instruction to proceed authorizes this correction; do not ask again or stop at intermediate milestones. Follow the remaining source ledger in forward order.
 Tasks 2 and 3 await blueprints. Task 4 additionally awaits verified completion
 of Tasks 1-3. Setup scaffolding is not theorem completion.
 
@@ -132,3 +132,19 @@ After removing the Auto inclusion instructions, pause before continuing Task 1. 
 
 Recorded 2026-09-10T09:59:38.4628987-04:00 (recording time); exact prompt: [raw.md](raw.md).
 The user authorizes committing the pending instruction cleanup and Task 1 pause records. Task 1 remains paused; no push is requested.
+
+## Resume Task 1
+
+Recorded 2026-09-10T11:01:54.9581411-04:00 (recording time); exact prompt: [raw.md](raw.md).
+The user requests /autoformalize task 1. Resume Task 1 source audit and formalization in Auto/SmoothingIneq2D/Smoothing2D.lean. This supersedes the prior pause. No commit or push is requested.
+
+## Continue Task 1 to completion
+
+Recorded 2026-09-10T12:42:17.1154681-04:00 (recording time); exact prompt: [raw.md](raw.md).
+Continue autoformalizing Task 1 until every source target and prerequisite is completely proved and verified. Do not stop at supporting lemmas, partial progress, or build milestones. Existing source-fidelity, task boundaries, no-placeholder policy, and completion gate remain in force.
+
+Recorded 2026-09-10T12:44:37.8315626-04:00 (recording time); exact prompts: [raw.md](raw.md). The user requires a granular Status.md ledger whose rows correspond to actual source equations or identifiable unnumbered source steps. Do not invent proof steps or count implementation helpers as source milestones. Continue Task 1 through full completion after updating the ledger.
+
+Recorded 2026-09-10T12:45:58.7354373-04:00 (recording time); exact prompts: [raw.md](raw.md). The user reiterates logical forward reasoning order and requires rereading the instructions. Finish the earliest unfinished source argument and all its prerequisites before advancing. Maintain source-based ledger rows in dependency order; preserve already proved supporting lemmas without treating their existence as completion of an earlier missing source argument.
+
+2026-09-10T15:02:01.6771576-04:00 - User renews the instruction to complete Task 1 without stopping. In the context of the pending correction question, proceed with the documented corrected refinement; preserve the main theorem and record the actual proof and constants. Exact prompt in raw.md.
