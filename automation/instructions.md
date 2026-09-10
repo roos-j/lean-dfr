@@ -98,7 +98,7 @@ For direct source verification use lake env lean Auto/SmoothingIneq2D/Smoothing2
 
 ## Next step
 
-Task 1 remains assigned and active. Continue the second refinement after (3.44), using the documented coordinate and constant corrections while preserving Lemma 3.3 and Theorem 5. The renewed instruction to proceed authorizes this correction; do not ask again or stop at intermediate milestones. Follow the remaining source ledger in forward order.
+Task 1 remains assigned and active. Lemmas 3.1-3.3 are verified. Equation (3.1) and its positive-time reduction are verified. Continue frequency and amplitude reductions (3.3)-(3.4), then the next ready source-ledger item in logical forward reasoning order. Preserve Lemma 3.3 and Theorem 5 and the documented corrections. The renewed instruction to proceed authorizes this correction; do not ask again or stop at intermediate milestones. Follow the remaining source ledger in forward order.
 Tasks 2 and 3 await blueprints. Task 4 additionally awaits verified completion
 of Tasks 1-3. Setup scaffolding is not theorem completion.
 
@@ -148,3 +148,7 @@ Recorded 2026-09-10T12:44:37.8315626-04:00 (recording time); exact prompts: [raw
 Recorded 2026-09-10T12:45:58.7354373-04:00 (recording time); exact prompts: [raw.md](raw.md). The user reiterates logical forward reasoning order and requires rereading the instructions. Finish the earliest unfinished source argument and all its prerequisites before advancing. Maintain source-based ledger rows in dependency order; preserve already proved supporting lemmas without treating their existence as completion of an earlier missing source argument.
 
 2026-09-10T15:02:01.6771576-04:00 - User renews the instruction to complete Task 1 without stopping. In the context of the pending correction question, proceed with the documented corrected refinement; preserve the main theorem and record the actual proof and constants. Exact prompt in raw.md.
+
+2026-09-10T15:41:20.7697427-04:00 - The latest user instruction prohibits a separate fix commit and reiterates logical forward reasoning order, not source presentation order. Continue Task 1: close prerequisites before consumers and do not stop at acknowledgments. The two dyadic-volume proof errors are fixed and direct Lean verification passes. No further commit is authorized by the latest instruction.
+
+2026-09-10T18:09:12.2173105-04:00 - User requests committing the accumulated verified work, then continuing Task 1 until completion. This authorizes one progress commit and supersedes the earlier prohibition on further commits. Continue in logical forward reasoning order after committing; no push requested. Exact prompt in raw.md.

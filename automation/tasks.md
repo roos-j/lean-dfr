@@ -5,7 +5,7 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
 
 | Task | Target/source | Exclusive work folder | Main file | Owner | Readiness |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | Auto/SmoothingIneq2D/ | Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Active; verified through (3.44); corrected second refinement in progress |
+| 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | Auto/SmoothingIneq2D/ | Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Active; Lemmas 3.1-3.3 verified; (3.1) verified; frequency and amplitude reductions in progress |
 | 2 | 3d smoothing inequality; user blueprint pending in blueprints/ | Auto/SmoothingIneq3D/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
 | 3 | Twisted; user blueprint pending in blueprints/ | Auto/Twisted/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
 | 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
