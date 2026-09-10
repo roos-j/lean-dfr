@@ -18,3 +18,5 @@ owner before the worker edits. An unassigned worker must obtain an assignment,
 not choose a folder silently. Keep all task work in its assigned folder and
 report shared-record updates to the coordinator. Do not start Task 4 until
 Tasks 1-3 meet the documented completion gate and its blueprint is available.
+
+The canonical generated-source directory in this repository is `DFR/Auto/`. Reuse its four existing task subdirectories. Do not create a repository-root `Auto/` directory. Keep the Lean namespace `Auto`; filesystem location and namespace are separate. Verify Task 1 with `lake env lean DFR/Auto/SmoothingIneq2D/Smoothing2D.lean` and preserve the existing Lake configuration.

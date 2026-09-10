@@ -5,10 +5,10 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
 
 | Task | Target/source | Exclusive work folder | Main file | Owner | Readiness |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | Auto/SmoothingIneq2D/ | Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Active; Lemmas 3.1-3.3 verified; (3.1) verified; frequency and amplitude reductions in progress |
-| 2 | 3d smoothing inequality; user blueprint pending in blueprints/ | Auto/SmoothingIneq3D/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
-| 3 | Twisted; user blueprint pending in blueprints/ | Auto/Twisted/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
-| 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
+| 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | DFR/Auto/SmoothingIneq2D/ | DFR/Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Active; Lemmas 3.1-3.3 verified; (3.1) verified; frequency and amplitude reductions in progress |
+| 2 | 3d smoothing inequality; user blueprint pending in blueprints/ | DFR/Auto/SmoothingIneq3D/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
+| 3 | Twisted; user blueprint pending in blueprints/ | DFR/Auto/Twisted/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
+| 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | DFR/Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
 
 ## Assignment protocol
 
@@ -23,7 +23,7 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
 4. Workers keep code, scratch files, and mathematical notes in their assigned
    folder. Shared automation records are maintained serially by the coordinator
    using worker reports. Cross-task changes require reassignment/coordination;
-   do not edit another task or place new prerequisites directly in Auto/.
+   do not edit another task or place new prerequisites directly in DFR/Auto/.
 5. On handoff, record the actual declarations, source mappings, checks, remaining
    obligations, and next step in Status.md; update owner/readiness here.
    Never treat an absent or disconnected agent as evidence its task is complete.
@@ -51,7 +51,7 @@ the Task 1 starter module are infrastructure only; all four proofs are not start
 
 ## Task 1 assignment
 
-2026-09-10T09:56:31.1092542-04:00 — Coordinator assigns Codex root task1-20260910-0955 exactly Task 1, trilinear smoothing inequality. Scope: Auto/SmoothingIneq2D/; main file Smoothing2D.lean; source arXiv:2008.10140v2, Theorem 5. Next unfinished step: read the exact theorem and full dependency proof, then record forward proof order. Completion requires faithful source coverage, direct verification of owned Auto sources, lake build for configured targets, and the allowed-axiom audit. The root agent maintains shared records serially.
+2026-09-10T09:56:31.1092542-04:00 — Coordinator assigns Codex root task1-20260910-0955 exactly Task 1, trilinear smoothing inequality. Scope: DFR/Auto/SmoothingIneq2D/; main file Smoothing2D.lean; source arXiv:2008.10140v2, Theorem 5. Next unfinished step: read the exact theorem and full dependency proof, then record forward proof order. Completion requires faithful source coverage, direct verification of owned Auto sources, lake build for configured targets, and the allowed-axiom audit. The root agent maintains shared records serially.
 
 
 2026-09-10T11:01:54.9581411-04:00 - Coordinator resumes the existing Codex root task1-20260910-0955 assignment for exactly Task 1. Scope and completion gate above remain unchanged. Next: finish Theorem 5 and Section 3 source/dependency audit.

@@ -93,14 +93,14 @@ Baseline lake build passed (3343 jobs) at this recording time; dependency linter
 
 ### Task 1 current verified declarations
 
-2026-09-10T11:10:48.7425148-04:00 - Direct lake env lean Auto/SmoothingIneq2D/Smoothing2D.lean passed. Axiom checks for Auto.integrable_smoothingMultiplicativeDifference, Auto.smoothing_frequencyRestriction_orthogonal, Auto.smoothing_frequencyProjection, Auto.smoothing_exists_large_window, and Auto.smoothing_frequencyRestriction_norm_sq each report only propext, Classical.choice, Quot.sound. These are supporting results for Lemma 3.1, not completion of that lemma or Theorem 5.
+2026-09-10T11:10:48.7425148-04:00 - Direct lake env lean DFR/Auto/SmoothingIneq2D/Smoothing2D.lean passed. Axiom checks for Auto.integrable_smoothingMultiplicativeDifference, Auto.smoothing_frequencyRestriction_orthogonal, Auto.smoothing_frequencyProjection, Auto.smoothing_exists_large_window, and Auto.smoothing_frequencyRestriction_norm_sq each report only propext, Classical.choice, Quot.sound. These are supporting results for Lemma 3.1, not completion of that lemma or Theorem 5.
 
 Next obligation: prove the Fourier energy identity for multiplicative differences of arbitrary L2 inputs, including almost-everywhere and integrability justifications; specialize the averaging lemma to frequency balls and combine it with the projection and norm identities. Remaining source obligations are listed in the proof order above.
 
 
 ### Latest Task 1 verification and continuation
 
-2026-09-10T11:19:28.2785658-04:00 - Direct compilation passed for Auto/SmoothingIneq2D/Smoothing2D.lean. All eleven theorem declarations were checked with #print axioms and use only propext, Classical.choice, Quot.sound. In addition to the five declarations above, verified Auto.smoothing_frequencyProjection_of_mass, Auto.smoothing_integrable_ball_energy, Auto.smoothing_exists_ball_mass, Auto.smoothing_concentration_of_fourier_energy, Auto.smoothing_fourier_toLp_ae_eq, and Auto.smoothing_integral_norm_sq_fourier.
+2026-09-10T11:19:28.2785658-04:00 - Direct compilation passed for DFR/Auto/SmoothingIneq2D/Smoothing2D.lean. All eleven theorem declarations were checked with #print axioms and use only propext, Classical.choice, Quot.sound. In addition to the five declarations above, verified Auto.smoothing_frequencyProjection_of_mass, Auto.smoothing_integrable_ball_energy, Auto.smoothing_exists_ball_mass, Auto.smoothing_concentration_of_fourier_energy, Auto.smoothing_fourier_toLp_ae_eq, and Auto.smoothing_integral_norm_sq_fourier.
 
 The frequency concentration/projection argument is proved, including the zero-input case. The source Lemma 3.1 is still in progress: its multiplicative-difference Fourier energy has not yet been equated to the frequency-pair energy. The conditional frequency-energy theorem is an intermediate result, not a replacement for Lemma 3.1. L1/L2 Fourier compatibility and raw-integral Plancherel are now available to support the remaining identity. Next: prove the identity first for suitable integrable inputs, justify the iterated integrals, and extend to arbitrary L2 inputs before closing Lemma 3.1. Do not advance to Lemma 3.2 while this remains open.
 
@@ -122,7 +122,7 @@ Reduction gate: closed.
 
 ## Continuation
 
-Task 1 starter: Auto/SmoothingIneq2D/Smoothing2D.lean.
+Task 1 starter: DFR/Auto/SmoothingIneq2D/Smoothing2D.lean.
 Task 1 is active. Continue the first unfinished source row below. Theorem 5 has no completed exported interface.
 
 Skill copies: SHA-256 verified against installed editions (Codex: 6 files; Claude: 5).
@@ -182,7 +182,7 @@ Verification 2026-09-10T14:05:58.0712823-04:00: Auto.smoothing_lemma3_2 combines
 
 2026-09-10T14:33:25.2566943-04:00 - Equation (3.44) verified with its exact quarter-square bound by smoothing_eq3_44_identity, smoothing_eq3_44_threshold and smoothing_eq3_44. Direct Lean, allowed-axiom audit and lake build (3343 jobs) passed. The next refinement has a false printed definition/bound; a correction question is pending. See ErrorReport.md. No corrected source claims have been adopted.
 
-2026-09-10T14:35:03.7084674-04:00 - Final verification of the current source state: lake env lean Auto/SmoothingIneq2D/Smoothing2D.lean passed, including smoothing_printed_second_refinement_empty; all printed axiom sets are subsets of propext, Classical.choice, Quot.sound. The configured lake build passed (3343 jobs), git diff --check passed, and the owned Lean source contains no sorry, admit, or new axiom declarations. Task 1 and the second-refinement source row remain incomplete. A correction question is pending; the proposed revised fibers and explicit m^7/(2048 M^2) bound are in the source audit comment. No downstream proof item was started. No commits, staging or pushes were performed.
+2026-09-10T14:35:03.7084674-04:00 - Final verification of the current source state: lake env lean DFR/Auto/SmoothingIneq2D/Smoothing2D.lean passed, including smoothing_printed_second_refinement_empty; all printed axiom sets are subsets of propext, Classical.choice, Quot.sound. The configured lake build passed (3343 jobs), git diff --check passed, and the owned Lean source contains no sorry, admit, or new axiom declarations. Task 1 and the second-refinement source row remain incomplete. A correction question is pending; the proposed revised fibers and explicit m^7/(2048 M^2) bound are in the source audit comment. No downstream proof item was started. No commits, staging or pushes were performed.
 
 2026-09-10T15:06:59.5427297-04:00 - Corrected second and third refinements verified: smoothing_second_refinement_lower and smoothing_third_refinement_nonempty, using the beta-projection box of area M=4(a+1) and threshold |E1|/(2M). The retained E2 has measure at least (|E1|/(2M))(|E1|/2). Direct Lean, allowed-axiom audit and lake build (3343 jobs) passed. The correction is authorized by the user's renewed completion instruction; no further question is pending. Next: nested source fibers (3.45)-(3.47).
 
@@ -235,3 +235,5 @@ Verification 2026-09-10T14:05:58.0712823-04:00: Auto.smoothing_lemma3_2 combines
 2026-09-10T17:48:18.0299338-04:00 - Equation (3.1) and positive-time reduction verified in smoothingLocalized_positive_reduction: full operator equals the sum of two positive-cutoff operators with reflected inputs. Both cutoffs retain smoothness and compact support strictly inside positive times. smoothingLocalized_integrable discharges fiber integrability for continuous inputs; smoothingReflectX_eLpNorm preserves every input Lp norm. Direct Lean and allowed-axiom audits pass; lake build passes (3343 jobs). Next: frequency and amplitude reductions (3.3)-(3.4); pinned LittlewoodPaley supplies integer dyadic multiplier identities and L2 square-energy bounds, whose coordinatewise application and operator summation still need proof.
 
 2026-09-10T18:11:22.0577949-04:00 - Verified progress for the active (3.3)-(3.4) reduction: smoothingLocalized_amplitude_normalization proves exact reconstruction from bounded normalized inputs; smoothingAnnularProjection_support gives the source factor-two annuli, subdividing each pinned band with a radius-4/3 cutoff; smoothingAnnularBand_sum and resolution preserve the pinned reconstruction; smoothing_coordinate_convolution proves the actual coordinate convolution identity by Fourier inversion and Fubini. Euclidean frequency space is explicitly related to pair coordinates by smoothingPlaneEquiv. Direct Lean and all printed transitive axiom audits pass; lake build passes (3343 jobs); no placeholders found. The active row remains incomplete: scale-uniform spatial projection bounds, convergence, and the transfer of the restricted frequency estimate still need proof. User-authorized progress commit follows, then continued proof work.
+
+2026-09-10T18:23:34.428125-04:00 - Layout correction: task files use the existing DFR/Auto task directories. Source paths in this record have been updated; proof statuses and historical verification timestamps are unchanged. Each branch retains only its own preexisting mathematical content.

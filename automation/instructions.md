@@ -12,12 +12,14 @@ which supersede conflicting generic skill guidance.
 
 ## Scope and workflow
 
+The canonical generated-source directory in this repository is `DFR/Auto/`. Reuse its four existing task subdirectories. Do not create a repository-root `Auto/` directory. Keep the Lean namespace `Auto`; filesystem location and namespace are separate. Verify Task 1 with `lake env lean DFR/Auto/SmoothingIneq2D/Smoothing2D.lean` and preserve the existing Lake configuration.
+
 - Every proof agent must have exactly one task assignment before editing.
   Follow the assignment and readiness protocol in tasks.md.
 - All mathematical code, helpers, experiments, and task-specific working files
-  must stay inside that task's assigned Auto subfolder. This explicitly overrides
+  must stay inside that task's assigned subfolder of the existing DFR/Auto directory. This explicitly overrides
   the skill's default single file for the whole project and its exception placing
-  reusable prerequisites directly in Auto/. Keep such prerequisites inside the
+  reusable prerequisites directly in DFR/Auto/. Keep such prerequisites inside the
   owning task folder instead. Task 1 work belongs mainly in Smoothing2D.lean.
 - Shared administrative records live in automation/ as required by the skill.
   The coordinator maintains shared records from workers' reports; workers must
@@ -92,7 +94,7 @@ when it arrives and record its filename/version; do not guess its contents.
 Preserve leanprover/lean4:v4.33.0-rc1 and the lean_spherical revision in
 lakefile.toml/lake-manifest.json (Mathlib is transitive).
 Run lake build from the repository root for the configured project targets. Keep Auto out of lakefile.toml; verify Auto sources separately with lake env lean.
-For direct source verification use lake env lean Auto/SmoothingIneq2D/Smoothing2D.lean
+For direct source verification use lake env lean DFR/Auto/SmoothingIneq2D/Smoothing2D.lean
 (or the assigned task's actual file). Audit completed target declarations with
 #print axioms; allowed axioms are propext, Classical.choice, and Quot.sound only.
 
@@ -116,7 +118,7 @@ Remove the README.md files from the four Auto task folders; do not recreate them
 ## Start Task 1
 
 Recorded 2026-09-10T09:56:31.1092542-04:00 (recording time); exact prompt: [raw.md](raw.md).
-The user requests /autoformalize task 1. Begin Task 1 source study and formalization within Auto/SmoothingIneq2D/. Existing task boundaries and completion criteria apply.
+The user requests /autoformalize task 1. Begin Task 1 source study and formalization within DFR/Auto/SmoothingIneq2D/. Existing task boundaries and completion criteria apply.
 
 ## Auto verification policy
 
@@ -136,7 +138,7 @@ The user authorizes committing the pending instruction cleanup and Task 1 pause 
 ## Resume Task 1
 
 Recorded 2026-09-10T11:01:54.9581411-04:00 (recording time); exact prompt: [raw.md](raw.md).
-The user requests /autoformalize task 1. Resume Task 1 source audit and formalization in Auto/SmoothingIneq2D/Smoothing2D.lean. This supersedes the prior pause. No commit or push is requested.
+The user requests /autoformalize task 1. Resume Task 1 source audit and formalization in DFR/Auto/SmoothingIneq2D/Smoothing2D.lean. This supersedes the prior pause. No commit or push is requested.
 
 ## Continue Task 1 to completion
 
@@ -152,3 +154,7 @@ Recorded 2026-09-10T12:45:58.7354373-04:00 (recording time); exact prompts: [raw
 2026-09-10T15:41:20.7697427-04:00 - The latest user instruction prohibits a separate fix commit and reiterates logical forward reasoning order, not source presentation order. Continue Task 1: close prerequisites before consumers and do not stop at acknowledgments. The two dyadic-volume proof errors are fixed and direct Lean verification passes. No further commit is authorized by the latest instruction.
 
 2026-09-10T18:09:12.2173105-04:00 - User requests committing the accumulated verified work, then continuing Task 1 until completion. This authorizes one progress commit and supersedes the earlier prohibition on further commits. Continue in logical forward reasoning order after committing; no push requested. Exact prompt in raw.md.
+
+2026-09-10T18:23:34.428125-04:00 - User corrects the erroneous root Auto layout. Relocate each branch's own task files into existing DFR/Auto directories and correct both vendored skill editions and task records. Apply only layout/instruction changes to main and Tasks 2-4; do not transfer Task 1 proof work. This correction supersedes conflicting earlier folder instructions.
+
+2026-09-10T18:25:27.198580-04:00 - User explicitly requests pushing the layout correction so the remote is current on every branch. Publish the branch-specific correction on main and task-1 through task-4, preserving each branch's own mathematical content. The erroneous repository-root Auto directory is removed after relocating its files.
