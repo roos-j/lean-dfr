@@ -25,7 +25,7 @@ Reduction gate: closed.
 
 ## Continuation
 
-Task 1 starter: Auto/SmoothingIneq2D/Smoothing2D.lean.
+Task 1 starter: DFR/Auto/SmoothingIneq2D/Smoothing2D.lean.
 Next: assign Task 1, read Theorem 5 and its proof, and record the source dependency
 plan. Tasks 2-4 have no blueprints yet. Exported theorem interfaces: none.
 
@@ -40,3 +40,5 @@ the final starter uses Mathlib.Analysis.Normed.Module.Basic and the full build p
 Task 1 source study is underway; no mathematical declarations have been added or proved. Theorem 5 and portions of Section 3 have been read; the full proof/dependency audit remains unfinished.
 
 2026-09-10T09:58:47.5716059-04:00 - Task 1 paused by explicit user request after the Auto build-inclusion instruction cleanup. No Lean source edits or proofs were made. Source study remains incomplete; resume with the full Section 3 dependency audit only when directed. Documentation diff check passed.
+
+2026-09-10T18:23:34.428125-04:00 - Layout correction: task files use the existing DFR/Auto task directories. Source paths in this record have been updated; proof statuses and historical verification timestamps are unchanged. Each branch retains only its own preexisting mathematical content.
