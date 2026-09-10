@@ -91,8 +91,7 @@ when it arrives and record its filename/version; do not guess its contents.
 
 Preserve leanprover/lean4:v4.33.0-rc1 and the lean_spherical revision in
 lakefile.toml/lake-manifest.json (Mathlib is transitive).
-Run lake build from the repository root. The Auto library uses Auto.+ to include
-all task modules, including future files, without a root Auto.lean aggregator.
+Run lake build from the repository root for the configured project targets. Keep Auto out of lakefile.toml; verify Auto sources separately with lake env lean.
 For direct source verification use lake env lean Auto/SmoothingIneq2D/Smoothing2D.lean
 (or the assigned task's actual file). Audit completed target declarations with
 #print axioms; allowed axioms are propext, Classical.choice, and Quot.sound only.
@@ -113,3 +112,23 @@ Preserve trackability of .tex, .bib, and source PDFs.
 
 User direction recorded 2026-09-10T09:53:04.4384248-04:00; exact prompt: [raw.md](raw.md).
 Remove the README.md files from the four Auto task folders; do not recreate them.
+
+## Start Task 1
+
+Recorded 2026-09-10T09:56:31.1092542-04:00 (recording time); exact prompt: [raw.md](raw.md).
+The user requests /autoformalize task 1. Begin Task 1 source study and formalization within Auto/SmoothingIneq2D/. Existing task boundaries and completion criteria apply.
+
+## Auto verification policy
+
+Recorded 2026-09-10T09:58:01.5996155-04:00 (recording time); exact prompt: [raw.md](raw.md).
+The user requires that lakefile.toml not include Auto and that all instructions requiring that inclusion be removed. Check each owned Auto source directly with lake env lean and run lake build separately for the configured project targets. Do not add an Auto library, target, glob, or root import to obtain build coverage.
+
+## Pause Task 1
+
+Recorded 2026-09-10T09:58:47.5716059-04:00 (recording time); exact prompt: [raw.md](raw.md).
+After removing the Auto inclusion instructions, pause before continuing Task 1. The requested instruction cleanup is complete. Do not resume mathematical work until the user directs it.
+
+## Commit authorization
+
+Recorded 2026-09-10T09:59:38.4628987-04:00 (recording time); exact prompt: [raw.md](raw.md).
+The user authorizes committing the pending instruction cleanup and Task 1 pause records. Task 1 remains paused; no push is requested.

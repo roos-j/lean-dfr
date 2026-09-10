@@ -33,3 +33,10 @@ Skill copies: SHA-256 verified against installed editions (Codex: 6 files; Claud
 Git diff --check passed; automation/raw.md is ignored.
 The initial broad Mathlib import build was stopped during starter compilation;
 the final starter uses Mathlib.Analysis.Normed.Module.Basic and the full build passed.
+
+## Current verification policy
+
+2026-09-10T09:58:01.5996155-04:00 - Auto is excluded from lakefile.toml by explicit user instruction. The setup build above is historical evidence only. Current lake build passed (3343 jobs) for configured targets; it does not check Auto. Owned Auto sources require separate direct lake env lean checks. Both vendored skill editions and their bootstrap references now follow this policy.
+Task 1 source study is underway; no mathematical declarations have been added or proved. Theorem 5 and portions of Section 3 have been read; the full proof/dependency audit remains unfinished.
+
+2026-09-10T09:58:47.5716059-04:00 - Task 1 paused by explicit user request after the Auto build-inclusion instruction cleanup. No Lean source edits or proofs were made. Source study remains incomplete; resume with the full Section 3 dependency audit only when directed. Documentation diff check passed.
