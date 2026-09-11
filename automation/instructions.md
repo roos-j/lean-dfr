@@ -138,3 +138,14 @@ The user authorizes committing the pending instruction cleanup and Task 1 pause 
 2026-09-10T18:23:34.428125-04:00 - User corrects the erroneous root Auto layout. Relocate each branch's own task files into existing DFR/Auto directories and correct both vendored skill editions and task records. Apply only layout/instruction changes to main and Tasks 2-4; do not transfer Task 1 proof work. This correction supersedes conflicting earlier folder instructions.
 
 2026-09-10T18:25:27.198580-04:00 - User explicitly requests pushing the layout correction so the remote is current on every branch. Publish the branch-specific correction on main and task-1 through task-4, preserving each branch's own mathematical content. The erroneous repository-root Auto directory is removed after relocating its files.
+
+## Begin Task 3 twisted formalization
+
+Recorded 2026-09-10T18:55:25-07:00; exact prompt: [raw.md](raw.md).
+The user directs Codex to begin Lean formalization of `\ref{thm:main}` in
+`blueprints/task_3_twisted_blueprint.tex`, follow that blueprint and the
+automation instructions closely, and continue until the theorem is proved.
+Task 3 is now the active assigned task. Its faithful source target is the
+``Anisotropic paraproduct'' theorem labelled `thm:main`; its code remains
+strictly within `DFR/Auto/Twisted/`, with direct `lake env lean` verification
+and the required project build and axiom audit before completion.
