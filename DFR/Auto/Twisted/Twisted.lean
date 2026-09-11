@@ -7,8 +7,11 @@ import Mathlib.Analysis.Normed.Lp.Matrix
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.JapaneseBracket
 import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
+import Mathlib.Analysis.SpecialFunctions.Gaussian.FourierTransform
+import Mathlib.Analysis.SpecialFunctions.Gaussian.PoissonSummation
 import Mathlib.Analysis.Calculus.BumpFunction.InnerProduct
 import Mathlib.Analysis.Calculus.ParametricIntegral
+import Mathlib.MeasureTheory.Integral.IntervalIntegral.FundThmCalculus
 import Mathlib.Analysis.Distribution.SchwartzSpace.Basic
 import Mathlib.Analysis.Distribution.SchwartzSpace.Deriv
 import Mathlib.Analysis.Distribution.SchwartzSpace.Fourier
@@ -16,6 +19,7 @@ import Mathlib.Analysis.Distribution.TemperedDistribution
 import Mathlib.Analysis.Fourier.Convolution
 import Mathlib.MeasureTheory.Integral.Prod
 import Mathlib.MeasureTheory.Measure.Haar.InnerProductSpace
+import Mathlib.Topology.Order.Compact
 
 universe u
 
@@ -223,6 +227,27 @@ theorem schwartz_memLp (f : Schwartz3) (p : ℝ≥0∞) : MemLp f p :=
 /-- In particular, every complex Schwartz test function is integrable. -/
 theorem schwartz_integrable (f : Schwartz3) : Integrable f :=
   f.integrable
+
+/-- A concrete one-dimensional rapid-decay estimate extracted from a Schwartz
+seminorm.  This is the form used for the fixed spatial cutoffs in the model
+kernel estimates. -/
+theorem schwartz_oneDim_decay (f : SchwartzMap ℝ ℂ) (r : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, ‖f x‖ ≤ C / (1 + |x|) ^ r := by
+  let C : ℝ := 2 ^ r *
+    (Finset.Iic (r, 0)).sup (fun q ↦ SchwartzMap.seminorm ℂ q.1 q.2) f
+  have hC : 0 ≤ C := by
+    have h := SchwartzMap.one_add_le_sup_seminorm_apply (𝕜 := ℂ)
+      (m := (r, 0)) le_rfl le_rfl f (0 : ℝ)
+    have hnonneg : 0 ≤ (1 + ‖(0 : ℝ)‖) ^ r *
+        ‖iteratedFDeriv ℝ 0 f (0 : ℝ)‖ :=
+      mul_nonneg (pow_nonneg (by positivity) _) (norm_nonneg _)
+    exact hnonneg.trans (by simpa [C] using h)
+  refine ⟨C, hC, fun x ↦ ?_⟩
+  apply (le_div_iff₀ (by positivity)).mpr
+  rw [mul_comm]
+  simpa [C, Real.norm_eq_abs, norm_iteratedFDeriv_zero] using
+    (SchwartzMap.one_add_le_sup_seminorm_apply (𝕜 := ℂ)
+      (m := (r, 0)) le_rfl le_rfl f x)
 
 /-- Fourier transformation preserves the source's complex Schwartz class. -/
 def schwartzFourier (f : Schwartz3) : Schwartz3 := 𝓕 f
@@ -1777,7 +1802,62 @@ noncomputable def gaussianDeriv (x : ℝ) : ℝ :=
   -2 * Real.pi * x * gaussian x
 
 /-- The positive comparison kernel `\(\theta(x)=(1+|x|)^{-10}\)`. -/
-noncomputable def bracketKernel (x : ℝ) : ℝ := (1 + |x|) ^ (-10 : ℤ)
+noncomputable def bracketKernel (x : ℝ) : ℝ := (1 + |x|) ^ (-10 : ℝ)
+
+/-- The source translation weight `\(R(r)=1+|r|\)`. -/
+def translationWeight (r : ℝ) : ℝ := 1 + |r|
+
+theorem bracketKernel_nonneg (x : ℝ) : 0 ≤ bracketKernel x := by
+  unfold bracketKernel
+  positivity
+
+theorem bracketKernel_even (x : ℝ) : bracketKernel (-x) = bracketKernel x := by
+  simp [bracketKernel]
+
+theorem bracketKernel_eq_inv_pow (x : ℝ) :
+    bracketKernel x = ((1 + |x|) ^ 10)⁻¹ := by
+  unfold bracketKernel
+  rw [Real.rpow_neg (by positivity)]
+  exact congrArg Inv.inv (Real.rpow_natCast (1 + |x|) 10)
+
+/-- The comparison kernel is integrable on the line. -/
+theorem integrable_bracketKernel : Integrable bracketKernel := by
+  change Integrable (fun x : ℝ ↦ (1 + |x|) ^ (-10 : ℝ))
+  simpa [Real.norm_eq_abs] using
+    (integrable_one_add_norm (E := ℝ) (μ := volume) (r := (10 : ℝ)) (by norm_num))
+
+theorem integral_bracketKernel : ∫ x : ℝ, bracketKernel x = 2 / 9 := by
+  unfold bracketKernel
+  change (∫ x : ℝ, (fun y : ℝ ↦ (1 + y) ^ (-10 : ℝ)) |x|) = 2 / 9
+  rw [integral_comp_abs (f := fun y : ℝ ↦ (1 + y) ^ (-10 : ℝ))]
+  simp_rw [add_comm (1 : ℝ)]
+  have hhalf : ∫ x : ℝ in Set.Ioi (0 : ℝ), (x + 1) ^ (-10 : ℝ) = 1 / 9 := by
+    have hd : ∀ x ∈ Set.Ici (0 : ℝ),
+        HasDerivAt (fun t : ℝ ↦ (t + 1) ^ (-10 + 1 : ℝ) / (-10 + 1))
+          ((x + 1) ^ (-10 : ℝ)) x := by
+      intro x hx
+      convert! (((hasDerivAt_id x).add_const 1).rpow_const _).div_const _ using 1
+      · norm_num [id_eq]
+      · left
+        intro h
+        have hx0 : 0 ≤ x := Set.mem_Ici.mp hx
+        have hx1 : 0 < id x + 1 := by
+          simpa only [id_eq] using add_pos_of_nonneg_of_pos hx0 zero_lt_one
+        exact hx1.ne' h
+    have ht : Tendsto (fun t : ℝ ↦ (t + 1) ^ (-10 + 1 : ℝ) / (-10 + 1)) atTop
+        (𝓝 (0 / (-10 + 1))) := by
+      rw [← neg_neg (-10 + 1 : ℝ)]
+      exact (tendsto_rpow_neg_atTop (by norm_num : 0 < -(-10 + 1 : ℝ))).comp
+        (tendsto_atTop_add_const_right _ 1 tendsto_id) |>.div_const _
+    convert integral_Ioi_of_hasDerivAt_of_tendsto' hd
+      (integrableOn_add_rpow_Ioi_of_lt (by norm_num : (-10 : ℝ) < -1)
+        (by norm_num : -(1 : ℝ) < 0)) ht using 1; norm_num
+  rw [hhalf]
+  norm_num
+
+theorem integral_bracketKernel_le_one : ∫ x : ℝ, bracketKernel x ≤ 1 := by
+  rw [integral_bracketKernel]
+  norm_num
 
 @[simp]
 theorem gaussian_pos (x : ℝ) : 0 < gaussian x := by
@@ -1805,7 +1885,70 @@ theorem integral_gaussian : ∫ x : ℝ, gaussian x = 1 := by
   rw [div_self (ne_of_gt Real.pi_pos), Real.sqrt_one]
 
 theorem integrable_gaussian : Integrable gaussian := by
-  simpa only [gaussian] using integrable_exp_neg_mul_sq Real.pi_pos
+  change Integrable (fun x : ℝ ↦ Real.exp (-Real.pi * x ^ 2))
+  exact integrable_exp_neg_mul_sq Real.pi_pos
+
+/-- Every fixed polynomial weight is bounded against the Gaussian.  The
+proof uses the Gaussian's exponential decay at the cocompact filter and the
+extreme-value theorem, so the resulting constant is genuinely global. -/
+theorem gaussian_polynomial_decay (n : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, (1 + |x|) ^ n * gaussian x ≤ C := by
+  let F : ℝ → ℝ := fun x ↦ (1 + |x|) ^ n * gaussian x
+  have hg0 : Tendsto (fun x : ℝ ↦ gaussian x) (cocompact ℝ) (𝓝 0) := by
+    simpa [gaussian, Real.rpow_zero] using
+      (tendsto_rpow_abs_mul_exp_neg_mul_sq_cocompact Real.pi_pos (0 : ℝ))
+  have hgn : Tendsto (fun x : ℝ ↦ |x| ^ n * gaussian x) (cocompact ℝ) (𝓝 0) := by
+    simpa [gaussian, Real.rpow_natCast] using
+      (tendsto_rpow_abs_mul_exp_neg_mul_sq_cocompact Real.pi_pos (n : ℝ))
+  have hq : Tendsto (fun x : ℝ ↦ (2 : ℝ) ^ n * (gaussian x + |x| ^ n * gaussian x))
+      (cocompact ℝ) (𝓝 0) := by
+    convert (tendsto_const_nhds.mul (hg0.add hgn)) using 1; norm_num
+  have hnonneg (x : ℝ) : 0 ≤ F x := by
+    exact mul_nonneg (pow_nonneg (by positivity) _) (gaussian_nonneg x)
+  have hupper (x : ℝ) : F x ≤ (2 : ℝ) ^ n * (gaussian x + |x| ^ n * gaussian x) := by
+    dsimp [F]
+    have hp : (1 + |x|) ^ n ≤ (2 : ℝ) ^ (n - 1) * (1 ^ n + |x| ^ n) :=
+      add_pow_le zero_le_one (abs_nonneg x) n
+    have hpow : (2 : ℝ) ^ (n - 1) ≤ (2 : ℝ) ^ n := by
+      exact pow_le_pow_right₀ (a := (2 : ℝ)) (by norm_num) (Nat.sub_le n 1)
+    calc
+      (1 + |x|) ^ n * gaussian x ≤
+          ((2 : ℝ) ^ (n - 1) * (1 ^ n + |x| ^ n)) * gaussian x := by
+        exact mul_le_mul_of_nonneg_right hp (gaussian_nonneg x)
+      _ ≤ ((2 : ℝ) ^ n * (1 ^ n + |x| ^ n)) * gaussian x := by
+        exact mul_le_mul_of_nonneg_right (by gcongr) (gaussian_nonneg x)
+      _ = (2 : ℝ) ^ n * (gaussian x + |x| ^ n * gaussian x) := by ring
+  have hlim : Tendsto F (cocompact ℝ) (𝓝 0) :=
+    tendsto_of_tendsto_of_tendsto_of_le_of_le' tendsto_const_nhds hq
+      (Filter.Eventually.of_forall hnonneg) (Filter.Eventually.of_forall hupper)
+  have hFzero : F 0 = 1 := by simp [F, gaussian]
+  have hev : ∀ᶠ x in cocompact ℝ, F x ≤ F 0 := by
+    rw [hFzero]
+    exact hlim.eventually (Iic_mem_nhds (by norm_num))
+  have hcont : Continuous F := by
+    dsimp [F, gaussian]
+    fun_prop
+  rcases hcont.exists_forall_ge' 0 hev with ⟨x0, hmax⟩
+  exact ⟨F x0, hnonneg x0, fun x ↦ hmax x⟩
+
+/-- The source-normalized Gaussian is fixed by the one-dimensional Fourier
+transform. -/
+theorem fourier_gaussian :
+    (𝓕 fun x : ℝ ↦ (gaussian x : ℂ)) = fun ξ : ℝ ↦ (gaussian ξ : ℂ) := by
+  have h := fourier_gaussian_pi (b := (1 : ℂ)) (by norm_num)
+  convert h using 1 <;> ext x <;> simp [gaussian]
+
+theorem hasDerivAt_complexGaussian (x : ℝ) :
+    HasDerivAt (fun y : ℝ ↦ (gaussian y : ℂ)) (gaussianDeriv x : ℂ) x := by
+  exact (hasDerivAt_gaussian x).ofReal_comp
+
+theorem deriv_complexGaussian (x : ℝ) :
+    deriv (fun y : ℝ ↦ (gaussian y : ℂ)) x = (gaussianDeriv x : ℂ) :=
+  (hasDerivAt_complexGaussian x).deriv
+
+theorem differentiable_complexGaussian : Differentiable ℝ (fun x : ℝ ↦ (gaussian x : ℂ)) := by
+  intro x
+  exact (hasDerivAt_complexGaussian x).differentiableAt
 
 theorem integrable_gaussianDeriv : Integrable gaussianDeriv := by
   have h : Integrable (fun x : ℝ ↦ x * Real.exp (-Real.pi * x ^ 2)) :=
@@ -1815,8 +1958,61 @@ theorem integrable_gaussianDeriv : Integrable gaussianDeriv := by
   simp [gaussianDeriv, gaussian]
   ring
 
+/-- The derivative of the Gaussian has the same arbitrary polynomial decay. -/
+theorem gaussianDeriv_polynomial_decay (n : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, (1 + |x|) ^ n * |gaussianDeriv x| ≤ C := by
+  rcases gaussian_polynomial_decay (n + 1) with ⟨C, hC, h⟩
+  refine ⟨2 * Real.pi * C, mul_nonneg (mul_nonneg (by norm_num) Real.pi_pos.le) hC, ?_⟩
+  intro x
+  have hderiv : |gaussianDeriv x| = 2 * Real.pi * |x| * gaussian x := by
+    simp [gaussianDeriv, abs_mul, abs_of_pos Real.pi_pos, gaussian_nonneg]
+  have hpow : (1 + |x|) ^ n * |x| ≤ (1 + |x|) ^ (n + 1) := by
+    rw [pow_succ]
+    apply mul_le_mul_of_nonneg_left
+    · linarith [abs_nonneg x]
+    · positivity
+  rw [hderiv]
+  calc
+    (1 + |x|) ^ n * (2 * Real.pi * |x| * gaussian x) =
+        (2 * Real.pi) * ((1 + |x|) ^ n * |x| * gaussian x) := by ring
+    _ ≤ (2 * Real.pi) * ((1 + |x|) ^ (n + 1) * gaussian x) := by
+      gcongr
+      exact gaussian_nonneg x
+    _ ≤ 2 * Real.pi * C := by
+      exact mul_le_mul_of_nonneg_left (h x) (mul_nonneg (by norm_num) Real.pi_pos.le)
+
+theorem integrable_complexGaussianDeriv :
+    Integrable (fun x : ℝ ↦ (gaussianDeriv x : ℂ)) :=
+  integrable_gaussianDeriv.ofReal
+
+/-- Fourier transformation of the source derivative. -/
+theorem fourier_gaussianDeriv :
+    (𝓕 fun x : ℝ ↦ (gaussianDeriv x : ℂ)) =
+      fun ξ : ℝ ↦ -Complex.I * (gaussianDeriv ξ : ℂ) := by
+  have hderivInt : Integrable (deriv fun x : ℝ ↦ (gaussian x : ℂ)) := by
+    convert integrable_complexGaussianDeriv using 1
+    ext x
+    rw [deriv_complexGaussian]
+  calc
+    (𝓕 fun x : ℝ ↦ (gaussianDeriv x : ℂ)) =
+        𝓕 (deriv fun x : ℝ ↦ (gaussian x : ℂ)) := by
+      congr 1
+      ext x
+      rw [deriv_complexGaussian]
+    _ = fun ξ : ℝ ↦ (2 * Real.pi * Complex.I * ξ) •
+        (𝓕 fun x : ℝ ↦ (gaussian x : ℂ)) ξ :=
+      Real.fourier_deriv integrable_gaussian.ofReal differentiable_complexGaussian hderivInt
+    _ = fun ξ : ℝ ↦ -Complex.I * (gaussianDeriv ξ : ℂ) := by
+      funext ξ
+      rw [fourier_gaussian]
+      simp [gaussianDeriv]
+      ring
+
 theorem gaussianDeriv_neg (x : ℝ) : gaussianDeriv (-x) = -gaussianDeriv x := by
   simp [gaussianDeriv, gaussian]
+
+theorem gaussian_even (x : ℝ) : gaussian (-x) = gaussian x := by
+  simp [gaussian]
 
 theorem integral_gaussianDeriv : ∫ x : ℝ, gaussianDeriv x = 0 := by
   have hneg : MeasurePreserving (fun x : ℝ ↦ -x) volume volume :=
@@ -1856,21 +2052,111 @@ theorem kernelAt_dilate_translate {V : Type*} [AddCommMonoid V] [Module ℝ V] (
   field_simp
   ring
 
+/-- A polynomial order-ten decay estimate is stable under the source's
+mass-normalized dilation, with the precise `λ^9` loss used in Gaussian
+domination. -/
+theorem kernelAt_scale_bracket_of_polynomial_decay (f : ℝ → ℝ)
+    (hdecay : ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ,
+      (1 + |x|) ^ 10 * |f x| ≤ C) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (s v : ℝ), 1 ≤ s →
+      |kernelAt f s 0 v| ≤ C * s ^ 9 * bracketKernel v := by
+  rcases hdecay with ⟨C, hC, hdecay⟩
+  refine ⟨C, hC, ?_⟩
+  intro s v hs
+  have hspos : 0 < s := lt_of_lt_of_le zero_lt_one hs
+  have hsne : s ≠ 0 := hspos.ne'
+  have hB : 1 + |v| ≤ s * (1 + |v / s|) := by
+    have hv : |v| = s * |v / s| := by
+      calc
+        |v| = |s * (v / s)| := congrArg abs (by field_simp)
+        _ = s * |v / s| := by rw [abs_mul, abs_of_nonneg hspos.le]
+    rw [hv]
+    nlinarith [abs_nonneg (v / s)]
+  have hBpow : (1 + |v|) ^ 10 ≤ s ^ 10 * (1 + |v / s|) ^ 10 := by
+    calc
+      (1 + |v|) ^ 10 ≤ (s * (1 + |v / s|)) ^ 10 :=
+        pow_le_pow_left₀ (by positivity) hB 10
+      _ = s ^ 10 * (1 + |v / s|) ^ 10 := by rw [mul_pow]
+  have hmain : |s⁻¹ * f (v / s)| ≤ (C * s ^ 9) / (1 + |v|) ^ 10 := by
+    apply (le_div_iff₀ (pow_pos (by positivity) _)).mpr
+    rw [abs_mul, abs_of_pos (inv_pos.mpr hspos)]
+    calc
+      s⁻¹ * |f (v / s)| * (1 + |v|) ^ 10 ≤
+          s⁻¹ * |f (v / s)| * (s ^ 10 * (1 + |v / s|) ^ 10) :=
+        mul_le_mul_of_nonneg_left hBpow
+          (mul_nonneg (inv_nonneg.mpr hspos.le) (abs_nonneg _))
+      _ = s ^ 9 * ((1 + |v / s|) ^ 10 * |f (v / s)|) := by
+        field_simp
+      _ ≤ s ^ 9 * C :=
+        mul_le_mul_of_nonneg_left (hdecay (v / s)) (pow_nonneg hspos.le _)
+      _ = C * s ^ 9 := by ring
+  simpa [kernelAt, kernelDilate, bracketKernel_eq_inv_pow, div_eq_mul_inv, smul_eq_mul] using hmain
+
+/-- The same order-ten decay controls unit-scale translations with the
+source weight `R(r)^10`. -/
+theorem kernelAt_translate_bracket_of_polynomial_decay (f : ℝ → ℝ)
+    (hdecay : ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ,
+      (1 + |x|) ^ 10 * |f x| ≤ C) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (r v : ℝ),
+      |kernelAt f 1 r v| ≤ C * translationWeight r ^ 10 * bracketKernel v := by
+  rcases hdecay with ⟨C, hC, hdecay⟩
+  refine ⟨C, hC, ?_⟩
+  intro r v
+  have hv : |v| ≤ |v - r| + |r| := by
+    calc
+      |v| = |(v - r) + r| := congrArg abs (by ring)
+      _ ≤ |v - r| + |r| := abs_add_le (v - r) r
+  have hRnonneg : 0 ≤ translationWeight r := by
+    unfold translationWeight
+    positivity
+  have hB : 1 + |v| ≤ translationWeight r * (1 + |v - r|) := by
+    unfold translationWeight
+    nlinarith [mul_nonneg (abs_nonneg r) (abs_nonneg (v - r))]
+  have hBpow : (1 + |v|) ^ 10 ≤
+      translationWeight r ^ 10 * (1 + |v - r|) ^ 10 := by
+    calc
+      (1 + |v|) ^ 10 ≤ (translationWeight r * (1 + |v - r|)) ^ 10 :=
+        pow_le_pow_left₀ (by positivity) hB 10
+      _ = translationWeight r ^ 10 * (1 + |v - r|) ^ 10 := by rw [mul_pow]
+  have hmain : |f (v - r)| ≤
+      (C * translationWeight r ^ 10) / (1 + |v|) ^ 10 := by
+    apply (le_div_iff₀ (pow_pos (by positivity) _)).mpr
+    calc
+      |f (v - r)| * (1 + |v|) ^ 10 ≤
+          |f (v - r)| *
+            (translationWeight r ^ 10 * (1 + |v - r|) ^ 10) :=
+        mul_le_mul_of_nonneg_left hBpow (abs_nonneg _)
+      _ = translationWeight r ^ 10 * ((1 + |v - r|) ^ 10 * |f (v - r)|) := by
+        ring
+      _ ≤ translationWeight r ^ 10 * C :=
+        mul_le_mul_of_nonneg_left (hdecay (v - r)) (pow_nonneg hRnonneg _)
+      _ = C * translationWeight r ^ 10 := by ring
+  simpa [kernelAt, kernelDilate, bracketKernel_eq_inv_pow, div_eq_mul_inv,
+    translationWeight, smul_eq_mul] using hmain
+
 /-- The source kernels `\(\mathsf g_{s,a}\)`. -/
 def gaussianAt (s a x : ℝ) : ℝ := kernelAt gaussian s a x
 
 /-- The source kernels `\(\mathsf h_{s,a}\)`. -/
 def gaussianDerivAt (s a x : ℝ) : ℝ := kernelAt gaussianDeriv s a x
 
+/-- The translated and mass-normalized comparison kernel. -/
+def bracketKernelAt (s a x : ℝ) : ℝ := kernelAt bracketKernel s a x
+
 theorem integrable_gaussianAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
     Integrable (gaussianAt s a) := by
   unfold gaussianAt kernelAt kernelDilate
-  exact ((integrable_gaussian.comp_div hs.ne').comp_sub_right a).const_smul _
+  exact ((integrable_gaussian.comp_div hs.ne').comp_sub_right a).smul (s⁻¹ : ℝ)
 
 theorem integrable_gaussianDerivAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
     Integrable (gaussianDerivAt s a) := by
   unfold gaussianDerivAt kernelAt kernelDilate
-  exact ((integrable_gaussianDeriv.comp_div hs.ne').comp_sub_right a).const_smul _
+  exact ((integrable_gaussianDeriv.comp_div hs.ne').comp_sub_right a).smul (s⁻¹ : ℝ)
+
+theorem integrable_bracketKernelAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
+    Integrable (bracketKernelAt s a) := by
+  unfold bracketKernelAt kernelAt kernelDilate
+  exact ((integrable_bracketKernel.comp_div hs.ne').comp_sub_right a).smul (s⁻¹ : ℝ)
 
 theorem integral_gaussianAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
     ∫ x : ℝ, gaussianAt s a x = 1 := by
@@ -1887,6 +2173,75 @@ theorem integral_gaussianDerivAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
   rw [integral_sub_right_eq_self (μ := volume) (fun x : ℝ ↦ gaussianDeriv (x / s)) a]
   rw [Measure.integral_comp_div]
   simp [abs_of_pos hs, integral_gaussianDeriv]
+
+theorem integral_bracketKernelAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
+    ∫ x : ℝ, bracketKernelAt s a x = 2 / 9 := by
+  unfold bracketKernelAt kernelAt kernelDilate
+  rw [integral_smul]
+  rw [integral_sub_right_eq_self (μ := volume) (fun x : ℝ ↦ bracketKernel (x / s)) a]
+  rw [Measure.integral_comp_div]
+  simp [abs_of_pos hs, integral_bracketKernel, hs.ne']
+
+/-- Scale-uniform bracket domination for the Gaussian. -/
+theorem gaussianAt_scale_bracket_domination :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (s v : ℝ), 1 ≤ s →
+      |gaussianAt s 0 v| ≤ C * s ^ 9 * bracketKernel v := by
+  apply kernelAt_scale_bracket_of_polynomial_decay gaussian
+  rcases gaussian_polynomial_decay 10 with ⟨C, hC, h⟩
+  refine ⟨C, hC, fun x ↦ ?_⟩
+  simpa [abs_of_nonneg (gaussian_nonneg x)] using h x
+
+/-- Scale-uniform bracket domination for the Gaussian derivative. -/
+theorem gaussianDerivAt_scale_bracket_domination :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (s v : ℝ), 1 ≤ s →
+      |gaussianDerivAt s 0 v| ≤ C * s ^ 9 * bracketKernel v :=
+  kernelAt_scale_bracket_of_polynomial_decay gaussianDeriv (gaussianDeriv_polynomial_decay 10)
+
+/-- The first pointwise estimate in `lem:domination`. -/
+theorem gaussian_pair_scale_bracket_domination :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (s v : ℝ), 1 ≤ s →
+      |gaussianAt s 0 v| + |gaussianDerivAt s 0 v| ≤
+        C * s ^ 9 * bracketKernel v := by
+  rcases gaussianAt_scale_bracket_domination with ⟨Cg, hCg, hg⟩
+  rcases gaussianDerivAt_scale_bracket_domination with ⟨Ch, hCh, hh⟩
+  refine ⟨Cg + Ch, add_nonneg hCg hCh, ?_⟩
+  intro s v hs
+  calc
+    |gaussianAt s 0 v| + |gaussianDerivAt s 0 v| ≤
+        Cg * s ^ 9 * bracketKernel v + Ch * s ^ 9 * bracketKernel v :=
+      add_le_add (hg s v hs) (hh s v hs)
+    _ = (Cg + Ch) * s ^ 9 * bracketKernel v := by ring
+
+/-- Unit-scale translated Gaussian domination with the source weight `R(r)^10`. -/
+theorem gaussianAt_translate_bracket_domination :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (r v : ℝ),
+      |gaussianAt 1 r v| ≤ C * translationWeight r ^ 10 * bracketKernel v := by
+  apply kernelAt_translate_bracket_of_polynomial_decay gaussian
+  rcases gaussian_polynomial_decay 10 with ⟨C, hC, h⟩
+  refine ⟨C, hC, fun x ↦ ?_⟩
+  simpa [abs_of_nonneg (gaussian_nonneg x)] using h x
+
+/-- Unit-scale translated derivative-Gaussian domination with `R(r)^10`. -/
+theorem gaussianDerivAt_translate_bracket_domination :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (r v : ℝ),
+      |gaussianDerivAt 1 r v| ≤ C * translationWeight r ^ 10 * bracketKernel v :=
+  kernelAt_translate_bracket_of_polynomial_decay gaussianDeriv (gaussianDeriv_polynomial_decay 10)
+
+/-- The second pointwise estimate in `lem:domination`. -/
+theorem gaussian_pair_translate_bracket_domination :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (r v : ℝ),
+      |gaussianAt 1 r v| + |gaussianDerivAt 1 r v| ≤
+        C * translationWeight r ^ 10 * bracketKernel v := by
+  rcases gaussianAt_translate_bracket_domination with ⟨Cg, hCg, hg⟩
+  rcases gaussianDerivAt_translate_bracket_domination with ⟨Ch, hCh, hh⟩
+  refine ⟨Cg + Ch, add_nonneg hCg hCh, ?_⟩
+  intro r v
+  calc
+    |gaussianAt 1 r v| + |gaussianDerivAt 1 r v| ≤
+        Cg * translationWeight r ^ 10 * bracketKernel v +
+          Ch * translationWeight r ^ 10 * bracketKernel v :=
+      add_le_add (hg r v) (hh r v)
+    _ = (Cg + Ch) * translationWeight r ^ 10 * bracketKernel v := by ring
 
 /-! ### The standard frequency bump
 
@@ -1975,6 +2330,526 @@ theorem schwartzFourier_standardBump :
     𝓕 standardBump = standardFrequencyBumpSchwartz := by
   simp [standardBump]
 
+/-- The two annular frequency cutoffs `\(\Psi\)` from `def:bumps`. -/
+noncomputable def conePsi (η : ℝ) : ℝ :=
+  standardFrequencyBump (4 * (η - 3 / 2)) +
+    standardFrequencyBump (4 * (η + 3 / 2))
+
+theorem conePsi_nonneg (η : ℝ) : 0 ≤ conePsi η := by
+  exact add_nonneg (standardFrequencyBump_nonneg _) (standardFrequencyBump_nonneg _)
+
+theorem conePsi_even (η : ℝ) : conePsi (-η) = conePsi η := by
+  unfold conePsi
+  rw [show 4 * (-η - 3 / 2) = -(4 * (η + 3 / 2)) by ring,
+    show 4 * (-η + 3 / 2) = -(4 * (η - 3 / 2)) by ring,
+    standardFrequencyBump_even, standardFrequencyBump_even]
+  ring
+
+theorem conePsi_eq_one_on_core {η : ℝ} (hη : |η - 3 / 2| ≤ 1 / 8) :
+    conePsi η = 1 := by
+  unfold conePsi
+  have hfirst : |4 * (η - 3 / 2)| ≤ 1 / 2 := by
+    rw [abs_mul]
+    nlinarith [abs_nonneg (η - 3 / 2)]
+  have hsecond : 1 ≤ |4 * (η + 3 / 2)| := by
+    have hlow : 11 / 8 ≤ η := by
+      rw [abs_le] at hη
+      linarith
+    rw [abs_of_nonneg (by linarith)]
+    linarith
+  rw [standardFrequencyBump_eq_one_of_abs_le_half hfirst,
+    standardFrequencyBump_eq_zero_of_one_le_abs hsecond]
+  norm_num
+
+theorem conePsi_eq_zero_of_abs_le_one {η : ℝ} (hη : |η| ≤ 1) : conePsi η = 0 := by
+  unfold conePsi
+  rw [abs_le] at hη
+  have hpos : 1 ≤ |4 * (η - 3 / 2)| := by
+    rw [abs_of_nonpos (by linarith)]
+    linarith
+  have hneg : 1 ≤ |4 * (η + 3 / 2)| := by
+    rw [abs_of_nonneg (by linarith)]
+    linarith
+  rw [standardFrequencyBump_eq_zero_of_one_le_abs hpos,
+    standardFrequencyBump_eq_zero_of_one_le_abs hneg]
+  norm_num
+
+theorem conePsi_eq_zero_of_two_le_abs {η : ℝ} (hη : 2 ≤ |η|) : conePsi η = 0 := by
+  unfold conePsi
+  rcases le_total 0 η with hpos | hneg
+  · have hpos' : 2 ≤ η := by
+      rw [abs_of_nonneg hpos] at hη
+      exact hη
+    have hfirst : 1 ≤ |4 * (η - 3 / 2)| := by
+      rw [abs_of_nonneg (by linarith)]
+      linarith
+    have hsecond : 1 ≤ |4 * (η + 3 / 2)| := by
+      rw [abs_of_nonneg (by linarith)]
+      linarith
+    rw [standardFrequencyBump_eq_zero_of_one_le_abs hfirst,
+      standardFrequencyBump_eq_zero_of_one_le_abs hsecond]
+    norm_num
+  · have hneg' : η ≤ -2 := by
+      rw [abs_of_nonpos hneg] at hη
+      linarith
+    have hfirst : 1 ≤ |4 * (η - 3 / 2)| := by
+      rw [abs_of_nonpos (by linarith)]
+      linarith
+    have hsecond : 1 ≤ |4 * (η + 3 / 2)| := by
+      rw [abs_of_nonpos (by linarith)]
+      linarith
+    rw [standardFrequencyBump_eq_zero_of_one_le_abs hfirst,
+      standardFrequencyBump_eq_zero_of_one_le_abs hsecond]
+    norm_num
+
+/-- A globally smooth version of
+`\(\Psi(x)\mathsf h(x)^2/x\)`, with its removable zero filled in. -/
+noncomputable def coneWeight (x : ℝ) : ℝ :=
+  4 * Real.pi ^ 2 * x * conePsi x * gaussian x ^ 2
+
+theorem coneWeight_eq_source_integrand {x : ℝ} (hx : x ≠ 0) :
+    coneWeight x = conePsi x * gaussianDeriv x ^ 2 / x := by
+  unfold coneWeight gaussianDeriv
+  field_simp
+  ring
+
+theorem coneWeight_nonneg_of_nonneg {x : ℝ} (hx : 0 ≤ x) : 0 ≤ coneWeight x := by
+  unfold coneWeight
+  apply mul_nonneg
+  · apply mul_nonneg
+    · apply mul_nonneg
+      · positivity
+      · exact hx
+    · exact conePsi_nonneg x
+  · exact sq_nonneg _
+
+theorem coneWeight_pos_on_core {x : ℝ}
+    (hx : x ∈ Set.Ioo (11 / 8 : ℝ) (13 / 8 : ℝ)) : 0 < coneWeight x := by
+  unfold coneWeight
+  have hcore : |x - 3 / 2| ≤ 1 / 8 := by
+    rw [abs_le]
+    constructor <;> linarith [hx.1, hx.2]
+  rw [conePsi_eq_one_on_core hcore]
+  have hxpos : 0 < x := by linarith [hx.1]
+  have hpi : 0 < 4 * Real.pi ^ 2 := by positivity
+  exact mul_pos (mul_pos (mul_pos hpi hxpos) zero_lt_one)
+    (sq_pos_of_pos (gaussian_pos x))
+
+theorem gaussian_contDiff :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) gaussian := by
+  have hsq : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun x : ℝ ↦ x ^ 2) :=
+    contDiff_id.pow 2
+  have hin : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      (fun x : ℝ ↦ -Real.pi * x ^ 2) := by
+    simpa using
+      (contDiff_const.mul hsq : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+        (fun x : ℝ ↦ (-Real.pi) * x ^ 2))
+  change ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+    (fun x : ℝ ↦ Real.exp (-Real.pi * x ^ 2))
+  exact Real.contDiff_exp.comp hin
+
+theorem conePsi_contDiff :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) conePsi := by
+  unfold conePsi
+  apply ContDiff.add
+  · exact standardFrequencyBump_contDiff.comp
+      (contDiff_const.mul (contDiff_id.sub contDiff_const))
+  · exact standardFrequencyBump_contDiff.comp
+      (contDiff_const.mul (contDiff_id.add contDiff_const))
+
+theorem coneWeight_contDiff :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) coneWeight := by
+  unfold coneWeight
+  exact ((((contDiff_const.mul contDiff_const).mul contDiff_id).mul conePsi_contDiff).mul
+    (gaussian_contDiff.pow 2))
+
+theorem coneWeight_neg (x : ℝ) : coneWeight (-x) = -coneWeight x := by
+  simp [coneWeight, conePsi_even, gaussian_even]
+
+theorem coneWeight_eq_zero_of_abs_le_one {x : ℝ} (hx : |x| ≤ 1) : coneWeight x = 0 := by
+  unfold coneWeight
+  rw [conePsi_eq_zero_of_abs_le_one hx]
+  ring
+
+theorem coneWeight_eq_zero_of_two_le_abs {x : ℝ} (hx : 2 ≤ |x|) : coneWeight x = 0 := by
+  unfold coneWeight
+  rw [conePsi_eq_zero_of_two_le_abs hx]
+  ring
+
+/-- The primitive used to express the source tail cutoff without placing an
+absolute value inside a smooth definition. -/
+noncomputable def conePrimitive (x : ℝ) : ℝ := ∫ t in (0 : ℝ)..x, coneWeight t
+
+/-- The positive Calderón normalization `\(c_\Psi\)`. -/
+noncomputable def cPsi : ℝ := ∫ t in (0 : ℝ)..2, coneWeight t
+
+/-- The source cutoff `\(\Phi\)`, represented through its smooth primitive. -/
+noncomputable def conePhi (x : ℝ) : ℝ := cPsi - conePrimitive x
+
+theorem cPsi_pos : 0 < cPsi := by
+  unfold cPsi
+  have hsmall : 0 < ∫ x in (11 / 8 : ℝ)..(13 / 8 : ℝ), coneWeight x := by
+    apply intervalIntegral.intervalIntegral_pos_of_pos_on
+      (coneWeight_contDiff.continuous.intervalIntegrable _ _) ?_ (by norm_num)
+    intro x hx
+    exact coneWeight_pos_on_core hx
+  have hmono : (∫ x in (11 / 8 : ℝ)..(13 / 8 : ℝ), coneWeight x) ≤
+      ∫ x in (0 : ℝ)..2, coneWeight x := by
+    apply intervalIntegral.integral_mono_interval (c := (0 : ℝ)) (d := 2)
+      (by norm_num) (by norm_num) (by norm_num) ?_
+      (coneWeight_contDiff.continuous.intervalIntegrable _ _)
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with x hx
+    exact coneWeight_nonneg_of_nonneg hx.1.le
+  exact lt_of_lt_of_le hsmall hmono
+
+/-- A smooth integrand has a smooth variable-endpoint interval primitive. -/
+theorem contDiff_intervalPrimitive (f : ℝ → ℝ)
+    (hf : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) f) (a : ℝ) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun x ↦ ∫ t in a..x, f t) := by
+  have hcont : Continuous f := hf.continuous
+  have hdifferentiable : Differentiable ℝ (fun x ↦ ∫ t in a..x, f t) := by
+    intro x
+    exact (intervalIntegral.integral_hasDerivAt_right
+      (hcont.intervalIntegrable _ _)
+      hcont.aestronglyMeasurable.stronglyMeasurableAtFilter
+      hcont.continuousAt).differentiableAt
+  have hderiv : deriv (fun x ↦ ∫ t in a..x, f t) = f := by
+    funext x
+    exact intervalIntegral.deriv_integral_right
+      (hcont.intervalIntegrable _ _)
+      hcont.aestronglyMeasurable.stronglyMeasurableAtFilter hcont.continuousAt
+  rw [contDiff_iff_forall_nat_le]
+  intro n _
+  induction n with
+  | zero => exact contDiff_zero.mpr hdifferentiable.continuous
+  | succ n ih =>
+      change ContDiff ℝ ((n : ℕ∞) + 1) (fun x ↦ ∫ t in a..x, f t)
+      rw [contDiff_succ_iff_deriv]
+      refine ⟨hdifferentiable, ?_, ?_⟩
+      · simp
+      · rw [hderiv]
+        apply hf.of_le
+        exact_mod_cast (le_top : n ≤ (⊤ : ℕ∞))
+
+theorem conePrimitive_contDiff :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) conePrimitive := by
+  exact contDiff_intervalPrimitive coneWeight coneWeight_contDiff 0
+
+theorem conePhi_contDiff :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) conePhi := by
+  unfold conePhi
+  exact contDiff_const.sub conePrimitive_contDiff
+
+theorem conePrimitive_even (x : ℝ) : conePrimitive (-x) = conePrimitive x := by
+  have hcomp : (∫ t in (0 : ℝ)..x, coneWeight (-t)) = ∫ t in -x..0, coneWeight t := by
+    simp [intervalIntegral.integral_comp_neg]
+  have hrel : (∫ t in -x..0, coneWeight t) = -(∫ t in (0 : ℝ)..x, coneWeight t) := by
+    rw [← hcomp]
+    rw [show (fun t : ℝ ↦ coneWeight (-t)) = fun t ↦ -coneWeight t by
+      funext t
+      exact coneWeight_neg t]
+    rw [intervalIntegral.integral_neg]
+  unfold conePrimitive
+  rw [intervalIntegral.integral_symm (-x) 0, hrel]
+  ring
+
+theorem conePhi_even (x : ℝ) : conePhi (-x) = conePhi x := by
+  unfold conePhi
+  rw [conePrimitive_even x]
+
+theorem conePrimitive_eq_zero_of_abs_le_one {x : ℝ} (hx : |x| ≤ 1) :
+    conePrimitive x = 0 := by
+  unfold conePrimitive
+  rcases le_total 0 x with hx0 | hx0
+  · rw [intervalIntegral.integral_of_le hx0]
+    apply integral_eq_zero_of_ae
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with y hy
+    apply coneWeight_eq_zero_of_abs_le_one
+    rw [abs_of_nonneg (by linarith [hy.1])]
+    exact le_trans hy.2 (by nlinarith [le_abs_self x])
+  · rw [intervalIntegral.integral_symm x 0]
+    have hz : (∫ t in x..0, coneWeight t) = 0 := by
+      rw [intervalIntegral.integral_of_le hx0]
+      apply integral_eq_zero_of_ae
+      filter_upwards [ae_restrict_mem measurableSet_Ioc] with y hy
+      apply coneWeight_eq_zero_of_abs_le_one
+      rw [abs_of_nonpos (by linarith [hy.2])]
+      have hxlo : -1 ≤ x := by nlinarith [neg_le_abs x]
+      nlinarith [hy.1]
+    rw [hz]
+    simp
+
+theorem conePhi_eq_cPsi_of_abs_le_one {x : ℝ} (hx : |x| ≤ 1) :
+    conePhi x = cPsi := by
+  unfold conePhi
+  rw [conePrimitive_eq_zero_of_abs_le_one hx]
+  ring
+
+theorem conePrimitive_eq_cPsi_of_two_le {x : ℝ} (hx : 2 ≤ x) :
+    conePrimitive x = cPsi := by
+  have htail : (∫ t in (2 : ℝ)..x, coneWeight t) = 0 := by
+    rw [intervalIntegral.integral_of_le hx]
+    apply integral_eq_zero_of_ae
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with y hy
+    apply coneWeight_eq_zero_of_two_le_abs
+    rw [abs_of_nonneg (by linarith [hy.1])]
+    linarith [hy.1]
+  unfold conePrimitive cPsi
+  rw [← intervalIntegral.integral_add_adjacent_intervals
+    (coneWeight_contDiff.continuous.intervalIntegrable (0 : ℝ) 2)
+    (coneWeight_contDiff.continuous.intervalIntegrable 2 x), htail, add_zero]
+
+theorem conePhi_eq_zero_of_two_le_abs {x : ℝ} (hx : 2 ≤ |x|) : conePhi x = 0 := by
+  have heq : conePrimitive x = cPsi := by
+    rcases le_total 0 x with hx0 | hx0
+    · rw [abs_of_nonneg hx0] at hx
+      exact conePrimitive_eq_cPsi_of_two_le hx
+    · have hneg : 2 ≤ -x := by rwa [abs_of_nonpos hx0] at hx
+      rw [← conePrimitive_even x]
+      exact conePrimitive_eq_cPsi_of_two_le hneg
+  unfold conePhi
+  rw [heq]
+  ring
+
+theorem conePhi_eq_tail (x : ℝ) : conePhi x = ∫ t in |x|..2, coneWeight t := by
+  have hpos (u : ℝ) (hu : 0 ≤ u) : conePhi u = ∫ t in u..2, coneWeight t := by
+    unfold conePhi cPsi conePrimitive
+    have hadd : (∫ t in (0 : ℝ)..u, coneWeight t) + ∫ t in u..2, coneWeight t =
+        ∫ t in (0 : ℝ)..2, coneWeight t :=
+      intervalIntegral.integral_add_adjacent_intervals
+        (coneWeight_contDiff.continuous.intervalIntegrable (0 : ℝ) u)
+        (coneWeight_contDiff.continuous.intervalIntegrable u 2)
+    linarith
+  rcases le_total 0 x with hx | hx
+  · rw [abs_of_nonneg hx]
+    exact hpos x hx
+  · rw [abs_of_nonpos hx]
+    have heven : conePhi x = conePhi (-x) := by
+      unfold conePhi
+      rw [← conePrimitive_even x]
+    rw [heven]
+    exact hpos (-x) (by linarith)
+
+theorem conePsi_hasCompactSupport : HasCompactSupport conePsi := by
+  apply HasCompactSupport.intro (isCompact_closedBall (0 : ℝ) 2)
+  intro x hx
+  have hx' : 2 < |x| := by
+    simpa only [Metric.mem_closedBall, Real.dist_eq, sub_zero, not_le] using hx
+  exact conePsi_eq_zero_of_two_le_abs hx'.le
+
+theorem conePhi_hasCompactSupport : HasCompactSupport conePhi := by
+  apply HasCompactSupport.intro (isCompact_closedBall (0 : ℝ) 2)
+  intro x hx
+  have hx' : 2 < |x| := by
+    simpa only [Metric.mem_closedBall, Real.dist_eq, sub_zero, not_le] using hx
+  exact conePhi_eq_zero_of_two_le_abs hx'.le
+
+/-- Complex Schwartz realization of the real annular cutoff `\(\Psi\)`. -/
+noncomputable def conePsiSchwartz : SchwartzMap ℝ ℂ := by
+  let g : ℝ → ℂ := Complex.ofRealCLM ∘ conePsi
+  have hcompact : HasCompactSupport g :=
+    conePsi_hasCompactSupport.comp_left (g := Complex.ofRealCLM) rfl
+  have hsmooth : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) g :=
+    Complex.ofRealCLM.contDiff.comp conePsi_contDiff
+  exact hcompact.toSchwartzMap hsmooth
+
+@[simp]
+theorem conePsiSchwartz_apply (x : ℝ) : conePsiSchwartz x = conePsi x := by
+  rfl
+
+/-- Complex Schwartz realization of the real low-frequency cutoff `\(\Phi\)`. -/
+noncomputable def conePhiSchwartz : SchwartzMap ℝ ℂ := by
+  let g : ℝ → ℂ := Complex.ofRealCLM ∘ conePhi
+  have hcompact : HasCompactSupport g :=
+    conePhi_hasCompactSupport.comp_left (g := Complex.ofRealCLM) rfl
+  have hsmooth : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) g :=
+    Complex.ofRealCLM.contDiff.comp conePhi_contDiff
+  exact hcompact.toSchwartzMap hsmooth
+
+@[simp]
+theorem conePhiSchwartz_apply (x : ℝ) : conePhiSchwartz x = conePhi x := by
+  rfl
+
+/-- The spatial Schwartz kernels `\(\psi=\mathcal F^{-1}\Psi\)` and
+`\(\varphi=\mathcal F^{-1}\Phi\)`. -/
+noncomputable def conePsiPhysical : SchwartzMap ℝ ℂ := 𝓕⁻ conePsiSchwartz
+
+noncomputable def conePhiPhysical : SchwartzMap ℝ ℂ := 𝓕⁻ conePhiSchwartz
+
+@[simp]
+theorem schwartzFourier_conePsiPhysical :
+    𝓕 conePsiPhysical = conePsiSchwartz := by
+  simp [conePsiPhysical]
+
+@[simp]
+theorem schwartzFourier_conePhiPhysical :
+    𝓕 conePhiPhysical = conePhiSchwartz := by
+  simp [conePhiPhysical]
+
+/-- The spatial annular kernel is even. -/
+theorem conePsiPhysical_even (x : ℝ) :
+    conePsiPhysical (-x) = conePsiPhysical x := by
+  unfold conePsiPhysical
+  rw [SchwartzMap.fourierInv_coe]
+  have h := Real.fourierInv_comp_linearIsometry
+    (LinearIsometryEquiv.neg ℝ (E := ℝ)) (conePsiSchwartz : ℝ → ℂ) x
+  change (𝓕⁻ ((conePsiSchwartz : ℝ → ℂ) ∘
+      (LinearIsometryEquiv.neg ℝ (E := ℝ))) : ℝ → ℂ) x = _ at h
+  rw [show ((conePsiSchwartz : ℝ → ℂ) ∘
+      (LinearIsometryEquiv.neg ℝ (E := ℝ))) = conePsiSchwartz by
+    funext t
+    change conePsiSchwartz (-t) = conePsiSchwartz t
+    simpa only [conePsiSchwartz_apply] using
+      congrArg Complex.ofReal (conePsi_even t)] at h
+  simpa using h.symm
+
+/-- The spatial low-frequency kernel is even. -/
+theorem conePhiPhysical_even (x : ℝ) :
+    conePhiPhysical (-x) = conePhiPhysical x := by
+  unfold conePhiPhysical
+  rw [SchwartzMap.fourierInv_coe]
+  have h := Real.fourierInv_comp_linearIsometry
+    (LinearIsometryEquiv.neg ℝ (E := ℝ)) (conePhiSchwartz : ℝ → ℂ) x
+  change (𝓕⁻ ((conePhiSchwartz : ℝ → ℂ) ∘
+      (LinearIsometryEquiv.neg ℝ (E := ℝ))) : ℝ → ℂ) x = _ at h
+  rw [show ((conePhiSchwartz : ℝ → ℂ) ∘
+      (LinearIsometryEquiv.neg ℝ (E := ℝ))) = conePhiSchwartz by
+    funext t
+    change conePhiSchwartz (-t) = conePhiSchwartz t
+    simpa only [conePhiSchwartz_apply] using
+      congrArg Complex.ofReal (conePhi_even t)] at h
+  simpa using h.symm
+
+/-- Inverse Fourier transformation sends a real-valued frequency function to
+a conjugate-symmetric spatial function. -/
+lemma fourierInv_conj_eq_of_real (f : ℝ → ℂ)
+    (hreal : ∀ t : ℝ, (starRingEnd ℂ) (f t) = f t) (x : ℝ) :
+    (starRingEnd ℂ) (𝓕⁻ f x) = 𝓕⁻ f (-x) := by
+  rw [Real.fourierInv_eq, Real.fourierInv_eq, ← integral_conj]
+  apply integral_congr_ae
+  filter_upwards with t
+  simp only [Real.inner_apply, mul_neg]
+  change (starRingEnd ℂ) ((↑(𝐞 (t * x)) : ℂ) * f t) =
+    (↑(𝐞 (-(t * x))) : ℂ) * f t
+  rw [map_mul, hreal]
+  rw [← Circle.coe_inv_eq_conj, ← Real.fourierChar.map_neg_eq_inv]
+
+/-- The spatial annular kernel has real values. -/
+theorem conePsiPhysical_im_eq_zero (x : ℝ) : (conePsiPhysical x).im = 0 := by
+  apply Complex.conj_eq_iff_im.mp
+  unfold conePsiPhysical
+  rw [SchwartzMap.fourierInv_coe]
+  calc
+    (starRingEnd ℂ) (𝓕⁻ (conePsiSchwartz : ℝ → ℂ) x) =
+        𝓕⁻ (conePsiSchwartz : ℝ → ℂ) (-x) :=
+      fourierInv_conj_eq_of_real _ (by
+        intro t
+        rw [conePsiSchwartz_apply]
+        simp) x
+    _ = 𝓕⁻ (conePsiSchwartz : ℝ → ℂ) x := by
+      have h := Real.fourierInv_comp_linearIsometry
+        (LinearIsometryEquiv.neg ℝ (E := ℝ)) (conePsiSchwartz : ℝ → ℂ) x
+      change (𝓕⁻ ((conePsiSchwartz : ℝ → ℂ) ∘
+        (LinearIsometryEquiv.neg ℝ (E := ℝ))) : ℝ → ℂ) x = _ at h
+      rw [show ((conePsiSchwartz : ℝ → ℂ) ∘
+        (LinearIsometryEquiv.neg ℝ (E := ℝ))) = conePsiSchwartz by
+        funext t
+        change conePsiSchwartz (-t) = conePsiSchwartz t
+        simpa only [conePsiSchwartz_apply] using
+          congrArg Complex.ofReal (conePsi_even t)] at h
+      simpa using h.symm
+
+/-- The spatial low-frequency kernel has real values. -/
+theorem conePhiPhysical_im_eq_zero (x : ℝ) : (conePhiPhysical x).im = 0 := by
+  apply Complex.conj_eq_iff_im.mp
+  unfold conePhiPhysical
+  rw [SchwartzMap.fourierInv_coe]
+  calc
+    (starRingEnd ℂ) (𝓕⁻ (conePhiSchwartz : ℝ → ℂ) x) =
+        𝓕⁻ (conePhiSchwartz : ℝ → ℂ) (-x) :=
+      fourierInv_conj_eq_of_real _ (by
+        intro t
+        rw [conePhiSchwartz_apply]
+        simp) x
+    _ = 𝓕⁻ (conePhiSchwartz : ℝ → ℂ) x := by
+      have h := Real.fourierInv_comp_linearIsometry
+        (LinearIsometryEquiv.neg ℝ (E := ℝ)) (conePhiSchwartz : ℝ → ℂ) x
+      change (𝓕⁻ ((conePhiSchwartz : ℝ → ℂ) ∘
+        (LinearIsometryEquiv.neg ℝ (E := ℝ))) : ℝ → ℂ) x = _ at h
+      rw [show ((conePhiSchwartz : ℝ → ℂ) ∘
+        (LinearIsometryEquiv.neg ℝ (E := ℝ))) = conePhiSchwartz by
+        funext t
+        change conePhiSchwartz (-t) = conePhiSchwartz t
+        simpa only [conePhiSchwartz_apply] using
+          congrArg Complex.ofReal (conePhi_even t)] at h
+      simpa using h.symm
+
+/-- The real Schwartz realization of the annular spatial kernel. -/
+noncomputable def conePsiPhysicalReal : SchwartzMap ℝ ℝ :=
+  conePsiPhysical.postcompCLM (𝕜 := ℝ) Complex.reCLM
+
+/-- The real Schwartz realization of the low-frequency spatial kernel. -/
+noncomputable def conePhiPhysicalReal : SchwartzMap ℝ ℝ :=
+  conePhiPhysical.postcompCLM (𝕜 := ℝ) Complex.reCLM
+
+@[simp]
+theorem conePsiPhysicalReal_apply (x : ℝ) :
+    conePsiPhysicalReal x = (conePsiPhysical x).re := by
+  rfl
+
+@[simp]
+theorem conePhiPhysicalReal_apply (x : ℝ) :
+    conePhiPhysicalReal x = (conePhiPhysical x).re := by
+  rfl
+
+theorem conePsiPhysical_eq_ofReal (x : ℝ) :
+    (conePsiPhysicalReal x : ℂ) = conePsiPhysical x := by
+  apply Complex.ext
+  · simp [conePsiPhysicalReal_apply]
+  · simp [conePsiPhysical_im_eq_zero]
+
+theorem conePhiPhysical_eq_ofReal (x : ℝ) :
+    (conePhiPhysicalReal x : ℂ) = conePhiPhysical x := by
+  apply Complex.ext
+  · simp [conePhiPhysicalReal_apply]
+  · simp [conePhiPhysical_im_eq_zero]
+
+theorem conePsiPhysicalReal_even (x : ℝ) :
+    conePsiPhysicalReal (-x) = conePsiPhysicalReal x := by
+  simp only [conePsiPhysicalReal_apply]
+  rw [conePsiPhysical_even]
+
+theorem conePhiPhysicalReal_even (x : ℝ) :
+    conePhiPhysicalReal (-x) = conePhiPhysicalReal x := by
+  simp only [conePhiPhysicalReal_apply]
+  rw [conePhiPhysical_even]
+
+theorem conePsiPhysical_decay (r : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ,
+      ‖conePsiPhysical x‖ ≤ C / (1 + |x|) ^ r :=
+  schwartz_oneDim_decay conePsiPhysical r
+
+theorem conePhiPhysical_decay (r : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ,
+      ‖conePhiPhysical x‖ ≤ C / (1 + |x|) ^ r :=
+  schwartz_oneDim_decay conePhiPhysical r
+
+theorem conePsiPhysicalReal_decay (r : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ,
+      |conePsiPhysicalReal x| ≤ C / (1 + |x|) ^ r := by
+  rcases conePsiPhysical_decay r with ⟨C, hC, h⟩
+  refine ⟨C, hC, fun x ↦ ?_⟩
+  rw [← Real.norm_eq_abs, ← Complex.norm_real, conePsiPhysical_eq_ofReal]
+  exact h x
+
+theorem conePhiPhysicalReal_decay (r : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ,
+      |conePhiPhysicalReal x| ≤ C / (1 + |x|) ^ r := by
+  rcases conePhiPhysical_decay r with ⟨C, hC, h⟩
+  refine ⟨C, hC, fun x ↦ ?_⟩
+  rw [← Real.norm_eq_abs, ← Complex.norm_real, conePhiPhysical_eq_ofReal]
+  exact h x
+
 /-! ## Anisotropic dyadic boxes
 
 This is the literal integer-level grid from `def:tree`.  In particular,
@@ -2025,6 +2900,9 @@ theorem boxSide_pos (α : Anisotropy) (q : AnisoBox α) (i : Fin 3) :
   exact zpow_pos (by norm_num) _
 
 theorem boxMass_pos (α : Anisotropy) (q : AnisoBox α) : 0 < boxMass α q := by
+  exact zpow_pos (by norm_num) _
+
+theorem boxLength_pos (q : AnisoBox α) : 0 < boxLength q := by
   exact zpow_pos (by norm_num) _
 
 /-- The half-open coordinate interval of a box. -/
@@ -2123,6 +3001,136 @@ theorem volume_boxSet_toReal (α : Anisotropy) (q : AnisoBox α) :
     fun i ↦ ENNReal.toReal_ofReal (boxSide_pos α q i).le
   simp_rw [htoReal]
   exact prod_boxSide_eq_boxMass α q
+
+/-- The exact source normalization `|Q(k,n)| = 2^{kA}`. -/
+theorem volume_boxSet_eq_boxMass (α : Anisotropy) (q : AnisoBox α) :
+    volume (boxSet α q) = ENNReal.ofReal (boxMass α q) := by
+  rw [volume_boxSet]
+  rw [← ENNReal.ofReal_prod_of_nonneg]
+  · rw [prod_boxSide_eq_boxMass]
+  · intro i _
+    exact (boxSide_pos α q i).le
+
+/-- Integer division reconstructs every child digit, including at negative
+indices.  This is the converse to `boxParent_child`. -/
+theorem exists_boxChild_eq_of_boxParent_eq
+    (α : Anisotropy) (q r : AnisoBox α)
+    (h : boxParent α r = q) :
+    ∃ v : AnisoDigit α, boxChild α q v = r := by
+  cases q with
+  | mk qlevel qindex =>
+    cases r with
+    | mk rlevel rindex =>
+      simp only [boxParent, AnisoBox.mk.injEq] at h
+      rcases h with ⟨hlevel, hindex⟩
+      let v : AnisoDigit α := fun i ↦
+        ⟨(rindex i % (anisoRadix α i : ℤ)).toNat, by
+          rw [Int.toNat_lt
+            (Int.emod_nonneg _ (by
+              exact_mod_cast (Nat.ne_of_gt (anisoRadix_pos α i))))]
+          exact Int.emod_lt_of_pos _ (by
+            exact_mod_cast (anisoRadix_pos α i))⟩
+      refine ⟨v, ?_⟩
+      simp only [boxChild, AnisoBox.mk.injEq]
+      constructor
+      · omega
+      · funext i
+        have hrem :
+            ((rindex i % (anisoRadix α i : ℤ)).toNat : ℤ) =
+              rindex i % (anisoRadix α i : ℤ) :=
+          Int.toNat_of_nonneg (Int.emod_nonneg _ (by
+            exact_mod_cast (Nat.ne_of_gt (anisoRadix_pos α i))))
+        dsimp [v]
+        rw [← congrFun hindex i, hrem, Int.mul_ediv_add_emod]
+
+theorem boxParent_eq_iff_exists_boxChild (α : Anisotropy) (q r : AnisoBox α) :
+    boxParent α r = q ↔ ∃ v : AnisoDigit α, boxChild α q v = r := by
+  constructor
+  · exact exists_boxChild_eq_of_boxParent_eq α q r
+  · rintro ⟨v, rfl⟩
+    exact boxParent_child α q v
+
+theorem boxSide_parent (α : Anisotropy) (q : AnisoBox α) (i : Fin 3) :
+    boxSide α (boxParent α q) i =
+      (anisoRadix α i : ℝ) * boxSide α q i := by
+  unfold boxSide boxParent anisoRadix
+  have hexp : (q.level + 1) * (α.weight i : ℤ) =
+      q.level * (α.weight i : ℤ) + (α.weight i : ℤ) := by ring
+  rw [hexp, zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0), zpow_natCast]
+  norm_cast
+  ring
+
+theorem boxInterval_subset_parent (α : Anisotropy) (q : AnisoBox α) (i : Fin 3) :
+    boxInterval α q i ⊆ boxInterval α (boxParent α q) i := by
+  unfold boxInterval
+  rw [boxSide_parent]
+  simp only [boxParent]
+  have hlt : (q.index i : ℝ) < ((q.index i + 1 : ℤ) : ℝ) := by
+    have hltZ : q.index i < q.index i + 1 := by omega
+    exact_mod_cast hltZ
+  have hnonempty : (q.index i : ℝ) * boxSide α q i <
+      ((q.index i + 1 : ℤ) : ℝ) * boxSide α q i :=
+    mul_lt_mul_of_pos_right hlt (boxSide_pos α q i)
+  apply (Set.Ico_subset_Ico_iff hnonempty).2
+  constructor
+  · let R : ℤ := anisoRadix α i
+    have hRne : R ≠ 0 := by
+      dsimp [R]
+      exact_mod_cast (Nat.ne_of_gt (anisoRadix_pos α i))
+    have hlowZ : (q.index i / R) * R ≤ q.index i :=
+      Int.ediv_mul_le _ hRne
+    have hlow : ((q.index i / R : ℤ) : ℝ) * (R : ℝ) ≤ q.index i := by
+      exact_mod_cast hlowZ
+    change ((q.index i / R : ℤ) : ℝ) * ((R : ℝ) * boxSide α q i) ≤
+      (q.index i : ℝ) * boxSide α q i
+    rw [← mul_assoc]
+    exact mul_le_mul_of_nonneg_right hlow (boxSide_pos α q i).le
+  · let R : ℤ := anisoRadix α i
+    have hRpos : 0 < R := by
+      dsimp [R]
+      exact_mod_cast anisoRadix_pos α i
+    have hrem : q.index i % R < R := Int.emod_lt_of_pos _ hRpos
+    have hdecomp : q.index i % R + R * (q.index i / R) = q.index i :=
+      Int.emod_add_mul_ediv _ _
+    have huZ : q.index i + 1 ≤ (q.index i / R + 1) * R := by
+      calc
+        q.index i + 1 = q.index i % R + R * (q.index i / R) + 1 := by
+          rw [hdecomp]
+        _ ≤ R * (q.index i / R) + R := by linarith
+        _ = (q.index i / R + 1) * R := by ring
+    have hu : ((q.index i + 1 : ℤ) : ℝ) ≤
+        ((q.index i / R + 1 : ℤ) : ℝ) * (R : ℝ) := by
+      exact_mod_cast huZ
+    change ((q.index i + 1 : ℤ) : ℝ) * boxSide α q i ≤
+      ((q.index i / R + 1 : ℤ) : ℝ) * ((R : ℝ) * boxSide α q i)
+    rw [← mul_assoc]
+    exact mul_le_mul_of_nonneg_right hu (boxSide_pos α q i).le
+
+theorem boxSet_subset_parent (α : Anisotropy) (q : AnisoBox α) :
+    boxSet α q ⊆ boxSet α (boxParent α q) := by
+  intro x hx
+  rw [boxSet, Set.mem_preimage, Set.mem_pi] at hx ⊢
+  intro i _
+  exact boxInterval_subset_parent α q i (hx i (Set.mem_univ i))
+
+/-- Passing to the parent multiplies the grid mass by the number of
+anisotropic children. -/
+theorem boxMass_parent (α : Anisotropy) (q : AnisoBox α) :
+    boxMass α (boxParent α q) = (2 ^ α.homogeneousDimension : ℝ) * boxMass α q := by
+  unfold boxMass boxParent
+  have hexp : (q.level + 1) * (α.homogeneousDimension : ℤ) =
+      (α.homogeneousDimension : ℤ) + q.level * (α.homogeneousDimension : ℤ) := by
+    ring
+  rw [hexp, zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0), zpow_natCast]
+
+/-- Each child has the corresponding fraction of its parent's grid mass. -/
+theorem boxMass_child_mul_card (α : Anisotropy) (q : AnisoBox α) (v : AnisoDigit α) :
+    boxMass α (boxChild α q v) * (2 ^ α.homogeneousDimension : ℝ) = boxMass α q := by
+  unfold boxMass boxChild
+  have hexp : (q.level - 1) * (α.homogeneousDimension : ℤ) +
+      (α.homogeneousDimension : ℤ) = q.level * (α.homogeneousDimension : ℤ) := by
+    ring
+  rw [← zpow_natCast, ← zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0), hexp]
 
 end Twisted
 
