@@ -1,0 +1,19 @@
+import Auto.Twisted.Twisted
+
+open MeasureTheory Filter
+
+#check MeasurePreserving.symm
+#check MeasurableEquiv.measurePreserving_symm
+#check MeasurePreserving.integrable_comp_of_integrable
+#check MeasurePreserving.integral_comp
+#check MeasurePreserving.integrable_comp_emb
+#check Integrable.integral_prod_left
+#check Integrable.integral_prod_right
+#check MeasureTheory.integral_prod
+#check MeasureTheory.integral_prod_left
+#check MeasureTheory.integral_prod_right
+#check AEStronglyMeasurable.integral_prod_right
+#check AEStronglyMeasurable.integral_prod_left
+#check MeasureTheory.aestronglyMeasurable_integral_prod_right
+#check MeasureTheory.aestronglyMeasurable_integral_prod_left
+#check Integrable.integral_norm
