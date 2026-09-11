@@ -100,7 +100,7 @@ For direct source verification use lake env lean DFR/Auto/SmoothingIneq2D/Smooth
 
 ## Next step
 
-Task 1 remains assigned and active. Lemmas 3.1-3.3 are verified. Equation (3.1) and its positive-time reduction are verified. Continue frequency and amplitude reductions (3.3)-(3.4), then the next ready source-ledger item in logical forward reasoning order. Preserve Lemma 3.3 and Theorem 5 and the documented corrections. The renewed instruction to proceed authorizes this correction; do not ask again or stop at intermediate milestones. Follow the remaining source ledger in forward order.
+Task 1 remains assigned and active. Lemmas 3.1-3.3, (3.24), the Section 3.3 decomposition, and (3.26)-(3.29) are verified. Continue (3.30): the actual coefficient normalization, small-coefficient energy, L2 Fourier approximation, finite oscillatory estimates, and relocalized preferred-fiber derivative and Fourier-tail estimates are verified. Transfer the fiber Fourier tail to the full two-dimensional coefficients, complete the L2 linearization estimate, and assemble the spatial summation. Theorem 5 remains incomplete. Preserve its statement, settled corrections, task folder boundary, and logical forward reasoning order. Do not stop at intermediate milestones.
 Tasks 2 and 3 await blueprints. Task 4 additionally awaits verified completion
 of Tasks 1-3. Setup scaffolding is not theorem completion.
 
@@ -158,3 +158,7 @@ Recorded 2026-09-10T12:45:58.7354373-04:00 (recording time); exact prompts: [raw
 2026-09-10T18:23:34.428125-04:00 - User corrects the erroneous root Auto layout. Relocate each branch's own task files into existing DFR/Auto directories and correct both vendored skill editions and task records. Apply only layout/instruction changes to main and Tasks 2-4; do not transfer Task 1 proof work. This correction supersedes conflicting earlier folder instructions.
 
 2026-09-10T18:25:27.198580-04:00 - User explicitly requests pushing the layout correction so the remote is current on every branch. Publish the branch-specific correction on main and task-1 through task-4, preserving each branch's own mathematical content. The erroneous repository-root Auto directory is removed after relocating its files.
+
+2026-09-10T18:27:16.5279448-04:00 - User resumes Task 1 through completion after the layout correction. Work only in DFR/Auto/SmoothingIneq2D and the shared automation records; preserve logical forward reasoning order. The earlier layout commits and pushes are complete; no additional Git publication is requested by this resumption.
+
+2026-09-11T06:41:05.8693067-04:00 - User explicitly requests committing and pushing the accumulated verified Task 1 work now, then continuing until Task 1 is fully complete, followed by a final commit and push. This supersedes earlier no-publication instructions. Publish only task-1; preserve other branches. Exclude the unfinished scratch proof from the progress commit. Exact prompt recorded in raw.md.
