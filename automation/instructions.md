@@ -100,10 +100,7 @@ For direct source verification use lake env lean DFR/Auto/SmoothingIneq2D/Smooth
 
 ## Next step
 
-Task 1 remains assigned and active. Lemmas 3.1-3.3, (3.24), the Section 3.3 decomposition, and (3.26)-(3.29) are verified. Continue (3.30): the actual coefficient normalization, small-coefficient energy, L2 Fourier approximation, finite oscillatory estimates, and relocalized preferred-fiber derivative and Fourier-tail estimates are verified. Transfer the fiber Fourier tail to the full two-dimensional coefficients, complete the L2 linearization estimate, and assemble the spatial summation. Theorem 5 remains incomplete. Preserve its statement, settled corrections, task folder boundary, and logical forward reasoning order. Do not stop at intermediate milestones.
-Tasks 2 and 3 await blueprints. Task 4 additionally awaits verified completion
-of Tasks 1-3. Setup scaffolding is not theorem completion.
-
+Task 1 is complete: Auto.smoothing_theorem5 in DFR/Auto/SmoothingIneq2D/Smoothing2D.lean proves the exact source trilinear bound, with both time signs and the printed Sobolev half-exponents. All six permanent sources pass direct checks; lake build passes; the final transitive axiom audit contains only propext, Classical.choice, and Quot.sound. See Status.md for source mappings and verification evidence. The final proof commit and publication are authorized by the user. Pushing task-1 to https://github.com/roos-j/lean-dfr remains pending explicit destination confirmation required by automatic approval review; do not bypass that rejection. Tasks 2-3 await blueprints, and Task 4 also awaits their completion gate. Do not start another proof task without its assignment and source.
 ## LaTeX build artifacts
 
 User direction recorded 2026-09-10T09:48:56.6842063-04:00; exact prompt: [raw.md](raw.md).
