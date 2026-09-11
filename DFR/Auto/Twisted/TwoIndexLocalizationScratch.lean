@@ -1174,6 +1174,702 @@ theorem scratch_cubeFalseTrueSplit_centerActivePassive_symm
   exact scratch_modelFiberCenterFinalReorder_apply p
     (modelPoint (z 0) (z 1) v) (modelPoint (z 2) (z 3) w) t (z 4)
 
+/-- Explicit inverse formula for the full opened-fiber coordinate transport. -/
+@[simp] theorem scratch_modelFiberCenterReorder_symm_apply
+    (t : ℝ) (x y p : E3) (r : ℝ) :
+    scratch_modelFiberCenterReorder.symm (t, (((x, y), p), r)) =
+      (((p, t), modelE5Point (x 0) (x 1) (y 0) (y 1) r), (x 2, y 2)) := by
+  apply scratch_modelFiberCenterReorder.injective
+  rw [MeasurableEquiv.apply_symm_apply,
+    scratch_modelFiberCenterReorder_apply]
+  simp only [modelE5Point_zero, modelE5Point_one, modelE5Point_two,
+    modelE5Point_three, modelE5Point_four]
+  rw [modelPoint_components x, modelPoint_components y]
+
+/-- Under the inverse coordinate transport, the fully opened model-fiber
+integrand is exactly the scale coefficient times the raw center-translation
+integrand. -/
+theorem scratch_modelFiberFullyExpandedIntegrand_centerReorder_symm
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (t : ℝ) (x y p : E3) (r : ℝ) :
+    scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F)
+      (scratch_modelFiberCenterReorder.symm (t, (((x, y), p), r))) =
+      c t * scratch_ModelCenterTranslationIntegrand α u F t (((x, y), p), r) := by
+  rw [scratch_modelFiberCenterReorder_symm_apply]
+  simp only [scratch_modelFiberFullyExpandedIntegrand,
+    scratch_ModelCenterTranslationIntegrand, InitialModelRealInput,
+    modelFirstFiberIntegrand, modelSignedDensity,
+    modelE5Point_zero, modelE5Point_one, modelE5Point_two,
+    modelE5Point_three, modelE5Point_four]
+  rw [modelPoint_components x]
+  ring
+
+/-- Absolute integrability of the fully opened fiber expression makes its
+coordinate transport to the scale--center--translation variables literal.
+In particular, the previously external slab transport hypothesis is only
+Fubini bookkeeping. -/
+theorem scratch_integral_fullyExpanded_eq_centerTranslationScale
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (A : Set ℝ)
+    (hfull : Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict (Set.univ ×ˢ A)).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume))) :
+    (∫ q : ((E3 × ℝ) × ModelE5) × (ℝ × ℝ),
+      scratch_modelFiberFullyExpandedIntegrand α u c
+        (InitialModelRealInput F) q
+      ∂(((cubeScaleMeasure.restrict (Set.univ ×ˢ A)).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume))) =
+      ∫ t in A,
+        ∫ q : ((E3 × E3) × E3) × ℝ,
+          c t * scratch_ModelCenterTranslationIntegrand α u F t q
+          ∂((((volume : Measure E3).prod volume).prod volume).prod volume)
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+  let ν : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
+  let νA : Measure ℝ := ν.restrict A
+  let η : Measure (((E3 × E3) × E3) × ℝ) :=
+    ((((volume : Measure E3).prod volume).prod volume).prod volume)
+  let G : ((E3 × ℝ) × ModelE5) × (ℝ × ℝ) → ℝ :=
+    scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F)
+  let e := scratch_modelFiberCenterReorder
+  have hscale : cubeScaleMeasure.restrict (Set.univ ×ˢ A) =
+      (volume : Measure E3).prod νA := by
+    unfold cubeScaleMeasure νA ν
+    rw [← Measure.prod_restrict]
+    simp
+  have hfull' : Integrable G
+      (((((volume : Measure E3).prod νA).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume))) := by
+    simpa only [G, hscale] using hfull
+  have hmp : MeasurePreserving e
+      (((((volume : Measure E3).prod νA).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume)))
+      (νA.prod η) := by
+    simpa only [e, η] using scratch_modelFiberCenterReorder_measurePreserving νA
+  have htransport : Integrable (fun q : ℝ × (((E3 × E3) × E3) × ℝ) ↦
+      G (e.symm q)) (νA.prod η) := by
+    exact (MeasurePreserving.symm e hmp).integrable_comp_of_integrable hfull'
+  calc
+    (∫ q : ((E3 × ℝ) × ModelE5) × (ℝ × ℝ),
+      scratch_modelFiberFullyExpandedIntegrand α u c
+        (InitialModelRealInput F) q
+      ∂(((cubeScaleMeasure.restrict (Set.univ ×ˢ A)).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume))) =
+        ∫ q : ℝ × (((E3 × E3) × E3) × ℝ), G (e.symm q) ∂(νA.prod η) := by
+          rw [hscale]
+          exact (MeasurePreserving.symm e hmp).integral_comp
+            e.symm.measurableEmbedding G |>.symm
+    _ = ∫ t : ℝ, ∫ q : ((E3 × E3) × E3) × ℝ,
+        G (e.symm (t, q)) ∂η ∂νA :=
+      MeasureTheory.integral_prod _ htransport
+    _ = ∫ t in A,
+        ∫ q : ((E3 × E3) × E3) × ℝ,
+          c t * scratch_ModelCenterTranslationIntegrand α u F t q ∂η
+        ∂ν := by
+      apply integral_congr_ae
+      filter_upwards [] with t
+      apply integral_congr_ae
+      filter_upwards [] with q
+      rcases q with ⟨⟨⟨x, y⟩, p⟩, r⟩
+      exact scratch_modelFiberFullyExpandedIntegrand_centerReorder_symm
+        α u c F t x y p r
+    _ = ∫ t in A,
+        ∫ q : ((E3 × E3) × E3) × ℝ,
+          c t * scratch_ModelCenterTranslationIntegrand α u F t q
+          ∂((((volume : Measure E3).prod volume).prod volume).prod volume)
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+      rfl
+
+/-- The fixed scale-band fiber-to-profile identity with no external
+coordinate-transport assumption.  The only residual analytic premise is
+absolute integrability of the raw translation-open center fibers. -/
+theorem scratch_truncationFiber_centerFubini_of_fullyExpanded
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (A : Set ℝ) (hA : MeasurableSet A) (hApos : A ⊆ Set.Ioi (0 : ℝ))
+    (hfull : Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict (Set.univ ×ˢ A)).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume)))
+    (hraw : ∀ᵐ t ∂((volume : Measure ℝ).withDensity cubeScaleDensity).restrict A,
+      Integrable (scratch_ModelCenterTranslationIntegrand α u F t)
+        ((((volume : Measure E3).prod volume).prod volume).prod volume)) :
+    (∫ pt in Set.univ ×ˢ A,
+      truncationFiberIntegrand α u c (InitialModelRealInput F) pt
+        ∂cubeScaleMeasure) =
+      ∫ t in A, c t *
+        (∫ q : (E3 × E3) × E3,
+          ModelCenterExpandedIntegrand α u F t q
+          ∂(((volume : Measure E3).prod volume).prod volume))
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+  apply scratch_truncationFiber_centerFubini_of_fullyExpandedTransport
+    α u c F A hA hApos hfull hraw
+  exact scratch_integral_fullyExpanded_eq_centerTranslationScale
+    α u c F A hfull
+
+/-- The exact two-index localization limit obtained from a fully opened
+slab integrability assertion and raw center-fiber integrability alone. -/
+theorem scratch_tendsto_expandedModelLocalForm_twoIndex_of_fullyExpanded_raw
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput) (N : ℕ)
+    (hfull : Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict
+        (Set.univ ×ˢ truncationScaleSet N)).prod
+          (volume : Measure ModelE5)).prod
+        ((volume : Measure ℝ).prod volume)))
+    (hraw : ∀ᵐ t ∂((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (truncationScaleSet N),
+      Integrable (scratch_ModelCenterTranslationIntegrand α u F t)
+        ((((volume : Measure E3).prod volume).prod volume).prod volume)) :
+    Tendsto (fun M ↦ expandedModelLocalForm α (truncationCollection α M) u
+      (RestrictScaleCoefficient c (truncationScaleSet N))
+      (InitialModelRealInput F)) atTop
+      (𝓝 (ModelScaleTruncation α u c F N)) := by
+  apply scratch_tendsto_expandedModelLocalForm_twoIndex_of_fullyExpanded
+    α u c F N hfull
+  exact scratch_truncationFiber_centerFubini_of_fullyExpanded
+    α u c F (truncationScaleSet N) measurableSet_Ioc
+      (truncationScaleSet_subset_positive N) hfull hraw
+
+/-- A complete two-index consumer in which the cutoff outer-fiber and
+center-transport hypotheses have both been discharged.  It is ready for an
+analytic proof of the remaining raw center-fiber integrability premise. -/
+theorem scratch_modelFullForm_bound_of_twoIndex_fullyExpanded_raw_and_uniformForest
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (B : ℝ) (hcmeas : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
+    (hfull : ∀ N : ℕ, Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict
+        (Set.univ ×ˢ truncationScaleSet N)).prod
+          (volume : Measure ModelE5)).prod
+        ((volume : Measure ℝ).prod volume)))
+    (hraw : ∀ N : ℕ,
+      ∀ᵐ t ∂((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (truncationScaleSet N),
+      Integrable (scratch_ModelCenterTranslationIntegrand α u F t)
+        ((((volume : Measure E3).prod volume).prod volume).prod volume))
+    (hforest : ∀ (d : ℝ → ℝ), (∀ t : ℝ, |d t| ≤ 1) → ∀ M : ℕ,
+      |expandedModelLocalForm α (truncationCollection α M) u d
+        (InitialModelRealInput F)| ≤ B) :
+    |ModelFullForm α u c F| ≤ B := by
+  apply scratch_modelFullForm_bound_of_twoIndex_fullyExpanded_and_uniformForest
+    α u c F B hcmeas hc hfull
+  · intro N
+    exact scratch_truncationFiber_centerFubini_of_fullyExpanded
+      α u c F (truncationScaleSet N) measurableSet_Ioc
+        (truncationScaleSet_subset_positive N) (hfull N) (hraw N)
+  · exact hforest
+
+/-- Before taking the signed third-coordinate convolution, its absolute
+Gaussian-derivative/annular-cutoff pair is jointly integrable. -/
+theorem scratch_integrable_rawThirdTranslationPair
+    (s u : ℝ) (hs : 0 < s) :
+    Integrable (fun z : ℝ × ℝ ↦
+      |gaussianDerivAt s (z.2 * s) z.1| *
+        |conePsiPhysicalReal (z.2 + u)|)
+      ((volume : Measure ℝ).prod volume) := by
+  let G : ℝ × ℝ → ℝ := fun z ↦
+    |gaussianDerivAt s (z.1 * s) z.2| *
+      |conePsiPhysicalReal (z.1 + u)|
+  have hderiv : Measurable gaussianDeriv := by
+    unfold gaussianDeriv
+    exact (measurable_const.mul measurable_id).mul
+      gaussian_contDiff.continuous.measurable
+  have hkernel : Measurable (fun z : ℝ × ℝ ↦
+      gaussianDerivAt s (z.1 * s) z.2) :=
+    measurable_kernelAt gaussianDeriv hderiv _ _ _ measurable_const
+      (measurable_fst.mul measurable_const) measurable_snd
+  have hpsi : Measurable (fun z : ℝ × ℝ ↦
+      conePsiPhysicalReal (z.1 + u)) :=
+    conePsiPhysicalReal.continuous.measurable.comp
+      (measurable_fst.add measurable_const)
+  have hmeas : AEStronglyMeasurable G ((volume : Measure ℝ).prod volume) := by
+    exact (hkernel.aestronglyMeasurable.norm.mul
+      hpsi.aestronglyMeasurable.norm).congr (Filter.Eventually.of_forall
+        fun z ↦ by rfl)
+  have hG : Integrable G ((volume : Measure ℝ).prod volume) := by
+    refine (MeasureTheory.integrable_prod_iff hmeas).mpr ⟨?_, ?_⟩
+    · filter_upwards [] with r
+      have hbase := integrable_abs_gaussianDerivAt hs (r * s)
+      refine hbase.const_mul |conePsiPhysicalReal (r + u)| |>.congr ?_
+      filter_upwards [] with x
+      dsimp only [G]
+      ring
+    · have htail : Integrable (fun r : ℝ ↦
+        (∫ x : ℝ, |gaussianDeriv x|) * |conePsiPhysicalReal (r + u)|) := by
+        exact (integrable_abs_conePsiPhysicalReal.comp_add_right u).const_mul _
+      refine htail.congr ?_
+      filter_upwards [] with r
+      symm
+      calc
+        (∫ x : ℝ, ‖G (r, x)‖) =
+            |conePsiPhysicalReal (r + u)| *
+              ∫ x : ℝ, |gaussianDerivAt s (r * s) x| := by
+              dsimp only [G]
+              rw [show (fun x : ℝ ↦
+                  ‖|gaussianDerivAt s (r * s) x| *
+                    |conePsiPhysicalReal (r + u)|‖) =
+                    fun x ↦ |conePsiPhysicalReal (r + u)| *
+                      |gaussianDerivAt s (r * s) x| by
+                    funext x
+                    rw [Real.norm_eq_abs, abs_of_nonneg]
+                    · ring
+                    · exact mul_nonneg (abs_nonneg _) (abs_nonneg _),
+                  MeasureTheory.integral_const_mul]
+        _ = (∫ x : ℝ, |gaussianDeriv x|) *
+              |conePsiPhysicalReal (r + u)| := by
+              rw [integral_abs_gaussianDerivAt hs (r * s)]
+              ring
+  have hswap : Integrable (G ∘ Prod.swap)
+      ((volume : Measure ℝ).prod volume) := hG.swap
+  apply hswap.congr
+  filter_upwards [] with z
+  rfl
+
+/-- An `L¹` base factor, an `L¹` center difference factor, and an `L¹`
+sampled-difference/translation block remain jointly integrable in the
+literal `(x,y,p,r)` center order. -/
+theorem scratch_integrable_twoDifferenceTail_center_order
+    (A P : E3 → ℝ) (Q : E3 × ℝ → ℝ)
+    (hA : Integrable A) (hP : Integrable P)
+    (hQ : Integrable Q ((volume : Measure E3).prod volume)) :
+    Integrable (fun q : ((E3 × E3) × E3) × ℝ ↦
+      A q.1.1.1 * P (q.1.1.1 - q.1.2) * Q (q.1.1.2 - q.1.2, q.2))
+      ((((volume : Measure E3).prod volume).prod volume).prod volume) := by
+  have hPneg : Integrable (fun r : E3 ↦ P (-r)) := hP.comp_neg
+  have hXP' : Integrable (fun z : E3 × E3 ↦
+      A z.1 * P (-(z.2 - z.1))) ((volume : Measure E3).prod volume) :=
+    integrable_mul_difference A (fun r : E3 ↦ P (-r)) hA hPneg
+  have hXP : Integrable (fun z : E3 × E3 ↦
+      A z.1 * P (z.1 - z.2)) ((volume : Measure E3).prod volume) := by
+    apply hXP'.congr
+    filter_upwards [] with z
+    congr 2
+    ext i
+    change -(z.2 i - z.1 i) = z.1 i - z.2 i
+    ring
+  have hbase : Integrable (fun q : (E3 × E3) × (E3 × ℝ) ↦
+      (A q.1.1 * P (q.1.1 - q.1.2)) * Q q.2)
+      (((volume : Measure E3).prod volume).prod
+        ((volume : Measure E3).prod volume)) :=
+    hXP.mul_prod hQ
+  let e₃ : (E3 × E3) × E3 ≃ᵐ (E3 × E3) × E3 :=
+    ((MeasurableEquiv.prodAssoc.trans
+      (MeasurableEquiv.prodCongr (MeasurableEquiv.refl E3)
+        (MeasurableEquiv.prodComm : E3 × E3 ≃ᵐ E3 × E3))).trans
+      (MeasurableEquiv.prodCongr (MeasurableEquiv.refl E3)
+        (MeasurableEquiv.shearSubRight E3))).trans
+      MeasurableEquiv.prodAssoc.symm
+  let e : ((E3 × E3) × E3) × ℝ ≃ᵐ
+      (E3 × E3) × (E3 × ℝ) :=
+    (MeasurableEquiv.prodCongr e₃ (MeasurableEquiv.refl ℝ)).trans
+      MeasurableEquiv.prodAssoc
+  have hassoc : MeasurePreserving
+      (MeasurableEquiv.prodAssoc : (E3 × E3) × E3 ≃ᵐ E3 × (E3 × E3))
+      (((volume : Measure E3).prod volume).prod volume)
+      ((volume : Measure E3).prod ((volume : Measure E3).prod volume)) :=
+    measurePreserving_prodAssoc volume volume volume
+  have hswap : MeasurePreserving
+      (MeasurableEquiv.prodCongr (MeasurableEquiv.refl E3)
+        (MeasurableEquiv.prodComm : E3 × E3 ≃ᵐ E3 × E3))
+      ((volume : Measure E3).prod ((volume : Measure E3).prod volume))
+      ((volume : Measure E3).prod ((volume : Measure E3).prod volume)) := by
+    exact (MeasurePreserving.id (volume : Measure E3)).prod
+      (MeasureTheory.Measure.measurePreserving_swap
+        (μ := (volume : Measure E3)) (ν := (volume : Measure E3)))
+  have hshear : MeasurePreserving
+      (MeasurableEquiv.prodCongr (MeasurableEquiv.refl E3)
+        (MeasurableEquiv.shearSubRight E3))
+      ((volume : Measure E3).prod ((volume : Measure E3).prod volume))
+      ((volume : Measure E3).prod ((volume : Measure E3).prod volume)) := by
+    have hsub : MeasurePreserving (fun z : E3 × E3 ↦ (z.1, z.2 - z.1))
+        ((volume : Measure E3).prod volume)
+        ((volume : Measure E3).prod volume) :=
+      measurePreserving_prod_sub volume volume
+    have hprod := (MeasurePreserving.id (volume : Measure E3)).prod hsub
+    convert hprod using 1
+    rfl
+  have he₃ : MeasurePreserving e₃
+      (((volume : Measure E3).prod volume).prod volume)
+      (((volume : Measure E3).prod volume).prod volume) := by
+    dsimp only [e₃]
+    exact ((hassoc.trans hswap).trans hshear).trans hassoc.symm
+  have he : MeasurePreserving e
+      ((((volume : Measure E3).prod volume).prod volume).prod volume)
+      (((volume : Measure E3).prod volume).prod
+        ((volume : Measure E3).prod volume)) := by
+    dsimp only [e]
+    exact (he₃.prod (MeasurePreserving.id (volume : Measure ℝ))).trans
+      (measurePreserving_prodAssoc
+        ((volume : Measure E3).prod volume) volume volume)
+  have htransport : Integrable (fun q : ((E3 × E3) × E3) × ℝ ↦
+      (A ((e q).1.1) * P ((e q).1.1 - (e q).1.2)) * Q (e q).2)
+      ((((volume : Measure E3).prod volume).prod volume).prod volume) :=
+    he.integrable_comp_of_integrable hbase
+  apply htransport.congr
+  filter_upwards [] with q
+  rcases q with ⟨⟨⟨x, y⟩, p⟩, r⟩
+  change A x * P (x - p) * Q (y - p, r) = _
+  rfl
+
+/-- The two low Gaussian coordinates together with the untranslated raw
+third-coordinate pair form an `L¹` sampled-difference/translation block. -/
+theorem scratch_integrable_rawTranslationKernelBlock
+    (s₀ s₁ s₂ u : ℝ) (hs₀ : 0 < s₀) (hs₁ : 0 < s₁) (hs₂ : 0 < s₂) :
+    Integrable (fun z : E3 × ℝ ↦
+      (|gaussianAt s₀ 0 (z.1 0)| * |gaussianAt s₁ 0 (z.1 1)|) *
+        (|gaussianDerivAt s₂ (z.2 * s₂) (z.1 2)| *
+          |conePsiPhysicalReal (z.2 + u)|))
+      ((volume : Measure E3).prod volume) := by
+  have hgauss₀ : Integrable (fun r : ℝ ↦ |gaussianAt s₀ 0 r|) := by
+    simpa only [Real.norm_eq_abs] using (integrable_gaussianAt hs₀ 0).norm
+  have hgauss₁ : Integrable (fun r : ℝ ↦ |gaussianAt s₁ 0 r|) := by
+    simpa only [Real.norm_eq_abs] using (integrable_gaussianAt hs₁ 0).norm
+  have hthird := scratch_integrable_rawThirdTranslationPair s₂ u hs₂
+  let e : E3 × ℝ ≃ᵐ ℝ × (ℝ × (ℝ × ℝ)) :=
+    (MeasurableEquiv.prodCongr e3Coordinates (MeasurableEquiv.refl ℝ)).trans
+      ((MeasurableEquiv.prodAssoc.trans
+        (MeasurableEquiv.prodCongr (MeasurableEquiv.refl ℝ)
+          MeasurableEquiv.prodAssoc)))
+  have hcoords : MeasurePreserving
+      (MeasurableEquiv.prodCongr e3Coordinates (MeasurableEquiv.refl ℝ))
+      ((volume : Measure E3).prod volume)
+      (((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume)).prod
+        volume) := by
+    exact e3Coordinates_measurePreserving.prod
+      (MeasurePreserving.id (volume : Measure ℝ))
+  have hassoc₁ : MeasurePreserving
+      (MeasurableEquiv.prodAssoc :
+        (ℝ × (ℝ × ℝ)) × ℝ ≃ᵐ ℝ × ((ℝ × ℝ) × ℝ))
+      (((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume)).prod
+        volume)
+      ((volume : Measure ℝ).prod
+        (((volume : Measure ℝ).prod volume).prod volume)) :=
+    measurePreserving_prodAssoc volume ((volume : Measure ℝ).prod volume) volume
+  have hassoc₂ : MeasurePreserving
+      (MeasurableEquiv.prodCongr (MeasurableEquiv.refl ℝ)
+        (MeasurableEquiv.prodAssoc :
+          (ℝ × ℝ) × ℝ ≃ᵐ ℝ × (ℝ × ℝ)))
+      ((volume : Measure ℝ).prod
+        (((volume : Measure ℝ).prod volume).prod volume))
+      ((volume : Measure ℝ).prod
+        ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))) := by
+    exact (MeasurePreserving.id (volume : Measure ℝ)).prod
+      (measurePreserving_prodAssoc volume volume volume)
+  have hmp : MeasurePreserving e
+      ((volume : Measure E3).prod volume)
+      ((volume : Measure ℝ).prod
+        ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))) := by
+    dsimp only [e]
+    exact (hcoords.trans hassoc₁).trans hassoc₂
+  have hprod : Integrable (fun z : ℝ × (ℝ × (ℝ × ℝ)) ↦
+      |gaussianAt s₀ 0 z.1| *
+        (|gaussianAt s₁ 0 z.2.1| *
+          (|gaussianDerivAt s₂ (z.2.2.2 * s₂) z.2.2.1| *
+            |conePsiPhysicalReal (z.2.2.2 + u)|)))
+      ((volume : Measure ℝ).prod
+        ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))) :=
+    hgauss₀.mul_prod (hgauss₁.mul_prod hthird)
+  have htransport : Integrable (fun z : E3 × ℝ ↦
+      |gaussianAt s₀ 0 ((e z).1)| *
+        (|gaussianAt s₁ 0 ((e z).2.1)| *
+          (|gaussianDerivAt s₂ (((e z).2.2.2) * s₂) ((e z).2.2.1)| *
+            |conePsiPhysicalReal ((e z).2.2.2 + u)|)))
+      ((volume : Measure E3).prod volume) :=
+    hmp.integrable_comp_of_integrable hprod
+  apply htransport.congr
+  filter_upwards [] with z
+  rcases z with ⟨z, r⟩
+  simp [e, MeasurableEquiv.trans_apply, MeasurableEquiv.prodCongr,
+    MeasurableEquiv.prodAssoc, e3Coordinates_apply]
+  ring
+
+/-- At every positive scale, opening the final signed translation variable
+does not lose absolute integrability for real Schwartz model inputs. -/
+theorem scratch_integrable_ModelCenterTranslationIntegrand
+    (α : Anisotropy) (u : E3) (F : ModelSchwartzInput) (t : ℝ)
+    (ht : 0 < t) :
+    Integrable (scratch_ModelCenterTranslationIntegrand α u F t)
+      ((((volume : Measure E3).prod volume).prod volume).prod volume) := by
+  obtain ⟨B₁, hB₁, hF₁⟩ := initialModelRealInput_bounded F 1
+  obtain ⟨B₂, hB₂, hF₂⟩ := initialModelRealInput_bounded F 2
+  obtain ⟨B₃, hB₃, hF₃⟩ := initialModelRealInput_bounded F 3
+  let s₀ : ℝ := t ^ α.weight 0
+  let s₁ : ℝ := t ^ α.weight 1
+  let s₂ : ℝ := t ^ α.weight 2
+  have hs₀ : 0 < s₀ := by
+    dsimp only [s₀]
+    exact pow_pos ht _
+  have hs₁ : 0 < s₁ := by
+    dsimp only [s₁]
+    exact pow_pos ht _
+  have hs₂ : 0 < s₂ := by
+    dsimp only [s₂]
+    exact pow_pos ht _
+  let C : ℝ := B₁ * B₂ * B₃
+  let A : E3 → ℝ := fun x ↦ C * |F 0 x|
+  have hA : Integrable A := by
+    have hF₀ : Integrable (fun x : E3 ↦ |F 0 x|) := by
+      simpa only [Real.norm_eq_abs] using (F 0).integrable.norm
+    simpa only [A] using hF₀.const_mul C
+  have hphi₀ : Integrable (fun r : ℝ ↦
+      |modelPhiAt s₀ (s₀ * u 0) r|) := by
+    simpa only [modelPhiAt, kernelAt] using
+      (integrable_abs_kernelDilate conePhiPhysicalReal
+        conePhiPhysicalReal.integrable hs₀).comp_sub_right (s₀ * u 0)
+  have hphi₁ : Integrable (fun r : ℝ ↦
+      |modelPhiAt s₁ (s₁ * u 1) r|) := by
+    simpa only [modelPhiAt, kernelAt] using
+      (integrable_abs_kernelDilate conePhiPhysicalReal
+        conePhiPhysicalReal.integrable hs₁).comp_sub_right (s₁ * u 1)
+  have hderiv : Integrable (fun r : ℝ ↦ |gaussianDerivAt s₂ 0 r|) := by
+    simpa only [gaussianDerivAt, kernelAt, sub_zero] using
+      integrable_abs_kernelDilate gaussianDeriv integrable_gaussianDeriv hs₂
+  let P : E3 → ℝ := fun z ↦
+    |modelPhiAt s₀ (s₀ * u 0) (z 0)| *
+      |modelPhiAt s₁ (s₁ * u 1) (z 1)| *
+        |gaussianDerivAt s₂ 0 (z 2)|
+  have hP : Integrable P := by
+    simpa only [P] using integrable_E3_coordinate_product
+      (fun r : ℝ ↦ |modelPhiAt s₀ (s₀ * u 0) r|)
+      (fun r : ℝ ↦ |modelPhiAt s₁ (s₁ * u 1) r|)
+      (fun r : ℝ ↦ |gaussianDerivAt s₂ 0 r|)
+      hphi₀ hphi₁ hderiv
+  let Q : E3 × ℝ → ℝ := fun z ↦
+    (|gaussianAt s₀ 0 (z.1 0)| * |gaussianAt s₁ 0 (z.1 1)|) *
+      (|gaussianDerivAt s₂ (z.2 * s₂) (z.1 2)| *
+        |conePsiPhysicalReal (z.2 + u 2)|)
+  have hQ : Integrable Q ((volume : Measure E3).prod volume) := by
+    simpa only [Q] using scratch_integrable_rawTranslationKernelBlock
+      s₀ s₁ s₂ (u 2) hs₀ hs₁ hs₂
+  have hmajor := scratch_integrable_twoDifferenceTail_center_order
+    A P Q hA hP hQ
+  have hx (i : Fin 3) : Measurable
+      (fun q : ((E3 × E3) × E3) × ℝ ↦ q.1.1.1 i) :=
+    (PiLp.continuous_apply (p := 2) (β := fun _ : Fin 3 ↦ ℝ) i).measurable.comp
+      (measurable_fst.comp (measurable_fst.comp measurable_fst))
+  have hy (i : Fin 3) : Measurable
+      (fun q : ((E3 × E3) × E3) × ℝ ↦ q.1.1.2 i) :=
+    (PiLp.continuous_apply (p := 2) (β := fun _ : Fin 3 ↦ ℝ) i).measurable.comp
+      (measurable_snd.comp (measurable_fst.comp measurable_fst))
+  have hp (i : Fin 3) : Measurable
+      (fun q : ((E3 × E3) × E3) × ℝ ↦ q.1.2 i) :=
+    (PiLp.continuous_apply (p := 2) (β := fun _ : Fin 3 ↦ ℝ) i).measurable.comp
+      (measurable_snd.comp measurable_fst)
+  have hr : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦ q.2) :=
+    measurable_snd
+  have hderivMeas : Measurable gaussianDeriv := by
+    unfold gaussianDeriv
+    exact (measurable_const.mul measurable_id).mul
+      gaussian_contDiff.continuous.measurable
+  have hmeas : Measurable (scratch_ModelCenterTranslationIntegrand α u F t) := by
+    have h0 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦ F 0 q.1.1.1) :=
+      (F 0).continuous.measurable.comp (measurable_fst.comp
+        (measurable_fst.comp measurable_fst))
+    have h1 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        F 1 (modelPoint (q.1.1.2 0) (q.1.1.1 1) (q.1.1.1 2))) :=
+      (F 1).continuous.measurable.comp
+        (measurable_modelPoint _ _ _ (hy 0) (hx 1) (hx 2))
+    have h2 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        F 2 (modelPoint (q.1.1.1 0) (q.1.1.2 1) (q.1.1.1 2))) :=
+      (F 2).continuous.measurable.comp
+        (measurable_modelPoint _ _ _ (hx 0) (hy 1) (hx 2))
+    have h3 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        F 3 (modelPoint (q.1.1.1 0) (q.1.1.1 1) (q.1.1.2 2))) :=
+      (F 3).continuous.measurable.comp
+        (measurable_modelPoint _ _ _ (hx 0) (hx 1) (hy 2))
+    have hphi0 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        modelPhiAt s₀ (q.1.2 0 + s₀ * u 0) (q.1.1.1 0)) :=
+      measurable_kernelAt conePhiPhysicalReal
+        conePhiPhysicalReal.continuous.measurable _ _ _ measurable_const
+        ((hp 0).add measurable_const) (hx 0)
+    have hgauss0 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        gaussianAt s₀ (q.1.2 0) (q.1.1.2 0)) :=
+      measurable_kernelAt gaussian gaussian_contDiff.continuous.measurable
+        _ _ _ measurable_const (hp 0) (hy 0)
+    have hphi1 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        modelPhiAt s₁ (q.1.2 1 + s₁ * u 1) (q.1.1.1 1)) :=
+      measurable_kernelAt conePhiPhysicalReal
+        conePhiPhysicalReal.continuous.measurable _ _ _ measurable_const
+        ((hp 1).add measurable_const) (hx 1)
+    have hgauss1 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        gaussianAt s₁ (q.1.2 1) (q.1.1.2 1)) :=
+      measurable_kernelAt gaussian gaussian_contDiff.continuous.measurable
+        _ _ _ measurable_const (hp 1) (hy 1)
+    have hderiv0 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        gaussianDerivAt s₂ (q.1.2 2) (q.1.1.1 2)) :=
+      measurable_kernelAt gaussianDeriv hderivMeas _ _ _ measurable_const
+        (hp 2) (hx 2)
+    have hderiv1 : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        gaussianDerivAt s₂ (q.1.2 2 + q.2 * s₂) (q.1.1.2 2)) :=
+      measurable_kernelAt gaussianDeriv hderivMeas _ _ _ measurable_const
+        ((hp 2).add ((hr).mul measurable_const)) (hy 2)
+    have hpsi : Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+        conePsiPhysicalReal (q.2 + u 2)) :=
+      conePsiPhysicalReal.continuous.measurable.comp (hr.add measurable_const)
+    change Measurable (fun q : ((E3 × E3) × E3) × ℝ ↦
+      (F 0 q.1.1.1 * F 1 (modelPoint (q.1.1.2 0) (q.1.1.1 1) (q.1.1.1 2)) *
+          F 2 (modelPoint (q.1.1.1 0) (q.1.1.2 1) (q.1.1.1 2)) *
+          F 3 (modelPoint (q.1.1.1 0) (q.1.1.1 1) (q.1.1.2 2))) *
+        ((modelPhiAt s₀ (q.1.2 0 + s₀ * u 0) (q.1.1.1 0) *
+            gaussianAt s₀ (q.1.2 0) (q.1.1.2 0)) *
+          (modelPhiAt s₁ (q.1.2 1 + s₁ * u 1) (q.1.1.1 1) *
+            gaussianAt s₁ (q.1.2 1) (q.1.1.2 1)) *
+          (gaussianDerivAt s₂ (q.1.2 2) (q.1.1.1 2) *
+            gaussianDerivAt s₂ (q.1.2 2 + q.2 * s₂) (q.1.1.2 2) *
+              conePsiPhysicalReal (q.2 + u 2))))
+    exact (((h0.mul h1).mul h2).mul h3).mul
+      (((hphi0.mul hgauss0).mul (hphi1.mul hgauss1)).mul
+        ((hderiv0.mul hderiv1).mul hpsi))
+  apply hmajor.mono' hmeas.aestronglyMeasurable
+  filter_upwards [] with q
+  rcases q with ⟨⟨⟨x, y⟩, p⟩, r⟩
+  change ‖scratch_ModelCenterTranslationIntegrand α u F t (((x, y), p), r)‖ ≤
+    A x * P (x - p) * Q (y - p, r)
+  rw [Real.norm_eq_abs]
+  simp only [scratch_ModelCenterTranslationIntegrand, abs_mul]
+  dsimp only [A, P, Q, C, s₀, s₁, s₂]
+  rw [modelPhiAt_center_shift (t ^ α.weight 0) (p 0)
+      (t ^ α.weight 0 * u 0) (x 0),
+    gaussianAt_center_shift (t ^ α.weight 0) (p 0) (y 0),
+    modelPhiAt_center_shift (t ^ α.weight 1) (p 1)
+      (t ^ α.weight 1 * u 1) (x 1),
+    gaussianAt_center_shift (t ^ α.weight 1) (p 1) (y 1),
+    gaussianDerivAt_center_shift (t ^ α.weight 2) (p 2) (x 2),
+    show gaussianDerivAt (t ^ α.weight 2)
+        (p 2 + r * t ^ α.weight 2) (y 2) =
+        gaussianDerivAt (t ^ α.weight 2)
+          (r * t ^ α.weight 2) (y 2 - p 2) by
+        simpa only [gaussianDerivAt] using
+          kernelAt_center_shift gaussianDeriv (t ^ α.weight 2)
+            (p 2) (r * t ^ α.weight 2) (y 2)]
+  simp only [PiLp.sub_apply]
+  have hinput :
+      |F 1 (modelPoint (y 0) (x 1) (x 2))| *
+        |F 2 (modelPoint (x 0) (y 1) (x 2))| *
+          |F 3 (modelPoint (x 0) (x 1) (y 2))| ≤ B₁ * B₂ * B₃ := by
+    gcongr
+    · exact hF₁ _
+    · exact hF₂ _
+    · exact hF₃ _
+  have hkernel : 0 ≤
+      (|modelPhiAt (t ^ α.weight 0)
+          (t ^ α.weight 0 * u 0) (x 0 - p 0)| *
+        |modelPhiAt (t ^ α.weight 1)
+          (t ^ α.weight 1 * u 1) (x 1 - p 1)| *
+          |gaussianDerivAt (t ^ α.weight 2) 0 (x 2 - p 2)|) *
+      ((|gaussianAt (t ^ α.weight 0) 0 (y 0 - p 0)| *
+          |gaussianAt (t ^ α.weight 1) 0 (y 1 - p 1)|) *
+        (|gaussianDerivAt (t ^ α.weight 2)
+            (r * t ^ α.weight 2) (y 2 - p 2)| *
+          |conePsiPhysicalReal (r + u 2)|)) := by
+    positivity
+  calc
+    |F 0 x| * |F 1 (modelPoint (y 0) (x 1) (x 2))| *
+          |F 2 (modelPoint (x 0) (y 1) (x 2))| *
+          |F 3 (modelPoint (x 0) (x 1) (y 2))| *
+        ((|modelPhiAt (t ^ α.weight 0)
+            (t ^ α.weight 0 * u 0) (x 0 - p 0)| *
+          |gaussianAt (t ^ α.weight 0) 0 (y 0 - p 0)|) *
+          (|modelPhiAt (t ^ α.weight 1)
+            (t ^ α.weight 1 * u 1) (x 1 - p 1)| *
+          |gaussianAt (t ^ α.weight 1) 0 (y 1 - p 1)|) *
+          (|gaussianDerivAt (t ^ α.weight 2) 0 (x 2 - p 2)| *
+          |gaussianDerivAt (t ^ α.weight 2)
+            (r * t ^ α.weight 2) (y 2 - p 2)| *
+            |conePsiPhysicalReal (r + u 2)|)) =
+        (|F 1 (modelPoint (y 0) (x 1) (x 2))| *
+          |F 2 (modelPoint (x 0) (y 1) (x 2))| *
+            |F 3 (modelPoint (x 0) (x 1) (y 2))|) * |F 0 x| *
+          ((|modelPhiAt (t ^ α.weight 0)
+              (t ^ α.weight 0 * u 0) (x 0 - p 0)| *
+            |modelPhiAt (t ^ α.weight 1)
+              (t ^ α.weight 1 * u 1) (x 1 - p 1)| *
+              |gaussianDerivAt (t ^ α.weight 2) 0 (x 2 - p 2)|) *
+            ((|gaussianAt (t ^ α.weight 0) 0 (y 0 - p 0)| *
+              |gaussianAt (t ^ α.weight 1) 0 (y 1 - p 1)|) *
+              (|gaussianDerivAt (t ^ α.weight 2)
+                  (r * t ^ α.weight 2) (y 2 - p 2)| *
+                |conePsiPhysicalReal (r + u 2)|))) := by ring
+    _ ≤ (B₁ * B₂ * B₃) * |F 0 x| *
+          ((|modelPhiAt (t ^ α.weight 0)
+              (t ^ α.weight 0 * u 0) (x 0 - p 0)| *
+            |modelPhiAt (t ^ α.weight 1)
+              (t ^ α.weight 1 * u 1) (x 1 - p 1)| *
+              |gaussianDerivAt (t ^ α.weight 2) 0 (x 2 - p 2)|) *
+            ((|gaussianAt (t ^ α.weight 0) 0 (y 0 - p 0)| *
+              |gaussianAt (t ^ α.weight 1) 0 (y 1 - p 1)|) *
+              (|gaussianDerivAt (t ^ α.weight 2)
+                  (r * t ^ α.weight 2) (y 2 - p 2)| *
+                |conePsiPhysicalReal (r + u 2)|))) := by
+          apply mul_le_mul_of_nonneg_right
+            (mul_le_mul_of_nonneg_right hinput (abs_nonneg _)) hkernel
+    _ = _ := by ring
+
+/-- The fully opened fiber-to-profile equality is unconditional on every
+measurable positive scale band for real Schwartz model inputs. -/
+theorem scratch_truncationFiber_centerFubini_of_fullyExpanded_auto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (A : Set ℝ) (hA : MeasurableSet A) (hApos : A ⊆ Set.Ioi (0 : ℝ))
+    (hfull : Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict (Set.univ ×ˢ A)).prod
+        (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume))) :
+    (∫ pt in Set.univ ×ˢ A,
+      truncationFiberIntegrand α u c (InitialModelRealInput F) pt
+        ∂cubeScaleMeasure) =
+      ∫ t in A, c t *
+        (∫ q : (E3 × E3) × E3,
+          ModelCenterExpandedIntegrand α u F t q
+          ∂(((volume : Measure E3).prod volume).prod volume))
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+  apply scratch_truncationFiber_centerFubini_of_fullyExpanded
+    α u c F A hA hApos hfull
+  filter_upwards [ae_restrict_mem hA] with t ht
+  exact scratch_integrable_ModelCenterTranslationIntegrand α u F t (hApos ht)
+
+/-- The two-index localization statement with all center-transport and
+raw-fiber integrability premises discharged for real Schwartz data. -/
+theorem scratch_tendsto_expandedModelLocalForm_twoIndex_of_fullyExpanded_auto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput) (N : ℕ)
+    (hfull : Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict
+        (Set.univ ×ˢ truncationScaleSet N)).prod
+          (volume : Measure ModelE5)).prod
+        ((volume : Measure ℝ).prod volume))) :
+    Tendsto (fun M ↦ expandedModelLocalForm α (truncationCollection α M) u
+      (RestrictScaleCoefficient c (truncationScaleSet N))
+      (InitialModelRealInput F)) atTop
+      (𝓝 (ModelScaleTruncation α u c F N)) := by
+  apply scratch_tendsto_expandedModelLocalForm_twoIndex_of_fullyExpanded
+    α u c F N hfull
+  exact scratch_truncationFiber_centerFubini_of_fullyExpanded_auto
+    α u c F (truncationScaleSet N) measurableSet_Ioc
+      (truncationScaleSet_subset_positive N) hfull
+
+/-- The complete two-index localization consumer: the only remaining
+premises are literal full-slab integrability and the finite-forest bound. -/
+theorem scratch_modelFullForm_bound_of_twoIndex_fullyExpanded_auto_and_uniformForest
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (B : ℝ) (hcmeas : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
+    (hfull : ∀ N : ℕ, Integrable
+      (scratch_modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F))
+      (((cubeScaleMeasure.restrict
+        (Set.univ ×ˢ truncationScaleSet N)).prod
+          (volume : Measure ModelE5)).prod
+        ((volume : Measure ℝ).prod volume)))
+    (hforest : ∀ (d : ℝ → ℝ), (∀ t : ℝ, |d t| ≤ 1) → ∀ M : ℕ,
+      |expandedModelLocalForm α (truncationCollection α M) u d
+        (InitialModelRealInput F)| ≤ B) :
+    |ModelFullForm α u c F| ≤ B := by
+  apply scratch_modelFullForm_bound_of_twoIndex_fullyExpanded_and_uniformForest
+    α u c F B hcmeas hc hfull
+  · intro N
+    exact scratch_truncationFiber_centerFubini_of_fullyExpanded_auto
+      α u c F (truncationScaleSet N) measurableSet_Ioc
+        (truncationScaleSet_subset_positive N) (hfull N)
+  · exact hforest
+
 end Twisted
 
 end

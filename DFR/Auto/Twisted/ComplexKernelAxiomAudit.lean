@@ -1,0 +1,18 @@
+import Auto.Twisted.Twisted
+
+#print axioms Auto.Twisted.exists_uniform_LiteralModelFullForm_bound_weight100
+#print axioms Auto.Twisted.LiteralActiveModelFullForm_permute_to_third
+#print axioms Auto.Twisted.exists_uniform_LiteralActiveModelFullForm_bound_weight100
+#print axioms Auto.Twisted.kernelDilate_ModelThirdKernel_sourceWeight_bracket_majorant
+#print axioms Auto.Twisted.kernelDilate_activeModelKernel_sourceWeight_bracket_majorant
+#print axioms Auto.Twisted.abs_activeModelCoordinateConvolution_le_dyadic
+#print axioms Auto.Twisted.deriv_kernelDilate_activeModelKernel_sourceWeight_bracket_majorant
+#print axioms Auto.Twisted.integral_mul_kernel_sub_center_of_integral_zero
+#print axioms Auto.Twisted.abs_integral_activeModelKernel_badFiber_cancellation
+#print axioms Auto.Twisted.localizedCutoff_eq_passiveGaussianInv
+#print axioms Auto.Twisted.localizedCutoff_hasCompactSupport
+#print axioms Auto.Twisted.exists_localizedCutoff_derivative_bound
+#print axioms Auto.Twisted.localizedSymbol_contDiff
+#print axioms Auto.Twisted.localizedCutoff_cone_factor_identity
+#print axioms Auto.Twisted.localizedSymbol_dilate_cone_factor_identity
+#print axioms Auto.Twisted.localizedSymbol_hasCompactSupport

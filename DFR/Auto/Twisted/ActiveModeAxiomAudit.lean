@@ -1,0 +1,13 @@
+import Auto.Twisted.Twisted
+
+namespace Auto.Twisted
+
+#print axioms exists_uniform_activeModelFullForm_bound_weight100
+#print axioms sourceWeight_standardModeTranslate_le
+#print axioms summable_activeModelFullForm_modeTerms_of_decay
+#print axioms norm_tsum_activeModelFullForm_modeTerms_le_of_decay
+#print axioms thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm
+#print axioms thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm
+#print axioms LiteralActiveModelSpatialProfile_eq_frequencyForm
+
+end Auto.Twisted
