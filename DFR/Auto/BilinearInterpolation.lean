@@ -33,8 +33,7 @@ theorem smoothingInterpolationCoeff_norm {c : ℂ} (hc : c ≠ 0) (z : ℂ) :
   simp only [smoothingInterpolationCoeff,if_neg hc,norm_mul,norm_div,Complex.norm_real,
     Real.norm_eq_abs,abs_of_nonneg (norm_nonneg c),div_self hn.ne',one_mul,Complex.norm_exp]
   congr 1
-  simp [Complex.mul_re,Complex.div_re]
-  <;> ring
+  simp [Complex.mul_re]
 
 theorem smoothingInterpolationCoeff_left (t : ℝ) (c : ℂ) :
     ‖smoothingInterpolationCoeff ((t:ℂ)*I) c‖ = ‖c‖^(4/3:ℝ) := by
@@ -56,7 +55,7 @@ theorem smoothingInterpolationCoeff_right (t : ℝ) (c : ℂ) :
 theorem smoothingInterpolationCoeff_analytic (c : ℂ) :
     Differentiable ℂ (fun z => smoothingInterpolationCoeff z c) := by
   by_cases hc : c = 0
-  · simpa [hc] using (differentiable_const (c := (0:ℂ)))
+  · simp [hc]
   · simp only [smoothingInterpolationCoeff,if_neg hc]
     fun_prop
 
@@ -97,7 +96,6 @@ theorem smoothingInterpolationInput_right_norm {X : Type*} [MeasurableSpace X]
     (f := (smoothingInterpolationInput g (1+(t:ℂ)*I) : X → ℂ))
     (Filter.Eventually.of_forall (fun x => smoothingInterpolationCoeff_right t (g x)))
 
-#print axioms smoothingInterpolationInput_left_norm
 /-- Uniform coefficient bound on the closed interpolation strip. -/
 theorem smoothingInterpolationCoeff_bound (c : ℂ) {z : ℂ}
     (hz : z ∈ verticalClosedStrip 0 1) :
@@ -193,7 +191,6 @@ theorem smoothingInterpolationInput_linear_bound {X : Type*} [MeasurableSpace X]
   rw [norm_mul]
   exact mul_le_mul_of_nonneg_right (smoothingInterpolationCoeff_bound c hz) (norm_nonneg _)
 
-#print axioms smoothingInterpolationInput_linear_analytic
 /-- Bounded simple tests preserve integrability of an operator output. -/
 theorem smoothingInterpolation_test_integrable {Z : Type*} [MeasurableSpace Z]
     {ν : Measure Z} {u : Z → ℂ} (hu : Integrable u ν) (h : SimpleFunc Z ℂ) :
@@ -285,7 +282,6 @@ theorem smoothing_bilinear_interpolation_normalized {X Y Z : Type*}
     f hf
   simpa only [T,Complex.ofReal_div,Complex.ofReal_one,Complex.ofReal_ofNat,smoothingInterpolationInput_at_quarter,show (1-(1/4:ℝ))=3/4 by norm_num] using! hbound
 
-#print axioms smoothing_bilinear_interpolation_normalized
 /-- The unnormalized bilinear L2 interpolation estimate used after (3.2). -/
 theorem smoothing_bilinear_interpolation {X Y Z : Type*}
     [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
@@ -333,6 +329,5 @@ theorem smoothing_bilinear_interpolation {X Y Z : Type*}
         rw [he]
         ring
 
-#print axioms smoothing_bilinear_interpolation
 end
 end Auto

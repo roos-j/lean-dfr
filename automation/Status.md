@@ -529,3 +529,24 @@ Final source mappings: Auto.smoothing_eq3_2; Auto.smoothing_averaging_majorant; 
 Fresh direct checks passed for FourierCompatibility.lean, ParabolicAveraging.lean, BilinearInterpolation.lean, SchwartzRegularization.lean, SobolevNorms.lean, and Smoothing2D.lean, producing current compiled artifacts in dependency order. Logs: DFR/Auto/SmoothingIneq2D/final-*.log. The final theorem and both concluding Sobolev estimates report only [propext, Classical.choice, Quot.sound]; no sorryAx appears in any final check log. The configured project build passed 3343 jobs; its log is DFR/Auto/SmoothingIneq2D/build-check.log. Existing linter warnings do not affect verification. Lake configuration, dependency pins, and other task folders are unchanged.
 
 Retrospective prerequisite organization audit: SobolevNorms.lean keeps the source's exact coordinate weights and the general frequency-window weighted L2 estimate together inside the Task 1 folder. Mathlib's Analysis.Distribution.Sobolev defines isotropic Bessel potentials on tempered distributions, not this two-coordinate norm with the printed half-exponents. The module reuses Mathlib Fourier multipliers and Plancherel via FourierCompatibility.lean; the bridge and its norm identities are fully proved. FourierCompatibility.lean holds the unchanged L1/L2 Fourier compatibility result shared with ParabolicAveraging.lean. The interpolation regularizer and every approximation limit are also fully proved, closing the earlier prerequisite notes.
+
+## Source cleanup and prerequisite relocation
+
+2026-09-11T20:38:53.152569-04:00 - User-requested cleanup completed. The shared prerequisites now live at
+DFR/Auto/FourierCompatibility.lean, DFR/Auto/BilinearInterpolation.lean,
+DFR/Auto/ParabolicAveraging.lean, DFR/Auto/SchwartzRegularization.lean, and
+DFR/Auto/SobolevNorms.lean. Smoothing2D.lean remains in DFR/Auto/SmoothingIneq2D/.
+All Lean imports use the new module paths; declaration names are preserved.
+This supersedes the earlier requirement to keep these prerequisites in the Task 1 folder.
+
+Removed 1,011 diagnostic #print commands and moved 25 development logs out of
+Lean source folders into ignored .lake/cleanup-diagnostics/. Removed unused simp
+arguments and redundant tactics, replaced deprecated names and normalization
+calls, and made unused binders anonymous. No linter options were disabled.
+
+All six Auto modules passed direct Lean checks with no warnings. The final
+Smoothing2D check also emitted no informational suggestions. The configured
+lake build passed. A separate stdin audit of Auto.smoothing_theorem5 reports
+only propext, Classical.choice, and Quot.sound. Current verification output is
+in .lake/cleanup-diagnostics/; the earlier final-log locations above are historical.
+Lake configuration and dependency pins are unchanged. No commit or push performed.

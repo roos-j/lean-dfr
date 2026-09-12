@@ -49,6 +49,4 @@ theorem smoothing_fourier_toLp_ae_eq
   rw [hflip'] at hdist
   simpa [Q, H, Complex.real_smul] using hdist.symm
 
-
-#print axioms smoothing_fourier_toLp_ae_eq
 end Auto
