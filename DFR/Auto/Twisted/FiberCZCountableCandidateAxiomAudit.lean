@@ -1,0 +1,11 @@
+import Auto.Twisted.FiberCZCountableSelectedGoodBadOperatorCandidate
+
+namespace Auto.Twisted
+
+#print axioms measurable_fiberDyadicCountableBadField
+#print axioms fiberDyadicCountableBadField_eq_atom_of_mem
+#print axioms abs_fiberDyadicCountableBadField_le_of_bound
+#print axioms coordinateFiberDyadicCountableGoodBad_decomposition
+#print axioms ModelTruncatedOperator_coordinateFiberDyadicCountableGoodBad_split_of_bounded_measurable
+
+end Auto.Twisted

@@ -1,0 +1,10 @@
+import Auto.Twisted.FiberSelectedAtomScaleTailPromotionCandidate
+
+namespace Auto.Twisted
+
+#print axioms integrable_fiberCZBadAtom_of_fiberIntegrable
+#print axioms fiberCZBadAtom_support_centered
+#print axioms integral_abs_fiberCZBadAtom_le_of_bound
+#print axioms selectedFiber_finset_fiberCZBadAtom_scaleTail_holder_cutoff_le
+
+end Auto.Twisted

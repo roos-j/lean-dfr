@@ -7,7 +7,7 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
 | --- | --- | --- | --- | --- | --- |
 | 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | DFR/Auto/SmoothingIneq2D/ | DFR/Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Paused by user (2026-09-10T09:58:47.5716059-04:00); source study incomplete |
 | 2 | 3d smoothing inequality; user blueprint pending in blueprints/ | DFR/Auto/SmoothingIneq3D/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
-| 3 | Twisted; `blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main` | DFR/Auto/Twisted/ | DFR/Auto/Twisted/Twisted.lean | Codex root task3-20260910-1855 | Ready and in progress (assigned 2026-09-10T18:55:25-07:00) |
+| 3 | Twisted; `blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main` | DFR/Auto/Twisted/ | DFR/Auto/Twisted/Twisted.lean | Claude root task3-20260911-1842 | Active (2026-09-11T18:42:00-07:00); resumed at the Section 8 fiberwise Calderón--Zygmund frontier |
 | 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | DFR/Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
 
 ## Assignment protocol
@@ -56,3 +56,14 @@ the Task 1 starter module are infrastructure only; all four proofs are not start
 ## Task 3 assignment
 
 2026-09-10T18:55:25-07:00 — Coordinator assigns Codex root task3-20260910-1855 exactly Task 3, anisotropic twisted paraproduct. Scope: `DFR/Auto/Twisted/`; main file `DFR/Auto/Twisted/Twisted.lean`; source `blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main`. The task folder is absent on this branch and will be created only at that prescribed path. Next unfinished step: read the full blueprint and construct its strict forward dependency ledger, beginning with the analytic definitions and local telescoping prerequisites. Completion requires faithful source coverage, direct verification of every owned Auto source, `lake build` for configured targets, and the allowed-axiom audit.
+
+## Task 3 reassignment
+
+2026-09-11T18:42:00-07:00 — Coordinator reassigns Task 3, anisotropic twisted
+paraproduct, to Claude root task3-20260911-1842 after the previous owner's
+user-requested pause. Scope unchanged: `DFR/Auto/Twisted/`; main file
+`DFR/Auto/Twisted/Twisted.lean`; source `blueprints/task_3_twisted_blueprint.tex`,
+Theorem `thm:main`. The paused checkpoint's unverified selected-atom scale-tail
+bridge was re-checked and audited before new work began. Next unfinished step:
+finish Section 8's `lem:fiber_cz` good-part bounds and assemble the one-fiber
+weak extension `lem:one_fiber`. Completion criteria are unchanged.

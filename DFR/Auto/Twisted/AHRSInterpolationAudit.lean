@@ -1,0 +1,8 @@
+import LeanSpherical.Auto.Spherical.FractalDilations.AHRSUpperBounds
+
+open MeasureTheory
+
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.offDiagonal_two_pair_marcinkiewicz_moment_of_split_weak_endpoints
+#check Auto.Spherical.FractalDilations.AHRSUpperBounds.offDiagonal_memLp_and_eLpNorm_of_twoPair_moment_le
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.offDiagonal_two_pair_marcinkiewicz_moment_of_split_weak_endpoints
+#print axioms Auto.Spherical.FractalDilations.AHRSUpperBounds.offDiagonal_memLp_and_eLpNorm_of_twoPair_moment_le

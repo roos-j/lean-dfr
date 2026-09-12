@@ -28,6 +28,7 @@ import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.LpSpaceFacts
 
 universe u
 
@@ -63422,6 +63423,122 @@ end Auto
 namespace Auto
 namespace Twisted
 
+open MeasureTheory Filter Set
+open Auto.HardyLittlewoodMaximal
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Selected dyadic intervals as finite tail-test data
+
+The finite tail duality package is expressed using midpoint/radius intervals.
+These adapters identify its test data exactly with the finite families from
+the source's selected fiber dyadic grid. -/
+
+/-- The midpoint of a literal source fiber dyadic interval. -/
+def fiberDyadicIntervalCenter (I : FiberDyadicInterval) : ℝ :=
+  ((I.2 : ℝ) + 1 / 2) * fiberDyadicIntervalLength I
+
+/-- The half-length of a literal source fiber dyadic interval. -/
+def fiberDyadicIntervalRadius (I : FiberDyadicInterval) : ℝ :=
+  fiberDyadicIntervalLength I / 2
+
+theorem fiberDyadicIntervalRadius_pos (I : FiberDyadicInterval) :
+    0 < fiberDyadicIntervalRadius I := by
+  unfold fiberDyadicIntervalRadius
+  exact div_pos (fiberDyadicIntervalLength_pos I) (by norm_num)
+
+theorem two_mul_fiberDyadicIntervalRadius (I : FiberDyadicInterval) :
+    2 * fiberDyadicIntervalRadius I = fiberDyadicIntervalLength I := by
+  unfold fiberDyadicIntervalRadius
+  ring
+
+theorem fiberDyadicInterval_center_sub_radius (I : FiberDyadicInterval) :
+    fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I =
+      (I.2 : ℝ) * fiberDyadicIntervalLength I := by
+  unfold fiberDyadicIntervalCenter fiberDyadicIntervalRadius
+  ring
+
+theorem fiberDyadicInterval_center_add_radius (I : FiberDyadicInterval) :
+    fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I =
+      ((I.2 + 1 : ℤ) : ℝ) * fiberDyadicIntervalLength I := by
+  unfold fiberDyadicIntervalCenter fiberDyadicIntervalRadius
+  push_cast
+  ring
+
+/-- The open midpoint/radius interval is contained in the literal half-open
+dyadic cell, enough to transport selected-family disjointness. -/
+theorem centeredOpen_subset_fiberDyadicInterval (I : FiberDyadicInterval) :
+    Ioo (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+      (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I) ⊆
+      fiberDyadicInterval I := by
+  intro y hy
+  rw [fiberDyadicInterval_center_sub_radius,
+    fiberDyadicInterval_center_add_radius] at hy
+  unfold fiberDyadicInterval
+  exact ⟨hy.1.le, hy.2⟩
+
+/-- A finite subfamily selected on a fixed fiber is pairwise disjoint in the
+open midpoint/radius form required by the interval-tail theorem. -/
+theorem pairwiseDisjoint_selectedFiber_centeredOpenIntervals
+    {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (z : Z)
+    (T : Finset FiberDyadicInterval)
+    (hselected : ∀ I ∈ T, z ∈ fiberDyadicSelectionSet Zf A H I) :
+    (↑T : Set FiberDyadicInterval).PairwiseDisjoint
+      (fun I ↦ Ioo
+        (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+        (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I)) := by
+  intro I hI J hJ hne
+  exact (pairwiseDisjoint_fiberDyadicSelectedIntervals Zf A H z
+    (hselected I hI) (hselected J hJ) hne).mono
+      (centeredOpen_subset_fiberDyadicInterval I)
+      (centeredOpen_subset_fiberDyadicInterval J)
+
+/-- The literal finite selected-fiber tail test: the canonical cutoff/Hölder
+bound with midpoint/radius data supplied by the source dyadic selection. -/
+theorem selectedFiber_finset_intervalTail_holder_cutoff_le
+    {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (z : Z)
+    (T : Finset FiberDyadicInterval)
+    (hselected : ∀ I ∈ T, z ∈ fiberDyadicSelectionSet Zf A H I)
+    {p q : ℝ} (hpq : q.HolderConjugate p) (hq : 1 < q)
+    (g : FiberDyadicLine → ℂ) (hg : Measurable g)
+    (a : ℝ) (ha : 0 ≤ a) (hga : ∀ x, ‖g x‖ ≤ a)
+    (hgp : MemLp g (ENNReal.ofReal q) volume) :
+    (∑ I ∈ T, ∫ x : FiberDyadicLine,
+      ‖g x‖ * intervalTail (fiberDyadicIntervalCenter I)
+        (2 * fiberDyadicIntervalRadius I)
+          (realToFiberDyadicLine.symm x)) ≤
+      64 * (volume (Metric.ball (0 : FiberDyadicLine) 1)).toReal *
+        (∫ u in ⋃ I ∈ T, Ioo
+          (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+          (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I),
+          (dyadicBallMaximal 1 g (realToFiberDyadicLine u)) ^ q) ^ (1 / q) *
+        (volume (⋃ I ∈ T, Ioo
+          (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+          (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I))).toReal ^
+          (1 / p) := by
+  apply finset_pairwiseDisjoint_intervalTail_holder_cutoff_le
+    T fiberDyadicIntervalCenter fiberDyadicIntervalRadius
+  · intro I hI
+    exact fiberDyadicIntervalRadius_pos I
+  · exact pairwiseDisjoint_selectedFiber_centeredOpenIntervals
+      Zf A H z T hselected
+  · exact hpq
+  · exact hq
+  · exact hg
+  · exact ha
+  · exact hga
+  · exact hgp
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
 open MeasureTheory Filter
 open scoped BigOperators ENNReal
 
@@ -63528,6 +63645,7150 @@ theorem abs_activeModelCoordinateConvolution_le_coordinateBracketConvolution_of_
   exact abs_ModelCoordinateConvolution_le_coordinateBracketConvolution_of_integrable
     j f (activeModelKernel i j u) s x hG (C * sourceWeight u ^ 10)
     (by simpa only [mul_assoc] using hH) hpoint
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+
+noncomputable section
+
+/-! ## Bounded measurable finite-scale model pieces
+
+The finite fiber stopping construction produces measurable indicator fields,
+not continuous inputs. These elementary finite-scale estimates are the
+integrability interface needed by the literal good--bad operator identity. -/
+
+/-- The fixed model integrand has the usual product Young bound for merely
+measurable bounded inputs. -/
+theorem abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (t : ℝ) (x : E3) (ht : 0 < t) (C : ℝ) (B : Fin 3 → ℝ)
+    (hC : 0 ≤ C) (hc : |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hB : ∀ j, 0 ≤ B j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ B j) :
+    |modelTruncatedOperatorIntegrand α u c f t x| ≤
+      C * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+        (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+          (B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) := by
+  have hs0 : 0 < t ^ α.weight 0 := pow_pos ht _
+  have hs1 : 0 < t ^ α.weight 1 := pow_pos ht _
+  have hs2 : 0 < t ^ α.weight 2 := pow_pos ht _
+  have h0 := abs_ModelCoordinateConvolution_le_of_bounded_measurable
+    0 (f 0) (ModelLowKernel (u 0)) (t ^ α.weight 0) x
+    (hf 0) (B 0) (hfB 0) (integrable_ModelLowKernel (u 0)) hs0
+  have h1 := abs_ModelCoordinateConvolution_le_of_bounded_measurable
+    1 (f 1) (ModelLowKernel (u 1)) (t ^ α.weight 1) x
+    (hf 1) (B 1) (hfB 1) (integrable_ModelLowKernel (u 1)) hs1
+  have h2 := abs_ModelCoordinateConvolution_le_of_bounded_measurable
+    2 (f 2) (ModelThirdKernel (u 2)) (t ^ α.weight 2) x
+    (hf 2) (B 2) (hfB 2) (integrable_ModelThirdKernel (u 2)) hs2
+  have hM0 : 0 ≤ ∫ r : ℝ, |ModelLowKernel (u 0) r| :=
+    integral_nonneg fun _ ↦ abs_nonneg _
+  have hM1 : 0 ≤ ∫ r : ℝ, |ModelLowKernel (u 1) r| :=
+    integral_nonneg fun _ ↦ abs_nonneg _
+  have hM2 : 0 ≤ ∫ r : ℝ, |ModelThirdKernel (u 2) r| :=
+    integral_nonneg fun _ ↦ abs_nonneg _
+  have hD0 : 0 ≤ B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r| :=
+    mul_nonneg (hB 0) hM0
+  have hD1 : 0 ≤ B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r| :=
+    mul_nonneg (hB 1) hM1
+  have hD2 : 0 ≤ B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r| :=
+    mul_nonneg (hB 2) hM2
+  have hCD0 : 0 ≤ C * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) :=
+    mul_nonneg hC hD0
+  have hCD01 : 0 ≤ C * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+      (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) :=
+    mul_nonneg hCD0 hD1
+  unfold modelTruncatedOperatorIntegrand
+  rw [abs_mul, abs_mul, abs_mul]
+  gcongr
+
+/-- Joint strong measurability of the actual finite-scale model integrand
+requires only Borel input fields, not continuity. -/
+theorem stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (hc : Measurable c) (hf : ∀ j, Measurable (f j)) :
+    StronglyMeasurable (fun tx : ℝ × E3 ↦
+      modelTruncatedOperatorIntegrand α u c f tx.1 tx.2) := by
+  have hc' : StronglyMeasurable (fun tx : ℝ × E3 ↦ c tx.1) :=
+    (hc.comp measurable_fst).stronglyMeasurable
+  have h0 : StronglyMeasurable (fun tx : ℝ × E3 ↦
+      ModelCoordinateConvolution 0 (f 0) (ModelLowKernel (u 0))
+        (tx.1 ^ α.weight 0) tx.2) :=
+    stronglyMeasurable_modelCoordinateConvolution_joint
+      0 (α.weight 0) (f 0) (ModelLowKernel (u 0))
+      (hf 0) (measurable_ModelLowKernel (u 0))
+  have h1 : StronglyMeasurable (fun tx : ℝ × E3 ↦
+      ModelCoordinateConvolution 1 (f 1) (ModelLowKernel (u 1))
+        (tx.1 ^ α.weight 1) tx.2) :=
+    stronglyMeasurable_modelCoordinateConvolution_joint
+      1 (α.weight 1) (f 1) (ModelLowKernel (u 1))
+      (hf 1) (measurable_ModelLowKernel (u 1))
+  have h2 : StronglyMeasurable (fun tx : ℝ × E3 ↦
+      ModelCoordinateConvolution 2 (f 2) (ModelThirdKernel (u 2))
+        (tx.1 ^ α.weight 2) tx.2) :=
+    stronglyMeasurable_modelCoordinateConvolution_joint
+      2 (α.weight 2) (f 2) (ModelThirdKernel (u 2))
+      (hf 2) (measurable_ModelThirdKernel (u 2))
+  change StronglyMeasurable (fun tx : ℝ × E3 ↦
+    c tx.1 *
+      ModelCoordinateConvolution 0 (f 0) (ModelLowKernel (u 0))
+        (tx.1 ^ α.weight 0) tx.2 *
+      ModelCoordinateConvolution 1 (f 1) (ModelLowKernel (u 1))
+        (tx.1 ^ α.weight 1) tx.2 *
+      ModelCoordinateConvolution 2 (f 2) (ModelThirdKernel (u 2))
+        (tx.1 ^ α.weight 2) tx.2)
+  exact ((hc'.mul h0).mul h1).mul h2
+
+/-- A bounded measurable model integrand is integrable over every positive
+finite logarithmic scale interval. -/
+theorem integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b C : ℝ) (B : Fin 3 → ℝ) (x : E3)
+    (ha : 0 < a) (hC : 0 ≤ C) (hc : Measurable c)
+    (hcB : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hB : ∀ j, 0 ≤ B j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ B j) :
+    IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c f t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+  let ν : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
+  let I : Set ℝ := Set.Ioc a b
+  let Q : ℝ := C * modelTruncatedOperatorFiberBound u B
+  have hfinite : ν I < ⊤ := by
+    letI : IsFiniteMeasure (ν.restrict I) := by
+      simpa only [ν, I] using isFiniteMeasure_modelScaleInterval ha
+    rw [← Measure.restrict_apply_univ]
+    exact IsFiniteMeasure.measure_univ_lt_top
+  have hjoint := stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+    α u c f hc hf
+  have hslice : StronglyMeasurable (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c f t x) := by
+    simpa only [Function.comp_def, id_eq] using
+      (hjoint.comp_measurable (Measurable.prodMk measurable_id measurable_const))
+  apply IntegrableOn.of_bound hfinite hslice.aestronglyMeasurable Q
+  filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+  have htpos : 0 < t := lt_trans ha ht.1
+  rw [Real.norm_eq_abs]
+  calc
+    |modelTruncatedOperatorIntegrand α u c f t x| ≤
+        C * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+          (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+            (B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) :=
+      abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+        α u c f t x htpos C B hC (hcB t) hf hB hfB
+    _ = Q := by
+      dsimp only [Q, modelTruncatedOperatorFiberBound]
+      ring
+
+/-- The actual truncated operator is additive in a replaced slot when the
+two line-integrability facts hold on its positive finite scale interval. -/
+theorem ModelTruncatedOperator_replace_add_on_scaleInterval
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (g h : E3 → ℝ) (a b : ℝ) (x : E3)
+    (hlineg : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+      g (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hlineh : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+      h (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hg : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c (modelOperatorReplace f m g) t x)
+      (Set.Ioc a b) ((volume : Measure ℝ).withDensity cubeScaleDensity))
+    (hh : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c (modelOperatorReplace f m h) t x)
+      (Set.Ioc a b) ((volume : Measure ℝ).withDensity cubeScaleDensity)) :
+    ModelTruncatedOperator α u c (modelOperatorReplace f m (g + h)) a b x =
+      ModelTruncatedOperator α u c (modelOperatorReplace f m g) a b x +
+        ModelTruncatedOperator α u c (modelOperatorReplace f m h) a b x := by
+  let ν : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
+  let I : Set ℝ := Set.Ioc a b
+  have hpoint (t : ℝ) (ht : t ∈ I) :
+      modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m (g + h)) t x =
+        modelTruncatedOperatorIntegrand α u c
+            (modelOperatorReplace f m g) t x +
+          modelTruncatedOperatorIntegrand α u c
+            (modelOperatorReplace f m h) t x := by
+    apply modelTruncatedOperatorIntegrand_replace_add α u c f m g h t x
+    · exact hlineg t ht
+    · exact hlineh t ht
+  unfold ModelTruncatedOperator
+  change (∫ t in I,
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g + h)) t x ∂ν) = _
+  calc
+    (∫ t in I, modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g + h)) t x ∂ν) =
+        ∫ t in I, modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m g) t x +
+            modelTruncatedOperatorIntegrand α u c
+              (modelOperatorReplace f m h) t x ∂ν := by
+      apply setIntegral_congr_fun measurableSet_Ioc
+      intro t ht
+      exact hpoint t ht
+    _ = ∫ t in I, modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m g) t x ∂ν +
+        ∫ t in I, modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m h) t x ∂ν := by
+      rw [integral_add (by simpa only [IntegrableOn, ν, I] using hg)
+        (by simpa only [IntegrableOn, ν, I] using hh)]
+    _ = _ := by rfl
+
+end
+end Twisted
+end Auto
+namespace Auto
+namespace Twisted
+
+open MeasureTheory
+
+noncomputable section
+
+/-! ## Finite measurable good--bad fiber fields
+
+This is the literal algebraic input layer for the Section 8 stopping
+selection.  A selected dyadic rectangle carries the usual input minus its
+fiber average; a finite family is summed before being pulled back to `E3`.
+-/
+
+/-- The selected bad atom associated to one dyadic interval and one
+transverse selection set. -/
+noncomputable def fiberCZBadAtom
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval) : ℝ × Z → ℝ :=
+  (fiberDyadicInterval I ×ˢ S I).indicator
+    (fun yz ↦ F yz - fiberDyadicIntervalAverage F I yz.2)
+
+/-- A finite sum of selected bad atoms. -/
+noncomputable def fiberCZBadField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z) :
+    ℝ × Z → ℝ :=
+  fun yz ↦ ∑ I ∈ T, fiberCZBadAtom F S I yz
+
+/-- The finite good field is the input after subtracting the selected bad
+field. -/
+noncomputable def fiberCZGoodField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z) :
+    ℝ × Z → ℝ :=
+  F - fiberCZBadField F T S
+
+/-- A selected bad atom is jointly measurable when the input and all
+selection sets are measurable. -/
+theorem measurable_fiberCZBadAtom
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval)
+    (hF : Measurable F) (hS : ∀ J, MeasurableSet (S J)) :
+    Measurable (fiberCZBadAtom F S I) := by
+  unfold fiberCZBadAtom
+  apply Measurable.indicator
+  · exact hF.sub ((measurable_fiberDyadicIntervalAverage F hF I).comp measurable_snd)
+  · exact (measurableSet_fiberDyadicInterval I).prod (hS I)
+
+/-- A finite selected bad field is jointly measurable. -/
+theorem measurable_fiberCZBadField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (hF : Measurable F) (hS : ∀ J, MeasurableSet (S J)) :
+    Measurable (fiberCZBadField F T S) := by
+  unfold fiberCZBadField
+  exact T.measurable_sum fun I _ ↦
+    measurable_fiberCZBadAtom F S I hF hS
+
+/-- The finite good field is jointly measurable. -/
+theorem measurable_fiberCZGoodField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (hF : Measurable F) (hS : ∀ J, MeasurableSet (S J)) :
+    Measurable (fiberCZGoodField F T S) := by
+  unfold fiberCZGoodField
+  exact hF.sub (measurable_fiberCZBadField F T S hF hS)
+
+/-- The finite good--bad fields reconstruct the input pointwise. -/
+theorem fiberCZGoodField_add_badField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z) :
+    fiberCZGoodField F T S + fiberCZBadField F T S = F := by
+  funext yz
+  change (F yz - fiberCZBadField F T S yz) +
+    fiberCZBadField F T S yz = F yz
+  ring
+
+/-- Oriented form of the finite good--bad decomposition. -/
+theorem fiberCZGoodBadField_decomposition
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z) :
+    F = fiberCZGoodField F T S + fiberCZBadField F T S := by
+  exact (fiberCZGoodField_add_badField F T S).symm
+
+/-- Each selected bad atom has zero integral along its active real fiber.
+The conclusion is the literal cancellation condition consumed by the
+kernel-difference tail estimate. -/
+theorem integral_fiberCZBadAtom_eq_zero
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval) (z : Z)
+    (hz : z ∈ S I) (hF : Integrable (fun y : ℝ ↦ F (y, z))) :
+    ∫ y : ℝ, fiberCZBadAtom F S I (y, z) = 0 := by
+  have hatom : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) =
+      (fiberDyadicInterval I).indicator
+        (fun y ↦ F (y, z) - fiberDyadicIntervalAverage F I z) := by
+    funext y
+    by_cases hy : y ∈ fiberDyadicInterval I <;>
+      simp [fiberCZBadAtom, hy, hz]
+  rw [hatom, integral_indicator (measurableSet_fiberDyadicInterval I)]
+  have hFOn : IntegrableOn (fun y : ℝ ↦ F (y, z))
+      (fiberDyadicInterval I) volume := hF.integrableOn
+  have hmeasure_ne_top : volume (fiberDyadicInterval I) ≠ ⊤ := by
+    rw [measure_fiberDyadicInterval]
+    exact ENNReal.ofReal_ne_top
+  have hconstOn : IntegrableOn (fun _ : ℝ ↦ fiberDyadicIntervalAverage F I z)
+      (fiberDyadicInterval I) volume := integrableOn_const hmeasure_ne_top
+  rw [integral_sub hFOn hconstOn, setIntegral_const,
+    fiberDyadicIntervalAverage_eq_setIntegral]
+  have hmeasure : volume.real (fiberDyadicInterval I) = fiberDyadicIntervalLength I := by
+    rw [MeasureTheory.measureReal_def, measure_fiberDyadicInterval]
+    simp only [ENNReal.toReal_ofReal (fiberDyadicIntervalLength_pos I).le]
+  rw [hmeasure]
+  simp only [smul_eq_mul]
+  field_simp [ne_of_gt (fiberDyadicIntervalLength_pos I)]
+  ring
+
+/-- A finite selected bad field has zero active-coordinate integral on every
+integrable transverse fiber.  This packages the individual cancellation
+conditions before the finite tail summation. -/
+theorem integral_fiberCZBadField_eq_zero
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (z : Z) (hF : Integrable (fun y : ℝ ↦ F (y, z))) :
+    ∫ y : ℝ, fiberCZBadField F T S (y, z) = 0 := by
+  have hmeasure_ne_top (I : FiberDyadicInterval) :
+      volume (fiberDyadicInterval I) ≠ ⊤ := by
+    rw [measure_fiberDyadicInterval]
+    exact ENNReal.ofReal_ne_top
+  have hatom_integrable (I : FiberDyadicInterval) :
+      Integrable (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) := by
+    by_cases hz : z ∈ S I
+    · have hatom : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) =
+          (fiberDyadicInterval I).indicator
+            (fun y ↦ F (y, z) - fiberDyadicIntervalAverage F I z) := by
+        funext y
+        by_cases hy : y ∈ fiberDyadicInterval I <;>
+          simp [fiberCZBadAtom, hy, hz]
+      rw [hatom]
+      exact (hF.integrableOn.sub
+        (integrableOn_const (hmeasure_ne_top I))).integrable_indicator
+          (measurableSet_fiberDyadicInterval I)
+    · have hzero : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) = 0 := by
+        funext y
+        simp [fiberCZBadAtom, hz]
+      rw [hzero]
+      exact integrable_zero ℝ ℝ volume
+  have hfield : (fun y : ℝ ↦ fiberCZBadField F T S (y, z)) =
+      fun y ↦ ∑ I ∈ T, fiberCZBadAtom F S I (y, z) := by
+    funext y
+    rfl
+  rw [hfield, integral_finsetSum T (fun I hI ↦ hatom_integrable I)]
+  apply Finset.sum_eq_zero
+  intro I hI
+  by_cases hz : z ∈ S I
+  · exact integral_fiberCZBadAtom_eq_zero F S I z hz hF
+  · have hzero : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) = 0 := by
+      funext y
+      simp [fiberCZBadAtom, hz]
+    rw [hzero]
+    change (∫ _ : ℝ, (0 : ℝ)) = 0
+    exact integral_zero ℝ ℝ
+
+/-- Away from all finite selected rectangles, the finite bad field vanishes. -/
+theorem fiberCZBadField_eq_zero_of_not_mem_iUnion
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (yz : ℝ × Z)
+    (houtside : yz ∉ ⋃ I ∈ T, fiberDyadicInterval I ×ˢ S I) :
+    fiberCZBadField F T S yz = 0 := by
+  unfold fiberCZBadField
+  apply Finset.sum_eq_zero
+  intro I hI
+  have hnot : yz ∉ fiberDyadicInterval I ×ˢ S I := by
+    intro hmem
+    exact houtside (Set.mem_iUnion.2 ⟨I, Set.mem_iUnion.2 ⟨hI, hmem⟩⟩)
+  rw [show fiberCZBadAtom F S I yz = 0 by
+    unfold fiberCZBadAtom
+    exact Set.indicator_of_notMem hnot _]
+
+/-- Outside the finite selected union, the good field is literally the
+original input. -/
+theorem fiberCZGoodField_eq_self_of_not_mem_iUnion
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (yz : ℝ × Z)
+    (houtside : yz ∉ ⋃ I ∈ T, fiberDyadicInterval I ×ˢ S I) :
+    fiberCZGoodField F T S yz = F yz := by
+  unfold fiberCZGoodField
+  simp only [Pi.sub_apply]
+  rw [fiberCZBadField_eq_zero_of_not_mem_iUnion F T S yz houtside]
+  ring
+
+/-- The literal input field on the active-coordinate fiber of `E3`. -/
+noncomputable def coordinateFiberInput
+    (i : Fin 3) (f : E3 → ℝ) : ℝ × TransverseSpace i → ℝ :=
+  fun yz ↦ f (coordinateJoin i yz)
+
+/-- Pull a finite fiber bad field back to the actual ambient input space. -/
+noncomputable def coordinateFiberBadField
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i)) : E3 → ℝ :=
+  fun x ↦ fiberCZBadField (coordinateFiberInput i f) T S
+    (coordinateSplit i x)
+
+/-- Pull a finite fiber good field back to the actual ambient input space. -/
+noncomputable def coordinateFiberGoodField
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i)) : E3 → ℝ :=
+  fun x ↦ fiberCZGoodField (coordinateFiberInput i f) T S
+    (coordinateSplit i x)
+
+/-- A measurable ambient input gives a measurable literal coordinate-fiber
+field. -/
+theorem measurable_coordinateFiberInput
+    (i : Fin 3) (f : E3 → ℝ) (hf : Measurable f) :
+    Measurable (coordinateFiberInput i f) := by
+  unfold coordinateFiberInput
+  exact hf.comp (coordinateJoin_continuous i).measurable
+
+/-- The selected coordinate-fiber bad field is measurable on `E3`. -/
+theorem measurable_coordinateFiberBadField
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i))
+    (hf : Measurable f) (hS : ∀ I, MeasurableSet (S I)) :
+    Measurable (coordinateFiberBadField i f T S) := by
+  unfold coordinateFiberBadField
+  apply (measurable_fiberCZBadField
+    (coordinateFiberInput i f) T S
+    (measurable_coordinateFiberInput i f hf) hS).comp
+  exact (coordinateSplit_measurePreserving i).measurable
+
+/-- The selected coordinate-fiber good field is measurable on `E3`. -/
+theorem measurable_coordinateFiberGoodField
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i))
+    (hf : Measurable f) (hS : ∀ I, MeasurableSet (S I)) :
+    Measurable (coordinateFiberGoodField i f T S) := by
+  unfold coordinateFiberGoodField
+  apply (measurable_fiberCZGoodField
+    (coordinateFiberInput i f) T S
+    (measurable_coordinateFiberInput i f hf) hS).comp
+  exact (coordinateSplit_measurePreserving i).measurable
+
+/-- The actual source stopping selection supplies the measurable-set premise
+for the pulled-back finite bad field. -/
+theorem measurable_coordinateFiberBadField_of_selection
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ)
+    (hf : Measurable f) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I)) :
+    Measurable (coordinateFiberBadField i f T
+      (fiberDyadicSelectionSet Zf A H)) := by
+  apply measurable_coordinateFiberBadField i f T
+    (fiberDyadicSelectionSet Zf A H) hf
+  intro I
+  exact measurableSet_fiberDyadicSelectionSet Zf hZf A hA H I
+
+/-- The actual source stopping selection also supplies measurability of the
+pulled-back finite good field. -/
+theorem measurable_coordinateFiberGoodField_of_selection
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ)
+    (hf : Measurable f) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I)) :
+    Measurable (coordinateFiberGoodField i f T
+      (fiberDyadicSelectionSet Zf A H)) := by
+  apply measurable_coordinateFiberGoodField i f T
+    (fiberDyadicSelectionSet Zf A H) hf
+  intro I
+  exact measurableSet_fiberDyadicSelectionSet Zf hZf A hA H I
+
+/-- The pulled-back coordinate good and bad fields reconstruct the original
+ambient input pointwise. -/
+theorem coordinateFiberGoodField_add_badField
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i)) :
+    coordinateFiberGoodField i f T S +
+      coordinateFiberBadField i f T S = f := by
+  funext x
+  have h := congrFun
+    (fiberCZGoodField_add_badField
+      (coordinateFiberInput i f) T S) (coordinateSplit i x)
+  change coordinateFiberGoodField i f T S x +
+      coordinateFiberBadField i f T S x = f x
+  simpa only [Pi.add_apply, coordinateFiberGoodField,
+    coordinateFiberBadField, coordinateFiberInput,
+    coordinateJoin_split] using h
+
+/-- Outside the finite source exceptional set, the pulled-back bad field
+vanishes. -/
+theorem coordinateFiberBadField_eq_zero_outside_selection
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ) (x : E3)
+    (hx : coordinateSplit i x ∉
+      fiberDyadicExceptionalSetFinset T Zf A H) :
+    coordinateFiberBadField i f T
+      (fiberDyadicSelectionSet Zf A H) x = 0 := by
+  unfold coordinateFiberBadField
+  apply fiberCZBadField_eq_zero_of_not_mem_iUnion
+    (coordinateFiberInput i f) T
+    (fiberDyadicSelectionSet Zf A H) (coordinateSplit i x)
+  simpa only [fiberDyadicExceptionalSetFinset] using hx
+
+/-- Outside the finite source exceptional set, the pulled-back good field
+equals the original ambient input. -/
+theorem coordinateFiberGoodField_eq_self_outside_selection
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ) (x : E3)
+    (hx : coordinateSplit i x ∉
+      fiberDyadicExceptionalSetFinset T Zf A H) :
+    coordinateFiberGoodField i f T
+      (fiberDyadicSelectionSet Zf A H) x = f x := by
+  unfold coordinateFiberGoodField
+  rw [show fiberCZGoodField (coordinateFiberInput i f) T
+      (fiberDyadicSelectionSet Zf A H) (coordinateSplit i x) =
+      coordinateFiberInput i f (coordinateSplit i x) by
+    apply fiberCZGoodField_eq_self_of_not_mem_iUnion
+    simpa only [fiberDyadicExceptionalSetFinset] using hx]
+  simp only [coordinateFiberInput, coordinateJoin_split]
+
+/-- Replacing an actual model-input slot by its finite coordinate-fiber
+good--bad sum gives back the original three-input tuple. -/
+theorem modelOperatorReplace_coordinateFiberGoodBad_eq
+    (f : ModelOperatorRealInput) (m : Fin 3)
+    (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace m)) :
+    modelOperatorReplace f m
+        (coordinateFiberGoodField m (f m) T S +
+          coordinateFiberBadField m (f m) T S) = f := by
+  funext j
+  by_cases hj : j = m
+  · subst j
+    simpa only [modelOperatorReplace_same] using
+      coordinateFiberGoodField_add_badField m (f m) T S
+  · simp only [modelOperatorReplace_ne f m j
+      (coordinateFiberGoodField m (f m) T S +
+        coordinateFiberBadField m (f m) T S) hj]
+
+/-- Actual finite-truncation operator decomposition induced by a measurable
+finite fiber good--bad split.  Its four integrability assumptions are the
+precise remaining analytic obligations: two active line integrals and two
+finite scale integrals for the split outputs. -/
+theorem ModelTruncatedOperator_coordinateFiberGoodBad_split
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace m))
+    (a b : ℝ) (x : E3)
+    (hlineGood : ∀ t : ℝ, Integrable (fun r : ℝ ↦
+      coordinateFiberGoodField m (f m) T S
+          (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hlineBad : ∀ t : ℝ, Integrable (fun r : ℝ ↦
+      coordinateFiberBadField m (f m) T S
+          (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hscaleGood : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m
+          (coordinateFiberGoodField m (f m) T S)) t x)
+      (Set.Ioc a b) ((volume : Measure ℝ).withDensity cubeScaleDensity))
+    (hscaleBad : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T S)) t x)
+      (Set.Ioc a b) ((volume : Measure ℝ).withDensity cubeScaleDensity)) :
+    ModelTruncatedOperator α u c f a b x =
+      ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberGoodField m (f m) T S)) a b x +
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberBadField m (f m) T S)) a b x := by
+  have hreplace := modelOperatorReplace_coordinateFiberGoodBad_eq
+    f m T S
+  have hadd := ModelTruncatedOperator_replace_add α u c f m
+    (coordinateFiberGoodField m (f m) T S)
+    (coordinateFiberBadField m (f m) T S) a b x
+    hlineGood hlineBad hscaleGood hscaleBad
+  rw [hreplace] at hadd
+  exact hadd
+
+/-- A uniformly bounded input has uniformly bounded literal dyadic fiber
+averages. -/
+theorem abs_fiberDyadicIntervalAverage_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (I : FiberDyadicInterval) (z : Z) (B : ℝ)
+    (hbound : ∀ yz, |F yz| ≤ B) :
+    |fiberDyadicIntervalAverage F I z| ≤ B := by
+  rw [fiberDyadicIntervalAverage_eq_setIntegral]
+  have hfinite : volume (fiberDyadicInterval I) < ⊤ := by
+    rw [measure_fiberDyadicInterval]
+    exact ENNReal.ofReal_lt_top
+  have hint : |∫ y : ℝ in fiberDyadicInterval I, F (y, z)| ≤
+      B * volume.real (fiberDyadicInterval I) := by
+    simpa only [Real.norm_eq_abs] using
+      (MeasureTheory.norm_setIntegral_le_of_norm_le_const hfinite
+        (f := fun y : ℝ ↦ F (y, z)) (fun y hy ↦ by
+          simpa only [Real.norm_eq_abs] using hbound (y, z)))
+  have hmeasure : volume.real (fiberDyadicInterval I) =
+      fiberDyadicIntervalLength I := by
+    rw [MeasureTheory.measureReal_def, measure_fiberDyadicInterval]
+    simp only [ENNReal.toReal_ofReal (fiberDyadicIntervalLength_pos I).le]
+  have hlength_nonneg : 0 ≤ (fiberDyadicIntervalLength I)⁻¹ :=
+    inv_nonneg.mpr (fiberDyadicIntervalLength_pos I).le
+  calc
+    |(fiberDyadicIntervalLength I)⁻¹ *
+        ∫ y : ℝ in fiberDyadicInterval I, F (y, z)| =
+        (fiberDyadicIntervalLength I)⁻¹ *
+          |∫ y : ℝ in fiberDyadicInterval I, F (y, z)| := by
+      rw [abs_mul, abs_of_nonneg hlength_nonneg]
+    _ ≤ (fiberDyadicIntervalLength I)⁻¹ *
+        (B * volume.real (fiberDyadicInterval I)) :=
+      mul_le_mul_of_nonneg_left hint hlength_nonneg
+    _ = B := by
+      rw [hmeasure]
+      field_simp [ne_of_gt (fiberDyadicIntervalLength_pos I)]
+
+/-- A selected bad atom from a bounded input has the uniform pointwise
+bound `2B`. -/
+theorem abs_fiberCZBadAtom_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval)
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |fiberCZBadAtom F S I yz| ≤ 2 * B := by
+  unfold fiberCZBadAtom
+  by_cases hmem : yz ∈ fiberDyadicInterval I ×ˢ S I
+  · rw [Set.indicator_of_mem hmem]
+    calc
+      |F yz - fiberDyadicIntervalAverage F I yz.2| ≤
+          |F yz| + |fiberDyadicIntervalAverage F I yz.2| := abs_sub _ _
+      _ ≤ B + B := add_le_add (hbound yz)
+        (abs_fiberDyadicIntervalAverage_le_of_bound F I yz.2 B hbound)
+      _ = 2 * B := by ring
+  · rw [Set.indicator_of_notMem hmem]
+    rw [abs_zero]
+    nlinarith
+
+/-- A finite selected bad field from a bounded input has a coarse but
+uniform cardinality bound.  The sharper selected-rectangle disjointness can
+later remove this finite-cardinality loss. -/
+theorem abs_fiberCZBadField_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |fiberCZBadField F T S yz| ≤ (T.card : ℝ) * (2 * B) := by
+  unfold fiberCZBadField
+  calc
+    |∑ I ∈ T, fiberCZBadAtom F S I yz| ≤
+        ∑ I ∈ T, |fiberCZBadAtom F S I yz| :=
+      Finset.abs_sum_le_sum_abs _ T
+    _ ≤ ∑ _I ∈ T, 2 * B :=
+      Finset.sum_le_sum fun I hI ↦
+        abs_fiberCZBadAtom_le_of_bound F S I B hB hbound yz
+    _ = (T.card : ℝ) * (2 * B) := by
+      simp [Finset.sum_const, nsmul_eq_mul]
+
+/-- The finite good field inherits an explicit boundedness constant. -/
+theorem abs_fiberCZGoodField_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |fiberCZGoodField F T S yz| ≤ B + (T.card : ℝ) * (2 * B) := by
+  unfold fiberCZGoodField
+  simp only [Pi.sub_apply]
+  calc
+    |F yz - fiberCZBadField F T S yz| ≤
+        |F yz| + |fiberCZBadField F T S yz| := abs_sub _ _
+    _ ≤ B + (T.card : ℝ) * (2 * B) := add_le_add (hbound yz)
+      (abs_fiberCZBadField_le_of_bound F T S B hB hbound yz)
+
+/-- The pulled-back finite coordinate bad field inherits the cardinality
+bound from the literal fiber construction. -/
+theorem abs_coordinateFiberBadField_le_of_bound
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i))
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ x, |f x| ≤ B) (x : E3) :
+    |coordinateFiberBadField i f T S x| ≤ (T.card : ℝ) * (2 * B) := by
+  unfold coordinateFiberBadField
+  apply abs_fiberCZBadField_le_of_bound
+    (coordinateFiberInput i f) T S B hB
+  intro yz
+  unfold coordinateFiberInput
+  exact hbound (coordinateJoin i yz)
+
+/-- The pulled-back finite coordinate good field inherits the corresponding
+explicit boundedness constant. -/
+theorem abs_coordinateFiberGoodField_le_of_bound
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i))
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ x, |f x| ≤ B) (x : E3) :
+    |coordinateFiberGoodField i f T S x| ≤
+      B + (T.card : ℝ) * (2 * B) := by
+  unfold coordinateFiberGoodField
+  apply abs_fiberCZGoodField_le_of_bound
+    (coordinateFiberInput i f) T S B hB
+  intro yz
+  unfold coordinateFiberInput
+  exact hbound (coordinateJoin i yz)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+
+noncomputable section
+
+/-! ## Actual finite selected good--bad operator splitting
+
+This composes the literal finite fiber construction with the bounded
+measurable finite-scale model estimates.  It is the direct input bridge from
+selected dyadic bad atoms to the actual `ModelTruncatedOperator` weak-endpoint
+assembly.
+-/
+
+/-- A bounded measurable input tuple admits an exact finite selected-fiber
+good--bad split in any chosen coordinate slot.  All line and positive
+finite-scale integrability conditions are discharged internally. -/
+theorem ModelTruncatedOperator_coordinateFiberGoodBad_split_of_bounded_measurable
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace m))
+    (a b C : ℝ) (B : Fin 3 → ℝ) (x : E3)
+    (ha : 0 < a) (hC : 0 ≤ C) (hc : Measurable c)
+    (hcB : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hS : ∀ I, MeasurableSet (S I))
+    (hB : ∀ j, 0 ≤ B j) (hfB : ∀ j, ∀ y : E3, |f j y| ≤ B j) :
+    ModelTruncatedOperator α u c f a b x =
+      ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberGoodField m (f m) T S)) a b x +
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberBadField m (f m) T S)) a b x := by
+  let G : E3 → ℝ := coordinateFiberGoodField m (f m) T S
+  let D : E3 → ℝ := coordinateFiberBadField m (f m) T S
+  let BG : ℝ := B m + (T.card : ℝ) * (2 * B m)
+  let BD : ℝ := (T.card : ℝ) * (2 * B m)
+  let fG : ModelOperatorRealInput := modelOperatorReplace f m G
+  let fD : ModelOperatorRealInput := modelOperatorReplace f m D
+  let CG : Fin 3 → ℝ := fun j ↦ if j = m then BG else B j
+  let CD : Fin 3 → ℝ := fun j ↦ if j = m then BD else B j
+  have hGmeas : Measurable G := by
+    dsimp only [G]
+    exact measurable_coordinateFiberGoodField m (f m) T S (hf m) hS
+  have hDmeas : Measurable D := by
+    dsimp only [D]
+    exact measurable_coordinateFiberBadField m (f m) T S (hf m) hS
+  have hGbound : ∀ y : E3, |G y| ≤ BG := by
+    intro y
+    dsimp only [G, BG]
+    exact abs_coordinateFiberGoodField_le_of_bound m (f m) T S
+      (B m) (hB m) (hfB m) y
+  have hDbound : ∀ y : E3, |D y| ≤ BD := by
+    intro y
+    dsimp only [D, BD]
+    exact abs_coordinateFiberBadField_le_of_bound m (f m) T S
+      (B m) (hB m) (hfB m) y
+  have hBG : 0 ≤ BG := by
+    dsimp only [BG]
+    exact add_nonneg (hB m)
+      (mul_nonneg (Nat.cast_nonneg T.card) (mul_nonneg (by norm_num) (hB m)))
+  have hBD : 0 ≤ BD := by
+    dsimp only [BD]
+    exact mul_nonneg (Nat.cast_nonneg T.card)
+      (mul_nonneg (by norm_num) (hB m))
+  have hfG : ∀ j, Measurable (fG j) := by
+    intro j
+    by_cases hj : j = m
+    · subst j
+      simpa only [fG, modelOperatorReplace_same] using hGmeas
+    · simpa only [fG, modelOperatorReplace_ne f m j G hj] using hf j
+  have hfD : ∀ j, Measurable (fD j) := by
+    intro j
+    by_cases hj : j = m
+    · subst j
+      simpa only [fD, modelOperatorReplace_same] using hDmeas
+    · simpa only [fD, modelOperatorReplace_ne f m j D hj] using hf j
+  have hCG : ∀ j, 0 ≤ CG j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [CG, if_pos hj]
+      exact hBG
+    · simp only [CG, if_neg hj]
+      exact hB j
+  have hCD : ∀ j, 0 ≤ CD j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [CD, if_pos hj]
+      exact hBD
+    · simp only [CD, if_neg hj]
+      exact hB j
+  have hfBG : ∀ j, ∀ y : E3, |fG j y| ≤ CG j := by
+    intro j y
+    by_cases hj : j = m
+    · subst j
+      simpa only [fG, CG, modelOperatorReplace_same, if_pos] using hGbound y
+    · simpa only [fG, CG, modelOperatorReplace_ne f m j G hj, if_neg hj] using hfB j y
+  have hfBD : ∀ j, ∀ y : E3, |fD j y| ≤ CD j := by
+    intro j y
+    by_cases hj : j = m
+    · subst j
+      simpa only [fD, CD, modelOperatorReplace_same, if_pos] using hDbound y
+    · simpa only [fD, CD, modelOperatorReplace_ne f m j D hj, if_neg hj] using hfB j y
+  have hlineG : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+      G (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
+    intro t ht
+    exact integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      m G (activeModelKernel 2 m u) (t ^ α.weight m) x hGmeas BG hGbound
+      (integrable_activeModelKernel 2 m u) (pow_pos (lt_trans ha ht.1) _)
+  have hlineD : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+      D (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
+    intro t ht
+    exact integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      m D (activeModelKernel 2 m u) (t ^ α.weight m) x hDmeas BD hDbound
+      (integrable_activeModelKernel 2 m u) (pow_pos (lt_trans ha ht.1) _)
+  have hscaleG : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c fG t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+    exact integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
+      α u c fG a b C CG x ha hC hc hcB hfG hCG hfBG
+  have hscaleD : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c fD t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+    exact integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
+      α u c fD a b C CD x ha hC hc hcB hfD hCD hfBD
+  have hadd := ModelTruncatedOperator_replace_add_on_scaleInterval
+    α u c f m G D a b x hlineG hlineD hscaleG hscaleD
+  have hreplace : modelOperatorReplace f m (G + D) = f := by
+    dsimp only [G, D]
+    exact modelOperatorReplace_coordinateFiberGoodBad_eq f m T S
+  rw [hreplace] at hadd
+  simpa only [fG, fD, G, D] using hadd
+
+/-- The preceding actual operator split with the literal source stopping
+selection.  Fixed dyadic averages provide the selection measurability
+internally. -/
+theorem ModelTruncatedOperator_coordinateFiberGoodBad_split_of_selection
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (T : Finset FiberDyadicInterval)
+    (Zf : Set (TransverseSpace m))
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (a b C : ℝ) (B : Fin 3 → ℝ) (x : E3)
+    (ha : 0 < a) (hC : 0 ≤ C) (hc : Measurable c)
+    (hcB : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I))
+    (hB : ∀ j, 0 ≤ B j) (hfB : ∀ j, ∀ y : E3, |f j y| ≤ B j) :
+    ModelTruncatedOperator α u c f a b x =
+      ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberGoodField m (f m) T
+            (fiberDyadicSelectionSet Zf A H))) a b x +
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberBadField m (f m) T
+              (fiberDyadicSelectionSet Zf A H))) a b x := by
+  apply ModelTruncatedOperator_coordinateFiberGoodBad_split_of_bounded_measurable
+    α u c f m T (fiberDyadicSelectionSet Zf A H) a b C B x
+    ha hC hc hcB hf
+  · intro I
+    exact measurableSet_fiberDyadicSelectionSet Zf hZf A hA H I
+  · exact hB
+  · exact hfB
+
+/-- The countable selected bad field associated to the literal source
+selection. -/
+noncomputable def fiberDyadicCountableBadField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) : ℝ × Z → ℝ :=
+  fun yz ↦ ∑' I : FiberDyadicInterval,
+    fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz
+
+/-- The countable good field is the input after subtracting the countable
+selected bad field. -/
+noncomputable def fiberDyadicCountableGoodField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) : ℝ × Z → ℝ :=
+  F - fiberDyadicCountableBadField F Zf A H
+
+/-- The countable selected bad field is measurable. -/
+theorem measurable_fiberDyadicCountableBadField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (hF : Measurable F) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I)) :
+    Measurable (fiberDyadicCountableBadField F Zf A H) := by
+  unfold fiberDyadicCountableBadField
+  apply Measurable.tsum
+  intro I
+  apply measurable_fiberCZBadAtom F
+    (fiberDyadicSelectionSet Zf A H) I hF
+  intro J
+  exact measurableSet_fiberDyadicSelectionSet Zf hZf A hA H J
+
+/-- The countable selected good field is measurable. -/
+theorem measurable_fiberDyadicCountableGoodField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (hF : Measurable F) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I)) :
+    Measurable (fiberDyadicCountableGoodField F Zf A H) := by
+  unfold fiberDyadicCountableGoodField
+  exact hF.sub (measurable_fiberDyadicCountableBadField
+    F Zf A H hF hZf hA)
+
+/-- At a point in one selected rectangle, the countable bad `tsum` reduces
+to exactly that rectangle's atom. -/
+theorem fiberDyadicCountableBadField_eq_atom_of_mem
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (I : FiberDyadicInterval) (yz : ℝ × Z)
+    (hyz : yz ∈ fiberDyadicInterval I ×ˢ
+      fiberDyadicSelectionSet Zf A H I) :
+    fiberDyadicCountableBadField F Zf A H yz =
+      fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz := by
+  unfold fiberDyadicCountableBadField
+  apply tsum_eq_single I
+  intro J hJI
+  have hIJ : I ≠ J := Ne.symm hJI
+  have hdisj : Disjoint
+      (fiberDyadicInterval I ×ˢ fiberDyadicSelectionSet Zf A H I)
+      (fiberDyadicInterval J ×ˢ fiberDyadicSelectionSet Zf A H J) :=
+    pairwiseDisjoint_fiberDyadicSelectedRectangles Zf A H
+      (Set.mem_univ I) (Set.mem_univ J) hIJ
+  have hnot : yz ∉ fiberDyadicInterval J ×ˢ
+      fiberDyadicSelectionSet Zf A H J := by
+    intro hJ
+    exact (Set.disjoint_left.mp hdisj) hyz hJ
+  unfold fiberCZBadAtom
+  exact Set.indicator_of_notMem hnot _
+
+/-- Away from the countable source exceptional set, every selected atom and
+therefore the countable bad field vanishes. -/
+theorem fiberDyadicCountableBadField_eq_zero_outside_exceptional
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (yz : ℝ × Z)
+    (hyz : yz ∉ fiberDyadicExceptionalSet Zf A H) :
+    fiberDyadicCountableBadField F Zf A H yz = 0 := by
+  unfold fiberDyadicCountableBadField
+  have hzero : (fun I : FiberDyadicInterval ↦
+      fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) =
+      fun _ ↦ 0 := by
+    funext I
+    have hnot : yz ∉ fiberDyadicInterval I ×ˢ
+        fiberDyadicSelectionSet Zf A H I := by
+      intro hmem
+      apply hyz
+      exact Set.mem_iUnion.2 ⟨I, hmem⟩
+    unfold fiberCZBadAtom
+    exact Set.indicator_of_notMem hnot _
+  rw [hzero]
+  exact tsum_zero
+
+/-- The countable good--bad fields reconstruct the original input. -/
+theorem fiberDyadicCountableGoodBad_decomposition
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) :
+    fiberDyadicCountableGoodField F Zf A H +
+      fiberDyadicCountableBadField F Zf A H = F := by
+  funext yz
+  change (F yz - fiberDyadicCountableBadField F Zf A H yz) +
+    fiberDyadicCountableBadField F Zf A H yz = F yz
+  ring
+
+/-- Outside the countable exceptional set, the countable good field is
+literally unchanged. -/
+theorem fiberDyadicCountableGoodField_eq_self_outside_exceptional
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (yz : ℝ × Z)
+    (hyz : yz ∉ fiberDyadicExceptionalSet Zf A H) :
+    fiberDyadicCountableGoodField F Zf A H yz = F yz := by
+  unfold fiberDyadicCountableGoodField
+  simp only [Pi.sub_apply]
+  rw [fiberDyadicCountableBadField_eq_zero_outside_exceptional
+    F Zf A H yz hyz]
+  ring
+
+/-- Global disjointness removes the finite-cardinality loss: at most one
+bad atom is nonzero at each point. -/
+theorem abs_fiberDyadicCountableBadField_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H B : ℝ)
+    (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |fiberDyadicCountableBadField F Zf A H yz| ≤ 2 * B := by
+  by_cases hyz : yz ∈ fiberDyadicExceptionalSet Zf A H
+  · rcases Set.mem_iUnion.mp hyz with ⟨I, hI⟩
+    rw [fiberDyadicCountableBadField_eq_atom_of_mem F Zf A H I yz hI]
+    exact abs_fiberCZBadAtom_le_of_bound F
+      (fiberDyadicSelectionSet Zf A H) I B hB hbound yz
+  · rw [fiberDyadicCountableBadField_eq_zero_outside_exceptional
+      F Zf A H yz hyz]
+    simp only [abs_zero]
+    positivity
+
+/-- The countable good field stays uniformly bounded by `3 B`. -/
+theorem abs_fiberDyadicCountableGoodField_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H B : ℝ)
+    (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |fiberDyadicCountableGoodField F Zf A H yz| ≤ 3 * B := by
+  unfold fiberDyadicCountableGoodField
+  simp only [Pi.sub_apply]
+  calc
+    |F yz - fiberDyadicCountableBadField F Zf A H yz| ≤
+        |F yz| + |fiberDyadicCountableBadField F Zf A H yz| :=
+      abs_sub _ _
+    _ ≤ B + 2 * B := add_le_add (hbound yz)
+      (abs_fiberDyadicCountableBadField_le_of_bound
+        F Zf A H B hB hbound yz)
+    _ = 3 * B := by ring
+
+/-- Pull the countable literal bad field back to an ambient coordinate. -/
+noncomputable def coordinateFiberDyadicCountableBadField
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ) : E3 → ℝ :=
+  fun x ↦ fiberDyadicCountableBadField
+    (coordinateFiberInput i f) Zf A H (coordinateSplit i x)
+
+/-- Pull the countable literal good field back to an ambient coordinate. -/
+noncomputable def coordinateFiberDyadicCountableGoodField
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ) : E3 → ℝ :=
+  fun x ↦ fiberDyadicCountableGoodField
+    (coordinateFiberInput i f) Zf A H (coordinateSplit i x)
+
+/-- Measurability of the countable pulled-back bad field. -/
+theorem measurable_coordinateFiberDyadicCountableBadField
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ)
+    (hf : Measurable f) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I)) :
+    Measurable (coordinateFiberDyadicCountableBadField
+      i f Zf A H) := by
+  unfold coordinateFiberDyadicCountableBadField
+  apply (measurable_fiberDyadicCountableBadField
+    (coordinateFiberInput i f) Zf A H
+    (measurable_coordinateFiberInput i f hf) hZf hA).comp
+  exact (coordinateSplit_measurePreserving i).measurable
+
+/-- Measurability of the countable pulled-back good field. -/
+theorem measurable_coordinateFiberDyadicCountableGoodField
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ)
+    (hf : Measurable f) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I)) :
+    Measurable (coordinateFiberDyadicCountableGoodField
+      i f Zf A H) := by
+  unfold coordinateFiberDyadicCountableGoodField
+  apply (measurable_fiberDyadicCountableGoodField
+    (coordinateFiberInput i f) Zf A H
+    (measurable_coordinateFiberInput i f hf) hZf hA).comp
+  exact (coordinateSplit_measurePreserving i).measurable
+
+/-- The ambient countable good and bad fields reconstruct the original
+input pointwise. -/
+theorem coordinateFiberDyadicCountableGoodBad_decomposition
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H : ℝ) :
+    coordinateFiberDyadicCountableGoodField i f Zf A H +
+      coordinateFiberDyadicCountableBadField i f Zf A H = f := by
+  funext x
+  have h := congrFun (fiberDyadicCountableGoodBad_decomposition
+    (coordinateFiberInput i f) Zf A H) (coordinateSplit i x)
+  change coordinateFiberDyadicCountableGoodField i f Zf A H x +
+      coordinateFiberDyadicCountableBadField i f Zf A H x = f x
+  simpa only [Pi.add_apply, coordinateFiberDyadicCountableGoodField,
+    coordinateFiberDyadicCountableBadField, coordinateFiberInput,
+    coordinateJoin_split] using h
+
+/-- The actual tuple is unchanged when its selected coordinate is replaced
+by the countable good--bad sum. -/
+theorem modelOperatorReplace_coordinateFiberDyadicCountableGoodBad_eq
+    (f : ModelOperatorRealInput) (m : Fin 3)
+    (Zf : Set (TransverseSpace m))
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ) :
+    modelOperatorReplace f m
+        (coordinateFiberDyadicCountableGoodField m (f m) Zf A H +
+          coordinateFiberDyadicCountableBadField m (f m) Zf A H) = f := by
+  funext j
+  by_cases hj : j = m
+  · subst j
+    simpa only [modelOperatorReplace_same] using
+      coordinateFiberDyadicCountableGoodBad_decomposition m (f m) Zf A H
+  · simp only [modelOperatorReplace_ne f m j
+      (coordinateFiberDyadicCountableGoodField m (f m) Zf A H +
+        coordinateFiberDyadicCountableBadField m (f m) Zf A H) hj]
+
+/-- The ambient countable bad field inherits the sharp cardinality-free
+bound from the disjoint selected rectangles. -/
+theorem abs_coordinateFiberDyadicCountableBadField_le_of_bound
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H B : ℝ)
+    (hB : 0 ≤ B) (hbound : ∀ x, |f x| ≤ B) (x : E3) :
+    |coordinateFiberDyadicCountableBadField i f Zf A H x| ≤ 2 * B := by
+  unfold coordinateFiberDyadicCountableBadField
+  apply abs_fiberDyadicCountableBadField_le_of_bound
+    (coordinateFiberInput i f) Zf A H B hB
+  intro yz
+  exact hbound (coordinateJoin i yz)
+
+/-- The ambient countable good field remains bounded by `3 B`. -/
+theorem abs_coordinateFiberDyadicCountableGoodField_le_of_bound
+    (i : Fin 3) (f : E3 → ℝ) (Zf : Set (TransverseSpace i))
+    (A : FiberDyadicInterval → TransverseSpace i → ℝ) (H B : ℝ)
+    (hB : 0 ≤ B) (hbound : ∀ x, |f x| ≤ B) (x : E3) :
+    |coordinateFiberDyadicCountableGoodField i f Zf A H x| ≤ 3 * B := by
+  unfold coordinateFiberDyadicCountableGoodField
+  apply abs_fiberDyadicCountableGoodField_le_of_bound
+    (coordinateFiberInput i f) Zf A H B hB
+  intro yz
+  exact hbound (coordinateJoin i yz)
+
+/-- A bounded measurable input tuple admits an exact actual operator split
+along the literal countable source stopping family in any coordinate slot.
+Global selected-rectangle disjointness supplies the `3 B` and `2 B` bounds
+that discharge all finite positive-scale integrability obligations. -/
+theorem ModelTruncatedOperator_coordinateFiberDyadicCountableGoodBad_split_of_bounded_measurable
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (Zf : Set (TransverseSpace m))
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (a b C : ℝ) (B : Fin 3 → ℝ) (x : E3)
+    (ha : 0 < a) (hC : 0 ≤ C) (hc : Measurable c)
+    (hcB : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hZf : MeasurableSet Zf)
+    (hA : ∀ I, Measurable (A I))
+    (hB : ∀ j, 0 ≤ B j) (hfB : ∀ j, ∀ y : E3, |f j y| ≤ B j) :
+    ModelTruncatedOperator α u c f a b x =
+      ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberDyadicCountableGoodField m (f m) Zf A H)) a b x +
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberDyadicCountableBadField m (f m) Zf A H)) a b x := by
+  let G : E3 → ℝ :=
+    coordinateFiberDyadicCountableGoodField m (f m) Zf A H
+  let D : E3 → ℝ :=
+    coordinateFiberDyadicCountableBadField m (f m) Zf A H
+  let BG : ℝ := 3 * B m
+  let BD : ℝ := 2 * B m
+  let fG : ModelOperatorRealInput := modelOperatorReplace f m G
+  let fD : ModelOperatorRealInput := modelOperatorReplace f m D
+  let CG : Fin 3 → ℝ := fun j ↦ if j = m then BG else B j
+  let CD : Fin 3 → ℝ := fun j ↦ if j = m then BD else B j
+  have hGmeas : Measurable G := by
+    dsimp only [G]
+    exact measurable_coordinateFiberDyadicCountableGoodField
+      m (f m) Zf A H (hf m) hZf hA
+  have hDmeas : Measurable D := by
+    dsimp only [D]
+    exact measurable_coordinateFiberDyadicCountableBadField
+      m (f m) Zf A H (hf m) hZf hA
+  have hGbound : ∀ y : E3, |G y| ≤ BG := by
+    intro y
+    dsimp only [G, BG]
+    exact abs_coordinateFiberDyadicCountableGoodField_le_of_bound
+      m (f m) Zf A H (B m) (hB m) (hfB m) y
+  have hDbound : ∀ y : E3, |D y| ≤ BD := by
+    intro y
+    dsimp only [D, BD]
+    exact abs_coordinateFiberDyadicCountableBadField_le_of_bound
+      m (f m) Zf A H (B m) (hB m) (hfB m) y
+  have hBG : 0 ≤ BG := by
+    dsimp only [BG]
+    exact mul_nonneg (by norm_num) (hB m)
+  have hBD : 0 ≤ BD := by
+    dsimp only [BD]
+    exact mul_nonneg (by norm_num) (hB m)
+  have hfG : ∀ j, Measurable (fG j) := by
+    intro j
+    by_cases hj : j = m
+    · subst j
+      simpa only [fG, modelOperatorReplace_same] using hGmeas
+    · simpa only [fG, modelOperatorReplace_ne f m j G hj] using hf j
+  have hfD : ∀ j, Measurable (fD j) := by
+    intro j
+    by_cases hj : j = m
+    · subst j
+      simpa only [fD, modelOperatorReplace_same] using hDmeas
+    · simpa only [fD, modelOperatorReplace_ne f m j D hj] using hf j
+  have hCG : ∀ j, 0 ≤ CG j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [CG, if_pos hj]
+      exact hBG
+    · simp only [CG, if_neg hj]
+      exact hB j
+  have hCD : ∀ j, 0 ≤ CD j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [CD, if_pos hj]
+      exact hBD
+    · simp only [CD, if_neg hj]
+      exact hB j
+  have hfBG : ∀ j, ∀ y : E3, |fG j y| ≤ CG j := by
+    intro j y
+    by_cases hj : j = m
+    · subst j
+      simpa only [fG, CG, modelOperatorReplace_same, if_pos] using hGbound y
+    · simpa only [fG, CG, modelOperatorReplace_ne f m j G hj, if_neg hj] using hfB j y
+  have hfBD : ∀ j, ∀ y : E3, |fD j y| ≤ CD j := by
+    intro j y
+    by_cases hj : j = m
+    · subst j
+      simpa only [fD, CD, modelOperatorReplace_same, if_pos] using hDbound y
+    · simpa only [fD, CD, modelOperatorReplace_ne f m j D hj, if_neg hj] using hfB j y
+  have hlineG : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+      G (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
+    intro t ht
+    exact integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      m G (activeModelKernel 2 m u) (t ^ α.weight m) x hGmeas BG hGbound
+      (integrable_activeModelKernel 2 m u) (pow_pos (lt_trans ha ht.1) _)
+  have hlineD : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+      D (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
+    intro t ht
+    exact integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      m D (activeModelKernel 2 m u) (t ^ α.weight m) x hDmeas BD hDbound
+      (integrable_activeModelKernel 2 m u) (pow_pos (lt_trans ha ht.1) _)
+  have hscaleG : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c fG t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+    exact integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
+      α u c fG a b C CG x ha hC hc hcB hfG hCG hfBG
+  have hscaleD : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c fD t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+    exact integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
+      α u c fD a b C CD x ha hC hc hcB hfD hCD hfBD
+  have hadd := ModelTruncatedOperator_replace_add_on_scaleInterval
+    α u c f m G D a b x hlineG hlineD hscaleG hscaleD
+  have hreplace : modelOperatorReplace f m (G + D) = f := by
+    dsimp only [G, D]
+    exact modelOperatorReplace_coordinateFiberDyadicCountableGoodBad_eq
+      f m Zf A H
+  rw [hreplace] at hadd
+  simpa only [fG, fD, G, D] using hadd
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-- The positive third-cone scalar factor left after summing Fourier modes.
+It is the scale-dependent part that must dominate the joint mode/frequency
+Fubini argument. -/
+noncomputable def thirdConeScaleEnvelope
+    (α : Anisotropy) (ξ : E3) (t : ℝ) : ℝ :=
+  conePsi (t ^ α.weight 2 * ξ 2) *
+    gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2 *
+      (conePhi (t ^ α.weight 0 * ξ 0) *
+        conePhi (t ^ α.weight 1 * ξ 1))
+
+/-- The active annular factor in the third cone. -/
+noncomputable def thirdConeActiveDensity
+    (α : Anisotropy) (ξ : E3) (t : ℝ) : ℝ :=
+  conePsi (t ^ α.weight 2 * ξ 2) *
+    gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2
+
+/-- The scale majorant after the two passive low-frequency factors have been
+bounded by `cPsi`.  This is the scalar integrand used for the joint
+mode/scale Fubini domination. -/
+noncomputable def thirdConeScaleMajorant
+    (α : Anisotropy) (ξ : E3) (t : ℝ) : ℝ :=
+  cPsi ^ 2 * thirdConeActiveDensity α ξ t
+
+theorem thirdConeScaleEnvelope_nonneg
+    (α : Anisotropy) (ξ : E3) (t : ℝ) :
+    0 ≤ thirdConeScaleEnvelope α ξ t := by
+  unfold thirdConeScaleEnvelope
+  exact mul_nonneg
+    (mul_nonneg (conePsi_nonneg _) (sq_nonneg _))
+    (mul_nonneg (conePhi_nonneg _) (conePhi_nonneg _))
+
+theorem thirdConeActiveDensity_nonneg
+    (α : Anisotropy) (ξ : E3) (t : ℝ) :
+    0 ≤ thirdConeActiveDensity α ξ t := by
+  unfold thirdConeActiveDensity
+  exact mul_nonneg (conePsi_nonneg _) (sq_nonneg _)
+
+theorem thirdConeScaleMajorant_nonneg
+    (α : Anisotropy) (ξ : E3) (t : ℝ) :
+    0 ≤ thirdConeScaleMajorant α ξ t := by
+  unfold thirdConeScaleMajorant
+  exact mul_nonneg (sq_nonneg cPsi)
+    (thirdConeActiveDensity_nonneg α ξ t)
+
+/-- Passive low-frequency factors are bounded by two copies of the
+Calderón mass, leaving a one-dimensional active scale density. -/
+theorem thirdConeScaleEnvelope_le
+    (α : Anisotropy) (ξ : E3) (t : ℝ) :
+    thirdConeScaleEnvelope α ξ t ≤
+      cPsi ^ 2 * thirdConeActiveDensity α ξ t := by
+  have hpass :
+      conePhi (t ^ α.weight 0 * ξ 0) *
+          conePhi (t ^ α.weight 1 * ξ 1) ≤ cPsi * cPsi := by
+    exact mul_le_mul
+      (conePhi_le_cPsi _) (conePhi_le_cPsi _)
+      (conePhi_nonneg _) cPsi_pos.le
+  have hactive : 0 ≤ thirdConeActiveDensity α ξ t :=
+    thirdConeActiveDensity_nonneg α ξ t
+  unfold thirdConeScaleEnvelope thirdConeActiveDensity
+  calc
+    conePsi (t ^ α.weight 2 * ξ 2) *
+          gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2 *
+        (conePhi (t ^ α.weight 0 * ξ 0) *
+          conePhi (t ^ α.weight 1 * ξ 1)) ≤
+        (conePsi (t ^ α.weight 2 * ξ 2) *
+          gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) * (cPsi * cPsi) :=
+      mul_le_mul_of_nonneg_left hpass hactive
+    _ = cPsi ^ 2 *
+        (conePsi (t ^ α.weight 2 * ξ 2) *
+          gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) := by ring
+
+theorem continuous_thirdConeScaleEnvelope
+    (α : Anisotropy) (ξ : E3) :
+    Continuous (thirdConeScaleEnvelope α ξ) := by
+  have harg (j : Fin 3) : Continuous (fun t : ℝ ↦
+      t ^ α.weight j * ξ j) :=
+    (continuous_pow _).mul continuous_const
+  unfold thirdConeScaleEnvelope
+  exact ((conePsi_contDiff.continuous.comp (harg 2)).mul
+      ((continuous_gaussianDeriv.comp (harg 2)).pow 2)).mul
+    ((conePhi_contDiff.continuous.comp (harg 0)).mul
+      (conePhi_contDiff.continuous.comp (harg 1)))
+
+theorem continuous_thirdConeActiveDensity
+    (α : Anisotropy) (ξ : E3) :
+    Continuous (thirdConeActiveDensity α ξ) := by
+  have harg : Continuous (fun t : ℝ ↦
+      t ^ α.weight 2 * ξ 2) :=
+    (continuous_pow _).mul continuous_const
+  unfold thirdConeActiveDensity
+  exact (conePsi_contDiff.continuous.comp harg).mul
+    ((continuous_gaussianDeriv.comp harg).pow 2)
+
+theorem continuous_thirdConeScaleMajorant
+    (α : Anisotropy) (ξ : E3) :
+    Continuous (thirdConeScaleMajorant α ξ) := by
+  unfold thirdConeScaleMajorant
+  exact continuous_const.mul (continuous_thirdConeActiveDensity α ξ)
+
+theorem continuous_thirdConeScaleMajorant_joint
+    (α : Anisotropy) :
+    Continuous (fun p : ℝ × E3 ↦ thirdConeScaleMajorant α p.2 p.1) := by
+  have harg (j : Fin 3) : Continuous (fun p : ℝ × E3 ↦
+      p.1 ^ α.weight j * p.2 j) := by
+    have hcoord : Continuous (fun p : ℝ × E3 ↦ p.2 j) := by
+      convert (coordinateProjection j).continuous.comp continuous_snd using 1
+      ext p
+      simp [coordinateProjection_apply]
+    exact (continuous_fst.pow _).mul hcoord
+  unfold thirdConeScaleMajorant thirdConeActiveDensity
+  exact continuous_const.mul
+    ((conePsi_contDiff.continuous.comp (harg 2)).mul
+      ((continuous_gaussianDeriv.comp (harg 2)).pow 2))
+
+/-- On every positive finite scale interval, the third cone has the exact
+uniform scalar majorant needed for the mode/Fourier interchange.  It is the
+one-coordinate Calderón identity times two passive cutoff bounds. -/
+theorem integral_thirdConeScaleEnvelope_Ioc_le
+    (α : Anisotropy) (ξ : E3) (a b : ℝ)
+    (ha : 0 < a) (hab : a ≤ b) (hξ : ξ 2 ≠ 0) :
+    ∫ t in Set.Ioc a b, thirdConeScaleEnvelope α ξ t
+      ∂((volume : Measure ℝ).withDensity cubeScaleDensity) ≤
+      cPsi ^ 3 / (α.weight 2 : ℝ) := by
+  rw [integral_modelScaleInterval_withDensity_eq_intervalIntegral ha hab]
+  have hden (t : ℝ) (ht : t ∈ Set.Icc a b) : t ≠ 0 :=
+    ne_of_gt (lt_of_lt_of_le ha ht.1)
+  have hleftcont : ContinuousOn (fun t : ℝ ↦
+      thirdConeScaleEnvelope α ξ t / t) (Set.Icc a b) :=
+    (continuous_thirdConeScaleEnvelope α ξ).continuousOn.div
+      continuousOn_id hden
+  have hrightcont : ContinuousOn (fun t : ℝ ↦
+      (cPsi ^ 2 * thirdConeActiveDensity α ξ t) / t)
+        (Set.Icc a b) :=
+    (continuous_const.mul (continuous_thirdConeActiveDensity α ξ)).continuousOn.div
+      continuousOn_id hden
+  have hmono :
+      (∫ t in a..b, thirdConeScaleEnvelope α ξ t / t) ≤
+        ∫ t in a..b, (cPsi ^ 2 * thirdConeActiveDensity α ξ t) / t := by
+    apply intervalIntegral.integral_mono_on hab
+      (hleftcont.intervalIntegrable_of_Icc hab)
+      (hrightcont.intervalIntegrable_of_Icc hab)
+    intro t ht
+    exact div_le_div_of_nonneg_right
+      (thirdConeScaleEnvelope_le α ξ t)
+      (le_of_lt (lt_of_lt_of_le ha ht.1))
+  have hn : 0 < α.weight 2 := α.weight_pos 2
+  have hnR : (α.weight 2 : ℝ) ≠ 0 := by positivity
+  have hscale : (fun t : ℝ ↦
+      (cPsi ^ 2 * thirdConeActiveDensity α ξ t) / t) =
+      (fun t ↦ (cPsi ^ 2 / (α.weight 2 : ℝ)) *
+        ((α.weight 2 : ℝ) *
+          conePsi (t ^ α.weight 2 * ξ 2) *
+            gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2 / t)) := by
+    funext t
+    by_cases ht : t = 0
+    · simp [ht]
+    · unfold thirdConeActiveDensity
+      field_simp [hnR, ht]
+  have hactive :
+      (∫ t in a..b,
+        (cPsi ^ 2 * thirdConeActiveDensity α ξ t) / t) =
+        (cPsi ^ 2 / (α.weight 2 : ℝ)) *
+          (conePhi (a ^ α.weight 2 * ξ 2) -
+            conePhi (b ^ α.weight 2 * ξ 2)) := by
+    rw [hscale, intervalIntegral.integral_const_mul,
+      calderon_interval_nat_scale (α.weight 2) hn (ξ 2) a b hξ ha hab]
+  have hdiff :
+      conePhi (a ^ α.weight 2 * ξ 2) -
+          conePhi (b ^ α.weight 2 * ξ 2) ≤ cPsi := by
+    linarith [conePhi_le_cPsi (a ^ α.weight 2 * ξ 2),
+      conePhi_nonneg (b ^ α.weight 2 * ξ 2)]
+  have hfac : 0 ≤ cPsi ^ 2 / (α.weight 2 : ℝ) := by positivity
+  calc
+    (∫ t in a..b, thirdConeScaleEnvelope α ξ t / t) ≤
+        ∫ t in a..b, (cPsi ^ 2 * thirdConeActiveDensity α ξ t) / t := hmono
+    _ = (cPsi ^ 2 / (α.weight 2 : ℝ)) *
+          (conePhi (a ^ α.weight 2 * ξ 2) -
+            conePhi (b ^ α.weight 2 * ξ 2)) := hactive
+    _ ≤ (cPsi ^ 2 / (α.weight 2 : ℝ)) * cPsi :=
+      mul_le_mul_of_nonneg_left hdiff hfac
+    _ = cPsi ^ 3 / (α.weight 2 : ℝ) := by ring
+
+/-- The positive scale integral of the post-summation active majorant is
+uniformly bounded on every finite interval by the one-dimensional Calderón
+identity. -/
+theorem integral_thirdConeScaleMajorant_Ioc_le
+    (α : Anisotropy) (ξ : E3) (a b : ℝ)
+    (ha : 0 < a) (hab : a ≤ b) (hξ : ξ 2 ≠ 0) :
+    ∫ t in Set.Ioc a b, thirdConeScaleMajorant α ξ t
+      ∂((volume : Measure ℝ).withDensity cubeScaleDensity) ≤
+      cPsi ^ 3 / (α.weight 2 : ℝ) := by
+  rw [integral_modelScaleInterval_withDensity_eq_intervalIntegral ha hab]
+  have hn : 0 < α.weight 2 := α.weight_pos 2
+  have hnR : (α.weight 2 : ℝ) ≠ 0 := by positivity
+  have hscale : (fun t : ℝ ↦ thirdConeScaleMajorant α ξ t / t) =
+      (fun t ↦ (cPsi ^ 2 / (α.weight 2 : ℝ)) *
+        ((α.weight 2 : ℝ) *
+          conePsi (t ^ α.weight 2 * ξ 2) *
+            gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2 / t)) := by
+    funext t
+    by_cases ht : t = 0
+    · simp [thirdConeScaleMajorant, ht]
+    · unfold thirdConeScaleMajorant thirdConeActiveDensity
+      field_simp [hnR, ht]
+  have hactive :
+      (∫ t in a..b, thirdConeScaleMajorant α ξ t / t) =
+        (cPsi ^ 2 / (α.weight 2 : ℝ)) *
+          (conePhi (a ^ α.weight 2 * ξ 2) -
+            conePhi (b ^ α.weight 2 * ξ 2)) := by
+    rw [hscale, intervalIntegral.integral_const_mul,
+      calderon_interval_nat_scale (α.weight 2) hn (ξ 2) a b hξ ha hab]
+  have hdiff :
+      conePhi (a ^ α.weight 2 * ξ 2) -
+          conePhi (b ^ α.weight 2 * ξ 2) ≤ cPsi := by
+    linarith [conePhi_le_cPsi (a ^ α.weight 2 * ξ 2),
+      conePhi_nonneg (b ^ α.weight 2 * ξ 2)]
+  have hfac : 0 ≤ cPsi ^ 2 / (α.weight 2 : ℝ) := by positivity
+  calc
+    (∫ t in a..b, thirdConeScaleMajorant α ξ t / t) =
+        (cPsi ^ 2 / (α.weight 2 : ℝ)) *
+          (conePhi (a ^ α.weight 2 * ξ 2) -
+            conePhi (b ^ α.weight 2 * ξ 2)) := hactive
+    _ ≤ (cPsi ^ 2 / (α.weight 2 : ℝ)) * cPsi :=
+      mul_le_mul_of_nonneg_left hdiff hfac
+    _ = cPsi ^ 3 / (α.weight 2 : ℝ) := by ring
+
+/-- The active annular cutoff vanishes at all sufficiently small positive
+scales when the active frequency is nonzero. -/
+theorem exists_small_scale_zero_thirdConeScaleEnvelope
+    (α : Anisotropy) (ξ : E3) (hξ : ξ 2 ≠ 0) :
+    ∃ a : ℝ, 0 < a ∧ ∀ t : ℝ, 0 < t → t ≤ a →
+      thirdConeScaleEnvelope α ξ t = 0 := by
+  let R : ℝ := |ξ 2|
+  let a : ℝ := 1 / (1 + R)
+  have hR : 0 < R := by
+    dsimp [R]
+    exact abs_pos.mpr hξ
+  have hden : 0 < 1 + R := by linarith
+  have ha : 0 < a := by
+    dsimp [a]
+    exact div_pos zero_lt_one hden
+  have haone : a ≤ 1 := by
+    dsimp [a]
+    apply (div_le_iff₀ hden).mpr
+    linarith
+  have haR : a * R ≤ 1 := by
+    calc
+      a * R = R / (1 + R) := by
+        dsimp [a]
+        ring
+      _ ≤ 1 := (div_le_iff₀ hden).mpr (by linarith)
+  refine ⟨a, ha, ?_⟩
+  intro t ht hta
+  have htone : t ≤ 1 := hta.trans haone
+  have hn : α.weight 2 ≠ 0 := Nat.ne_zero_of_lt (α.weight_pos 2)
+  have hpow : t ^ α.weight 2 ≤ t :=
+    pow_le_of_le_one ht.le htone hn
+  have hsmall : |t ^ α.weight 2 * ξ 2| ≤ 1 := by
+    rw [abs_mul, abs_of_nonneg (pow_nonneg ht.le _)]
+    calc
+      t ^ α.weight 2 * |ξ 2| ≤ t * |ξ 2| :=
+        mul_le_mul_of_nonneg_right hpow (abs_nonneg _)
+      _ ≤ a * |ξ 2| :=
+        mul_le_mul_of_nonneg_right hta (abs_nonneg _)
+      _ = a * R := by rfl
+      _ ≤ 1 := haR
+  unfold thirdConeScaleEnvelope
+  rw [conePsi_eq_zero_of_abs_le_one hsmall]
+  ring
+
+/-- The active annular factor itself vanishes below a positive scale depending
+only on the nonzero active frequency. -/
+theorem exists_small_scale_zero_thirdConeActiveDensity
+    (α : Anisotropy) (ξ : E3) (hξ : ξ 2 ≠ 0) :
+    ∃ a : ℝ, 0 < a ∧ ∀ t : ℝ, 0 < t → t ≤ a →
+      thirdConeActiveDensity α ξ t = 0 := by
+  let R : ℝ := |ξ 2|
+  let a : ℝ := 1 / (1 + R)
+  have hR : 0 < R := by
+    dsimp [R]
+    exact abs_pos.mpr hξ
+  have hden : 0 < 1 + R := by linarith
+  have ha : 0 < a := by
+    dsimp [a]
+    exact div_pos zero_lt_one hden
+  have haone : a ≤ 1 := by
+    dsimp [a]
+    apply (div_le_iff₀ hden).mpr
+    linarith
+  have haR : a * R ≤ 1 := by
+    calc
+      a * R = R / (1 + R) := by
+        dsimp [a]
+        ring
+      _ ≤ 1 := (div_le_iff₀ hden).mpr (by linarith)
+  refine ⟨a, ha, ?_⟩
+  intro t ht hta
+  have htone : t ≤ 1 := hta.trans haone
+  have hn : α.weight 2 ≠ 0 := Nat.ne_zero_of_lt (α.weight_pos 2)
+  have hpow : t ^ α.weight 2 ≤ t :=
+    pow_le_of_le_one ht.le htone hn
+  have hsmall : |t ^ α.weight 2 * ξ 2| ≤ 1 := by
+    rw [abs_mul, abs_of_nonneg (pow_nonneg ht.le _)]
+    calc
+      t ^ α.weight 2 * |ξ 2| ≤ t * |ξ 2| :=
+        mul_le_mul_of_nonneg_right hpow (abs_nonneg _)
+      _ ≤ a * |ξ 2| :=
+        mul_le_mul_of_nonneg_right hta (abs_nonneg _)
+      _ = a * R := by rfl
+      _ ≤ 1 := haR
+  unfold thirdConeActiveDensity
+  rw [conePsi_eq_zero_of_abs_le_one hsmall]
+  ring
+
+theorem exists_small_scale_zero_thirdConeScaleMajorant
+    (α : Anisotropy) (ξ : E3) (hξ : ξ 2 ≠ 0) :
+    ∃ a : ℝ, 0 < a ∧ ∀ t : ℝ, 0 < t → t ≤ a →
+      thirdConeScaleMajorant α ξ t = 0 := by
+  rcases exists_small_scale_zero_thirdConeActiveDensity α ξ hξ
+    with ⟨a, ha, hzero⟩
+  refine ⟨a, ha, ?_⟩
+  intro t ht hta
+  unfold thirdConeScaleMajorant
+  rw [hzero t ht hta]
+  ring
+
+/-- The positive third-cone scalar envelope is integrable on all source
+scales as soon as its active frequency is nonzero.  The proof uses its
+small-scale annular vanishing and the finite-scale Calderón bound. -/
+theorem integrableOn_thirdConeScaleEnvelope_Ioi
+    (α : Anisotropy) (ξ : E3) (hξ : ξ 2 ≠ 0) :
+    IntegrableOn (thirdConeScaleEnvelope α ξ) (Set.Ioi (0 : ℝ))
+      ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+  rcases exists_small_scale_zero_thirdConeScaleEnvelope α ξ hξ
+    with ⟨a, ha, hzero⟩
+  let μ : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
+  let b : ℕ → ℝ := fun n ↦ a + n
+  have hb (n : ℕ) : a ≤ b n := by
+    dsimp [b]
+    exact le_add_of_nonneg_right (Nat.cast_nonneg n)
+  have hbpos (n : ℕ) : 0 < b n := lt_of_lt_of_le ha (hb n)
+  have hfinite (n : ℕ) : IntegrableOn (thirdConeScaleEnvelope α ξ)
+      (Set.Ioc (0 : ℝ) (b n)) μ := by
+    have hinner : IntegrableOn (thirdConeScaleEnvelope α ξ)
+        (Set.Ioc a (b n)) μ := by
+      dsimp [μ]
+      exact integrableOn_modelScaleInterval_of_continuous ha
+        (thirdConeScaleEnvelope α ξ)
+        (continuous_thirdConeScaleEnvelope α ξ)
+    apply hinner.of_forall_sdiff_eq_zero measurableSet_Ioc
+    intro t ht
+    have htpos : 0 < t := ht.1.1
+    have htba : t ≤ b n := ht.1.2
+    have hnot : ¬ (a < t ∧ t ≤ b n) := by
+      simpa only [Set.mem_Ioc] using ht.2
+    have hta : t ≤ a := le_of_not_gt (fun hta ↦ hnot ⟨hta, htba⟩)
+    exact hzero t htpos hta
+  have hbound : ∀ n : ℕ,
+      (∫ t in 0..b n, ‖thirdConeScaleEnvelope α ξ t‖ ∂μ) ≤
+        cPsi ^ 3 / (α.weight 2 : ℝ) := by
+    intro n
+    rw [intervalIntegral.integral_of_le (show (0 : ℝ) ≤ b n by positivity)]
+    change (∫ t in Set.Ioc (0 : ℝ) (b n),
+      ‖thirdConeScaleEnvelope α ξ t‖ ∂μ) ≤ _
+    rw [show (fun t : ℝ ↦ ‖thirdConeScaleEnvelope α ξ t‖) =
+        thirdConeScaleEnvelope α ξ by
+      funext t
+      exact Real.norm_of_nonneg (thirdConeScaleEnvelope_nonneg α ξ t)]
+    have hzeroOn : IntegrableOn (thirdConeScaleEnvelope α ξ)
+        (Set.Ioc (0 : ℝ) a) μ := by
+      apply integrableOn_zero.congr_fun
+        (fun t ht ↦ (hzero t ht.1 ht.2).symm) measurableSet_Ioc
+    have hzeroInterval :
+        (∫ t in 0..a, thirdConeScaleEnvelope α ξ t ∂μ) = 0 := by
+      apply intervalIntegral.integral_zero_ae
+      filter_upwards [] with t ht
+      rw [Set.uIoc_of_le ha.le] at ht
+      exact hzero t ht.1 ht.2
+    have hsplit :
+        (∫ t in Set.Ioc (0 : ℝ) (b n), thirdConeScaleEnvelope α ξ t ∂μ) =
+          ∫ t in Set.Ioc a (b n), thirdConeScaleEnvelope α ξ t ∂μ := by
+      have hinter : IntervalIntegrable (thirdConeScaleEnvelope α ξ) μ a (b n) :=
+        (intervalIntegrable_iff_integrableOn_Ioc_of_le (hb n)).mpr
+          (integrableOn_modelScaleInterval_of_continuous ha
+            (thirdConeScaleEnvelope α ξ)
+            (continuous_thirdConeScaleEnvelope α ξ))
+      calc
+        (∫ t in Set.Ioc (0 : ℝ) (b n), thirdConeScaleEnvelope α ξ t ∂μ) =
+            ∫ t in 0..b n, thirdConeScaleEnvelope α ξ t ∂μ :=
+          (intervalIntegral.integral_of_le (show (0 : ℝ) ≤ b n by positivity)).symm
+        _ = (∫ t in 0..a, thirdConeScaleEnvelope α ξ t ∂μ) +
+            ∫ t in a..b n, thirdConeScaleEnvelope α ξ t ∂μ :=
+          (intervalIntegral.integral_add_adjacent_intervals
+            ((intervalIntegrable_iff_integrableOn_Ioc_of_le ha.le).mpr hzeroOn)
+            hinter).symm
+        _ = ∫ t in a..b n, thirdConeScaleEnvelope α ξ t ∂μ := by
+          rw [hzeroInterval, zero_add]
+        _ = ∫ t in Set.Ioc a (b n), thirdConeScaleEnvelope α ξ t ∂μ :=
+          intervalIntegral.integral_of_le (hb n)
+    rw [hsplit]
+    dsimp [μ]
+    exact integral_thirdConeScaleEnvelope_Ioc_le α ξ a (b n)
+      ha (hb n) hξ
+  have hbTendsto : Tendsto b atTop atTop := by
+    dsimp [b]
+    exact tendsto_atTop_add_const_left _ a tendsto_natCast_atTop_atTop
+  change IntegrableOn (thirdConeScaleEnvelope α ξ) (Set.Ioi (0 : ℝ)) μ
+  exact integrableOn_Ioi_of_intervalIntegral_norm_bounded
+    (cPsi ^ 3 / (α.weight 2 : ℝ)) 0 hfinite hbTendsto
+    (Filter.Eventually.of_forall hbound)
+
+/-- A source-scale exhaustion principle.  A continuous nonnegative density
+that vanishes below one positive scale and has a uniform finite-interval
+bound is integrable on all positive scales, with the same global bound. -/
+theorem integrableOn_and_integral_Ioi_of_small_zero_Ioc_bound
+    (f : ℝ → ℝ) (a C : ℝ) (ha : 0 < a)
+    (hfcont : Continuous f) (hfnonneg : ∀ t : ℝ, 0 ≤ f t)
+    (hzero : ∀ t : ℝ, 0 < t → t ≤ a → f t = 0)
+    (hboundIoc : ∀ b : ℝ, a ≤ b →
+      ∫ t in Set.Ioc a b, f t
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) ≤ C) :
+    IntegrableOn f (Set.Ioi (0 : ℝ))
+        ((volume : Measure ℝ).withDensity cubeScaleDensity) ∧
+      ∫ t in Set.Ioi (0 : ℝ), f t
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) ≤ C := by
+  let μ : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
+  let b : ℕ → ℝ := fun n ↦ a + n
+  have hb (n : ℕ) : a ≤ b n := by
+    dsimp [b]
+    exact le_add_of_nonneg_right (Nat.cast_nonneg n)
+  have hfinite (n : ℕ) : IntegrableOn f (Set.Ioc (0 : ℝ) (b n)) μ := by
+    have hinner : IntegrableOn f (Set.Ioc a (b n)) μ := by
+      dsimp [μ]
+      exact integrableOn_modelScaleInterval_of_continuous ha f hfcont
+    apply hinner.of_forall_sdiff_eq_zero measurableSet_Ioc
+    intro t ht
+    have htpos : 0 < t := ht.1.1
+    have htba : t ≤ b n := ht.1.2
+    have hnot : ¬ (a < t ∧ t ≤ b n) := by
+      simpa only [Set.mem_Ioc] using ht.2
+    have hta : t ≤ a := le_of_not_gt (fun hta ↦ hnot ⟨hta, htba⟩)
+    exact hzero t htpos hta
+  have hzeroOn : IntegrableOn f (Set.Ioc (0 : ℝ) a) μ := by
+    apply integrableOn_zero.congr_fun
+      (fun t ht ↦ (hzero t ht.1 ht.2).symm) measurableSet_Ioc
+  have hzeroInterval : (∫ t in 0..a, f t ∂μ) = 0 := by
+    apply intervalIntegral.integral_zero_ae
+    filter_upwards [] with t ht
+    rw [Set.uIoc_of_le ha.le] at ht
+    exact hzero t ht.1 ht.2
+  have hsplit (n : ℕ) :
+      (∫ t in Set.Ioc (0 : ℝ) (b n), f t ∂μ) =
+        ∫ t in Set.Ioc a (b n), f t ∂μ := by
+    have hinter : IntervalIntegrable f μ a (b n) :=
+      (intervalIntegrable_iff_integrableOn_Ioc_of_le (hb n)).mpr
+        (by
+          dsimp [μ]
+          exact integrableOn_modelScaleInterval_of_continuous ha f hfcont)
+    calc
+      (∫ t in Set.Ioc (0 : ℝ) (b n), f t ∂μ) =
+          ∫ t in 0..b n, f t ∂μ :=
+        (intervalIntegral.integral_of_le
+          (show (0 : ℝ) ≤ b n by
+            exact le_trans ha.le (hb n))).symm
+      _ = (∫ t in 0..a, f t ∂μ) + ∫ t in a..b n, f t ∂μ :=
+        (intervalIntegral.integral_add_adjacent_intervals
+          ((intervalIntegrable_iff_integrableOn_Ioc_of_le ha.le).mpr hzeroOn)
+          hinter).symm
+      _ = ∫ t in a..b n, f t ∂μ := by rw [hzeroInterval, zero_add]
+      _ = ∫ t in Set.Ioc a (b n), f t ∂μ :=
+        intervalIntegral.integral_of_le (hb n)
+  have hboundNorm : ∀ n : ℕ, (∫ t in 0..b n, ‖f t‖ ∂μ) ≤ C := by
+    intro n
+    rw [intervalIntegral.integral_of_le
+      (show (0 : ℝ) ≤ b n by exact le_trans ha.le (hb n))]
+    change (∫ t in Set.Ioc (0 : ℝ) (b n), ‖f t‖ ∂μ) ≤ C
+    rw [show (fun t : ℝ ↦ ‖f t‖) = f by
+      funext t
+      exact Real.norm_of_nonneg (hfnonneg t), hsplit n]
+    dsimp [μ]
+    exact hboundIoc (b n) (hb n)
+  have hbTendsto : Tendsto b atTop atTop := by
+    dsimp [b]
+    exact tendsto_atTop_add_const_left _ a tendsto_natCast_atTop_atTop
+  have hintegrable : IntegrableOn f (Set.Ioi (0 : ℝ)) μ :=
+    integrableOn_Ioi_of_intervalIntegral_norm_bounded C 0 hfinite hbTendsto
+      (Filter.Eventually.of_forall hboundNorm)
+  have hboundActual : ∀ n : ℕ, (∫ t in 0..b n, f t ∂μ) ≤ C := by
+    intro n
+    calc
+      (∫ t in 0..b n, f t ∂μ) = ∫ t in 0..b n, ‖f t‖ ∂μ := by
+        apply intervalIntegral.integral_congr_ae
+        filter_upwards [] with t ht
+        exact (Real.norm_of_nonneg (hfnonneg t)).symm
+      _ ≤ C := hboundNorm n
+  have hlim := intervalIntegral_tendsto_integral_Ioi 0 hintegrable hbTendsto
+  refine ⟨?_, ?_⟩
+  · simpa only [μ] using hintegrable
+  · change (∫ t in Set.Ioi (0 : ℝ), f t ∂μ) ≤ C
+    exact le_of_tendsto hlim (Filter.Eventually.of_forall hboundActual)
+
+/-- The scale majorant which remains after summing Fourier modes is globally
+integrable, with the same Calderón constant as on finite scale intervals. -/
+theorem integrableOn_and_integral_thirdConeScaleMajorant_Ioi
+    (α : Anisotropy) (ξ : E3) (hξ : ξ 2 ≠ 0) :
+    IntegrableOn (thirdConeScaleMajorant α ξ) (Set.Ioi (0 : ℝ))
+        ((volume : Measure ℝ).withDensity cubeScaleDensity) ∧
+      ∫ t in Set.Ioi (0 : ℝ), thirdConeScaleMajorant α ξ t
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) ≤
+        cPsi ^ 3 / (α.weight 2 : ℝ) := by
+  rcases exists_small_scale_zero_thirdConeScaleMajorant α ξ hξ
+    with ⟨a, ha, hzero⟩
+  exact integrableOn_and_integral_Ioi_of_small_zero_Ioc_bound
+    (thirdConeScaleMajorant α ξ) a
+    (cPsi ^ 3 / (α.weight 2 : ℝ)) ha
+    (continuous_thirdConeScaleMajorant α ξ)
+    (thirdConeScaleMajorant_nonneg α ξ)
+    hzero
+    (fun b hab ↦ integral_thirdConeScaleMajorant_Ioc_le
+      α ξ a b ha hab hξ)
+
+/-- The preceding all-positive-scale majorant bound also holds at zero active
+frequency, where the annular cutoff makes the density identically zero. -/
+theorem integrableOn_and_integral_thirdConeScaleMajorant_Ioi_all
+    (α : Anisotropy) (ξ : E3) :
+    IntegrableOn (thirdConeScaleMajorant α ξ) (Set.Ioi (0 : ℝ))
+        ((volume : Measure ℝ).withDensity cubeScaleDensity) ∧
+      ∫ t in Set.Ioi (0 : ℝ), thirdConeScaleMajorant α ξ t
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) ≤
+        cPsi ^ 3 / (α.weight 2 : ℝ) := by
+  by_cases hξ : ξ 2 = 0
+  · have hzero : ∀ t : ℝ, thirdConeScaleMajorant α ξ t = 0 := by
+      intro t
+      have hpsi : conePsi (t ^ α.weight 2 * ξ 2) = 0 := by
+        apply conePsi_eq_zero_of_abs_le_one
+        simp [hξ]
+      unfold thirdConeScaleMajorant thirdConeActiveDensity
+      rw [hpsi]
+      ring
+    have hfun : thirdConeScaleMajorant α ξ = 0 := funext hzero
+    rw [hfun]
+    constructor
+    · exact integrableOn_zero
+    · simp
+      exact div_nonneg (pow_nonneg cPsi_pos.le _)
+        (Nat.cast_nonneg _)
+  · exact integrableOn_and_integral_thirdConeScaleMajorant_Ioi α ξ hξ
+
+/-- The degree-110 coefficient estimate has a scale-uniform absolutely
+summable norm envelope.  The displayed constant is independent of the scale
+and is the coefficient factor in the joint Fubini majorant. -/
+theorem exists_uniform_tsum_norm_mFourierCoeff
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (i : Fin 3) :
+    ∃ B : ℝ, 0 ≤ B ∧ ∀ t : ℝ, 0 < t →
+      Summable (fun ν : Fin 3 → ℤ ↦
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖) ∧
+      ∑' ν : Fin 3 → ℤ,
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤ B := by
+  rcases exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+    α M m hm i with ⟨A, hA, hcoeff⟩
+  let g : (Fin 3 → ℤ) → ℝ := fun ν ↦
+    (A * M) *
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+        (10 : ℕ)
+  have hAM : 0 ≤ A * M := mul_nonneg hA hm.nonneg
+  have hg : Summable g := by
+    change Summable ((fun z : standardModeLattice ↦
+      (A * M) * (sourceWeight (z : E3))⁻¹ ^ (10 : ℕ)) ∘ standardModeOfInt)
+    exact ((summable_standardMode_sourceWeight_inv).mul_left (A * M)).comp_injective
+      standardModeOfInt_injective
+  let B : ℝ := ∑' ν : Fin 3 → ℤ, g ν
+  refine ⟨B, ?_, ?_⟩
+  · dsimp [B]
+    exact tsum_nonneg fun ν ↦
+      mul_nonneg hAM (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  · intro t ht
+    have hpoint : ∀ ν : Fin 3 → ℤ,
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+          g ν := by
+      intro ν
+      have h110 := hcoeff t ht ν
+      have htail := scratch_sourceWeight_inv_pow_110_le_pow_10
+        (standardModeOfInt ν)
+      exact h110.trans (by
+        simpa only [g] using mul_le_mul_of_nonneg_left htail hAM)
+    have hnorm : Summable (fun ν : Fin 3 → ℤ ↦
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖) :=
+      hg.of_nonneg_of_le (fun ν ↦ norm_nonneg _) hpoint
+    refine ⟨hnorm, ?_⟩
+    simpa only [B] using hnorm.tsum_le_tsum hpoint hg
+
+/-- Each literal third-coordinate Fourier mode is bounded by the common
+active Calderón density; importantly, the bound is independent of its mode. -/
+theorem norm_thirdModeFrequencySymbol_le_scaleMajorant
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (t : ℝ) (ξ : E3) :
+    ‖thirdModeFrequencySymbol α (standardModeOfInt ν) t ξ‖ ≤
+      thirdConeScaleMajorant α ξ t := by
+  have hgaussian (x : ℝ) : ‖(gaussian x : ℂ)‖ ≤ 1 := by
+    rw [Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (gaussian_nonneg x)]
+    exact gaussian_le_one x
+  have hphi (x : ℝ) : ‖(conePhi x : ℂ)‖ ≤ cPsi := by
+    rw [Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (conePhi_nonneg x)]
+    exact conePhi_le_cPsi x
+  have hpass (x : ℝ) :
+      ‖(gaussian x : ℂ)‖ * ‖(conePhi x : ℂ)‖ ≤ cPsi := by
+    calc
+      ‖(gaussian x : ℂ)‖ * ‖(conePhi x : ℂ)‖ ≤ 1 * cPsi :=
+        mul_le_mul (hgaussian x) (hphi x) (norm_nonneg _) (by norm_num)
+      _ = cPsi := by ring
+  have hchar (x : ℝ) : ‖(Real.fourierChar x : ℂ)‖ = 1 := Circle.norm_coe _
+  have hactive (x : ℝ) :
+      ‖(gaussianDeriv x : ℂ)‖ ^ 2 * ‖(conePsi x : ℂ)‖ =
+        conePsi x * gaussianDeriv x ^ 2 := by
+    rw [Complex.norm_real, Complex.norm_real, Real.norm_eq_abs,
+      Real.norm_eq_abs, abs_of_nonneg (conePsi_nonneg x), sq_abs]
+    ring
+  have hactiveNonneg (x : ℝ) :
+      0 ≤ ‖(gaussianDeriv x : ℂ)‖ ^ 2 * ‖(conePsi x : ℂ)‖ := by
+    positivity
+  have hchain :
+      (‖(gaussian (t ^ α.weight 0 * ξ 0) : ℂ)‖ *
+          ‖(conePhi (t ^ α.weight 0 * ξ 0) : ℂ)‖) *
+        ((‖(gaussian (t ^ α.weight 1 * ξ 1) : ℂ)‖ *
+            ‖(conePhi (t ^ α.weight 1 * ξ 1) : ℂ)‖) *
+          (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+            ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖)) ≤
+        cPsi ^ 2 *
+          (conePsi (t ^ α.weight 2 * ξ 2) *
+            gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) := by
+    have hsecond :
+        (‖(gaussian (t ^ α.weight 1 * ξ 1) : ℂ)‖ *
+            ‖(conePhi (t ^ α.weight 1 * ξ 1) : ℂ)‖) *
+          (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+            ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖) ≤
+          cPsi *
+            (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+              ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖) :=
+      mul_le_mul_of_nonneg_right
+        (hpass (t ^ α.weight 1 * ξ 1))
+        (hactiveNonneg (t ^ α.weight 2 * ξ 2))
+    have hfirst :
+        (‖(gaussian (t ^ α.weight 0 * ξ 0) : ℂ)‖ *
+            ‖(conePhi (t ^ α.weight 0 * ξ 0) : ℂ)‖) *
+          ((‖(gaussian (t ^ α.weight 1 * ξ 1) : ℂ)‖ *
+              ‖(conePhi (t ^ α.weight 1 * ξ 1) : ℂ)‖) *
+            (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+              ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖)) ≤
+          cPsi *
+            (cPsi *
+              (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+                ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖)) :=
+      mul_le_mul (hpass (t ^ α.weight 0 * ξ 0)) hsecond
+        (mul_nonneg
+          (mul_nonneg (norm_nonneg _) (norm_nonneg _))
+          (hactiveNonneg (t ^ α.weight 2 * ξ 2)))
+        cPsi_pos.le
+    calc
+      (‖(gaussian (t ^ α.weight 0 * ξ 0) : ℂ)‖ *
+          ‖(conePhi (t ^ α.weight 0 * ξ 0) : ℂ)‖) *
+        ((‖(gaussian (t ^ α.weight 1 * ξ 1) : ℂ)‖ *
+            ‖(conePhi (t ^ α.weight 1 * ξ 1) : ℂ)‖) *
+          (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+            ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖)) ≤
+          cPsi *
+            (cPsi *
+              (‖(gaussianDeriv (t ^ α.weight 2 * ξ 2) : ℂ)‖ ^ 2 *
+                ‖(conePsi (t ^ α.weight 2 * ξ 2) : ℂ)‖)) := hfirst
+      _ = cPsi ^ 2 *
+          (conePsi (t ^ α.weight 2 * ξ 2) *
+            gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) := by
+          rw [hactive]
+          ring
+  unfold thirdModeFrequencySymbol thirdConeScaleMajorant
+    thirdConeActiveDensity
+  simp only [norm_mul, norm_pow, hchar, mul_one]
+  simpa only [mul_assoc] using hchain
+
+theorem continuous_thirdModeFrequencySymbol_frequency_joint
+    (α : Anisotropy) (ν : Fin 3 → ℤ) :
+    Continuous (fun p : ℝ × Frequency9 ↦
+      thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
+        (-frequencyDiagonal p.2)) := by
+  have hdiag : Continuous (fun p : ℝ × Frequency9 ↦ -frequencyDiagonal p.2) :=
+    frequencyDiagonal.continuous.neg.comp continuous_snd
+  have hcoord (j : Fin 3) : Continuous (fun p : ℝ × Frequency9 ↦
+      (-frequencyDiagonal p.2) j) := by
+    convert (coordinateProjection j).continuous.comp hdiag using 1
+    ext p
+    simp [coordinateProjection_apply]
+  have harg (j : Fin 3) : Continuous (fun p : ℝ × Frequency9 ↦
+      p.1 ^ α.weight j * (-frequencyDiagonal p.2) j) :=
+    (continuous_fst.pow _).mul (hcoord j)
+  have hg0 : Continuous (fun p : ℝ × Frequency9 ↦
+      (gaussian (p.1 ^ α.weight 0 * (-frequencyDiagonal p.2) 0) : ℂ)) :=
+    Complex.continuous_ofReal.comp
+      (gaussian_contDiff.continuous.comp (harg 0))
+  have hp0 : Continuous (fun p : ℝ × Frequency9 ↦
+      (conePhi (p.1 ^ α.weight 0 * (-frequencyDiagonal p.2) 0) : ℂ)) :=
+    Complex.continuous_ofReal.comp
+      (conePhi_contDiff.continuous.comp (harg 0))
+  have hg1 : Continuous (fun p : ℝ × Frequency9 ↦
+      (gaussian (p.1 ^ α.weight 1 * (-frequencyDiagonal p.2) 1) : ℂ)) :=
+    Complex.continuous_ofReal.comp
+      (gaussian_contDiff.continuous.comp (harg 1))
+  have hp1 : Continuous (fun p : ℝ × Frequency9 ↦
+      (conePhi (p.1 ^ α.weight 1 * (-frequencyDiagonal p.2) 1) : ℂ)) :=
+    Complex.continuous_ofReal.comp
+      (conePhi_contDiff.continuous.comp (harg 1))
+  have hd2 : Continuous (fun p : ℝ × Frequency9 ↦
+      (gaussianDeriv (p.1 ^ α.weight 2 * (-frequencyDiagonal p.2) 2) : ℂ)) :=
+    Complex.continuous_ofReal.comp
+      (continuous_gaussianDeriv.comp (harg 2))
+  have hp2 : Continuous (fun p : ℝ × Frequency9 ↦
+      (conePsi (p.1 ^ α.weight 2 * (-frequencyDiagonal p.2) 2) : ℂ)) :=
+    Complex.continuous_ofReal.comp
+      (conePsi_contDiff.continuous.comp (harg 2))
+  have hphasearg : Continuous (fun p : ℝ × Frequency9 ↦
+      (8 : ℝ)⁻¹ * ((standardModeOfInt ν : E3) 0) *
+          (p.1 ^ α.weight 0 * (-frequencyDiagonal p.2) 0) +
+        (8 : ℝ)⁻¹ * ((standardModeOfInt ν : E3) 1) *
+          (p.1 ^ α.weight 1 * (-frequencyDiagonal p.2) 1) +
+        (8 : ℝ)⁻¹ * ((standardModeOfInt ν : E3) 2) *
+          (p.1 ^ α.weight 2 * (-frequencyDiagonal p.2) 2)) :=
+    ((continuous_const.mul (harg 0)).add
+      (continuous_const.mul (harg 1))).add
+        (continuous_const.mul (harg 2))
+  have hphase : Continuous (fun p : ℝ × Frequency9 ↦
+      (Real.fourierChar
+        ((8 : ℝ)⁻¹ * ((standardModeOfInt ν : E3) 0) *
+            (p.1 ^ α.weight 0 * (-frequencyDiagonal p.2) 0) +
+          (8 : ℝ)⁻¹ * ((standardModeOfInt ν : E3) 1) *
+            (p.1 ^ α.weight 1 * (-frequencyDiagonal p.2) 1) +
+          (8 : ℝ)⁻¹ * ((standardModeOfInt ν : E3) 2) *
+            (p.1 ^ α.weight 2 * (-frequencyDiagonal p.2) 2) : ℝ) : ℂ)) :=
+    continuous_subtype_val.comp
+      (Real.continuous_fourierChar.comp hphasearg)
+  unfold thirdModeFrequencySymbol
+  exact (((hg0.mul hp0).mul (hg1.mul hp1)).mul
+    ((hd2.pow 2).mul hp2)).mul hphase
+
+/-- One literal localized third-cone Fourier mode, now as a function of both
+positive scale and the nine frequency variables. -/
+noncomputable def thirdModeFrequencyJointIntegrand
+    (α : Anisotropy) (m : E3 → ℂ) (ν : Fin 3 → ℤ)
+    (F : ModelComplexSchwartzInput) (p : ℝ × Frequency9) : ℂ :=
+  (if 0 < p.1 then
+    UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν else 0) *
+      thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
+        (-frequencyDiagonal p.2) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2
+
+theorem measurable_thirdModeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (ν : Fin 3 → ℤ) (F : ModelComplexSchwartzInput) :
+    Measurable (thirdModeFrequencyJointIntegrand α m ν F) := by
+  have hcoeff : Measurable (fun p : ℝ × Frequency9 ↦
+      if 0 < p.1 then
+        UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν else 0) :=
+    (measurable_zeroExtended_mFourierCoeff_unitTorusLocalizedSymbol
+      α M m hm 2 ν).comp measurable_fst
+  have hsymbol : Measurable (fun p : ℝ × Frequency9 ↦
+      thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
+        (-frequencyDiagonal p.2)) :=
+    (continuous_thirdModeFrequencySymbol_frequency_joint α ν).measurable
+  have hkernel : Measurable (fun p : ℝ × Frequency9 ↦
+      frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2) :=
+    (frequencyKernel (F 0) (F 1) (F 2) (F 3)).continuous.measurable.comp
+      measurable_snd
+  exact (hcoeff.mul hsymbol).mul hkernel
+
+/-- Uniform pointwise domination of the entire Fourier-mode family by the
+integrable active scale majorant.  This is the exact coefficient-sum input
+for the remaining joint scale/frequency Fubini step. -/
+theorem exists_uniform_tsum_norm_coefficient_mul_thirdModeFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) :
+    ∃ B : ℝ, 0 ≤ B ∧ ∀ t : ℝ, 0 < t → ∀ ξ : E3,
+      Summable (fun ν : Fin 3 → ℤ ↦
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+          thirdModeFrequencySymbol α (standardModeOfInt ν) t ξ‖) ∧
+      ∑' ν : Fin 3 → ℤ,
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+          thirdModeFrequencySymbol α (standardModeOfInt ν) t ξ‖ ≤
+        B * thirdConeScaleMajorant α ξ t := by
+  rcases exists_uniform_tsum_norm_mFourierCoeff α M m hm 2
+    with ⟨B, hB, hcoeff⟩
+  refine ⟨B, hB, ?_⟩
+  intro t ht ξ
+  rcases hcoeff t ht with ⟨hsum, htsum⟩
+  let D : ℝ := thirdConeScaleMajorant α ξ t
+  have hD : 0 ≤ D := thirdConeScaleMajorant_nonneg α ξ t
+  have hproduct : Summable (fun ν : Fin 3 → ℤ ↦
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν‖ * D) :=
+    hsum.mul_right D
+  have hpoint : ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+          thirdModeFrequencySymbol α (standardModeOfInt ν) t ξ‖ ≤
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν‖ * D := by
+    intro ν
+    rw [norm_mul]
+    exact mul_le_mul_of_nonneg_left
+      (by
+        simpa only [D] using
+          norm_thirdModeFrequencySymbol_le_scaleMajorant α ν t ξ)
+      (norm_nonneg _)
+  have hsumModes : Summable (fun ν : Fin 3 → ℤ ↦
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+        thirdModeFrequencySymbol α (standardModeOfInt ν) t ξ‖) :=
+    hproduct.of_nonneg_of_le (fun ν ↦ norm_nonneg _) hpoint
+  refine ⟨hsumModes, ?_⟩
+  calc
+    ∑' ν : Fin 3 → ℤ,
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+          thirdModeFrequencySymbol α (standardModeOfInt ν) t ξ‖ ≤
+        ∑' ν : Fin 3 → ℤ,
+          ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν‖ * D :=
+      hsumModes.tsum_le_tsum hpoint hproduct
+    _ = (∑' ν : Fin 3 → ℤ,
+          ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν‖) * D :=
+      hsum.tsum_mul_right D
+    _ ≤ B * D := mul_le_mul_of_nonneg_right htsum hD
+    _ = B * thirdConeScaleMajorant α ξ t := by rfl
+
+/-- The post-summation cone majorant times the Schwartz frequency kernel is
+integrable jointly in positive scale and the nine frequency variables.  The
+proof uses Fubini in the scale variable and the uniform Calderón mass bound. -/
+theorem integrable_thirdConeScaleMajorant_times_frequencyKernel
+    (α : Anisotropy) (F : ModelComplexSchwartzInput) :
+    Integrable (fun p : ℝ × Frequency9 ↦
+      thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1 *
+        ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2‖)
+      ((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioi (0 : ℝ))).prod frequencyMeasure) := by
+  let μ : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+    (Set.Ioi (0 : ℝ))
+  let K : Frequency9 → ℂ := frequencyKernel (F 0) (F 1) (F 2) (F 3)
+  let D : ℝ × Frequency9 → ℝ := fun p ↦
+    thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1
+  let H : ℝ × Frequency9 → ℝ := fun p ↦ D p * ‖K p.2‖
+  let C : ℝ := cPsi ^ 3 / (α.weight 2 : ℝ)
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  have hC : 0 ≤ C := by
+    dsimp [C]
+    exact div_nonneg (pow_nonneg cPsi_pos.le _) (Nat.cast_nonneg _)
+  have hK : Integrable K frequencyMeasure := by
+    dsimp [K]
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  have hDcont : Continuous D := by
+    dsimp [D]
+    have hdiag : Continuous (fun p : ℝ × Frequency9 ↦ -frequencyDiagonal p.2) :=
+      frequencyDiagonal.continuous.neg.comp continuous_snd
+    have hinput : Continuous (fun p : ℝ × Frequency9 ↦
+        (p.1, -frequencyDiagonal p.2)) :=
+      continuous_fst.prodMk hdiag
+    change Continuous ((fun q : ℝ × E3 ↦
+      thirdConeScaleMajorant α q.2 q.1) ∘
+        fun p : ℝ × Frequency9 ↦ (p.1, -frequencyDiagonal p.2))
+    exact (continuous_thirdConeScaleMajorant_joint α).comp hinput
+  have hHmeas : AEStronglyMeasurable H (μ.prod frequencyMeasure) := by
+    have hHcont : Continuous H := by
+      dsimp [H]
+      exact hDcont.mul
+        (((frequencyKernel (F 0) (F 1) (F 2) (F 3)).continuous.norm).comp
+          continuous_snd)
+    exact hHcont.aestronglyMeasurable
+  have hDint (ζ : Frequency9) :
+      Integrable (fun t : ℝ ↦
+        thirdConeScaleMajorant α (-frequencyDiagonal ζ) t) μ := by
+    simpa only [μ, IntegrableOn] using
+      (integrableOn_and_integral_thirdConeScaleMajorant_Ioi_all
+        α (-frequencyDiagonal ζ)).1
+  have hDle (ζ : Frequency9) :
+      (∫ t : ℝ, thirdConeScaleMajorant α (-frequencyDiagonal ζ) t ∂μ) ≤ C := by
+    simpa only [μ, C, IntegrableOn] using
+      (integrableOn_and_integral_thirdConeScaleMajorant_Ioi_all
+        α (-frequencyDiagonal ζ)).2
+  have hHsection (ζ : Frequency9) : Integrable (fun t : ℝ ↦ H (t, ζ)) μ := by
+    simpa only [H, D] using (hDint ζ).mul_const ‖K ζ‖
+  have hJbound (ζ : Frequency9) :
+      (∫ t : ℝ, ‖H (t, ζ)‖ ∂μ) ≤ C * ‖K ζ‖ := by
+    have hnonneg (t : ℝ) : 0 ≤ H (t, ζ) := by
+      dsimp [H, D]
+      exact mul_nonneg
+        (thirdConeScaleMajorant_nonneg α (-frequencyDiagonal ζ) t)
+        (norm_nonneg _)
+    rw [show (fun t : ℝ ↦ ‖H (t, ζ)‖) =
+        (fun t ↦ thirdConeScaleMajorant α (-frequencyDiagonal ζ) t *
+          ‖K ζ‖) by
+      funext t
+      exact Real.norm_of_nonneg (hnonneg t),
+      integral_mul_const]
+    exact mul_le_mul_of_nonneg_right (hDle ζ) (norm_nonneg _)
+  have hJmeas : AEStronglyMeasurable
+      (fun ζ : Frequency9 ↦ ∫ t : ℝ, ‖H (t, ζ)‖ ∂μ) frequencyMeasure := by
+    simpa only [Prod.swap_prod_mk] using hHmeas.norm.prod_swap.integral_prod_right'
+  have hJ : Integrable
+      (fun ζ : Frequency9 ↦ ∫ t : ℝ, ‖H (t, ζ)‖ ∂μ) frequencyMeasure := by
+    apply Integrable.mono' (hK.norm.const_mul C) hJmeas
+    filter_upwards [] with ζ
+    rw [Real.norm_of_nonneg (integral_nonneg fun t ↦ norm_nonneg (H (t, ζ)))]
+    exact hJbound ζ
+  change Integrable H (μ.prod frequencyMeasure)
+  exact (integrable_prod_iff' hHmeas).mpr
+    ⟨Filter.Eventually.of_forall hHsection, hJ⟩
+
+/-- The literal joint scale--frequency integrals of the individual Fourier
+modes have summable norms.  This is the precise Fubini hypothesis required
+to exchange the mode series with both scale and frequency integration. -/
+theorem summable_integral_norm_thirdModeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    Summable (fun ν : Fin 3 → ℤ ↦
+      ∫ p : ℝ × Frequency9,
+        ‖thirdModeFrequencyJointIntegrand α m ν F p‖
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) := by
+  let μ : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+    (Set.Ioi (0 : ℝ))
+  let K : Frequency9 → ℂ := frequencyKernel (F 0) (F 1) (F 2) (F 3)
+  let H : ℝ × Frequency9 → ℝ := fun p ↦
+    thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1 * ‖K p.2‖
+  rcases exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+    α M m hm 2 with ⟨A, hA, hcoeff⟩
+  let g : (Fin 3 → ℤ) → ℝ := fun ν ↦
+    (A * M) *
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+        (10 : ℕ)
+  have hAM : 0 ≤ A * M := mul_nonneg hA hm.nonneg
+  have hg_nonneg (ν : Fin 3 → ℤ) : 0 ≤ g ν := by
+    dsimp [g]
+    exact mul_nonneg hAM
+      (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  have hmajor : Summable g := by
+    change Summable ((fun z : standardModeLattice ↦
+      (A * M) * (sourceWeight (z : E3))⁻¹ ^ (10 : ℕ)) ∘ standardModeOfInt)
+    exact ((summable_standardMode_sourceWeight_inv).mul_left (A * M)).comp_injective
+      standardModeOfInt_injective
+  have hHint : Integrable H (μ.prod frequencyMeasure) := by
+    simpa only [H, μ, K] using
+      integrable_thirdConeScaleMajorant_times_frequencyKernel α F
+  have hHnonneg (p : ℝ × Frequency9) : 0 ≤ H p := by
+    dsimp [H]
+    exact mul_nonneg
+      (thirdConeScaleMajorant_nonneg α (-frequencyDiagonal p.2) p.1)
+      (norm_nonneg _)
+  have hpoint (ν : Fin 3 → ℤ) (p : ℝ × Frequency9) :
+      ‖thirdModeFrequencyJointIntegrand α m ν F p‖ ≤ g ν * H p := by
+    by_cases ht : 0 < p.1
+    · have h110 := hcoeff p.1 ht ν
+      have htail := scratch_sourceWeight_inv_pow_110_le_pow_10
+        (standardModeOfInt ν)
+      have hcoef :
+          ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν‖ ≤
+            g ν :=
+        h110.trans (by
+          simpa only [g] using mul_le_mul_of_nonneg_left htail hAM)
+      have hsymbol :=
+        norm_thirdModeFrequencySymbol_le_scaleMajorant α ν p.1
+          (-frequencyDiagonal p.2)
+      unfold thirdModeFrequencyJointIntegrand
+      rw [if_pos ht, norm_mul, norm_mul]
+      calc
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν‖ *
+            ‖thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
+              (-frequencyDiagonal p.2)‖ * ‖K p.2‖ ≤
+            (g ν * thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1) *
+              ‖K p.2‖ :=
+          mul_le_mul_of_nonneg_right
+            (mul_le_mul hcoef hsymbol
+              (norm_nonneg _) (hg_nonneg ν))
+            (norm_nonneg _)
+        _ = g ν * H p := by
+          dsimp [H]
+          ring
+    · unfold thirdModeFrequencyJointIntegrand
+      rw [if_neg ht]
+      simp only [zero_mul, norm_zero]
+      exact mul_nonneg (hg_nonneg ν) (hHnonneg p)
+  have hGint (ν : Fin 3 → ℤ) :
+      Integrable (thirdModeFrequencyJointIntegrand α m ν F)
+        (μ.prod frequencyMeasure) := by
+    apply Integrable.mono' (hHint.const_mul (g ν))
+      (measurable_thirdModeFrequencyJointIntegrand α M m hm ν F).aestronglyMeasurable
+    filter_upwards [] with p
+    simpa only [mul_comm] using hpoint ν p
+  let I : ℝ := ∫ p : ℝ × Frequency9, H p ∂(μ.prod frequencyMeasure)
+  have hmajorI : Summable (fun ν : Fin 3 → ℤ ↦ g ν * I) := hmajor.mul_right I
+  apply hmajorI.of_nonneg_of_le
+  · intro ν
+    exact integral_nonneg fun p ↦ norm_nonneg _
+  · intro ν
+    have hmajorInt : Integrable (fun p : ℝ × Frequency9 ↦ g ν * H p)
+        (μ.prod frequencyMeasure) := hHint.const_mul (g ν)
+    calc
+      (∫ p : ℝ × Frequency9,
+          ‖thirdModeFrequencyJointIntegrand α m ν F p‖
+          ∂(μ.prod frequencyMeasure)) ≤
+          ∫ p : ℝ × Frequency9, g ν * H p ∂(μ.prod frequencyMeasure) :=
+        integral_mono (hGint ν).norm hmajorInt (hpoint ν)
+      _ = g ν * ∫ p : ℝ × Frequency9, H p ∂(μ.prod frequencyMeasure) :=
+        by rw [integral_const_mul]
+      _ = g ν * I := by rfl
+
+theorem integrable_thirdModeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (ν : Fin 3 → ℤ) (F : ModelComplexSchwartzInput) :
+    Integrable (thirdModeFrequencyJointIntegrand α m ν F)
+      ((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioi (0 : ℝ))).prod frequencyMeasure) := by
+  let μ : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+    (Set.Ioi (0 : ℝ))
+  let K : Frequency9 → ℂ := frequencyKernel (F 0) (F 1) (F 2) (F 3)
+  let H : ℝ × Frequency9 → ℝ := fun p ↦
+    thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1 * ‖K p.2‖
+  rcases exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+    α M m hm 2 with ⟨A, hA, hcoeff⟩
+  let g : ℝ := (A * M) *
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+      (10 : ℕ)
+  have hAM : 0 ≤ A * M := mul_nonneg hA hm.nonneg
+  have hg : 0 ≤ g := by
+    dsimp [g]
+    exact mul_nonneg hAM
+      (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  have hHint : Integrable H (μ.prod frequencyMeasure) := by
+    simpa only [H, μ, K] using
+      integrable_thirdConeScaleMajorant_times_frequencyKernel α F
+  apply Integrable.mono' (hHint.const_mul g)
+    (measurable_thirdModeFrequencyJointIntegrand α M m hm ν F).aestronglyMeasurable
+  filter_upwards [] with p
+  by_cases ht : 0 < p.1
+  · have h110 := hcoeff p.1 ht ν
+    have htail := scratch_sourceWeight_inv_pow_110_le_pow_10
+      (standardModeOfInt ν)
+    have hcoef :
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν‖ ≤ g :=
+      h110.trans (by
+        simpa only [g] using mul_le_mul_of_nonneg_left htail hAM)
+    have hsymbol :=
+      norm_thirdModeFrequencySymbol_le_scaleMajorant α ν p.1
+        (-frequencyDiagonal p.2)
+    unfold thirdModeFrequencyJointIntegrand
+    rw [if_pos ht, norm_mul, norm_mul]
+    calc
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν‖ *
+          ‖thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
+            (-frequencyDiagonal p.2)‖ * ‖K p.2‖ ≤
+          (g * thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1) *
+            ‖K p.2‖ :=
+        mul_le_mul_of_nonneg_right
+          (mul_le_mul hcoef hsymbol (norm_nonneg _) hg)
+          (norm_nonneg _)
+      _ = g * H p := by
+        dsimp [H]
+        ring
+  · unfold thirdModeFrequencyJointIntegrand
+    rw [if_neg ht]
+    simp only [zero_mul, norm_zero]
+    exact mul_nonneg hg
+      (mul_nonneg
+        (thirdConeScaleMajorant_nonneg α (-frequencyDiagonal p.2) p.1)
+        (norm_nonneg _))
+
+/-- Fubini for the fully literal joint third-cone Fourier modes.  The theorem
+does not yet identify the pointwise sum with the cone integrand; that exact
+identification is supplied by the following reconstruction bridge. -/
+theorem hasSum_integral_thirdModeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    HasSum (fun ν : Fin 3 → ℤ ↦
+      ∫ p : ℝ × Frequency9,
+        thirdModeFrequencyJointIntegrand α m ν F p
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure))
+      (∫ p : ℝ × Frequency9,
+        ∑' ν : Fin 3 → ℤ,
+          thirdModeFrequencyJointIntegrand α m ν F p
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) := by
+  apply MeasureTheory.hasSum_integral_of_summable_integral_norm
+  · intro ν
+    exact integrable_thirdModeFrequencyJointIntegrand α M m hm ν F
+  · exact summable_integral_norm_thirdModeFrequencyJointIntegrand
+      α M m hm F
+
+/-- A single literal joint mode integral is exactly the existing
+scale-integrated `thirdModeFrequencyFullForm`. -/
+theorem integral_thirdModeFrequencyJointIntegrand_eq_fullForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (ν : Fin 3 → ℤ) (F : ModelComplexSchwartzInput) :
+    (∫ p : ℝ × Frequency9,
+      thirdModeFrequencyJointIntegrand α m ν F p
+      ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) =
+      thirdModeFrequencyFullForm α (standardModeOfInt ν)
+        (fun t ↦ if 0 < t then
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν else 0) F := by
+  let μ : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+    (Set.Ioi (0 : ℝ))
+  have hG := integrable_thirdModeFrequencyJointIntegrand
+    α M m hm ν F
+  unfold thirdModeFrequencyFullForm
+  change (∫ p : ℝ × Frequency9,
+      thirdModeFrequencyJointIntegrand α m ν F p
+      ∂(μ.prod frequencyMeasure)) =
+      ∫ t : ℝ,
+        (if 0 < t then
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν else 0) *
+          thirdModeFrequencyForm α (standardModeOfInt ν) t F ∂μ
+  rw [MeasureTheory.integral_prod _ hG]
+  apply integral_congr_ae
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  have htpos : 0 < t := ht
+  have hinner :
+      (∫ ζ : Frequency9,
+        thirdModeFrequencyJointIntegrand α m ν F (t, ζ)
+        ∂frequencyMeasure) =
+        (if 0 < t then
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν else 0) *
+          thirdModeFrequencyForm α (standardModeOfInt ν) t F := by
+    rw [show (∫ ζ : Frequency9,
+        thirdModeFrequencyJointIntegrand α m ν F (t, ζ)
+        ∂frequencyMeasure) =
+        ∫ ζ : Frequency9,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            (thirdModeFrequencySymbol α (standardModeOfInt ν) t
+              (-frequencyDiagonal ζ) *
+              frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
+          ∂frequencyMeasure by
+          apply integral_congr_ae
+          filter_upwards [] with ζ
+          unfold thirdModeFrequencyJointIntegrand
+          simp only [if_pos htpos]
+          ring,
+      integral_const_mul]
+    rw [if_pos htpos]
+    unfold thirdModeFrequencyForm frequencyForm
+    rfl
+  exact hinner
+
+/-- The literal third-cone frequency integrand after the Fourier modes have
+been reconstructed, with the same zero extension in the scale variable. -/
+noncomputable def thirdConeFrequencyJointIntegrand
+    (α : Anisotropy) (m : E3 → ℂ)
+    (F : ModelComplexSchwartzInput) (p : ℝ × Frequency9) : ℂ :=
+  (if 0 < p.1 then
+    thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2) else 0) *
+      frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2
+
+/-- Pointwise reconstruction of the entire localized third cone from its
+literal Fourier modes, now simultaneously in scale and frequency. -/
+theorem hasSum_thirdModeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) (p : ℝ × Frequency9) :
+    HasSum (fun ν : Fin 3 → ℤ ↦
+      thirdModeFrequencyJointIntegrand α m ν F p)
+      (thirdConeFrequencyJointIntegrand α m F p) := by
+  by_cases ht : 0 < p.1
+  · have hmode := hasSum_thirdModeFrequencySymbols_eq_thirdConeTerm_global
+      α M m hm p.1 ht (-frequencyDiagonal p.2)
+    have hmode' : HasSum (fun ν : Fin 3 → ℤ ↦
+        UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν *
+          thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
+            (-frequencyDiagonal p.2))
+        (thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2)) := by
+      simpa only [thirdConeFrequencySymbol] using hmode
+    simpa only [thirdModeFrequencyJointIntegrand,
+      thirdConeFrequencyJointIntegrand, if_pos ht] using
+      hmode'.mul_right (frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2)
+  · simp only [thirdModeFrequencyJointIntegrand,
+      thirdConeFrequencyJointIntegrand, if_neg ht, zero_mul]
+    exact hasSum_zero
+
+/-- Joint scale--frequency Fubini plus pointwise Fourier reconstruction gives
+the exact localized third-cone integral as a sum of literal modes. -/
+theorem hasSum_integral_thirdModeFrequencyJointIntegrand_eq_thirdCone
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    HasSum (fun ν : Fin 3 → ℤ ↦
+      ∫ p : ℝ × Frequency9,
+        thirdModeFrequencyJointIntegrand α m ν F p
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure))
+      (∫ p : ℝ × Frequency9,
+        thirdConeFrequencyJointIntegrand α m F p
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) := by
+  have hFubini := hasSum_integral_thirdModeFrequencyJointIntegrand
+    α M m hm F
+  have htsum : (fun p : ℝ × Frequency9 ↦
+      ∑' ν : Fin 3 → ℤ,
+        thirdModeFrequencyJointIntegrand α m ν F p) =
+      thirdConeFrequencyJointIntegrand α m F := by
+    funext p
+    exact (hasSum_thirdModeFrequencyJointIntegrand α M m hm F p).tsum_eq
+  rw [htsum] at hFubini
+  exact hFubini
+
+/-- The exact all-scale third-cone reconstruction in the existing
+`thirdModeFrequencyFullForm` interface.  This is the direct bridge from the
+summable model forms to the literal localized cone integral. -/
+theorem hasSum_thirdModeFrequencyFullForms_eq_thirdConeJointIntegral
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    HasSum (fun ν : Fin 3 → ℤ ↦
+      thirdModeFrequencyFullForm α (standardModeOfInt ν)
+        (fun t ↦ if 0 < t then
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν else 0) F)
+      (∫ p : ℝ × Frequency9,
+        thirdConeFrequencyJointIntegrand α m F p
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) := by
+  have h := hasSum_integral_thirdModeFrequencyJointIntegrand_eq_thirdCone
+    α M m hm F
+  have hleft : (fun ν : Fin 3 → ℤ ↦
+      ∫ p : ℝ × Frequency9,
+        thirdModeFrequencyJointIntegrand α m ν F p
+        ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) =
+      (fun ν : Fin 3 → ℤ ↦
+        thirdModeFrequencyFullForm α (standardModeOfInt ν)
+          (fun t ↦ if 0 < t then
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν else 0) F) := by
+    funext ν
+    exact integral_thirdModeFrequencyJointIntegrand_eq_fullForm
+      α M m hm ν F
+  rw [hleft] at h
+  exact h
+
+/-- The reconstructed third-cone multiplier itself is bounded by the same
+active Calderón density, with the original multiplier constant as the only
+extra factor. -/
+theorem norm_thirdConeFrequencySymbol_le_scaleMajorant
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (t : ℝ) (ξ : E3) :
+    ‖thirdConeFrequencySymbol α m t ξ‖ ≤
+      M * thirdConeScaleMajorant α ξ t := by
+  have hpass (x y : ℝ) : ‖(conePhi x : ℂ) * (conePhi y : ℂ)‖ ≤ cPsi ^ 2 := by
+    rw [norm_mul]
+    have hx : ‖(conePhi x : ℂ)‖ ≤ cPsi := by
+      rw [Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (conePhi_nonneg x)]
+      exact conePhi_le_cPsi x
+    have hy : ‖(conePhi y : ℂ)‖ ≤ cPsi := by
+      rw [Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (conePhi_nonneg y)]
+      exact conePhi_le_cPsi y
+    calc
+      ‖(conePhi x : ℂ)‖ * ‖(conePhi y : ℂ)‖ ≤ cPsi * cPsi :=
+        mul_le_mul hx hy (norm_nonneg _) cPsi_pos.le
+      _ = cPsi ^ 2 := by ring
+  have hactive (x : ℝ) :
+      ‖(conePsi x * gaussianDeriv x ^ 2 : ℂ)‖ =
+        conePsi x * gaussianDeriv x ^ 2 := by
+    rw [norm_mul, norm_pow, Complex.norm_real, Complex.norm_real,
+      Real.norm_eq_abs, Real.norm_eq_abs,
+      abs_of_nonneg (conePsi_nonneg x), sq_abs]
+  have hactive_nonneg (x : ℝ) : 0 ≤ conePsi x * gaussianDeriv x ^ 2 :=
+    mul_nonneg (conePsi_nonneg x) (sq_nonneg _)
+  unfold thirdConeFrequencySymbol thirdConeScaleMajorant
+    thirdConeActiveDensity
+  rw [norm_mul, norm_mul, hactive]
+  have hleft : ‖m ξ‖ *
+      (conePsi (t ^ α.weight 2 * ξ 2) *
+        gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) ≤
+      M * (conePsi (t ^ α.weight 2 * ξ 2) *
+        gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) :=
+    mul_le_mul_of_nonneg_right (hm.norm_le_all ξ)
+      (hactive_nonneg (t ^ α.weight 2 * ξ 2))
+  have hprod := mul_le_mul hleft
+    (hpass (t ^ α.weight 0 * ξ 0) (t ^ α.weight 1 * ξ 1))
+    (norm_nonneg ((conePhi (t ^ α.weight 0 * ξ 0) : ℂ) *
+      (conePhi (t ^ α.weight 1 * ξ 1) : ℂ)))
+    (mul_nonneg hm.nonneg
+      (hactive_nonneg (t ^ α.weight 2 * ξ 2)))
+  calc
+    ‖m ξ‖ *
+        (conePsi (t ^ α.weight 2 * ξ 2) *
+          gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2) *
+        ‖(conePhi (t ^ α.weight 0 * ξ 0) : ℂ) *
+          (conePhi (t ^ α.weight 1 * ξ 1) : ℂ)‖ ≤
+        (M * (conePsi (t ^ α.weight 2 * ξ 2) *
+          gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2)) * cPsi ^ 2 := hprod
+    _ = M * (cPsi ^ 2 *
+        (conePsi (t ^ α.weight 2 * ξ 2) *
+          gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2)) := by ring
+
+/-- Measurability of the literal reconstructed third-cone scale--frequency
+integrand.  Unlike the mode integrands, this uses only measurability of the
+original multiplier and continuity of the fixed cutoff factors. -/
+theorem measurable_thirdConeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    Measurable (thirdConeFrequencyJointIntegrand α m F) := by
+  have hdiag : Continuous (fun p : ℝ × Frequency9 ↦ -frequencyDiagonal p.2) :=
+    frequencyDiagonal.continuous.neg.comp continuous_snd
+  have hcoord (j : Fin 3) : Continuous (fun p : ℝ × Frequency9 ↦
+      (-frequencyDiagonal p.2) j) := by
+    convert (coordinateProjection j).continuous.comp hdiag using 1
+    ext p
+    simp [coordinateProjection_apply]
+  have harg (j : Fin 3) : Continuous (fun p : ℝ × Frequency9 ↦
+      p.1 ^ α.weight j * (-frequencyDiagonal p.2) j) :=
+    (continuous_fst.pow _).mul (hcoord j)
+  have hm' : Measurable (fun p : ℝ × Frequency9 ↦
+      m (-frequencyDiagonal p.2)) :=
+    hm.measurable.comp hdiag.measurable
+  have hphi (j : Fin 3) : Measurable (fun p : ℝ × Frequency9 ↦
+      (conePhi (p.1 ^ α.weight j * (-frequencyDiagonal p.2) j) : ℂ)) :=
+    (Complex.continuous_ofReal.comp
+      (conePhi_contDiff.continuous.comp (harg j))).measurable
+  have hpsi : Measurable (fun p : ℝ × Frequency9 ↦
+      (conePsi (p.1 ^ α.weight 2 * (-frequencyDiagonal p.2) 2) : ℂ)) :=
+    (Complex.continuous_ofReal.comp
+      (conePsi_contDiff.continuous.comp (harg 2))).measurable
+  have hderiv : Measurable (fun p : ℝ × Frequency9 ↦
+      (gaussianDeriv (p.1 ^ α.weight 2 * (-frequencyDiagonal p.2) 2) : ℂ)) :=
+    (Complex.continuous_ofReal.comp
+      (continuous_gaussianDeriv.comp (harg 2))).measurable
+  have hbase : Measurable (fun p : ℝ × Frequency9 ↦
+      thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2)) := by
+    unfold thirdConeFrequencySymbol
+    exact (hm'.mul (hpsi.mul (hderiv.pow_const 2))).mul ((hphi 0).mul (hphi 1))
+  have hzero : Measurable (fun p : ℝ × Frequency9 ↦
+      if 0 < p.1 then
+        thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2) else 0) :=
+    hbase.ite (measurableSet_Ioi.preimage measurable_fst) measurable_const
+  have hkernel : Measurable (fun p : ℝ × Frequency9 ↦
+      frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2) :=
+    (frequencyKernel (F 0) (F 1) (F 2) (F 3)).continuous.measurable.comp
+      measurable_snd
+  exact hzero.mul hkernel
+
+/-- Absolute integrability of the reconstructed third-cone joint integrand.
+This is the scale--frequency version of the source majorant: the original
+multiplier bound contributes `M`, while the integrable scalar factor is the
+all-scale Calderón envelope times the Schwartz frequency kernel. -/
+theorem integrable_thirdConeFrequencyJointIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    Integrable (thirdConeFrequencyJointIntegrand α m F)
+      ((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioi (0 : ℝ))).prod frequencyMeasure) := by
+  let μ : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+    (Set.Ioi (0 : ℝ))
+  let K : Frequency9 → ℂ := frequencyKernel (F 0) (F 1) (F 2) (F 3)
+  let H : ℝ × Frequency9 → ℝ := fun p ↦
+    thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1 * ‖K p.2‖
+  have hH : Integrable H (μ.prod frequencyMeasure) := by
+    simpa only [H, μ, K] using
+      integrable_thirdConeScaleMajorant_times_frequencyKernel α F
+  have hHnonneg (p : ℝ × Frequency9) : 0 ≤ H p := by
+    dsimp [H]
+    exact mul_nonneg
+      (thirdConeScaleMajorant_nonneg α (-frequencyDiagonal p.2) p.1)
+      (norm_nonneg _)
+  apply Integrable.mono' (hH.norm.const_mul M)
+    (measurable_thirdConeFrequencyJointIntegrand α M m hm F).aestronglyMeasurable
+  filter_upwards [] with p
+  by_cases ht : 0 < p.1
+  · unfold thirdConeFrequencyJointIntegrand
+    rw [if_pos ht, norm_mul]
+    calc
+      ‖thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2)‖ * ‖K p.2‖ ≤
+          (M * thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1) *
+            ‖K p.2‖ :=
+        mul_le_mul_of_nonneg_right
+          (norm_thirdConeFrequencySymbol_le_scaleMajorant α M m hm p.1
+            (-frequencyDiagonal p.2))
+          (norm_nonneg _)
+      _ = M * ‖H p‖ := by
+        rw [Real.norm_of_nonneg (hHnonneg p)]
+        dsimp [H]
+        ring
+  · unfold thirdConeFrequencyJointIntegrand
+    rw [if_neg ht]
+    simp only [zero_mul, norm_zero]
+    exact mul_nonneg hm.nonneg (norm_nonneg _)
+
+/-- The literal third cone, expressed as the source's scale integral of its
+fixed-scale `frequencyForm`. -/
+noncomputable def thirdConeFrequencyFullForm
+    (α : Anisotropy) (m : E3 → ℂ)
+    (F : ModelComplexSchwartzInput) : ℂ :=
+  ∫ t in Set.Ioi (0 : ℝ),
+    frequencyForm (thirdConeFrequencySymbol α m t)
+      (F 0) (F 1) (F 2) (F 3)
+    ∂((volume : Measure ℝ).withDensity cubeScaleDensity)
+
+/-- The joint integral is exactly the literal scale integral of the third
+cone's `frequencyForm`; this is the final scale--frequency Fubini step. -/
+theorem thirdConeJointIntegral_eq_frequencyFullForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    (∫ p : ℝ × Frequency9,
+      thirdConeFrequencyJointIntegrand α m F p
+      ∂((((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioi (0 : ℝ))).prod frequencyMeasure)) =
+      thirdConeFrequencyFullForm α m F := by
+  let μ : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+    (Set.Ioi (0 : ℝ))
+  have hG := integrable_thirdConeFrequencyJointIntegrand α M m hm F
+  unfold thirdConeFrequencyFullForm
+  change (∫ p : ℝ × Frequency9,
+      thirdConeFrequencyJointIntegrand α m F p
+      ∂(μ.prod frequencyMeasure)) =
+      ∫ t : ℝ,
+        frequencyForm (thirdConeFrequencySymbol α m t)
+          (F 0) (F 1) (F 2) (F 3) ∂μ
+  rw [MeasureTheory.integral_prod _ hG]
+  apply integral_congr_ae
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  change (∫ ζ : Frequency9,
+      thirdConeFrequencyJointIntegrand α m F (t, ζ)
+      ∂frequencyMeasure) =
+      frequencyForm (thirdConeFrequencySymbol α m t)
+        (F 0) (F 1) (F 2) (F 3)
+  have htpos : 0 < t := ht
+  unfold thirdConeFrequencyJointIntegrand frequencyForm
+  simp only [if_pos htpos]
+
+/-- Full all-scale reconstruction of the third localized cone as the
+absolutely summable series of literal Fourier-mode full forms. -/
+theorem hasSum_thirdModeFrequencyFullForms_eq_thirdConeFrequencyFullForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    HasSum (fun ν : Fin 3 → ℤ ↦
+      thirdModeFrequencyFullForm α (standardModeOfInt ν)
+        (fun t ↦ if 0 < t then
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν else 0) F)
+      (thirdConeFrequencyFullForm α m F) := by
+  rw [← thirdConeJointIntegral_eq_frequencyFullForm α M m hm F]
+  exact hasSum_thirdModeFrequencyFullForms_eq_thirdConeJointIntegral
+    α M m hm F
+
+/-- The same literal third cone written in the source's physical
+`multiplierForm` notation.  This definition is deliberately separate from
+the Fourier-side one: identifying them requires a multiplier certificate for
+the scale-dependent cone symbol. -/
+noncomputable def thirdConeMultiplierFullForm
+    (α : Anisotropy) (m : E3 → ℂ)
+    (F : ModelComplexSchwartzInput) : ℂ :=
+  ∫ t in Set.Ioi (0 : ℝ),
+    multiplierForm (thirdConeFrequencySymbol α m t)
+      (F 0) (F 1) (F 2) (F 3)
+    ∂((volume : Measure ℝ).withDensity cubeScaleDensity)
+
+/-- Conditional source-facing conversion of the reconstructed cone from its
+frequency representation to `multiplierForm`.  The displayed hypothesis is
+the exact missing infrastructure: a uniform anisotropic multiplier
+certificate for the scale-dependent cone symbol at every positive scale. -/
+theorem thirdConeFrequencyFullForm_eq_multiplierFullForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (F : ModelComplexSchwartzInput)
+    (hcone : ∀ t : ℝ, 0 < t →
+      Anisotropy.IsAnisotropicMultiplier α M
+        (thirdConeFrequencySymbol α m t)) :
+    thirdConeFrequencyFullForm α m F =
+      thirdConeMultiplierFullForm α m F := by
+  unfold thirdConeFrequencyFullForm thirdConeMultiplierFullForm
+  apply setIntegral_congr_fun measurableSet_Ioi
+  intro t ht
+  exact (multiplierForm_eq_frequencyForm α M
+    (thirdConeFrequencySymbol α m t) (hcone t ht)
+    (F 0) (F 1) (F 2) (F 3)).symm
+
+end
+end Twisted
+end Auto
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped ENNReal
+
+noncomputable section
+
+/-! ## Canonical-promotion candidate: finite selected-fiber tail weak one
+
+This file is intentionally a clean-name, append-only candidate for
+`Twisted.lean`.  It depends only on the current canonical `Twisted` surface.
+The source-specific analytic obligations remain explicit: the actual model
+good/bad split, its exterior tail domination, the good threshold budget, and
+the fiberwise tail budget.  The literal selected bad-atom tail, Fubini,
+coordinate transport, Chebyshev, and the weak-one bookkeeping are proved
+here.
+-/
+
+/-- Away from an exceptional set, a good part plus a nonnegative tail gives
+the standard three-piece Calderón--Zygmund level-set inclusion. -/
+theorem fiberCZ_level_subset_exceptional_good_badTail
+    {X : Type*} [MeasurableSpace X] (F G : X → ℂ) (tail : X → ℝ)
+    (E : Set X) (lambda : ℝ)
+    (hpoint : ∀ x, x ∉ E → ‖F x‖ ≤ ‖G x‖ + tail x) :
+    {x | lambda < ‖F x‖} ⊆ E ∪
+      ({x | lambda / 2 < ‖G x‖} ∪
+        ({x | lambda / 2 < tail x} ∩ Eᶜ)) := by
+  intro x hx
+  by_cases hxE : x ∈ E
+  · exact Or.inl hxE
+  · refine Or.inr ?_
+    by_cases hgood : lambda / 2 < ‖G x‖
+    · exact Or.inl hgood
+    · refine Or.inr ⟨?_, by simpa using hxE⟩
+      by_contra htail
+      have hgood' : ‖G x‖ ≤ lambda / 2 := le_of_not_gt hgood
+      have htail' : tail x ≤ lambda / 2 := le_of_not_gt htail
+      have hbound : ‖F x‖ ≤ lambda := by
+        calc
+          ‖F x‖ ≤ ‖G x‖ + tail x := hpoint x hxE
+          _ ≤ lambda / 2 + lambda / 2 := add_le_add hgood' htail'
+          _ = lambda := by ring
+      exact (not_lt_of_ge hbound) hx
+
+/-- Measure form of the preceding level-set split. -/
+theorem fiberCZ_measure_level_le_exceptional_good_badTail
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (F G : X → ℂ) (tail : X → ℝ) (E : Set X) (lambda : ℝ)
+    (hpoint : ∀ x, x ∉ E → ‖F x‖ ≤ ‖G x‖ + tail x) :
+    μ {x | lambda < ‖F x‖} ≤
+      μ E + (μ {x | lambda / 2 < ‖G x‖} +
+        μ ({x | lambda / 2 < tail x} ∩ Eᶜ)) := by
+  have hsub := fiberCZ_level_subset_exceptional_good_badTail
+    F G tail E lambda hpoint
+  calc
+    μ {x | lambda < ‖F x‖} ≤
+        μ (E ∪ ({x | lambda / 2 < ‖G x‖} ∪
+          ({x | lambda / 2 < tail x} ∩ Eᶜ))) := measure_mono hsub
+    _ ≤ μ E + μ ({x | lambda / 2 < ‖G x‖} ∪
+          ({x | lambda / 2 < tail x} ∩ Eᶜ)) := measure_union_le _ _
+    _ ≤ μ E + (μ {x | lambda / 2 < ‖G x‖} +
+          μ ({x | lambda / 2 < tail x} ∩ Eᶜ)) :=
+      add_le_add le_rfl (measure_union_le _ _)
+
+/-- Quantitative weak-one bookkeeping for a good part and exterior bad tail. -/
+theorem fiberCZ_weakOne_assembly
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (F G : X → ℂ) (tail : X → ℝ) (E : Set X) (lambda : ℝ)
+    (hpoint : ∀ x, x ∉ E → ‖F x‖ ≤ ‖G x‖ + tail x)
+    (Aexception Agood Atail : ℝ≥0∞)
+    (hexception : ENNReal.ofReal lambda * μ E ≤ Aexception)
+    (hgood : ENNReal.ofReal (lambda / 2) *
+      μ {x | lambda / 2 < ‖G x‖} ≤ Agood)
+    (htail : ENNReal.ofReal (lambda / 2) *
+      μ ({x | lambda / 2 < tail x} ∩ Eᶜ) ≤ Atail) :
+    ENNReal.ofReal lambda * μ {x | lambda < ‖F x‖} ≤
+      Aexception + 2 * Agood + 2 * Atail := by
+  have hmeasure := fiberCZ_measure_level_le_exceptional_good_badTail
+    μ F G tail E lambda hpoint
+  have hlambda : ENNReal.ofReal lambda =
+      2 * ENNReal.ofReal (lambda / 2) := by
+    rw [show lambda = 2 * (lambda / 2) by ring,
+      ENNReal.ofReal_mul (by norm_num)]
+    norm_num
+  calc
+    ENNReal.ofReal lambda * μ {x | lambda < ‖F x‖} ≤
+        ENNReal.ofReal lambda * (μ E +
+          (μ {x | lambda / 2 < ‖G x‖} +
+            μ ({x | lambda / 2 < tail x} ∩ Eᶜ))) :=
+      mul_le_mul_right hmeasure _
+    _ = ENNReal.ofReal lambda * μ E +
+        (2 * (ENNReal.ofReal (lambda / 2) *
+          μ {x | lambda / 2 < ‖G x‖}) +
+        2 * (ENNReal.ofReal (lambda / 2) *
+          μ ({x | lambda / 2 < tail x} ∩ Eᶜ))) := by
+      rw [hlambda]
+      ring
+    _ ≤ Aexception + (2 * Agood + 2 * Atail) :=
+      add_le_add hexception
+        (add_le_add
+          (mul_le_mul_of_nonneg_left hgood (by norm_num))
+          (mul_le_mul_of_nonneg_left htail (by norm_num)))
+    _ = Aexception + 2 * Agood + 2 * Atail := by ring
+
+/-- Markov's inequality for an exterior real bad tail in the strict
+level-set form used below. -/
+theorem fiberCZ_badTail_chebyshev
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (tail : X → ℝ)
+    (E : Set X) {a : ℝ} (_ha : 0 < a)
+    (htail : Integrable tail (μ.restrict Eᶜ)) :
+    ENNReal.ofReal a * μ ({x | a < tail x} ∩ Eᶜ) ≤
+      ∫⁻ x in Eᶜ, ENNReal.ofReal (tail x) ∂μ := by
+  have hmarkov := mul_meas_ge_le_lintegral₀
+    htail.1.aemeasurable.ennreal_ofReal (ENNReal.ofReal a)
+  have hsub : ({x | a < tail x} ∩ Eᶜ) ⊆
+      {x | ENNReal.ofReal a ≤ ENNReal.ofReal (tail x)} ∩ Eᶜ := by
+    intro x hx
+    exact ⟨ENNReal.ofReal_le_ofReal hx.1.le, hx.2⟩
+  calc
+    ENNReal.ofReal a * μ ({x | a < tail x} ∩ Eᶜ) ≤
+        ENNReal.ofReal a * (μ.restrict Eᶜ)
+          {x | ENNReal.ofReal a ≤ ENNReal.ofReal (tail x)} := by
+      apply mul_le_mul_right
+      exact (measure_mono hsub).trans (Measure.le_restrict_apply Eᶜ _)
+    _ ≤ ∫⁻ x, ENNReal.ofReal (tail x) ∂(μ.restrict Eᶜ) := hmarkov
+    _ = ∫⁻ x in Eᶜ, ENNReal.ofReal (tail x) ∂μ := rfl
+
+/-- Weak-one consumer for the actual finite-scale model operator, phrased
+with a pointwise good/bad split and an exterior unsigned tail. -/
+theorem ModelTruncatedOperator_fiberCZ_weakOne_of_good_bad_data
+    (aniso : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b : ℝ) (good bad tail : E3 → ℝ) (E : Set E3)
+    (lambda : ℝ) (Aexception Agood Atail : ℝ≥0∞)
+    (hdecomp : ∀ x,
+      ModelTruncatedOperator aniso u c f a b x = good x + bad x)
+    (hbad : ∀ x, x ∉ E → |bad x| ≤ tail x)
+    (hexception : ENNReal.ofReal lambda * volume E ≤ Aexception)
+    (hgood : ENNReal.ofReal (lambda / 2) *
+      volume {x | lambda / 2 < |good x|} ≤ Agood)
+    (htail : ENNReal.ofReal (lambda / 2) *
+      volume ({x | lambda / 2 < tail x} ∩ Eᶜ) ≤ Atail) :
+    ENNReal.ofReal lambda *
+      volume {x | lambda < |ModelTruncatedOperator aniso u c f a b x|} ≤
+        Aexception + 2 * Agood + 2 * Atail := by
+  have hweak := fiberCZ_weakOne_assembly volume
+    (fun x ↦ (ModelTruncatedOperator aniso u c f a b x : ℂ))
+    (fun x ↦ (good x : ℂ)) tail E lambda
+    (by
+      intro x hx
+      rw [hdecomp x]
+      simpa only [Complex.norm_real, Real.norm_eq_abs] using
+        (calc
+          |good x + bad x| ≤ |good x| + |bad x| := abs_add_le _ _
+          _ ≤ |good x| + tail x := by
+            simpa only [add_comm] using add_le_add_right (hbad x hx) |good x|)
+    ) Aexception Agood Atail hexception
+    (by simpa only [Complex.norm_real, Real.norm_eq_abs] using hgood) htail
+  simpa only [Complex.norm_real, Real.norm_eq_abs] using hweak
+
+/-- Literal finite scale-integrated tail of the selected bad atoms on an
+active/transverse product fiber.  Its atom summands are exactly those of the
+canonical `fiberCZBadField`. -/
+noncomputable def selectedFiberScaleTail
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (Zf : Set Z) (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ) :
+    ℝ × Z → ℝ := fun qz ↦
+  ∑ I ∈ T, ∫ t : ℝ in Set.Ioi 0,
+    |∫ y : ℝ, fiberCZBadAtom F
+      (fiberDyadicSelectionSet Zf Astop H) I (y, qz.2) *
+      kernelDilate (activeModelKernel i j u) (t ^ alpha) (qz.1 - y)| * t⁻¹
+
+/-- The literal finite selected-fiber scale tail is nonnegative. -/
+theorem selectedFiberScaleTail_nonneg
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (Zf : Set Z) (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ)
+    (qz : ℝ × Z) :
+    0 ≤ selectedFiberScaleTail F Zf Astop H T i j u alpha qz := by
+  unfold selectedFiberScaleTail
+  apply Finset.sum_nonneg
+  intro I hI
+  apply integral_nonneg_of_ae
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  exact mul_nonneg (abs_nonneg _)
+    (inv_nonneg.mpr (Set.mem_Ioi.mp ht).le)
+
+/-- A finite two-stage absolute scale integral is measurable once its joint
+integrands are strongly measurable. -/
+theorem measurable_finset_twofold_scaleTail
+    {X ι : Type*} [MeasurableSpace X] (T : Finset ι)
+    (K : ι → ((X × ℝ) × ℝ) → ℝ)
+    (hK : ∀ I, StronglyMeasurable (K I)) :
+    Measurable (fun x : X ↦ ∑ I ∈ T, ∫ t : ℝ in Set.Ioi 0,
+      |∫ y : ℝ, K I ((x, t), y)| * t⁻¹) := by
+  apply T.measurable_sum
+  intro I hI
+  have hinner : StronglyMeasurable (fun xt : X × ℝ ↦
+      ∫ y : ℝ, K I (xt, y)) := by
+    simpa using (hK I).integral_prod_right'
+  have houter : StronglyMeasurable (fun xt : X × ℝ ↦
+      |∫ y : ℝ, K I (xt, y)| * xt.2⁻¹) :=
+    hinner.norm.mul (measurable_snd.inv.stronglyMeasurable)
+  have hscale : StronglyMeasurable (fun x : X ↦ ∫ t : ℝ in Set.Ioi 0,
+      |∫ y : ℝ, K I ((x, t), y)| * t⁻¹) := by
+    simpa using houter.integral_prod_right'
+  exact hscale.measurable
+
+/-- Measurability of the literal selected-fiber scale tail from one joint
+integrand premise before its two Bochner integrations. -/
+theorem measurable_selectedFiberScaleTail_of_joint
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (Zf : Set Z) (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ)
+    (hjoint : ∀ I, StronglyMeasurable (fun qty : ((ℝ × Z) × ℝ) × ℝ ↦
+      fiberCZBadAtom F (fiberDyadicSelectionSet Zf Astop H) I
+        (qty.2, qty.1.1.2) *
+      kernelDilate (activeModelKernel i j u) (qty.1.2 ^ alpha)
+        (qty.1.1.1 - qty.2))) :
+    Measurable (selectedFiberScaleTail F Zf Astop H T i j u alpha) := by
+  unfold selectedFiberScaleTail
+  exact measurable_finset_twofold_scaleTail
+    (X := ℝ × Z) (ι := FiberDyadicInterval) T
+    (fun I qty ↦ fiberCZBadAtom F
+      (fiberDyadicSelectionSet Zf Astop H) I (qty.2, qty.1.1.2) *
+      kernelDilate (activeModelKernel i j u) (qty.1.2 ^ alpha)
+        (qty.1.1.1 - qty.2)) hjoint
+
+/-- Measure-level version of selected-tail measurability, for an arbitrary
+specified transverse measure. -/
+theorem aestronglyMeasurable_selectedFiberScaleTail_of_joint
+    {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) (F : ℝ × Z → ℝ)
+    (Zf : Set Z) (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ)
+    (hjoint : ∀ I, StronglyMeasurable (fun qty : ((ℝ × Z) × ℝ) × ℝ ↦
+      fiberCZBadAtom F (fiberDyadicSelectionSet Zf Astop H) I
+        (qty.2, qty.1.1.2) *
+      kernelDilate (activeModelKernel i j u) (qty.1.2 ^ alpha)
+        (qty.1.1.1 - qty.2))) :
+    AEStronglyMeasurable (selectedFiberScaleTail F Zf Astop H T i j u alpha)
+      (volume.prod μ) :=
+  Measurable.aestronglyMeasurable
+    (measurable_selectedFiberScaleTail_of_joint F Zf Astop H T i j u alpha hjoint)
+
+/-- A nonnegative tail on `ℝ × Z` is integrable when each fiber is
+integrable and its fiber integral is bounded by an integrable transverse
+budget. -/
+theorem integrable_prod_of_nonneg_fiber_tail_budget
+    {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
+    (tail : ℝ × Z → ℝ) (budget : Z → ℝ)
+    (htail_meas : AEStronglyMeasurable tail (volume.prod μ))
+    (htail_nonneg : ∀ yz, 0 ≤ tail yz)
+    (hline : ∀ z, Integrable (fun y : ℝ ↦ tail (y, z)))
+    (hbudget : Integrable budget μ)
+    (hline_budget : ∀ z, (∫ y : ℝ, tail (y, z)) ≤ budget z) :
+    Integrable tail (volume.prod μ) := by
+  have hswap : AEStronglyMeasurable (tail ∘ Prod.swap) (μ.prod volume) :=
+    htail_meas.prod_swap
+  have hinner_meas : AEStronglyMeasurable
+      (fun z : Z ↦ ∫ y : ℝ, tail (y, z)) μ := by
+    simpa only [Function.comp_apply, Prod.swap_prod_mk] using
+      hswap.integral_prod_right'
+  have hinner_nonneg (z : Z) : 0 ≤ ∫ y : ℝ, tail (y, z) := by
+    exact integral_nonneg fun y ↦ htail_nonneg (y, z)
+  have hinner : Integrable (fun z : Z ↦ ∫ y : ℝ, tail (y, z)) μ := by
+    refine Integrable.mono' hbudget hinner_meas ?_
+    filter_upwards with z
+    rw [Real.norm_of_nonneg (hinner_nonneg z)]
+    exact hline_budget z
+  have hinner_norm_eq (z : Z) :
+      (∫ y : ℝ, ‖tail (y, z)‖) = ∫ y : ℝ, tail (y, z) := by
+    apply integral_congr_ae
+    filter_upwards with y
+    rw [Real.norm_of_nonneg (htail_nonneg (y, z))]
+  have hinner_norm : Integrable (fun z : Z ↦ ∫ y : ℝ, ‖tail (y, z)‖) μ := by
+    refine hinner.congr (Filter.Eventually.of_forall fun z ↦ ?_)
+    exact (hinner_norm_eq z).symm
+  refine (integrable_prod_iff' htail_meas).mpr ⟨?_, hinner_norm⟩
+  filter_upwards with z
+  exact hline z
+
+/-- Fubini turns a fiberwise nonnegative-tail budget into a product-space
+`L¹` budget. -/
+theorem integral_prod_nonneg_fiber_tail_le_budget
+    {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
+    (tail : ℝ × Z → ℝ) (budget : Z → ℝ)
+    (htail : Integrable tail (volume.prod μ))
+    (hbudget : Integrable budget μ)
+    (hline_budget : ∀ z, (∫ y : ℝ, tail (y, z)) ≤ budget z) :
+    (∫ yz : ℝ × Z, tail yz ∂(volume.prod μ)) ≤
+      ∫ z : Z, budget z ∂μ := by
+  rw [integral_prod_symm tail htail]
+  exact integral_mono htail.integral_prod_right hbudget hline_budget
+
+/-- A fiberwise tail budget yields the literal exterior Chebyshev bound
+after transporting from the product fibers to `E3`. -/
+theorem coordinateSplit_badTail_chebyshev_of_fiber_budget
+    (m : Fin 3) (tail : ℝ × TransverseSpace m → ℝ)
+    (budget : TransverseSpace m → ℝ) (E : Set E3) {lambda : ℝ}
+    (hlambda : 0 < lambda)
+    (htail_meas : AEStronglyMeasurable tail volume)
+    (htail_nonneg : ∀ yz, 0 ≤ tail yz)
+    (hline : ∀ z, Integrable (fun y : ℝ ↦ tail (y, z)))
+    (hbudget : Integrable budget volume)
+    (hline_budget : ∀ z, (∫ y : ℝ, tail (y, z)) ≤ budget z) :
+    ENNReal.ofReal (lambda / 2) *
+      volume ({x : E3 | lambda / 2 < tail (coordinateSplit m x)} ∩ Eᶜ) ≤
+      ENNReal.ofReal (∫ z : TransverseSpace m, budget z) := by
+  let ambient : E3 → ℝ := fun x ↦ tail (coordinateSplit m x)
+  have htail : Integrable tail volume :=
+    integrable_prod_of_nonneg_fiber_tail_budget volume tail budget
+      htail_meas htail_nonneg hline hbudget hline_budget
+  have hambient : Integrable ambient volume := by
+    have hcomp := (coordinateSplit_measurePreserving m).integrable_comp_of_integrable htail
+    simpa only [ambient, Function.comp_apply, Function.comp_def] using hcomp
+  have hambient_nonneg (x : E3) : 0 ≤ ambient x := by
+    exact htail_nonneg (coordinateSplit m x)
+  have hcheb := fiberCZ_badTail_chebyshev volume ambient E
+    (by linarith : 0 < lambda / 2) hambient.integrableOn
+  have hglobal := integral_prod_nonneg_fiber_tail_le_budget volume
+    tail budget htail hbudget hline_budget
+  calc
+    ENNReal.ofReal (lambda / 2) *
+        volume ({x : E3 | lambda / 2 < tail (coordinateSplit m x)} ∩ Eᶜ) ≤
+        ∫⁻ x in Eᶜ, ENNReal.ofReal (ambient x) := by
+          simpa only [ambient] using hcheb
+    _ ≤ ∫⁻ x, ENNReal.ofReal (ambient x) :=
+      setLIntegral_le_lintegral Eᶜ _
+    _ = ENNReal.ofReal (∫ x : E3, ambient x) := by
+      symm
+      apply ofReal_integral_eq_lintegral_ofReal hambient
+      filter_upwards with x
+      exact hambient_nonneg x
+    _ = ENNReal.ofReal (∫ yz : ℝ × TransverseSpace m, tail yz) := by
+      rw [show (∫ x : E3, ambient x) =
+        ∫ yz : ℝ × TransverseSpace m, tail yz by
+          simpa only [ambient, Function.comp_apply, coordinateSplitEquiv_apply] using
+            (coordinateSplitEquiv_measurePreserving m).integral_comp' tail]
+    _ ≤ ENNReal.ofReal (∫ z : TransverseSpace m, budget z) :=
+      ENNReal.ofReal_le_ofReal hglobal
+
+/-- Exterior weak-one tail budget specialized to the literal finite selected
+bad-atom scale tail. -/
+theorem coordinateSplit_selectedFiberScaleTail_chebyshev_of_fiber_budget
+    (m : Fin 3) (F : ℝ × TransverseSpace m → ℝ)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ)
+    (budget : TransverseSpace m → ℝ) (E : Set E3) {lambda : ℝ}
+    (hlambda : 0 < lambda)
+    (htail_meas : AEStronglyMeasurable
+      (selectedFiberScaleTail F Zf Astop H T i j u alpha) volume)
+    (hline : ∀ z, Integrable (fun q : ℝ ↦
+      selectedFiberScaleTail F Zf Astop H T i j u alpha (q, z)))
+    (hbudget : Integrable budget volume)
+    (hline_budget : ∀ z, (∫ q : ℝ,
+      selectedFiberScaleTail F Zf Astop H T i j u alpha (q, z)) ≤ budget z) :
+    ENNReal.ofReal (lambda / 2) * volume
+      ({x : E3 | lambda / 2 < selectedFiberScaleTail
+        F Zf Astop H T i j u alpha (coordinateSplit m x)} ∩ Eᶜ) ≤
+      ENNReal.ofReal (∫ z : TransverseSpace m, budget z) := by
+  apply coordinateSplit_badTail_chebyshev_of_fiber_budget
+    m (selectedFiberScaleTail F Zf Astop H T i j u alpha) budget E hlambda
+    htail_meas
+  · intro qz
+    exact selectedFiberScaleTail_nonneg F Zf Astop H T i j u alpha qz
+  · exact hline
+  · exact hbudget
+  · exact hline_budget
+
+/-- Direct finite selected-fiber weak-one assembly for the actual truncated
+model operator.  The supplied `hbad` is the source-specific exterior
+operator tail estimate; it is intentionally not inferred from weak `L¹`
+data alone. -/
+theorem ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_data
+    (aniso : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b : ℝ) (m : Fin 3)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (alpha : ℝ)
+    (good bad : E3 → ℝ) (E : Set E3) (lambda : ℝ)
+    (Aexception Agood : ℝ≥0∞) (budget : TransverseSpace m → ℝ)
+    (hlambda : 0 < lambda)
+    (hdecomp : ∀ x,
+      ModelTruncatedOperator aniso u c f a b x = good x + bad x)
+    (hbad : ∀ x, x ∉ E → |bad x| ≤
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (coordinateSplit m x))
+    (hexception : ENNReal.ofReal lambda * volume E ≤ Aexception)
+    (hgood : ENNReal.ofReal (lambda / 2) *
+      volume {x | lambda / 2 < |good x|} ≤ Agood)
+    (htail_meas : AEStronglyMeasurable
+      (selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha) volume)
+    (hline : ∀ z, Integrable (fun q : ℝ ↦
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (q, z)))
+    (hbudget : Integrable budget volume)
+    (hline_budget : ∀ z, (∫ q : ℝ,
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (q, z)) ≤ budget z) :
+    ENNReal.ofReal lambda *
+      volume {x | lambda < |ModelTruncatedOperator aniso u c f a b x|} ≤
+        Aexception + 2 * Agood +
+          2 * ENNReal.ofReal (∫ z : TransverseSpace m, budget z) := by
+  apply ModelTruncatedOperator_fiberCZ_weakOne_of_good_bad_data
+    aniso u c f a b good bad
+    (fun x ↦ selectedFiberScaleTail
+      (coordinateFiberInput m (f m)) Zf Astop H T i j u alpha
+      (coordinateSplit m x)) E lambda Aexception Agood
+    (ENNReal.ofReal (∫ z : TransverseSpace m, budget z))
+  · exact hdecomp
+  · exact hbad
+  · exact hexception
+  · exact hgood
+  · exact coordinateSplit_selectedFiberScaleTail_chebyshev_of_fiber_budget
+      m (coordinateFiberInput m (f m)) Zf Astop H T i j u alpha budget E
+      hlambda htail_meas hline hbudget hline_budget
+
+/-- Literal selected-field specialization of the preceding terminal.  Both
+the good and bad operator terms are the canonical finite
+`coordinateFiberGoodField` and `coordinateFiberBadField` replacements.  The
+single `hdecomp` premise is exactly the finite-scale operator split, while
+`hbad` is the remaining exterior cancellation-tail estimate. -/
+theorem ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_coordinateFiberGoodBad_data
+    (aniso : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b : ℝ) (m : Fin 3)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (alpha : ℝ)
+    (E : Set E3) (lambda : ℝ) (Aexception Agood : ℝ≥0∞)
+    (budget : TransverseSpace m → ℝ)
+    (hlambda : 0 < lambda)
+    (hdecomp : ∀ x,
+      ModelTruncatedOperator aniso u c f a b x =
+        ModelTruncatedOperator aniso u c
+          (modelOperatorReplace f m
+            (coordinateFiberGoodField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x +
+        ModelTruncatedOperator aniso u c
+          (modelOperatorReplace f m
+            (coordinateFiberBadField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x)
+    (hbad : ∀ x, x ∉ E →
+      |ModelTruncatedOperator aniso u c
+        (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        selectedFiberScaleTail (coordinateFiberInput m (f m))
+          Zf Astop H T i j u alpha (coordinateSplit m x))
+    (hexception : ENNReal.ofReal lambda * volume E ≤ Aexception)
+    (hgood : ENNReal.ofReal (lambda / 2) * volume
+      {x | lambda / 2 < |ModelTruncatedOperator aniso u c
+        (modelOperatorReplace f m
+          (coordinateFiberGoodField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x|} ≤ Agood)
+    (htail_meas : AEStronglyMeasurable
+      (selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha) volume)
+    (hline : ∀ z, Integrable (fun q : ℝ ↦
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (q, z)))
+    (hbudget : Integrable budget volume)
+    (hline_budget : ∀ z, (∫ q : ℝ,
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (q, z)) ≤ budget z) :
+    ENNReal.ofReal lambda *
+      volume {x | lambda < |ModelTruncatedOperator aniso u c f a b x|} ≤
+        Aexception + 2 * Agood +
+          2 * ENNReal.ofReal (∫ z : TransverseSpace m, budget z) := by
+  exact ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_data
+    aniso u c f a b m Zf Astop H T i j alpha
+    (ModelTruncatedOperator aniso u c
+      (modelOperatorReplace f m
+        (coordinateFiberGoodField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b)
+    (ModelTruncatedOperator aniso u c
+      (modelOperatorReplace f m
+        (coordinateFiberBadField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b)
+    E lambda Aexception Agood budget hlambda hdecomp hbad hexception hgood
+    htail_meas hline hbudget hline_budget
+
+end
+end Twisted
+end Auto
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open Auto.HardyLittlewoodMaximal
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Finite selected-atom scale-tail bridge
+
+This clean-name candidate specializes the proved finite cancellation/tail
+theorem to the literal `fiberCZBadAtom` used by the finite selected field.
+It discharges cancellation, support, mass, and disjointness from the stopping
+data.  The remaining kernel-line integrability and exterior/far-region
+hypotheses are intentionally explicit.
+-/
+
+/-- An individual literal selected bad atom is integrable on every
+integrable transverse fiber. -/
+theorem integrable_fiberCZBadAtom_of_fiberIntegrable
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval) (z : Z)
+    (hF : Integrable (fun y : ℝ ↦ F (y, z))) :
+    Integrable (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) := by
+  by_cases hz : z ∈ S I
+  · have hatom : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) =
+        (fiberDyadicInterval I).indicator
+          (fun y ↦ F (y, z) - fiberDyadicIntervalAverage F I z) := by
+      funext y
+      by_cases hy : y ∈ fiberDyadicInterval I <;>
+        simp [fiberCZBadAtom, hy, hz]
+    rw [hatom]
+    apply IntegrableOn.integrable_indicator
+    · apply hF.integrableOn.sub
+      refine integrableOn_const ?_ enorm_ne_top
+      rw [measure_fiberDyadicInterval]
+      exact ENNReal.ofReal_ne_top
+    · exact measurableSet_fiberDyadicInterval I
+  · have hzero : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) = 0 := by
+      funext y
+      simp [fiberCZBadAtom, hz]
+    rw [hzero]
+    exact integrable_zero ℝ ℝ volume
+
+/-- A nonzero literal selected atom lies in the closed midpoint/radius
+interval associated to its dyadic source cell. -/
+theorem fiberCZBadAtom_support_centered
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval) (y : ℝ) (z : Z)
+    (hneq : fiberCZBadAtom F S I (y, z) ≠ 0) :
+    |y - fiberDyadicIntervalCenter I| ≤ fiberDyadicIntervalRadius I := by
+  have hmem : (y, z) ∈ fiberDyadicInterval I ×ˢ S I := by
+    by_contra hnot
+    apply hneq
+    simp [fiberCZBadAtom, hnot]
+  have hy : y ∈ fiberDyadicInterval I := hmem.1
+  have hleft : fiberDyadicIntervalCenter I -
+      fiberDyadicIntervalRadius I ≤ y := by
+    rw [fiberDyadicInterval_center_sub_radius]
+    exact hy.1
+  have hright : y ≤ fiberDyadicIntervalCenter I +
+      fiberDyadicIntervalRadius I := by
+    rw [fiberDyadicInterval_center_add_radius]
+    exact hy.2.le
+  rw [abs_le]
+  constructor <;> linarith
+
+/-- A bounded source fiber gives the exact `4 B r_I` mass estimate for a
+selected literal bad atom. -/
+theorem integral_abs_fiberCZBadAtom_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval) (z : Z)
+    (hz : z ∈ S I) (B : ℝ)
+    (hFB : ∀ y : ℝ, |F (y, z)| ≤ B) :
+    (∫ y : ℝ, |fiberCZBadAtom F S I (y, z)|) ≤
+      4 * B * fiberDyadicIntervalRadius I := by
+  have hmeasure_lt_top : volume (fiberDyadicInterval I) < ∞ := by
+    rw [measure_fiberDyadicInterval]
+    exact ENNReal.ofReal_lt_top
+  have hmeasure : volume.real (fiberDyadicInterval I) =
+      fiberDyadicIntervalLength I := by
+    rw [MeasureTheory.measureReal_def, measure_fiberDyadicInterval]
+    simp only [ENNReal.toReal_ofReal (fiberDyadicIntervalLength_pos I).le]
+  have havg : |fiberDyadicIntervalAverage F I z| ≤ B := by
+    rw [fiberDyadicIntervalAverage_eq_setIntegral, abs_mul,
+      abs_inv, abs_of_pos (fiberDyadicIntervalLength_pos I)]
+    have hnorm : |∫ y : ℝ in fiberDyadicInterval I, F (y, z)| ≤
+        B * volume.real (fiberDyadicInterval I) := by
+      simpa only [Real.norm_eq_abs] using
+        (norm_setIntegral_le_of_norm_le_const
+          (f := fun y : ℝ ↦ F (y, z)) (C := B) hmeasure_lt_top
+          (fun y hy ↦ by simpa only [Real.norm_eq_abs] using hFB y))
+    calc
+      (fiberDyadicIntervalLength I)⁻¹ *
+          |∫ y : ℝ in fiberDyadicInterval I, F (y, z)| ≤
+          (fiberDyadicIntervalLength I)⁻¹ *
+            (B * volume.real (fiberDyadicInterval I)) :=
+        mul_le_mul_of_nonneg_left hnorm
+          (inv_nonneg.mpr (fiberDyadicIntervalLength_pos I).le)
+      _ = B := by
+        rw [hmeasure]
+        field_simp [ne_of_gt (fiberDyadicIntervalLength_pos I)]
+  have hatom : (fun y : ℝ ↦ fiberCZBadAtom F S I (y, z)) =
+      (fiberDyadicInterval I).indicator
+        (fun y ↦ F (y, z) - fiberDyadicIntervalAverage F I z) := by
+    funext y
+    by_cases hy : y ∈ fiberDyadicInterval I <;>
+      simp [fiberCZBadAtom, hy, hz]
+  have hconst : IntegrableOn (fun _ : ℝ ↦ 2 * B)
+      (fiberDyadicInterval I) volume := by
+    refine integrableOn_const (ne_of_lt hmeasure_lt_top) enorm_ne_top
+  have hpoint (y : ℝ) (hy : y ∈ fiberDyadicInterval I) :
+      |F (y, z) - fiberDyadicIntervalAverage F I z| ≤ 2 * B := by
+    calc
+      |F (y, z) - fiberDyadicIntervalAverage F I z| ≤
+          |F (y, z)| + |fiberDyadicIntervalAverage F I z| := by
+            simpa using (abs_sub_le (F (y, z)) 0
+              (fiberDyadicIntervalAverage F I z))
+      _ ≤ B + B := add_le_add (hFB y) havg
+      _ = 2 * B := by ring
+  have hmono :
+      (∫ y : ℝ in fiberDyadicInterval I,
+        |F (y, z) - fiberDyadicIntervalAverage F I z|) ≤
+      ∫ _y : ℝ in fiberDyadicInterval I, 2 * B := by
+    apply integral_mono_of_nonneg
+    · filter_upwards [ae_restrict_mem (measurableSet_fiberDyadicInterval I)] with y hy
+      exact abs_nonneg _
+    · exact hconst
+    · filter_upwards [ae_restrict_mem (measurableSet_fiberDyadicInterval I)] with y hy
+      exact hpoint y hy
+  calc
+    (∫ y : ℝ, |fiberCZBadAtom F S I (y, z)|) =
+        ∫ y : ℝ in fiberDyadicInterval I,
+          |F (y, z) - fiberDyadicIntervalAverage F I z| := by
+      have habs : (fun y : ℝ ↦ |fiberCZBadAtom F S I (y, z)|) =
+          (fiberDyadicInterval I).indicator
+            (fun y ↦ |F (y, z) - fiberDyadicIntervalAverage F I z|) := by
+        funext y
+        rw [congrFun hatom y]
+        by_cases hy : y ∈ fiberDyadicInterval I <;> simp [hy]
+      change (∫ y : ℝ, (fun y : ℝ ↦
+        |fiberCZBadAtom F S I (y, z)|) y) = _
+      rw [habs, integral_indicator (measurableSet_fiberDyadicInterval I)]
+    _ ≤ ∫ _y : ℝ in fiberDyadicInterval I, 2 * B := hmono
+    _ = 4 * B * fiberDyadicIntervalRadius I := by
+      rw [setIntegral_const, smul_eq_mul, hmeasure,
+        ← two_mul_fiberDyadicIntervalRadius]
+      ring
+
+/-- The finite bad field is literally the finite sum of the atoms used by
+the scale-tail bridge. -/
+theorem fiberCZBadField_apply_eq_finset_sum
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (yz : ℝ × Z) :
+    fiberCZBadField F T S yz =
+      ∑ I ∈ T, fiberCZBadAtom F S I yz := rfl
+
+/-- In active/transverse coordinates, the pulled-back finite bad field is
+the literal finite sum of its selected fiber atoms. -/
+theorem coordinateFiberBadField_join_eq_finset_sum
+    (m : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace m))
+    (y : ℝ) (z : TransverseSpace m) :
+    coordinateFiberBadField m f T S (coordinateJoin m (y, z)) =
+      ∑ I ∈ T, fiberCZBadAtom (coordinateFiberInput m f) S I (y, z) := by
+  simp only [coordinateFiberBadField, coordinateSplit_join,
+    fiberCZBadField_apply_eq_finset_sum]
+
+/-- Actual finite selected-atom exterior scale-tail bound.  The stopping
+data provides cancellation, support, mass, and interval disjointness; the
+only remaining analytic premises are kernel-line integrability and the
+chosen far region `D`. -/
+theorem selectedFiber_finset_fiberCZBadAtom_scaleTail_holder_cutoff_le :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ {Z : Type*} [MeasurableSpace Z]
+      (F : ℝ × Z → ℝ) (Zf : Set Z)
+      (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+      (z : Z) (T : Finset FiberDyadicInterval)
+      (i j : Fin 3) (u : E3) (α B : ℝ) (D : Set FiberDyadicLine),
+      0 < α → MeasurableSet D →
+      (∀ I ∈ T, z ∈ fiberDyadicSelectionSet Zf Astop H I) →
+      Integrable (fun y : ℝ ↦ F (y, z)) →
+      (∀ y : ℝ, |F (y, z)| ≤ B) →
+      (∀ q ∈ D, ∀ I ∈ T, ∀ t : ℝ, t ∈ Set.Ioi 0 →
+        Integrable (fun y ↦ fiberCZBadAtom F
+          (fiberDyadicSelectionSet Zf Astop H) I (y, z) *
+          kernelDilate (activeModelKernel i j u) (t ^ α)
+            (realToFiberDyadicLine.symm q - y))) →
+      (∀ q ∈ D, ∀ I ∈ T,
+        2 * fiberDyadicIntervalRadius I ≤
+          |realToFiberDyadicLine.symm q - fiberDyadicIntervalCenter I|) →
+      ∀ {p q : ℝ}, q.HolderConjugate p → 1 < q →
+        ∀ (g : FiberDyadicLine → ℂ), Measurable g →
+          ∀ a : ℝ, 0 ≤ a → (∀ q, ‖g q‖ ≤ a) →
+            MemLp g (ENNReal.ofReal q) volume →
+        (∫ q in D, ‖g q‖ *
+          (∑ I ∈ T, ∫ t : ℝ in Set.Ioi 0,
+            |∫ y : ℝ, fiberCZBadAtom F
+              (fiberDyadicSelectionSet Zf Astop H) I (y, z) *
+              kernelDilate (activeModelKernel i j u) (t ^ α)
+                (realToFiberDyadicLine.symm q - y)| * t⁻¹)) ≤
+          (C * sourceWeight u ^ 10 * (4 * B) * (α⁻¹ * (1 / 72))) *
+            (64 * (volume (Metric.ball (0 : FiberDyadicLine) 1)).toReal *
+              (∫ v in ⋃ I ∈ T, Ioo
+                (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+                (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I),
+                (dyadicBallMaximal 1 g (realToFiberDyadicLine v)) ^ q) ^ (1 / q) *
+              (volume (⋃ I ∈ T, Ioo
+                (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+                (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I))).toReal ^
+                  (1 / p)) := by
+  rcases finset_badFiber_scaleTail_holder_cutoff_le with ⟨C, hC, hmain⟩
+  refine ⟨C, hC, ?_⟩
+  intro Z _ F Zf Astop H z T i j u α B D hα hD hselected hF hFB
+    hkernel hfar p q hpq hq g hg a ha hga hgp
+  have hB : 0 ≤ B := by
+    exact le_trans (abs_nonneg (F (0, z))) (hFB 0)
+  have hA : 0 ≤ 4 * B := by positivity
+  apply hmain T i j u α (4 * B)
+    fiberDyadicIntervalCenter fiberDyadicIntervalRadius
+    (fun I y ↦ fiberCZBadAtom F
+      (fiberDyadicSelectionSet Zf Astop H) I (y, z)) D
+  · exact hα
+  · exact hA
+  · exact hD
+  · intro I hI
+    exact fiberDyadicIntervalRadius_pos I
+  · intro I hI
+    exact integrable_fiberCZBadAtom_of_fiberIntegrable F
+      (fiberDyadicSelectionSet Zf Astop H) I z hF
+  · intro q hq I hI t ht
+    exact hkernel q hq I hI t ht
+  · intro I hI
+    exact integral_fiberCZBadAtom_eq_zero F
+      (fiberDyadicSelectionSet Zf Astop H) I z
+      (hselected I hI) hF
+  · intro I hI y hy
+    exact fiberCZBadAtom_support_centered F
+      (fiberDyadicSelectionSet Zf Astop H) I y z hy
+  · intro q hq I hI
+    exact hfar q hq I hI
+  · intro I hI
+    exact integral_abs_fiberCZBadAtom_le_of_bound F
+      (fiberDyadicSelectionSet Zf Astop H) I z
+      (hselected I hI) B hFB
+  · exact pairwiseDisjoint_selectedFiber_centeredOpenIntervals
+      Zf Astop H z T hselected
+  · exact hpq
+  · exact hq
+  · exact hg
+  · exact ha
+  · exact hga
+  · exact hgp
+
+/-! ## Countable summation of one-dimensional interval tails
+
+Source: `lem:interval_tails`, blueprint lines 2358--2381.  The finite
+pairwise-disjoint package above is extended here to the countable stopping
+families produced by `lem:fiber_cz`.  This is the `p = 1` clause: each
+doubled-radius summand has exact mass `2|I|`, so a summable radius family
+gives an integrable tail with the exact total mass.
+-/
+
+/-- The countable sum of canonical doubled-radius interval tails.  This is
+the fiberwise tail function `h_m(\cdot, z)` of the source, written with the
+canonical center/radius data of the selected intervals. -/
+noncomputable def intervalTailTsum
+    {ι : Type*} [Countable ι] (c r : ι → ℝ) : ℝ → ℝ :=
+  fun x ↦ ∑' i : ι, intervalTail (c i) (2 * r i) x
+
+/-- Pointwise nonnegativity of a countable interval-tail sum. -/
+theorem intervalTailTsum_nonneg
+    {ι : Type*} [Countable ι] (c r : ι → ℝ) (x : ℝ) :
+    0 ≤ intervalTailTsum c r x := by
+  unfold intervalTailTsum
+  apply tsum_nonneg
+  intro i
+  exact intervalTail_nonneg _ _ _
+
+/-- Summable positive radii make the countable doubled-radius tail sum
+integrable. -/
+theorem integrable_intervalTailTsum
+    {ι : Type*} [Countable ι] (c r : ι → ℝ)
+    (hr : ∀ i, 0 < r i) (hsum : Summable r) :
+    Integrable (intervalTailTsum c r) := by
+  let F : ι → ℝ → ℝ := fun i x ↦ intervalTail (c i) (2 * r i) x
+  have hF_integrable (i : ι) : Integrable (F i) := by
+    dsimp only [F]
+    exact integrable_intervalTail (c i) (2 * r i)
+      (mul_pos (by norm_num) (hr i))
+  have hF_norm_integral (i : ι) :
+      (∫ x : ℝ, ‖F i x‖) = (2 * intervalTailMass) * r i := by
+    calc
+      (∫ x : ℝ, ‖F i x‖) = ∫ x : ℝ, F i x := by
+        apply integral_congr_ae
+        filter_upwards with x
+        rw [Real.norm_eq_abs, abs_of_nonneg]
+        exact intervalTail_nonneg _ _ _
+      _ = (2 * r i) * intervalTailMass := by
+        dsimp only [F]
+        rw [integral_intervalTail (c i) (2 * r i)
+          (mul_pos (by norm_num) (hr i))]
+      _ = (2 * intervalTailMass) * r i := by ring
+  have hF_summable_integral_norm : Summable fun i : ι =>
+      ∫ x : ℝ, ‖F i x‖ := by
+    have hbase : Summable fun i : ι => (2 * intervalTailMass) * r i :=
+      hsum.mul_left _
+    exact hbase.congr fun i ↦ (hF_norm_integral i).symm
+  have hF_enorm_sum_lt_top :
+      (∑' i : ι, ∫⁻ x : ℝ, ‖F i x‖ₑ) < ⊤ := by
+    calc
+      (∑' i : ι, ∫⁻ x : ℝ, ‖F i x‖ₑ) =
+          ∑' i : ι, ENNReal.ofReal (∫ x : ℝ, ‖F i x‖) := by
+        apply tsum_congr
+        intro i
+        exact (ofReal_integral_norm_eq_lintegral_enorm (hF_integrable i)).symm
+      _ < ⊤ := hF_summable_integral_norm.tsum_ofReal_lt_top
+  have htsum_measurable : AEStronglyMeasurable
+      (fun x : ℝ ↦ ∑' i : ι, F i x) volume :=
+    AEStronglyMeasurable.tsum fun i ↦ (hF_integrable i).aestronglyMeasurable
+  have htsum_integrable : Integrable (fun x : ℝ ↦ ∑' i : ι, F i x) := by
+    refine ⟨htsum_measurable, ?_⟩
+    rw [hasFiniteIntegral_iff_enorm]
+    calc
+      ∫⁻ x : ℝ, ‖∑' i : ι, F i x‖ₑ ≤
+          ∫⁻ x : ℝ, ∑' i : ι, ‖F i x‖ₑ :=
+        lintegral_mono fun x ↦ enorm_tsum_le_tsum_enorm
+      _ = ∑' i : ι, ∫⁻ x : ℝ, ‖F i x‖ₑ :=
+        lintegral_tsum fun i ↦ (hF_integrable i).aestronglyMeasurable.enorm
+      _ < ⊤ := hF_enorm_sum_lt_top
+  change Integrable (fun x : ℝ ↦ ∑' i : ι, F i x)
+  exact htsum_integrable
+
+/-- The exact mass of a countably summable doubled-radius tail family.  With
+`r i` the half-length of the `i`th selected interval this is the source's
+`p = 1` interval-tail estimate, with the constant made explicit. -/
+theorem integral_intervalTailTsum
+    {ι : Type*} [Countable ι] (c r : ι → ℝ)
+    (hr : ∀ i, 0 < r i) (hsum : Summable r) :
+    (∫ x : ℝ, intervalTailTsum c r x) =
+      (2 * intervalTailMass) * ∑' i : ι, r i := by
+  let F : ι → ℝ → ℝ := fun i x ↦ intervalTail (c i) (2 * r i) x
+  have hF_integrable (i : ι) : Integrable (F i) := by
+    dsimp only [F]
+    exact integrable_intervalTail (c i) (2 * r i)
+      (mul_pos (by norm_num) (hr i))
+  have hF_norm_integral (i : ι) :
+      (∫ x : ℝ, ‖F i x‖) = (2 * intervalTailMass) * r i := by
+    calc
+      (∫ x : ℝ, ‖F i x‖) = ∫ x : ℝ, F i x := by
+        apply integral_congr_ae
+        filter_upwards with x
+        rw [Real.norm_eq_abs, abs_of_nonneg]
+        exact intervalTail_nonneg _ _ _
+      _ = (2 * r i) * intervalTailMass := by
+        dsimp only [F]
+        rw [integral_intervalTail (c i) (2 * r i)
+          (mul_pos (by norm_num) (hr i))]
+      _ = (2 * intervalTailMass) * r i := by ring
+  have hF_summable_integral_norm : Summable fun i : ι =>
+      ∫ x : ℝ, ‖F i x‖ := by
+    have hbase : Summable fun i : ι => (2 * intervalTailMass) * r i :=
+      hsum.mul_left _
+    exact hbase.congr fun i ↦ (hF_norm_integral i).symm
+  have htsum :
+      (∫ x : ℝ, ∑' i : ι, F i x) =
+        ∑' i : ι, ∫ x : ℝ, F i x :=
+    (MeasureTheory.integral_tsum_of_summable_integral_norm
+      hF_integrable hF_summable_integral_norm).symm
+  calc
+    (∫ x : ℝ, intervalTailTsum c r x) =
+        ∫ x : ℝ, ∑' i : ι, F i x := by rfl
+    _ = ∑' i : ι, ∫ x : ℝ, F i x := htsum
+    _ = ∑' i : ι, (2 * intervalTailMass) * r i := by
+      apply tsum_congr
+      intro i
+      calc
+        (∫ x : ℝ, F i x) = (2 * r i) * intervalTailMass := by
+          dsimp only [F]
+          rw [integral_intervalTail (c i) (2 * r i)
+            (mul_pos (by norm_num) (hr i))]
+        _ = (2 * intervalTailMass) * r i := by ring
+    _ = (2 * intervalTailMass) * ∑' i : ι, r i := by
+      rw [tsum_mul_left]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Metric Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## One-dimensional dyadic differentiation
+
+Source: `lem:fiber_cz`, blueprint lines 2258--2357, the step "Outside
+`⋃ 𝓘_z`, all dyadic interval averages containing `y` are at most `H`;
+dyadic differentiation gives `|f(y,z)|^p ≤ H` for almost every such `y`".
+-/
+
+/-- The literal fiber dyadic interval of scale `k` containing `y`. -/
+def fiberDyadicIndexAt (k : ℤ) (y : ℝ) : FiberDyadicInterval :=
+  (k, ⌊y / (2 : ℝ) ^ k⌋)
+
+theorem fiberDyadicIndexAt_fst (k : ℤ) (y : ℝ) :
+    (fiberDyadicIndexAt k y).1 = k := rfl
+
+theorem mem_fiberDyadicInterval_fiberDyadicIndexAt (k : ℤ) (y : ℝ) :
+    y ∈ fiberDyadicInterval (fiberDyadicIndexAt k y) := by
+  have hc : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+  constructor
+  · rw [fiberDyadicIndexAt]
+    simpa only [ge_iff_le, ← le_div_iff₀ hc] using Int.floor_le (y / (2 : ℝ) ^ k)
+  · rw [fiberDyadicIndexAt]
+    push_cast
+    rw [← div_lt_iff₀ hc]
+    exact Int.lt_floor_add_one (y / (2 : ℝ) ^ k)
+
+/-- A literal fiber dyadic interval is the half-open midpoint/radius
+interval. -/
+theorem fiberDyadicInterval_eq_Ico_center_radius (I : FiberDyadicInterval) :
+    fiberDyadicInterval I =
+      Ico (fiberDyadicIntervalCenter I - fiberDyadicIntervalRadius I)
+        (fiberDyadicIntervalCenter I + fiberDyadicIntervalRadius I) := by
+  rw [fiberDyadicInterval_center_sub_radius, fiberDyadicInterval_center_add_radius]
+  rfl
+
+/-- The closed ball with the dyadic midpoint and half-length agrees with the
+literal dyadic interval up to a null set. -/
+theorem fiberDyadicInterval_ae_eq_closedBall (I : FiberDyadicInterval) :
+    fiberDyadicInterval I =ᵐ[volume]
+      closedBall (fiberDyadicIntervalCenter I) (fiberDyadicIntervalRadius I) := by
+  rw [fiberDyadicInterval_eq_Ico_center_radius, Real.closedBall_eq_Icc]
+  exact Ico_ae_eq_Icc
+
+theorem volume_closedBall_fiberDyadicInterval (I : FiberDyadicInterval) :
+    volume (closedBall (fiberDyadicIntervalCenter I)
+        (fiberDyadicIntervalRadius I)) =
+      ENNReal.ofReal (fiberDyadicIntervalLength I) := by
+  rw [Real.volume_closedBall, two_mul_fiberDyadicIntervalRadius]
+
+/-- The Lebesgue average over the dyadic closed ball is exactly the source's
+dyadic interval average. -/
+theorem setAverage_closedBall_eq_fiberDyadicAverage
+    (g : ℝ → ℝ) (I : FiberDyadicInterval) :
+    (⨍ u in closedBall (fiberDyadicIntervalCenter I)
+        (fiberDyadicIntervalRadius I), g u) =
+      (fiberDyadicIntervalLength I)⁻¹ * ∫ u in fiberDyadicInterval I, g u := by
+  have hlen : (0 : ℝ) < fiberDyadicIntervalLength I :=
+    fiberDyadicIntervalLength_pos I
+  rw [setAverage_eq, MeasureTheory.measureReal_def,
+    volume_closedBall_fiberDyadicInterval,
+    ENNReal.toReal_ofReal hlen.le,
+    setIntegral_congr_set (fiberDyadicInterval_ae_eq_closedBall I).symm]
+  simp [smul_eq_mul]
+
+/-- **One-dimensional dyadic differentiation.**  If every literal fiber
+dyadic interval containing `y` has `g`-average at most `H`, then
+`g y ≤ H` for almost every such `y`. -/
+theorem ae_le_of_forall_fiberDyadicAverage_le
+    (g : ℝ → ℝ) (hg : LocallyIntegrable g volume) (H : ℝ) :
+    ∀ᵐ y : ℝ, (∀ I : FiberDyadicInterval, y ∈ fiberDyadicInterval I →
+        (fiberDyadicIntervalLength I)⁻¹ * ∫ u in fiberDyadicInterval I, g u ≤ H) →
+      g y ≤ H := by
+  filter_upwards [IsUnifLocDoublingMeasure.ae_tendsto_average
+    (volume : Measure ℝ) hg 1] with y hy hall
+  set w : ℕ → ℝ := fun j ↦
+    fiberDyadicIntervalCenter (fiberDyadicIndexAt (-(j : ℤ)) y) with hw
+  set δ : ℕ → ℝ := fun j ↦
+    fiberDyadicIntervalRadius (fiberDyadicIndexAt (-(j : ℤ)) y) with hδ
+  have hδeq : ∀ j : ℕ, δ j = (1 / 2) * (1 / 2 : ℝ) ^ j := by
+    intro j
+    simp only [hδ, fiberDyadicIntervalRadius, fiberDyadicIntervalLength,
+      fiberDyadicIndexAt]
+    rw [zpow_neg, zpow_natCast]
+    rw [show ((1 : ℝ) / 2) ^ j = ((2 : ℝ) ^ j)⁻¹ by
+      rw [one_div, inv_pow]]
+    ring
+  have hδlim : Tendsto δ atTop (𝓝[>] (0 : ℝ)) := by
+    rw [tendsto_nhdsWithin_iff]
+    constructor
+    · have : Tendsto (fun j : ℕ ↦ (1 / 2) * (1 / 2 : ℝ) ^ j) atTop (𝓝 ((1 / 2) * 0)) :=
+        (tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num)).const_mul _
+      simpa only [mul_zero, ← hδeq] using this
+    · filter_upwards with j
+      exact fiberDyadicIntervalRadius_pos _
+  have hxmem : ∀ᶠ j in atTop, y ∈ closedBall (w j) (1 * δ j) := by
+    filter_upwards with j
+    show y ∈ closedBall
+      (fiberDyadicIntervalCenter (fiberDyadicIndexAt (-(j : ℤ)) y))
+      (1 * fiberDyadicIntervalRadius (fiberDyadicIndexAt (-(j : ℤ)) y))
+    have hmem := mem_fiberDyadicInterval_fiberDyadicIndexAt (-(j : ℤ)) y
+    rw [fiberDyadicInterval_eq_Ico_center_radius] at hmem
+    rw [one_mul, Real.closedBall_eq_Icc]
+    exact Ico_subset_Icc_self hmem
+  have hlim := hy w δ hδlim hxmem
+  refine le_of_tendsto hlim ?_
+  filter_upwards with j
+  show (⨍ u in closedBall
+      (fiberDyadicIntervalCenter (fiberDyadicIndexAt (-(j : ℤ)) y))
+      (fiberDyadicIntervalRadius (fiberDyadicIndexAt (-(j : ℤ)) y)), g u) ≤ H
+  rw [setAverage_closedBall_eq_fiberDyadicAverage]
+  exact hall _ (mem_fiberDyadicInterval_fiberDyadicIndexAt (-(j : ℤ)) y)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Metric Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Source stopping existence for the fiber decomposition
+
+Source: `lem:fiber_cz`, blueprint lines 2258--2357, the step "On `Z_f`, if
+`J` runs through growing dyadic ancestors then `A_J(z) → 0`; thus every
+interval with average above `H` lies in a maximal one".
+-/
+
+/-- A literal fiber dyadic interval is determined by its scale together with
+any of its points. -/
+theorem fiberDyadicIndexAt_eq_of_mem
+    (J : FiberDyadicInterval) (y : ℝ) (hy : y ∈ fiberDyadicInterval J) :
+    J = fiberDyadicIndexAt J.1 y := by
+  have hc : (0 : ℝ) < (2 : ℝ) ^ J.1 := zpow_pos (by norm_num) J.1
+  obtain ⟨hle, hlt⟩ := hy
+  have hfloor : ⌊y / (2 : ℝ) ^ J.1⌋ = J.2 := by
+    rw [Int.floor_eq_iff]
+    refine ⟨(le_div_iff₀ hc).2 hle, ?_⟩
+    rw [div_lt_iff₀ hc]
+    push_cast at hlt ⊢
+    linarith
+  exact Prod.ext rfl hfloor.symm
+
+/-- A strict dyadic ancestor has a strictly larger scale. -/
+theorem fiberDyadicProperAncestor_scale_lt
+    (I J : FiberDyadicInterval) (h : fiberDyadicProperAncestor I J) :
+    I.1 < J.1 := by
+  rcases h with ⟨hsub, hne⟩
+  have hmeas : volume (fiberDyadicInterval I) ≤ volume (fiberDyadicInterval J) :=
+    measure_mono hsub
+  rw [measure_fiberDyadicInterval, measure_fiberDyadicInterval] at hmeas
+  have hlen : fiberDyadicIntervalLength I ≤ fiberDyadicIntervalLength J := by
+    have := (ENNReal.ofReal_le_ofReal_iff (fiberDyadicIntervalLength_pos J).le).1 hmeas
+    exact this
+  have hscale : I.1 ≤ J.1 := by
+    by_contra hcon
+    push_neg at hcon
+    have : fiberDyadicIntervalLength J < fiberDyadicIntervalLength I := by
+      simpa [fiberDyadicIntervalLength] using
+        (zpow_lt_zpow_right₀ (by norm_num : (1:ℝ) < 2) hcon)
+    linarith
+  rcases lt_or_eq_of_le hscale with h | h
+  · exact h
+  · exfalso
+    -- same scale and overlapping forces equality
+    have hpt : ((I.2 : ℝ) * (2 : ℝ) ^ I.1) ∈ fiberDyadicInterval I := by
+      refine ⟨le_rfl, ?_⟩
+      have hc : (0 : ℝ) < (2 : ℝ) ^ I.1 := zpow_pos (by norm_num) I.1
+      push_cast
+      nlinarith
+    have hptJ : ((I.2 : ℝ) * (2 : ℝ) ^ I.1) ∈ fiberDyadicInterval J := hsub hpt
+    have hI := fiberDyadicIndexAt_eq_of_mem I _ hpt
+    have hJ := fiberDyadicIndexAt_eq_of_mem J _ hptJ
+    rw [← h] at hJ
+    exact hne (by rw [hI, hJ])
+
+/-- A nonnegative fiber's dyadic average is controlled by its total mass. -/
+theorem fiberDyadicIntervalAverage_le_inv_length_mul_integral
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (I : FiberDyadicInterval)
+    (z : Z) (hF : Integrable (fun u : ℝ ↦ F (u, z)))
+    (hFnonneg : ∀ u : ℝ, 0 ≤ F (u, z)) :
+    fiberDyadicIntervalAverage F I z ≤
+      (fiberDyadicIntervalLength I)⁻¹ * ∫ u : ℝ, F (u, z) := by
+  rw [fiberDyadicIntervalAverage_eq_setIntegral]
+  apply mul_le_mul_of_nonneg_left _
+    (inv_nonneg.2 (fiberDyadicIntervalLength_pos I).le)
+  exact setIntegral_le_integral hF (Filter.Eventually.of_forall hFnonneg)
+
+/-- **Stopping existence.**  On a fiber of finite mass, a point covered by no
+selected interval has every dyadic average at most `H`. -/
+theorem fiberDyadicAverage_le_of_forall_not_mem_selected
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z) (H : ℝ)
+    (hH : 0 < H) (y : ℝ) (z : Z) (hz : z ∈ Zf)
+    (hF : Integrable (fun u : ℝ ↦ F (u, z)))
+    (hFnonneg : ∀ u : ℝ, 0 ≤ F (u, z))
+    (hy : ∀ I : FiberDyadicInterval,
+      z ∈ fiberDyadicSelectionSet Zf (fiberDyadicIntervalAverage F) H I →
+      y ∉ fiberDyadicInterval I)
+    (k : ℤ) :
+    fiberDyadicIntervalAverage F (fiberDyadicIndexAt k y) z ≤ H := by
+  by_contra hcon
+  push_neg at hcon
+  set A : FiberDyadicInterval → Z → ℝ := fiberDyadicIntervalAverage F with hA
+  set m : ℤ → ℝ := fun j ↦ A (fiberDyadicIndexAt j y) z with hm
+  -- large scales have small averages
+  have hmass : 0 ≤ ∫ u : ℝ, F (u, z) :=
+    integral_nonneg hFnonneg
+  obtain ⟨N, hN⟩ : ∃ N : ℕ, (∫ u : ℝ, F (u, z)) / H < (2 : ℝ) ^ (k + (N : ℤ)) := by
+    obtain ⟨N, hN⟩ := pow_unbounded_of_one_lt
+      (max 0 ((∫ u : ℝ, F (u, z)) / H) * (2 : ℝ) ^ (-k)) (by norm_num : (1:ℝ) < 2)
+    refine ⟨N, ?_⟩
+    have h2k : (0 : ℝ) < (2 : ℝ) ^ (-k) := zpow_pos (by norm_num) _
+    have : max 0 ((∫ u : ℝ, F (u, z)) / H) * (2 : ℝ) ^ (-k) < (2 : ℝ) ^ (N : ℕ) := hN
+    have hzk : (2 : ℝ) ^ (k + (N : ℤ)) = (2 : ℝ) ^ k * (2 : ℝ) ^ (N : ℕ) := by
+      rw [zpow_add₀ (by norm_num : (2:ℝ) ≠ 0), zpow_natCast]
+    rw [hzk]
+    have hk : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+    have hinv : (2 : ℝ) ^ (-k) = ((2 : ℝ) ^ k)⁻¹ := by rw [zpow_neg]
+    rw [hinv] at this
+    have := (div_lt_iff₀ hk).1 (by
+      simpa [div_eq_mul_inv] using this)
+    calc (∫ u : ℝ, F (u, z)) / H
+        ≤ max 0 ((∫ u : ℝ, F (u, z)) / H) := le_max_right _ _
+      _ < (2 : ℝ) ^ (N : ℕ) * (2 : ℝ) ^ k := this
+      _ = (2 : ℝ) ^ k * (2 : ℝ) ^ (N : ℕ) := by ring
+  have hsmall : ∀ j : ℕ, N ≤ j → m (k + (j : ℤ)) ≤ H := by
+    intro j hj
+    have hlen : fiberDyadicIntervalLength (fiberDyadicIndexAt (k + (j : ℤ)) y)
+        = (2 : ℝ) ^ (k + (j : ℤ)) := rfl
+    have hbig : (2 : ℝ) ^ (k + (N : ℤ)) ≤ (2 : ℝ) ^ (k + (j : ℤ)) := by
+      apply zpow_le_zpow_right₀ (by norm_num : (1:ℝ) ≤ 2)
+      omega
+    have hpos : (0 : ℝ) < (2 : ℝ) ^ (k + (j : ℤ)) := zpow_pos (by norm_num) _
+    have hle := fiberDyadicIntervalAverage_le_inv_length_mul_integral
+      F (fiberDyadicIndexAt (k + (j : ℤ)) y) z hF hFnonneg
+    rw [hlen] at hle
+    refine hle.trans ?_
+    rw [inv_mul_le_iff₀ hpos]
+    have : (∫ u : ℝ, F (u, z)) / H < (2 : ℝ) ^ (k + (j : ℤ)) := lt_of_lt_of_le hN hbig
+    rw [div_lt_iff₀ hH] at this
+    nlinarith
+  -- the finite nonempty set of exceeding offsets
+  set S : Finset ℕ := (Finset.range (N + 1)).filter (fun j ↦ H < m (k + (j : ℤ)))
+    with hS
+  have h0S : (0 : ℕ) ∈ S := by
+    rw [hS, Finset.mem_filter]
+    refine ⟨Finset.mem_range.2 (by omega), ?_⟩
+    simpa [hm, hA] using hcon
+  have hSne : S.Nonempty := ⟨0, h0S⟩
+  set M : ℕ := S.max' hSne with hM
+  have hMS : M ∈ S := S.max'_mem hSne
+  have hMlt : H < m (k + (M : ℤ)) := (Finset.mem_filter.1 hMS).2
+  have habove : ∀ j : ℕ, M < j → m (k + (j : ℤ)) ≤ H := by
+    intro j hj
+    by_cases hjN : j ≤ N
+    · by_contra hcon2
+      push_neg at hcon2
+      have : j ∈ S := by
+        rw [hS, Finset.mem_filter]
+        exact ⟨Finset.mem_range.2 (by omega), hcon2⟩
+      exact absurd (S.le_max' j this) (by omega)
+    · exact hsmall j (by omega)
+  -- the maximal interval is selected
+  set I : FiberDyadicInterval := fiberDyadicIndexAt (k + (M : ℤ)) y with hI
+  have hIsel : z ∈ fiberDyadicSelectionSet Zf A H I := by
+    refine ⟨⟨hz, hMlt⟩, ?_⟩
+    refine Set.mem_iInter.2 fun J ↦ Set.mem_iInter.2 fun hJ ↦ ?_
+    have hscale : I.1 < J.1 := fiberDyadicProperAncestor_scale_lt I J hJ
+    have hIfst : I.1 = k + (M : ℤ) := rfl
+    have hyJ : y ∈ fiberDyadicInterval J :=
+      hJ.1 (mem_fiberDyadicInterval_fiberDyadicIndexAt (k + (M : ℤ)) y)
+    have hJeq : J = fiberDyadicIndexAt J.1 y := fiberDyadicIndexAt_eq_of_mem J y hyJ
+    obtain ⟨j, hj⟩ : ∃ j : ℕ, J.1 = k + (j : ℤ) ∧ M < j := by
+      refine ⟨(J.1 - k).toNat, ?_, ?_⟩
+      · have : 0 ≤ J.1 - k := by omega
+        omega
+      · omega
+    show A J z ≤ H
+    rw [hJeq, hj.1]
+    exact habove _ hj.2
+  exact hy I hIsel (mem_fiberDyadicInterval_fiberDyadicIndexAt (k + (M : ℤ)) y)
+
+/-! ### Jensen's inequality for the fiber dyadic average -/
+
+/-- Jensen/Hölder on one dyadic cell: the modulus of the fiber average is at
+most the `p`-th root of the average of the `p`-th power.  This is the source
+step `|f_I(z)|^p ≤ A_I(z)` of `lem:fiber_cz`. -/
+theorem abs_fiberDyadicIntervalAverage_le_rpow
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (I : FiberDyadicInterval) (z : Z) {p : ℝ} (hp : 1 ≤ p)
+    (hmeas : AEStronglyMeasurable (fun u : ℝ ↦ F (u, z))
+      (volume.restrict (fiberDyadicInterval I)))
+    (hFp : IntegrableOn (fun u : ℝ ↦ |F (u, z)| ^ p)
+      (fiberDyadicInterval I) volume) :
+    |fiberDyadicIntervalAverage F I z| ≤
+      (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p) I z) ^ (1 / p) := by
+  have hlen : (0 : ℝ) < fiberDyadicIntervalLength I :=
+    fiberDyadicIntervalLength_pos I
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  set L : ℝ := fiberDyadicIntervalLength I with hL
+  have hmeasure : volume (fiberDyadicInterval I) = ENNReal.ofReal L :=
+    measure_fiberDyadicInterval I
+  have habs : |fiberDyadicIntervalAverage F I z| ≤
+      L⁻¹ * ∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| := by
+    rw [fiberDyadicIntervalAverage_eq_setIntegral, abs_mul,
+      abs_of_nonneg (inv_nonneg.2 hlen.le)]
+    apply mul_le_mul_of_nonneg_left _ (inv_nonneg.2 hlen.le)
+    simpa only [Real.norm_eq_abs] using
+      norm_integral_le_integral_norm (μ := volume.restrict (fiberDyadicInterval I))
+        (fun u : ℝ ↦ F (u, z))
+  have hRHS : (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p) I z) =
+      L⁻¹ * ∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| ^ p := by
+    rw [fiberDyadicIntervalAverage_eq_setIntegral]
+  have hintp_nonneg : (0 : ℝ) ≤ ∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| ^ p :=
+    integral_nonneg fun u ↦ Real.rpow_nonneg (abs_nonneg _) p
+  rcases eq_or_lt_of_le hp with hp1 | hp1
+  · rw [hRHS, ← hp1]
+    simp only [Real.rpow_one, div_one]
+    exact habs
+  · set q : ℝ := p.conjExponent with hq
+    have hpq : p.HolderConjugate q := Real.HolderConjugate.conjExponent hp1
+    have hq0 : (0 : ℝ) < q := hpq.symm.pos
+    have hmeasAbs : AEStronglyMeasurable (fun u : ℝ ↦ |F (u, z)|)
+        (volume.restrict (fiberDyadicInterval I)) :=
+      continuous_abs.comp_aestronglyMeasurable hmeas
+    have hmemp : MemLp (fun u : ℝ ↦ |F (u, z)|) (ENNReal.ofReal p)
+        (volume.restrict (fiberDyadicInterval I)) := by
+      rw [← integrable_norm_rpow_iff hmeasAbs
+        (ENNReal.ofReal_pos.2 hp0).ne' ENNReal.ofReal_ne_top,
+        ENNReal.toReal_ofReal hp0.le]
+      have hFp' : Integrable (fun x : ℝ ↦ |F (x, z)| ^ p)
+        (volume.restrict (fiberDyadicInterval I)) := hFp
+      simpa only [Real.norm_eq_abs, abs_abs] using hFp'
+    haveI : IsFiniteMeasure (volume.restrict (fiberDyadicInterval I)) := by
+      constructor
+      rw [Measure.restrict_apply_univ, hmeasure]
+      exact ENNReal.ofReal_lt_top
+    have hmemq : MemLp (fun _ : ℝ ↦ (1 : ℝ)) (ENNReal.ofReal q)
+        (volume.restrict (fiberDyadicInterval I)) := memLp_const 1
+    have hholder := integral_mul_le_Lp_mul_Lq_of_nonneg
+      (μ := volume.restrict (fiberDyadicInterval I)) hpq
+      (f := fun u : ℝ ↦ |F (u, z)|) (g := fun _ : ℝ ↦ (1 : ℝ))
+      (Filter.Eventually.of_forall fun u ↦ abs_nonneg _)
+      (Filter.Eventually.of_forall fun _ ↦ zero_le_one) hmemp hmemq
+    simp only [mul_one, Real.one_rpow, integral_const, smul_eq_mul,
+      MeasureTheory.measureReal_def, Measure.restrict_apply_univ, hmeasure,
+      ENNReal.toReal_ofReal hlen.le] at hholder
+    have hinv : 1 / p + 1 / q = 1 := by
+      simpa only [one_div] using hpq.inv_add_inv_eq_one
+    have hneg : L ^ (-1 : ℝ) = L⁻¹ := by
+      rw [Real.rpow_neg hlen.le, Real.rpow_one]
+    have hLpow : L⁻¹ * L ^ (1 / q) = (L ^ (1 / p))⁻¹ := by
+      rw [← hneg, ← Real.rpow_add hlen, ← Real.rpow_neg hlen.le]
+      congr 1
+      linarith
+    calc |fiberDyadicIntervalAverage F I z|
+        ≤ L⁻¹ * ∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| := habs
+      _ ≤ L⁻¹ * ((∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| ^ p) ^ (1 / p) *
+            L ^ (1 / q)) :=
+          mul_le_mul_of_nonneg_left hholder (inv_nonneg.2 hlen.le)
+      _ = (L⁻¹ * L ^ (1 / q)) *
+            (∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| ^ p) ^ (1 / p) := by
+          ring
+      _ = (L ^ (1 / p))⁻¹ *
+            (∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| ^ p) ^ (1 / p) := by
+          rw [hLpow]
+      _ = (L⁻¹ * ∫ u : ℝ in fiberDyadicInterval I, |F (u, z)| ^ p) ^ (1 / p) := by
+          rw [Real.mul_rpow (inv_nonneg.2 hlen.le) hintp_nonneg,
+            Real.inv_rpow hlen.le]
+      _ = (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p) I z) ^ (1 / p) := by
+          rw [hRHS]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Metric Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The source good-part bound of the fiber decomposition
+
+Source: `lem:fiber_cz`, blueprint lines 2258--2357, the clauses
+`|g| ≤ (2H)^{1/p}` almost everywhere and, for finite `P ≥ p`,
+`‖g‖_P ≤ (2H)^{1/p-1/P}‖f‖_p^{p/P}`.
+-/
+
+/-- The dyadic average of a nonnegative fiber field is nonnegative. -/
+theorem fiberDyadicIntervalAverage_nonneg_of_nonneg
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (I : FiberDyadicInterval) (z : Z) (hF : ∀ u : ℝ, 0 ≤ F (u, z)) :
+    0 ≤ fiberDyadicIntervalAverage F I z := by
+  rw [fiberDyadicIntervalAverage_eq_setIntegral]
+  exact mul_nonneg (inv_nonneg.2 (fiberDyadicIntervalLength_pos I).le)
+    (integral_nonneg fun u ↦ hF u)
+
+/-- **Good-part bound on one fiber.**  With the source's stopping data at
+height `H`, the countable good field is bounded by `(2H)^{1/p}` almost
+everywhere on each fiber of finite `p`-mass. -/
+theorem ae_abs_fiberDyadicCountableGoodField_le
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    {p : ℝ} (hp : 1 ≤ p) {H : ℝ} (hH : 0 < H) (z : Z) (hz : z ∈ Zf)
+    (hmeas : Measurable F)
+    (hFp : Integrable (fun u : ℝ ↦ |F (u, z)| ^ p)) :
+    ∀ᵐ y : ℝ, |fiberDyadicCountableGoodField F Zf
+        (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p)) H (y, z)|
+          ≤ (2 * H) ^ (1 / p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hpinv : (0 : ℝ) ≤ 1 / p := by positivity
+  set Fp : ℝ × Z → ℝ := fun yz ↦ |F yz| ^ p with hFpdef
+  set A : FiberDyadicInterval → Z → ℝ := fiberDyadicIntervalAverage Fp with hA
+  have hFp_nonneg : ∀ u : ℝ, 0 ≤ Fp (u, z) := fun u ↦
+    Real.rpow_nonneg (abs_nonneg _) p
+  have hFp_int : Integrable (fun u : ℝ ↦ Fp (u, z)) := hFp
+  have hmeasfib : Measurable (fun u : ℝ ↦ F (u, z)) :=
+    hmeas.comp (measurable_id.prodMk measurable_const)
+  have hdiff := ae_le_of_forall_fiberDyadicAverage_le
+    (fun u : ℝ ↦ Fp (u, z)) hFp_int.locallyIntegrable H
+  filter_upwards [hdiff] with y hy
+  by_cases hex : ∃ I : FiberDyadicInterval,
+      (y, z) ∈ fiberDyadicInterval I ×ˢ fiberDyadicSelectionSet Zf A H I
+  · obtain ⟨I, hI⟩ := hex
+    have hgood : fiberDyadicCountableGoodField F Zf A H (y, z)
+        = fiberDyadicIntervalAverage F I z := by
+      unfold fiberDyadicCountableGoodField
+      simp only [Pi.sub_apply]
+      rw [fiberDyadicCountableBadField_eq_atom_of_mem F Zf A H I (y, z) hI]
+      unfold fiberCZBadAtom
+      rw [Set.indicator_of_mem hI]
+      ring
+    rw [hgood]
+    have hjensen := abs_fiberDyadicIntervalAverage_le_rpow F I z hp
+      hmeasfib.aestronglyMeasurable hFp.integrableOn
+    refine hjensen.trans (Real.rpow_le_rpow ?_ ?_ hpinv)
+    · exact fiberDyadicIntervalAverage_nonneg_of_nonneg Fp I z hFp_nonneg
+    · exact (fiberDyadicSelection_average_lt_and_le_two_of_nonneg Zf Fp H I z
+        hFp_int hFp_nonneg hI.2).2
+  · push_neg at hex
+    have hnotsel : ∀ J : FiberDyadicInterval,
+        z ∈ fiberDyadicSelectionSet Zf A H J → y ∉ fiberDyadicInterval J := by
+      intro J hsel hyJ
+      exact hex J ⟨hyJ, hsel⟩
+    have hgood : fiberDyadicCountableGoodField F Zf A H (y, z) = F (y, z) := by
+      apply fiberDyadicCountableGoodField_eq_self_outside_exceptional
+      intro hmem
+      rcases Set.mem_iUnion.mp hmem with ⟨I, hI⟩
+      exact hex I hI
+    rw [hgood]
+    have hall : ∀ I : FiberDyadicInterval, y ∈ fiberDyadicInterval I →
+        (fiberDyadicIntervalLength I)⁻¹ *
+          ∫ u : ℝ in fiberDyadicInterval I, Fp (u, z) ≤ H := by
+      intro I hyI
+      have hstop := fiberDyadicAverage_le_of_forall_not_mem_selected
+        Fp Zf H hH y z hz hFp_int hFp_nonneg hnotsel I.1
+      rw [← fiberDyadicIndexAt_eq_of_mem I y hyI] at hstop
+      rw [← fiberDyadicIntervalAverage_eq_setIntegral]
+      exact hstop
+    have hpt : Fp (y, z) ≤ H := hy hall
+    have hfy : |F (y, z)| ≤ H ^ (1 / p) := by
+      have hid : |F (y, z)| = (Fp (y, z)) ^ (1 / p) := by
+        rw [hFpdef, ← Real.rpow_mul (abs_nonneg _)]
+        rw [mul_one_div_cancel hp0.ne', Real.rpow_one]
+      rw [hid]
+      exact Real.rpow_le_rpow (hFp_nonneg y) hpt hpinv
+    refine hfy.trans (Real.rpow_le_rpow hH.le ?_ hpinv)
+    linarith
+
+/-- **Good-part `L^p` bound on one fiber.**  Replacing the selected cells by
+their averages never increases the fiber's `p`-mass.  Source: `lem:fiber_cz`,
+`‖g‖_p ≤ ‖f‖_p`. -/
+theorem lintegral_rpow_fiberDyadicCountableGoodField_le
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    {p : ℝ} (hp : 1 ≤ p) (H : ℝ) (z : Z)
+    (hmeas : Measurable F) (hZf : MeasurableSet Zf)
+    (hFp : Integrable (fun u : ℝ ↦ |F (u, z)| ^ p)) :
+    ∫⁻ y : ℝ, ENNReal.ofReal (|fiberDyadicCountableGoodField F Zf
+        (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p)) H (y, z)| ^ p) ≤
+      ∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  set Fp : ℝ × Z → ℝ := fun yz ↦ |F yz| ^ p with hFpdef
+  have hFpmeas : Measurable Fp := by
+    simp only [hFpdef]
+    fun_prop
+  set A : FiberDyadicInterval → Z → ℝ := fiberDyadicIntervalAverage Fp with hA
+  have hAmeas : ∀ I, Measurable (A I) := fun I ↦
+    measurable_fiberDyadicIntervalAverage Fp hFpmeas I
+  set G : ℝ × Z → ℝ := fiberDyadicCountableGoodField F Zf A H with hG
+  have hGmeas : Measurable G :=
+    measurable_fiberDyadicCountableGoodField F Zf A H hmeas hZf hAmeas
+  have hmeasfib : Measurable (fun u : ℝ ↦ F (u, z)) :=
+    hmeas.comp (measurable_id.prodMk measurable_const)
+  have hFp_nonneg : ∀ u : ℝ, 0 ≤ Fp (u, z) := fun u ↦
+    Real.rpow_nonneg (abs_nonneg _) p
+  have hFp_int : Integrable (fun u : ℝ ↦ Fp (u, z)) := hFp
+  -- the fiber slice of the exceptional set
+  set S : FiberDyadicInterval → Set ℝ := fun I ↦
+    {y : ℝ | (y, z) ∈ fiberDyadicInterval I ×ˢ
+      fiberDyadicSelectionSet Zf A H I} with hS
+  set E : Set ℝ := ⋃ I, S I with hE
+  set gG : ℝ → ℝ≥0∞ := fun y ↦ ENNReal.ofReal (|G (y, z)| ^ p) with hgG
+  set gF : ℝ → ℝ≥0∞ := fun y ↦ ENNReal.ofReal (|F (y, z)| ^ p) with hgF
+  have hSmeas : ∀ I, MeasurableSet (S I) := by
+    intro I
+    exact (measurable_id.prodMk measurable_const)
+      ((measurableSet_fiberDyadicInterval I).prod
+        (measurableSet_fiberDyadicSelectionSet Zf hZf A hAmeas H I))
+  have hEmeas : MeasurableSet E := MeasurableSet.iUnion hSmeas
+  have hSsel : ∀ I : FiberDyadicInterval,
+      z ∈ fiberDyadicSelectionSet Zf A H I → S I = fiberDyadicInterval I := by
+    intro I hsel
+    ext y
+    simp only [hS, Set.mem_setOf_eq, Set.mem_prod, hsel, and_true]
+  have hSnot : ∀ I : FiberDyadicInterval,
+      z ∉ fiberDyadicSelectionSet Zf A H I → S I = (∅ : Set ℝ) := by
+    intro I hsel
+    ext y
+    simp only [hS, Set.mem_setOf_eq, Set.mem_prod, hsel, and_false,
+      Set.mem_empty_iff_false]
+  have hSdisj : Pairwise (Function.onFun Disjoint S) := by
+    intro I J hIJ
+    by_cases hI : z ∈ fiberDyadicSelectionSet Zf A H I
+    · by_cases hJ : z ∈ fiberDyadicSelectionSet Zf A H J
+      · simp only [Function.onFun, hSsel I hI, hSsel J hJ]
+        exact pairwiseDisjoint_fiberDyadicSelectedIntervals Zf A H z hI hJ hIJ
+      · simp only [Function.onFun, hSnot J hJ]
+        exact disjoint_empty _
+    · simp only [Function.onFun, hSnot I hI]
+      exact Disjoint.symm (disjoint_empty _)
+  have hmemE : ∀ y : ℝ, y ∈ E ↔ (y, z) ∈ fiberDyadicExceptionalSet Zf A H := by
+    intro y
+    constructor
+    · intro hy
+      rcases Set.mem_iUnion.mp hy with ⟨I, hI⟩
+      exact Set.mem_iUnion.2 ⟨I, hI⟩
+    · intro hy
+      rcases Set.mem_iUnion.mp hy with ⟨I, hI⟩
+      exact Set.mem_iUnion.2 ⟨I, hI⟩
+  -- outside the exceptional slice the good field is unchanged
+  have houter : ∫⁻ y in Eᶜ, gG y = ∫⁻ y in Eᶜ, gF y := by
+    apply setLIntegral_congr_fun (hEmeas.compl)
+    intro y hy
+    have : G (y, z) = F (y, z) := by
+      apply fiberDyadicCountableGoodField_eq_self_outside_exceptional
+      exact fun hmem ↦ hy ((hmemE y).2 hmem)
+    simp only [hgG, hgF, this]
+  -- on each selected cell the good field is the cell average
+  have hcell : ∀ I : FiberDyadicInterval,
+      ∫⁻ y in S I, gG y ≤ ∫⁻ y in S I, gF y := by
+    intro I
+    by_cases hsel : z ∈ fiberDyadicSelectionSet Zf A H I
+    · have hSI : S I = fiberDyadicInterval I := hSsel I hsel
+      have hLpos : (0 : ℝ) < fiberDyadicIntervalLength I :=
+        fiberDyadicIntervalLength_pos I
+      have hAnonneg : 0 ≤ A I z :=
+        fiberDyadicIntervalAverage_nonneg_of_nonneg Fp I z hFp_nonneg
+      have hconst : ∫⁻ y in S I, gG y =
+          ENNReal.ofReal (|fiberDyadicIntervalAverage F I z| ^ p) *
+            volume (fiberDyadicInterval I) := by
+        rw [hSI, ← setLIntegral_const (fiberDyadicInterval I)
+          (ENNReal.ofReal (|fiberDyadicIntervalAverage F I z| ^ p))]
+        apply setLIntegral_congr_fun (measurableSet_fiberDyadicInterval I)
+        intro y hy
+        have hmemprod : (y, z) ∈ fiberDyadicInterval I ×ˢ
+            fiberDyadicSelectionSet Zf A H I := ⟨hy, hsel⟩
+        have hGval : G (y, z) = fiberDyadicIntervalAverage F I z := by
+          simp only [hG, fiberDyadicCountableGoodField, Pi.sub_apply]
+          rw [fiberDyadicCountableBadField_eq_atom_of_mem F Zf A H I (y, z) hmemprod]
+          unfold fiberCZBadAtom
+          rw [Set.indicator_of_mem hmemprod]
+          ring
+        simp only [hgG, hGval]
+      have hjensen := abs_fiberDyadicIntervalAverage_le_rpow F I z hp
+        hmeasfib.aestronglyMeasurable hFp.integrableOn
+      have hpow : |fiberDyadicIntervalAverage F I z| ^ p ≤ A I z := by
+        have := Real.rpow_le_rpow (abs_nonneg _) hjensen hp0.le
+        calc |fiberDyadicIntervalAverage F I z| ^ p
+            ≤ ((A I z) ^ (1 / p)) ^ p := this
+          _ = A I z := by
+              rw [← Real.rpow_mul hAnonneg, one_div_mul_cancel hp0.ne',
+                Real.rpow_one]
+      have hmass : |fiberDyadicIntervalAverage F I z| ^ p *
+          fiberDyadicIntervalLength I ≤
+            ∫ u : ℝ in fiberDyadicInterval I, Fp (u, z) := by
+        have hAeq : A I z = (fiberDyadicIntervalLength I)⁻¹ *
+            ∫ u : ℝ in fiberDyadicInterval I, Fp (u, z) :=
+          fiberDyadicIntervalAverage_eq_setIntegral Fp I z
+        have := mul_le_mul_of_nonneg_right hpow hLpos.le
+        rw [hAeq] at this
+        calc |fiberDyadicIntervalAverage F I z| ^ p * fiberDyadicIntervalLength I
+            ≤ (fiberDyadicIntervalLength I)⁻¹ *
+                (∫ u : ℝ in fiberDyadicInterval I, Fp (u, z)) *
+                fiberDyadicIntervalLength I := this
+          _ = ∫ u : ℝ in fiberDyadicInterval I, Fp (u, z) := by
+              field_simp
+      have hRHS : ∫⁻ y in S I, gF y =
+          ENNReal.ofReal (∫ u : ℝ in fiberDyadicInterval I, Fp (u, z)) := by
+        rw [hSI]
+        exact (ofReal_integral_eq_lintegral_ofReal hFp.integrableOn
+          (Filter.Eventually.of_forall hFp_nonneg)).symm
+      rw [hconst, hRHS, measure_fiberDyadicInterval,
+        ← ENNReal.ofReal_mul (by positivity)]
+      exact ENNReal.ofReal_le_ofReal hmass
+    · rw [hSnot I hsel]
+      simp
+  have hinner : ∫⁻ y in E, gG y ≤ ∫⁻ y in E, gF y := by
+    rw [hE, lintegral_iUnion hSmeas hSdisj, lintegral_iUnion hSmeas hSdisj]
+    exact ENNReal.tsum_le_tsum hcell
+  calc ∫⁻ y : ℝ, gG y
+      = (∫⁻ y in E, gG y) + (∫⁻ y in Eᶜ, gG y) :=
+        (lintegral_add_compl gG hEmeas).symm
+    _ = (∫⁻ y in E, gG y) + (∫⁻ y in Eᶜ, gF y) := by rw [houter]
+    _ ≤ (∫⁻ y in E, gF y) + (∫⁻ y in Eᶜ, gF y) := add_le_add hinner le_rfl
+    _ = ∫⁻ y : ℝ, gF y := lintegral_add_compl gF hEmeas
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Metric Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The source good-part `L^P` bound
+
+Source: `lem:fiber_cz`, blueprint lines 2258--2357, final display. -/
+
+/-- **Good-part `L^P` bound on one fiber.**  For finite `P ≥ p` the source's
+interpolated estimate `‖g‖_P^P ≤ (2H)^{P/p-1}‖f‖_p^p` holds fiberwise.
+Source: `lem:fiber_cz`, final display. -/
+theorem lintegral_rpow_fiberDyadicCountableGoodField_le_exponent
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    {p P : ℝ} (hp : 1 ≤ p) (hpP : p ≤ P) {H : ℝ} (hH : 0 < H)
+    (z : Z) (hz : z ∈ Zf)
+    (hmeas : Measurable F) (hZf : MeasurableSet Zf)
+    (hFp : Integrable (fun u : ℝ ↦ |F (u, z)| ^ p)) :
+    ∫⁻ y : ℝ, ENNReal.ofReal (|fiberDyadicCountableGoodField F Zf
+        (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p)) H (y, z)| ^ P) ≤
+      ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+        ∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hP0 : (0 : ℝ) < P := lt_of_lt_of_le hp0 hpP
+  have hHpos : (0 : ℝ) < 2 * H := by linarith
+  set G : ℝ × Z → ℝ := fiberDyadicCountableGoodField F Zf
+    (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p)) H with hG
+  have hsup := ae_abs_fiberDyadicCountableGoodField_le F Zf hp hH z hz hmeas hFp
+  have hpoint : ∀ᵐ y : ℝ, ENNReal.ofReal (|G (y, z)| ^ P) ≤
+      ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+        ENNReal.ofReal (|G (y, z)| ^ p) := by
+    filter_upwards [hsup] with y hy
+    have hsplit : |G (y, z)| ^ P = |G (y, z)| ^ (P - p) * |G (y, z)| ^ p := by
+      rw [← Real.rpow_add' (abs_nonneg _) (by linarith : P - p + p ≠ 0)]
+      ring_nf
+    have hfactor : |G (y, z)| ^ (P - p) ≤ (2 * H) ^ ((P - p) / p) := by
+      calc |G (y, z)| ^ (P - p)
+          ≤ ((2 * H) ^ (1 / p)) ^ (P - p) :=
+            Real.rpow_le_rpow (abs_nonneg _) hy (by linarith)
+        _ = (2 * H) ^ ((P - p) / p) := by
+            rw [← Real.rpow_mul hHpos.le]
+            congr 1
+            field_simp
+    have hreal : |G (y, z)| ^ P ≤
+        (2 * H) ^ ((P - p) / p) * |G (y, z)| ^ p := by
+      rw [hsplit]
+      exact mul_le_mul_of_nonneg_right hfactor
+        (Real.rpow_nonneg (abs_nonneg _) p)
+    calc ENNReal.ofReal (|G (y, z)| ^ P)
+        ≤ ENNReal.ofReal ((2 * H) ^ ((P - p) / p) * |G (y, z)| ^ p) :=
+          ENNReal.ofReal_le_ofReal hreal
+      _ = ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+            ENNReal.ofReal (|G (y, z)| ^ p) :=
+          ENNReal.ofReal_mul (Real.rpow_nonneg hHpos.le _)
+  calc ∫⁻ y : ℝ, ENNReal.ofReal (|G (y, z)| ^ P)
+      ≤ ∫⁻ y : ℝ, ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ENNReal.ofReal (|G (y, z)| ^ p) := lintegral_mono_ae hpoint
+    _ = ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ y : ℝ, ENNReal.ofReal (|G (y, z)| ^ p) :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p) := by
+        exact mul_le_mul' le_rfl
+          (lintegral_rpow_fiberDyadicCountableGoodField_le
+            F Zf hp H z hmeas hZf hFp)
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Real model forms and the `L^p` duality bridge
+
+Source: `thm:initial_model`, blueprint lines 2175--2193 (the real/complex
+expansion and the continuous `L^p` extension), and the `L^p` duality step of
+`thm:extended_model`, blueprint lines 2665--2672.
+-/
+
+/-- Complexifying a real Schwartz map preserves every `lpNorm`. -/
+theorem lpNorm_complexifyRealSchwartz
+    (f : SchwartzMap E3 ℝ) (p : ℝ≥0∞) :
+    lpNorm (complexifyRealSchwartz f : E3 → ℂ) p volume =
+      lpNorm (f : E3 → ℝ) p volume := by
+  rw [← toReal_eLpNorm
+      (complexifyRealSchwartz f).continuous.aestronglyMeasurable,
+    ← toReal_eLpNorm f.continuous.aestronglyMeasurable]
+  apply congrArg ENNReal.toReal
+  apply eLpNorm_congr_norm_ae
+  filter_upwards [] with x
+  simp [complexifyRealSchwartz_apply]
+
+/-- The public literal complex model form restricts to the real source model
+form on complexified real Schwartz input. -/
+theorem LiteralModelFullForm_complexifyRealSchwartz
+    (α : Anisotropy) (u : E3) (d : ℝ → ℝ) (G : ModelSchwartzInput) :
+    LiteralModelFullForm α u (fun t ↦ (d t : ℂ))
+      (fun j ↦ complexifyRealSchwartz (G j)) =
+        (ModelFullForm α u d G : ℂ) := by
+  simpa only [LiteralModelFullForm] using
+    LiteralComplexInternal.scratch_LiteralModelFullForm_complexifyRealSchwartz
+      α u d G
+
+/-- The strict complex active-third form estimate supplies the corresponding
+uniform real full-form estimate on real Schwartz data.  The factor `32` is
+kept explicit because it is the source's real/imaginary expansion factor. -/
+theorem exists_uniform_real_ModelFullForm_bound_from_strict_weight100
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ)
+      (F : ModelSchwartzInput),
+      Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      |ModelFullForm α u c F| ≤
+        32 * C * sourceWeight u ^ 100 * ∏ j : Fin 4,
+          lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume := by
+  rcases exists_uniform_LiteralActiveModelFullForm_bound_weight100
+    α 2 q hq hsum hqs with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  intro u c F hcmeas hc
+  have hcmeas' : Measurable (fun t : ℝ ↦ (c t : ℂ)) :=
+    Complex.continuous_ofReal.measurable.comp hcmeas
+  have hc' : ∀ t : ℝ, ‖(c t : ℂ)‖ ≤ 1 := by
+    intro t
+    simpa only [Complex.norm_real, Real.norm_eq_abs] using hc t
+  have h := hbound u (fun t : ℝ ↦ (c t : ℂ))
+    (fun j ↦ complexifyRealSchwartz (F j)) hcmeas' hc'
+  rw [LiteralActiveModelFullForm_two,
+    LiteralModelFullForm_complexifyRealSchwartz] at h
+  simpa only [Complex.norm_real, Real.norm_eq_abs,
+    lpNorm_complexifyRealSchwartz] using h
+
+/-- Cutting a measurable real coefficient to a finite positive scale interval
+turns the preceding strict full-form estimate into the exact finite-scale
+form estimate.  This is the coefficient-cutoff step required before any
+density or `Lp` duality argument for the actual operator. -/
+theorem exists_uniform_real_ModelScaleIntervalTruncation_bound_from_strict_weight100
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ)
+      (F : ModelSchwartzInput) (a b : ℝ),
+      0 ≤ a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      |ModelScaleIntervalTruncation α u c F a b| ≤
+        32 * C * sourceWeight u ^ 100 * ∏ j : Fin 4,
+          lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume := by
+  rcases exists_uniform_real_ModelFullForm_bound_from_strict_weight100
+    α q hq hsum hqs with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  intro u c F a b ha hcmeas hc
+  rw [modelScaleIntervalTruncation_eq_modelFullForm_restrict α u c F ha]
+  apply hbound u (RestrictScaleCoefficient c (Set.Ioc a b)) F
+  · exact measurable_RestrictScaleCoefficient c (Set.Ioc a b) hcmeas
+      measurableSet_Ioc
+  · exact abs_restrictScaleCoefficient_le_one c (Set.Ioc a b) hc
+
+/-- Interpolating finite `L¹` mass with an `L^∞` bound supplies every
+finite exponent strictly larger than one.  This packages the membership part
+of the source's preliminary finite-scale Young estimate. -/
+theorem memLp_of_one_and_top
+    {p : ℝ} (hp : 1 < p) {y : E3 → ℂ}
+    (hone : MemLp y 1 volume) (htop : MemLp y ∞ volume) :
+    MemLp y (ENNReal.ofReal p) volume := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hinvlt : p⁻¹ < 1 := (inv_lt_one₀ hp0).mpr hp
+  have hinvpos : (0 : ℝ) < p⁻¹ := inv_pos.mpr hp0
+  apply Auto.LpSpaceFacts.memLp_of_power_interpolation
+    (P₀ := (1 : ENNReal)) (P₁ := ∞) (θ := 1 - p⁻¹)
+    (by linarith) (by linarith) ?_ hone htop
+  have h1 : (1 : ℝ) - (1 - p⁻¹) = p⁻¹ := by ring
+  have hne : ENNReal.ofReal (1 - p⁻¹) ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+    linarith
+  have hsecond : ((∞ : ENNReal) / ENNReal.ofReal (1 - p⁻¹))⁻¹ = 0 := by
+    rw [ENNReal.top_div]
+    simp [ENNReal.ofReal_ne_top]
+  have hfirst : ((1 : ENNReal) / ENNReal.ofReal (1 - (1 - p⁻¹)))⁻¹ =
+      (ENNReal.ofReal p)⁻¹ := by
+    rw [h1, ENNReal.ofReal_inv_of_pos hp0, one_div, inv_inv]
+  rw [hfirst, hsecond, add_zero]
+
+/-- A scalar `L^p` function is normed by Schwartz test functions.  This is
+the density/duality step needed to turn a finite-model form estimate into an
+actual output estimate once preliminary finite-scale integrability has given
+the `MemLp` premise. -/
+theorem lpNorm_le_of_schwartz_test_pairing_bound
+    {p K : ℝ} (hp : 1 < p) (hK : 0 ≤ K) {y : E3 → ℂ}
+    (hy : MemLp y (ENNReal.ofReal p) volume)
+    (hSchwartz : ∀ g : SchwartzMap E3 ℂ,
+      ‖∫ x : E3, y x * g x‖ ≤
+        K * lpNorm (g : E3 → ℂ) (ENNReal.ofReal p.conjExponent) volume) :
+    lpNorm y (ENNReal.ofReal p) volume ≤ K := by
+  letI : Fact (1 ≤ ENNReal.ofReal p) :=
+    ⟨by
+      rw [← ENNReal.ofReal_one]
+      exact ENNReal.ofReal_le_ofReal hp.le⟩
+  letI : Fact (1 ≤ ENNReal.ofReal p.conjExponent) :=
+    ⟨Auto.LpSpaceFacts.one_le_ofReal_conjExponent p hp⟩
+  letI : ENNReal.HolderConjugate (ENNReal.ofReal p)
+      (ENNReal.ofReal p.conjExponent) :=
+    Auto.LpSpaceFacts.ofReal_holderConjugate p hp
+  let Φ : Lp ℂ (ENNReal.ofReal p.conjExponent) volume →L[ℂ] ℂ :=
+    (ContinuousLinearMap.lpPairing volume (ENNReal.ofReal p)
+      (ENNReal.ofReal p.conjExponent) (ContinuousLinearMap.mul ℂ ℂ))
+      (hy.toLp y)
+  have hnorm_toLp (g : SchwartzMap E3 ℂ) :
+      ‖g.toLp (ENNReal.ofReal p.conjExponent) volume‖ =
+        lpNorm (g : E3 → ℂ) (ENNReal.ofReal p.conjExponent) volume := by
+    rw [SchwartzMap.norm_toLp,
+      toReal_eLpNorm g.continuous.aestronglyMeasurable]
+  have hPhi_schwartz (g : SchwartzMap E3 ℂ) :
+      ‖Φ (g.toLp (ENNReal.ofReal p.conjExponent) volume)‖ ≤
+        K * ‖g.toLp (ENNReal.ofReal p.conjExponent) volume‖ := by
+    have hraw : Φ (g.toLp (ENNReal.ofReal p.conjExponent) volume) =
+        ∫ x : E3, y x * g x := by
+      rw [show Φ =
+        (ContinuousLinearMap.lpPairing volume (ENNReal.ofReal p)
+          (ENNReal.ofReal p.conjExponent) (ContinuousLinearMap.mul ℂ ℂ))
+          (hy.toLp y) by rfl,
+        Auto.LpSpaceFacts.lpPairing_apply_toLp_eq_integral hy]
+      apply integral_congr_ae
+      filter_upwards [g.coeFn_toLp (ENNReal.ofReal p.conjExponent) volume]
+        with x hx
+      rw [hx]
+    rw [hraw, hnorm_toLp]
+    exact hSchwartz g
+  have hPhi (g : Lp ℂ (ENNReal.ofReal p.conjExponent) volume) :
+      ‖Φ g‖ ≤ K * ‖g‖ := by
+    refine (SchwartzMap.denseRange_toLpCLM (E := E3) (F := ℂ)
+      (p := ENNReal.ofReal p.conjExponent) ENNReal.ofReal_ne_top).induction_on
+      g ?_ ?_
+    · exact isClosed_le Φ.continuous.norm
+        (continuous_const.mul continuous_id.norm)
+    · intro g
+      simpa only [SchwartzMap.toLpCLM_apply] using hPhi_schwartz g
+  refine Auto.LpSpaceFacts.lpNorm_le_of_simple_test_pairing_bound hp hK hy ?_
+  intro g
+  have hraw : Φ (g : Lp ℂ (ENNReal.ofReal p.conjExponent) volume) =
+      ∫ x : E3, y x *
+        (g : Lp ℂ (ENNReal.ofReal p.conjExponent) volume) x := by
+    rw [show Φ =
+      (ContinuousLinearMap.lpPairing volume (ENNReal.ofReal p)
+        (ENNReal.ofReal p.conjExponent) (ContinuousLinearMap.mul ℂ ℂ))
+        (hy.toLp y) by rfl,
+      Auto.LpSpaceFacts.lpPairing_apply_toLp_eq_integral hy]
+  rw [← hraw]
+  exact hPhi (g : Lp ℂ (ENNReal.ofReal p.conjExponent) volume)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Schwartz test pairing for the finite-scale truncated operator
+
+Source: the `L^p` duality step in the proof of `thm:extended_model`,
+blueprint lines 2665--2672, which pairs `U^{a,b}_{u,c}(f_1,f_2,f_3)` against a
+zeroth test input and reads off its output norm.
+-/
+
+/-- Assemble the four source Schwartz slots from a zeroth test function and
+the three operator inputs. -/
+noncomputable def modelSchwartzCons (h : SchwartzMap E3 ℝ)
+    (G : Fin 3 → SchwartzMap E3 ℝ) : ModelSchwartzInput :=
+  Fin.cons h G
+
+@[simp] theorem modelSchwartzCons_zero (h : SchwartzMap E3 ℝ)
+    (G : Fin 3 → SchwartzMap E3 ℝ) : modelSchwartzCons h G 0 = h := rfl
+
+@[simp] theorem modelSchwartzCons_succ (h : SchwartzMap E3 ℝ)
+    (G : Fin 3 → SchwartzMap E3 ℝ) (j : Fin 3) :
+    modelSchwartzCons h G j.succ = G j := by
+  simp only [modelSchwartzCons, Fin.cons_succ]
+
+theorem modelOperatorInput_modelSchwartzCons (h : SchwartzMap E3 ℝ)
+    (G : Fin 3 → SchwartzMap E3 ℝ) :
+    modelOperatorInput (modelSchwartzCons h G) = fun j ↦ (G j : E3 → ℝ) := by
+  funext j
+  simp only [modelOperatorInput, modelSchwartzCons_succ]
+
+/-- The four-slot `L^p` product of a consed Schwartz tuple. -/
+theorem prod_lpNorm_modelSchwartzCons (h : SchwartzMap E3 ℝ)
+    (G : Fin 3 → SchwartzMap E3 ℝ) (q : Fin 4 → ℝ) :
+    (∏ j : Fin 4, lpNorm (modelSchwartzCons h G j : E3 → ℝ)
+        (ENNReal.ofReal (q j)) volume) =
+      lpNorm (h : E3 → ℝ) (ENNReal.ofReal (q 0)) volume *
+        ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+          (ENNReal.ofReal (q j.succ)) volume := by
+  rw [Fin.prod_univ_succ]
+  simp only [modelSchwartzCons_zero, modelSchwartzCons_succ]
+
+/-- Splitting a complex test pairing of a real function into its two real
+pairings. -/
+theorem norm_integral_ofReal_mul_schwartz_le
+    (y : E3 → ℝ) (g : SchwartzMap E3 ℂ)
+    (hint : Integrable (fun x : E3 ↦ (y x : ℂ) * g x)) :
+    ‖∫ x : E3, (y x : ℂ) * g x‖ ≤
+      |∫ x : E3, LiteralComplexInternal.scratch_realPartSchwartz g x * y x| +
+        |∫ x : E3, LiteralComplexInternal.scratch_imagPartSchwartz g x * y x| := by
+  have hre : (∫ x : E3, (y x : ℂ) * g x).re =
+      ∫ x : E3, LiteralComplexInternal.scratch_realPartSchwartz g x * y x := by
+    have hcomm := ContinuousLinearMap.integral_comp_comm Complex.reCLM hint
+    simp only [Complex.reCLM_apply] at hcomm
+    rw [← hcomm]
+    apply integral_congr_ae
+    filter_upwards [] with x
+    simp only [LiteralComplexInternal.scratch_realPartSchwartz_apply,
+      Complex.mul_re, Complex.ofReal_re, Complex.ofReal_im]
+    ring
+  have him : (∫ x : E3, (y x : ℂ) * g x).im =
+      ∫ x : E3, LiteralComplexInternal.scratch_imagPartSchwartz g x * y x := by
+    have hcomm := ContinuousLinearMap.integral_comp_comm Complex.imCLM hint
+    simp only [Complex.imCLM_apply] at hcomm
+    rw [← hcomm]
+    apply integral_congr_ae
+    filter_upwards [] with x
+    simp only [LiteralComplexInternal.scratch_imagPartSchwartz_apply,
+      Complex.mul_im, Complex.ofReal_re, Complex.ofReal_im]
+    ring
+  calc ‖∫ x : E3, (y x : ℂ) * g x‖
+      ≤ |(∫ x : E3, (y x : ℂ) * g x).re| +
+          |(∫ x : E3, (y x : ℂ) * g x).im| :=
+        Complex.norm_le_abs_re_add_abs_im _
+    _ = |∫ x : E3, LiteralComplexInternal.scratch_realPartSchwartz g x * y x| +
+          |∫ x : E3, LiteralComplexInternal.scratch_imagPartSchwartz g x * y x| := by
+        rw [hre, him]
+
+/-- **Schwartz test pairing bound for the actual truncated operator.**  The
+strict real finite-scale form estimate controls every complex Schwartz
+pairing of `U^{a,b}_{u,c}`, uniformly in the truncation and coefficient.
+The explicit Fubini premises are the ones already carried by
+`modelScaleIntervalTruncation_eq_modelTruncatedOperator_pairing`. -/
+theorem norm_integral_ModelTruncatedOperator_mul_schwartz_le
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ)
+      (G : Fin 3 → SchwartzMap E3 ℝ) (a b : ℝ) (g : SchwartzMap E3 ℂ),
+      0 ≤ a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      Integrable (fun x : E3 ↦
+        (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b x : ℂ) *
+          g x) →
+      (∀ h : SchwartzMap E3 ℝ, Integrable (fun xt : E3 × ℝ ↦
+        modelTruncatedOperatorPairingIntegrand α u c
+          (modelSchwartzCons h G) xt.2 xt.1)
+        ((volume : Measure E3).prod
+          (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+            (Set.Ioc a b)))) →
+      ‖∫ x : E3,
+          (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b x : ℂ) *
+            g x‖ ≤
+        (64 * C * sourceWeight u ^ 100 *
+          ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+            (ENNReal.ofReal (q j.succ)) volume) *
+          lpNorm (g : E3 → ℂ) (ENNReal.ofReal (q 0)) volume := by
+  rcases exists_uniform_real_ModelScaleIntervalTruncation_bound_from_strict_weight100
+    α q hq hsum hqs with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  intro u c G a b g ha hcmeas hc hint hjoint
+  set U : E3 → ℝ := ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b
+    with hU
+  set P : ℝ := ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+    (ENNReal.ofReal (q j.succ)) volume with hP
+  have hPnonneg : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg
+  have hpair : ∀ h : SchwartzMap E3 ℝ,
+      |∫ x : E3, h x * U x| ≤
+        32 * C * sourceWeight u ^ 100 *
+          (lpNorm (h : E3 → ℝ) (ENNReal.ofReal (q 0)) volume * P) := by
+    intro h
+    have hident := modelScaleIntervalTruncation_eq_modelTruncatedOperator_pairing
+      α u c (modelSchwartzCons h G) a b (hjoint h)
+    rw [modelOperatorInput_modelSchwartzCons] at hident
+    have hb := hbound u c (modelSchwartzCons h G) a b ha hcmeas hc
+    rw [hident, prod_lpNorm_modelSchwartzCons] at hb
+    simpa only [hU, hP, modelSchwartzCons_zero] using hb
+  have hre := hpair (LiteralComplexInternal.scratch_realPartSchwartz g)
+  have him := hpair (LiteralComplexInternal.scratch_imagPartSchwartz g)
+  have hsplit := norm_integral_ofReal_mul_schwartz_le U g hint
+  have hgre := LiteralComplexInternal.scratch_lpNorm_realPartSchwartz_le g (q 0)
+  have hgim := LiteralComplexInternal.scratch_lpNorm_imagPartSchwartz_le g (q 0)
+  have hCw : 0 ≤ 32 * C * sourceWeight u ^ 100 := by
+    have : 0 ≤ sourceWeight u ^ 100 := by positivity
+    positivity
+  calc ‖∫ x : E3, (U x : ℂ) * g x‖
+      ≤ |∫ x : E3, LiteralComplexInternal.scratch_realPartSchwartz g x * U x| +
+          |∫ x : E3, LiteralComplexInternal.scratch_imagPartSchwartz g x * U x| := hsplit
+    _ ≤ 32 * C * sourceWeight u ^ 100 *
+          (lpNorm (LiteralComplexInternal.scratch_realPartSchwartz g : E3 → ℝ)
+            (ENNReal.ofReal (q 0)) volume * P) +
+        32 * C * sourceWeight u ^ 100 *
+          (lpNorm (LiteralComplexInternal.scratch_imagPartSchwartz g : E3 → ℝ)
+            (ENNReal.ofReal (q 0)) volume * P) := add_le_add hre him
+    _ ≤ 32 * C * sourceWeight u ^ 100 *
+          (lpNorm (g : E3 → ℂ) (ENNReal.ofReal (q 0)) volume * P) +
+        32 * C * sourceWeight u ^ 100 *
+          (lpNorm (g : E3 → ℂ) (ENNReal.ofReal (q 0)) volume * P) := by
+        gcongr
+    _ = (64 * C * sourceWeight u ^ 100 * P) *
+          lpNorm (g : E3 → ℂ) (ENNReal.ofReal (q 0)) volume := by ring
+
+/-- **The `L^{R_0}` operator bound of the source's duality step.**  For
+Schwartz inputs the actual finite-scale truncated model operator satisfies the
+strict-range output estimate, uniformly in the truncation and coefficient.
+Source: `thm:extended_model`, blueprint lines 2665--2672. -/
+theorem lpNorm_ModelTruncatedOperator_le_of_strict_range
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ)
+      (G : Fin 3 → SchwartzMap E3 ℝ) (a b : ℝ),
+      0 ≤ a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      MemLp (fun x : E3 ↦
+        (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b x : ℂ))
+        (ENNReal.ofReal (q 0).conjExponent) volume →
+      (∀ h : SchwartzMap E3 ℝ, Integrable (fun xt : E3 × ℝ ↦
+        modelTruncatedOperatorPairingIntegrand α u c
+          (modelSchwartzCons h G) xt.2 xt.1)
+        ((volume : Measure E3).prod
+          (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+            (Set.Ioc a b)))) →
+      lpNorm (fun x : E3 ↦
+          (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b x : ℂ))
+          (ENNReal.ofReal (q 0).conjExponent) volume ≤
+        64 * C * sourceWeight u ^ 100 *
+          ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+            (ENNReal.ofReal (q j.succ)) volume := by
+  rcases norm_integral_ModelTruncatedOperator_mul_schwartz_le α q hq hsum hqs
+    with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  intro u c G a b ha hcmeas hc hmem hjoint
+  have hq0 : (1 : ℝ) < q 0 := by
+    have := hqs 0
+    rw [activeSourceStoppingExponent_zero] at this
+    linarith
+  have hconj : (q 0).HolderConjugate (q 0).conjExponent :=
+    Real.HolderConjugate.conjExponent hq0
+  have hR0 : (1 : ℝ) < (q 0).conjExponent := hconj.symm.lt
+  have hback : ((q 0).conjExponent).conjExponent = q 0 :=
+    hconj.symm.conjExponent_eq
+  letI : ENNReal.HolderConjugate (ENNReal.ofReal (q 0).conjExponent)
+      (ENNReal.ofReal ((q 0).conjExponent).conjExponent) :=
+    Auto.LpSpaceFacts.ofReal_holderConjugate _ hR0
+  set U : E3 → ℝ := ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b
+    with hU
+  set P : ℝ := ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+    (ENNReal.ofReal (q j.succ)) volume with hP
+  have hPnonneg : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg
+  have hKnonneg : 0 ≤ 64 * C * sourceWeight u ^ 100 * P := by
+    have : 0 ≤ sourceWeight u ^ 100 := by positivity
+    positivity
+  apply lpNorm_le_of_schwartz_test_pairing_bound hR0 hKnonneg hmem
+  intro g
+  have hgmem : MemLp (g : E3 → ℂ)
+      (ENNReal.ofReal ((q 0).conjExponent).conjExponent) volume :=
+    g.memLp _ volume
+  have hint : Integrable (fun x : E3 ↦ (U x : ℂ) * g x) := by
+    rw [← memLp_one_iff_integrable]
+    exact MemLp.mul' hgmem hmem
+  have h := hbound u c G a b g ha hcmeas hc hint hjoint
+  rw [hback]
+  exact h
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Fubini premise for the truncated pairing
+
+Source: `lem:model_convergence`, blueprint lines 2116--2174, the fixed-scale
+absolute majorant used to exchange the spatial and scale integrals on a
+compact positive scale interval.
+-/
+
+/-- A real Schwartz test function is uniformly bounded. -/
+theorem exists_bound_realSchwartz (f : SchwartzMap E3 ℝ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ x : E3, |f x| ≤ C := by
+  refine ⟨SchwartzMap.seminorm ℝ 0 0 f, ?_, ?_⟩
+  · exact le_trans (norm_nonneg (f 0)) (SchwartzMap.norm_le_seminorm ℝ f (0 : E3))
+  · intro x
+    simpa only [Real.norm_eq_abs] using SchwartzMap.norm_le_seminorm ℝ f x
+
+/-- **The Fubini premise of the duality step.**  On a compact positive scale
+interval the four-linear pairing integrand is jointly integrable for Schwartz
+data and a bounded measurable coefficient.  This discharges the explicit
+hypothesis of `modelScaleIntervalTruncation_eq_modelTruncatedOperator_pairing`. -/
+theorem integrable_modelTruncatedOperatorPairingIntegrand
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    {a b : ℝ} (ha : 0 < a) (hc : Measurable c) (hcB : ∀ t : ℝ, |c t| ≤ 1) :
+    Integrable (fun xt : E3 × ℝ ↦
+      modelTruncatedOperatorPairingIntegrand α u c F xt.2 xt.1)
+      ((volume : Measure E3).prod
+        (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioc a b))) := by
+  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  set ν : Measure ℝ :=
+    ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict (Set.Ioc a b)
+    with hν
+  set f : ModelOperatorRealInput := modelOperatorInput F with hf
+  have hfmeas : ∀ j, Measurable (f j) := fun j ↦ (F j.succ).continuous.measurable
+  choose B hBnonneg hfB using fun j : Fin 3 ↦ exists_bound_realSchwartz (F j.succ)
+  set D : ℝ :=
+    1 * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+      (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+        (B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) with hD
+  have hDnonneg : 0 ≤ D := by
+    have h0 : 0 ≤ ∫ r : ℝ, |ModelLowKernel (u 0) r| :=
+      integral_nonneg fun _ ↦ abs_nonneg _
+    have h1 : 0 ≤ ∫ r : ℝ, |ModelLowKernel (u 1) r| :=
+      integral_nonneg fun _ ↦ abs_nonneg _
+    have h2 : 0 ≤ ∫ r : ℝ, |ModelThirdKernel (u 2) r| :=
+      integral_nonneg fun _ ↦ abs_nonneg _
+    have := hBnonneg 0
+    have := hBnonneg 1
+    have := hBnonneg 2
+    rw [hD]
+    positivity
+  -- the uniform majorant
+  have hmaj : Integrable (fun xt : E3 × ℝ ↦ |F 0 xt.1| * D)
+      ((volume : Measure E3).prod ν) := by
+    have h1 : Integrable (fun x : E3 ↦ |F 0 x| * D) volume :=
+      ((F 0).integrable (μ := volume)).abs.mul_const D
+    exact h1.comp_fst ν
+  -- joint strong measurability
+  have hsm : AEStronglyMeasurable (fun xt : E3 × ℝ ↦
+      modelTruncatedOperatorPairingIntegrand α u c F xt.2 xt.1)
+      ((volume : Measure E3).prod ν) := by
+    have hleft : StronglyMeasurable (fun xt : E3 × ℝ ↦ (F 0) xt.1) :=
+      (F 0).continuous.stronglyMeasurable.comp_measurable measurable_fst
+    have hright : StronglyMeasurable (fun xt : E3 × ℝ ↦
+        modelTruncatedOperatorIntegrand α u c f xt.2 xt.1) :=
+      (stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+        α u c f hc hfmeas).comp_measurable measurable_swap
+    exact (hleft.mul hright).aestronglyMeasurable
+  -- the scale variable stays in the truncation interval
+  have hae : ∀ᵐ xt : E3 × ℝ ∂((volume : Measure E3).prod ν),
+      xt.2 ∈ Set.Ioc a b := by
+    have hnull : ((volume : Measure E3).prod ν)
+        (Set.univ ×ˢ (Set.Ioc a b)ᶜ) = 0 := by
+      rw [Measure.prod_prod]
+      have hz : ν (Set.Ioc a b)ᶜ = 0 := by
+        rw [hν, Measure.restrict_apply' measurableSet_Ioc]
+        simp
+      rw [hz, mul_zero]
+    rw [ae_iff]
+    convert hnull using 2
+    ext xt
+    simp
+  refine Integrable.mono' hmaj hsm ?_
+  filter_upwards [hae] with xt hxt
+  have htpos : 0 < xt.2 := lt_trans ha hxt.1
+  have hbound := abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+    α u c f xt.2 xt.1 htpos 1 B (by norm_num) (hcB xt.2) hfmeas hBnonneg hfB
+  have hsplit : modelTruncatedOperatorPairingIntegrand α u c F xt.2 xt.1 =
+      F 0 xt.1 * modelTruncatedOperatorIntegrand α u c f xt.2 xt.1 := rfl
+  rw [Real.norm_eq_abs, hsplit, abs_mul]
+  exact mul_le_mul_of_nonneg_left hbound (abs_nonneg _)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Coordinate decay of the truncated operator
+
+Source: `lem:model_convergence`, blueprint lines 2116--2174.  Convolving a
+Schwartz input only in coordinate `i` leaves its decay in the other two
+coordinates untouched, so the three-factor product of `def:model` decays in
+every direction.
+-/
+
+/-- A coordinate convolution is controlled by any bound valid along that
+coordinate line alone. -/
+theorem abs_ModelCoordinateConvolution_le_of_line_bound
+    (i : Fin 3) (f : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
+    (hf : Measurable f) (B : ℝ) (hfB : ∀ y : E3, |f y| ≤ B)
+    (A : ℝ) (hA : ∀ r : ℝ, |f (x - r • Anisotropy.coordinateDirection i)| ≤ A)
+    (hk : Integrable k) (hs : 0 < s) :
+    |ModelCoordinateConvolution i f k s x| ≤ A * ∫ r : ℝ, |k r| := by
+  let G : ℝ → ℝ := fun r ↦
+    f (x - r • Anisotropy.coordinateDirection i) * kernelDilate k s r
+  have hG := integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+    i f k s x hf B hfB hk hs
+  have hK : Integrable (fun r : ℝ ↦ |kernelDilate k s r|) :=
+    integrable_abs_kernelDilate k hk hs
+  have hupper : Integrable (fun r : ℝ ↦ A * |kernelDilate k s r|) :=
+    hK.const_mul A
+  unfold ModelCoordinateConvolution
+  change |∫ r : ℝ, G r| ≤ _
+  calc
+    |∫ r : ℝ, G r| ≤ ∫ r : ℝ, |G r| :=
+      MeasureTheory.abs_integral_le_integral_abs
+    _ ≤ ∫ r : ℝ, A * |kernelDilate k s r| := by
+      apply integral_mono hG.norm hupper
+      intro r
+      dsimp only [G]
+      rw [Real.norm_eq_abs, abs_mul]
+      exact mul_le_mul_of_nonneg_right (hA r) (abs_nonneg _)
+    _ = A * ∫ r : ℝ, |k r| := by
+      rw [integral_const_mul, integral_abs_kernelDilate k hs]
+
+/-- Translating a Schwartz input along coordinate `i` preserves its decay in
+every other coordinate, with a bound uniform along the whole line. -/
+theorem exists_realSchwartz_line_bracket_bound
+    (i : Fin 3) (f : SchwartzMap E3 ℝ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (x : E3) (r : ℝ) (j k : Fin 3), j ≠ i → k ≠ i →
+      |f (x - r • Anisotropy.coordinateDirection i)| ≤
+        C * ((1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ))⁻¹ := by
+  rcases realSchwartz_decay_norm f 20 with ⟨C, hC, hdecay⟩
+  refine ⟨C, hC, ?_⟩
+  intro x r j k hj hk
+  set y : E3 := x - r • Anisotropy.coordinateDirection i with hy
+  have hcoord : ∀ m : Fin 3, m ≠ i → y m = x m := by
+    intro m hm
+    simp [hy, coordinateDirection_apply, hm]
+  have hle : ∀ m : Fin 3, m ≠ i → |x m| ≤ ‖y‖ := by
+    intro m hm
+    rw [← hcoord m hm]
+    simpa only [Real.norm_eq_abs] using PiLp.norm_apply_le y m
+  have hjle := hle j hj
+  have hkle := hle k hk
+  have hnorm : (0 : ℝ) ≤ ‖y‖ := norm_nonneg _
+  have hprod : ((1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ)) ≤
+      (1 + ‖y‖) ^ (20 : ℕ) := by
+    have h1 : (1 : ℝ) + |x j| ≤ 1 + ‖y‖ := by linarith
+    have h2 : (1 : ℝ) + |x k| ≤ 1 + ‖y‖ := by linarith
+    calc ((1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ))
+        ≤ (1 + ‖y‖) ^ (10 : ℕ) * (1 + ‖y‖) ^ (10 : ℕ) := by
+          gcongr <;> positivity
+      _ = (1 + ‖y‖) ^ (20 : ℕ) := by ring
+  have hposprod : (0 : ℝ) <
+      (1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ) := by positivity
+  have hposnorm : (0 : ℝ) < (1 + ‖y‖) ^ (20 : ℕ) := by positivity
+  calc |f y| ≤ C / (1 + ‖y‖) ^ (20 : ℕ) := hdecay y
+    _ ≤ C / ((1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ)) := by
+        apply div_le_div_of_nonneg_left hC hposprod hprod
+    _ = C * ((1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ))⁻¹ := by
+        rw [div_eq_mul_inv]
+
+/-- The reciprocal three-coordinate bracket majorant dominates the radial
+one, hence is integrable on `E3`. -/
+theorem integrable_prod_coordinate_bracket_twenty :
+    Integrable (fun x : E3 ↦
+      ((1 + |x 0|) ^ (20 : ℕ) * (1 + |x 1|) ^ (20 : ℕ) *
+        (1 + |x 2|) ^ (20 : ℕ))⁻¹) volume := by
+  have hrad : Integrable (fun x : E3 ↦ (1 : ℝ) / (1 + ‖x‖) ^ (20 : ℕ))
+      volume := by
+    have hr : (Module.finrank ℝ E3 : ℝ) < (20 : ℝ) := by
+      simp
+      norm_num
+    have h := (integrable_one_add_norm (E := E3) (μ := volume) hr).const_mul 1
+    convert h using 1
+    ext v
+    rw [Real.rpow_neg (by positivity), ← Real.rpow_natCast]
+    push_cast
+    ring
+  refine hrad.mono' ?_ ?_
+  · apply Measurable.aestronglyMeasurable
+    fun_prop
+  · filter_upwards with x
+    have hsum : ‖x‖ ≤ |x 0| + |x 1| + |x 2| := by
+      simpa only [Fin.sum_univ_three] using norm_le_sum_abs x
+    have hmul : (1 + ‖x‖) ≤ (1 + |x 0|) * (1 + |x 1|) * (1 + |x 2|) := by
+      nlinarith [abs_nonneg (x 0), abs_nonneg (x 1), abs_nonneg (x 2),
+        mul_nonneg (abs_nonneg (x 0)) (abs_nonneg (x 1)),
+        mul_nonneg (abs_nonneg (x 1)) (abs_nonneg (x 2)),
+        mul_nonneg (abs_nonneg (x 0)) (abs_nonneg (x 2))]
+    have hpow : (1 + ‖x‖) ^ (20 : ℕ) ≤
+        (1 + |x 0|) ^ (20 : ℕ) * (1 + |x 1|) ^ (20 : ℕ) *
+          (1 + |x 2|) ^ (20 : ℕ) := by
+      calc (1 + ‖x‖) ^ (20 : ℕ)
+          ≤ ((1 + |x 0|) * (1 + |x 1|) * (1 + |x 2|)) ^ (20 : ℕ) :=
+            pow_le_pow_left₀ (by positivity) hmul 20
+        _ = (1 + |x 0|) ^ (20 : ℕ) * (1 + |x 1|) ^ (20 : ℕ) *
+              (1 + |x 2|) ^ (20 : ℕ) := by
+            rw [mul_pow, mul_pow]
+    have hpos1 : (0 : ℝ) < (1 + ‖x‖) ^ (20 : ℕ) := by positivity
+    rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+    rw [← one_div]
+    exact one_div_le_one_div_of_le hpos1 hpow
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## `MemLp` for the finite-scale truncated operator
+
+Source: `lem:model_convergence`, blueprint lines 2116--2174, together with
+the preliminary finite-scale estimate used by the duality step of
+`thm:extended_model`.
+-/
+
+/-- A scale-uniform integrable majorant for the model integrand on Schwartz
+data.  Each of the three factors decays at order ten in the two coordinates
+it does not convolve, so the product decays at order twenty in all three. -/
+theorem exists_integrable_majorant_modelTruncatedOperatorIntegrand
+    (α : Anisotropy) (u : E3) (F : ModelSchwartzInput) :
+    ∃ M : E3 → ℝ, Integrable M ∧ (∀ x : E3, 0 ≤ M x) ∧
+      ∀ (c : ℝ → ℝ), (∀ t : ℝ, |c t| ≤ 1) → ∀ t : ℝ, 0 < t → ∀ x : E3,
+        |modelTruncatedOperatorIntegrand α u c (modelOperatorInput F) t x|
+          ≤ M x := by
+  obtain ⟨C0, hC0, hb0⟩ := exists_realSchwartz_line_bracket_bound 0 (F 1)
+  obtain ⟨C1, hC1, hb1⟩ := exists_realSchwartz_line_bracket_bound 1 (F 2)
+  obtain ⟨C2, hC2, hb2⟩ := exists_realSchwartz_line_bracket_bound 2 (F 3)
+  obtain ⟨B0, hB0, hgb0⟩ := exists_bound_realSchwartz (F 1)
+  obtain ⟨B1, hB1, hgb1⟩ := exists_bound_realSchwartz (F 2)
+  obtain ⟨B2, hB2, hgb2⟩ := exists_bound_realSchwartz (F 3)
+  set m0 : ℝ := ∫ r : ℝ, |ModelLowKernel (u 0) r| with hm0
+  set m1 : ℝ := ∫ r : ℝ, |ModelLowKernel (u 1) r| with hm1
+  set m2 : ℝ := ∫ r : ℝ, |ModelThirdKernel (u 2) r| with hm2
+  have hm0nonneg : 0 ≤ m0 := integral_nonneg fun _ ↦ abs_nonneg _
+  have hm1nonneg : 0 ≤ m1 := integral_nonneg fun _ ↦ abs_nonneg _
+  have hm2nonneg : 0 ≤ m2 := integral_nonneg fun _ ↦ abs_nonneg _
+  set K : ℝ := (C0 * m0) * (C1 * m1) * (C2 * m2) with hK
+  have hKnonneg : 0 ≤ K := by
+    rw [hK]; positivity
+  refine ⟨fun x ↦ K * ((1 + |x 0|) ^ (20 : ℕ) * (1 + |x 1|) ^ (20 : ℕ) *
+    (1 + |x 2|) ^ (20 : ℕ))⁻¹, ?_, ?_, ?_⟩
+  · exact integrable_prod_coordinate_bracket_twenty.const_mul K
+  · intro x
+    have : (0 : ℝ) < (1 + |x 0|) ^ (20 : ℕ) * (1 + |x 1|) ^ (20 : ℕ) *
+        (1 + |x 2|) ^ (20 : ℕ) := by positivity
+    positivity
+  · intro c hc t ht x
+    have hs0 : 0 < t ^ α.weight 0 := pow_pos ht _
+    have hs1 : 0 < t ^ α.weight 1 := pow_pos ht _
+    have hs2 : 0 < t ^ α.weight 2 := pow_pos ht _
+    have h0 := abs_ModelCoordinateConvolution_le_of_line_bound
+      0 (F 1) (ModelLowKernel (u 0)) (t ^ α.weight 0) x
+      (F 1).continuous.measurable B0 hgb0
+      (C0 * ((1 + |x 1|) ^ (10 : ℕ) * (1 + |x 2|) ^ (10 : ℕ))⁻¹)
+      (fun r ↦ hb0 x r 1 2 (by decide) (by decide))
+      (integrable_ModelLowKernel (u 0)) hs0
+    have h1 := abs_ModelCoordinateConvolution_le_of_line_bound
+      1 (F 2) (ModelLowKernel (u 1)) (t ^ α.weight 1) x
+      (F 2).continuous.measurable B1 hgb1
+      (C1 * ((1 + |x 0|) ^ (10 : ℕ) * (1 + |x 2|) ^ (10 : ℕ))⁻¹)
+      (fun r ↦ hb1 x r 0 2 (by decide) (by decide))
+      (integrable_ModelLowKernel (u 1)) hs1
+    have h2 := abs_ModelCoordinateConvolution_le_of_line_bound
+      2 (F 3) (ModelThirdKernel (u 2)) (t ^ α.weight 2) x
+      (F 3).continuous.measurable B2 hgb2
+      (C2 * ((1 + |x 0|) ^ (10 : ℕ) * (1 + |x 1|) ^ (10 : ℕ))⁻¹)
+      (fun r ↦ hb2 x r 0 1 (by decide) (by decide))
+      (integrable_ModelThirdKernel (u 2)) hs2
+    have hp0 : (0 : ℝ) < (1 + |x 0|) ^ (10 : ℕ) := by positivity
+    have hp1 : (0 : ℝ) < (1 + |x 1|) ^ (10 : ℕ) := by positivity
+    have hp2 : (0 : ℝ) < (1 + |x 2|) ^ (10 : ℕ) := by positivity
+    have harith : ∀ a b c : ℝ,
+        1 * (C0 * (b ^ (10 : ℕ) * c ^ (10 : ℕ))⁻¹ * m0) *
+            (C1 * (a ^ (10 : ℕ) * c ^ (10 : ℕ))⁻¹ * m1) *
+            (C2 * (a ^ (10 : ℕ) * b ^ (10 : ℕ))⁻¹ * m2) =
+          K * (a ^ (20 : ℕ) * b ^ (20 : ℕ) * c ^ (20 : ℕ))⁻¹ := by
+      intro a b c
+      rw [hK, mul_inv, mul_inv, mul_inv, mul_inv, mul_inv]
+      ring
+    have hA0 : 0 ≤ |ModelCoordinateConvolution 0 (F 1) (ModelLowKernel (u 0))
+      (t ^ α.weight 0) x| := abs_nonneg _
+    have hA1 : 0 ≤ |ModelCoordinateConvolution 1 (F 2) (ModelLowKernel (u 1))
+      (t ^ α.weight 1) x| := abs_nonneg _
+    have hA2 : 0 ≤ |ModelCoordinateConvolution 2 (F 3) (ModelThirdKernel (u 2))
+      (t ^ α.weight 2) x| := abs_nonneg _
+    unfold modelTruncatedOperatorIntegrand
+    rw [abs_mul, abs_mul, abs_mul]
+    calc |c t| *
+          |ModelCoordinateConvolution 0 (modelOperatorInput F 0)
+            (ModelLowKernel (u 0)) (t ^ α.weight 0) x| *
+          |ModelCoordinateConvolution 1 (modelOperatorInput F 1)
+            (ModelLowKernel (u 1)) (t ^ α.weight 1) x| *
+          |ModelCoordinateConvolution 2 (modelOperatorInput F 2)
+            (ModelThirdKernel (u 2)) (t ^ α.weight 2) x|
+        ≤ 1 *
+            (C0 * ((1 + |x 1|) ^ (10 : ℕ) * (1 + |x 2|) ^ (10 : ℕ))⁻¹ * m0) *
+            (C1 * ((1 + |x 0|) ^ (10 : ℕ) * (1 + |x 2|) ^ (10 : ℕ))⁻¹ * m1) *
+            (C2 * ((1 + |x 0|) ^ (10 : ℕ) * (1 + |x 1|) ^ (10 : ℕ))⁻¹ * m2) := by
+          gcongr <;> first
+            | exact hc t
+            | exact h0
+            | exact h1
+            | exact h2
+      _ = K * ((1 + |x 0|) ^ (20 : ℕ) * (1 + |x 1|) ^ (20 : ℕ) *
+            (1 + |x 2|) ^ (20 : ℕ))⁻¹ :=
+          harith (1 + |x 0|) (1 + |x 1|) (1 + |x 2|)
+
+/-- The actual finite-scale truncated operator is integrable on `E3` for
+Schwartz inputs, uniformly in the coefficient. -/
+theorem integrable_ModelTruncatedOperator_of_realSchwartz
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    {a b : ℝ} (ha : 0 < a) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1) :
+    Integrable (ModelTruncatedOperator α u c (modelOperatorInput F) a b) := by
+  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  set ν0 : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity with hν0
+  have hfmeas : ∀ j, Measurable (modelOperatorInput F j) := fun j ↦
+    (F j.succ).continuous.measurable
+  obtain ⟨M, hMint, hMnonneg, hMbound⟩ :=
+    exists_integrable_majorant_modelTruncatedOperatorIntegrand α u F
+  have hfinS : ν0 (Set.Ioc a b) < ⊤ := by
+    have h := measure_lt_top (μ := ν0.restrict (Set.Ioc a b)) Set.univ
+    rwa [Measure.restrict_apply_univ] at h
+  have hmeasU : StronglyMeasurable
+      (ModelTruncatedOperator α u c (modelOperatorInput F) a b) := by
+    have hj : StronglyMeasurable (fun xt : E3 × ℝ ↦
+        modelTruncatedOperatorIntegrand α u c (modelOperatorInput F)
+          xt.2 xt.1) :=
+      (stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+        α u c (modelOperatorInput F) hcm hfmeas).comp_measurable measurable_swap
+    exact hj.integral_prod_right' (ν := ν0.restrict (Set.Ioc a b))
+  have hpoint : ∀ x : E3,
+      ‖ModelTruncatedOperator α u c (modelOperatorInput F) a b x‖ ≤
+        M x * ν0.real (Set.Ioc a b) := by
+    intro x
+    apply norm_setIntegral_le_of_norm_le_const hfinS
+    intro t ht
+    rw [Real.norm_eq_abs]
+    exact hMbound c hc t (lt_trans ha ht.1) x
+  refine Integrable.mono' (hMint.mul_const (ν0.real (Set.Ioc a b)))
+    hmeasU.aestronglyMeasurable ?_
+  filter_upwards with x using hpoint x
+
+/-- The finite-scale truncated operator is uniformly bounded for Schwartz
+inputs.  This is the `L^∞` half of the preliminary finite-scale estimate. -/
+theorem exists_bound_ModelTruncatedOperator_of_realSchwartz
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    {a b : ℝ} (ha : 0 < a) (hc : ∀ t : ℝ, |c t| ≤ 1) :
+    ∃ D : ℝ, 0 ≤ D ∧ ∀ x : E3,
+      ‖ModelTruncatedOperator α u c (modelOperatorInput F) a b x‖ ≤ D := by
+  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  set ν0 : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity with hν0
+  have hfmeas : ∀ j, Measurable (modelOperatorInput F j) := fun j ↦
+    (F j.succ).continuous.measurable
+  obtain ⟨B, hBnonneg, hfB⟩ :
+      ∃ B : Fin 3 → ℝ, (∀ j, 0 ≤ B j) ∧ ∀ j, ∀ y : E3,
+        |modelOperatorInput F j y| ≤ B j := by
+    choose B hB hbd using fun j : Fin 3 ↦ exists_bound_realSchwartz (F j.succ)
+    exact ⟨B, hB, hbd⟩
+  set D0 : ℝ :=
+    1 * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+      (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+        (B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) with hD0
+  have hD0nonneg : 0 ≤ D0 := by
+    have h0 : 0 ≤ ∫ r : ℝ, |ModelLowKernel (u 0) r| :=
+      integral_nonneg fun _ ↦ abs_nonneg _
+    have h1 : 0 ≤ ∫ r : ℝ, |ModelLowKernel (u 1) r| :=
+      integral_nonneg fun _ ↦ abs_nonneg _
+    have h2 : 0 ≤ ∫ r : ℝ, |ModelThirdKernel (u 2) r| :=
+      integral_nonneg fun _ ↦ abs_nonneg _
+    have := hBnonneg 0
+    have := hBnonneg 1
+    have := hBnonneg 2
+    rw [hD0]
+    positivity
+  have hfinS : ν0 (Set.Ioc a b) < ⊤ := by
+    have h := measure_lt_top (μ := ν0.restrict (Set.Ioc a b)) Set.univ
+    rwa [Measure.restrict_apply_univ] at h
+  have hνnonneg : 0 ≤ ν0.real (Set.Ioc a b) := measureReal_nonneg
+  refine ⟨D0 * ν0.real (Set.Ioc a b), by positivity, fun x ↦ ?_⟩
+  apply norm_setIntegral_le_of_norm_le_const hfinS
+  intro t ht
+  rw [Real.norm_eq_abs]
+  exact abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+    α u c (modelOperatorInput F) t x (lt_trans ha ht.1) 1 B (by norm_num)
+    (hc t) hfmeas hBnonneg hfB
+
+/-- **The `MemLp` premise of the duality step.**  For Schwartz inputs and a
+compact positive scale truncation the complexified model operator lies in
+every finite `L^p` with `p > 1`. -/
+theorem memLp_complexified_ModelTruncatedOperator_of_realSchwartz
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    {a b : ℝ} (ha : 0 < a) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
+    {p : ℝ} (hp : 1 < p) :
+    MemLp (fun x : E3 ↦
+        (ModelTruncatedOperator α u c (modelOperatorInput F) a b x : ℂ))
+      (ENNReal.ofReal p) volume := by
+  have hone : MemLp (fun x : E3 ↦
+      (ModelTruncatedOperator α u c (modelOperatorInput F) a b x : ℂ))
+      1 volume := by
+    rw [memLp_one_iff_integrable]
+    exact (integrable_ModelTruncatedOperator_of_realSchwartz
+      α u c F ha hcm hc).ofReal
+  obtain ⟨D, hD, hbd⟩ :=
+    exists_bound_ModelTruncatedOperator_of_realSchwartz α u c F ha hc
+  have htop : MemLp (fun x : E3 ↦
+      (ModelTruncatedOperator α u c (modelOperatorInput F) a b x : ℂ))
+      ∞ volume := by
+    refine memLp_top_of_bound hone.aestronglyMeasurable D ?_
+    filter_upwards with x
+    simpa only [Complex.norm_real] using hbd x
+  exact memLp_of_one_and_top hp hone htop
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The unconditional strict-range output estimate
+
+Source: the display following the `L^p` duality step in the proof of
+`thm:extended_model`, blueprint lines 2665--2672.
+-/
+
+/-- **The source's strict-range output estimate for the finite-scale model
+operator.**  For Schwartz inputs and a compact positive scale truncation,
+`‖U^{a,b}_{u,c}(f_1,f_2,f_3)‖_{R_0} ≤ C·U(u)^{100}·∏_j‖f_j‖_{P_j}` with `R_0`
+conjugate to the zeroth exponent, uniformly in the truncation and the
+coefficient.  Both analytic premises of the duality step are discharged. -/
+theorem lpNorm_ModelTruncatedOperator_le_of_realSchwartz
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ)
+      (G : Fin 3 → SchwartzMap E3 ℝ) (a b : ℝ),
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      lpNorm (fun x : E3 ↦
+          (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b x : ℂ))
+          (ENNReal.ofReal (q 0).conjExponent) volume ≤
+        64 * C * sourceWeight u ^ 100 *
+          ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+            (ENNReal.ofReal (q j.succ)) volume := by
+  rcases lpNorm_ModelTruncatedOperator_le_of_strict_range α q hq hsum hqs
+    with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  intro u c G a b ha hcm hc
+  have hq0 : (1 : ℝ) < q 0 := by
+    have := hqs 0
+    rw [activeSourceStoppingExponent_zero] at this
+    linarith
+  have hconj : (q 0).HolderConjugate (q 0).conjExponent :=
+    Real.HolderConjugate.conjExponent hq0
+  have hR0 : (1 : ℝ) < (q 0).conjExponent := hconj.symm.lt
+  have hinput : ∀ h : SchwartzMap E3 ℝ,
+      modelOperatorInput (modelSchwartzCons h G) = fun j ↦ (G j : E3 → ℝ) :=
+    fun h ↦ modelOperatorInput_modelSchwartzCons h G
+  have hmem : MemLp (fun x : E3 ↦
+      (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b x : ℂ))
+      (ENNReal.ofReal (q 0).conjExponent) volume := by
+    have h := memLp_complexified_ModelTruncatedOperator_of_realSchwartz
+      α u c (modelSchwartzCons 0 G) (a := a) (b := b) ha hcm hc hR0
+    rwa [hinput 0] at h
+  exact hbound u c G a b ha.le hcm hc hmem
+    (fun h ↦ integrable_modelTruncatedOperatorPairingIntegrand
+      α u c (modelSchwartzCons h G) ha hcm hc)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The global good-part bound
+
+Source: `lem:fiber_cz`, blueprint lines 2258--2357.  The fiberwise `L^P`
+estimate is integrated over the transverse variables by Tonelli, exactly as
+the source does for `‖h_m‖_p` and the good part.
+-/
+
+/-- The canonical Section 8 stopping data attached to an input field and a
+height: its fibers of finite `p`-mass and its `|f|^p` dyadic averages. -/
+noncomputable def sourceFiberFiniteMassSet
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (p : ℝ) : Set Z :=
+  fiberFiniteMassSet (fun yz : ℝ × Z ↦ ENNReal.ofReal (|F yz| ^ p))
+
+theorem measurableSet_sourceFiberFiniteMassSet
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (p : ℝ)
+    (hF : Measurable F) :
+    MeasurableSet (sourceFiberFiniteMassSet F p) := by
+  apply measurableSet_fiberFiniteMassSet
+  fun_prop
+
+/-- **The global good-part `L^P` bound.**  Tonelli turns the fiberwise
+estimate of `lem:fiber_cz` into the full transverse estimate. -/
+theorem lintegral_prod_rpow_fiberDyadicCountableGoodField_le
+    {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
+    (F : ℝ × Z → ℝ) {p P : ℝ} (hp : 1 ≤ p) (hpP : p ≤ P) {H : ℝ} (hH : 0 < H)
+    (hmeas : Measurable F) :
+    ∫⁻ w : ℝ × Z, ENNReal.ofReal (|fiberDyadicCountableGoodField F
+        (sourceFiberFiniteMassSet F p)
+        (fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p)) H w| ^ P)
+        ∂(volume.prod μ) ≤
+      ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+        ∫⁻ w : ℝ × Z, ENNReal.ofReal (|F w| ^ p) ∂(volume.prod μ) := by
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hHpos : (0 : ℝ) < 2 * H := by linarith
+  set Fp : ℝ × Z → ℝ := fun yz ↦ |F yz| ^ p with hFp
+  have hFpmeas : Measurable Fp := by
+    simp only [hFp]
+    fun_prop
+  have hFp_nonneg : ∀ w : ℝ × Z, 0 ≤ Fp w := fun w ↦
+    Real.rpow_nonneg (abs_nonneg _) p
+  set Zf : Set Z := sourceFiberFiniteMassSet F p with hZfdef
+  have hZf : MeasurableSet Zf := measurableSet_sourceFiberFiniteMassSet F p hmeas
+  set A : FiberDyadicInterval → Z → ℝ := fiberDyadicIntervalAverage Fp with hA
+  have hAmeas : ∀ I, Measurable (A I) := fun I ↦
+    measurable_fiberDyadicIntervalAverage Fp hFpmeas I
+  set G : ℝ × Z → ℝ := fiberDyadicCountableGoodField F Zf A H with hG
+  have hGmeas : Measurable G :=
+    measurable_fiberDyadicCountableGoodField F Zf A H hmeas hZf hAmeas
+  have hgG : Measurable (fun w : ℝ × Z ↦ ENNReal.ofReal (|G w| ^ P)) := by
+    fun_prop
+  have hgF : Measurable (fun w : ℝ × Z ↦ ENNReal.ofReal (|F w| ^ p)) := by
+    fun_prop
+  have hconst : ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) ≠ 0 := by
+    simp only [ne_eq, ENNReal.ofReal_eq_zero, not_le]
+    exact Real.rpow_pos_of_pos hHpos _
+  have hfiber : ∀ z : Z,
+      (∫⁻ y : ℝ, ENNReal.ofReal (|G (y, z)| ^ P)) ≤
+        ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p) := by
+    intro z
+    by_cases hz : z ∈ Zf
+    · have hint : Integrable (fun y : ℝ ↦ Fp (y, z)) :=
+        mem_fiberFiniteMassSet_integrable Fp hFpmeas hFp_nonneg z hz
+      exact lintegral_rpow_fiberDyadicCountableGoodField_le_exponent
+        F Zf hp hpP hH z hz hmeas hZf hint
+    · have htop : (∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p)) = ⊤ := by
+        by_contra hne
+        exact hz (lt_of_le_of_ne le_top hne)
+      rw [htop, ENNReal.mul_top hconst]
+      exact le_top
+  calc ∫⁻ w : ℝ × Z, ENNReal.ofReal (|G w| ^ P) ∂(volume.prod μ)
+      = ∫⁻ z : Z, (∫⁻ y : ℝ, ENNReal.ofReal (|G (y, z)| ^ P)) ∂μ :=
+        lintegral_prod_symm _ hgG.aemeasurable
+    _ ≤ ∫⁻ z : Z, (ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p)) ∂μ :=
+        lintegral_mono hfiber
+    _ = ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ z : Z, (∫⁻ y : ℝ, ENNReal.ofReal (|F (y, z)| ^ p)) ∂μ :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ = ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ w : ℝ × Z, ENNReal.ofReal (|F w| ^ p) ∂(volume.prod μ) := by
+        rw [← lintegral_prod_symm _ hgF.aemeasurable]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The good-part bound on the ambient space
+
+Source: `lem:fiber_cz`, blueprint lines 2258--2357.  The global transverse
+estimate is transported to `E3` through the measure-preserving coordinate
+split of `def:fiber_maximal`.
+-/
+
+/-- The canonical Section 8 stopping data for an ambient input in an active
+coordinate. -/
+noncomputable def coordinateSourceFiberFiniteMassSet
+    (m : Fin 3) (f : E3 → ℝ) (p : ℝ) : Set (TransverseSpace m) :=
+  sourceFiberFiniteMassSet (coordinateFiberInput m f) p
+
+/-- The canonical Section 8 stopping averages for an ambient input. -/
+noncomputable def coordinateSourceFiberAverage
+    (m : Fin 3) (f : E3 → ℝ) (p : ℝ) :
+    FiberDyadicInterval → TransverseSpace m → ℝ :=
+  fiberDyadicIntervalAverage (fun yz ↦ |coordinateFiberInput m f yz| ^ p)
+
+/-- **The good-part `L^P` bound on `E3`.**  This is the source's
+`‖g_m‖_P^P ≤ (2H)^{P/p-1}‖f_m‖_p^p` in the ambient variables. -/
+theorem lintegral_rpow_coordinateFiberDyadicCountableGoodField_le
+    (m : Fin 3) (f : E3 → ℝ) {p P : ℝ} (hp : 1 ≤ p) (hpP : p ≤ P)
+    {H : ℝ} (hH : 0 < H) (hf : Measurable f) :
+    ∫⁻ x : E3, ENNReal.ofReal (|coordinateFiberDyadicCountableGoodField m f
+        (coordinateSourceFiberFiniteMassSet m f p)
+        (coordinateSourceFiberAverage m f p) H x| ^ P) ≤
+      ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+        ∫⁻ x : E3, ENNReal.ofReal (|f x| ^ p) := by
+  have hmp := coordinateSplit_measurePreserving m
+  set F : ℝ × TransverseSpace m → ℝ := coordinateFiberInput m f with hF
+  have hFmeas : Measurable F := measurable_coordinateFiberInput m f hf
+  set Zf : Set (TransverseSpace m) := sourceFiberFiniteMassSet F p with hZf
+  have hZfmeas : MeasurableSet Zf :=
+    measurableSet_sourceFiberFiniteMassSet F p hFmeas
+  set A : FiberDyadicInterval → TransverseSpace m → ℝ :=
+    fiberDyadicIntervalAverage (fun yz ↦ |F yz| ^ p) with hA
+  have hFpmeas : Measurable (fun yz : ℝ × TransverseSpace m ↦ |F yz| ^ p) := by
+    fun_prop
+  have hAmeas : ∀ I, Measurable (A I) := fun I ↦
+    measurable_fiberDyadicIntervalAverage _ hFpmeas I
+  set G : ℝ × TransverseSpace m → ℝ :=
+    fiberDyadicCountableGoodField F Zf A H with hG
+  have hGmeas : Measurable G :=
+    measurable_fiberDyadicCountableGoodField F Zf A H hFmeas hZfmeas hAmeas
+  have hgG : Measurable (fun w : ℝ × TransverseSpace m ↦
+      ENNReal.ofReal (|G w| ^ P)) := by fun_prop
+  have hgF : Measurable (fun w : ℝ × TransverseSpace m ↦
+      ENNReal.ofReal (|F w| ^ p)) := by fun_prop
+  have hleft : ∫⁻ x : E3, ENNReal.ofReal
+        (|coordinateFiberDyadicCountableGoodField m f Zf A H x| ^ P) =
+      ∫⁻ w : ℝ × TransverseSpace m, ENNReal.ofReal (|G w| ^ P) :=
+    hmp.lintegral_comp hgG
+  have hright : ∫⁻ w : ℝ × TransverseSpace m, ENNReal.ofReal (|F w| ^ p) =
+      ∫⁻ x : E3, ENNReal.ofReal (|f x| ^ p) := by
+    rw [← hmp.lintegral_comp hgF]
+    apply lintegral_congr
+    intro x
+    simp only [hF, coordinateFiberInput, coordinateJoin_split]
+  have hglobal := lintegral_prod_rpow_fiberDyadicCountableGoodField_le
+    (volume : Measure (TransverseSpace m)) F hp hpP hH hFmeas
+  rw [← Measure.volume_eq_prod] at hglobal
+  calc ∫⁻ x : E3, ENNReal.ofReal
+        (|coordinateFiberDyadicCountableGoodField m f
+          (coordinateSourceFiberFiniteMassSet m f p)
+          (coordinateSourceFiberAverage m f p) H x| ^ P)
+      = ∫⁻ w : ℝ × TransverseSpace m, ENNReal.ofReal (|G w| ^ P) := hleft
+    _ ≤ ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ w : ℝ × TransverseSpace m, ENNReal.ofReal (|F w| ^ p) := hglobal
+    _ = ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+          ∫⁻ x : E3, ENNReal.ofReal (|f x| ^ p) := by rw [hright]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The good-part Chebyshev budget
+
+Source: `lem:one_fiber`, blueprint lines 2388--2540, the display
+`|{|U(f^g)|>τ/2}| ≤ Cτ^{-R_0}A_u^{R_0}H^{R_0(1/p-1/P_m)}`.
+-/
+
+/-- Chebyshev at the base exponent converts a strong bound on the good part
+into the weak-one good budget consumed by `fiberCZ_weakOne_assembly`. -/
+theorem weakOne_good_budget_of_lintegral_le
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (g : X → ℝ)
+    (hg : Measurable g) {R0 lam K : ℝ}
+    (hR0 : 0 < R0) (hlam : 0 < lam) (hK : 0 ≤ K)
+    (hbound : ∫⁻ x, ENNReal.ofReal (|g x| ^ R0) ∂μ ≤
+      ENNReal.ofReal (K ^ R0)) :
+    ENNReal.ofReal (lam / 2) * μ {x | lam / 2 < |g x|} ≤
+      ENNReal.ofReal ((lam / 2) / (lam / 2) ^ R0 * K ^ R0) := by
+  have hhalf : (0 : ℝ) < lam / 2 := by linarith
+  have hpow : (0 : ℝ) < (lam / 2) ^ R0 := Real.rpow_pos_of_pos hhalf R0
+  set c : ℝ := (lam / 2) / (lam / 2) ^ R0 with hc
+  have hcnonneg : 0 ≤ c := by positivity
+  have hmeas : AEMeasurable (fun x ↦ ENNReal.ofReal (|g x| ^ R0)) μ := by
+    apply Measurable.aemeasurable
+    fun_prop
+  have hmarkov := mul_meas_ge_le_lintegral₀ hmeas
+    (ENNReal.ofReal ((lam / 2) ^ R0))
+  have hsub : {x | lam / 2 < |g x|} ⊆
+      {x | ENNReal.ofReal ((lam / 2) ^ R0) ≤
+        ENNReal.ofReal (|g x| ^ R0)} := by
+    intro x hx
+    exact ENNReal.ofReal_le_ofReal
+      (Real.rpow_le_rpow hhalf.le (le_of_lt hx) hR0.le)
+  have hstep : ENNReal.ofReal ((lam / 2) ^ R0) * μ {x | lam / 2 < |g x|} ≤
+      ENNReal.ofReal (K ^ R0) := by
+    calc ENNReal.ofReal ((lam / 2) ^ R0) * μ {x | lam / 2 < |g x|}
+        ≤ ENNReal.ofReal ((lam / 2) ^ R0) *
+            μ {x | ENNReal.ofReal ((lam / 2) ^ R0) ≤
+              ENNReal.ofReal (|g x| ^ R0)} :=
+          mul_le_mul' le_rfl (measure_mono hsub)
+      _ ≤ ∫⁻ x, ENNReal.ofReal (|g x| ^ R0) ∂μ := hmarkov
+      _ ≤ ENNReal.ofReal (K ^ R0) := hbound
+  have hrewrite : ENNReal.ofReal (lam / 2) =
+      ENNReal.ofReal c * ENNReal.ofReal ((lam / 2) ^ R0) := by
+    rw [← ENNReal.ofReal_mul hcnonneg, hc]
+    congr 1
+    field_simp
+  calc ENNReal.ofReal (lam / 2) * μ {x | lam / 2 < |g x|}
+      = ENNReal.ofReal c *
+          (ENNReal.ofReal ((lam / 2) ^ R0) * μ {x | lam / 2 < |g x|}) := by
+        rw [hrewrite, mul_assoc]
+    _ ≤ ENNReal.ofReal c * ENNReal.ofReal (K ^ R0) :=
+        mul_le_mul' le_rfl hstep
+    _ = ENNReal.ofReal (c * K ^ R0) := (ENNReal.ofReal_mul hcnonneg).symm
+
+/-- **The source's level-independent good budget.**  With stopping height
+`H = λ/A` and the exponent identity `δ·R_0 = R_0 - 1` of `lem:one_fiber`, the
+Chebyshev budget collapses to `2^{R_0-1}·A`, independent of the level `λ`. -/
+theorem weakOne_good_budget_normalization
+    {R0 lam A delta : ℝ} (hR0 : 0 < R0) (hlam : 0 < lam) (hA : 0 < A)
+    (hdelta : delta * R0 = R0 - 1) :
+    (lam / 2) / (lam / 2) ^ R0 * (A * (lam / A) ^ delta) ^ R0 =
+      2 ^ (R0 - 1) * A := by
+  have hhalf : (0 : ℝ) < lam / 2 := by linarith
+  have hla : (0 : ℝ) < lam / A := div_pos hlam hA
+  have e1 : (lam / 2) / (lam / 2) ^ R0 = (lam / 2) ^ (1 - R0) := by
+    rw [Real.rpow_sub hhalf, Real.rpow_one]
+  have e2 : (lam / 2) ^ (1 - R0) = lam ^ (1 - R0) * 2 ^ (R0 - 1) := by
+    rw [Real.div_rpow hlam.le (by norm_num : (0 : ℝ) ≤ 2), div_eq_mul_inv,
+      ← Real.rpow_neg (by norm_num : (0 : ℝ) ≤ 2)]
+    congr 2
+    ring
+  have eA : A ^ R0 * A ^ (-(R0 - 1)) = A := by
+    rw [← Real.rpow_add hA, show R0 + -(R0 - 1) = (1 : ℝ) by ring,
+      Real.rpow_one]
+  have e3 : (A * (lam / A) ^ delta) ^ R0 = A * lam ^ (R0 - 1) := by
+    rw [Real.mul_rpow hA.le (Real.rpow_nonneg hla.le delta),
+      ← Real.rpow_mul hla.le, hdelta,
+      Real.div_rpow hlam.le hA.le, div_eq_mul_inv,
+      ← Real.rpow_neg hA.le,
+      show A ^ R0 * (lam ^ (R0 - 1) * A ^ (-(R0 - 1)))
+        = (A ^ R0 * A ^ (-(R0 - 1))) * lam ^ (R0 - 1) from by ring, eA]
+  have eLam : lam ^ (1 - R0) * lam ^ (R0 - 1) = 1 := by
+    rw [← Real.rpow_add hlam, show (1 - R0) + (R0 - 1) = (0 : ℝ) by ring,
+      Real.rpow_zero]
+  rw [e1, e2, e3]
+  calc lam ^ (1 - R0) * 2 ^ (R0 - 1) * (A * lam ^ (R0 - 1))
+      = 2 ^ (R0 - 1) * A * (lam ^ (1 - R0) * lam ^ (R0 - 1)) := by ring
+    _ = 2 ^ (R0 - 1) * A := by rw [eLam, mul_one]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Maximal domination of the active coordinate convolution
+
+Source: `lem:fiber_kernel`, blueprint lines 2232--2257, third display
+`|f *_j (κ_j)_{s,su_j}(x)| ≤ C U(u)^{10} M^{(j)} f(x)`.
+-/
+
+/-- **`lem:fiber_kernel`, third display.**  A coordinate convolution against
+the active model kernel is dominated by the coordinate maximal function, with
+the source's `U(u)^{10}` weight and a constant uniform in the scale. -/
+theorem abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (i j : Fin 3) (u : E3) (s : ℝ) (x : E3)
+      (f : E3 → ℝ) (A : ℝ), 0 < s → Measurable f → 0 ≤ A →
+      (∀ y : E3, |f y| ≤ A) →
+      |ModelCoordinateConvolution j f (activeModelKernel i j u) s x| ≤
+        C * dyadicBracketShellConstant * sourceWeight u ^ 10 *
+          coordinateDyadicBallMaximal j (fun y ↦ (f y : ℂ)) x := by
+  rcases abs_activeModelCoordinateConvolution_le_coordinateBracketConvolution_of_integrable
+    with ⟨C, hC, hmain⟩
+  refine ⟨C, hC, ?_⟩
+  intro i j u s x f A hs hf hA hfA
+  have hfC : Measurable (fun y : E3 ↦ (f y : ℂ)) :=
+    Complex.measurable_ofReal.comp hf
+  have hfCA : ∀ y : E3, ‖(f y : ℂ)‖ ≤ A := by
+    intro y
+    simpa only [Complex.norm_real, Real.norm_eq_abs] using hfA y
+  have hline : Measurable (fun r : ℝ ↦
+      f (x - r • Anisotropy.coordinateDirection j)) :=
+    hf.comp ((measurable_const.sub
+      ((measurable_id.smul_const (Anisotropy.coordinateDirection j)))))
+  have hG : Integrable (fun r : ℝ ↦
+      f (x - r • Anisotropy.coordinateDirection j) *
+        kernelDilate (activeModelKernel i j u) s r) :=
+    integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      j f (activeModelKernel i j u) s x hf A hfA
+      (integrable_activeModelKernel i j u) hs
+  have hweight : (0 : ℝ) ≤ C * sourceWeight u ^ 10 := by
+    have : (0 : ℝ) ≤ sourceWeight u ^ 10 := by positivity
+    positivity
+  have hH : Integrable (fun r : ℝ ↦ C * sourceWeight u ^ 10 *
+      (|f (x - r • Anisotropy.coordinateDirection j)| *
+        bracketKernelAt s 0 r)) := by
+    have hmaj : Integrable (fun r : ℝ ↦
+        C * sourceWeight u ^ 10 * A * bracketKernelAt s 0 r) :=
+      (integrable_bracketKernelAt hs 0).const_mul _
+    refine Integrable.mono' hmaj ?_ ?_
+    · apply Measurable.aestronglyMeasurable
+      have hb := measurable_bracketKernelAt hs.ne' 0
+      fun_prop
+    · filter_upwards with r
+      rw [Real.norm_eq_abs, abs_of_nonneg (by
+        have := bracketKernelAt_nonneg (s := s) (a := 0) (x := r) hs.le
+        positivity)]
+      calc C * sourceWeight u ^ 10 *
+            (|f (x - r • Anisotropy.coordinateDirection j)| *
+              bracketKernelAt s 0 r)
+          ≤ C * sourceWeight u ^ 10 * (A * bracketKernelAt s 0 r) := by
+            apply mul_le_mul_of_nonneg_left _ hweight
+            exact mul_le_mul_of_nonneg_right (hfA _)
+              (bracketKernelAt_nonneg hs.le)
+        _ = C * sourceWeight u ^ 10 * A * bracketKernelAt s 0 r := by ring
+  have hstep := hmain i j u s x f hs hG hH
+  have hshell := coordinateBracketConvolution_le_shell_dyadic
+    j (fun y : E3 ↦ (f y : ℂ)) hfC A hA hfCA s x hs
+  calc |ModelCoordinateConvolution j f (activeModelKernel i j u) s x|
+      ≤ C * sourceWeight u ^ 10 *
+          coordinateBracketConvolution j (fun y ↦ (f y : ℂ)) s x := hstep
+    _ ≤ C * sourceWeight u ^ 10 *
+          (dyadicBracketShellConstant *
+            coordinateDyadicBallMaximal j (fun y ↦ (f y : ℂ)) x) :=
+        mul_le_mul_of_nonneg_left hshell hweight
+    _ = C * dyadicBracketShellConstant * sourceWeight u ^ 10 *
+          coordinateDyadicBallMaximal j (fun y ↦ (f y : ℂ)) x := by ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## From the compact truncation to the full scale tail
+
+Source: `lem:one_fiber`, blueprint lines 2388--2540.  The bad part of the
+compactly truncated operator is estimated by the source's full positive-scale
+tail, whose value is independent of the truncation.
+-/
+
+/-- On a positive scale interval the model's logarithmic measure is the
+explicit density `dt/t`, in set-integral form. -/
+theorem setIntegral_modelScaleInterval_eq_mul_inv
+    {a b : ℝ} (ha : 0 < a) (g : ℝ → ℝ) :
+    ∫ t in Set.Ioc a b, g t
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity) =
+      ∫ t in Set.Ioc a b, g t * t⁻¹ := by
+  have htop : ∀ᵐ t ∂(volume.restrict (Set.Ioc a b)),
+      cubeScaleDensity t < ∞ := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    rw [cubeScaleDensity_eq_of_pos (lt_trans ha ht.1)]
+    exact ENNReal.ofReal_lt_top
+  rw [setIntegral_withDensity_eq_setIntegral_toReal_smul
+    measurable_cubeScaleDensity htop g measurableSet_Ioc]
+  apply setIntegral_congr_fun measurableSet_Ioc
+  intro t ht
+  change (cubeScaleDensity t).toReal * g t = g t * t⁻¹
+  rw [cubeScaleDensity_eq_of_pos (lt_trans ha ht.1),
+    ENNReal.toReal_ofReal (inv_pos.mpr (lt_trans ha ht.1)).le]
+  ring
+
+/-- **Truncation-free scale tail.**  The compactly truncated scale integral is
+dominated by the full positive-scale tail of its absolute value, uniformly in
+the truncation. -/
+theorem abs_integral_modelScaleInterval_le_scaleTail
+    {a b : ℝ} (ha : 0 < a) (g : ℝ → ℝ)
+    (htail : IntegrableOn (fun t : ℝ ↦ |g t| * t⁻¹) (Set.Ioi (0 : ℝ))) :
+    |∫ t in Set.Ioc a b, g t
+        ∂((volume : Measure ℝ).withDensity cubeScaleDensity)| ≤
+      ∫ t : ℝ in Set.Ioi (0 : ℝ), |g t| * t⁻¹ := by
+  have hsub : Set.Ioc a b ⊆ Set.Ioi (0 : ℝ) := fun t ht ↦ lt_trans ha ht.1
+  have hnonneg : ∀ t ∈ Set.Ioi (0 : ℝ), 0 ≤ |g t| * t⁻¹ := by
+    intro t ht
+    exact mul_nonneg (abs_nonneg _) (inv_nonneg.2 (le_of_lt ht))
+  calc |∫ t in Set.Ioc a b, g t
+          ∂((volume : Measure ℝ).withDensity cubeScaleDensity)|
+      = |∫ t in Set.Ioc a b, g t * t⁻¹| := by
+        rw [setIntegral_modelScaleInterval_eq_mul_inv ha g]
+    _ ≤ ∫ t in Set.Ioc a b, |g t * t⁻¹| :=
+        MeasureTheory.abs_integral_le_integral_abs
+    _ = ∫ t in Set.Ioc a b, |g t| * t⁻¹ := by
+        apply setIntegral_congr_fun measurableSet_Ioc
+        intro t ht
+        show |g t * t⁻¹| = |g t| * t⁻¹
+        rw [abs_mul, abs_of_nonneg (inv_nonneg.2 (lt_trans ha ht.1).le)]
+    _ ≤ ∫ t : ℝ in Set.Ioi (0 : ℝ), |g t| * t⁻¹ := by
+        apply setIntegral_mono_set htail
+        · filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+          exact hnonneg t ht
+        · exact HasSubset.Subset.eventuallyLE hsub
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Factoring the model integrand through its passive slots
+
+Source: `lem:one_fiber`, blueprint lines 2495--2500, where the two slots other
+than the Calderón--Zygmund slot are bounded by their coordinate maximal
+functions and pulled out of the scale integral.
+-/
+
+@[simp] theorem activeModelKernel_two_zero (u : E3) :
+    activeModelKernel 2 0 u = ModelLowKernel (u 0) := by
+  simp [activeModelKernel]
+
+@[simp] theorem activeModelKernel_two_one (u : E3) :
+    activeModelKernel 2 1 u = ModelLowKernel (u 1) := by
+  simp [activeModelKernel]
+
+@[simp] theorem activeModelKernel_two_two (u : E3) :
+    activeModelKernel 2 2 u = ModelThirdKernel (u 2) := by
+  simp [activeModelKernel]
+
+/-- A four-factor monotonicity step for nonnegative reals. -/
+theorem mul_four_le_of_nonneg {a b c d a' b' c' d' : ℝ}
+    (ha : a ≤ a') (hb : b ≤ b') (hc : c ≤ c') (hd : d ≤ d')
+    (hb0 : 0 ≤ b) (hc0 : 0 ≤ c) (hd0 : 0 ≤ d)
+    (ha'0 : 0 ≤ a') (hb'0 : 0 ≤ b') (hc'0 : 0 ≤ c') :
+    a * b * c * d ≤ a' * b' * c' * d' := by
+  have h1 : a * b ≤ a' * b' := mul_le_mul ha hb hb0 ha'0
+  have h2 : a * b * c ≤ a' * b' * c' :=
+    mul_le_mul h1 hc hc0 (mul_nonneg ha'0 hb'0)
+  exact mul_le_mul h2 hd hd0 (mul_nonneg (mul_nonneg ha'0 hb'0) hc'0)
+
+/-- **Passive-slot factorization.**  Bounds on the two slots other than `m`
+pull out of the model integrand, leaving the `m`-th coordinate convolution. -/
+theorem abs_modelTruncatedOperatorIntegrand_le_passive
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (t : ℝ) (x : E3) (m : Fin 3) (K : Fin 3 → ℝ)
+    (hc : |c t| ≤ 1) (hK : ∀ j, 0 ≤ K j)
+    (hpassive : ∀ j : Fin 3, j ≠ m →
+      |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+        (t ^ α.weight j) x| ≤ K j) :
+    |modelTruncatedOperatorIntegrand α u c f t x| ≤
+      (∏ j ∈ Finset.univ.erase m, K j) *
+        |ModelCoordinateConvolution m (f m) (activeModelKernel 2 m u)
+          (t ^ α.weight m) x| := by
+  have habs : ∀ j : Fin 3, (0 : ℝ) ≤
+      |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+        (t ^ α.weight j) x| := fun j ↦ abs_nonneg _
+  unfold modelTruncatedOperatorIntegrand
+  rw [abs_mul, abs_mul, abs_mul]
+  have hm : m = 0 ∨ m = 1 ∨ m = 2 := by omega
+  rcases hm with rfl | rfl | rfl
+  · have h1 := hpassive 1 (by decide)
+    have h2 := hpassive 2 (by decide)
+    have herase : (Finset.univ.erase (0 : Fin 3)) = {1, 2} := by decide
+    rw [herase, Finset.prod_pair (by decide : (1 : Fin 3) ≠ 2)]
+    simp only [activeModelKernel_two_zero, activeModelKernel_two_one,
+      activeModelKernel_two_two] at h1 h2 ⊢
+    calc |c t| *
+          |ModelCoordinateConvolution 0 (f 0) (ModelLowKernel (u 0))
+            (t ^ α.weight 0) x| *
+          |ModelCoordinateConvolution 1 (f 1) (ModelLowKernel (u 1))
+            (t ^ α.weight 1) x| *
+          |ModelCoordinateConvolution 2 (f 2) (ModelThirdKernel (u 2))
+            (t ^ α.weight 2) x|
+        ≤ 1 * |ModelCoordinateConvolution 0 (f 0) (ModelLowKernel (u 0))
+              (t ^ α.weight 0) x| * K 1 * K 2 :=
+          mul_four_le_of_nonneg hc le_rfl h1 h2 (abs_nonneg _) (abs_nonneg _)
+            (abs_nonneg _) zero_le_one (abs_nonneg _) (hK 1)
+      _ = K 1 * K 2 * |ModelCoordinateConvolution 0 (f 0)
+            (ModelLowKernel (u 0)) (t ^ α.weight 0) x| := by ring
+  · have h0 := hpassive 0 (by decide)
+    have h2 := hpassive 2 (by decide)
+    have herase : (Finset.univ.erase (1 : Fin 3)) = {0, 2} := by decide
+    rw [herase, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 2)]
+    simp only [activeModelKernel_two_zero, activeModelKernel_two_one,
+      activeModelKernel_two_two] at h0 h2 ⊢
+    calc |c t| *
+          |ModelCoordinateConvolution 0 (f 0) (ModelLowKernel (u 0))
+            (t ^ α.weight 0) x| *
+          |ModelCoordinateConvolution 1 (f 1) (ModelLowKernel (u 1))
+            (t ^ α.weight 1) x| *
+          |ModelCoordinateConvolution 2 (f 2) (ModelThirdKernel (u 2))
+            (t ^ α.weight 2) x|
+        ≤ 1 * K 0 * |ModelCoordinateConvolution 1 (f 1)
+              (ModelLowKernel (u 1)) (t ^ α.weight 1) x| * K 2 :=
+          mul_four_le_of_nonneg hc h0 le_rfl h2 (abs_nonneg _) (abs_nonneg _)
+            (abs_nonneg _) zero_le_one (hK 0) (abs_nonneg _)
+      _ = K 0 * K 2 * |ModelCoordinateConvolution 1 (f 1)
+            (ModelLowKernel (u 1)) (t ^ α.weight 1) x| := by ring
+  · have h0 := hpassive 0 (by decide)
+    have h1 := hpassive 1 (by decide)
+    have herase : (Finset.univ.erase (2 : Fin 3)) = {0, 1} := by decide
+    rw [herase, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 1)]
+    simp only [activeModelKernel_two_zero, activeModelKernel_two_one,
+      activeModelKernel_two_two] at h0 h1 ⊢
+    calc |c t| *
+          |ModelCoordinateConvolution 0 (f 0) (ModelLowKernel (u 0))
+            (t ^ α.weight 0) x| *
+          |ModelCoordinateConvolution 1 (f 1) (ModelLowKernel (u 1))
+            (t ^ α.weight 1) x| *
+          |ModelCoordinateConvolution 2 (f 2) (ModelThirdKernel (u 2))
+            (t ^ α.weight 2) x|
+        ≤ 1 * K 0 * K 1 * |ModelCoordinateConvolution 2 (f 2)
+              (ModelThirdKernel (u 2)) (t ^ α.weight 2) x| :=
+          mul_four_le_of_nonneg hc h0 h1 le_rfl (abs_nonneg _) (abs_nonneg _)
+            (abs_nonneg _) zero_le_one (hK 0) (hK 1)
+      _ = K 0 * K 1 * |ModelCoordinateConvolution 2 (f 2)
+            (ModelThirdKernel (u 2)) (t ^ α.weight 2) x| := by ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The scale-integrated passive factorization
+
+Source: `lem:one_fiber`, blueprint lines 2495--2500.  Since the passive bounds
+are uniform in the scale, they leave the active slot's absolute scale tail.
+-/
+
+/-- **Scale-integrated passive factorization.**  The truncated operator is
+bounded by the two passive constants times the active slot's full
+positive-scale tail, uniformly in the truncation. -/
+theorem abs_ModelTruncatedOperator_le_passive_mul_scaleTail
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ) (x : E3) (K : Fin 3 → ℝ)
+    (ha : 0 < a) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
+    (hf : ∀ j, Measurable (f j)) (hK : ∀ j, 0 ≤ K j)
+    (hpassive : ∀ t : ℝ, 0 < t → ∀ j : Fin 3, j ≠ m →
+      |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+        (t ^ α.weight j) x| ≤ K j)
+    (htail : IntegrableOn (fun t : ℝ ↦
+      |ModelCoordinateConvolution m (f m) (activeModelKernel 2 m u)
+        (t ^ α.weight m) x| * t⁻¹) (Set.Ioi (0 : ℝ))) :
+    |ModelTruncatedOperator α u c f a b x| ≤
+      (∏ j ∈ Finset.univ.erase m, K j) *
+        ∫ t in Set.Ioi (0 : ℝ),
+          |ModelCoordinateConvolution m (f m) (activeModelKernel 2 m u)
+            (t ^ α.weight m) x| * t⁻¹ := by
+  set P : ℝ := ∏ j ∈ Finset.univ.erase m, K j with hP
+  have hPnonneg : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ hK j
+  set Am : ℝ → ℝ := fun t ↦ |ModelCoordinateConvolution m (f m)
+    (activeModelKernel 2 m u) (t ^ α.weight m) x| with hAm
+  have hAmnonneg : ∀ t : ℝ, 0 ≤ Am t := fun t ↦ abs_nonneg _
+  have hptb : ∀ t : ℝ, 0 < t →
+      |modelTruncatedOperatorIntegrand α u c f t x| ≤ P * Am t := fun t ht ↦
+    abs_modelTruncatedOperatorIntegrand_le_passive α u c f t x m K
+      (hc t) hK (fun j hj ↦ hpassive t ht j hj)
+  have hslice : Measurable (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c f t x) :=
+    (stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+      α u c f hcm hf).measurable.comp (measurable_id.prodMk measurable_const)
+  have hmeas : Measurable (fun t : ℝ ↦
+      |modelTruncatedOperatorIntegrand α u c f t x| * t⁻¹) := by
+    fun_prop
+  have hmajor : IntegrableOn (fun t : ℝ ↦ P * (Am t * t⁻¹))
+      (Set.Ioi (0 : ℝ)) := htail.const_mul P
+  have hint : IntegrableOn (fun t : ℝ ↦
+      |modelTruncatedOperatorIntegrand α u c f t x| * t⁻¹)
+      (Set.Ioi (0 : ℝ)) := by
+    refine Integrable.mono' hmajor hmeas.aestronglyMeasurable ?_
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    have htpos : (0 : ℝ) < t := ht
+    rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+    calc |modelTruncatedOperatorIntegrand α u c f t x| * t⁻¹
+        ≤ (P * Am t) * t⁻¹ :=
+          mul_le_mul_of_nonneg_right (hptb t htpos)
+            (inv_nonneg.2 htpos.le)
+      _ = P * (Am t * t⁻¹) := by ring
+  calc |ModelTruncatedOperator α u c f a b x|
+      ≤ ∫ t in Set.Ioi (0 : ℝ),
+          |modelTruncatedOperatorIntegrand α u c f t x| * t⁻¹ :=
+        abs_integral_modelScaleInterval_le_scaleTail ha _ hint
+    _ ≤ ∫ t in Set.Ioi (0 : ℝ), P * (Am t * t⁻¹) := by
+        apply setIntegral_mono_on hint hmajor measurableSet_Ioi
+        intro t ht
+        have htpos : (0 : ℝ) < t := ht
+        calc |modelTruncatedOperatorIntegrand α u c f t x| * t⁻¹
+            ≤ (P * Am t) * t⁻¹ :=
+              mul_le_mul_of_nonneg_right (hptb t htpos)
+                (inv_nonneg.2 htpos.le)
+          _ = P * (Am t * t⁻¹) := by ring
+    _ = P * ∫ t in Set.Ioi (0 : ℝ), Am t * t⁻¹ := integral_const_mul _ _
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The coordinate convolution as a fiber line integral
+
+Source: `lem:one_fiber`, blueprint lines 2446--2470, where the convolution
+`b_I *_m (κ_m)_{s,su_m}` is written as an integral over the fiber line in the
+active coordinate.
+-/
+
+/-- Translating along the active coordinate shifts only the active component
+of the coordinate split. -/
+theorem coordinateSplit_sub_smul_coordinateDirection
+    (i : Fin 3) (x : E3) (r : ℝ) :
+    coordinateSplit i (x - r • Anisotropy.coordinateDirection i) =
+      ((coordinateSplit i x).1 - r, (coordinateSplit i x).2) := by
+  apply Prod.ext
+  · simp [coordinateSplit, Anisotropy.coordinateDirection]
+  · ext j
+    have hj : (j : Fin 3) ≠ i := j.2
+    simp [coordinateSplit, Anisotropy.coordinateDirection, hj]
+
+/-- Reflecting the line variable leaves a full real integral unchanged. -/
+theorem integral_comp_const_sub (F : ℝ → ℝ) (a : ℝ) :
+    (∫ r : ℝ, F (a - r)) = ∫ y : ℝ, F y := by
+  have h1 : (∫ r : ℝ, F (a - r)) = ∫ r : ℝ, (fun y : ℝ ↦ F (-y)) (r - a) := by
+    apply integral_congr_ae
+    filter_upwards with r
+    congr 1
+    ring
+  rw [h1, integral_sub_right_eq_self (μ := volume) (fun y : ℝ ↦ F (-y)) a,
+    integral_neg_eq_self]
+
+/-- **The coordinate convolution as a fiber line integral.**  For a field
+pulled back through the coordinate split, the active convolution is exactly
+the source's fiber-line integral against the dilated kernel. -/
+theorem ModelCoordinateConvolution_coordinateSplit_eq_fiberLine
+    (m : Fin 3) (g : ℝ × TransverseSpace m → ℝ) (K : ℝ → ℝ) (s : ℝ) (x : E3) :
+    ModelCoordinateConvolution m (fun w : E3 ↦ g (coordinateSplit m w)) K s x =
+      ∫ y : ℝ, g (y, (coordinateSplit m x).2) *
+        kernelDilate K s ((coordinateSplit m x).1 - y) := by
+  unfold ModelCoordinateConvolution
+  set q : ℝ := (coordinateSplit m x).1 with hq
+  set z : TransverseSpace m := (coordinateSplit m x).2 with hz
+  set F : ℝ → ℝ := fun y : ℝ ↦ g (y, z) * kernelDilate K s (q - y) with hF
+  have hstep : ∀ r : ℝ,
+      g (coordinateSplit m (x - r • Anisotropy.coordinateDirection m)) *
+          kernelDilate K s r = F (q - r) := by
+    intro r
+    rw [coordinateSplit_sub_smul_coordinateDirection m x r, ← hq, ← hz]
+    simp only [hF]
+    congr 2
+    ring
+  calc (∫ r : ℝ, g (coordinateSplit m
+        (x - r • Anisotropy.coordinateDirection m)) * kernelDilate K s r)
+      = ∫ r : ℝ, F (q - r) := by
+        apply integral_congr_ae
+        filter_upwards with r
+        exact hstep r
+    _ = ∫ y : ℝ, F y := integral_comp_const_sub F q
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The bad slot's scale tail
+
+Source: `lem:one_fiber`, blueprint lines 2446--2500.  The active convolution
+of the selected bad field is the finite sum of its atoms' fiber-line
+integrals, so its absolute scale tail is exactly `selectedFiberScaleTail`.
+-/
+
+/-- **The bad slot's scale tail is the source's selected tail.**  Summing the
+finite selected atoms and integrating in the scale identifies the active
+slot's absolute scale tail with `selectedFiberScaleTail`. -/
+theorem integral_scaleTail_coordinateFiberBadField_le_selectedFiberScaleTail
+    (m i j : Fin 3) (u : E3) (alpha : ℝ) (f : E3 → ℝ)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (x : E3)
+    (hmeas : Measurable (fun t : ℝ ↦
+      ModelCoordinateConvolution m
+        (coordinateFiberBadField m f T (fiberDyadicSelectionSet Zf Astop H))
+        (activeModelKernel i j u) (t ^ alpha) x))
+    (hkernel : ∀ t : ℝ, 0 < t → ∀ I ∈ T,
+      Integrable (fun y : ℝ ↦
+        fiberCZBadAtom (coordinateFiberInput m f)
+          (fiberDyadicSelectionSet Zf Astop H) I
+          (y, (coordinateSplit m x).2) *
+        kernelDilate (activeModelKernel i j u) (t ^ alpha)
+          ((coordinateSplit m x).1 - y)))
+    (htail : ∀ I ∈ T, IntegrableOn (fun t : ℝ ↦
+      |∫ y : ℝ, fiberCZBadAtom (coordinateFiberInput m f)
+        (fiberDyadicSelectionSet Zf Astop H) I
+        (y, (coordinateSplit m x).2) *
+        kernelDilate (activeModelKernel i j u) (t ^ alpha)
+          ((coordinateSplit m x).1 - y)| * t⁻¹) (Set.Ioi (0 : ℝ))) :
+    ∫ t in Set.Ioi (0 : ℝ),
+        |ModelCoordinateConvolution m
+          (coordinateFiberBadField m f T (fiberDyadicSelectionSet Zf Astop H))
+          (activeModelKernel i j u) (t ^ alpha) x| * t⁻¹ ≤
+      selectedFiberScaleTail (coordinateFiberInput m f) Zf Astop H T i j u alpha
+        (coordinateSplit m x) := by
+  set F : ℝ × TransverseSpace m → ℝ := coordinateFiberInput m f with hF
+  set S : FiberDyadicInterval → Set (TransverseSpace m) :=
+    fiberDyadicSelectionSet Zf Astop H with hS
+  set q : ℝ := (coordinateSplit m x).1 with hq
+  set z : TransverseSpace m := (coordinateSplit m x).2 with hz
+  set K : ℝ → ℝ := activeModelKernel i j u with hK
+  set h : FiberDyadicInterval → ℝ → ℝ := fun I t ↦
+    ∫ y : ℝ, fiberCZBadAtom F S I (y, z) *
+      kernelDilate K (t ^ alpha) (q - y) with hh
+  -- the active convolution is the finite sum of the atoms' line integrals
+  have hconv : ∀ t : ℝ, 0 < t →
+      ModelCoordinateConvolution m (coordinateFiberBadField m f T S) K
+        (t ^ alpha) x = ∑ I ∈ T, h I t := by
+    intro t ht
+    have hsplit : ModelCoordinateConvolution m
+        (coordinateFiberBadField m f T S) K (t ^ alpha) x =
+        ∫ y : ℝ, fiberCZBadField F T S (y, z) *
+          kernelDilate K (t ^ alpha) (q - y) :=
+      ModelCoordinateConvolution_coordinateSplit_eq_fiberLine m
+        (fiberCZBadField F T S) K (t ^ alpha) x
+    rw [hsplit]
+    have hpt : ∀ y : ℝ, fiberCZBadField F T S (y, z) *
+        kernelDilate K (t ^ alpha) (q - y) =
+          ∑ I ∈ T, fiberCZBadAtom F S I (y, z) *
+            kernelDilate K (t ^ alpha) (q - y) := by
+      intro y
+      rw [fiberCZBadField_apply_eq_finset_sum, Finset.sum_mul]
+    calc (∫ y : ℝ, fiberCZBadField F T S (y, z) *
+            kernelDilate K (t ^ alpha) (q - y))
+        = ∫ y : ℝ, ∑ I ∈ T, fiberCZBadAtom F S I (y, z) *
+            kernelDilate K (t ^ alpha) (q - y) := by
+          exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+      _ = ∑ I ∈ T, h I t :=
+          integral_finset_sum T (fun I hI ↦ hkernel t ht I hI)
+  -- the finite sum majorant
+  have hmajor : IntegrableOn (fun t : ℝ ↦ ∑ I ∈ T, |h I t| * t⁻¹)
+      (Set.Ioi (0 : ℝ)) := integrable_finset_sum T (fun I hI ↦ htail I hI)
+  have hbound : ∀ t ∈ Set.Ioi (0 : ℝ),
+      |ModelCoordinateConvolution m (coordinateFiberBadField m f T S) K
+        (t ^ alpha) x| * t⁻¹ ≤ ∑ I ∈ T, |h I t| * t⁻¹ := by
+    intro t ht
+    have htpos : (0 : ℝ) < t := ht
+    rw [hconv t htpos, ← Finset.sum_mul]
+    exact mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _)
+      (inv_nonneg.2 htpos.le)
+  have hLHS : IntegrableOn (fun t : ℝ ↦
+      |ModelCoordinateConvolution m (coordinateFiberBadField m f T S) K
+        (t ^ alpha) x| * t⁻¹) (Set.Ioi (0 : ℝ)) := by
+    refine Integrable.mono' hmajor ?_ ?_
+    · apply Measurable.aestronglyMeasurable
+      fun_prop
+    · filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+      have htpos : (0 : ℝ) < t := ht
+      rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+      exact hbound t ht
+  calc ∫ t in Set.Ioi (0 : ℝ),
+        |ModelCoordinateConvolution m (coordinateFiberBadField m f T S) K
+          (t ^ alpha) x| * t⁻¹
+      ≤ ∫ t in Set.Ioi (0 : ℝ), ∑ I ∈ T, |h I t| * t⁻¹ :=
+        setIntegral_mono_on hLHS hmajor measurableSet_Ioi hbound
+    _ = ∑ I ∈ T, ∫ t in Set.Ioi (0 : ℝ), |h I t| * t⁻¹ :=
+        integral_finset_sum T (fun I hI ↦ htail I hI)
+    _ = selectedFiberScaleTail F Zf Astop H T i j u alpha
+          (coordinateSplit m x) := rfl
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The pointwise bad-part estimate
+
+Source: `lem:one_fiber`, `eq:cz_bad_pointwise`, blueprint lines 2495--2500.
+-/
+
+/-- **`eq:cz_bad_pointwise`, operator form.**  With the selected bad field in
+the Calderón--Zygmund slot, the truncated operator is dominated by the two
+passive constants times the source's selected scale tail, uniformly in the
+truncation. -/
+theorem abs_ModelTruncatedOperator_bad_le_passive_mul_selectedFiberScaleTail
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ) (x : E3) (K : Fin 3 → ℝ)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval)
+    (ha : 0 < a) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
+    (hmeas : ∀ j, Measurable (modelOperatorReplace f m
+      (coordinateFiberBadField m (f m) T
+        (fiberDyadicSelectionSet Zf Astop H)) j))
+    (hK : ∀ j, 0 ≤ K j)
+    (hpassive : ∀ t : ℝ, 0 < t → ∀ j : Fin 3, j ≠ m →
+      |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+        (t ^ α.weight j) x| ≤ K j)
+    (hmeasbad : Measurable (fun t : ℝ ↦ ModelCoordinateConvolution m
+      (coordinateFiberBadField m (f m) T
+        (fiberDyadicSelectionSet Zf Astop H))
+      (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ)) x))
+    (hkernel : ∀ t : ℝ, 0 < t → ∀ I ∈ T,
+      Integrable (fun y : ℝ ↦
+        fiberCZBadAtom (coordinateFiberInput m (f m))
+          (fiberDyadicSelectionSet Zf Astop H) I
+          (y, (coordinateSplit m x).2) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ))
+          ((coordinateSplit m x).1 - y)))
+    (htail : ∀ I ∈ T, IntegrableOn (fun t : ℝ ↦
+      |∫ y : ℝ, fiberCZBadAtom (coordinateFiberInput m (f m))
+        (fiberDyadicSelectionSet Zf Astop H) I
+        (y, (coordinateSplit m x).2) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ))
+          ((coordinateSplit m x).1 - y)| * t⁻¹) (Set.Ioi (0 : ℝ))) :
+    |ModelTruncatedOperator α u c (modelOperatorReplace f m
+        (coordinateFiberBadField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+      (∏ j ∈ Finset.univ.erase m, K j) *
+        selectedFiberScaleTail (coordinateFiberInput m (f m)) Zf Astop H T
+          2 m u ((α.weight m : ℕ) : ℝ) (coordinateSplit m x) := by
+  set S : FiberDyadicInterval → Set (TransverseSpace m) :=
+    fiberDyadicSelectionSet Zf Astop H with hS
+  set bad : E3 → ℝ := coordinateFiberBadField m (f m) T S with hbad
+  set g : ModelOperatorRealInput := modelOperatorReplace f m bad with hg
+  have hPnonneg : (0 : ℝ) ≤ ∏ j ∈ Finset.univ.erase m, K j :=
+    Finset.prod_nonneg fun j _ ↦ hK j
+  have hslotm : g m = bad := modelOperatorReplace_same f m bad
+  have hslotj : ∀ j : Fin 3, j ≠ m → g j = f j := fun j hj ↦
+    modelOperatorReplace_ne f m j bad hj
+  have hpassive' : ∀ t : ℝ, 0 < t → ∀ j : Fin 3, j ≠ m →
+      |ModelCoordinateConvolution j (g j) (activeModelKernel 2 j u)
+        (t ^ α.weight j) x| ≤ K j := by
+    intro t ht j hj
+    rw [hslotj j hj]
+    exact hpassive t ht j hj
+  have hbadtail := integral_scaleTail_coordinateFiberBadField_le_selectedFiberScaleTail
+    m 2 m u ((α.weight m : ℕ) : ℝ) (f m) Zf Astop H T x hmeasbad hkernel htail
+  simp only [Real.rpow_natCast] at hbadtail hkernel htail hmeasbad
+  have htailLHS : IntegrableOn (fun t : ℝ ↦
+      |ModelCoordinateConvolution m (g m) (activeModelKernel 2 m u)
+        (t ^ α.weight m) x| * t⁻¹) (Set.Ioi (0 : ℝ)) := by
+    rw [hslotm]
+    have hmajor : IntegrableOn (fun t : ℝ ↦ ∑ I ∈ T,
+        |∫ y : ℝ, fiberCZBadAtom (coordinateFiberInput m (f m)) S I
+          (y, (coordinateSplit m x).2) *
+          kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m)
+            ((coordinateSplit m x).1 - y)| * t⁻¹) (Set.Ioi (0 : ℝ)) :=
+      integrable_finset_sum T (fun I hI ↦ htail I hI)
+    refine Integrable.mono' hmajor ?_ ?_
+    · apply Measurable.aestronglyMeasurable
+      fun_prop
+    · filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+      have htpos : (0 : ℝ) < t := ht
+      rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+      have hconv : ModelCoordinateConvolution m bad (activeModelKernel 2 m u)
+          (t ^ α.weight m) x =
+          ∑ I ∈ T, ∫ y : ℝ, fiberCZBadAtom (coordinateFiberInput m (f m)) S I
+            (y, (coordinateSplit m x).2) *
+            kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m)
+              ((coordinateSplit m x).1 - y) := by
+        have hsplit : ModelCoordinateConvolution m bad
+            (activeModelKernel 2 m u) (t ^ α.weight m) x =
+            ∫ y : ℝ, fiberCZBadField (coordinateFiberInput m (f m)) T S
+              (y, (coordinateSplit m x).2) *
+              kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m)
+                ((coordinateSplit m x).1 - y) :=
+          ModelCoordinateConvolution_coordinateSplit_eq_fiberLine m
+            (fiberCZBadField (coordinateFiberInput m (f m)) T S)
+            (activeModelKernel 2 m u) (t ^ α.weight m) x
+        rw [hsplit]
+        rw [← integral_finset_sum T (fun I hI ↦ hkernel t htpos I hI)]
+        apply integral_congr_ae
+        filter_upwards with y
+        rw [fiberCZBadField_apply_eq_finset_sum, Finset.sum_mul]
+      rw [hconv, ← Finset.sum_mul]
+      exact mul_le_mul_of_nonneg_right (Finset.abs_sum_le_sum_abs _ _)
+        (inv_nonneg.2 htpos.le)
+  calc |ModelTruncatedOperator α u c g a b x|
+      ≤ (∏ j ∈ Finset.univ.erase m, K j) *
+          ∫ t in Set.Ioi (0 : ℝ),
+            |ModelCoordinateConvolution m (g m) (activeModelKernel 2 m u)
+              (t ^ α.weight m) x| * t⁻¹ :=
+        abs_ModelTruncatedOperator_le_passive_mul_scaleTail α u c g m a b x K
+          ha hcm hc hmeas hK hpassive' htailLHS
+    _ ≤ (∏ j ∈ Finset.univ.erase m, K j) *
+          selectedFiberScaleTail (coordinateFiberInput m (f m)) Zf Astop H T
+            2 m u ((α.weight m : ℕ) : ℝ) (coordinateSplit m x) := by
+        apply mul_le_mul_of_nonneg_left _ hPnonneg
+        rw [hslotm]
+        exact hbadtail
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Weak-one assembly with the source's weighted bad tail
+
+Source: `lem:one_fiber`, `eq:cz_bad_pointwise` and the three-piece inclusion,
+blueprint lines 2495--2535.  The source's exterior bad bound carries the two
+passive maximal functions as an `x`-dependent weight, so the tail consumed by
+the weak-one bookkeeping is the weighted tail `W · h_m`, not the bare one.
+-/
+
+/-- **Weak-one assembly against the source's weighted bad tail.**  This is the
+three-piece inclusion of `lem:one_fiber` with the exterior bad part dominated
+by an `x`-dependent weight times the selected scale tail. -/
+theorem ModelTruncatedOperator_fiberCZ_weakOne_of_weighted_selectedFiberScaleTail
+    (aniso : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b : ℝ) (m : Fin 3)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (alpha : ℝ)
+    (W : E3 → ℝ) (E : Set E3) (lambda : ℝ) (Aexception Agood Atail : ℝ≥0∞)
+    (hdecomp : ∀ x,
+      ModelTruncatedOperator aniso u c f a b x =
+        ModelTruncatedOperator aniso u c
+          (modelOperatorReplace f m
+            (coordinateFiberGoodField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x +
+        ModelTruncatedOperator aniso u c
+          (modelOperatorReplace f m
+            (coordinateFiberBadField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x)
+    (hbad : ∀ x, x ∉ E →
+      |ModelTruncatedOperator aniso u c
+        (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        W x * selectedFiberScaleTail (coordinateFiberInput m (f m))
+          Zf Astop H T i j u alpha (coordinateSplit m x))
+    (hexception : ENNReal.ofReal lambda * volume E ≤ Aexception)
+    (hgood : ENNReal.ofReal (lambda / 2) * volume
+      {x | lambda / 2 < |ModelTruncatedOperator aniso u c
+        (modelOperatorReplace f m
+          (coordinateFiberGoodField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x|} ≤ Agood)
+    (htail : ENNReal.ofReal (lambda / 2) * volume
+      ({x | lambda / 2 < W x * selectedFiberScaleTail
+        (coordinateFiberInput m (f m)) Zf Astop H T i j u alpha
+        (coordinateSplit m x)} ∩ Eᶜ) ≤ Atail) :
+    ENNReal.ofReal lambda *
+      volume {x | lambda < |ModelTruncatedOperator aniso u c f a b x|} ≤
+        Aexception + 2 * Agood + 2 * Atail :=
+  ModelTruncatedOperator_fiberCZ_weakOne_of_good_bad_data
+    aniso u c f a b
+    (ModelTruncatedOperator aniso u c
+      (modelOperatorReplace f m
+        (coordinateFiberGoodField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b)
+    (ModelTruncatedOperator aniso u c
+      (modelOperatorReplace f m
+        (coordinateFiberBadField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b)
+    (fun x ↦ W x * selectedFiberScaleTail (coordinateFiberInput m (f m))
+      Zf Astop H T i j u alpha (coordinateSplit m x))
+    E lambda Aexception Agood Atail hdecomp hbad hexception hgood htail
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The weighted-tail Hölder budget
+
+Source: `lem:one_fiber`, blueprint lines 2505--2530, the display
+`‖h_m ∏_{j≠m} M^{(j)}f_j‖_R ≤ ‖h_m‖_p ∏_{j≠m}‖M^{(j)}f_j‖_{P_j}` with
+`R^{-1} = p^{-1} + ∑_{j≠m}P_j^{-1}`.  At the three interpolation vertices of
+`thm:extended_model` the output exponent is `R = 1`.
+-/
+
+/-- A three-factor Hölder package at output exponent one.  The `HolderTriple`
+assumptions make the intermediate exponent explicit. -/
+theorem eLpNorm_threefold_product_le
+    {p1 p2 p3 r23 : ENNReal}
+    [ENNReal.HolderTriple p2 p3 r23] [ENNReal.HolderTriple p1 r23 1]
+    (g1 g2 g3 : E3 → ℝ)
+    (hg1 : AEStronglyMeasurable g1 volume)
+    (hg2 : AEStronglyMeasurable g2 volume)
+    (hg3 : AEStronglyMeasurable g3 volume) :
+    eLpNorm (fun x ↦ g1 x * g2 x * g3 x) 1 volume ≤
+      eLpNorm g1 p1 volume * eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
+  have h23 : eLpNorm (fun x ↦ g2 x * g3 x) r23 volume ≤
+      eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
+    change eLpNorm (g2 * g3) r23 volume ≤ _
+    simpa only [smul_eq_mul] using
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg3 hg2)
+  have hm23 : AEStronglyMeasurable (fun x ↦ g2 x * g3 x) volume := hg2.mul hg3
+  have h123 : eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) 1 volume ≤
+      eLpNorm g1 p1 volume * eLpNorm (fun x ↦ g2 x * g3 x) r23 volume := by
+    change eLpNorm (g1 * fun x ↦ g2 x * g3 x) 1 volume ≤ _
+    simpa only [smul_eq_mul] using
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hm23 hg1)
+  calc eLpNorm (fun x ↦ g1 x * g2 x * g3 x) 1 volume
+      = eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) 1 volume := by
+        simp only [mul_assoc]
+    _ ≤ eLpNorm g1 p1 volume * eLpNorm (fun x ↦ g2 x * g3 x) r23 volume := h123
+    _ ≤ eLpNorm g1 p1 volume * (eLpNorm g2 p2 volume * eLpNorm g3 p3 volume) :=
+        mul_le_mul' le_rfl h23
+    _ = eLpNorm g1 p1 volume * eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
+        rw [mul_assoc]
+
+/-- **The source's weighted-tail budget.**  Chebyshev followed by three-factor
+Hölder bounds the exterior weighted tail of `lem:one_fiber` by the product of
+the tail's own `L^p` norm and the two passive maximal `L^{P_j}` norms. -/
+theorem weakOne_weighted_tail_budget
+    {p1 p2 p3 r23 : ENNReal}
+    [ENNReal.HolderTriple p2 p3 r23] [ENNReal.HolderTriple p1 r23 1]
+    (g1 g2 g3 : E3 → ℝ) (E : Set E3) {lam : ℝ} (hlam : 0 < lam)
+    (hg1 : AEStronglyMeasurable g1 volume)
+    (hg2 : AEStronglyMeasurable g2 volume)
+    (hg3 : AEStronglyMeasurable g3 volume) :
+    ENNReal.ofReal (lam / 2) *
+        volume ({x | lam / 2 < g1 x * g2 x * g3 x} ∩ Eᶜ) ≤
+      eLpNorm g1 p1 volume * eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
+  have hhalf : (0 : ℝ) < lam / 2 := by linarith
+  have hmeas : AEMeasurable (fun x : E3 ↦ ‖g1 x * g2 x * g3 x‖ₑ) volume :=
+    ((hg1.mul hg2).mul hg3).enorm
+  have hmarkov := mul_meas_ge_le_lintegral₀ hmeas (ENNReal.ofReal (lam / 2))
+  have hsub : ({x | lam / 2 < g1 x * g2 x * g3 x} ∩ Eᶜ) ⊆
+      {x | ENNReal.ofReal (lam / 2) ≤ ‖g1 x * g2 x * g3 x‖ₑ} := by
+    intro x hx
+    have hxlt : lam / 2 < g1 x * g2 x * g3 x := hx.1
+    have hle : lam / 2 ≤ ‖g1 x * g2 x * g3 x‖ := by
+      rw [Real.norm_eq_abs]
+      exact le_trans hxlt.le (le_abs_self _)
+    calc ENNReal.ofReal (lam / 2) ≤ ENNReal.ofReal ‖g1 x * g2 x * g3 x‖ :=
+          ENNReal.ofReal_le_ofReal hle
+      _ = ‖g1 x * g2 x * g3 x‖ₑ := ofReal_norm_eq_enorm _
+  calc ENNReal.ofReal (lam / 2) *
+        volume ({x | lam / 2 < g1 x * g2 x * g3 x} ∩ Eᶜ)
+      ≤ ENNReal.ofReal (lam / 2) *
+          volume {x | ENNReal.ofReal (lam / 2) ≤ ‖g1 x * g2 x * g3 x‖ₑ} :=
+        mul_le_mul' le_rfl (measure_mono hsub)
+    _ ≤ ∫⁻ x : E3, ‖g1 x * g2 x * g3 x‖ₑ := hmarkov
+    _ = eLpNorm (fun x ↦ g1 x * g2 x * g3 x) 1 volume :=
+        (eLpNorm_one_eq_lintegral_enorm).symm
+    _ ≤ eLpNorm g1 p1 volume * eLpNorm g2 p2 volume * eLpNorm g3 p3 volume :=
+        eLpNorm_threefold_product_le (p1 := p1) (p2 := p2) (p3 := p3)
+          (r23 := r23) g1 g2 g3 hg1 hg2 hg3
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## `eq:cz_bad_pointwise` with the source's maximal weight
+
+Source: `lem:one_fiber`, `eq:cz_bad_pointwise`, blueprint lines 2495--2500,
+where the two passive slots contribute `∏_{j≠m} M^{(j)}f_j(x)`.
+-/
+
+/-- **`eq:cz_bad_pointwise` in the source's own form.**  The passive slots
+contribute their coordinate maximal functions at the same point, so the
+exterior bad bound is the source's `∏_{j≠m}M^{(j)}f_j(x)` times the selected
+scale tail. -/
+theorem abs_ModelTruncatedOperator_bad_le_maximalWeight_mul_selectedFiberScaleTail :
+    ∃ Cw : ℝ, 0 ≤ Cw ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
+      (f : ModelOperatorRealInput) (m : Fin 3) (a b : ℝ) (x : E3)
+      (Zf : Set (TransverseSpace m))
+      (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+      (T : Finset FiberDyadicInterval) (B : Fin 3 → ℝ),
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ j, Measurable (f j)) → (∀ j, 0 ≤ B j) →
+      (∀ j, ∀ y : E3, |f j y| ≤ B j) →
+      (∀ j, Measurable (modelOperatorReplace f m
+        (coordinateFiberBadField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H)) j)) →
+      Measurable (fun t : ℝ ↦ ModelCoordinateConvolution m
+        (coordinateFiberBadField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))
+        (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ)) x) →
+      (∀ t : ℝ, 0 < t → ∀ I ∈ T,
+        Integrable (fun y : ℝ ↦
+          fiberCZBadAtom (coordinateFiberInput m (f m))
+            (fiberDyadicSelectionSet Zf Astop H) I
+            (y, (coordinateSplit m x).2) *
+          kernelDilate (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ))
+            ((coordinateSplit m x).1 - y))) →
+      (∀ I ∈ T, IntegrableOn (fun t : ℝ ↦
+        |∫ y : ℝ, fiberCZBadAtom (coordinateFiberInput m (f m))
+          (fiberDyadicSelectionSet Zf Astop H) I
+          (y, (coordinateSplit m x).2) *
+          kernelDilate (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ))
+            ((coordinateSplit m x).1 - y)| * t⁻¹) (Set.Ioi (0 : ℝ))) →
+      |ModelTruncatedOperator α u c (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        (∏ j ∈ Finset.univ.erase m, Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j (fun y ↦ (f j y : ℂ)) x) *
+          selectedFiberScaleTail (coordinateFiberInput m (f m)) Zf Astop H T
+            2 m u ((α.weight m : ℕ) : ℝ) (coordinateSplit m x) := by
+  rcases abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal
+    with ⟨C, hC, hmax⟩
+  refine ⟨C * dyadicBracketShellConstant, by
+    have := dyadicBracketShellConstant_nonneg
+    positivity, ?_⟩
+  intro α u c f m a b x Zf Astop H T B ha hcm hc hfm hB hfB hgmeas hmeasbad
+    hkernel htail
+  set Cw : ℝ := C * dyadicBracketShellConstant with hCw
+  set K : Fin 3 → ℝ := fun j ↦ if j = m then 0 else
+    Cw * sourceWeight u ^ 10 *
+      coordinateDyadicBallMaximal j (fun y ↦ (f j y : ℂ)) x with hK
+  have hpassive : ∀ t : ℝ, 0 < t → ∀ j : Fin 3, j ≠ m →
+      |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+        (t ^ α.weight j) x| ≤ K j := by
+    intro t ht j hj
+    have hs : (0 : ℝ) < t ^ α.weight j := pow_pos ht _
+    have h := hmax 2 j u (t ^ α.weight j) x (f j) (B j) hs (hfm j) (hB j) (hfB j)
+    simp only [hK, if_neg hj, hCw]
+    calc |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+            (t ^ α.weight j) x|
+        ≤ C * dyadicBracketShellConstant * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j (fun y ↦ (f j y : ℂ)) x := h
+      _ = C * dyadicBracketShellConstant * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j (fun y ↦ (f j y : ℂ)) x := rfl
+  have hKnonneg : ∀ j : Fin 3, 0 ≤ K j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [hK, if_pos hj]
+      exact le_rfl
+    · exact le_trans (abs_nonneg _) (hpassive 1 one_pos j hj)
+  have hmain := abs_ModelTruncatedOperator_bad_le_passive_mul_selectedFiberScaleTail
+    α u c f m a b x K Zf Astop H T ha hcm hc hgmeas hKnonneg hpassive
+    hmeasbad hkernel htail
+  have hprod : (∏ j ∈ Finset.univ.erase m, K j) =
+      ∏ j ∈ Finset.univ.erase m, Cw * sourceWeight u ^ 10 *
+        coordinateDyadicBallMaximal j (fun y ↦ (f j y : ℂ)) x := by
+    apply Finset.prod_congr rfl
+    intro j hj
+    have hjm : j ≠ m := Finset.ne_of_mem_erase hj
+    simp only [hK, if_neg hjm]
+  rw [hprod] at hmain
+  exact hmain
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## `eq:one_fiber`, finite-family form
+
+Source: `lem:one_fiber`, blueprint lines 2388--2540.  The three-piece
+inclusion with all three budgets in their canonical source forms: the
+exceptional-set measure, the Chebyshev good budget at the base exponent, and
+the Hölder budget for the weighted bad tail.
+-/
+
+/-- **`eq:one_fiber`, finite-family form.**  Assembling the source's three
+budgets gives the level-set bound of `lem:one_fiber` for a finite selected
+family. -/
+theorem ModelTruncatedOperator_weakOne_finite_of_canonical_budgets
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b : ℝ) (m : Fin 3)
+    (Zf : Set (TransverseSpace m))
+    (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (alpha : ℝ)
+    (Cw : ℝ) (M1 M2 : E3 → ℝ) (E : Set E3) (lambda : ℝ)
+    {R0 Kgood : ℝ} {p1 p2 p3 r23 : ENNReal}
+    [ENNReal.HolderTriple p2 p3 r23] [ENNReal.HolderTriple p1 r23 1]
+    (hlam : 0 < lambda) (hR0 : 0 < R0) (hKgood : 0 ≤ Kgood)
+    (hdecomp : ∀ x,
+      ModelTruncatedOperator α u c f a b x =
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberGoodField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x +
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberBadField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x)
+    (hbad : ∀ x, x ∉ E →
+      |ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        (Cw * selectedFiberScaleTail (coordinateFiberInput m (f m))
+            Zf Astop H T i j u alpha (coordinateSplit m x)) * M1 x * M2 x)
+    (hgoodmeas : Measurable (ModelTruncatedOperator α u c
+      (modelOperatorReplace f m
+        (coordinateFiberGoodField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b))
+    (hgoodlint : ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (coordinateFiberGoodField m (f m) T
+              (fiberDyadicSelectionSet Zf Astop H))) a b x| ^ R0) ≤
+      ENNReal.ofReal (Kgood ^ R0))
+    (htailmeas : AEStronglyMeasurable (fun x : E3 ↦
+      Cw * selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (coordinateSplit m x)) volume)
+    (hM1 : AEStronglyMeasurable M1 volume)
+    (hM2 : AEStronglyMeasurable M2 volume) :
+    ENNReal.ofReal lambda *
+        volume {x | lambda < |ModelTruncatedOperator α u c f a b x|} ≤
+      ENNReal.ofReal lambda * volume E +
+        2 * ENNReal.ofReal ((lambda / 2) / (lambda / 2) ^ R0 * Kgood ^ R0) +
+        2 * (eLpNorm (fun x : E3 ↦
+              Cw * selectedFiberScaleTail (coordinateFiberInput m (f m))
+                Zf Astop H T i j u alpha (coordinateSplit m x)) p1 volume *
+            eLpNorm M1 p2 volume * eLpNorm M2 p3 volume) := by
+  set g1 : E3 → ℝ := fun x : E3 ↦
+    Cw * selectedFiberScaleTail (coordinateFiberInput m (f m))
+      Zf Astop H T i j u alpha (coordinateSplit m x) with hg1def
+  set W : E3 → ℝ := fun x : E3 ↦ Cw * M1 x * M2 x with hWdef
+  have hpt : ∀ x : E3, W x *
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (coordinateSplit m x) =
+      g1 x * M1 x * M2 x := by
+    intro x
+    simp only [hg1def, hWdef]
+    ring
+  have hbad' : ∀ x, x ∉ E →
+      |ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        W x * selectedFiberScaleTail (coordinateFiberInput m (f m))
+          Zf Astop H T i j u alpha (coordinateSplit m x) := by
+    intro x hx
+    rw [hpt x]
+    exact hbad x hx
+  have hsetEq : {x : E3 | lambda / 2 < W x *
+      selectedFiberScaleTail (coordinateFiberInput m (f m))
+        Zf Astop H T i j u alpha (coordinateSplit m x)} =
+      {x : E3 | lambda / 2 < g1 x * M1 x * M2 x} := by
+    ext x
+    simp only [Set.mem_setOf_eq, hpt x]
+  have hgood := weakOne_good_budget_of_lintegral_le volume
+    (ModelTruncatedOperator α u c
+      (modelOperatorReplace f m
+        (coordinateFiberGoodField m (f m) T
+          (fiberDyadicSelectionSet Zf Astop H))) a b)
+    hgoodmeas hR0 hlam hKgood hgoodlint
+  have htail := weakOne_weighted_tail_budget (p1 := p1) (p2 := p2) (p3 := p3)
+    (r23 := r23) g1 M1 M2 E hlam htailmeas hM1 hM2
+  rw [← hsetEq] at htail
+  exact ModelTruncatedOperator_fiberCZ_weakOne_of_weighted_selectedFiberScaleTail
+    α u c f a b m Zf Astop H T i j alpha W E lambda
+    (ENNReal.ofReal lambda * volume E)
+    (ENNReal.ofReal ((lambda / 2) / (lambda / 2) ^ R0 * Kgood ^ R0))
+    (eLpNorm g1 p1 volume * eLpNorm M1 p2 volume * eLpNorm M2 p3 volume)
+    hdecomp hbad' le_rfl hgood htail
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The level-independent exceptional budget
+
+Source: `lem:one_fiber`, blueprint lines 2435--2445, the display
+`|E| ≤ 2H^{-1}‖f_m‖_p^p = 2 A_u^R τ^{-R}`.
+-/
+
+/-- **The source's level-independent exceptional budget.**  With stopping
+height `H = λ/A` the selected-length estimate `|E| ≤ 2H^{-1}` makes the
+exceptional budget `2A`, independent of the level `λ`. -/
+theorem weakOne_exception_budget_normalization
+    {lam A : ℝ} (hlam : 0 < lam) (hA : 0 < A) {E : Set E3}
+    (hE : volume E ≤ ENNReal.ofReal (2 * (lam / A)⁻¹)) :
+    ENNReal.ofReal lam * volume E ≤ ENNReal.ofReal (2 * A) := by
+  have hla : (0 : ℝ) < lam / A := div_pos hlam hA
+  have harith : lam * (2 * (lam / A)⁻¹) = 2 * A := by
+    field_simp
+  calc ENNReal.ofReal lam * volume E
+      ≤ ENNReal.ofReal lam * ENNReal.ofReal (2 * (lam / A)⁻¹) :=
+        mul_le_mul' le_rfl hE
+    _ = ENNReal.ofReal (lam * (2 * (lam / A)⁻¹)) :=
+        (ENNReal.ofReal_mul hlam.le).symm
+    _ = ENNReal.ofReal (2 * A) := by rw [harith]
+
+/-- The same budget written against the selected-length estimate in the form
+produced by the Section 8 stopping bound. -/
+theorem weakOne_exception_budget_of_measureReal_le
+    {lam A : ℝ} (hlam : 0 < lam) (hA : 0 < A) {E : Set E3}
+    (hmeas : volume E ≠ ⊤)
+    (hE : volume.real E ≤ 2 * (lam / A)⁻¹) :
+    ENNReal.ofReal lam * volume E ≤ ENNReal.ofReal (2 * A) := by
+  apply weakOne_exception_budget_normalization hlam hA
+  rw [← ENNReal.ofReal_toReal hmeas]
+  exact ENNReal.ofReal_le_ofReal hE
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The fiberwise selected-tail mass
+
+Source: `lem:interval_tails` at `p = 1` together with the selected-length
+estimate of `lem:fiber_cz`, blueprint lines 2358--2380 and 2340--2350.
+-/
+
+/-- The index type of the intervals selected on one transverse fiber. -/
+abbrev SelectedFiberIndex {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (z : Z) : Type :=
+  {I : FiberDyadicInterval // z ∈ fiberDyadicSelectionSet Zf A H I}
+
+/-- **The fiberwise `p = 1` tail mass.**  The source's `h_m(\cdot, z)` has
+mass exactly `intervalTailMass` times the selected total length. -/
+theorem integral_selectedFiber_intervalTailTsum
+    {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (z : Z)
+    (hsum : Summable (fun I : SelectedFiberIndex Zf A H z ↦
+      fiberDyadicIntervalRadius I.1)) :
+    (∫ x : ℝ, intervalTailTsum
+        (fun I : SelectedFiberIndex Zf A H z ↦
+          fiberDyadicIntervalCenter I.1)
+        (fun I : SelectedFiberIndex Zf A H z ↦
+          fiberDyadicIntervalRadius I.1) x) =
+      intervalTailMass * ∑' I : SelectedFiberIndex Zf A H z,
+        fiberDyadicIntervalLength I.1 := by
+  have hmass := integral_intervalTailTsum
+    (fun I : SelectedFiberIndex Zf A H z ↦ fiberDyadicIntervalCenter I.1)
+    (fun I : SelectedFiberIndex Zf A H z ↦ fiberDyadicIntervalRadius I.1)
+    (fun I ↦ fiberDyadicIntervalRadius_pos I.1) hsum
+  rw [hmass]
+  have hlen : ∀ I : SelectedFiberIndex Zf A H z,
+      fiberDyadicIntervalLength I.1 = 2 * fiberDyadicIntervalRadius I.1 :=
+    fun I ↦ (two_mul_fiberDyadicIntervalRadius I.1).symm
+  calc (2 * intervalTailMass) *
+        ∑' I : SelectedFiberIndex Zf A H z, fiberDyadicIntervalRadius I.1
+      = intervalTailMass *
+          (2 * ∑' I : SelectedFiberIndex Zf A H z,
+            fiberDyadicIntervalRadius I.1) := by ring
+    _ = intervalTailMass * ∑' I : SelectedFiberIndex Zf A H z,
+          (2 * fiberDyadicIntervalRadius I.1) := by
+        rw [tsum_mul_left]
+    _ = intervalTailMass * ∑' I : SelectedFiberIndex Zf A H z,
+          fiberDyadicIntervalLength I.1 := by
+        congr 1
+        exact tsum_congr fun I ↦ (hlen I).symm
+
+/-- The countable selected total length on one fiber obeys the source's
+stopping bound `∑_{I∈𝓘_z}|I| ≤ H^{-1}∫|f(y,z)|^p dy`. -/
+theorem tsum_selectedFiber_length_le
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z) (H : ℝ)
+    (z : Z) (hH : 0 < H)
+    (hF : Integrable (fun y : ℝ ↦ F (y, z)) volume)
+    (hF_nonneg : ∀ y : ℝ, 0 ≤ F (y, z))
+    (hsum : Summable (fun I : SelectedFiberIndex Zf
+      (fiberDyadicIntervalAverage F) H z ↦
+      fiberDyadicIntervalLength I.1)) :
+    (∑' I : SelectedFiberIndex Zf (fiberDyadicIntervalAverage F) H z,
+        fiberDyadicIntervalLength I.1) ≤ H⁻¹ * ∫ y : ℝ, F (y, z) := by
+  apply hsum.tsum_le_of_sum_le
+  intro s
+  classical
+  have himg : (∑ I ∈ s, fiberDyadicIntervalLength I.1) =
+      ∑ I ∈ s.image (fun I : SelectedFiberIndex Zf
+        (fiberDyadicIntervalAverage F) H z ↦ I.1),
+        fiberDyadicIntervalLength I := by
+    rw [Finset.sum_image]
+    intro I _ J _ hIJ
+    exact Subtype.ext hIJ
+  rw [himg]
+  apply fiberDyadicSelection_finset_length_sum_le F Zf H z _ hH hF hF_nonneg
+  intro I hI
+  rcases Finset.mem_image.mp hI with ⟨J, _, rfl⟩
+  exact J.2
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The global tail mass
+
+Source: `lem:one_fiber`, blueprint lines 2505--2515, the display
+`‖h_m‖_p^p ≤ C_p ∫_{E_2}∑_{I∈𝓘_z}|I| dz ≤ C_p H^{-1}‖f_m‖_p^p`.
+-/
+
+/-- **The source's global tail mass bound.**  Integrating the fiberwise
+interval-tail mass against the selected-length estimate gives
+`‖h_m‖_1 ≤ intervalTailMass · H^{-1} ‖f_m‖_1`. -/
+theorem integral_prod_selectedTail_le
+    {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
+    (tail : ℝ × Z → ℝ) (F : ℝ × Z → ℝ) (H : ℝ)
+    (htail : Integrable tail (volume.prod μ))
+    (hF : Integrable F (volume.prod μ))
+    (hmass : ∀ z : Z, (∫ y : ℝ, tail (y, z)) ≤
+      intervalTailMass * (H⁻¹ * ∫ y : ℝ, F (y, z))) :
+    (∫ w : ℝ × Z, tail w ∂(volume.prod μ)) ≤
+      intervalTailMass * H⁻¹ * ∫ w : ℝ × Z, F w ∂(volume.prod μ) := by
+  set budget : Z → ℝ := fun z ↦ intervalTailMass * (H⁻¹ * ∫ y : ℝ, F (y, z))
+    with hbudgetdef
+  have hbudget : Integrable budget μ := by
+    simp only [hbudgetdef]
+    exact ((hF.integral_prod_right.const_mul H⁻¹).const_mul intervalTailMass)
+  have hstep := integral_prod_nonneg_fiber_tail_le_budget μ tail budget
+    htail hbudget hmass
+  refine hstep.trans (le_of_eq ?_)
+  calc (∫ z : Z, budget z ∂μ)
+      = intervalTailMass * H⁻¹ * ∫ z : Z, (∫ y : ℝ, F (y, z)) ∂μ := by
+        simp only [hbudgetdef]
+        rw [integral_const_mul, integral_const_mul, ← mul_assoc]
+    _ = intervalTailMass * H⁻¹ * ∫ w : ℝ × Z, F w ∂(volume.prod μ) := by
+        rw [← integral_prod_symm F hF]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Normalizing the tail budget
+
+Source: `lem:one_fiber`, blueprint lines 2495--2530.  The stopping height
+appears twice with opposite exponents — as `H^{1/p}` in the bad-atom mass of
+`eq:cz_bad_pointwise` and as `H^{-1/p}` in `‖h_m‖_p` — so the two cancel and
+the tail budget is independent of the level.
+-/
+
+/-- **The stopping height cancels out of the tail budget.**  This is the
+source's reason the bad contribution is `C A_u`, independent of `τ`. -/
+theorem weakOne_tail_budget_normalization
+    {p H C1 C2 : ℝ} (hp : 0 < p) (hH : 0 < H) :
+    (C1 * H ^ (1 / p)) * (C2 * H ^ (-(1 / p))) = C1 * C2 := by
+  have hcancel : H ^ (1 / p) * H ^ (-(1 / p)) = 1 := by
+    rw [← Real.rpow_add hH, add_neg_cancel, Real.rpow_zero]
+  calc (C1 * H ^ (1 / p)) * (C2 * H ^ (-(1 / p)))
+      = C1 * C2 * (H ^ (1 / p) * H ^ (-(1 / p))) := by ring
+    _ = C1 * C2 := by rw [hcancel, mul_one]
+
+/-- The same cancellation written with an inverse rather than a negative
+exponent. -/
+theorem weakOne_tail_budget_normalization_inv
+    {p H C1 C2 : ℝ} (hp : 0 < p) (hH : 0 < H) :
+    (C1 * H ^ (1 / p)) * (C2 * (H ^ (1 / p))⁻¹) = C1 * C2 := by
+  rw [← Real.rpow_neg hH.le]
+  exact weakOne_tail_budget_normalization hp hH
+
+/-- **The global tail mass in `eLpNorm` form.**  This is the shape consumed by
+the weighted tail budget at output exponent one. -/
+theorem eLpNorm_one_selectedTail_le
+    {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
+    (tail F : ℝ × Z → ℝ) (H : ℝ)
+    (htail : Integrable tail (volume.prod μ))
+    (htail_nonneg : ∀ w : ℝ × Z, 0 ≤ tail w)
+    (hF : Integrable F (volume.prod μ))
+    (hmass : ∀ z : Z, (∫ y : ℝ, tail (y, z)) ≤
+      intervalTailMass * (H⁻¹ * ∫ y : ℝ, F (y, z))) :
+    eLpNorm tail 1 (volume.prod μ) ≤
+      ENNReal.ofReal (intervalTailMass * H⁻¹ *
+        ∫ w : ℝ × Z, F w ∂(volume.prod μ)) := by
+  have hnorm : (∫ w : ℝ × Z, ‖tail w‖ ∂(volume.prod μ)) =
+      ∫ w : ℝ × Z, tail w ∂(volume.prod μ) := by
+    apply integral_congr_ae
+    filter_upwards with w
+    rw [Real.norm_of_nonneg (htail_nonneg w)]
+  calc eLpNorm tail 1 (volume.prod μ)
+      = ∫⁻ w : ℝ × Z, ‖tail w‖ₑ ∂(volume.prod μ) :=
+        eLpNorm_one_eq_lintegral_enorm
+    _ = ENNReal.ofReal (∫ w : ℝ × Z, ‖tail w‖ ∂(volume.prod μ)) :=
+        (ofReal_integral_norm_eq_lintegral_enorm htail).symm
+    _ = ENNReal.ofReal (∫ w : ℝ × Z, tail w ∂(volume.prod μ)) := by
+        rw [hnorm]
+    _ ≤ ENNReal.ofReal (intervalTailMass * H⁻¹ *
+          ∫ w : ℝ × Z, F w ∂(volume.prod μ)) :=
+        ENNReal.ofReal_le_ofReal
+          (integral_prod_selectedTail_le μ tail F H htail hF hmass)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The coordinate maximal theorem in `eLpNorm` form
+
+Source: `def:fiber_maximal`, blueprint lines 2216--2231, the clause
+`‖M^{(j)}f‖_p ≤ C_p‖f‖_p`.  This is the shape consumed by the three-factor
+Hölder step of `lem:one_fiber`.
+-/
+
+/-- **`‖M^{(j)}f‖_p ≤ C_p‖f‖_p`.**  The ambient coordinate maximal theorem in
+the `eLpNorm` form used by the weighted-tail budget. -/
+theorem eLpNorm_coordinateDyadicBallMaximal_le
+    (i : Fin 3) (f : E3 → ℂ) (hf : Measurable f)
+    (A : ℝ) (hA : 0 ≤ A) (hbound : ∀ x : E3, ‖f x‖ ≤ A)
+    {p : ℝ} (hp : 1 < p) :
+    eLpNorm (coordinateDyadicBallMaximal i f) (ENNReal.ofReal p) volume ≤
+      (ENNReal.ofReal p *
+          (2 * ENNReal.ofReal 4 * (ENNReal.ofReal (p - 1))⁻¹ *
+            (ENNReal.ofReal (2 : ℝ)) ^ (p - 1))) ^ (1 / p) *
+        eLpNorm f (ENNReal.ofReal p) volume := by
+  have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
+  have hpne : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0
+  have hptop : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
+  have hptoReal : (ENNReal.ofReal p).toReal = p := ENNReal.toReal_ofReal hp0.le
+  have hMnonneg : ∀ x : E3, 0 ≤ coordinateDyadicBallMaximal i f x :=
+    fun _ ↦ ENNReal.toReal_nonneg
+  set K : ℝ≥0∞ := ENNReal.ofReal p *
+    (2 * ENNReal.ofReal 4 * (ENNReal.ofReal (p - 1))⁻¹ *
+      (ENNReal.ofReal (2 : ℝ)) ^ (p - 1)) with hK
+  have hbase := coordinateDyadicBallMaximal_lintegral_bound i f hf A hA hbound hp
+  have hMlint : (∫⁻ x : E3, ‖coordinateDyadicBallMaximal i f x‖ₑ ^ p) =
+      ∫⁻ x : E3, ENNReal.ofReal (coordinateDyadicBallMaximal i f x ^ p) := by
+    apply lintegral_congr
+    intro x
+    rw [← ofReal_norm_eq_enorm, Real.norm_of_nonneg (hMnonneg x),
+      ← ENNReal.ofReal_rpow_of_nonneg (hMnonneg x) hp0.le]
+  have hflint : (∫⁻ x : E3, ‖f x‖ₑ ^ p) =
+      ∫⁻ x : E3, (ENNReal.ofReal ‖f x‖) ^ p := by
+    apply lintegral_congr
+    intro x
+    rw [← ofReal_norm_eq_enorm]
+  have hstep : (∫⁻ x : E3, ‖coordinateDyadicBallMaximal i f x‖ₑ ^ p) ≤
+      K * ∫⁻ x : E3, ‖f x‖ₑ ^ p := by
+    rw [hMlint, hflint, hK, mul_assoc]
+    exact hbase
+  calc eLpNorm (coordinateDyadicBallMaximal i f) (ENNReal.ofReal p) volume
+      = (∫⁻ x : E3, ‖coordinateDyadicBallMaximal i f x‖ₑ ^ p) ^ (1 / p) := by
+        rw [eLpNorm_eq_lintegral_rpow_enorm hpne hptop, hptoReal]
+    _ ≤ (K * ∫⁻ x : E3, ‖f x‖ₑ ^ p) ^ (1 / p) :=
+        ENNReal.rpow_le_rpow hstep (by positivity)
+    _ = K ^ (1 / p) * (∫⁻ x : E3, ‖f x‖ₑ ^ p) ^ (1 / p) :=
+        ENNReal.mul_rpow_of_nonneg _ _ (by positivity)
+    _ = K ^ (1 / p) * eLpNorm f (ENNReal.ofReal p) volume := by
+        rw [eLpNorm_eq_lintegral_rpow_enorm hpne hptop, hptoReal]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Combining the three normalized budgets
+
+Source: `lem:one_fiber`, blueprint lines 2530--2540, where the three pieces
+combine into `τ|{|U(f)|>τ}|^{1/R} ≤ C 𝒜_u`.
+-/
+
+/-- **Combining the source's three budgets.**  Once each piece is bounded by
+a multiple of `𝒜_u`, the three-piece inclusion gives a single constant,
+independent of the level. -/
+theorem weakOne_combine_normalized_budgets
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {lam A Ce Cg Ct : ℝ} {S : Set X}
+    {Aexception Agood Atail : ℝ≥0∞}
+    (hA : 0 ≤ A) (hCe : 0 ≤ Ce) (hCg : 0 ≤ Cg) (hCt : 0 ≤ Ct)
+    (hmain : ENNReal.ofReal lam * μ S ≤ Aexception + 2 * Agood + 2 * Atail)
+    (he : Aexception ≤ ENNReal.ofReal (Ce * A))
+    (hg : Agood ≤ ENNReal.ofReal (Cg * A))
+    (ht : Atail ≤ ENNReal.ofReal (Ct * A)) :
+    ENNReal.ofReal lam * μ S ≤
+      ENNReal.ofReal ((Ce + 2 * Cg + 2 * Ct) * A) := by
+  have htwo : ∀ x : ℝ, 0 ≤ x →
+      (2 : ℝ≥0∞) * ENNReal.ofReal x = ENNReal.ofReal (2 * x) := by
+    intro x hx
+    rw [ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 2)]
+    congr 1
+    simp
+  have hgA : (0 : ℝ) ≤ Cg * A := mul_nonneg hCg hA
+  have htA : (0 : ℝ) ≤ Ct * A := mul_nonneg hCt hA
+  have heA : (0 : ℝ) ≤ Ce * A := mul_nonneg hCe hA
+  calc ENNReal.ofReal lam * μ S
+      ≤ Aexception + 2 * Agood + 2 * Atail := hmain
+    _ ≤ ENNReal.ofReal (Ce * A) + 2 * ENNReal.ofReal (Cg * A) +
+          2 * ENNReal.ofReal (Ct * A) :=
+        add_le_add (add_le_add he (mul_le_mul' le_rfl hg))
+          (mul_le_mul' le_rfl ht)
+    _ = ENNReal.ofReal (Ce * A) + ENNReal.ofReal (2 * (Cg * A)) +
+          ENNReal.ofReal (2 * (Ct * A)) := by
+        rw [htwo _ hgA, htwo _ htA]
+    _ = ENNReal.ofReal (Ce * A + 2 * (Cg * A) + 2 * (Ct * A)) := by
+        rw [← ENNReal.ofReal_add heA (by positivity),
+          ← ENNReal.ofReal_add (by positivity) (by positivity)]
+    _ = ENNReal.ofReal ((Ce + 2 * Cg + 2 * Ct) * A) := by
+        congr 1
+        ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Weak bounds pass to an almost-everywhere limit
+
+Source: `lem:one_fiber`, blueprint lines 2530--2540, the countable passage
+"take a subsequence of the outputs converging almost everywhere".
+-/
+
+/-- **Weak-type bounds survive an almost-everywhere limit.**  A uniform
+level-set bound for a sequence transfers to any almost-everywhere limit, with
+no loss in the level: a strict inequality at the limit is already strict along
+the tail of the sequence. -/
+theorem weakBound_of_ae_tendsto
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (u : ℕ → X → ℝ) (v : X → ℝ) (C : ℝ≥0∞) {lam : ℝ}
+    (htend : ∀ᵐ x ∂μ, Filter.Tendsto (fun n ↦ u n x) Filter.atTop (nhds (v x)))
+    (hbound : ∀ n, ENNReal.ofReal lam * μ {x | lam < |u n x|} ≤ C) :
+    ENNReal.ofReal lam * μ {x | lam < |v x|} ≤ C := by
+  set A : ℕ → Set X := fun n ↦ {x | lam < |u n x|} with hA
+  set B : ℕ → Set X := fun N ↦ ⋂ n, ⋂ (_ : N ≤ n), A n with hB
+  have hBmono : Monotone B := by
+    intro N M hNM
+    simp only [hB, Set.subset_iInter_iff]
+    intro n hn
+    exact Set.iInter_subset_of_subset n
+      (Set.iInter_subset_of_subset (le_trans hNM hn) le_rfl)
+  have hBsub : ∀ N, B N ⊆ A N := by
+    intro N
+    simp only [hB]
+    exact Set.iInter_subset_of_subset N
+      (Set.iInter_subset_of_subset le_rfl le_rfl)
+  have hae : {x | lam < |v x|} ≤ᵐ[μ] ⋃ N, B N := by
+    filter_upwards [htend] with x hx hmem
+    have habs : Filter.Tendsto (fun n ↦ |u n x|) Filter.atTop (nhds |v x|) :=
+      (continuous_abs.tendsto (v x)).comp hx
+    have hevent : ∀ᶠ n in Filter.atTop, lam < |u n x| :=
+      habs.eventually_const_lt hmem
+    rcases Filter.eventually_atTop.mp hevent with ⟨N, hN⟩
+    refine Set.mem_iUnion.2 ⟨N, ?_⟩
+    simp only [hB, Set.mem_iInter]
+    intro n hn
+    exact hN n hn
+  have hmonotend := MeasureTheory.tendsto_measure_iUnion_atTop (μ := μ) hBmono
+  have hlim : Filter.Tendsto (fun N ↦ ENNReal.ofReal lam * μ (B N))
+      Filter.atTop (nhds (ENNReal.ofReal lam * μ (⋃ N, B N))) :=
+    ENNReal.Tendsto.const_mul hmonotend (Or.inr ENNReal.ofReal_ne_top)
+  have hle : ENNReal.ofReal lam * μ (⋃ N, B N) ≤ C :=
+    le_of_tendsto hlim (Filter.Eventually.of_forall fun N ↦
+      le_trans (mul_le_mul' le_rfl (measure_mono (hBsub N))) (hbound N))
+  exact le_trans (mul_le_mul' le_rfl (measure_mono_ae hae)) hle
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Finite selected bad fields exhaust the countable one
+
+Source: `lem:one_fiber`, blueprint lines 2530--2540, "for any enumeration
+`𝒟_1 = {I_1, I_2, …}` the sums `∑_{l≤N} b_{I_l}` converge pointwise almost
+everywhere and in `L^p` to `b`: at most one term is nonzero at each point".
+-/
+
+/-- **At most one selected atom is nonzero at each point.**  A finite family
+containing every index supporting the point already reproduces the countable
+bad field there. -/
+theorem fiberCZBadField_eq_countableBadField_of_mem
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (yz : ℝ × Z)
+    (hT : ∀ I : FiberDyadicInterval,
+      yz ∈ fiberDyadicInterval I ×ˢ fiberDyadicSelectionSet Zf A H I →
+      I ∈ T) :
+    fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz =
+      fiberDyadicCountableBadField F Zf A H yz := by
+  by_cases hex : ∃ I : FiberDyadicInterval,
+      yz ∈ fiberDyadicInterval I ×ˢ fiberDyadicSelectionSet Zf A H I
+  · obtain ⟨I₀, hI₀⟩ := hex
+    have hcount : fiberDyadicCountableBadField F Zf A H yz =
+        fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I₀ yz :=
+      fiberDyadicCountableBadField_eq_atom_of_mem F Zf A H I₀ yz hI₀
+    have hvanish : ∀ I : FiberDyadicInterval, I ≠ I₀ →
+        fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz = 0 := by
+      intro I hI
+      have hdisj := pairwiseDisjoint_fiberDyadicSelectedRectangles Zf A H
+        (Set.mem_univ I₀) (Set.mem_univ I) (Ne.symm hI)
+      have hnot : yz ∉ fiberDyadicInterval I ×ˢ
+          fiberDyadicSelectionSet Zf A H I := by
+        intro hmem
+        exact (Set.disjoint_left.mp hdisj) hI₀ hmem
+      unfold fiberCZBadAtom
+      exact Set.indicator_of_notMem hnot _
+    rw [hcount]
+    show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
+    refine Finset.sum_eq_single I₀ (fun I _ hI ↦ hvanish I hI) (fun hnot ↦ ?_)
+    exact absurd (hT I₀ hI₀) hnot
+  · push_neg at hex
+    have hnotex : yz ∉ fiberDyadicExceptionalSet Zf A H := by
+      intro hmem
+      rcases Set.mem_iUnion.mp hmem with ⟨I, hI⟩
+      exact hex I hI
+    rw [fiberDyadicCountableBadField_eq_zero_outside_exceptional
+      F Zf A H yz hnotex]
+    show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
+    apply Finset.sum_eq_zero
+    intro I _
+    unfold fiberCZBadAtom
+    exact Set.indicator_of_notMem (hex I) _
+
+/-- **Pointwise exhaustion.**  Along any exhausting sequence of finite
+families the finite selected bad fields converge to the countable one; the
+sequence is in fact eventually constant at each point. -/
+theorem tendsto_fiberCZBadField_countableBadField
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (Tn : ℕ → Finset FiberDyadicInterval) (hmono : Monotone Tn)
+    (hexh : ∀ I : FiberDyadicInterval, ∃ n, I ∈ Tn n) (yz : ℝ × Z) :
+    Filter.Tendsto
+      (fun n ↦ fiberCZBadField F (Tn n) (fiberDyadicSelectionSet Zf A H) yz)
+      Filter.atTop (nhds (fiberDyadicCountableBadField F Zf A H yz)) := by
+  have heventually :
+      (fun n ↦ fiberCZBadField F (Tn n) (fiberDyadicSelectionSet Zf A H) yz)
+        =ᶠ[Filter.atTop]
+        (fun _ : ℕ ↦ fiberDyadicCountableBadField F Zf A H yz) := by
+    by_cases hex : ∃ I : FiberDyadicInterval,
+        yz ∈ fiberDyadicInterval I ×ˢ fiberDyadicSelectionSet Zf A H I
+    · obtain ⟨I₀, hI₀⟩ := hex
+      obtain ⟨n₀, hn₀⟩ := hexh I₀
+      filter_upwards [Filter.eventually_ge_atTop n₀] with n hn
+      refine fiberCZBadField_eq_countableBadField_of_mem F Zf A H (Tn n) yz ?_
+      intro I hI
+      have hIeq : I = I₀ := by
+        by_contra hne
+        have hdisj := pairwiseDisjoint_fiberDyadicSelectedRectangles Zf A H
+          (Set.mem_univ I₀) (Set.mem_univ I) (Ne.symm hne)
+        exact (Set.disjoint_left.mp hdisj) hI₀ hI
+      subst hIeq
+      exact hmono hn hn₀
+    · push_neg at hex
+      filter_upwards with n
+      exact fiberCZBadField_eq_countableBadField_of_mem F Zf A H (Tn n) yz
+        (fun I hI ↦ absurd hI (hex I))
+  exact Filter.Tendsto.congr' heventually.symm tendsto_const_nhds
+
 
 end
 end Twisted

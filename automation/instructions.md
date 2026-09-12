@@ -149,3 +149,34 @@ Task 3 is now the active assigned task. Its faithful source target is the
 ``Anisotropic paraproduct'' theorem labelled `thm:main`; its code remains
 strictly within `DFR/Auto/Twisted/`, with direct `lake env lean` verification
 and the required project build and axiom audit before completion.
+
+## Pause and resume Task 3
+
+Recorded 2026-09-11T17:33:40-07:00 (recording time); exact prompts: [raw.md](raw.md).
+The user first requested a pause, then directed continuation of the existing
+Task 3 formalization. Resume exactly the faithful proof of
+`blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main`, from its current
+verified Section 8 one-fiber weak-extension and Section 9 joint-scale-cone
+bridges. Keep all work in `DFR/Auto/Twisted/`; do not treat the pause as a
+completion or alter the stated theorem.
+
+## Pause Task 3 again
+
+Recorded 2026-09-11T18:38:19-07:00 (recording time); exact prompt: [raw.md](raw.md).
+The user requests that Task 3 formalization pause. Do not resume mathematical
+work, source edits, or proof-worker activity until the user explicitly directs
+continuation. The finite selected-field weak-one source promotion was checked
+before this pause; the newly appended selected-atom scale-tail bridge and all
+scratch investigations require fresh verification if and when work resumes.
+
+## Resume Task 3 under a self-paced loop
+
+Recorded 2026-09-11T18:42:00-07:00 (recording time); exact prompts: [raw.md](raw.md).
+The user directs Claude to continue the existing Task 3 formalization of
+`blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main`, following that
+blueprint and these instructions closely, and to keep iterating on a self-paced
+loop until Task 3 is completely finished. A follow-up instruction
+(2026-09-11T18:55:00-07:00) requires reusing whatever is already available in
+the existing `DFR/Auto/Twisted/*Scratch.lean` and `*Candidate.lean` files
+before developing new proofs. Task 3 is the active assigned task; all work
+stays in `DFR/Auto/Twisted/`.

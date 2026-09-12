@@ -15,3 +15,16 @@ resolutions here as required by the autoformalize skill.
 2026-09-10T21:10:01-07:00 - Task 3 `def:bumps`, lines 308--386: neither Mathlib nor the pinned dependency library provides the source's literal infinite convolution-product construction together with its smooth-limit theorem. Resolution: implement a direct even `ContDiffBump` with inner radius `1/2` and outer radius `1`, then define the spatial bump by inverse Fourier transformation. This preserves every downstream-used cutoff property (real/even/Schwartz, `0 ≤ b ≤ 1`, support in `[-1,1]`, and plateau on `[-1/2,1/2]`); no equality to the source's particular infinite product is asserted.
 
 2026-09-10T22:40:34-07:00 - Task 3 `lem:domination`, equation `eq:superposition`, lines 413--415: an initial in-progress Lean definition used the preliminary spatial bump `B = F^{-1}b` in the two low-frequency slots. The blueprint instead uses `varphi = F^{-1}Phi`. Resolution: replace those slots with the already formalized real kernel `conePhiPhysicalReal`; its order-fifty Schwartz decay is used in the completed superposition argument. No theorem statement was weakened or changed.
+
+2026-09-11T21:04:43-07:00 - Task 3 Lean-interface gap (not a source discrepancy),
+`lem:one_fiber`, `eq:cz_bad_pointwise`, blueprint lines 2495--2500: the
+previously canonical weak-one consumer
+`ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_coordinateFiberGoodBad_data`
+takes its exterior bad bound as the bare `selectedFiberScaleTail`. The source's
+bound carries the two passive coordinate maximal functions as an `x`-dependent
+weight, which cannot be pulled out of the later spatial integration. Resolution:
+the general assembly `ModelTruncatedOperator_fiberCZ_weakOne_of_good_bad_data`
+already accepts an arbitrary exterior tail, so a weighted consumer
+`ModelTruncatedOperator_fiberCZ_weakOne_of_weighted_selectedFiberScaleTail` was
+added and is the one matching `eq:cz_bad_pointwise`. The narrower consumer is
+preserved; no source statement changed.

@@ -330,6 +330,185 @@ theorem scratch_coordinateFiberGoodField_eq_self_outside_selection
     simpa only [fiberDyadicExceptionalSetFinset] using hx]
   simp only [scratch_coordinateFiberInput, coordinateJoin_split]
 
+/-- Replacing an actual model-input slot by its finite coordinate-fiber
+good--bad sum gives back the original three-input tuple. -/
+theorem scratch_modelOperatorReplace_coordinateFiberGoodBad_eq
+    (f : ModelOperatorRealInput) (m : Fin 3)
+    (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace m)) :
+    modelOperatorReplace f m
+        (scratch_coordinateFiberGoodField m (f m) T S +
+          scratch_coordinateFiberBadField m (f m) T S) = f := by
+  funext j
+  by_cases hj : j = m
+  · subst j
+    simpa only [modelOperatorReplace_same] using
+      scratch_coordinateFiberGoodField_add_badField m (f m) T S
+  · simp only [modelOperatorReplace_ne f m j
+      (scratch_coordinateFiberGoodField m (f m) T S +
+        scratch_coordinateFiberBadField m (f m) T S) hj]
+
+/-- Actual finite-truncation operator decomposition induced by a measurable
+finite fiber good--bad split.  Its four integrability assumptions are the
+precise remaining analytic obligations: two active line integrals and two
+finite scale integrals for the split outputs. -/
+theorem scratch_ModelTruncatedOperator_coordinateFiberGoodBad_split
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace m))
+    (a b : ℝ) (x : E3)
+    (hlineGood : ∀ t : ℝ, Integrable (fun r : ℝ ↦
+      scratch_coordinateFiberGoodField m (f m) T S
+          (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hlineBad : ∀ t : ℝ, Integrable (fun r : ℝ ↦
+      scratch_coordinateFiberBadField m (f m) T S
+          (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hscaleGood : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m
+          (scratch_coordinateFiberGoodField m (f m) T S)) t x)
+      (Set.Ioc a b) ((volume : Measure ℝ).withDensity cubeScaleDensity))
+    (hscaleBad : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m
+          (scratch_coordinateFiberBadField m (f m) T S)) t x)
+      (Set.Ioc a b) ((volume : Measure ℝ).withDensity cubeScaleDensity)) :
+    ModelTruncatedOperator α u c f a b x =
+      ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (scratch_coordinateFiberGoodField m (f m) T S)) a b x +
+        ModelTruncatedOperator α u c
+          (modelOperatorReplace f m
+            (scratch_coordinateFiberBadField m (f m) T S)) a b x := by
+  have hreplace := scratch_modelOperatorReplace_coordinateFiberGoodBad_eq
+    f m T S
+  have hadd := ModelTruncatedOperator_replace_add α u c f m
+    (scratch_coordinateFiberGoodField m (f m) T S)
+    (scratch_coordinateFiberBadField m (f m) T S) a b x
+    hlineGood hlineBad hscaleGood hscaleBad
+  rw [hreplace] at hadd
+  exact hadd
+
+/-- A uniformly bounded input has uniformly bounded literal dyadic fiber
+averages. -/
+theorem scratch_abs_fiberDyadicIntervalAverage_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (I : FiberDyadicInterval) (z : Z) (B : ℝ)
+    (hbound : ∀ yz, |F yz| ≤ B) :
+    |fiberDyadicIntervalAverage F I z| ≤ B := by
+  rw [fiberDyadicIntervalAverage_eq_setIntegral]
+  have hfinite : volume (fiberDyadicInterval I) < ⊤ := by
+    rw [measure_fiberDyadicInterval]
+    exact ENNReal.ofReal_lt_top
+  have hint : |∫ y : ℝ in fiberDyadicInterval I, F (y, z)| ≤
+      B * volume.real (fiberDyadicInterval I) := by
+    simpa only [Real.norm_eq_abs] using
+      (MeasureTheory.norm_setIntegral_le_of_norm_le_const hfinite
+        (f := fun y : ℝ ↦ F (y, z)) (fun y hy ↦ by
+          simpa only [Real.norm_eq_abs] using hbound (y, z)))
+  have hmeasure : volume.real (fiberDyadicInterval I) =
+      fiberDyadicIntervalLength I := by
+    rw [MeasureTheory.measureReal_def, measure_fiberDyadicInterval]
+    simp only [ENNReal.toReal_ofReal (fiberDyadicIntervalLength_pos I).le]
+  have hlength_nonneg : 0 ≤ (fiberDyadicIntervalLength I)⁻¹ :=
+    inv_nonneg.mpr (fiberDyadicIntervalLength_pos I).le
+  calc
+    |(fiberDyadicIntervalLength I)⁻¹ *
+        ∫ y : ℝ in fiberDyadicInterval I, F (y, z)| =
+        (fiberDyadicIntervalLength I)⁻¹ *
+          |∫ y : ℝ in fiberDyadicInterval I, F (y, z)| := by
+      rw [abs_mul, abs_of_nonneg hlength_nonneg]
+    _ ≤ (fiberDyadicIntervalLength I)⁻¹ *
+        (B * volume.real (fiberDyadicInterval I)) :=
+      mul_le_mul_of_nonneg_left hint hlength_nonneg
+    _ = B := by
+      rw [hmeasure]
+      field_simp [ne_of_gt (fiberDyadicIntervalLength_pos I)]
+
+/-- A selected bad atom from a bounded input has the uniform pointwise
+bound `2B`. -/
+theorem scratch_abs_fiberCZBadAtom_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (S : FiberDyadicInterval → Set Z) (I : FiberDyadicInterval)
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |scratch_fiberCZBadAtom F S I yz| ≤ 2 * B := by
+  unfold scratch_fiberCZBadAtom
+  by_cases hmem : yz ∈ fiberDyadicInterval I ×ˢ S I
+  · rw [Set.indicator_of_mem hmem]
+    calc
+      |F yz - fiberDyadicIntervalAverage F I yz.2| ≤
+          |F yz| + |fiberDyadicIntervalAverage F I yz.2| := abs_sub _ _
+      _ ≤ B + B := add_le_add (hbound yz)
+        (scratch_abs_fiberDyadicIntervalAverage_le_of_bound F I yz.2 B hbound)
+      _ = 2 * B := by ring
+  · rw [Set.indicator_of_notMem hmem]
+    rw [abs_zero]
+    nlinarith
+
+/-- A finite selected bad field from a bounded input has a coarse but
+uniform cardinality bound.  The sharper selected-rectangle disjointness can
+later remove this finite-cardinality loss. -/
+theorem scratch_abs_fiberCZBadField_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |scratch_fiberCZBadField F T S yz| ≤ (T.card : ℝ) * (2 * B) := by
+  unfold scratch_fiberCZBadField
+  calc
+    |∑ I ∈ T, scratch_fiberCZBadAtom F S I yz| ≤
+        ∑ I ∈ T, |scratch_fiberCZBadAtom F S I yz| :=
+      Finset.abs_sum_le_sum_abs _ T
+    _ ≤ ∑ _I ∈ T, 2 * B :=
+      Finset.sum_le_sum fun I hI ↦
+        scratch_abs_fiberCZBadAtom_le_of_bound F S I B hB hbound yz
+    _ = (T.card : ℝ) * (2 * B) := by
+      simp [Finset.sum_const, nsmul_eq_mul]
+
+/-- The finite good field inherits an explicit boundedness constant. -/
+theorem scratch_abs_fiberCZGoodField_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
+    (T : Finset FiberDyadicInterval) (S : FiberDyadicInterval → Set Z)
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ yz, |F yz| ≤ B) (yz : ℝ × Z) :
+    |scratch_fiberCZGoodField F T S yz| ≤ B + (T.card : ℝ) * (2 * B) := by
+  unfold scratch_fiberCZGoodField
+  simp only [Pi.sub_apply]
+  calc
+    |F yz - scratch_fiberCZBadField F T S yz| ≤
+        |F yz| + |scratch_fiberCZBadField F T S yz| := abs_sub _ _
+    _ ≤ B + (T.card : ℝ) * (2 * B) := add_le_add (hbound yz)
+      (scratch_abs_fiberCZBadField_le_of_bound F T S B hB hbound yz)
+
+/-- The pulled-back finite coordinate bad field inherits the cardinality
+bound from the literal fiber construction. -/
+theorem scratch_abs_coordinateFiberBadField_le_of_bound
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i))
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ x, |f x| ≤ B) (x : E3) :
+    |scratch_coordinateFiberBadField i f T S x| ≤ (T.card : ℝ) * (2 * B) := by
+  unfold scratch_coordinateFiberBadField
+  apply scratch_abs_fiberCZBadField_le_of_bound
+    (scratch_coordinateFiberInput i f) T S B hB
+  intro yz
+  unfold scratch_coordinateFiberInput
+  exact hbound (coordinateJoin i yz)
+
+/-- The pulled-back finite coordinate good field inherits the corresponding
+explicit boundedness constant. -/
+theorem scratch_abs_coordinateFiberGoodField_le_of_bound
+    (i : Fin 3) (f : E3 → ℝ) (T : Finset FiberDyadicInterval)
+    (S : FiberDyadicInterval → Set (TransverseSpace i))
+    (B : ℝ) (hB : 0 ≤ B) (hbound : ∀ x, |f x| ≤ B) (x : E3) :
+    |scratch_coordinateFiberGoodField i f T S x| ≤
+      B + (T.card : ℝ) * (2 * B) := by
+  unfold scratch_coordinateFiberGoodField
+  apply scratch_abs_fiberCZGoodField_le_of_bound
+    (scratch_coordinateFiberInput i f) T S B hB
+  intro yz
+  unfold scratch_coordinateFiberInput
+  exact hbound (coordinateJoin i yz)
+
 end
 end Twisted
 end Auto
