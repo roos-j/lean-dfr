@@ -29,6 +29,7 @@ import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
 import LeanSpherical.Auto.LpSpaceFacts
+import Mathlib.Data.Int.Log
 
 universe u
 
@@ -70789,6 +70790,10510 @@ theorem tendsto_fiberCZBadField_countableBadField
         (fun I hI ↦ absurd hI (hex I))
   exact Filter.Tendsto.congr' heventually.symm tendsto_const_nhds
 
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Dominated convergence for the coordinate convolution
+
+Source: `lem:one_fiber`, blueprint lines 2530--2540, the passage from finite
+bad sums to the countable bad field inside the operator.
+-/
+
+/-- **Dominated convergence in one coordinate slot.**  Pointwise convergent,
+uniformly bounded inputs give convergent coordinate convolutions. -/
+theorem tendsto_ModelCoordinateConvolution_of_tendsto
+    (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
+    (hg : ∀ n, Measurable (g n)) (B : ℝ) (hB : 0 ≤ B)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ B)
+    (hk : Integrable k) (hs : 0 < s)
+    (htend : ∀ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (nhds (glim y))) :
+    Filter.Tendsto (fun n ↦ ModelCoordinateConvolution i (g n) k s x)
+      Filter.atTop (nhds (ModelCoordinateConvolution i glim k s x)) := by
+  have hFint : ∀ n, Integrable (fun r : ℝ ↦
+      g n (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r) := fun n ↦
+    integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      i (g n) k s x (hg n) B (hgB n) hk hs
+  have hbound_int : Integrable (fun r : ℝ ↦ B * |kernelDilate k s r|) :=
+    (integrable_abs_kernelDilate k hk hs).const_mul B
+  have hbd : ∀ n, ∀ᵐ r : ℝ,
+      ‖g n (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r‖ ≤ B * |kernelDilate k s r| := by
+    intro n
+    filter_upwards with r
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul_of_nonneg_right (hgB n _) (abs_nonneg _)
+  have hlim : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r) Filter.atTop
+      (nhds (glim (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r)) := by
+    filter_upwards with r
+    exact (htend _).mul_const _
+  exact tendsto_integral_of_dominated_convergence
+    (fun r : ℝ ↦ B * |kernelDilate k s r|)
+    (fun n ↦ (hFint n).aestronglyMeasurable) hbound_int hbd hlim
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Exact factorization of the model integrand
+
+Source: `def:model`, blueprint lines 1376--1405.  The integrand is linear in
+each slot; isolating one slot is what makes the Calderón--Zygmund
+decomposition of `lem:one_fiber` and its limit passages available.
+-/
+
+/-- **Exact passive factorization.**  The model integrand is the product of
+its two passive convolutions (with the coefficient) and its active one. -/
+theorem modelTruncatedOperatorIntegrand_eq_passive_mul
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (t : ℝ) (x : E3) (m : Fin 3) :
+    modelTruncatedOperatorIntegrand α u c f t x =
+      (c t * ∏ j ∈ Finset.univ.erase m,
+          ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+            (t ^ α.weight j) x) *
+        ModelCoordinateConvolution m (f m) (activeModelKernel 2 m u)
+          (t ^ α.weight m) x := by
+  have hm : m = 0 ∨ m = 1 ∨ m = 2 := by omega
+  unfold modelTruncatedOperatorIntegrand
+  rcases hm with rfl | rfl | rfl
+  · have herase : (Finset.univ.erase (0 : Fin 3)) = {1, 2} := by decide
+    rw [herase, Finset.prod_pair (by decide : (1 : Fin 3) ≠ 2)]
+    simp only [activeModelKernel_two_zero, activeModelKernel_two_one,
+      activeModelKernel_two_two]
+    ring
+  · have herase : (Finset.univ.erase (1 : Fin 3)) = {0, 2} := by decide
+    rw [herase, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 2)]
+    simp only [activeModelKernel_two_zero, activeModelKernel_two_one,
+      activeModelKernel_two_two]
+    ring
+  · have herase : (Finset.univ.erase (2 : Fin 3)) = {0, 1} := by decide
+    rw [herase, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 1)]
+    simp only [activeModelKernel_two_zero, activeModelKernel_two_one,
+      activeModelKernel_two_two]
+    ring
+
+/-- The passive factor is unchanged when only the active slot is replaced. -/
+theorem modelTruncatedOperatorIntegrand_replace_eq_passive_mul
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (t : ℝ) (x : E3) (m : Fin 3) (h : E3 → ℝ) :
+    modelTruncatedOperatorIntegrand α u c (modelOperatorReplace f m h) t x =
+      (c t * ∏ j ∈ Finset.univ.erase m,
+          ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
+            (t ^ α.weight j) x) *
+        ModelCoordinateConvolution m h (activeModelKernel 2 m u)
+          (t ^ α.weight m) x := by
+  rw [modelTruncatedOperatorIntegrand_eq_passive_mul α u c
+    (modelOperatorReplace f m h) t x m, modelOperatorReplace_same]
+  congr 2
+  apply Finset.prod_congr rfl
+  intro j hj
+  rw [modelOperatorReplace_ne f m j h (Finset.ne_of_mem_erase hj)]
+
+/-- **Dominated convergence for the truncated operator in one slot.**  This is
+the source's passage from the finite bad sums to the countable bad field
+inside `U^{a,b}_{u,c}`. -/
+theorem tendsto_ModelTruncatedOperator_replace_of_tendsto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ) (x : E3)
+    (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (Bm C : ℝ) (Bf : Fin 3 → ℝ)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hgmeas : ∀ n, Measurable (g n)) (hBm : 0 ≤ Bm)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ Bm)
+    (htend : ∀ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (nhds (glim y))) :
+    Filter.Tendsto (fun n ↦ ModelTruncatedOperator α u c
+        (modelOperatorReplace f m (g n)) a b x) Filter.atTop
+      (nhds (ModelTruncatedOperator α u c
+        (modelOperatorReplace f m glim) a b x)) := by
+  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  set Cn : Fin 3 → ℝ := fun j ↦ if j = m then Bm else Bf j with hCn
+  have hCnnonneg : ∀ j, 0 ≤ Cn j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [hCn, if_pos hj]; exact hBm
+    · simp only [hCn, if_neg hj]; exact hBf j
+  have hrep : ∀ (h : E3 → ℝ), Measurable h → (∀ y : E3, |h y| ≤ Bm) →
+      (∀ j, Measurable (modelOperatorReplace f m h j)) ∧
+      (∀ j, ∀ y : E3, |modelOperatorReplace f m h j y| ≤ Cn j) := by
+    intro h hh hhB
+    constructor
+    · intro j
+      by_cases hj : j = m
+      · subst hj; simpa only [modelOperatorReplace_same] using hh
+      · simpa only [modelOperatorReplace_ne f m j h hj] using hf j
+    · intro j y
+      by_cases hj : j = m
+      · subst hj
+        simpa only [modelOperatorReplace_same, hCn, if_pos rfl] using hhB y
+      · simpa only [modelOperatorReplace_ne f m j h hj, hCn, if_neg hj] using
+          hfB j y
+  have hglimmeas : Measurable glim := by
+    have : ∀ n, Measurable (g n) := hgmeas
+    exact measurable_of_tendsto_metrizable this (tendsto_pi_nhds.2 htend)
+  have hglimB : ∀ y : E3, |glim y| ≤ Bm := by
+    intro y
+    exact le_of_tendsto ((continuous_abs.tendsto (glim y)).comp (htend y))
+      (Filter.Eventually.of_forall fun n ↦ hgB n y)
+  set D : ℝ := C * (Cn 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+    (Cn 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+      (Cn 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) with hD
+  have hmeasF : ∀ n, AEStronglyMeasurable (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g n)) t x)
+      (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioc a b)) := by
+    intro n
+    exact ((stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+      α u c (modelOperatorReplace f m (g n)) hcm
+      ((hrep (g n) (hgmeas n) (hgB n)).1)).comp_measurable
+      (measurable_id.prodMk measurable_const)).aestronglyMeasurable
+  have hbound : ∀ n, ∀ᵐ t ∂(((volume : Measure ℝ).withDensity
+      cubeScaleDensity).restrict (Set.Ioc a b)),
+      ‖modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g n)) t x‖ ≤ D := by
+    intro n
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    rw [Real.norm_eq_abs]
+    exact abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+      α u c (modelOperatorReplace f m (g n)) t x (lt_trans ha ht.1) C Cn hC
+      (hcC t) ((hrep (g n) (hgmeas n) (hgB n)).1) hCnnonneg
+      ((hrep (g n) (hgmeas n) (hgB n)).2)
+  have hlim : ∀ᵐ t ∂(((volume : Measure ℝ).withDensity
+      cubeScaleDensity).restrict (Set.Ioc a b)),
+      Filter.Tendsto (fun n ↦ modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g n)) t x) Filter.atTop
+        (nhds (modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m glim) t x)) := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    have htpos : (0 : ℝ) < t := lt_trans ha ht.1
+    have hs : (0 : ℝ) < t ^ α.weight m := pow_pos htpos _
+    have hconv := tendsto_ModelCoordinateConvolution_of_tendsto
+      m g glim (activeModelKernel 2 m u) (t ^ α.weight m) x hgmeas Bm hBm hgB
+      (integrable_activeModelKernel 2 m u) hs htend
+    simp only [modelTruncatedOperatorIntegrand_replace_eq_passive_mul]
+    exact hconv.const_mul _
+  exact tendsto_integral_of_dominated_convergence (fun _ : ℝ ↦ D) hmeasF
+    (integrable_const D) hbound hlim
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## `eq:one_fiber` for the countable selected family
+
+Source: `lem:one_fiber`, blueprint lines 2530--2540, the countable passage.
+-/
+
+/-- **The finite selected bad field needs no cardinality loss.**  Global
+disjointness of the selected rectangles leaves at most one nonzero atom at
+each point, so the finite sum obeys the same `2B` bound as a single atom. -/
+theorem abs_fiberCZBadField_selected_le_of_bound
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H B : ℝ) (hB : 0 ≤ B)
+    (hbound : ∀ yz : ℝ × Z, |F yz| ≤ B)
+    (T : Finset FiberDyadicInterval) (yz : ℝ × Z) :
+    |fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz| ≤ 2 * B := by
+  by_cases hex : ∃ I : FiberDyadicInterval,
+      yz ∈ fiberDyadicInterval I ×ˢ fiberDyadicSelectionSet Zf A H I
+  · obtain ⟨I₀, hI₀⟩ := hex
+    have hvanish : ∀ I : FiberDyadicInterval, I ≠ I₀ →
+        fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz = 0 := by
+      intro I hI
+      have hdisj := pairwiseDisjoint_fiberDyadicSelectedRectangles Zf A H
+        (Set.mem_univ I₀) (Set.mem_univ I) (Ne.symm hI)
+      have hnot : yz ∉ fiberDyadicInterval I ×ˢ
+          fiberDyadicSelectionSet Zf A H I := by
+        intro hmem
+        exact (Set.disjoint_left.mp hdisj) hI₀ hmem
+      unfold fiberCZBadAtom
+      exact Set.indicator_of_notMem hnot _
+    have hsum : fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz =
+        if I₀ ∈ T then
+          fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I₀ yz else 0 := by
+      show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
+      by_cases hmem : I₀ ∈ T
+      · rw [if_pos hmem]
+        exact Finset.sum_eq_single I₀ (fun I _ hI ↦ hvanish I hI)
+          (fun hnot ↦ absurd hmem hnot)
+      · rw [if_neg hmem]
+        exact Finset.sum_eq_zero fun I hI ↦ hvanish I (fun h ↦ hmem (h ▸ hI))
+    rw [hsum]
+    by_cases hmem : I₀ ∈ T
+    · rw [if_pos hmem]
+      exact abs_fiberCZBadAtom_le_of_bound F
+        (fiberDyadicSelectionSet Zf A H) I₀ B hB hbound yz
+    · rw [if_neg hmem, abs_zero]
+      positivity
+  · push_neg at hex
+    have hzero : fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz = 0 := by
+      show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
+      apply Finset.sum_eq_zero
+      intro I _
+      unfold fiberCZBadAtom
+      exact Set.indicator_of_notMem (hex I) _
+    rw [hzero, abs_zero]
+    positivity
+
+/-- The ambient form of the cardinality-free selected bad bound. -/
+theorem abs_coordinateFiberBadField_selected_le_of_bound
+    (m : Fin 3) (g : E3 → ℝ) (Zf : Set (TransverseSpace m))
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ) (H B : ℝ) (hB : 0 ≤ B)
+    (hbound : ∀ y : E3, |g y| ≤ B)
+    (T : Finset FiberDyadicInterval) (x : E3) :
+    |coordinateFiberBadField m g T (fiberDyadicSelectionSet Zf A H) x| ≤
+      2 * B := by
+  apply abs_fiberCZBadField_selected_le_of_bound
+    (coordinateFiberInput m g) Zf A H B hB
+  intro yz
+  exact hbound _
+
+/-- **`eq:one_fiber` passes to the countable family.**  A weak bound holding
+uniformly for the finite selected families holds for the countable bad field. -/
+theorem ModelTruncatedOperator_weakOne_countable_of_finite
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ)
+    (Zf : Set (TransverseSpace m))
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+    (Tn : ℕ → Finset FiberDyadicInterval) (hmono : Monotone Tn)
+    (hexh : ∀ I : FiberDyadicInterval, ∃ n, I ∈ Tn n)
+    (C : ℝ) (Bf : Fin 3 → ℝ) (lam : ℝ) (Kbound : ℝ≥0∞)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hbadmeas : ∀ n, Measurable (coordinateFiberBadField m (f m) (Tn n)
+      (fiberDyadicSelectionSet Zf A H)))
+    (hfinite : ∀ n, ENNReal.ofReal lam *
+      volume {x | lam < |ModelTruncatedOperator α u c
+        (modelOperatorReplace f m (coordinateFiberBadField m (f m) (Tn n)
+          (fiberDyadicSelectionSet Zf A H))) a b x|} ≤ Kbound) :
+    ENNReal.ofReal lam *
+      volume {x | lam < |ModelTruncatedOperator α u c
+        (modelOperatorReplace f m
+          (coordinateFiberDyadicCountableBadField m (f m) Zf A H))
+          a b x|} ≤ Kbound := by
+  set S : FiberDyadicInterval → Set (TransverseSpace m) :=
+    fiberDyadicSelectionSet Zf A H with hS
+  set gn : ℕ → E3 → ℝ := fun n ↦ coordinateFiberBadField m (f m) (Tn n) S
+    with hgn
+  set glim : E3 → ℝ := coordinateFiberDyadicCountableBadField m (f m) Zf A H
+    with hglim
+  have hgB : ∀ n, ∀ y : E3, |gn n y| ≤ 2 * Bf m := fun n y ↦
+    abs_coordinateFiberBadField_selected_le_of_bound m (f m) Zf A H (Bf m)
+      (hBf m) (hfB m) (Tn n) y
+  have hBm : (0 : ℝ) ≤ 2 * Bf m := by
+    have := hBf m
+    positivity
+  have hpoint : ∀ y : E3,
+      Filter.Tendsto (fun n ↦ gn n y) Filter.atTop (nhds (glim y)) := by
+    intro y
+    exact tendsto_fiberCZBadField_countableBadField
+      (coordinateFiberInput m (f m)) Zf A H Tn hmono hexh (coordinateSplit m y)
+  have hop : ∀ x : E3, Filter.Tendsto
+      (fun n ↦ ModelTruncatedOperator α u c
+        (modelOperatorReplace f m (gn n)) a b x) Filter.atTop
+      (nhds (ModelTruncatedOperator α u c
+        (modelOperatorReplace f m glim) a b x)) := by
+    intro x
+    exact tendsto_ModelTruncatedOperator_replace_of_tendsto α u c f m a b x
+      gn glim (2 * Bf m) C Bf ha hC hcm hcC hf hBf hfB hbadmeas hBm hgB hpoint
+  exact weakBound_of_ae_tendsto volume
+    (fun n x ↦ ModelTruncatedOperator α u c
+      (modelOperatorReplace f m (gn n)) a b x)
+    (fun x ↦ ModelTruncatedOperator α u c
+      (modelOperatorReplace f m glim) a b x)
+    Kbound (Filter.Eventually.of_forall hop) hfinite
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Four-vertex weighted geometric means
+
+Source: `ext:interpolation` and its use in `thm:extended_model`, blueprint
+lines 2538--2558 and 2700--2712, where the four endpoint constants combine as
+`∏_a A_a^{ϑ_a}` with `∑_a ϑ_a = 1`, and the common weight `U(u)^{100}`
+survives because `∏_a (U(u)^{100})^{ϑ_a} = U(u)^{100}`.
+-/
+
+/-- A quantity dominated by each of four bounds is dominated by their weighted
+geometric mean. -/
+theorem le_weighted_geometric_mean_four_of_le
+    {x A0 A1 A2 A3 t0 t1 t2 t3 : ℝ}
+    (hx : 0 ≤ x) (hA0 : 0 ≤ A0) (hA1 : 0 ≤ A1) (hA2 : 0 ≤ A2) (hA3 : 0 ≤ A3)
+    (h0 : x ≤ A0) (h1 : x ≤ A1) (h2 : x ≤ A2) (h3 : x ≤ A3)
+    (ht0 : 0 ≤ t0) (ht1 : 0 ≤ t1) (ht2 : 0 ≤ t2) (ht3 : 0 ≤ t3)
+    (hsum : t0 + t1 + t2 + t3 = 1) :
+    x ≤ A0 ^ t0 * A1 ^ t1 * A2 ^ t2 * A3 ^ t3 := by
+  rcases eq_or_lt_of_le hx with hzero | hpos
+  · rw [← hzero]
+    have : (0 : ℝ) ≤ A0 ^ t0 * A1 ^ t1 * A2 ^ t2 * A3 ^ t3 := by
+      have e0 := Real.rpow_nonneg hA0 t0
+      have e1 := Real.rpow_nonneg hA1 t1
+      have e2 := Real.rpow_nonneg hA2 t2
+      have e3 := Real.rpow_nonneg hA3 t3
+      positivity
+    exact this
+  · have hxsplit : x = x ^ t0 * x ^ t1 * x ^ t2 * x ^ t3 := by
+      rw [← Real.rpow_add hpos, ← Real.rpow_add hpos, ← Real.rpow_add hpos,
+        hsum, Real.rpow_one]
+    rw [hxsplit]
+    have e0 : x ^ t0 ≤ A0 ^ t0 := Real.rpow_le_rpow hx h0 ht0
+    have e1 : x ^ t1 ≤ A1 ^ t1 := Real.rpow_le_rpow hx h1 ht1
+    have e2 : x ^ t2 ≤ A2 ^ t2 := Real.rpow_le_rpow hx h2 ht2
+    have e3 : x ^ t3 ≤ A3 ^ t3 := Real.rpow_le_rpow hx h3 ht3
+    have p0 : (0 : ℝ) ≤ x ^ t0 := Real.rpow_nonneg hx t0
+    have p1 : (0 : ℝ) ≤ x ^ t1 := Real.rpow_nonneg hx t1
+    have p2 : (0 : ℝ) ≤ x ^ t2 := Real.rpow_nonneg hx t2
+    have p3 : (0 : ℝ) ≤ x ^ t3 := Real.rpow_nonneg hx t3
+    exact mul_four_le_of_nonneg e0 e1 e2 e3 p1 p2 p3
+      (Real.rpow_nonneg hA0 t0) (Real.rpow_nonneg hA1 t1)
+      (Real.rpow_nonneg hA2 t2)
+
+/-- **The source's common-weight bookkeeping.**  A factor shared by all four
+endpoint constants survives the weighted geometric mean untouched, because the
+weights sum to one. -/
+theorem prod_rpow_four_of_common_factor
+    {W C0 C1 C2 C3 t0 t1 t2 t3 : ℝ}
+    (hW : 0 < W) (hC0 : 0 ≤ C0) (hC1 : 0 ≤ C1) (hC2 : 0 ≤ C2) (hC3 : 0 ≤ C3)
+    (hsum : t0 + t1 + t2 + t3 = 1) :
+    (C0 * W) ^ t0 * (C1 * W) ^ t1 * (C2 * W) ^ t2 * (C3 * W) ^ t3 =
+      (C0 ^ t0 * C1 ^ t1 * C2 ^ t2 * C3 ^ t3) * W := by
+  have hWsplit : W ^ t0 * W ^ t1 * W ^ t2 * W ^ t3 = W := by
+    rw [← Real.rpow_add hW, ← Real.rpow_add hW, ← Real.rpow_add hW,
+      hsum, Real.rpow_one]
+  rw [Real.mul_rpow hC0 hW.le, Real.mul_rpow hC1 hW.le,
+    Real.mul_rpow hC2 hW.le, Real.mul_rpow hC3 hW.le]
+  calc C0 ^ t0 * W ^ t0 * (C1 ^ t1 * W ^ t1) * (C2 ^ t2 * W ^ t2) *
+        (C3 ^ t3 * W ^ t3)
+      = (C0 ^ t0 * C1 ^ t1 * C2 ^ t2 * C3 ^ t3) *
+          (W ^ t0 * W ^ t1 * W ^ t2 * W ^ t3) := by ring
+    _ = (C0 ^ t0 * C1 ^ t1 * C2 ^ t2 * C3 ^ t3) * W := by rw [hWsplit]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Two-sided geometric minima
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  After the dyadic
+decomposition of the inputs, each multi-index contributes the smallest of the
+four vertex bounds; along each simplex edge this is a two-sided geometric
+minimum, which is summable.
+-/
+
+/-- A two-sided geometric minimum is summable over the integers.  This is the
+decay that makes the dyadic multi-index sum of `ext:interpolation` converge. -/
+theorem summable_min_two_rpow {a b : ℝ} (ha : 0 < a) (hb : 0 < b) :
+    Summable (fun k : ℤ ↦
+      min ((2 : ℝ) ^ (a * (k : ℝ))) ((2 : ℝ) ^ (-(b * (k : ℝ))))) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  have hnonneg : ∀ k : ℤ, 0 ≤ min ((2 : ℝ) ^ (a * (k : ℝ)))
+      ((2 : ℝ) ^ (-(b * (k : ℝ)))) := by
+    intro k
+    exact le_min (Real.rpow_nonneg h2.le _) (Real.rpow_nonneg h2.le _)
+  have hpos : ∀ x : ℝ, (0 : ℝ) < (2 : ℝ) ^ x := fun x ↦ Real.rpow_pos_of_pos h2 x
+  have hgeomb : Summable (fun n : ℕ ↦ ((2 : ℝ) ^ (-b)) ^ n) := by
+    apply summable_geometric_of_lt_one (hpos (-b)).le
+    rw [show (1 : ℝ) = (2 : ℝ) ^ (0 : ℝ) by rw [Real.rpow_zero]]
+    exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by linarith)
+  have hgeoma : Summable (fun n : ℕ ↦ ((2 : ℝ) ^ (-a)) ^ n) := by
+    apply summable_geometric_of_lt_one (hpos (-a)).le
+    rw [show (1 : ℝ) = (2 : ℝ) ^ (0 : ℝ) by rw [Real.rpow_zero]]
+    exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by linarith)
+  apply Summable.of_nat_of_neg_add_one
+  · refine hgeomb.of_nonneg_of_le (fun n ↦ hnonneg (n : ℤ)) (fun n ↦ ?_)
+    refine le_trans (min_le_right _ _) (le_of_eq ?_)
+    rw [← Real.rpow_natCast ((2 : ℝ) ^ (-b)) n, ← Real.rpow_mul h2.le]
+    congr 1
+    push_cast
+    ring
+  · refine hgeoma.of_nonneg_of_le (fun n ↦ hnonneg (-((n : ℤ) + 1)))
+      (fun n ↦ ?_)
+    refine le_trans (min_le_left _ _) ?_
+    rw [← Real.rpow_natCast ((2 : ℝ) ^ (-a)) n, ← Real.rpow_mul h2.le]
+    apply Real.rpow_le_rpow_of_exponent_le (by norm_num)
+    push_cast
+    nlinarith [ha, Nat.cast_nonneg (α := ℝ) n]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Dyadic level layers
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  Each input is split
+into dyadic level layers; multilinearity then expands the operator over the
+resulting multi-indices.
+-/
+
+/-- The dyadic level layer of a real function: the part of `f` whose modulus
+lies in `[2^k, 2^{k+1})`. -/
+def dyadicLayer {X : Type*} (f : X → ℝ) (k : ℤ) : X → ℝ :=
+  fun x ↦ if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0
+
+theorem dyadicLayer_of_ne {X : Type*} (f : X → ℝ) (x : X) (hx : f x ≠ 0) :
+    dyadicLayer f (Int.log 2 |f x|) x = f x := by
+  show (if f x ≠ 0 ∧ Int.log 2 |f x| = Int.log 2 |f x| then f x else 0) = f x
+  rw [if_pos ⟨hx, rfl⟩]
+
+theorem dyadicLayer_eq_zero_of_ne {X : Type*} (f : X → ℝ) (x : X) (k : ℤ)
+    (hk : k ≠ Int.log 2 |f x|) : dyadicLayer f k x = 0 := by
+  simp only [dyadicLayer]
+  split
+  · next h => exact absurd h.2.symm hk
+  · rfl
+
+/-- At most one layer is nonzero at each point, and the layers reconstruct the
+function. -/
+theorem tsum_dyadicLayer {X : Type*} (f : X → ℝ) (x : X) :
+    ∑' k : ℤ, dyadicLayer f k x = f x := by
+  by_cases hx : f x = 0
+  · have hzero : ∀ k : ℤ, dyadicLayer f k x = 0 := by
+      intro k
+      simp only [dyadicLayer, hx, ne_eq, not_true_eq_false, false_and,
+        if_false]
+    simp only [hzero, tsum_zero, hx]
+  · rw [tsum_eq_single (Int.log 2 |f x|)
+      (fun k hk ↦ dyadicLayer_eq_zero_of_ne f x k hk)]
+    exact dyadicLayer_of_ne f x hx
+
+/-- A nonzero layer sits below the next dyadic level. -/
+theorem abs_dyadicLayer_lt {X : Type*} (f : X → ℝ) (k : ℤ) (x : X) :
+    |dyadicLayer f k x| < (2 : ℝ) ^ (k + 1) := by
+  have hpos : (0 : ℝ) < (2 : ℝ) ^ (k + 1) := zpow_pos (by norm_num) _
+  simp only [dyadicLayer]
+  split
+  · next h =>
+      obtain ⟨hne, hlog⟩ := h
+      have habs : (0 : ℝ) < |f x| := abs_pos.mpr hne
+      have := Int.lt_zpow_succ_log_self (by norm_num : 1 < 2) |f x|
+      rw [hlog] at this
+      exact_mod_cast this
+  · simpa only [abs_zero] using hpos
+
+/-- A nonzero layer sits at or above its own dyadic level. -/
+theorem le_abs_dyadicLayer {X : Type*} (f : X → ℝ) (k : ℤ) (x : X)
+    (hne : dyadicLayer f k x ≠ 0) :
+    (2 : ℝ) ^ k ≤ |dyadicLayer f k x| := by
+  simp only [dyadicLayer] at hne ⊢
+  split at hne
+  · next h =>
+      obtain ⟨hfne, hlog⟩ := h
+      rw [if_pos ⟨hfne, hlog⟩]
+      have habs : (0 : ℝ) < |f x| := abs_pos.mpr hfne
+      have := Int.zpow_log_le_self (b := 2) (by norm_num) habs
+      rw [hlog] at this
+      exact_mod_cast this
+  · exact absurd rfl hne
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Finitely many layers on simple functions
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  The theorem is
+stated for simple functions, which take finitely many values; their dyadic
+level decomposition is therefore a finite sum, so the multilinear expansion
+over the layers needs no convergence argument.
+-/
+
+/-- A function with finitely many values has finitely many nonzero dyadic
+layers. -/
+theorem finite_dyadicLayer_support {X : Type*} (f : X → ℝ)
+    (hfin : (Set.range f).Finite) :
+    {k : ℤ | ∃ x : X, dyadicLayer f k x ≠ 0}.Finite := by
+  apply Set.Finite.subset (hfin.image (fun v : ℝ ↦ Int.log 2 |v|))
+  rintro k ⟨x, hx⟩
+  refine ⟨f x, Set.mem_range_self x, ?_⟩
+  show Int.log 2 |f x| = k
+  by_contra hne
+  exact hx (dyadicLayer_eq_zero_of_ne f x k (fun h ↦ hne h.symm))
+
+/-- On any finite family containing every nonzero layer index, the layers sum
+back to the function. -/
+theorem sum_dyadicLayer_of_support_subset {X : Type*} (f : X → ℝ)
+    (S : Finset ℤ)
+    (hS : ∀ k : ℤ, (∃ y : X, dyadicLayer f k y ≠ 0) → k ∈ S) (x : X) :
+    ∑ k ∈ S, dyadicLayer f k x = f x := by
+  by_cases hx : f x = 0
+  · have hzero : ∀ k : ℤ, dyadicLayer f k x = 0 := by
+      intro k
+      show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
+      rw [if_neg (by simp [hx])]
+    rw [Finset.sum_congr rfl (fun k _ ↦ hzero k), Finset.sum_const_zero, hx]
+  · have hk₀ : dyadicLayer f (Int.log 2 |f x|) x = f x :=
+      dyadicLayer_of_ne f x hx
+    have hmem : Int.log 2 |f x| ∈ S :=
+      hS _ ⟨x, by rw [hk₀]; exact hx⟩
+    rw [Finset.sum_eq_single (Int.log 2 |f x|)
+      (fun k _ hk ↦ dyadicLayer_eq_zero_of_ne f x k hk)
+      (fun hnot ↦ absurd hmem hnot)]
+    exact hk₀
+
+/-- The canonical finite index family of a function with finitely many
+values. -/
+noncomputable def dyadicLayerIndices {X : Type*} (f : X → ℝ)
+    (hfin : (Set.range f).Finite) : Finset ℤ :=
+  (finite_dyadicLayer_support f hfin).toFinset
+
+theorem mem_dyadicLayerIndices {X : Type*} (f : X → ℝ)
+    (hfin : (Set.range f).Finite) (k : ℤ)
+    (hk : ∃ x : X, dyadicLayer f k x ≠ 0) :
+    k ∈ dyadicLayerIndices f hfin := by
+  rw [dyadicLayerIndices, Set.Finite.mem_toFinset]
+  exact hk
+
+/-- The finite layer reconstruction on the canonical index family. -/
+theorem sum_dyadicLayerIndices {X : Type*} (f : X → ℝ)
+    (hfin : (Set.range f).Finite) (x : X) :
+    ∑ k ∈ dyadicLayerIndices f hfin, dyadicLayer f k x = f x :=
+  sum_dyadicLayer_of_support_subset f _
+    (fun k hk ↦ mem_dyadicLayerIndices f hfin k hk) x
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Trilinear expansion over finite decompositions
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  With each input split
+into its finitely many dyadic layers, multilinearity expands the operator into
+a finite triple sum over layer multi-indices.
+-/
+
+/-- An additive map commutes with a finite sum of functions. -/
+theorem map_finset_sum_of_additive
+    {X V : Type*} [AddCommMonoid V] (T : (X → ℝ) → V)
+    (hzero : T 0 = 0) (hadd : ∀ g h : X → ℝ, T (g + h) = T g + T h)
+    (S : Finset ℤ) (f : ℤ → X → ℝ) :
+    T (∑ k ∈ S, f k) = ∑ k ∈ S, T (f k) := by
+  classical
+  induction S using Finset.induction with
+  | empty => simpa only [Finset.sum_empty] using hzero
+  | insert k S hk ih =>
+      rw [Finset.sum_insert hk, Finset.sum_insert hk, hadd, ih]
+
+/-- **Trilinear expansion.**  Finite decompositions of the three slots expand
+the operator into the finite triple sum over layer multi-indices. -/
+theorem trilinear_expand_three_finsets
+    {X V : Type*} [AddCommMonoid V]
+    (T : (X → ℝ) → (X → ℝ) → (X → ℝ) → V)
+    (h1zero : ∀ u v : X → ℝ, T 0 u v = 0)
+    (h1add : ∀ g h u v : X → ℝ, T (g + h) u v = T g u v + T h u v)
+    (h2zero : ∀ g v : X → ℝ, T g 0 v = 0)
+    (h2add : ∀ g u h v : X → ℝ, T g (u + h) v = T g u v + T g h v)
+    (h3zero : ∀ g u : X → ℝ, T g u 0 = 0)
+    (h3add : ∀ g u v w : X → ℝ, T g u (v + w) = T g u v + T g u w)
+    (S1 S2 S3 : Finset ℤ) (f1 f2 f3 : ℤ → X → ℝ) :
+    T (∑ k ∈ S1, f1 k) (∑ k ∈ S2, f2 k) (∑ k ∈ S3, f3 k) =
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, T (f1 k1) (f2 k2) (f3 k3) := by
+  have hslot1 : T (∑ k ∈ S1, f1 k) (∑ k ∈ S2, f2 k) (∑ k ∈ S3, f3 k) =
+      ∑ k1 ∈ S1, T (f1 k1) (∑ k ∈ S2, f2 k) (∑ k ∈ S3, f3 k) :=
+    map_finset_sum_of_additive
+      (fun g ↦ T g (∑ k ∈ S2, f2 k) (∑ k ∈ S3, f3 k))
+      (h1zero _ _) (fun g h ↦ h1add g h _ _) S1 f1
+  rw [hslot1]
+  refine Finset.sum_congr rfl (fun k1 _ ↦ ?_)
+  have hslot2 : T (f1 k1) (∑ k ∈ S2, f2 k) (∑ k ∈ S3, f3 k) =
+      ∑ k2 ∈ S2, T (f1 k1) (f2 k2) (∑ k ∈ S3, f3 k) :=
+    map_finset_sum_of_additive
+      (fun u ↦ T (f1 k1) u (∑ k ∈ S3, f3 k))
+      (h2zero _ _) (fun u h ↦ h2add _ u h _) S2 f2
+  rw [hslot2]
+  refine Finset.sum_congr rfl (fun k2 _ ↦ ?_)
+  exact map_finset_sum_of_additive
+    (fun v ↦ T (f1 k1) (f2 k2) v)
+    (h3zero _ _) (fun v w ↦ h3add _ _ v w) S3 f3
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Combining the four vertex bounds over layer multi-indices
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  Each layer triple is
+estimated by all four endpoint bounds; the weighted geometric mean of those
+four is the term that gets summed.
+-/
+
+/-- **Four vertex bounds combine over the whole multi-index sum.**  Applying
+each endpoint estimate to every layer triple and taking the weighted geometric
+mean bounds the expanded operator. -/
+theorem norm_triple_finset_sum_le_geometric_mean
+    {V : Type*} [SeminormedAddCommGroup V]
+    (S1 S2 S3 : Finset ℤ) (W : ℤ → ℤ → ℤ → V)
+    (A0 A1 A2 A3 : ℤ → ℤ → ℤ → ℝ) (t0 t1 t2 t3 : ℝ)
+    (hA0 : ∀ k1 k2 k3, 0 ≤ A0 k1 k2 k3)
+    (hA1 : ∀ k1 k2 k3, 0 ≤ A1 k1 k2 k3)
+    (hA2 : ∀ k1 k2 k3, 0 ≤ A2 k1 k2 k3)
+    (hA3 : ∀ k1 k2 k3, 0 ≤ A3 k1 k2 k3)
+    (h0 : ∀ k1 k2 k3, ‖W k1 k2 k3‖ ≤ A0 k1 k2 k3)
+    (h1 : ∀ k1 k2 k3, ‖W k1 k2 k3‖ ≤ A1 k1 k2 k3)
+    (h2 : ∀ k1 k2 k3, ‖W k1 k2 k3‖ ≤ A2 k1 k2 k3)
+    (h3 : ∀ k1 k2 k3, ‖W k1 k2 k3‖ ≤ A3 k1 k2 k3)
+    (ht0 : 0 ≤ t0) (ht1 : 0 ≤ t1) (ht2 : 0 ≤ t2) (ht3 : 0 ≤ t3)
+    (hsum : t0 + t1 + t2 + t3 = 1) :
+    ‖∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3‖ ≤
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+        A0 k1 k2 k3 ^ t0 * A1 k1 k2 k3 ^ t1 *
+          A2 k1 k2 k3 ^ t2 * A3 k1 k2 k3 ^ t3 := by
+  have hterm : ∀ k1 k2 k3 : ℤ, ‖W k1 k2 k3‖ ≤
+      A0 k1 k2 k3 ^ t0 * A1 k1 k2 k3 ^ t1 *
+        A2 k1 k2 k3 ^ t2 * A3 k1 k2 k3 ^ t3 := by
+    intro k1 k2 k3
+    exact le_weighted_geometric_mean_four_of_le (norm_nonneg _)
+      (hA0 k1 k2 k3) (hA1 k1 k2 k3) (hA2 k1 k2 k3) (hA3 k1 k2 k3)
+      (h0 k1 k2 k3) (h1 k1 k2 k3) (h2 k1 k2 k3) (h3 k1 k2 k3)
+      ht0 ht1 ht2 ht3 hsum
+  calc ‖∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3‖
+      ≤ ∑ k1 ∈ S1, ‖∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3‖ :=
+        norm_sum_le _ _
+    _ ≤ ∑ k1 ∈ S1, ∑ k2 ∈ S2, ‖∑ k3 ∈ S3, W k1 k2 k3‖ :=
+        Finset.sum_le_sum (fun k1 _ ↦ norm_sum_le _ _)
+    _ ≤ ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, ‖W k1 k2 k3‖ :=
+        Finset.sum_le_sum (fun k1 _ ↦
+          Finset.sum_le_sum (fun k2 _ ↦ norm_sum_le _ _))
+    _ ≤ ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+          A0 k1 k2 k3 ^ t0 * A1 k1 k2 k3 ^ t1 *
+            A2 k1 k2 k3 ^ t2 * A3 k1 k2 k3 ^ t3 :=
+        Finset.sum_le_sum (fun k1 _ ↦
+          Finset.sum_le_sum (fun k2 _ ↦
+            Finset.sum_le_sum (fun k3 _ ↦ hterm k1 k2 k3)))
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The support of a dyadic layer
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  Each layer is the
+input restricted to a dyadic annulus of its modulus, which is what turns the
+weak endpoint bounds into explicit powers of `2^k` and of the layer's measure.
+-/
+
+/-- The dyadic layer's support is the annulus `2^k ≤ |f| < 2^{k+1}`. -/
+theorem dyadicLayer_ne_zero_iff {X : Type*} (f : X → ℝ) (k : ℤ) (x : X) :
+    dyadicLayer f k x ≠ 0 ↔
+      ((2 : ℝ) ^ k ≤ |f x| ∧ |f x| < (2 : ℝ) ^ (k + 1)) := by
+  have hb : (1 : ℕ) < 2 := by norm_num
+  constructor
+  · intro hne
+    have hcond : f x ≠ 0 ∧ Int.log 2 |f x| = k := by
+      by_contra hc
+      exact hne (by
+        show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
+        rw [if_neg hc])
+    obtain ⟨hfne, hlog⟩ := hcond
+    have hpos : (0 : ℝ) < |f x| := abs_pos.mpr hfne
+    constructor
+    · have := Int.zpow_log_le_self (b := 2) hb hpos
+      rw [hlog] at this
+      exact_mod_cast this
+    · have := Int.lt_zpow_succ_log_self (b := 2) hb |f x|
+      rw [hlog] at this
+      exact_mod_cast this
+  · rintro ⟨hle, hlt⟩
+    have h2k : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
+    have hpos : (0 : ℝ) < |f x| := lt_of_lt_of_le h2k hle
+    have hfne : f x ≠ 0 := abs_pos.mp hpos
+    have hlow : k ≤ Int.log 2 |f x| := by
+      rw [← Int.zpow_le_iff_le_log hb hpos]
+      exact_mod_cast hle
+    have hhigh : Int.log 2 |f x| < k + 1 := by
+      rw [← Int.lt_zpow_iff_log_lt hb hpos]
+      exact_mod_cast hlt
+    have hlog : Int.log 2 |f x| = k := by omega
+    show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) ≠ 0
+    rw [if_pos ⟨hfne, hlog⟩]
+    exact hfne
+
+/-- The layer is the input restricted to that annulus. -/
+theorem dyadicLayer_eq_indicator {X : Type*} (f : X → ℝ) (k : ℤ) :
+    dyadicLayer f k =
+      {x : X | (2 : ℝ) ^ k ≤ |f x| ∧ |f x| < (2 : ℝ) ^ (k + 1)}.indicator f := by
+  funext x
+  by_cases hx : dyadicLayer f k x = 0
+  · rw [hx]
+    by_cases hmem : x ∈ {x : X | (2 : ℝ) ^ k ≤ |f x| ∧
+        |f x| < (2 : ℝ) ^ (k + 1)}
+    · exact absurd ((dyadicLayer_ne_zero_iff f k x).mpr hmem) (by simp [hx])
+    · rw [Set.indicator_of_notMem hmem]
+  · have hmem : x ∈ {x : X | (2 : ℝ) ^ k ≤ |f x| ∧
+        |f x| < (2 : ℝ) ^ (k + 1)} := (dyadicLayer_ne_zero_iff f k x).mp hx
+    rw [Set.indicator_of_mem hmem]
+    show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = f x
+    rw [if_pos]
+    refine ⟨?_, ?_⟩
+    · intro h
+      exact hx (by
+        show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
+        rw [if_neg (by simp [h])])
+    · have h2k : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
+      have hpos : (0 : ℝ) < |f x| := lt_of_lt_of_le h2k hmem.1
+      have hb : (1 : ℕ) < 2 := by norm_num
+      have hlow : k ≤ Int.log 2 |f x| := by
+        rw [← Int.zpow_le_iff_le_log hb hpos]
+        exact_mod_cast hmem.1
+      have hhigh : Int.log 2 |f x| < k + 1 := by
+        rw [← Int.lt_zpow_iff_log_lt hb hpos]
+        exact_mod_cast hmem.2
+      omega
+
+/-- A measurable input has measurable layers. -/
+theorem measurable_dyadicLayer {X : Type*} [MeasurableSpace X]
+    (f : X → ℝ) (hf : Measurable f) (k : ℤ) :
+    Measurable (dyadicLayer f k) := by
+  rw [dyadicLayer_eq_indicator]
+  have habs : Measurable (fun x : X ↦ |f x|) := by fun_prop
+  apply hf.indicator
+  exact (measurableSet_le measurable_const habs).inter
+    (measurableSet_lt habs measurable_const)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The distribution-function form of a strong norm
+
+Source: `ext:interpolation` and `def:weak_norm`, blueprint lines 2381--2387
+and 2538--2558.  Passing from weak endpoint bounds to a strong interior bound
+goes through the distribution function, since the weak quantities are level-set
+measures rather than norms.
+-/
+
+/-- The layer-cake identity in the form used to pass from level-set bounds to a
+strong `L^r` norm. -/
+theorem lintegral_rpow_abs_eq_meas_lt
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (f : X → ℝ)
+    (hf : AEMeasurable f μ) {r : ℝ} (hr : 0 < r) :
+    ∫⁻ x, ENNReal.ofReal (|f x| ^ r) ∂μ =
+      ∫⁻ t in Ioi (0 : ℝ),
+        μ {x | t < |f x|} * ENNReal.ofReal (r * t ^ (r - 1)) := by
+  have hexp : (-1 : ℝ) < r - 1 := by linarith
+  have hg_intble : ∀ t > (0 : ℝ),
+      IntervalIntegrable (fun s : ℝ ↦ r * s ^ (r - 1)) volume 0 t := by
+    intro t _
+    exact (intervalIntegral.intervalIntegrable_rpow' hexp).const_mul r
+  have hg_nn : ∀ᵐ t ∂volume.restrict (Ioi (0 : ℝ)),
+      0 ≤ r * t ^ (r - 1) := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    exact mul_nonneg hr.le (Real.rpow_nonneg (le_of_lt ht) _)
+  have hinner : ∀ x : X,
+      (∫ t in (0 : ℝ)..|f x|, r * t ^ (r - 1)) = |f x| ^ r := by
+    intro x
+    rw [intervalIntegral.integral_const_mul,
+      integral_rpow (Or.inl hexp)]
+    have h0 : (0 : ℝ) ^ (r - 1 + 1) = 0 := by
+      rw [show r - 1 + 1 = r by ring, Real.zero_rpow hr.ne']
+    rw [h0, show r - 1 + 1 = r by ring]
+    field_simp
+    ring
+  have hmain := lintegral_comp_eq_lintegral_meas_lt_mul μ
+    (f := fun x ↦ |f x|) (g := fun t : ℝ ↦ r * t ^ (r - 1))
+    (Filter.Eventually.of_forall fun x ↦ abs_nonneg _)
+    (continuous_abs.measurable.comp_aemeasurable hf) hg_intble hg_nn
+  calc ∫⁻ x, ENNReal.ofReal (|f x| ^ r) ∂μ
+      = ∫⁻ x, ENNReal.ofReal (∫ t in (0 : ℝ)..|f x|, r * t ^ (r - 1)) ∂μ := by
+        exact lintegral_congr fun x ↦ by rw [hinner x]
+    _ = ∫⁻ t in Ioi (0 : ℝ),
+          μ {x | t < |f x|} * ENNReal.ofReal (r * t ^ (r - 1)) := hmain
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Splitting a level among summands
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  Weak bounds are
+level-set statements and are not additive, so a sum is estimated by
+distributing the level across its terms — this is what replaces the triangle
+inequality for the weak endpoints.
+-/
+
+/-- **Level splitting.**  If the levels assigned to the summands do not exceed
+the total level, the level set of the sum is covered by those of the terms. -/
+theorem meas_lt_abs_finset_sum_le_sum
+    {X ι : Type*} [MeasurableSpace X] (μ : Measure X)
+    (S : Finset ι) (w : ι → X → ℝ) (t : ℝ) (s : ι → ℝ)
+    (hs : ∑ i ∈ S, s i ≤ t) :
+    μ {x | t < |∑ i ∈ S, w i x|} ≤ ∑ i ∈ S, μ {x | s i < |w i x|} := by
+  have hsub : {x | t < |∑ i ∈ S, w i x|} ⊆ ⋃ i ∈ S, {x | s i < |w i x|} := by
+    intro x hx
+    by_contra hnot
+    have hall : ∀ i ∈ S, |w i x| ≤ s i := by
+      intro i hi
+      by_contra hlt
+      exact hnot (Set.mem_biUnion hi (lt_of_not_ge hlt))
+    have habs : |∑ i ∈ S, w i x| ≤ ∑ i ∈ S, s i :=
+      le_trans (Finset.abs_sum_le_sum_abs _ _)
+        (Finset.sum_le_sum hall)
+    exact absurd hx (by
+      simp only [Set.mem_setOf_eq, not_lt]
+      exact le_trans habs hs)
+  calc μ {x | t < |∑ i ∈ S, w i x|}
+      ≤ μ (⋃ i ∈ S, {x | s i < |w i x|}) := measure_mono hsub
+    _ ≤ ∑ i ∈ S, μ {x | s i < |w i x|} := measure_biUnion_finset_le _ _
+
+/-- The triple-index form used after the trilinear expansion. -/
+theorem meas_lt_abs_triple_sum_le_sum
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (S1 S2 S3 : Finset ℤ) (W : ℤ → ℤ → ℤ → X → ℝ) (t : ℝ)
+    (s : ℤ → ℤ → ℤ → ℝ)
+    (hs : ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, s k1 k2 k3 ≤ t) :
+    μ {x | t < |∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3 x|} ≤
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, μ {x | s k1 k2 k3 < |W k1 k2 k3 x|} := by
+  classical
+  set T : Finset (ℤ × ℤ × ℤ) := S1 ×ˢ S2 ×ˢ S3 with hT
+  have hflat : ∀ (g : ℤ → ℤ → ℤ → ℝ),
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, g k1 k2 k3 =
+        ∑ p ∈ T, g p.1 p.2.1 p.2.2 := by
+    intro g
+    rw [hT, Finset.sum_product]
+    refine Finset.sum_congr rfl fun k1 _ ↦ ?_
+    rw [Finset.sum_product]
+  have hflatFun : ∀ x : X,
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3 x =
+        ∑ p ∈ T, W p.1 p.2.1 p.2.2 x := fun x ↦ hflat (fun a b c ↦ W a b c x)
+  have hmain := meas_lt_abs_finset_sum_le_sum μ T
+    (fun p : ℤ × ℤ × ℤ ↦ W p.1 p.2.1 p.2.2) t
+    (fun p : ℤ × ℤ × ℤ ↦ s p.1 p.2.1 p.2.2) (by rw [← hflat s]; exact hs)
+  calc μ {x | t < |∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3 x|}
+      = μ {x | t < |∑ p ∈ T, W p.1 p.2.1 p.2.2 x|} := by
+        congr 1
+        ext x
+        simp only [Set.mem_setOf_eq, hflatFun x]
+    _ ≤ ∑ p ∈ T, μ {x | s p.1 p.2.1 p.2.2 < |W p.1 p.2.1 p.2.2 x|} := hmain
+    _ = ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+          μ {x | s k1 k2 k3 < |W k1 k2 k3 x|} := by
+        rw [hT, Finset.sum_product]
+        refine Finset.sum_congr rfl fun k1 _ ↦ ?_
+        rw [Finset.sum_product]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The exponent simplex
+
+Source: `lem:exponent_simplex` and `eq:extended_region`, `eq:capped_sum`,
+`eq:weights`.  The extended exponent region is exhausted by open tetrahedra
+whose vertices are a base point `b` and the three shifted points `b + b₀ eₘ`;
+this lemma produces such a base point together with the convex weights.
+-/
+
+/-- The capped sum `eq:capped_sum` exceeds `3/4` on the extended region
+`eq:extended_region`. -/
+theorem three_quarters_lt_cappedSum
+    {β₀ β₁ β₂ β₃ : ℝ}
+    (hβ₁ : 0 < β₁) (hβ₂ : 0 < β₂)
+    (hsum : β₀ + β₁ + β₂ + β₃ = 1)
+    (hreg₀ : β₀ < 1 / 4) (hreg₃ : 1 / 4 < β₃)
+    (hreg₁₂ : 1 / 4 < β₁ + β₂)
+    (hreg₁₃ : 1 / 2 < β₁ + β₃) (hreg₂₃ : 1 / 2 < β₂ + β₃) :
+    3 / 4 < min β₁ (1 / 4) + min β₂ (1 / 4) + min β₃ (1 / 2) := by
+  rcases le_total β₁ (1 / 4 : ℝ) with h₁ | h₁ <;>
+    rcases le_total β₂ (1 / 4 : ℝ) with h₂ | h₂ <;>
+      rcases le_total β₃ (1 / 2 : ℝ) with h₃ | h₃ <;>
+        simp only [min_eq_left, min_eq_right, h₁, h₂, h₃] <;> linarith
+
+/-- **Exponent simplex, base point.**  On the extended region
+`eq:extended_region` there is a base point `b = (b₁, b₂, b₃)` strictly below
+`(β₁, β₂, β₃)` and strictly inside the constraint box, whose coordinate sum
+lies in `(3/4, 1)`.  Writing `b₀ = 1 - (b₁ + b₂ + b₃)` one gets
+`0 < β₀ < b₀ < 1/4` and `b₃ > 1/4`. -/
+theorem exists_exponentSimplex_base
+    {β₀ β₁ β₂ β₃ : ℝ}
+    (hβ₀ : 0 < β₀) (hβ₁ : 0 < β₁) (hβ₂ : 0 < β₂) (hβ₃ : 0 < β₃)
+    (hsum : β₀ + β₁ + β₂ + β₃ = 1)
+    (hreg₀ : β₀ < 1 / 4) (hreg₃ : 1 / 4 < β₃)
+    (hreg₁₂ : 1 / 4 < β₁ + β₂)
+    (hreg₁₃ : 1 / 2 < β₁ + β₃) (hreg₂₃ : 1 / 2 < β₂ + β₃) :
+    ∃ b₁ b₂ b₃ : ℝ,
+      0 < b₁ ∧ 0 < b₂ ∧ 0 < b₃ ∧
+      b₁ < β₁ ∧ b₂ < β₂ ∧ b₃ < β₃ ∧
+      b₁ < 1 / 4 ∧ b₂ < 1 / 4 ∧ 1 / 4 < b₃ ∧ b₃ < 1 / 2 ∧
+      3 / 4 < b₁ + b₂ + b₃ ∧ b₁ + b₂ + b₃ < 1 ∧
+      β₀ < 1 - (b₁ + b₂ + b₃) ∧ 1 - (b₁ + b₂ + b₃) < 1 / 4 := by
+  set m₁ : ℝ := min β₁ (1 / 4) with hm₁
+  set m₂ : ℝ := min β₂ (1 / 4) with hm₂
+  set m₃ : ℝ := min β₃ (1 / 2) with hm₃
+  have hS : 3 / 4 < m₁ + m₂ + m₃ :=
+    three_quarters_lt_cappedSum hβ₁ hβ₂ hsum hreg₀ hreg₃ hreg₁₂ hreg₁₃ hreg₂₃
+  have hm₁pos : 0 < m₁ := lt_min hβ₁ (by norm_num)
+  have hm₂pos : 0 < m₂ := lt_min hβ₂ (by norm_num)
+  have hm₃pos : 0 < m₃ := lt_min hβ₃ (by norm_num)
+  -- the constructive choice of `ε` from the source
+  set ε : ℝ :=
+    (1 / 2) * min (min m₁ (min m₂ m₃)) ((m₁ + m₂ + m₃ - 3 / 4) / 3) with hε
+  have hεpos : 0 < ε := by
+    refine mul_pos (by norm_num) (lt_min (lt_min hm₁pos (lt_min hm₂pos hm₃pos)) ?_)
+    have : 0 < m₁ + m₂ + m₃ - 3 / 4 := by linarith
+    positivity
+  have hεm₁ : ε ≤ m₁ / 2 := by
+    have : min (min m₁ (min m₂ m₃)) ((m₁ + m₂ + m₃ - 3 / 4) / 3) ≤ m₁ :=
+      le_trans (min_le_left _ _) (min_le_left _ _)
+    rw [hε]; linarith
+  have hεm₂ : ε ≤ m₂ / 2 := by
+    have : min (min m₁ (min m₂ m₃)) ((m₁ + m₂ + m₃ - 3 / 4) / 3) ≤ m₂ :=
+      le_trans (min_le_left _ _) (le_trans (min_le_right _ _) (min_le_left _ _))
+    rw [hε]; linarith
+  have hεm₃ : ε ≤ m₃ / 2 := by
+    have : min (min m₁ (min m₂ m₃)) ((m₁ + m₂ + m₃ - 3 / 4) / 3) ≤ m₃ :=
+      le_trans (min_le_left _ _) (le_trans (min_le_right _ _) (min_le_right _ _))
+    rw [hε]; linarith
+  have hεS : 3 * ε ≤ (m₁ + m₂ + m₃ - 3 / 4) / 2 := by
+    have : min (min m₁ (min m₂ m₃)) ((m₁ + m₂ + m₃ - 3 / 4) / 3) ≤
+        (m₁ + m₂ + m₃ - 3 / 4) / 3 := min_le_right _ _
+    rw [hε]; linarith
+  have hm₁le : m₁ ≤ β₁ := min_le_left _ _
+  have hm₂le : m₂ ≤ β₂ := min_le_left _ _
+  have hm₃le : m₃ ≤ β₃ := min_le_left _ _
+  have hm₁q : m₁ ≤ 1 / 4 := min_le_right _ _
+  have hm₂q : m₂ ≤ 1 / 4 := min_le_right _ _
+  have hm₃q : m₃ ≤ 1 / 2 := min_le_right _ _
+  refine ⟨m₁ - ε, m₂ - ε, m₃ - ε, by linarith, by linarith, by linarith,
+    by linarith, by linarith, by linarith, by linarith, by linarith,
+    by linarith, by linarith, by linarith, by linarith, by linarith, by linarith⟩
+
+/-- **Exponent simplex, weights.**  The weights `eq:weights` attached to a base
+point are positive, sum to one, and exhibit `(β₁, β₂, β₃)` as the corresponding
+convex combination of `b` and `b + b₀ eₘ`; the output reciprocal matches. -/
+theorem exponentSimplex_weights
+    {β₀ β₁ β₂ β₃ b₀ b₁ b₂ b₃ ϑ₀ ϑ₁ ϑ₂ ϑ₃ : ℝ}
+    (hb₀ : b₀ = 1 - (b₁ + b₂ + b₃))
+    (hsum : β₀ + β₁ + β₂ + β₃ = 1)
+    (hβ₀ : 0 < β₀) (hb₀pos : 0 < b₀)
+    (h₁ : b₁ < β₁) (h₂ : b₂ < β₂) (h₃ : b₃ < β₃)
+    (hϑ₀ : ϑ₀ = β₀ / b₀) (hϑ₁ : ϑ₁ = (β₁ - b₁) / b₀)
+    (hϑ₂ : ϑ₂ = (β₂ - b₂) / b₀) (hϑ₃ : ϑ₃ = (β₃ - b₃) / b₀) :
+    0 < ϑ₀ ∧ 0 < ϑ₁ ∧ 0 < ϑ₂ ∧ 0 < ϑ₃ ∧
+      ϑ₀ + ϑ₁ + ϑ₂ + ϑ₃ = 1 ∧
+      ϑ₀ * b₁ + ϑ₁ * (b₁ + b₀) + ϑ₂ * b₁ + ϑ₃ * b₁ = β₁ ∧
+      ϑ₀ * b₂ + ϑ₁ * b₂ + ϑ₂ * (b₂ + b₀) + ϑ₃ * b₂ = β₂ ∧
+      ϑ₀ * b₃ + ϑ₁ * b₃ + ϑ₂ * b₃ + ϑ₃ * (b₃ + b₀) = β₃ ∧
+      ϑ₀ * (1 - b₀) + ϑ₁ + ϑ₂ + ϑ₃ = 1 - β₀ := by
+  have hne : b₀ ≠ 0 := ne_of_gt hb₀pos
+  have hsum1 : ϑ₀ + ϑ₁ + ϑ₂ + ϑ₃ = 1 := by
+    rw [hϑ₀, hϑ₁, hϑ₂, hϑ₃]; field_simp; linarith
+  have hϑ₀b : ϑ₀ * b₀ = β₀ := by rw [hϑ₀]; field_simp
+  have hϑ₁b : ϑ₁ * b₀ = β₁ - b₁ := by rw [hϑ₁]; field_simp
+  have hϑ₂b : ϑ₂ * b₀ = β₂ - b₂ := by rw [hϑ₂]; field_simp
+  have hϑ₃b : ϑ₃ * b₀ = β₃ - b₃ := by rw [hϑ₃]; field_simp
+  refine ⟨by rw [hϑ₀]; positivity, ?_, ?_, ?_, hsum1, ?_, ?_, ?_, ?_⟩
+  · rw [hϑ₁]; exact div_pos (by linarith) hb₀pos
+  · rw [hϑ₂]; exact div_pos (by linarith) hb₀pos
+  · rw [hϑ₃]; exact div_pos (by linarith) hb₀pos
+  · linear_combination b₁ * hsum1 + hϑ₁b
+  · linear_combination b₂ * hsum1 + hϑ₂b
+  · linear_combination b₃ * hsum1 + hϑ₃b
+  · linear_combination hsum1 - hϑ₀b
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The weak-to-strong passage
+
+Source: `ext:interpolation`.  A weak endpoint bound is a statement about level
+sets, and the interior strong bound is recovered by integrating the two
+competing level-set bounds against `r t^{r-1}`, splitting at the level where
+they agree.
+-/
+
+/-- The head integral of a power with exponent above `-1`. -/
+theorem lintegral_Ioc_zero_rpow {a c : ℝ} (ha : -1 < a) (hc : 0 < c) :
+    ∫⁻ t in Ioc (0 : ℝ) c, ENNReal.ofReal (t ^ a)
+      = ENNReal.ofReal (c ^ (a + 1) / (a + 1)) := by
+  have hint : IntegrableOn (fun t : ℝ => t ^ a) (Ioc (0 : ℝ) c) := by
+    have h := intervalIntegral.intervalIntegrable_rpow' (a := (0 : ℝ)) (b := c) ha
+    rwa [intervalIntegrable_iff_integrableOn_Ioc_of_le hc.le] at h
+  have hval : ∫ t in Ioc (0 : ℝ) c, t ^ a = c ^ (a + 1) / (a + 1) := by
+    have h := integral_rpow (a := (0 : ℝ)) (b := c) (r := a) (Or.inl ha)
+    rw [intervalIntegral.integral_of_le hc.le] at h
+    rw [h, Real.zero_rpow (by linarith : a + 1 ≠ 0), sub_zero]
+  have hnn : 0 ≤ᵐ[volume.restrict (Ioc (0 : ℝ) c)] fun t : ℝ => t ^ a := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    exact Real.rpow_nonneg ht.1.le _
+  rw [← ofReal_integral_eq_lintegral_ofReal hint hnn, hval]
+
+/-- The tail integral of a power with exponent below `-1`. -/
+theorem lintegral_Ioi_rpow {a c : ℝ} (ha : a < -1) (hc : 0 < c) :
+    ∫⁻ t in Ioi c, ENNReal.ofReal (t ^ a)
+      = ENNReal.ofReal (-c ^ (a + 1) / (a + 1)) := by
+  have hint : IntegrableOn (fun t : ℝ => t ^ a) (Ioi c) :=
+    integrableOn_Ioi_rpow_of_lt ha hc
+  have hnn : 0 ≤ᵐ[volume.restrict (Ioi c)] fun t : ℝ => t ^ a := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    exact Real.rpow_nonneg (hc.trans ht).le _
+  rw [← ofReal_integral_eq_lintegral_ofReal hint hnn, integral_Ioi_rpow_of_lt ha hc]
+
+/-- **Weak-to-strong passage.**  Two competing level-set bounds with exponents
+straddling `r` integrate to a strong `L^r` bound whose constant is the
+corresponding weighted geometric mean of the two weak constants. -/
+theorem lintegral_rpow_le_of_two_sided_distribution
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (F : X → ℝ)
+    (hF : AEMeasurable F μ)
+    {r r₁ r₂ D₁ D₂ : ℝ} (hr₁ : 0 < r₁) (h1r : r₁ < r) (hr2 : r < r₂)
+    (hD₁ : 0 < D₁) (hD₂ : 0 < D₂)
+    (hb₁ : ∀ t : ℝ, 0 < t → μ {x | t < |F x|} ≤ ENNReal.ofReal (D₁ * t ^ (-r₁)))
+    (hb₂ : ∀ t : ℝ, 0 < t → μ {x | t < |F x|} ≤ ENNReal.ofReal (D₂ * t ^ (-r₂))) :
+    ∫⁻ x, ENNReal.ofReal (|F x| ^ r) ∂μ ≤
+      ENNReal.ofReal (r * (1 / (r - r₁) + 1 / (r₂ - r)) *
+        (D₁ ^ ((r₂ - r) / (r₂ - r₁)) * D₂ ^ ((r - r₁) / (r₂ - r₁)))) := by
+  have hrpos : 0 < r := lt_trans hr₁ h1r
+  have hgap : 0 < r₂ - r₁ := by linarith
+  set θ : ℝ := (r - r₁) / (r₂ - r₁) with hθ
+  set t₀ : ℝ := (D₂ / D₁) ^ (1 / (r₂ - r₁)) with ht₀def
+  have hquot : 0 < D₂ / D₁ := div_pos hD₂ hD₁
+  have ht₀ : 0 < t₀ := Real.rpow_pos_of_pos hquot _
+  have ht₀gap : t₀ ^ (r₂ - r₁) = D₂ / D₁ := by
+    rw [ht₀def, ← Real.rpow_mul hquot.le, one_div,
+      inv_mul_cancel₀ (ne_of_gt hgap), Real.rpow_one]
+  -- the common value of the two bounds at the splitting level
+  set K : ℝ := D₁ ^ ((r₂ - r) / (r₂ - r₁)) * D₂ ^ θ with hK
+  have hKpos : 0 < K := mul_pos (Real.rpow_pos_of_pos hD₁ _) (Real.rpow_pos_of_pos hD₂ _)
+  have hK₁ : D₁ * t₀ ^ (r - r₁) = K := by
+    have h1 : t₀ ^ (r - r₁) = (D₂ / D₁) ^ θ := by
+      rw [ht₀def, ← Real.rpow_mul hquot.le, hθ, one_div]
+      ring_nf
+    rw [h1, Real.div_rpow hD₂.le hD₁.le, hK]
+    have h2 : D₁ ^ ((r₂ - r) / (r₂ - r₁)) = D₁ / D₁ ^ θ := by
+      rw [eq_div_iff (ne_of_gt (Real.rpow_pos_of_pos hD₁ _)), ← Real.rpow_add hD₁]
+      rw [show (r₂ - r) / (r₂ - r₁) + θ = 1 by rw [hθ]; field_simp; ring, Real.rpow_one]
+    rw [h2]
+    field_simp
+  have hK₂ : D₂ * t₀ ^ (r - r₂) = K := by
+    have hadd : t₀ ^ (r - r₁) = t₀ ^ (r - r₂) * (D₂ / D₁) := by
+      rw [← ht₀gap, ← Real.rpow_add ht₀]
+      ring_nf
+    rw [← hK₁, hadd]
+    field_simp
+  -- the two power integrals
+  have hheadexp : (-1 : ℝ) < r - 1 - r₁ := by linarith
+  have htailexp : r - 1 - r₂ < (-1 : ℝ) := by linarith
+  have hhead : ∫⁻ t in Ioc (0 : ℝ) t₀, ENNReal.ofReal (t ^ (r - 1 - r₁))
+      = ENNReal.ofReal (t₀ ^ (r - r₁) / (r - r₁)) := by
+    rw [lintegral_Ioc_zero_rpow hheadexp ht₀]
+    congr 1
+    rw [show r - 1 - r₁ + 1 = r - r₁ by ring]
+  have htail : ∫⁻ t in Ioi t₀, ENNReal.ofReal (t ^ (r - 1 - r₂))
+      = ENNReal.ofReal (t₀ ^ (r - r₂) / (r₂ - r)) := by
+    rw [lintegral_Ioi_rpow htailexp ht₀]
+    congr 1
+    have hne : r - r₂ ≠ 0 := by linarith
+    have hne' : r₂ - r ≠ 0 := by linarith
+    rw [show r - 1 - r₂ + 1 = r - r₂ by ring]
+    field_simp
+    ring
+  -- layer cake, then split the level axis at `t₀`
+  rw [lintegral_rpow_abs_eq_meas_lt μ F hF hrpos]
+  have hsplit : Ioi (0 : ℝ) = Ioc 0 t₀ ∪ Ioi t₀ := (Set.Ioc_union_Ioi_eq_Ioi ht₀.le).symm
+  have hdisj : Disjoint (Ioc (0 : ℝ) t₀) (Ioi t₀) := by
+    rw [Set.disjoint_left]
+    intro x hx hx2
+    exact absurd hx.2 (not_le.2 hx2)
+  rw [hsplit, lintegral_union measurableSet_Ioi hdisj]
+  have hpart₁ : (∫⁻ t in Ioc (0 : ℝ) t₀,
+        μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1)))
+      ≤ ENNReal.ofReal (r * K / (r - r₁)) := by
+    have hle : ∀ t ∈ Ioc (0 : ℝ) t₀,
+        μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1))
+          ≤ ENNReal.ofReal (D₁ * r) * ENNReal.ofReal (t ^ (r - 1 - r₁)) := by
+      intro t ht
+      have ht0 : 0 < t := ht.1
+      calc μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1))
+          ≤ ENNReal.ofReal (D₁ * t ^ (-r₁)) * ENNReal.ofReal (r * t ^ (r - 1)) :=
+            mul_le_mul' (hb₁ t ht0) le_rfl
+        _ = ENNReal.ofReal (D₁ * r) * ENNReal.ofReal (t ^ (r - 1 - r₁)) := by
+            rw [← ENNReal.ofReal_mul (by positivity),
+              ← ENNReal.ofReal_mul (by positivity)]
+            congr 1
+            rw [show r - 1 - r₁ = (-r₁) + (r - 1) by ring, Real.rpow_add ht0]
+            ring
+    calc (∫⁻ t in Ioc (0 : ℝ) t₀,
+            μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1)))
+        ≤ ∫⁻ t in Ioc (0 : ℝ) t₀,
+            ENNReal.ofReal (D₁ * r) * ENNReal.ofReal (t ^ (r - 1 - r₁)) := by
+          refine lintegral_mono_ae ?_
+          filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+          exact hle t ht
+      _ = ENNReal.ofReal (D₁ * r) * ENNReal.ofReal (t₀ ^ (r - r₁) / (r - r₁)) := by
+          rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top, hhead]
+      _ = ENNReal.ofReal (r * K / (r - r₁)) := by
+          rw [← ENNReal.ofReal_mul (by positivity)]
+          congr 1
+          rw [← hK₁]
+          field_simp
+  have hpart₂ : (∫⁻ t in Ioi t₀,
+        μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1)))
+      ≤ ENNReal.ofReal (r * K / (r₂ - r)) := by
+    have hle : ∀ t ∈ Ioi t₀,
+        μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1))
+          ≤ ENNReal.ofReal (D₂ * r) * ENNReal.ofReal (t ^ (r - 1 - r₂)) := by
+      intro t ht
+      have ht0 : 0 < t := ht₀.trans ht
+      calc μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1))
+          ≤ ENNReal.ofReal (D₂ * t ^ (-r₂)) * ENNReal.ofReal (r * t ^ (r - 1)) :=
+            mul_le_mul' (hb₂ t ht0) le_rfl
+        _ = ENNReal.ofReal (D₂ * r) * ENNReal.ofReal (t ^ (r - 1 - r₂)) := by
+            rw [← ENNReal.ofReal_mul (by positivity),
+              ← ENNReal.ofReal_mul (by positivity)]
+            congr 1
+            rw [show r - 1 - r₂ = (-r₂) + (r - 1) by ring, Real.rpow_add ht0]
+            ring
+    calc (∫⁻ t in Ioi t₀, μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1)))
+        ≤ ∫⁻ t in Ioi t₀,
+            ENNReal.ofReal (D₂ * r) * ENNReal.ofReal (t ^ (r - 1 - r₂)) := by
+          refine lintegral_mono_ae ?_
+          filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+          exact hle t ht
+      _ = ENNReal.ofReal (D₂ * r) * ENNReal.ofReal (t₀ ^ (r - r₂) / (r₂ - r)) := by
+          rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top, htail]
+      _ = ENNReal.ofReal (r * K / (r₂ - r)) := by
+          rw [← ENNReal.ofReal_mul (by positivity)]
+          congr 1
+          rw [← hK₂]
+          field_simp
+  calc (∫⁻ t in Ioc (0 : ℝ) t₀, μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1)))
+        + ∫⁻ t in Ioi t₀, μ {x | t < |F x|} * ENNReal.ofReal (r * t ^ (r - 1))
+      ≤ ENNReal.ofReal (r * K / (r - r₁)) + ENNReal.ofReal (r * K / (r₂ - r)) :=
+        add_le_add hpart₁ hpart₂
+    _ = ENNReal.ofReal (r * (1 / (r - r₁) + 1 / (r₂ - r)) * K) := by
+        rw [← ENNReal.ofReal_add (by positivity) (by positivity)]
+        congr 1
+        field_simp
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Sizes of the dyadic level layers
+
+Source: `ext:interpolation`.  Each endpoint bound is applied to a layer triple,
+so what enters is the `L^p` size of a single layer.  A layer is a multiple of
+the indicator of its annulus up to a factor of two, so its size in every `L^p`
+is `2^k` times a power of the annulus measure; this is what lets one exponent
+vector be traded for another.
+-/
+
+/-- The dyadic annulus carrying the `k`-th layer. -/
+def dyadicLayerSet {X : Type*} (f : X → ℝ) (k : ℤ) : Set X :=
+  {x | (2 : ℝ) ^ k ≤ |f x| ∧ |f x| < (2 : ℝ) ^ (k + 1)}
+
+theorem measurableSet_dyadicLayerSet {X : Type*} [MeasurableSpace X]
+    {f : X → ℝ} (hf : Measurable f) (k : ℤ) :
+    MeasurableSet (dyadicLayerSet f k) := by
+  have habs : Measurable fun x : X ↦ |f x| := by fun_prop
+  exact (measurableSet_le measurable_const habs).inter
+    (measurableSet_lt habs measurable_const)
+
+theorem dyadicLayer_ne_zero_iff_mem {X : Type*} (f : X → ℝ) (k : ℤ) (x : X) :
+    dyadicLayer f k x ≠ 0 ↔ x ∈ dyadicLayerSet f k :=
+  dyadicLayer_ne_zero_iff f k x
+
+/-- Off its annulus the layer vanishes; on it the layer is the input. -/
+theorem dyadicLayer_eq_indicator' {X : Type*} (f : X → ℝ) (k : ℤ) :
+    dyadicLayer f k = (dyadicLayerSet f k).indicator f :=
+  dyadicLayer_eq_indicator f k
+
+/-- **Layer upper size.** -/
+theorem lintegral_rpow_abs_dyadicLayer_le
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
+    (hf : Measurable f) (k : ℤ) {p : ℝ} (hp : 0 < p) :
+    ∫⁻ x, ENNReal.ofReal (|dyadicLayer f k x| ^ p) ∂μ
+      ≤ ENNReal.ofReal (((2 : ℝ) ^ (k + 1)) ^ p) * μ (dyadicLayerSet f k) := by
+  have hS := measurableSet_dyadicLayerSet hf k
+  have hptwise : ∀ x, ENNReal.ofReal (|dyadicLayer f k x| ^ p)
+      ≤ (dyadicLayerSet f k).indicator
+          (fun _ ↦ ENNReal.ofReal (((2 : ℝ) ^ (k + 1)) ^ p)) x := by
+    intro x
+    by_cases hx : x ∈ dyadicLayerSet f k
+    · rw [Set.indicator_of_mem hx]
+      refine ENNReal.ofReal_le_ofReal ?_
+      exact Real.rpow_le_rpow (abs_nonneg _) (abs_dyadicLayer_lt f k x).le hp.le
+    · have hzero : dyadicLayer f k x = 0 := by
+        by_contra hne
+        exact hx ((dyadicLayer_ne_zero_iff_mem f k x).mp hne)
+      rw [Set.indicator_of_notMem hx, hzero]
+      simp [Real.zero_rpow hp.ne']
+  calc ∫⁻ x, ENNReal.ofReal (|dyadicLayer f k x| ^ p) ∂μ
+      ≤ ∫⁻ x, (dyadicLayerSet f k).indicator
+          (fun _ ↦ ENNReal.ofReal (((2 : ℝ) ^ (k + 1)) ^ p)) x ∂μ :=
+        lintegral_mono hptwise
+    _ = ENNReal.ofReal (((2 : ℝ) ^ (k + 1)) ^ p) * μ (dyadicLayerSet f k) :=
+        lintegral_indicator_const hS _
+
+/-- **Layer lower size.** -/
+theorem le_lintegral_rpow_abs_dyadicLayer
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
+    (hf : Measurable f) (k : ℤ) {p : ℝ} (hp : 0 < p) :
+    ENNReal.ofReal (((2 : ℝ) ^ k) ^ p) * μ (dyadicLayerSet f k)
+      ≤ ∫⁻ x, ENNReal.ofReal (|dyadicLayer f k x| ^ p) ∂μ := by
+  have hS := measurableSet_dyadicLayerSet hf k
+  have hptwise : ∀ x, (dyadicLayerSet f k).indicator
+      (fun _ ↦ ENNReal.ofReal (((2 : ℝ) ^ k) ^ p)) x
+        ≤ ENNReal.ofReal (|dyadicLayer f k x| ^ p) := by
+    intro x
+    by_cases hx : x ∈ dyadicLayerSet f k
+    · rw [Set.indicator_of_mem hx]
+      refine ENNReal.ofReal_le_ofReal ?_
+      have hne : dyadicLayer f k x ≠ 0 := (dyadicLayer_ne_zero_iff_mem f k x).mpr hx
+      exact Real.rpow_le_rpow (by positivity) (le_abs_dyadicLayer f k x hne) hp.le
+    · rw [Set.indicator_of_notMem hx]
+      exact zero_le
+  calc ENNReal.ofReal (((2 : ℝ) ^ k) ^ p) * μ (dyadicLayerSet f k)
+      = ∫⁻ x, (dyadicLayerSet f k).indicator
+          (fun _ ↦ ENNReal.ofReal (((2 : ℝ) ^ k) ^ p)) x ∂μ :=
+        (lintegral_indicator_const hS _).symm
+    _ ≤ ∫⁻ x, ENNReal.ofReal (|dyadicLayer f k x| ^ p) ∂μ := lintegral_mono hptwise
+
+/-- The `p`-th powers of the layers add back to the `p`-th power of the input,
+pointwise: at most one layer is nonzero at each point. -/
+theorem tsum_ofReal_rpow_abs_dyadicLayer {X : Type*} (f : X → ℝ) (x : X)
+    {p : ℝ} (hp : 0 < p) :
+    ∑' k : ℤ, ENNReal.ofReal (|dyadicLayer f k x| ^ p)
+      = ENNReal.ofReal (|f x| ^ p) := by
+  by_cases hx : f x = 0
+  · have hzero : ∀ k : ℤ, dyadicLayer f k x = 0 := by
+      intro k
+      simp only [dyadicLayer, hx, ne_eq, not_true_eq_false, false_and, if_false]
+    simp only [hzero, hx, abs_zero, Real.zero_rpow hp.ne', ENNReal.ofReal_zero,
+      tsum_zero]
+  · rw [tsum_eq_single (Int.log 2 |f x|) (fun k hk ↦ by
+      rw [dyadicLayer_eq_zero_of_ne f x k hk]
+      simp [Real.zero_rpow hp.ne'])]
+    rw [dyadicLayer_of_ne f x hx]
+
+/-- The integrated form: the layers split the `L^p` mass of the input exactly. -/
+theorem tsum_lintegral_rpow_abs_dyadicLayer
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
+    (hf : Measurable f) {p : ℝ} (hp : 0 < p) :
+    ∑' k : ℤ, (∫⁻ x, ENNReal.ofReal (|dyadicLayer f k x| ^ p) ∂μ)
+      = ∫⁻ x, ENNReal.ofReal (|f x| ^ p) ∂μ := by
+  have hmeas : ∀ k : ℤ, AEMeasurable
+      (fun x ↦ ENNReal.ofReal (|dyadicLayer f k x| ^ p)) μ := by
+    intro k
+    have h : Measurable (dyadicLayer f k) := measurable_dyadicLayer f hf k
+    have hm : Measurable fun x ↦ ENNReal.ofReal (|dyadicLayer f k x| ^ p) := by
+      fun_prop
+    exact hm.aemeasurable
+  rw [← lintegral_tsum hmeas]
+  exact lintegral_congr fun x ↦ tsum_ofReal_rpow_abs_dyadicLayer f x hp
+
+/-- **Layer mass summation.**  Summing the lower size bounds over all layers
+shows that the dyadic level–measure products are controlled by the input. -/
+theorem tsum_dyadicLevel_meas_le
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
+    (hf : Measurable f) {p : ℝ} (hp : 0 < p) :
+    ∑' k : ℤ, ENNReal.ofReal (((2 : ℝ) ^ k) ^ p) * μ (dyadicLayerSet f k)
+      ≤ ∫⁻ x, ENNReal.ofReal (|f x| ^ p) ∂μ := by
+  rw [← tsum_lintegral_rpow_abs_dyadicLayer μ hf hp]
+  exact ENNReal.tsum_le_tsum fun k ↦ le_lintegral_rpow_abs_dyadicLayer μ hf k hp
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Layer sizes in the `L^p` seminorms
+
+Source: `ext:interpolation`.  The endpoint hypotheses are stated with `L^{p}`
+norms of the inputs, so the layer size estimates are recorded again in that
+form: a layer's `L^p` norm is `2^k` times the `1/p`-th power of its annulus
+measure, up to the single factor of two separating the two ends of the annulus.
+This is the exchange rate between the four endpoint exponent vectors.
+-/
+
+/-- **Layer upper size in `L^p`.** -/
+theorem eLpNorm_dyadicLayer_le
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
+    (hf : Measurable f) (k : ℤ) {p : ℝ≥0∞} (hp : p ≠ 0) (hp_top : p ≠ ∞) :
+    eLpNorm (dyadicLayer f k) p μ
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) *
+          μ (dyadicLayerSet f k) ^ (1 / p.toReal) := by
+  have hS := measurableSet_dyadicLayerSet hf k
+  have hpos : (0 : ℝ) < (2 : ℝ) ^ (k + 1) := zpow_pos (by norm_num) _
+  have hmono : ∀ x, ‖dyadicLayer f k x‖ ≤
+      ‖(dyadicLayerSet f k).indicator (fun _ ↦ (2 : ℝ) ^ (k + 1)) x‖ := by
+    intro x
+    by_cases hx : x ∈ dyadicLayerSet f k
+    · rw [Set.indicator_of_mem hx]
+      simpa [Real.norm_eq_abs, abs_of_pos hpos] using (abs_dyadicLayer_lt f k x).le
+    · have hzero : dyadicLayer f k x = 0 := by
+        by_contra hne
+        exact hx ((dyadicLayer_ne_zero_iff_mem f k x).mp hne)
+      rw [Set.indicator_of_notMem hx, hzero]
+  calc eLpNorm (dyadicLayer f k) p μ
+      ≤ eLpNorm ((dyadicLayerSet f k).indicator
+          (fun _ ↦ (2 : ℝ) ^ (k + 1))) p μ := eLpNorm_mono hmono
+    _ = ‖((2 : ℝ) ^ (k + 1))‖ₑ * μ (dyadicLayerSet f k) ^ (1 / p.toReal) :=
+        eLpNorm_indicator_const hS hp hp_top
+    _ = ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) *
+          μ (dyadicLayerSet f k) ^ (1 / p.toReal) := by
+        rw [Real.enorm_eq_ofReal hpos.le]
+
+/-- **Layer lower size in `L^p`.** -/
+theorem le_eLpNorm_dyadicLayer
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
+    (hf : Measurable f) (k : ℤ) {p : ℝ≥0∞} (hp : p ≠ 0) (hp_top : p ≠ ∞) :
+    ENNReal.ofReal ((2 : ℝ) ^ k) * μ (dyadicLayerSet f k) ^ (1 / p.toReal)
+      ≤ eLpNorm (dyadicLayer f k) p μ := by
+  have hS := measurableSet_dyadicLayerSet hf k
+  have hpos : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
+  have hmono : ∀ x, ‖(dyadicLayerSet f k).indicator (fun _ ↦ (2 : ℝ) ^ k) x‖
+      ≤ ‖dyadicLayer f k x‖ := by
+    intro x
+    by_cases hx : x ∈ dyadicLayerSet f k
+    · rw [Set.indicator_of_mem hx]
+      have hne : dyadicLayer f k x ≠ 0 := (dyadicLayer_ne_zero_iff_mem f k x).mpr hx
+      simpa [Real.norm_eq_abs, abs_of_pos hpos] using le_abs_dyadicLayer f k x hne
+    · rw [Set.indicator_of_notMem hx]
+      simp
+  calc ENNReal.ofReal ((2 : ℝ) ^ k) * μ (dyadicLayerSet f k) ^ (1 / p.toReal)
+      = ‖((2 : ℝ) ^ k)‖ₑ * μ (dyadicLayerSet f k) ^ (1 / p.toReal) := by
+        rw [Real.enorm_eq_ofReal hpos.le]
+    _ = eLpNorm ((dyadicLayerSet f k).indicator (fun _ ↦ (2 : ℝ) ^ k)) p μ :=
+        (eLpNorm_indicator_const hS hp hp_top).symm
+    _ ≤ eLpNorm (dyadicLayer f k) p μ := eLpNorm_mono hmono
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The weak norm
+
+Source: `def:weak_norm`, blueprint lines 2381--2387.  The weak norm is the
+supremum over levels of the level times the `1/R`-th power of the level-set
+measure, taken as an extended nonnegative number; a finite bound on it is the
+weak-`L^R` membership asserted by `eq:one_fiber` and by the endpoint
+hypotheses of `ext:interpolation`.
+-/
+
+/-- The weak `L^R` norm of `def:weak_norm`. -/
+def weakNorm {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    (R : ℝ) : ℝ≥0∞ :=
+  ⨆ τ ∈ Ioi (0 : ℝ), ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R)
+
+theorem le_weakNorm {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (v : X → ℝ) (R : ℝ) {τ : ℝ} (hτ : 0 < τ) :
+    ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R) ≤ weakNorm μ v R :=
+  le_iSup₂ (f := fun τ (_ : τ ∈ Ioi (0 : ℝ)) ↦
+    ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R)) τ hτ
+
+theorem weakNorm_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (v : X → ℝ) (R : ℝ) {c : ℝ≥0∞}
+    (h : ∀ τ : ℝ, 0 < τ → ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R) ≤ c) :
+    weakNorm μ v R ≤ c :=
+  iSup₂_le fun τ hτ ↦ h τ hτ
+
+/-- **Chebyshev form of a weak bound.**  A finite weak bound is exactly a
+level-set bound decaying like `τ^{-R}`, which is the form the strong-norm
+passage consumes. -/
+theorem meas_lt_le_of_weakNorm_le
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    {R A : ℝ} (hR : 0 < R) (hA : 0 ≤ A)
+    (h : weakNorm μ v R ≤ ENNReal.ofReal A) {τ : ℝ} (hτ : 0 < τ) :
+    μ {x | τ < |v x|} ≤ ENNReal.ofReal (A ^ R * τ ^ (-R)) := by
+  have hstep : ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal A := le_trans (le_weakNorm μ v R hτ) h
+  have hτ0 : ENNReal.ofReal τ ≠ 0 := by
+    simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hτ)
+  have hτtop : ENNReal.ofReal τ ≠ ∞ := ENNReal.ofReal_ne_top
+  have hdiv : μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal A / ENNReal.ofReal τ := by
+    rw [ENNReal.le_div_iff_mul_le (Or.inl hτ0) (Or.inl hτtop), mul_comm]
+    exact hstep
+  have hquot : ENNReal.ofReal A / ENNReal.ofReal τ = ENNReal.ofReal (A / τ) :=
+    (ENNReal.ofReal_div_of_pos hτ).symm
+  rw [hquot] at hdiv
+  have hpow := ENNReal.rpow_le_rpow (z := R) hdiv hR.le
+  rw [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ (ne_of_gt hR),
+    ENNReal.rpow_one] at hpow
+  refine le_trans hpow (le_of_eq ?_)
+  rw [ENNReal.ofReal_rpow_of_nonneg (div_nonneg hA hτ.le) hR.le]
+  congr 1
+  rw [Real.div_rpow hA hτ.le, Real.rpow_neg hτ.le, div_eq_mul_inv]
+
+/-- **Two weak bounds give a strong interior bound.**  This is the passage
+`ext:interpolation` performs once the endpoint estimates have been combined:
+weak bounds at two exponents straddling `r` produce the strong `L^r` bound,
+with the geometric-mean constant. -/
+theorem lintegral_rpow_le_of_two_weakNorm
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    (hv : AEMeasurable v μ)
+    {r r₁ r₂ A₁ A₂ : ℝ} (hr₁ : 0 < r₁) (h1r : r₁ < r) (hr2 : r < r₂)
+    (hA₁ : 0 < A₁) (hA₂ : 0 < A₂)
+    (h₁ : weakNorm μ v r₁ ≤ ENNReal.ofReal A₁)
+    (h₂ : weakNorm μ v r₂ ≤ ENNReal.ofReal A₂) :
+    ∫⁻ x, ENNReal.ofReal (|v x| ^ r) ∂μ ≤
+      ENNReal.ofReal (r * (1 / (r - r₁) + 1 / (r₂ - r)) *
+        ((A₁ ^ r₁) ^ ((r₂ - r) / (r₂ - r₁)) *
+          (A₂ ^ r₂) ^ ((r - r₁) / (r₂ - r₁)))) := by
+  have hr₂ : 0 < r₂ := lt_trans (lt_trans hr₁ h1r) hr2
+  refine lintegral_rpow_le_of_two_sided_distribution μ v hv hr₁ h1r hr2
+    (Real.rpow_pos_of_pos hA₁ _) (Real.rpow_pos_of_pos hA₂ _) ?_ ?_
+  · intro t ht
+    exact meas_lt_le_of_weakNorm_le μ v hr₁ hA₁.le h₁ ht
+  · intro t ht
+    exact meas_lt_le_of_weakNorm_le μ v hr₂ hA₂.le h₂ ht
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Trading one endpoint exponent for another
+
+Source: `ext:interpolation` together with `lem:exponent_simplex`.  A layer's
+size at an endpoint exponent `1/p_{a,j}` is its size at the target exponent
+`1/p_j` raised to the ratio of the two, times a pure power of the dyadic level.
+Because the weights of `eq:weights` exhibit the target reciprocal as the convex
+combination of the four endpoint reciprocals, those pure powers of the level
+cancel exactly in the four-fold weighted geometric mean — this is precisely why
+the four vertices of the tetrahedron are needed and why no two of them suffice.
+-/
+
+/-- **Exponent exchange.**  Writing `a = 2^k` for the dyadic level and `m` for
+the annulus measure, the endpoint size `a * m^{β_a}` is a power of the target
+size `a * m^{β}` times a pure power of the level. -/
+theorem dyadicLevel_measure_rpow_exchange
+    (k : ℤ) (m : ℝ≥0∞) {β βa : ℝ} (hβ : 0 < β) (hβa : 0 ≤ βa) :
+    ENNReal.ofReal ((2 : ℝ) ^ k) * m ^ βa
+      = ENNReal.ofReal ((2 : ℝ) ^ k) ^ (1 - βa / β) *
+          (ENNReal.ofReal ((2 : ℝ) ^ k) * m ^ β) ^ (βa / β) := by
+  set a : ℝ≥0∞ := ENNReal.ofReal ((2 : ℝ) ^ k) with ha
+  have hapos : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
+  have ha0 : a ≠ 0 := by
+    rw [ha]; exact ne_of_gt (ENNReal.ofReal_pos.mpr hapos)
+  have hatop : a ≠ ∞ := by rw [ha]; exact ENNReal.ofReal_ne_top
+  have hρ : 0 ≤ βa / β := div_nonneg hβa hβ.le
+  rw [ENNReal.mul_rpow_of_nonneg _ _ hρ, ← mul_assoc, ← ENNReal.rpow_add _ _ ha0 hatop,
+    ← ENNReal.rpow_mul]
+  rw [show (1 : ℝ) - βa / β + βa / β = 1 by ring, ENNReal.rpow_one,
+    show β * (βa / β) = βa by field_simp]
+
+/-- **The level powers cancel in the four-fold mean.**  If the target
+reciprocal is the convex combination of the four endpoint reciprocals with the
+weights of `eq:weights`, the exchange exponents `1 - β_{a}/β` average to zero. -/
+theorem sum_weights_exchange_eq_zero
+    {β βa₀ βa₁ βa₂ βa₃ ϑ₀ ϑ₁ ϑ₂ ϑ₃ : ℝ} (hβ : 0 < β)
+    (hϑ : ϑ₀ + ϑ₁ + ϑ₂ + ϑ₃ = 1)
+    (hmix : ϑ₀ * βa₀ + ϑ₁ * βa₁ + ϑ₂ * βa₂ + ϑ₃ * βa₃ = β) :
+    ϑ₀ * (1 - βa₀ / β) + ϑ₁ * (1 - βa₁ / β) + ϑ₂ * (1 - βa₂ / β)
+        + ϑ₃ * (1 - βa₃ / β) = 0 := by
+  field_simp
+  linear_combination β * hϑ - hmix
+
+/-- Four powers of one finite nonzero quantity whose exponents sum to zero
+multiply to one. -/
+theorem rpow_four_mul_eq_one {a : ℝ≥0∞} (ha : a ≠ 0) (ha' : a ≠ ∞)
+    {e₀ e₁ e₂ e₃ : ℝ} (h : e₀ + e₁ + e₂ + e₃ = 0) :
+    a ^ e₀ * a ^ e₁ * a ^ e₂ * a ^ e₃ = 1 := by
+  rw [← ENNReal.rpow_add _ _ ha ha', ← ENNReal.rpow_add _ _ ha ha',
+    ← ENNReal.rpow_add _ _ ha ha', h, ENNReal.rpow_zero]
+
+/-- **The four-fold cancellation.**  With the weights of `eq:weights`, the pure
+powers of the dyadic level produced by the four exponent exchanges cancel
+identically, leaving only the target-exponent sizes. -/
+theorem prod_dyadicLevel_exchange_eq_one
+    (k : ℤ) {β βa₀ βa₁ βa₂ βa₃ ϑ₀ ϑ₁ ϑ₂ ϑ₃ : ℝ} (hβ : 0 < β)
+    (hϑ : ϑ₀ + ϑ₁ + ϑ₂ + ϑ₃ = 1)
+    (hmix : ϑ₀ * βa₀ + ϑ₁ * βa₁ + ϑ₂ * βa₂ + ϑ₃ * βa₃ = β) :
+    ENNReal.ofReal ((2 : ℝ) ^ k) ^ (ϑ₀ * (1 - βa₀ / β)) *
+        ENNReal.ofReal ((2 : ℝ) ^ k) ^ (ϑ₁ * (1 - βa₁ / β)) *
+        ENNReal.ofReal ((2 : ℝ) ^ k) ^ (ϑ₂ * (1 - βa₂ / β)) *
+        ENNReal.ofReal ((2 : ℝ) ^ k) ^ (ϑ₃ * (1 - βa₃ / β)) = 1 := by
+  have hapos : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
+  refine rpow_four_mul_eq_one (a := ENNReal.ofReal ((2 : ℝ) ^ k))
+    (ne_of_gt (ENNReal.ofReal_pos.mpr hapos)) ENNReal.ofReal_ne_top ?_
+  exact sum_weights_exchange_eq_zero hβ hϑ hmix
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The output exponents of the four vertices
+
+Source: `thm:extended_model` together with `lem:exponent_simplex`.  At the base
+vertex the output reciprocal is `1 - b_0`, at each of the three shifted
+vertices it is `1`, and at the target it is `1 - beta_0`.  Since
+`0 < beta_0 < b_0 < 1/4`, the target output exponent lies strictly between the
+three weak endpoints' exponent `1` and the base vertex's exponent `1/(1-b_0)`.
+That ordering is what allows the strong interior bound to be recovered from the
+level-set bounds.
+-/
+
+/-- **The target output exponent is straddled.**  The three shifted vertices
+have output exponent `1` and the base vertex has output exponent `1/(1-b₀)`;
+the target exponent `1/(1-β₀)` lies strictly between them. -/
+theorem one_lt_outputExponent_lt
+    {β₀ b₀ : ℝ} (hβ₀ : 0 < β₀) (hlt : β₀ < b₀) (hb₀ : b₀ < 1) :
+    1 < 1 / (1 - β₀) ∧ 1 / (1 - β₀) < 1 / (1 - b₀) := by
+  have hb : 0 < 1 - b₀ := by linarith
+  have hβ : 0 < 1 - β₀ := by linarith
+  constructor
+  · rw [lt_div_iff₀ hβ]
+    linarith
+  · exact one_div_lt_one_div_of_lt hb (by linarith)
+
+/-- The reciprocal identities behind `thm:extended_model`: the base vertex's
+output reciprocal is the sum of its three input reciprocals, and each shifted
+vertex has output reciprocal one. -/
+theorem outputReciprocal_identities
+    {b₀ b₁ b₂ b₃ : ℝ} (hb₀ : b₀ = 1 - (b₁ + b₂ + b₃)) :
+    b₁ + b₂ + b₃ = 1 - b₀ ∧
+      (∀ m : Fin 3,
+        (if m = 0 then b₁ + b₀ else b₁) + (if m = 1 then b₂ + b₀ else b₂)
+            + (if m = 2 then b₃ + b₀ else b₃) = 1) := by
+  refine ⟨by rw [hb₀]; ring, ?_⟩
+  intro m
+  fin_cases m <;> simp <;> rw [hb₀] <;> ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The four-fold geometric mean of the endpoint layer sizes
+
+Source: `ext:interpolation` with the weights `eq:weights`.  Combining the four
+exponent exchanges with the weights collapses the whole four-fold weighted
+geometric mean back to the single target-exponent size: the pure powers of the
+dyadic level cancel because the weights sum to one, and the target-size powers
+recombine because the endpoint reciprocals average to the target reciprocal.
+-/
+
+/-- **The weighted geometric mean collapses.**  With weights summing to one and
+exchange ratios averaging to one, the four endpoint sizes have weighted
+geometric mean exactly the target size. -/
+theorem rpow_four_weighted_mean_eq
+    {a N : ℝ≥0∞} (ha : a ≠ 0) (ha' : a ≠ ∞) (hN : N ≠ 0) (hN' : N ≠ ∞)
+    {ρ₀ ρ₁ ρ₂ ρ₃ ϑ₀ ϑ₁ ϑ₂ ϑ₃ : ℝ}
+    (h₀ : 0 ≤ ϑ₀) (h₁ : 0 ≤ ϑ₁) (h₂ : 0 ≤ ϑ₂) (h₃ : 0 ≤ ϑ₃)
+    (hϑ : ϑ₀ + ϑ₁ + ϑ₂ + ϑ₃ = 1)
+    (hρ : ϑ₀ * ρ₀ + ϑ₁ * ρ₁ + ϑ₂ * ρ₂ + ϑ₃ * ρ₃ = 1) :
+    (a ^ (1 - ρ₀) * N ^ ρ₀) ^ ϑ₀ * (a ^ (1 - ρ₁) * N ^ ρ₁) ^ ϑ₁ *
+        (a ^ (1 - ρ₂) * N ^ ρ₂) ^ ϑ₂ * (a ^ (1 - ρ₃) * N ^ ρ₃) ^ ϑ₃ = N := by
+  have step : ∀ ρ ϑ : ℝ, 0 ≤ ϑ →
+      (a ^ (1 - ρ) * N ^ ρ) ^ ϑ = a ^ ((1 - ρ) * ϑ) * N ^ (ρ * ϑ) := by
+    intro ρ ϑ hϑ'
+    rw [ENNReal.mul_rpow_of_nonneg _ _ hϑ', ← ENNReal.rpow_mul, ← ENNReal.rpow_mul]
+  rw [step ρ₀ ϑ₀ h₀, step ρ₁ ϑ₁ h₁, step ρ₂ ϑ₂ h₂, step ρ₃ ϑ₃ h₃]
+  have hgroup :
+      a ^ ((1 - ρ₀) * ϑ₀) * N ^ (ρ₀ * ϑ₀) * (a ^ ((1 - ρ₁) * ϑ₁) * N ^ (ρ₁ * ϑ₁)) *
+          (a ^ ((1 - ρ₂) * ϑ₂) * N ^ (ρ₂ * ϑ₂)) *
+          (a ^ ((1 - ρ₃) * ϑ₃) * N ^ (ρ₃ * ϑ₃))
+        = (a ^ ((1 - ρ₀) * ϑ₀) * a ^ ((1 - ρ₁) * ϑ₁) * a ^ ((1 - ρ₂) * ϑ₂) *
+            a ^ ((1 - ρ₃) * ϑ₃)) *
+          (N ^ (ρ₀ * ϑ₀) * N ^ (ρ₁ * ϑ₁) * N ^ (ρ₂ * ϑ₂) * N ^ (ρ₃ * ϑ₃)) := by
+    ring
+  rw [hgroup,
+    rpow_four_mul_eq_one ha ha' (by linear_combination hϑ - hρ :
+      (1 - ρ₀) * ϑ₀ + (1 - ρ₁) * ϑ₁ + (1 - ρ₂) * ϑ₂ + (1 - ρ₃) * ϑ₃ = 0),
+    one_mul, ← ENNReal.rpow_add _ _ hN hN', ← ENNReal.rpow_add _ _ hN hN',
+    ← ENNReal.rpow_add _ _ hN hN',
+    show ρ₀ * ϑ₀ + ρ₁ * ϑ₁ + ρ₂ * ϑ₂ + ρ₃ * ϑ₃ = 1 by linear_combination hρ,
+    ENNReal.rpow_one]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## From the expanded operator to a level-set bound
+
+Source: `ext:interpolation`.  Once the trilinear operator has been expanded over
+the layer multi-indices, a level-set bound for the whole operator follows from
+level-set bounds for the individual terms, provided the levels assigned to the
+terms do not exceed the total level.
+-/
+
+/-- **Assembled level-set bound.**  If the operator is the triple layer sum, the
+assigned levels are within budget, and each term obeys its own level-set bound,
+then the operator obeys the summed bound. -/
+theorem meas_lt_of_triple_expansion_bounds
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (V : X → ℝ)
+    (S1 S2 S3 : Finset ℤ) (W : ℤ → ℤ → ℤ → X → ℝ)
+    (hV : ∀ x, V x = ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3 x)
+    (t : ℝ) (s : ℤ → ℤ → ℤ → ℝ)
+    (hs : ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, s k1 k2 k3 ≤ t)
+    (B : ℤ → ℤ → ℤ → ℝ≥0∞)
+    (hB : ∀ k1 ∈ S1, ∀ k2 ∈ S2, ∀ k3 ∈ S3,
+      μ {x | s k1 k2 k3 < |W k1 k2 k3 x|} ≤ B k1 k2 k3) :
+    μ {x | t < |V x|} ≤ ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, B k1 k2 k3 := by
+  have hset : {x | t < |V x|}
+      = {x | t < |∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3 x|} := by
+    ext x
+    simp only [Set.mem_setOf_eq, hV x]
+  rw [hset]
+  refine le_trans (meas_lt_abs_triple_sum_le_sum μ S1 S2 S3 W t s hs) ?_
+  refine Finset.sum_le_sum fun k1 hk1 ↦ ?_
+  refine Finset.sum_le_sum fun k2 hk2 ↦ ?_
+  refine Finset.sum_le_sum fun k3 hk3 ↦ ?_
+  exact hB k1 hk1 k2 hk2 k3 hk3
+
+/-- The budgeted levels used above, in the normalized form: a level `t` is split
+among the terms in proportion to a nonnegative weight family summing to one. -/
+theorem sum_weighted_levels_le
+    (S1 S2 S3 : Finset ℤ) (w : ℤ → ℤ → ℤ → ℝ) (t : ℝ) (ht : 0 ≤ t)
+    (hw : ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, w k1 k2 k3 ≤ 1) :
+    ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, t * w k1 k2 k3 ≤ t := by
+  have hfactor : ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, t * w k1 k2 k3
+      = t * ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, w k1 k2 k3 := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun k1 _ ↦ ?_
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun k2 _ ↦ ?_
+    rw [Finset.mul_sum]
+  rw [hfactor]
+  calc t * ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, w k1 k2 k3 ≤ t * 1 :=
+        mul_le_mul_of_nonneg_left hw ht
+    _ = t := mul_one t
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The closing Hölder step of the extended range
+
+Source: `thm:extended_model`.  Once the operator bound
+`eq:extended_operator_bound` is available at the output exponent `R` with
+`R^{-1} + p_0^{-1} = 1`, the form is estimated by pairing the zeroth input
+against the operator and applying Hölder.
+-/
+
+/-- Hölder for the real pairing, in the `lpNorm` normalization. -/
+theorem abs_integral_mul_le_lpNorm_mul_lpNorm
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (f g : X → ℝ) {p q : ℝ}
+    (hpq : Real.HolderConjugate p q)
+    (hf : MemLp f (ENNReal.ofReal p) μ) (hg : MemLp g (ENNReal.ofReal q) μ) :
+    |∫ x, f x * g x ∂μ| ≤
+      lpNorm f (ENNReal.ofReal p) μ * lpNorm g (ENNReal.ofReal q) μ := by
+  have hp : 0 < p := hpq.pos
+  have hq : 0 < q := hpq.symm.pos
+  have habs : |∫ x, f x * g x ∂μ| ≤ ∫ x, ‖f x‖ * ‖g x‖ ∂μ := by
+    refine le_trans (abs_integral_le_integral_abs) (le_of_eq ?_)
+    exact integral_congr_ae (Filter.Eventually.of_forall fun x ↦ by
+      simp [abs_mul, Real.norm_eq_abs])
+  have hholder := integral_mul_norm_le_Lp_mul_Lq hpq hf hg
+  have hfnorm : lpNorm f (ENNReal.ofReal p) μ = (∫ x, ‖f x‖ ^ p ∂μ) ^ (1 / p) := by
+    rw [lpNorm_eq_integral_norm_rpow_toReal
+      (by simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hp)) ENNReal.ofReal_ne_top hf.1,
+      ENNReal.toReal_ofReal hp.le, one_div]
+  have hgnorm : lpNorm g (ENNReal.ofReal q) μ = (∫ x, ‖g x‖ ^ q ∂μ) ^ (1 / q) := by
+    rw [lpNorm_eq_integral_norm_rpow_toReal
+      (by simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hq)) ENNReal.ofReal_ne_top hg.1,
+      ENNReal.toReal_ofReal hq.le, one_div]
+  rw [hfnorm, hgnorm]
+  exact le_trans habs hholder
+
+/-- **The closing step of `thm:extended_model`.**  The finite-interval form is
+bounded by the zeroth input's `L^{p_0}` norm times the operator's `L^R` norm,
+whenever `p_0` and `R` are conjugate. -/
+theorem abs_ModelScaleIntervalTruncation_le_of_operator_lpNorm
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput) (a b : ℝ)
+    (hjoint : Integrable (fun xt : E3 × ℝ ↦
+      modelTruncatedOperatorPairingIntegrand α u c F xt.2 xt.1)
+      ((volume : Measure E3).prod
+        (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioc a b))))
+    {p₀ R : ℝ} (hpq : Real.HolderConjugate p₀ R)
+    (hf : MemLp (fun x : E3 ↦ F 0 x) (ENNReal.ofReal p₀) volume)
+    (hU : MemLp (ModelTruncatedOperator α u c (modelOperatorInput F) a b)
+      (ENNReal.ofReal R) volume) :
+    |ModelScaleIntervalTruncation α u c F a b| ≤
+      lpNorm (fun x : E3 ↦ F 0 x) (ENNReal.ofReal p₀) volume *
+        lpNorm (ModelTruncatedOperator α u c (modelOperatorInput F) a b)
+          (ENNReal.ofReal R) volume := by
+  rw [modelScaleIntervalTruncation_eq_modelTruncatedOperator_pairing α u c F a b hjoint]
+  exact abs_integral_mul_le_lpNorm_mul_lpNorm volume _ _ hpq hf hU
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The external four-vertex multilinear interpolation theorem
+
+Source: `ext:interpolation`.  The blueprint states this as an external theorem
+and gives no proof of it; two dependency audits (recorded in ErrorReport.md)
+established that the pinned `lean_spherical` checkout does not supply it and
+that iterating its unary Marcinkiewicz theorems slot by slot cannot reach a
+point interior to the three-dimensional tetrahedron.  It is therefore recorded
+here as an explicit hypothesis, stated exactly as the source states it, so that
+the one external input to `thm:main` is localized and everything downstream of
+it stays machine checked.
+-/
+
+/-- **`ext:interpolation` as a hypothesis.**  A trilinear operator on simple
+functions of finite measure support, with weak bounds at four affinely
+independent input reciprocal vectors, satisfies the strong bound at every
+interior point of the simplex, with constant depending only on the exponent
+vectors and the weights. -/
+def FourVertexMarcinkiewicz
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) : Prop :=
+  ∀ (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (A : Fin 4 → ℝ)
+    (ϑ : Fin 4 → ℝ) (p : Fin 3 → ℝ) (R : ℝ),
+    -- the four endpoint exponent vectors and their output exponents
+    (∀ a j, 1 < P a j) →
+    (∀ a, 1 ≤ r a) →
+    (∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹) →
+    -- the four reciprocal vectors are affinely independent
+    AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹)) →
+    -- the endpoint constants
+    (∀ a, 0 ≤ A a) →
+    -- the weights
+    (∀ a, 0 < ϑ a) → (∑ a : Fin 4, ϑ a = 1) →
+    -- the interior target
+    (∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹) →
+    R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹ → 1 < R →
+    -- the four weak endpoint bounds, on simple functions of finite support
+    (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (f j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(f j))) (r a)
+        ≤ ENNReal.ofReal (A a *
+            ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P a j)) μ)) →
+    -- the strong interior bound
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (f : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (f j).FinMeasSupp μ) →
+      lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
+        ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
+            ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ
+
+/-- A consistency check on the statement above: the zero operator satisfies it.
+This confirms the hypothesis is satisfiable and that the inequality is oriented
+as intended. -/
+theorem fourVertexMarcinkiewicz_zero
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) :
+    FourVertexMarcinkiewicz μ (fun _ ↦ (0 : X → ℝ)) := by
+  intro P r A ϑ p R _ _ _ _ _ _ _ _ _ _ _
+  refine ⟨0, le_rfl, fun f _ ↦ ?_⟩
+  simp
+
+/-- The hypothesis in the form it is consumed: given the endpoint data, it
+produces the interior constant and the strong bound. -/
+theorem strong_bound_of_fourVertexMarcinkiewicz
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {T : (Fin 3 → (X → ℝ)) → (X → ℝ)} (hT : FourVertexMarcinkiewicz μ T)
+    (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (A : Fin 4 → ℝ)
+    (ϑ : Fin 4 → ℝ) (p : Fin 3 → ℝ) (R : ℝ)
+    (hP : ∀ a j, 1 < P a j) (hr : ∀ a, 1 ≤ r a)
+    (hrsum : ∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹)
+    (hindep : AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹)))
+    (hA : ∀ a, 0 ≤ A a) (hϑpos : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1)
+    (hp : ∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹)
+    (hR : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹) (hR1 : 1 < R)
+    (hweak : ∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (f j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(f j))) (r a)
+        ≤ ENNReal.ofReal (A a *
+            ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P a j)) μ)) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (f : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (f j).FinMeasSupp μ) →
+      lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
+        ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
+            ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ :=
+  hT P r A ϑ p R hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The simplex vertices are affinely independent
+
+Source: `lem:exponent_simplex`, whose last line records that the simplex has
+independent edge vectors `b_0 e_1, b_0 e_2, b_0 e_3`.  This is the hypothesis
+`ext:interpolation` places on the four input reciprocal vectors.
+-/
+
+/-- The four reciprocal vectors `b` and `b + b₀ eₘ` are affinely independent as
+soon as `b₀ ≠ 0`. -/
+theorem affineIndependent_exponentSimplex_vertices
+    (b : Fin 3 → ℝ) {b₀ : ℝ} (hb₀ : b₀ ≠ 0) :
+    AffineIndependent ℝ (fun a : Fin 4 ↦
+      (fun j : Fin 3 ↦ b j + if (a : ℕ) = (j : ℕ) + 1 then b₀ else 0)) := by
+  classical
+  set v : Fin 4 → (Fin 3 → ℝ) :=
+    fun a j ↦ b j + if (a : ℕ) = (j : ℕ) + 1 then b₀ else 0 with hv
+  have key : ∀ w : Fin 4 → ℝ, (∑ i : Fin 4, w i) = 0 →
+      (∑ i : Fin 4, w i • v i) = 0 → ∀ i, w i = 0 := by
+    intro w hw hwp
+    have hcoord : ∀ j : Fin 3, ∑ a : Fin 4, w a * v a j = 0 := by
+      intro j
+      have h := congrFun hwp j
+      simpa [Finset.sum_apply] using h
+    have h0 := hcoord 0
+    have h1 := hcoord 1
+    have h2 := hcoord 2
+    rw [Fin.sum_univ_four] at hw
+    simp only [hv, Fin.sum_univ_four] at h0 h1 h2
+    norm_num at h0 h1 h2
+    have hw1 : w 1 = 0 := by
+      have hb : b₀ * w 1 = 0 := by linear_combination h0 - b 0 * hw
+      exact (mul_eq_zero.mp hb).resolve_left hb₀
+    have hw2 : w 2 = 0 := by
+      have hb : b₀ * w 2 = 0 := by linear_combination h1 - b 1 * hw
+      exact (mul_eq_zero.mp hb).resolve_left hb₀
+    have hw3 : w 3 = 0 := by
+      have hb : b₀ * w 3 = 0 := by linear_combination h2 - b 2 * hw
+      exact (mul_eq_zero.mp hb).resolve_left hb₀
+    have hw0 : w 0 = 0 := by rw [hw1, hw2, hw3] at hw; linarith
+    intro i
+    fin_cases i
+    · exact hw0
+    · exact hw1
+    · exact hw2
+    · exact hw3
+  rw [affineIndependent_iff]
+  intro s w hw hwp e he
+  set w' : Fin 4 → ℝ := fun i ↦ if i ∈ s then w i else 0 with hw'def
+  have hsum' : ∑ i : Fin 4, w' i = 0 := by
+    rw [hw'def]
+    rw [Finset.sum_ite_mem, Finset.univ_inter]
+    exact hw
+  have hvsum' : ∑ i : Fin 4, w' i • v i = 0 := by
+    have hcongr : ∀ i : Fin 4, w' i • v i
+        = if i ∈ s then w i • v i else 0 := by
+      intro i
+      rw [hw'def]
+      by_cases hi : i ∈ s <;> simp [hi]
+    rw [Finset.sum_congr rfl fun i _ ↦ hcongr i, Finset.sum_ite_mem,
+      Finset.univ_inter]
+    exact hwp
+  have := key w' hsum' hvsum' e
+  rw [hw'def] at this
+  simpa [he] using this
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The four vertex exponent vectors
+
+Source: `thm:extended_model`, which builds the endpoint tuples `P_j` and
+`P_j^{(m)}` out of the base point `b` of `lem:exponent_simplex`.  These are the
+`P` and `r` data that `ext:interpolation` consumes.
+-/
+
+/-- The reciprocal vector of the `a`-th vertex: the base point `b`, shifted by
+`b₀` in coordinate `m` when `a = m + 1`. -/
+def simplexVertexReciprocal (b : Fin 3 → ℝ) (b₀ : ℝ) (a : Fin 4) (j : Fin 3) : ℝ :=
+  b j + if (a : ℕ) = (j : ℕ) + 1 then b₀ else 0
+
+/-- The `a`-th vertex's input exponent tuple. -/
+def simplexVertexExponent (b : Fin 3 → ℝ) (b₀ : ℝ) (a : Fin 4) (j : Fin 3) : ℝ :=
+  (simplexVertexReciprocal b b₀ a j)⁻¹
+
+theorem simplexVertexReciprocal_zero (b : Fin 3 → ℝ) (b₀ : ℝ) (j : Fin 3) :
+    simplexVertexReciprocal b b₀ 0 j = b j := by
+  unfold simplexVertexReciprocal
+  have : ((0 : Fin 4) : ℕ) ≠ (j : ℕ) + 1 := by simp
+  rw [if_neg this, add_zero]
+
+/-- The base vertex's reciprocals sum to `1 - b₀`. -/
+theorem sum_simplexVertexReciprocal_zero (b : Fin 3 → ℝ) {b₀ : ℝ}
+    (hb₀ : b₀ = 1 - ∑ j : Fin 3, b j) :
+    ∑ j : Fin 3, simplexVertexReciprocal b b₀ 0 j = 1 - b₀ := by
+  rw [Finset.sum_congr rfl fun j _ ↦ simplexVertexReciprocal_zero b b₀ j, hb₀]
+  ring
+
+/-- Each shifted vertex's reciprocals sum to `1`. -/
+theorem sum_simplexVertexReciprocal_succ (b : Fin 3 → ℝ) {b₀ : ℝ}
+    (hb₀ : b₀ = 1 - ∑ j : Fin 3, b j) (m : Fin 3) :
+    ∑ j : Fin 3, simplexVertexReciprocal b b₀ m.succ j = 1 := by
+  have hsplit : ∀ j : Fin 3,
+      simplexVertexReciprocal b b₀ m.succ j
+        = b j + if m = j then b₀ else 0 := by
+    intro j
+    unfold simplexVertexReciprocal
+    congr 1
+    by_cases h : m = j
+    · subst h; simp
+    · rw [if_neg h, if_neg]
+      simpa [Fin.val_succ, Fin.val_eq_val] using h
+  rw [Finset.sum_congr rfl fun j _ ↦ hsplit j, Finset.sum_add_distrib,
+    Finset.sum_ite_eq Finset.univ m (fun _ ↦ b₀)]
+  simp only [Finset.mem_univ, if_true]
+  rw [hb₀]
+  ring
+
+theorem simplexVertexReciprocal_pos {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀) (a : Fin 4) (j : Fin 3) :
+    0 < simplexVertexReciprocal b b₀ a j := by
+  unfold simplexVertexReciprocal
+  by_cases h : (a : ℕ) = (j : ℕ) + 1
+  · rw [if_pos h]; linarith [hb j]
+  · rw [if_neg h, add_zero]; exact hb j
+
+theorem simplexVertexReciprocal_le {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb₀ : 0 < b₀) (a : Fin 4) (j : Fin 3) :
+    simplexVertexReciprocal b b₀ a j ≤ b j + b₀ := by
+  unfold simplexVertexReciprocal
+  by_cases h : (a : ℕ) = (j : ℕ) + 1
+  · rw [if_pos h]
+  · rw [if_neg h, add_zero]; linarith
+
+theorem simplexVertexReciprocal_lt_one {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀) (hsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (a : Fin 4) (j : Fin 3) :
+    simplexVertexReciprocal b b₀ a j < 1 := by
+  refine lt_of_le_of_lt (simplexVertexReciprocal_le hb₀ a j) ?_
+  have hmem : j ∈ (Finset.univ : Finset (Fin 3)) := Finset.mem_univ j
+  have hrest : 0 < ∑ i ∈ Finset.univ.erase j, b i := by
+    refine Finset.sum_pos (fun i _ ↦ hb i) ?_
+    refine Finset.card_pos.mp ?_
+    rw [Finset.card_erase_of_mem hmem]
+    simp
+  have hlt : b j < ∑ i : Fin 3, b i := by
+    rw [← Finset.sum_erase_add _ _ hmem]
+    linarith
+  linarith
+
+/-- Every vertex exponent exceeds one, as `ext:interpolation` requires. -/
+theorem one_lt_simplexVertexExponent {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀) (hsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (a : Fin 4) (j : Fin 3) :
+    1 < simplexVertexExponent b b₀ a j := by
+  unfold simplexVertexExponent
+  rw [one_lt_inv_iff₀]
+  exact ⟨simplexVertexReciprocal_pos hb hb₀ a j,
+    simplexVertexReciprocal_lt_one hb hb₀ hsum a j⟩
+
+theorem simplexVertexExponent_inv {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (a : Fin 4) (j : Fin 3) :
+    (simplexVertexExponent b b₀ a j)⁻¹ = simplexVertexReciprocal b b₀ a j :=
+  inv_inv _
+
+/-- The reciprocal vectors of the four vertex exponent tuples are affinely
+independent, which is `ext:interpolation`'s side condition. -/
+theorem affineIndependent_simplexVertexExponent {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb₀ : b₀ ≠ 0) :
+    AffineIndependent ℝ
+      (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (simplexVertexExponent b b₀ a j)⁻¹)) := by
+  have hfun : (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (simplexVertexExponent b b₀ a j)⁻¹))
+      = fun a : Fin 4 ↦ (fun j : Fin 3 ↦
+          b j + if (a : ℕ) = (j : ℕ) + 1 then b₀ else 0) := by
+    funext a j
+    rw [simplexVertexExponent_inv]
+    rfl
+  rw [hfun]
+  exact affineIndependent_exponentSimplex_vertices b hb₀
+
+/-- The `a`-th vertex's output exponent. -/
+def simplexVertexOutput (b : Fin 3 → ℝ) (b₀ : ℝ) (a : Fin 4) : ℝ :=
+  (∑ j : Fin 3, (simplexVertexExponent b b₀ a j)⁻¹)⁻¹
+
+theorem simplexVertexOutput_inv (b : Fin 3 → ℝ) (b₀ : ℝ) (a : Fin 4) :
+    (simplexVertexOutput b b₀ a)⁻¹
+      = ∑ j : Fin 3, (simplexVertexExponent b b₀ a j)⁻¹ := by
+  unfold simplexVertexOutput
+  rw [inv_inv]
+
+/-- The base vertex has output exponent `1/(1-b₀)`; each shifted vertex has
+output exponent `1`. -/
+theorem simplexVertexOutput_zero (b : Fin 3 → ℝ) {b₀ : ℝ}
+    (hb₀ : b₀ = 1 - ∑ j : Fin 3, b j) :
+    simplexVertexOutput b b₀ 0 = (1 - b₀)⁻¹ := by
+  unfold simplexVertexOutput
+  rw [Finset.sum_congr rfl fun j _ ↦ simplexVertexExponent_inv (b := b) (b₀ := b₀) 0 j,
+    sum_simplexVertexReciprocal_zero b hb₀]
+
+theorem simplexVertexOutput_succ (b : Fin 3 → ℝ) {b₀ : ℝ}
+    (hb₀ : b₀ = 1 - ∑ j : Fin 3, b j) (m : Fin 3) :
+    simplexVertexOutput b b₀ m.succ = 1 := by
+  unfold simplexVertexOutput
+  rw [Finset.sum_congr rfl fun j _ ↦
+      simplexVertexExponent_inv (b := b) (b₀ := b₀) m.succ j,
+    sum_simplexVertexReciprocal_succ b hb₀ m, inv_one]
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The interpolation weights in indexed form
+
+Source: `eq:weights` of `lem:exponent_simplex`.  The weights are recorded as a
+family indexed by the four vertices, and the convex-combination identities of
+`ext:interpolation` — the target input reciprocals and the target output
+reciprocal — are proved in that indexed form.
+-/
+
+/-- The reciprocal vector of a shifted vertex, in terms of its shift index. -/
+theorem simplexVertexReciprocal_succ (b : Fin 3 → ℝ) (b₀ : ℝ) (m j : Fin 3) :
+    simplexVertexReciprocal b b₀ m.succ j = b j + if m = j then b₀ else 0 := by
+  unfold simplexVertexReciprocal
+  congr 1
+  by_cases h : m = j
+  · subst h; simp
+  · rw [if_neg h, if_neg]
+    simpa [Fin.val_succ, Fin.val_eq_val] using h
+
+/-- The weights `eq:weights`, indexed by the four vertices. -/
+def simplexWeight (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ) : Fin 4 → ℝ :=
+  Fin.cons (β₀ / b₀) (fun m : Fin 3 ↦ (β m - b m) / b₀)
+
+@[simp] theorem simplexWeight_zero (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ) :
+    simplexWeight β b β₀ b₀ 0 = β₀ / b₀ := rfl
+
+@[simp] theorem simplexWeight_succ (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ) (m : Fin 3) :
+    simplexWeight β b β₀ b₀ m.succ = (β m - b m) / b₀ := rfl
+
+theorem simplexWeight_pos {β b : Fin 3 → ℝ} {β₀ b₀ : ℝ}
+    (hβ₀ : 0 < β₀) (hb₀ : 0 < b₀) (hlt : ∀ m, b m < β m) (a : Fin 4) :
+    0 < simplexWeight β b β₀ b₀ a := by
+  refine Fin.cases ?_ ?_ a
+  · rw [simplexWeight_zero]; exact div_pos hβ₀ hb₀
+  · intro m
+    rw [simplexWeight_succ]
+    exact div_pos (by linarith [hlt m]) hb₀
+
+/-- The weights sum to one. -/
+theorem sum_simplexWeight {β b : Fin 3 → ℝ} {β₀ b₀ : ℝ} (hb₀ : b₀ ≠ 0)
+    (hβsum : β₀ = 1 - ∑ j : Fin 3, β j) (hbsum : b₀ = 1 - ∑ j : Fin 3, b j) :
+    ∑ a : Fin 4, simplexWeight β b β₀ b₀ a = 1 := by
+  rw [Fin.sum_univ_succ]
+  simp only [simplexWeight_zero, simplexWeight_succ]
+  rw [← Finset.sum_div, Finset.sum_sub_distrib, ← add_div,
+    div_eq_one_iff_eq hb₀]
+  rw [hβsum, hbsum]
+  ring
+
+/-- **The target input reciprocals are the convex combination.** -/
+theorem sum_simplexWeight_mul_reciprocal {β b : Fin 3 → ℝ} {β₀ b₀ : ℝ}
+    (hb₀ : b₀ ≠ 0)
+    (hβsum : β₀ = 1 - ∑ j : Fin 3, β j) (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (j : Fin 3) :
+    ∑ a : Fin 4, simplexWeight β b β₀ b₀ a *
+        simplexVertexReciprocal b b₀ a j = β j := by
+  have hone := sum_simplexWeight (β := β) (b := b) hb₀ hβsum hbsum
+  rw [Fin.sum_univ_succ] at hone ⊢
+  simp only [simplexWeight_zero, simplexWeight_succ,
+    simplexVertexReciprocal_zero, simplexVertexReciprocal_succ]
+  have hsplit : ∀ m : Fin 3,
+      (β m - b m) / b₀ * (b j + if m = j then b₀ else 0)
+        = (β m - b m) / b₀ * b j + (if m = j then β j - b j else 0) := by
+    intro m
+    by_cases h : m = j
+    · subst h; rw [if_pos rfl, if_pos rfl]
+      field_simp
+    · rw [if_neg h, if_neg h]
+      ring
+  rw [Finset.sum_congr rfl fun m _ ↦ hsplit m, Finset.sum_add_distrib]
+  simp only [Finset.sum_ite_eq', Finset.mem_univ, if_true]
+  simp only [simplexWeight_zero, simplexWeight_succ] at hone
+  rw [← Finset.sum_mul]
+  linear_combination b j * hone
+
+/-- **The target output reciprocal is the convex combination.**  The base
+vertex contributes `1 - b₀` and each shifted vertex contributes `1`, and the
+weights collapse the total to `1 - β₀`. -/
+theorem sum_simplexWeight_mul_outputReciprocal {β b : Fin 3 → ℝ} {β₀ b₀ : ℝ}
+    (hb₀ : b₀ ≠ 0)
+    (hβsum : β₀ = 1 - ∑ j : Fin 3, β j) (hbsum : b₀ = 1 - ∑ j : Fin 3, b j) :
+    ∑ a : Fin 4, simplexWeight β b β₀ b₀ a *
+        (simplexVertexOutput b b₀ a)⁻¹ = 1 - β₀ := by
+  have hone := sum_simplexWeight (β := β) (b := b) hb₀ hβsum hbsum
+  rw [Fin.sum_univ_succ] at hone ⊢
+  simp only [simplexWeight_zero, simplexWeight_succ,
+    simplexVertexOutput_zero b hbsum, simplexVertexOutput_succ b hbsum,
+    inv_inv, inv_one, mul_one]
+  simp only [simplexWeight_zero, simplexWeight_succ] at hone
+  have hinv : b₀⁻¹ * b₀ = 1 := inv_mul_cancel₀ hb₀
+  linear_combination hone - β₀ * hinv
+
+/-- The target output exponent exceeds one. -/
+theorem one_lt_targetOutput {β₀ : ℝ} (hβ₀ : 0 < β₀) (hlt : β₀ < 1) :
+    1 < (1 - β₀)⁻¹ := by
+  rw [one_lt_inv_iff₀]
+  constructor <;> linarith
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## A strong bound is a weak bound
+
+Source: `thm:extended_model`, which records that "the base strong bound is also
+a weak bound at `b`".  This is Chebyshev's inequality in the normalization of
+`def:weak_norm`, and it is what lets the base vertex — where
+`thm:initial_model` gives a genuine `L^{R_0}` estimate — be fed to
+`ext:interpolation` alongside the three weak vertices.
+-/
+
+/-- **Chebyshev.**  The weak norm never exceeds the strong norm. -/
+theorem weakNorm_le_eLpNorm
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    (hv : AEMeasurable v μ) {R : ℝ} (hR : 0 < R) :
+    weakNorm μ v R ≤ eLpNorm v (ENNReal.ofReal R) μ := by
+  have hp0 : ENNReal.ofReal R ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hR)
+  have hptop : ENNReal.ofReal R ≠ ∞ := ENNReal.ofReal_ne_top
+  have hmeas : AEMeasurable (fun x ↦ ENNReal.ofReal (|v x| ^ R)) μ := by
+    have h1 : AEMeasurable (fun x ↦ |v x|) μ :=
+      continuous_abs.measurable.comp_aemeasurable hv
+    exact (ENNReal.measurable_ofReal.comp_aemeasurable
+      (h1.pow_const R))
+  have heq : eLpNorm v (ENNReal.ofReal R) μ
+      = (∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ) ^ (1 / R) := by
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop,
+      ENNReal.toReal_ofReal hR.le]
+    congr 1
+    refine lintegral_congr fun x ↦ ?_
+    rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hR.le,
+      Real.norm_eq_abs]
+  rw [heq]
+  refine weakNorm_le μ v R fun t ht ↦ ?_
+  -- Chebyshev at level `t^R`
+  have hsub : {x | t < |v x|} ⊆ {x | ENNReal.ofReal (t ^ R) ≤ ENNReal.ofReal (|v x| ^ R)} := by
+    intro x hx
+    exact ENNReal.ofReal_le_ofReal (Real.rpow_le_rpow ht.le (le_of_lt hx) hR.le)
+  have hcheb : ENNReal.ofReal (t ^ R) * μ {x | t < |v x|}
+      ≤ ∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ := by
+    refine le_trans (mul_le_mul' le_rfl (measure_mono hsub)) ?_
+    exact mul_meas_ge_le_lintegral₀ hmeas (ENNReal.ofReal (t ^ R))
+  have hpow := ENNReal.rpow_le_rpow hcheb (le_of_lt (by positivity : (0:ℝ) < 1 / R))
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:ℝ) ≤ 1 / R)] at hpow
+  have hconst : (ENNReal.ofReal (t ^ R)) ^ (1 / R) = ENNReal.ofReal t := by
+    rw [ENNReal.ofReal_rpow_of_nonneg (Real.rpow_nonneg ht.le R)
+      (by positivity : (0:ℝ) ≤ 1 / R), ← Real.rpow_mul ht.le,
+      mul_one_div_cancel (ne_of_gt hR), Real.rpow_one]
+  rwa [hconst] at hpow
+
+/-- The same statement in the real `lpNorm` normalization, which is how the
+base vertex's estimate from `thm:initial_model` is recorded. -/
+theorem weakNorm_le_ofReal_lpNorm
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    (hv : AEMeasurable v μ) {R : ℝ} (hR : 0 < R)
+    (hmem : MemLp v (ENNReal.ofReal R) μ) :
+    weakNorm μ v R ≤ ENNReal.ofReal (lpNorm v (ENNReal.ofReal R) μ) := by
+  have hne : eLpNorm v (ENNReal.ofReal R) μ ≠ ∞ := hmem.eLpNorm_ne_top
+  have hrw : ENNReal.ofReal (lpNorm v (ENNReal.ofReal R) μ)
+      = eLpNorm v (ENNReal.ofReal R) μ := by
+    rw [← toReal_eLpNorm hmem.1, ENNReal.ofReal_toReal hne]
+  rw [hrw]
+  exact weakNorm_le_eLpNorm μ v hv hR
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The input class of `ext:interpolation`
+
+Source: `ext:interpolation`, which is stated for complex simple functions of
+finite measure support.  Such functions lie in every `L^q` with `q` finite, so
+the endpoint norms appearing in the hypothesis are all finite and the
+statement's quantifiers are over a class on which every norm in sight makes
+sense.
+-/
+
+/-- A simple function of finite measure support lies in every `L^q` with
+`1 < q < ∞`. -/
+theorem memLp_of_simpleFunc_finMeasSupp
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {f : SimpleFunc X ℝ}
+    (hf : f.FinMeasSupp μ) {q : ℝ} (hq : 1 < q) :
+    MemLp (⇑f) (ENNReal.ofReal q) μ := by
+  have hq0 : ENNReal.ofReal q ≠ 0 :=
+    ne_of_gt (ENNReal.ofReal_pos.mpr (by linarith))
+  have hqtop : ENNReal.ofReal q ≠ ∞ := ENNReal.ofReal_ne_top
+  exact (SimpleFunc.memLp_iff_finMeasSupp hq0 hqtop).mpr hf
+
+/-- At the four vertex exponents of `lem:exponent_simplex`, every simple input
+of finite measure support has finite endpoint norms. -/
+theorem memLp_simplexVertexExponent
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {f : SimpleFunc X ℝ}
+    (hf : f.FinMeasSupp μ) {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hsum : b₀ = 1 - ∑ j : Fin 3, b j) (a : Fin 4) (j : Fin 3) :
+    MemLp (⇑f) (ENNReal.ofReal (simplexVertexExponent b b₀ a j)) μ :=
+  memLp_of_simpleFunc_finMeasSupp hf
+    (one_lt_simplexVertexExponent hb hb₀ hsum a j)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The completed weak-one estimates in the source's weak-norm language
+
+Source: `def:weak_norm` and `eq:one_fiber`.  The Section 8 one-fiber results
+are stated as level-set bounds `τ · |{τ < |v|}| ≤ K`, which is exactly the
+`R = 1` case of the weak norm.  Recording the identification lets those
+completed estimates be quoted in the form `ext:interpolation` consumes.
+-/
+
+/-- The defining characterization of a weak-norm bound. -/
+theorem weakNorm_le_iff {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (v : X → ℝ) (R : ℝ) {K : ℝ≥0∞} :
+    weakNorm μ v R ≤ K ↔
+      ∀ τ : ℝ, 0 < τ → ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R) ≤ K := by
+  constructor
+  · intro h τ hτ
+    exact le_trans (le_weakNorm μ v R hτ) h
+  · intro h
+    exact weakNorm_le μ v R h
+
+/-- At `R = 1` the weak norm is the supremum of the level-set products used
+throughout Section 8. -/
+theorem weakNorm_one_le_iff {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (v : X → ℝ) {K : ℝ≥0∞} :
+    weakNorm μ v 1 ≤ K ↔
+      ∀ τ : ℝ, 0 < τ → ENNReal.ofReal τ * μ {x | τ < |v x|} ≤ K := by
+  rw [weakNorm_le_iff]
+  constructor
+  · intro h τ hτ
+    have := h τ hτ
+    rwa [div_one, ENNReal.rpow_one] at this
+  · intro h τ hτ
+    rw [div_one, ENNReal.rpow_one]
+    exact h τ hτ
+
+/-- **The one-fiber weak bound in the source's normalization.**  The Section 8
+level-set estimate, valid at every level, is a weak-`L^1` bound. -/
+theorem weakNorm_one_le_of_forall_level
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) {K : ℝ≥0∞}
+    (h : ∀ τ : ℝ, 0 < τ → ENNReal.ofReal τ * μ {x | τ < |v x|} ≤ K) :
+    weakNorm μ v 1 ≤ K :=
+  (weakNorm_one_le_iff μ v).mpr h
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The main theorem's exponents lie in the extended region
+
+Source: the proof of `thm:main`.  Its hypotheses `4 < p_0 < ∞` and
+`1 < p_1, p_2, p_3 < 4` say exactly that `beta_0 < 1/4` and each of
+`beta_1, beta_2, beta_3` exceeds `1/4`; those five facts imply
+`eq:extended_region` for every choice of active coordinate, since each
+constraint there involves either one reciprocal or a sum of two.
+-/
+
+/-- The reciprocal form of the hypotheses of `thm:main`. -/
+theorem main_reciprocal_bounds {p₀ p₁ p₂ p₃ : ℝ}
+    (h₀ : 4 < p₀) (h₁ : 1 < p₁) (h₁' : p₁ < 4)
+    (h₂ : 1 < p₂) (h₂' : p₂ < 4) (h₃ : 1 < p₃) (h₃' : p₃ < 4) :
+    1 / p₀ < 1 / 4 ∧ 1 / 4 < 1 / p₁ ∧ 1 / 4 < 1 / p₂ ∧ 1 / 4 < 1 / p₃ := by
+  refine ⟨one_div_lt_one_div_of_lt (by norm_num) h₀, ?_, ?_, ?_⟩
+  · exact one_div_lt_one_div_of_lt (by linarith) h₁'
+  · exact one_div_lt_one_div_of_lt (by linarith) h₂'
+  · exact one_div_lt_one_div_of_lt (by linarith) h₃'
+
+/-- **`eq:extended_region` from the hypotheses of `thm:main`.**  The five
+constraints follow from `beta_0 < 1/4` together with each of the other three
+reciprocals exceeding `1/4`. -/
+theorem extendedRegion_of_main_bounds {β₀ β₁ β₂ β₃ : ℝ}
+    (h₀ : β₀ < 1 / 4) (h₁ : 1 / 4 < β₁) (h₂ : 1 / 4 < β₂) (h₃ : 1 / 4 < β₃) :
+    β₀ < 1 / 4 ∧ 1 / 4 < β₃ ∧ 1 / 4 < β₁ + β₂ ∧
+      1 / 2 < β₁ + β₃ ∧ 1 / 2 < β₂ + β₃ :=
+  ⟨h₀, h₃, by linarith, by linarith, by linarith⟩
+
+/-- The same conclusion holds after any permutation of the three active
+coordinates, which is what the proof of `thm:main` uses when it fixes an active
+coordinate `i` and writes `{i,j,k} = {1,2,3}`. -/
+theorem extendedRegion_of_main_bounds_perm {β₀ β₁ β₂ β₃ : ℝ}
+    (h₀ : β₀ < 1 / 4) (h₁ : 1 / 4 < β₁) (h₂ : 1 / 4 < β₂) (h₃ : 1 / 4 < β₃)
+    (i j k : ℝ) (hi : i = β₁ ∨ i = β₂ ∨ i = β₃)
+    (hj : j = β₁ ∨ j = β₂ ∨ j = β₃) (hk : k = β₁ ∨ k = β₂ ∨ k = β₃) :
+    β₀ < 1 / 4 ∧ 1 / 4 < i ∧ 1 / 4 < j + k ∧
+      1 / 2 < j + i ∧ 1 / 2 < k + i := by
+  have hipos : 1 / 4 < i := by rcases hi with rfl | rfl | rfl <;> assumption
+  have hjpos : 1 / 4 < j := by rcases hj with rfl | rfl | rfl <;> assumption
+  have hkpos : 1 / 4 < k := by rcases hk with rfl | rfl | rfl <;> assumption
+  exact ⟨h₀, hipos, by linarith, by linarith, by linarith⟩
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Weak bounds pass to almost-everywhere limits
+
+Source: `def:weak_norm` together with the density step the source performs at
+the end of `thm:extended_model`.  A weak bound holding uniformly along a
+sequence survives passage to an almost-everywhere limit, which is the transfer
+needed to move endpoint bounds between the dense classes on which they are
+established and the classes on which they are used.
+-/
+
+/-- The level-set form of the transfer: a uniform measure bound at a positive
+level survives an almost-everywhere limit. -/
+theorem meas_lt_le_of_ae_tendsto
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (u : ℕ → X → ℝ) (v : X → ℝ) (K : ℝ≥0∞) {lam : ℝ} (hlam : 0 < lam)
+    (htend : ∀ᵐ x ∂μ, Filter.Tendsto (fun n ↦ u n x) Filter.atTop (nhds (v x)))
+    (hbound : ∀ n, μ {x | lam < |u n x|} ≤ K) :
+    μ {x | lam < |v x|} ≤ K := by
+  have hne : ENNReal.ofReal lam ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hlam)
+  have htop : ENNReal.ofReal lam ≠ ∞ := ENNReal.ofReal_ne_top
+  have hstep : ENNReal.ofReal lam * μ {x | lam < |v x|}
+      ≤ ENNReal.ofReal lam * K :=
+    weakBound_of_ae_tendsto μ u v (ENNReal.ofReal lam * K) htend
+      (fun n ↦ mul_le_mul' le_rfl (hbound n))
+  exact (ENNReal.mul_le_mul_iff_right hne htop).mp hstep
+
+/-- **Weak bounds survive almost-everywhere limits.**  If every member of a
+sequence obeys the same weak-`L^R` bound and the sequence converges almost
+everywhere, the limit obeys it too. -/
+theorem weakNorm_le_of_ae_tendsto
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (u : ℕ → X → ℝ) (v : X → ℝ) {R : ℝ} (hR : 0 < R) (C : ℝ≥0∞)
+    (htend : ∀ᵐ x ∂μ, Filter.Tendsto (fun n ↦ u n x) Filter.atTop (nhds (v x)))
+    (hbound : ∀ n, weakNorm μ (u n) R ≤ C) :
+    weakNorm μ v R ≤ C := by
+  refine weakNorm_le μ v R fun τ hτ ↦ ?_
+  have hne : ENNReal.ofReal τ ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hτ)
+  have htop : ENNReal.ofReal τ ≠ ∞ := ENNReal.ofReal_ne_top
+  set M : ℝ≥0∞ := (C / ENNReal.ofReal τ) ^ R with hM
+  -- each member's weak bound gives the same measure bound at level `τ`
+  have hmeas : ∀ n, μ {x | τ < |u n x|} ≤ M := by
+    intro n
+    have h := le_trans (le_weakNorm μ (u n) R hτ) (hbound n)
+    have hdiv : μ {x | τ < |u n x|} ^ (1 / R) ≤ C / ENNReal.ofReal τ := by
+      rw [ENNReal.le_div_iff_mul_le (Or.inl hne) (Or.inl htop), mul_comm]
+      exact h
+    have hpow := ENNReal.rpow_le_rpow hdiv hR.le
+    rwa [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ (ne_of_gt hR),
+      ENNReal.rpow_one] at hpow
+  have hlim : μ {x | τ < |v x|} ≤ M :=
+    meas_lt_le_of_ae_tendsto μ u v M hτ htend hmeas
+  calc ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal τ * M ^ (1 / R) :=
+        mul_le_mul' le_rfl (ENNReal.rpow_le_rpow hlim (by positivity))
+    _ = ENNReal.ofReal τ * (C / ENNReal.ofReal τ) := by
+        rw [hM, ← ENNReal.rpow_mul, mul_one_div_cancel (ne_of_gt hR),
+          ENNReal.rpow_one]
+    _ ≤ C := ENNReal.mul_div_le
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Transferring a weak bound across one input slot
+
+Source: the density step closing `thm:extended_model`.  The model operator is
+continuous in each slot along uniformly bounded pointwise-convergent
+sequences, so a weak bound holding for every member of such a sequence holds
+for its limit.  This is the one-slot form of the transfer between the class on
+which an endpoint bound is established and the class on which it is used.
+-/
+
+/-- **One-slot weak-bound transfer for the model operator.** -/
+theorem weakNorm_ModelTruncatedOperator_replace_le_of_tendsto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ)
+    (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (Bm C : ℝ) (Bf : Fin 3 → ℝ)
+    {R : ℝ} (hR : 0 < R) (K : ℝ≥0∞)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hgmeas : ∀ n, Measurable (g n)) (hBm : 0 ≤ Bm)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ Bm)
+    (htend : ∀ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (nhds (glim y)))
+    (hbound : ∀ n, weakNorm volume
+      (ModelTruncatedOperator α u c (modelOperatorReplace f m (g n)) a b) R ≤ K) :
+    weakNorm volume
+      (ModelTruncatedOperator α u c (modelOperatorReplace f m glim) a b) R ≤ K := by
+  refine weakNorm_le_of_ae_tendsto volume
+    (fun n x ↦ ModelTruncatedOperator α u c
+      (modelOperatorReplace f m (g n)) a b x)
+    (fun x ↦ ModelTruncatedOperator α u c
+      (modelOperatorReplace f m glim) a b x) hR K ?_ hbound
+  refine Filter.Eventually.of_forall fun x ↦ ?_
+  exact tendsto_ModelTruncatedOperator_replace_of_tendsto α u c f m a b x
+    g glim Bm C Bf ha hC hcm hcC hf hBf hfB hgmeas hBm hgB htend
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## `thm:extended_model` from the interpolated operator bound
+
+Source: `thm:extended_model`, final display.  Once
+`eq:extended_operator_bound` is available at the output exponent `R` with
+`R^{-1} + p_0^{-1} = 1`, Hölder against the zeroth input closes the theorem.
+The common factor `U(u)^{100}` passes through untouched, exactly as the source
+notes it does through the weighted geometric mean.
+-/
+
+/-- **The extended-range form bound.**  Given the interpolated operator
+estimate at the conjugate exponent, the finite-interval form obeys the bound of
+`thm:extended_model` with the same constant and the same `U(u)^{100}`. -/
+theorem abs_ModelScaleIntervalTruncation_le_of_extended_operator_bound
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput) (a b : ℝ)
+    (hjoint : Integrable (fun xt : E3 × ℝ ↦
+      modelTruncatedOperatorPairingIntegrand α u c F xt.2 xt.1)
+      ((volume : Measure E3).prod
+        (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+          (Set.Ioc a b))))
+    (p : Fin 4 → ℝ) {R Cst : ℝ}
+    (hconj : Real.HolderConjugate (p 0) R)
+    (hf : MemLp (fun x : E3 ↦ F 0 x) (ENNReal.ofReal (p 0)) volume)
+    (hU : MemLp (ModelTruncatedOperator α u c (modelOperatorInput F) a b)
+      (ENNReal.ofReal R) volume)
+    (hop : lpNorm (ModelTruncatedOperator α u c (modelOperatorInput F) a b)
+        (ENNReal.ofReal R) volume
+      ≤ Cst * sourceWeight u ^ 100 *
+          ∏ j : Fin 3, lpNorm (fun x : E3 ↦ F j.succ x)
+            (ENNReal.ofReal (p j.succ)) volume) :
+    |ModelScaleIntervalTruncation α u c F a b|
+      ≤ Cst * sourceWeight u ^ 100 *
+          ∏ j : Fin 4, lpNorm (fun x : E3 ↦ F j x)
+            (ENNReal.ofReal (p j)) volume := by
+  have hstep := abs_ModelScaleIntervalTruncation_le_of_operator_lpNorm
+    α u c F a b hjoint hconj hf hU
+  have hnn : 0 ≤ lpNorm (fun x : E3 ↦ F 0 x) (ENNReal.ofReal (p 0)) volume :=
+    lpNorm_nonneg
+  have hmul : lpNorm (fun x : E3 ↦ F 0 x) (ENNReal.ofReal (p 0)) volume *
+      lpNorm (ModelTruncatedOperator α u c (modelOperatorInput F) a b)
+        (ENNReal.ofReal R) volume
+      ≤ lpNorm (fun x : E3 ↦ F 0 x) (ENNReal.ofReal (p 0)) volume *
+          (Cst * sourceWeight u ^ 100 *
+            ∏ j : Fin 3, lpNorm (fun x : E3 ↦ F j.succ x)
+              (ENNReal.ofReal (p j.succ)) volume) :=
+    mul_le_mul_of_nonneg_left hop hnn
+  have hprod : ∏ j : Fin 4, lpNorm (fun x : E3 ↦ F j x)
+        (ENNReal.ofReal (p j)) volume
+      = lpNorm (fun x : E3 ↦ F 0 x) (ENNReal.ofReal (p 0)) volume *
+          ∏ j : Fin 3, lpNorm (fun x : E3 ↦ F j.succ x)
+            (ENNReal.ofReal (p j.succ)) volume :=
+    Fin.prod_univ_succ _
+  refine le_trans (le_trans hstep hmul) (le_of_eq ?_)
+  rw [hprod]
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Each cone term carries order-ten decay
+
+Source: the proof of `thm:main`.  The coefficient bound `eq:coefficient_decay`
+contributes `(1+|nu|)^{-110}`, the extended model estimate contributes
+`U(nu/8)^{100}` with `U(nu/8) <= C(1+|nu|)`, and the two combine to leave
+`(1+|nu|)^{-10}` — the exponent that makes the lattice sum converge, since
+`10 > 3`.
+-/
+
+/-- **Order-ten decay of a single cone term.**  Coefficient decay of order 110
+against model growth of order 100 leaves order-ten decay. -/
+theorem coneTerm_decay_bound
+    {w lam M nu C1 C2 C3 Pf : ℝ}
+    (hnu : 0 ≤ nu) (hM : 0 ≤ M) (hPf : 0 ≤ Pf)
+    (hC1 : 0 ≤ C1) (hC2 : 0 ≤ C2) (hC3 : 0 ≤ C3)
+    (hw : |w| ≤ C1 * M * (1 + nu) ^ (-110 : ℝ))
+    (hlam : |lam| ≤ C2 * (C3 * (1 + nu)) ^ (100 : ℝ) * Pf) :
+    |w * lam| ≤ C1 * C2 * C3 ^ (100 : ℝ) * M * (1 + nu) ^ (-10 : ℝ) * Pf := by
+  have hpos : (0 : ℝ) < 1 + nu := by linarith
+  have hwnn : 0 ≤ C1 * M * (1 + nu) ^ (-110 : ℝ) := by positivity
+  have hlamnn : 0 ≤ C2 * (C3 * (1 + nu)) ^ (100 : ℝ) * Pf := by positivity
+  have hmul : |w| * |lam|
+      ≤ (C1 * M * (1 + nu) ^ (-110 : ℝ)) *
+          (C2 * (C3 * (1 + nu)) ^ (100 : ℝ) * Pf) :=
+    mul_le_mul hw hlam (abs_nonneg _) hwnn
+  rw [abs_mul]
+  refine le_trans hmul (le_of_eq ?_)
+  have hpow : (1 + nu) ^ (-110 : ℝ) * (1 + nu) ^ (100 : ℝ)
+      = (1 + nu) ^ (-10 : ℝ) := by
+    rw [← Real.rpow_add hpos]
+    norm_num
+  rw [Real.mul_rpow hC3 hpos.le]
+  linear_combination (C1 * C2 * C3 ^ (100 : ℝ) * M * Pf) * hpow
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The normalized cone coefficients have modulus at most one
+
+Source: `thm:cone`.  The coefficient of the `nu`-th mode is divided by the
+common envelope `A_0 (1+|nu|)^{-110}`, and `A_0` is chosen large enough for
+`eq:coefficient_decay`; the quotient therefore has modulus at most one, which
+is exactly the hypothesis the truncated model forms place on their scale
+coefficients.
+-/
+
+/-- **The normalized coefficient is a contraction.**  Dividing a coefficient
+obeying `eq:coefficient_decay` by the envelope `A_0 (1+|nu|)^{-110}` leaves
+modulus at most one as soon as `A_0` dominates the decay constant. -/
+theorem abs_coneCoefficient_le_one
+    {a A0 M nu Ca : ℝ} (hnu : 0 ≤ nu) (hA0 : 0 < A0)
+    (hCaM : Ca * M ≤ A0)
+    (ha : |a| ≤ Ca * M * (1 + nu) ^ (-110 : ℝ)) :
+    |(-a) / (A0 * (1 + nu) ^ (-110 : ℝ))| ≤ 1 := by
+  have hpos : (0 : ℝ) < 1 + nu := by linarith
+  have hD : (0 : ℝ) < (1 + nu) ^ (-110 : ℝ) := Real.rpow_pos_of_pos hpos _
+  have hden : (0 : ℝ) < A0 * (1 + nu) ^ (-110 : ℝ) := mul_pos hA0 hD
+  rw [abs_div, abs_neg, abs_of_pos hden, div_le_one hden]
+  calc |a| ≤ Ca * M * (1 + nu) ^ (-110 : ℝ) := ha
+    _ ≤ A0 * (1 + nu) ^ (-110 : ℝ) := by
+        exact mul_le_mul_of_nonneg_right hCaM hD.le
+
+/-- The mode envelope weight `w_i(nu)` of `thm:cone` is nonnegative, so the
+decomposition's weights carry no sign.  (Distinct from `coneWeight`, which is
+the cone bump of the scale integrand.) -/
+theorem coneModeWeight_nonneg {cPsi alphaI A0 nu : ℝ}
+    (hcPsi : 0 < cPsi) (halpha : 0 ≤ alphaI) (hA0 : 0 ≤ A0) (hnu : 0 ≤ nu) :
+    0 ≤ cPsi ^ (-3 : ℝ) * alphaI * A0 * (1 + nu) ^ (-110 : ℝ) := by
+  have hpos : (0 : ℝ) < 1 + nu := by linarith
+  have h1 : (0 : ℝ) < cPsi ^ (-3 : ℝ) := Real.rpow_pos_of_pos hcPsi _
+  have h2 : (0 : ℝ) < (1 + nu) ^ (-110 : ℝ) := Real.rpow_pos_of_pos hpos _
+  positivity
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The transverse factors of the cone scale integrand
+
+Source: `thm:cone`, the absolute-convergence paragraph: the scale integral is
+bounded "using `0 <= Phi <= c_Psi` and `0 < g <= 1`".  Each inactive
+coordinate contributes the factor `g(.) Phi(.)`, which those two bounds pin
+between `0` and `c_Psi`; the two inactive coordinates therefore contribute at
+most `c_Psi^2`.
+-/
+
+/-- Each inactive coordinate's factor is between `0` and `c_Psi`. -/
+theorem gaussian_mul_conePhi_nonneg (x : ℝ) : 0 ≤ gaussian x * conePhi x :=
+  mul_nonneg (gaussian_nonneg x) (conePhi_nonneg x)
+
+theorem gaussian_mul_conePhi_le_cPsi (x : ℝ) : gaussian x * conePhi x ≤ cPsi := by
+  calc gaussian x * conePhi x ≤ 1 * conePhi x :=
+        mul_le_mul_of_nonneg_right (gaussian_le_one x) (conePhi_nonneg x)
+    _ = conePhi x := one_mul _
+    _ ≤ cPsi := conePhi_le_cPsi x
+
+/-- The two inactive coordinates together contribute at most `c_Psi^2`. -/
+theorem coneTransverseFactors_le_cPsi_sq (x y : ℝ) :
+    (gaussian x * conePhi x) * (gaussian y * conePhi y) ≤ cPsi ^ 2 := by
+  have hx := gaussian_mul_conePhi_le_cPsi x
+  have hy := gaussian_mul_conePhi_le_cPsi y
+  have hxn := gaussian_mul_conePhi_nonneg x
+  have hyn := gaussian_mul_conePhi_nonneg y
+  calc (gaussian x * conePhi x) * (gaussian y * conePhi y)
+      ≤ cPsi * cPsi := mul_le_mul hx hy hyn cPsi_pos.le
+    _ = cPsi ^ 2 := by ring
+
+/-- The full transverse contribution is nonnegative, so the scale integrand
+never changes sign. -/
+theorem coneTransverseFactors_nonneg (x y : ℝ) :
+    0 ≤ (gaussian x * conePhi x) * (gaussian y * conePhi y) :=
+  mul_nonneg (gaussian_mul_conePhi_nonneg x) (gaussian_mul_conePhi_nonneg y)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The frequency majorant of the cone decomposition
+
+Source: `thm:cone`, absolute-convergence paragraph: the product
+`|hat f_0(-zeta^1-zeta^2-zeta^3)| prod_j |hat f_j(zeta^j)|` is integrable on
+`E_9`, "bounded in integral by `||hat f_0||_infty prod_j ||hat f_j||_1`".  The
+zeroth factor is bounded pointwise and the remaining three separate, so Tonelli
+factors the triple integral.
+-/
+
+/-- Tonelli for a product of three functions of separate variables. -/
+theorem lintegral_triple_prod_mul
+    {X Y Z : Type*} [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
+    (μ : Measure X) (ν : Measure Y) (ρ : Measure Z)
+    [SFinite μ] [SFinite ν] [SFinite ρ]
+    {f : X → ℝ≥0∞} {g : Y → ℝ≥0∞} {h : Z → ℝ≥0∞}
+    (hf : AEMeasurable f μ) (hg : AEMeasurable g ν) (hh : AEMeasurable h ρ) :
+    ∫⁻ z : X × Y × Z, f z.1 * (g z.2.1 * h z.2.2) ∂(μ.prod (ν.prod ρ))
+      = (∫⁻ x, f x ∂μ) * ((∫⁻ y, g y ∂ν) * ∫⁻ z, h z ∂ρ) := by
+  have hg1 : AEMeasurable (fun w : Y × Z ↦ g w.1) (ν.prod ρ) :=
+    hg.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_fst
+  have hh1 : AEMeasurable (fun w : Y × Z ↦ h w.2) (ν.prod ρ) :=
+    hh.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd
+  have hgh : AEMeasurable (fun w : Y × Z ↦ g w.1 * h w.2) (ν.prod ρ) :=
+    hg1.mul hh1
+  calc ∫⁻ z : X × Y × Z, f z.1 * (g z.2.1 * h z.2.2) ∂(μ.prod (ν.prod ρ))
+      = ∫⁻ z : X × (Y × Z),
+          f z.1 * ((fun w : Y × Z ↦ g w.1 * h w.2) z.2) ∂(μ.prod (ν.prod ρ)) :=
+        rfl
+    _ = (∫⁻ x, f x ∂μ) * ∫⁻ w : Y × Z, g w.1 * h w.2 ∂(ν.prod ρ) :=
+        lintegral_prod_mul hf hgh
+    _ = (∫⁻ x, f x ∂μ) * ((∫⁻ y, g y ∂ν) * ∫⁻ z, h z ∂ρ) := by
+        rw [lintegral_prod_mul hg hh]
+
+/-- **The frequency majorant.**  A uniformly bounded zeroth factor against
+three separated factors integrates to the product of the bound and the three
+individual integrals. -/
+theorem lintegral_bounded_triple_prod_le
+    {X Y Z : Type*} [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
+    (μ : Measure X) (ν : Measure Y) (ρ : Measure Z)
+    [SFinite μ] [SFinite ν] [SFinite ρ]
+    {f : X → ℝ≥0∞} {g : Y → ℝ≥0∞} {h : Z → ℝ≥0∞} {B : ℝ≥0∞}
+    (hf : AEMeasurable f μ) (hg : AEMeasurable g ν) (hh : AEMeasurable h ρ)
+    (G : X × Y × Z → ℝ≥0∞) (hG : ∀ z, G z ≤ B) :
+    ∫⁻ z : X × Y × Z, G z * (f z.1 * (g z.2.1 * h z.2.2)) ∂(μ.prod (ν.prod ρ))
+      ≤ B * ((∫⁻ x, f x ∂μ) * ((∫⁻ y, g y ∂ν) * ∫⁻ z, h z ∂ρ)) := by
+  calc ∫⁻ z : X × Y × Z, G z * (f z.1 * (g z.2.1 * h z.2.2))
+          ∂(μ.prod (ν.prod ρ))
+      ≤ ∫⁻ z : X × Y × Z, B * (f z.1 * (g z.2.1 * h z.2.2))
+          ∂(μ.prod (ν.prod ρ)) :=
+        lintegral_mono fun z ↦ mul_le_mul' (hG z) le_rfl
+    _ = B * ∫⁻ z : X × Y × Z, f z.1 * (g z.2.1 * h z.2.2)
+          ∂(μ.prod (ν.prod ρ)) := by
+        have hA : AEMeasurable (fun z : X × Y × Z ↦ f z.1)
+            (μ.prod (ν.prod ρ)) :=
+          hf.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_fst
+        have hg1 : AEMeasurable (fun w : Y × Z ↦ g w.1) (ν.prod ρ) :=
+          hg.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_fst
+        have hh1 : AEMeasurable (fun w : Y × Z ↦ h w.2) (ν.prod ρ) :=
+          hh.comp_quasiMeasurePreserving Measure.quasiMeasurePreserving_snd
+        have hB : AEMeasurable (fun z : X × Y × Z ↦ g z.2.1 * h z.2.2)
+            (μ.prod (ν.prod ρ)) :=
+          (hg1.mul hh1).comp_quasiMeasurePreserving
+            Measure.quasiMeasurePreserving_snd
+        have hfull : AEMeasurable
+            (fun z : X × Y × Z ↦ f z.1 * (g z.2.1 * h z.2.2))
+            (μ.prod (ν.prod ρ)) := hA.mul hB
+        exact lintegral_const_mul'' _ hfull
+    _ = B * ((∫⁻ x, f x ∂μ) * ((∫⁻ y, g y ∂ν) * ∫⁻ z, h z ∂ρ)) := by
+        rw [lintegral_triple_prod_mul μ ν ρ hf hg hh]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The anisotropic scale substitution
+
+Source: `thm:cone`, absolute-convergence paragraph.  The scale integral is
+taken against `dt/t`, which is invariant up to the factor `1/alpha` under the
+anisotropic substitution `s = t^alpha`.  That factor is the `1/alpha_i` in the
+bound `c_Psi^3 / alpha_i`.
+-/
+
+/-- **The log-scale measure under an anisotropic substitution.**  Replacing the
+scale variable by `t^a` rescales the logarithmic scale integral by `1/a`. -/
+theorem integral_logScale_comp_rpow (F : ℝ → ℝ) {a : ℝ} (ha : 0 < a) :
+    (∫ x in Ioi (0 : ℝ), F (x ^ a) / x)
+      = a⁻¹ * ∫ y in Ioi (0 : ℝ), F y / y := by
+  have hane : a ≠ 0 := ne_of_gt ha
+  have h := integral_comp_rpow_Ioi_of_pos (g := fun y : ℝ ↦ F y / (a * y)) ha
+  have hleft : (∫ x in Ioi (0 : ℝ),
+        (a * x ^ (a - 1)) • (F (x ^ a) / (a * x ^ a)))
+      = ∫ x in Ioi (0 : ℝ), F (x ^ a) / x := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun x hx ↦ ?_
+    have hx0 : (0 : ℝ) < x := hx
+    have hxa : (0 : ℝ) < x ^ a := Real.rpow_pos_of_pos hx0 a
+    have hsub : x ^ (a - 1) = x ^ a / x := by
+      rw [Real.rpow_sub hx0, Real.rpow_one]
+    simp only [smul_eq_mul, hsub]
+    field_simp
+  have hright : (∫ y in Ioi (0 : ℝ), F y / (a * y))
+      = a⁻¹ * ∫ y in Ioi (0 : ℝ), F y / y := by
+    rw [← integral_const_mul]
+    refine setIntegral_congr_fun measurableSet_Ioi fun y hy ↦ ?_
+    field_simp
+  rw [← hleft, h, hright]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Dilation invariance of the logarithmic scale integral
+
+Source: `thm:cone`.  The scale integral is taken against `dt/t`, which is
+invariant under dilation of the scale variable; this is what makes the active
+coordinate's factor independent of the frequency `xi_i` whenever `xi_i` is
+nonzero, and it is why the source's bound depends only on `c_Psi` and
+`alpha_i`.
+-/
+
+/-- **Dilation invariance.**  The logarithmic scale integral is unchanged by
+rescaling the variable. -/
+theorem integral_logScale_comp_mul (F : ℝ → ℝ) {b : ℝ} (hb : 0 < b) :
+    (∫ x in Ioi (0 : ℝ), F (b * x) / x) = ∫ y in Ioi (0 : ℝ), F y / y := by
+  have hbne : b ≠ 0 := ne_of_gt hb
+  have h := integral_comp_mul_left_Ioi (fun y : ℝ ↦ b * F y / y) 0 hb
+  rw [mul_zero] at h
+  have hleft : (∫ x in Ioi (0 : ℝ), b * F (b * x) / (b * x))
+      = ∫ x in Ioi (0 : ℝ), F (b * x) / x := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun x hx ↦ ?_
+    have hx0 : (0 : ℝ) < x := hx
+    field_simp
+  have hright : (∫ y in Ioi (0 : ℝ), b * F y / y)
+      = b * ∫ y in Ioi (0 : ℝ), F y / y := by
+    rw [← integral_const_mul]
+    refine setIntegral_congr_fun measurableSet_Ioi fun y hy ↦ ?_
+    ring
+  rw [hleft] at h
+  rw [h, hright, smul_eq_mul, ← mul_assoc, inv_mul_cancel₀ hbne, one_mul]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The active coordinate contributes exactly `c_Psi`
+
+Source: `thm:cone`.  The active coordinate's scale factor is the full
+logarithmic integral of the cone bump, which is the normalization `c_Psi`
+itself: the bump vanishes outside `[1,2]`, so the integral over the whole
+positive half-line is the defining integral over `[0,2]`.
+-/
+
+/-- The cone bump vanishes beyond `2`. -/
+theorem coneWeight_eq_zero_of_two_lt {x : ℝ} (hx : 2 < x) : coneWeight x = 0 := by
+  refine coneWeight_eq_zero_of_two_le_abs ?_
+  rw [abs_of_pos (by linarith : (0 : ℝ) < x)]
+  linarith
+
+/-- **The active factor is `c_Psi`.**  The logarithmic scale integral of the
+cone bump over the whole positive half-line is the normalization constant. -/
+theorem integral_Ioi_coneWeight : (∫ x in Ioi (0 : ℝ), coneWeight x) = cPsi := by
+  have hrepl : ∀ x : ℝ, x ∈ Ioi (0 : ℝ) →
+      coneWeight x = (Ioc (0 : ℝ) 2).indicator coneWeight x := by
+    intro x hx
+    by_cases h2 : x ≤ 2
+    · rw [Set.indicator_of_mem (Set.mem_Ioc.mpr ⟨hx, h2⟩)]
+    · rw [Set.indicator_of_notMem (by
+        simp only [Set.mem_Ioc, not_and, not_le]
+        intro _
+        exact not_le.mp h2)]
+      exact coneWeight_eq_zero_of_two_lt (not_le.mp h2)
+  rw [setIntegral_congr_fun measurableSet_Ioi hrepl,
+    setIntegral_indicator measurableSet_Ioc]
+  have hinter : Ioi (0 : ℝ) ∩ Ioc 0 2 = Ioc (0 : ℝ) 2 := by
+    ext x
+    simp only [Set.mem_inter_iff, Set.mem_Ioi, Set.mem_Ioc]
+    tauto
+  rw [hinter, ← intervalIntegral.integral_of_le (by norm_num : (0 : ℝ) ≤ 2)]
+  rfl
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The active coordinate's scale integral
+
+Source: `thm:cone`, absolute-convergence paragraph.  Combining the anisotropic
+substitution, the dilation invariance of `dt/t`, and the identification of the
+cone bump's total logarithmic mass with `c_Psi`, the active coordinate's scale
+integral is exactly `c_Psi / alpha_i` whenever the active frequency is
+positive — independent of that frequency, as the source asserts.
+-/
+
+/-- The active coordinate's scale integrand, `Psi(x) h(x)^2`. -/
+def coneActiveProfile (x : ℝ) : ℝ := conePsi x * gaussianDeriv x ^ 2
+
+theorem coneActiveProfile_div (x : ℝ) (hx : x ≠ 0) :
+    coneActiveProfile x / x = coneWeight x := by
+  rw [coneActiveProfile, coneWeight_eq_source_integrand hx]
+
+/-- **The active scale integral.**  It equals `c_Psi / alpha` for every
+positive active frequency. -/
+theorem integral_coneActiveScale {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) :
+    (∫ t in Ioi (0 : ℝ), coneActiveProfile (xi * t ^ a) / t) = a⁻¹ * cPsi := by
+  -- substitute `s = t^a`
+  have hsub := integral_logScale_comp_rpow
+    (fun s : ℝ ↦ coneActiveProfile (xi * s)) ha
+  -- rescale by the frequency
+  have hdil := integral_logScale_comp_mul coneActiveProfile hxi
+  -- identify the remaining integral with the cone bump's total mass
+  have hmass : (∫ y in Ioi (0 : ℝ), coneActiveProfile y / y)
+      = ∫ y in Ioi (0 : ℝ), coneWeight y := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun y hy ↦ ?_
+    exact coneActiveProfile_div y (ne_of_gt hy)
+  rw [hsub, hdil, hmass, integral_Ioi_coneWeight]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The scale integral vanishes at zero active frequency
+
+Source: `thm:cone`, absolute-convergence paragraph: the scale integral "is at
+most `c_Psi^3 / alpha_i` when `xi_i` is nonzero and is zero when `xi_i = 0`".
+The second alternative holds because the cone cutoff vanishes on the unit
+interval, so at zero active frequency the whole integrand is identically zero.
+-/
+
+/-- The active profile is nonnegative. -/
+theorem coneActiveProfile_nonneg (x : ℝ) : 0 ≤ coneActiveProfile x :=
+  mul_nonneg (conePsi_nonneg x) (sq_nonneg _)
+
+/-- The active profile vanishes at the origin. -/
+theorem coneActiveProfile_zero : coneActiveProfile 0 = 0 := by
+  rw [coneActiveProfile, conePsi_eq_zero_of_abs_le_one (by norm_num), zero_mul]
+
+/-- **Zero active frequency gives a vanishing scale integral.** -/
+theorem integral_coneActiveScale_of_zero (a : ℝ) :
+    (∫ t in Ioi (0 : ℝ), coneActiveProfile (0 * t ^ a) / t) = 0 := by
+  have hzero : ∀ t : ℝ, coneActiveProfile (0 * t ^ a) / t = 0 := by
+    intro t
+    rw [zero_mul, coneActiveProfile_zero, zero_div]
+  simp only [hzero, integral_zero]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The active profile is supported in one dyadic annulus
+
+Source: `thm:cone`.  The cone cutoff vanishes on the unit interval and beyond
+`2`, so the active scale integrand is nonzero only while the scaled frequency
+lies strictly between `1` and `2`.  In the scale variable this confines the
+integrand to a compact subinterval of the positive half-line, which is what
+makes the scale integral absolutely convergent.
+-/
+
+theorem coneActiveProfile_eq_zero_of_abs_le_one {x : ℝ} (hx : |x| ≤ 1) :
+    coneActiveProfile x = 0 := by
+  rw [coneActiveProfile, conePsi_eq_zero_of_abs_le_one hx, zero_mul]
+
+theorem coneActiveProfile_eq_zero_of_two_le_abs {x : ℝ} (hx : 2 ≤ |x|) :
+    coneActiveProfile x = 0 := by
+  rw [coneActiveProfile, conePsi_eq_zero_of_two_le_abs hx, zero_mul]
+
+/-- **The scaled support.**  At a positive frequency and a positive scale, the
+active integrand vanishes unless the scaled frequency lies strictly between
+`1` and `2`. -/
+theorem coneActiveProfile_scaled_eq_zero {xi a t : ℝ} (hxi : 0 < xi) (ht : 0 < t)
+    (h : xi * t ^ a ≤ 1 ∨ 2 ≤ xi * t ^ a) :
+    coneActiveProfile (xi * t ^ a) = 0 := by
+  have hpos : 0 < xi * t ^ a := mul_pos hxi (Real.rpow_pos_of_pos ht a)
+  have habs : |xi * t ^ a| = xi * t ^ a := abs_of_pos hpos
+  rcases h with h | h
+  · exact coneActiveProfile_eq_zero_of_abs_le_one (by rw [habs]; exact h)
+  · exact coneActiveProfile_eq_zero_of_two_le_abs (by rw [habs]; exact h)
+
+/-- The contrapositive form used to locate the support in the scale variable. -/
+theorem coneActiveProfile_scaled_ne_zero {xi a t : ℝ} (hxi : 0 < xi) (ht : 0 < t)
+    (h : coneActiveProfile (xi * t ^ a) ≠ 0) :
+    1 < xi * t ^ a ∧ xi * t ^ a < 2 := by
+  by_contra hcon
+  refine h (coneActiveProfile_scaled_eq_zero hxi ht ?_)
+  rcases not_and_or.mp hcon with hc | hc
+  · exact Or.inl (not_lt.mp hc)
+  · exact Or.inr (not_lt.mp hc)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Absolute convergence of the active scale integral
+
+Source: `thm:cone`, absolute-convergence paragraph.  The active scale
+integrand is continuous on the positive half-line and supported in a compact
+subinterval of it, so it is integrable there.  This is what makes the scale
+integral absolutely convergent and licenses the Fubini interchange.
+-/
+
+theorem coneActiveProfile_continuous : Continuous coneActiveProfile := by
+  unfold coneActiveProfile
+  exact conePsi_contDiff.continuous.mul
+    ((((contDiff_const.mul contDiff_const).mul contDiff_id).mul
+      gaussian_contDiff).continuous.pow 2)
+
+/-- The active scale integrand is continuous away from the origin. -/
+theorem continuousOn_coneActiveScale {xi a : ℝ} :
+    ContinuousOn (fun t : ℝ ↦ coneActiveProfile (xi * t ^ a) / t) (Ioi 0) := by
+  refine ContinuousOn.div ?_ continuousOn_id (fun t ht ↦ ne_of_gt ht)
+  refine coneActiveProfile_continuous.comp_continuousOn ?_
+  exact continuousOn_const.mul (ContinuousOn.rpow_const continuousOn_id
+    (fun t ht ↦ Or.inl (ne_of_gt ht)))
+
+/-- The support of the active scale integrand, located in the scale variable. -/
+theorem coneActiveScale_mem_Ioo {xi a t : ℝ} (hxi : 0 < xi) (ha : 0 < a)
+    (ht : 0 < t) (h : coneActiveProfile (xi * t ^ a) ≠ 0) :
+    t ∈ Ioo ((xi⁻¹) ^ a⁻¹) ((2 / xi) ^ a⁻¹) := by
+  obtain ⟨h1, h2⟩ := coneActiveProfile_scaled_ne_zero hxi ht h
+  have hainv : 0 < a⁻¹ := inv_pos.mpr ha
+  have hta : (0 : ℝ) < t ^ a := Real.rpow_pos_of_pos ht a
+  have hback : (t ^ a) ^ a⁻¹ = t := by
+    rw [← Real.rpow_mul ht.le, mul_inv_cancel₀ (ne_of_gt ha), Real.rpow_one]
+  constructor
+  · have hlt : xi⁻¹ < t ^ a := by
+      rw [inv_lt_iff_one_lt_mul₀ hxi, mul_comm]
+      exact h1
+    calc (xi⁻¹) ^ a⁻¹ < (t ^ a) ^ a⁻¹ :=
+          Real.rpow_lt_rpow (le_of_lt (inv_pos.mpr hxi)) hlt hainv
+      _ = t := hback
+  · have hlt : t ^ a < 2 / xi := by
+      rw [lt_div_iff₀ hxi, mul_comm]
+      exact h2
+    calc t = (t ^ a) ^ a⁻¹ := hback.symm
+      _ < (2 / xi) ^ a⁻¹ := Real.rpow_lt_rpow hta.le hlt hainv
+
+/-- **Absolute convergence.**  The active scale integrand is integrable on the
+positive half-line. -/
+theorem integrableOn_coneActiveScale {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) :
+    IntegrableOn (fun t : ℝ ↦ coneActiveProfile (xi * t ^ a) / t) (Ioi 0) := by
+  classical
+  set f : ℝ → ℝ := fun t ↦ coneActiveProfile (xi * t ^ a) / t with hf
+  set c : ℝ := (xi⁻¹) ^ a⁻¹ with hc
+  set d : ℝ := (2 / xi) ^ a⁻¹ with hd
+  have hainv : 0 < a⁻¹ := inv_pos.mpr ha
+  have hcpos : 0 < c := Real.rpow_pos_of_pos (inv_pos.mpr hxi) _
+  have hcd : c < d := by
+    refine Real.rpow_lt_rpow (le_of_lt (inv_pos.mpr hxi)) ?_ hainv
+    rw [inv_eq_one_div, div_lt_div_iff_of_pos_right hxi]
+    norm_num
+  have hIoosub : Ioo c d ⊆ Ioi (0 : ℝ) := fun x hx ↦ lt_trans hcpos hx.1
+  -- the integrand agrees with its restriction to the support interval
+  have hagree : ∀ t ∈ Ioi (0 : ℝ), f t = (Ioo c d).indicator f t := by
+    intro t ht
+    by_cases hmem : t ∈ Ioo c d
+    · rw [Set.indicator_of_mem hmem]
+    · rw [Set.indicator_of_notMem hmem, hf]
+      by_cases hz : coneActiveProfile (xi * t ^ a) = 0
+      · show coneActiveProfile (xi * t ^ a) / t = 0
+        rw [hz, zero_div]
+      · exact absurd (coneActiveScale_mem_Ioo hxi ha ht hz) hmem
+  -- continuity on the closed support interval gives integrability there
+  have hIccsub : Icc c d ⊆ Ioi (0 : ℝ) := fun x hx ↦ lt_of_lt_of_le hcpos hx.1
+  have hIcc : IntegrableOn f (Icc c d) :=
+    (continuousOn_coneActiveScale.mono hIccsub).integrableOn_Icc
+  have hIoo : IntegrableOn f (Ioo c d) := hIcc.mono_set Ioo_subset_Icc_self
+  -- transfer to the half-line
+  have hind : IntegrableOn ((Ioo c d).indicator f) (Ioi 0) := by
+    rw [IntegrableOn, integrable_indicator_iff measurableSet_Ioo,
+      IntegrableOn, Measure.restrict_restrict measurableSet_Ioo,
+      Set.inter_eq_self_of_subset_left hIoosub]
+    exact hIoo
+  refine hind.congr ?_
+  filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+  exact (hagree t ht).symm
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The full cone scale bound
+
+Source: `thm:cone`, absolute-convergence paragraph: the nonnegative scale
+integral "is at most `c_Psi^3 / alpha_i` when `xi_i` is nonzero".  The two
+inactive coordinates contribute a factor at most `c_Psi^2`, and the active
+coordinate's own integral is exactly `c_Psi / alpha_i`.
+-/
+
+/-- The active scale integrand is nonnegative on the positive half-line. -/
+theorem coneActiveScale_nonneg {xi a t : ℝ} (ht : 0 < t) :
+    0 ≤ coneActiveProfile (xi * t ^ a) / t :=
+  div_nonneg (coneActiveProfile_nonneg _) ht.le
+
+/-- **The cone scale bound.**  A transverse factor bounded by `c_Psi^2`
+against the active scale integrand integrates to at most `c_Psi^3 / alpha`. -/
+theorem integral_coneScale_le
+    {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) (T : ℝ → ℝ)
+    (hTm : AEStronglyMeasurable T (volume.restrict (Ioi (0 : ℝ))))
+    (hT0 : ∀ t, 0 ≤ T t) (hTb : ∀ t, T t ≤ cPsi ^ 2) :
+    (∫ t in Ioi (0 : ℝ), T t * (coneActiveProfile (xi * t ^ a) / t))
+      ≤ cPsi ^ 2 * (a⁻¹ * cPsi) := by
+  set f : ℝ → ℝ := fun t ↦ coneActiveProfile (xi * t ^ a) / t with hf
+  have hact : IntegrableOn f (Ioi 0) := integrableOn_coneActiveScale hxi ha
+  have hmaj : IntegrableOn (fun t ↦ cPsi ^ 2 * f t) (Ioi 0) := hact.const_mul _
+  have hprod : IntegrableOn (fun t ↦ T t * f t) (Ioi 0) := by
+    refine Integrable.mono' hmaj (hTm.mul hact.aestronglyMeasurable) ?_
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    have hfn : 0 ≤ f t := coneActiveScale_nonneg ht
+    rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (hT0 t) hfn)]
+    exact mul_le_mul_of_nonneg_right (hTb t) hfn
+  calc (∫ t in Ioi (0 : ℝ), T t * f t)
+      ≤ ∫ t in Ioi (0 : ℝ), cPsi ^ 2 * f t := by
+        refine setIntegral_mono_on hprod hmaj measurableSet_Ioi fun t ht ↦ ?_
+        exact mul_le_mul_of_nonneg_right (hTb t) (coneActiveScale_nonneg ht)
+    _ = cPsi ^ 2 * ∫ t in Ioi (0 : ℝ), f t := integral_const_mul _ _
+    _ = cPsi ^ 2 * (a⁻¹ * cPsi) := by rw [integral_coneActiveScale hxi ha]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Passing a truncated bound to the full-scale form
+
+Source: `thm:extended_model`, closing sentence: "take the scale limit for
+Schwartz inputs by Lemma `lem:model_convergence`".  A bound holding uniformly
+over the finite scale truncations passes to the full-scale form, because the
+truncations converge to it.
+-/
+
+/-- **The scale limit preserves a uniform bound.** -/
+theorem abs_ModelFullForm_le_of_truncation_bound
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
+    (hcmeas : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1) {B : ℝ}
+    (hbound : ∀ N : ℕ, |ModelScaleTruncation α u c F N| ≤ B) :
+    |ModelFullForm α u c F| ≤ B := by
+  have htend : Tendsto (fun N ↦ ModelScaleTruncation α u c F N) atTop
+      (𝓝 (ModelFullForm α u c F)) :=
+    tendsto_ModelScaleTruncation_of_realSchwartz α u c F hcmeas hc
+  have habs : Tendsto (fun N ↦ |ModelScaleTruncation α u c F N|) atTop
+      (𝓝 |ModelFullForm α u c F|) :=
+    (continuous_abs.tendsto _).comp htend
+  exact le_of_tendsto habs (Filter.Eventually.of_forall hbound)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Coordinate relabeling preserves the source weight and the `L^p` norms
+
+Source: `lem:permutation`, closing sentence: "Lebesgue measure and Schwartz
+regularity are preserved, as are the corresponding `L^p` norms and
+`U(tilde u) = U(u)`."  Both assertions follow from the relabeling being a
+linear isometry of the underlying space, hence measure preserving.
+-/
+
+/-- **The `L^p` norms are preserved.**  Relabeling coordinates is measure
+preserving, so it leaves every `L^p` seminorm unchanged. -/
+theorem eLpNorm_comp_coordinatePermutation
+    (σ : Equiv.Perm (Fin 3)) (g : E3 → ℝ) (p : ℝ≥0∞)
+    (hg : AEStronglyMeasurable g volume) :
+    eLpNorm (g ∘ coordinatePermutation σ) p volume = eLpNorm g p volume :=
+  eLpNorm_comp_measurePreserving hg (coordinatePermutation_measurePreserving σ)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## From the integration-by-parts estimate to `eq:coefficient_decay`
+
+Source: `lem:fourier_series`.  Integrating by parts with `(1-Delta)^{55}`
+produces a bound of the shape `(1 + c|nu|^2)^{55} |a| <= K`.  The stated decay
+`eq:coefficient_decay` is in terms of `(1+|nu|)^{-110}`; the two are equivalent
+up to a constant, because `(1+r)^2` and `1 + c r^2` are comparable.
+-/
+
+/-- The elementary comparison behind the exponent bookkeeping. -/
+theorem one_add_sq_le_two_mul (r : ℝ) : (1 + r) ^ 2 ≤ 2 * (1 + r ^ 2) := by
+  nlinarith [sq_nonneg (r - 1)]
+
+/-- **`eq:coefficient_decay` from the weighted estimate.**  A bound with the
+quadratic weight `(1 + c r^2)^{55}` yields the stated decay of order `110`. -/
+theorem coefficient_decay_of_weighted_bound
+    {a K r c : ℝ} (hr : 0 ≤ r) (hc : 0 < c)
+    (h : (1 + c * r ^ 2) ^ (55 : ℕ) * |a| ≤ K) :
+    |a| ≤ K * (2 / min 1 c) ^ (55 : ℕ) * (1 + r) ^ (-110 : ℝ) := by
+  have hmc : 0 < min 1 c := lt_min one_pos hc
+  have hpos : (0 : ℝ) < 1 + r := by linarith
+  have hquad : (0 : ℝ) < 1 + c * r ^ 2 := by positivity
+  -- the quadratic weight dominates the linear one
+  have hstep : (1 + r) ^ 2 ≤ (2 / min 1 c) * (1 + c * r ^ 2) := by
+    have h1 : min 1 c * (1 + r ^ 2) ≤ 1 + c * r ^ 2 := by
+      have hm1 : min 1 c ≤ 1 := min_le_left _ _
+      have hmc' : min 1 c ≤ c := min_le_right _ _
+      nlinarith [sq_nonneg r]
+    have h2 : (1 + r) ^ 2 ≤ 2 * (1 + r ^ 2) := one_add_sq_le_two_mul r
+    rw [div_mul_eq_mul_div, le_div_iff₀ hmc]
+    nlinarith
+  have hpow : (1 + r) ^ (110 : ℕ)
+      ≤ (2 / min 1 c) ^ (55 : ℕ) * (1 + c * r ^ 2) ^ (55 : ℕ) := by
+    have hbase : ((1 + r) ^ 2) ^ (55 : ℕ)
+        ≤ ((2 / min 1 c) * (1 + c * r ^ 2)) ^ (55 : ℕ) :=
+      pow_le_pow_left₀ (by positivity) hstep _
+    calc (1 + r) ^ (110 : ℕ) = ((1 + r) ^ 2) ^ (55 : ℕ) := by ring
+      _ ≤ ((2 / min 1 c) * (1 + c * r ^ 2)) ^ (55 : ℕ) := hbase
+      _ = (2 / min 1 c) ^ (55 : ℕ) * (1 + c * r ^ 2) ^ (55 : ℕ) := mul_pow _ _ _
+  -- rearrange
+  have hmain : |a| * (1 + r) ^ (110 : ℕ) ≤ K * (2 / min 1 c) ^ (55 : ℕ) := by
+    calc |a| * (1 + r) ^ (110 : ℕ)
+        ≤ |a| * ((2 / min 1 c) ^ (55 : ℕ) * (1 + c * r ^ 2) ^ (55 : ℕ)) :=
+          mul_le_mul_of_nonneg_left hpow (abs_nonneg a)
+      _ = (2 / min 1 c) ^ (55 : ℕ) * ((1 + c * r ^ 2) ^ (55 : ℕ) * |a|) := by ring
+      _ ≤ (2 / min 1 c) ^ (55 : ℕ) * K :=
+          mul_le_mul_of_nonneg_left h (by positivity)
+      _ = K * (2 / min 1 c) ^ (55 : ℕ) := by ring
+  have hrw : (1 + r) ^ (-110 : ℝ) = ((1 + r) ^ (110 : ℕ))⁻¹ := by
+    rw [Real.rpow_neg hpos.le, ← Real.rpow_natCast (1 + r) 110]
+    norm_num
+  rw [hrw, ← div_eq_mul_inv, le_div_iff₀ (by positivity)]
+  exact hmain
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol's modulus factors into transverse and active parts
+
+Source: `thm:cone`, absolute-convergence paragraph.  The Fourier character has
+modulus one, so the mode symbol's modulus is exactly the product of the two
+inactive coordinates' factors `g(.) Phi(.)` and the active coordinate's
+`Psi(.) h(.)^2`.  This is the identity that lets the scale bound proved for
+those factors be applied to the symbol itself.
+-/
+
+/-- **The symbol's modulus.** -/
+theorem norm_thirdModeFrequencySymbol_eq
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3) :
+    ‖thirdModeFrequencySymbol α ν t ξ‖ =
+      (gaussian (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 0 * ξ 0)) *
+        (gaussian (t ^ α.weight 1 * ξ 1) * conePhi (t ^ α.weight 1 * ξ 1)) *
+        coneActiveProfile (t ^ α.weight 2 * ξ 2) := by
+  have hre : ∀ r : ℝ, 0 ≤ r → ‖(r : ℂ)‖ = r := by
+    intro r hr
+    rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hr]
+  unfold thirdModeFrequencySymbol coneActiveProfile
+  rw [norm_mul, norm_mul, norm_mul, Circle.norm_coe, mul_one,
+    norm_mul, norm_mul, norm_mul,
+    hre _ (gaussian_nonneg _), hre _ (conePhi_nonneg _),
+    hre _ (gaussian_nonneg _), hre _ (conePhi_nonneg _),
+    hre _ (conePsi_nonneg _), norm_pow, Complex.norm_real,
+    Real.norm_eq_abs, sq_abs]
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone scale bound applied to the mode symbol
+
+Source: `thm:cone`, absolute-convergence paragraph.  Combining the
+factorization of the symbol's modulus with the scale bound for its two kinds of
+factors gives the source's estimate `c_Psi^3 / alpha_i` for the symbol's own
+logarithmic scale integral.
+-/
+
+/-- The transverse part of the mode symbol's modulus, as a function of the
+scale. -/
+def coneTransverseAt (α : Anisotropy) (ξ : E3) (t : ℝ) : ℝ :=
+  (gaussian (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 0 * ξ 0)) *
+    (gaussian (t ^ α.weight 1 * ξ 1) * conePhi (t ^ α.weight 1 * ξ 1))
+
+theorem continuousOn_coneTransverseAt (α : Anisotropy) (ξ : E3) :
+    ContinuousOn (coneTransverseAt α ξ) (Ioi 0) := by
+  have hpow : ∀ i : Fin 3,
+      ContinuousOn (fun t : ℝ ↦ t ^ α.weight i * ξ i) (Ioi 0) := by
+    intro i
+    exact (continuous_id.pow _).continuousOn.mul continuousOn_const
+  unfold coneTransverseAt
+  exact ((gaussian_contDiff.continuous.comp_continuousOn (hpow 0)).mul
+      (conePhi_contDiff.continuous.comp_continuousOn (hpow 0))).mul
+    ((gaussian_contDiff.continuous.comp_continuousOn (hpow 1)).mul
+      (conePhi_contDiff.continuous.comp_continuousOn (hpow 1)))
+
+/-- **The symbol's scale integral obeys the source's bound.** -/
+theorem integral_norm_thirdModeFrequencySymbol_le
+    (α : Anisotropy) (ν : standardModeLattice) (ξ : E3) (hξ : 0 < ξ 2) :
+    (∫ t in Ioi (0 : ℝ), ‖thirdModeFrequencySymbol α ν t ξ‖ / t)
+      ≤ cPsi ^ 2 * (((α.weight 2 : ℕ) : ℝ)⁻¹ * cPsi) := by
+  have hw2 : (0 : ℝ) < ((α.weight 2 : ℕ) : ℝ) := by
+    exact_mod_cast α.weight_pos 2
+  have hrw : ∀ t ∈ Ioi (0 : ℝ),
+      ‖thirdModeFrequencySymbol α ν t ξ‖ / t
+        = coneTransverseAt α ξ t *
+            (coneActiveProfile (ξ 2 * t ^ ((α.weight 2 : ℕ) : ℝ)) / t) := by
+    intro t ht
+    have hcast : t ^ ((α.weight 2 : ℕ) : ℝ) = t ^ α.weight 2 :=
+      Real.rpow_natCast t _
+    rw [norm_thirdModeFrequencySymbol_eq, coneTransverseAt, hcast,
+      mul_comm (ξ 2) (t ^ α.weight 2)]
+    ring
+  rw [setIntegral_congr_fun measurableSet_Ioi hrw]
+  refine integral_coneScale_le hξ hw2 (coneTransverseAt α ξ) ?_ ?_ ?_
+  · exact (continuousOn_coneTransverseAt α ξ).aestronglyMeasurable
+      measurableSet_Ioi
+  · intro t
+    exact coneTransverseFactors_nonneg _ _
+  · intro t
+    exact coneTransverseFactors_le_cPsi_sq _ _
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Combining the uniform scale bound with the frequency majorant
+
+Source: `thm:cone`, absolute-convergence paragraph.  The scale bound
+`c_Psi^3 / alpha_i` holds uniformly in the frequency variable, so the joint
+frequency-scale integral is bounded by that constant times the frequency
+integral alone.  Together with the frequency majorant this is what justifies
+the Fubini interchange.
+-/
+
+/-- **Uniform inner bound.**  If the inner integral is bounded uniformly in the
+outer variable, the joint integral factors through that bound. -/
+theorem lintegral_mul_le_of_uniform_inner_bound
+    {X T : Type*} [MeasurableSpace X] [MeasurableSpace T]
+    (μ : Measure X) (ν : Measure T)
+    (G : X → ℝ≥0∞) (H : X → T → ℝ≥0∞) (S : ℝ≥0∞)
+    (hG : AEMeasurable G μ) (hH : ∀ x, AEMeasurable (H x) ν)
+    (hbound : ∀ x, (∫⁻ t, H x t ∂ν) ≤ S) :
+    (∫⁻ x, (∫⁻ t, G x * H x t ∂ν) ∂μ) ≤ S * ∫⁻ x, G x ∂μ := by
+  have hinner : ∀ x, (∫⁻ t, G x * H x t ∂ν) ≤ G x * S := by
+    intro x
+    rw [lintegral_const_mul'' _ (hH x)]
+    exact mul_le_mul' le_rfl (hbound x)
+  calc (∫⁻ x, (∫⁻ t, G x * H x t ∂ν) ∂μ)
+      ≤ ∫⁻ x, G x * S ∂μ := lintegral_mono hinner
+    _ = (∫⁻ x, G x ∂μ) * S := by
+        rw [lintegral_mul_const'' _ hG]
+    _ = S * ∫⁻ x, G x ∂μ := mul_comm _ _
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol vanishes at the origin
+
+Source: `def:multiplier`, which requires `m(0) = 0`, and `thm:cone`, whose
+one-mode bridge asks for an anisotropic multiplier certificate for the
+scale-dependent symbol.  The cone cutoff `Psi` vanishes on the unit interval,
+so in particular at the origin, and it divides the active factor of the mode
+symbol.
+-/
+
+/-- **The mode symbol vanishes at the origin**, which is the normalization
+`def:multiplier` imposes. -/
+theorem thirdModeFrequencySymbol_zero
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) :
+    thirdModeFrequencySymbol α ν t 0 = 0 := by
+  have hz : ((0 : E3)) 2 = 0 := rfl
+  have hpsi : conePsi (t ^ α.weight 2 * ((0 : E3)) 2) = 0 := by
+    rw [hz, mul_zero]
+    exact conePsi_eq_zero_of_abs_le_one (by norm_num)
+  unfold thirdModeFrequencySymbol
+  rw [hpsi]
+  push_cast
+  ring
+
+/-- The mode symbol is measurable, the second component of the certificate. -/
+theorem measurable_thirdModeFrequencySymbol
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (t : ℝ) :
+    Measurable (thirdModeFrequencySymbol α (standardModeOfInt ν) t) :=
+  (continuous_thirdModeFrequencySymbol α ν t).measurable
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol is supported where every dilated coordinate is small
+
+Source: `thm:cone` and `lem:symbol_derivatives`.  Both cutoffs carried by the
+mode symbol vanish once their argument reaches modulus two: the transverse
+cutoff `Phi` because its primitive has already saturated, and the active
+cutoff `Psi` by its own support.  So the symbol is nonzero only where every
+anisotropically dilated coordinate has modulus below two — the confinement
+that makes the anisotropic gauge comparable to the inverse scale, which is
+what a scale-uniform multiplier certificate needs.
+-/
+
+/-- **Support confinement of the mode symbol.** -/
+theorem abs_dilated_lt_two_of_thirdModeFrequencySymbol_ne_zero
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3)
+    (h : thirdModeFrequencySymbol α ν t ξ ≠ 0) (j : Fin 3) :
+    |t ^ α.weight j * ξ j| < 2 := by
+  by_contra hcon
+  rw [not_lt] at hcon
+  refine h ?_
+  unfold thirdModeFrequencySymbol
+  rcases (by omega : (j : ℕ) = 0 ∨ (j : ℕ) = 1 ∨ (j : ℕ) = 2) with hj | hj | hj
+  · have hj' : j = 0 := Fin.ext hj
+    subst hj'
+    rw [conePhi_eq_zero_of_two_le_abs hcon]
+    push_cast
+    ring
+  · have hj' : j = 1 := Fin.ext hj
+    subst hj'
+    rw [conePhi_eq_zero_of_two_le_abs hcon]
+    push_cast
+    ring
+  · have hj' : j = 2 := Fin.ext hj
+    subst hj'
+    rw [conePsi_eq_zero_of_two_le_abs hcon]
+    push_cast
+    ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## On its support the mode symbol's gauge is comparable to the inverse scale
+
+Source: `lem:symbol_derivatives`, which uses
+`rho(D_t^{-1} eta) = t^{-1} rho(eta)` to trade scale powers against gauge
+powers.  Here the trade is made in the direction the certificate needs: the
+support confinement bounds every dilated coordinate by two, and the
+gauge–dilation identity turns that into a bound on `t * rho(xi)`.
+-/
+
+/-- A quantity below two has every root below two. -/
+theorem rpow_inv_lt_two {a : ℝ} (ha : 0 ≤ a) (h : a < 2) {w : ℕ} (hw : 0 < w) :
+    a ^ ((w : ℝ))⁻¹ < 2 := by
+  have hwpos : (0 : ℝ) < (w : ℝ) := by exact_mod_cast hw
+  have hw1 : (1 : ℝ) ≤ (w : ℝ) := by exact_mod_cast hw
+  have hinvpos : 0 < ((w : ℝ))⁻¹ := inv_pos.mpr hwpos
+  have hinvle : ((w : ℝ))⁻¹ ≤ 1 := by
+    rw [inv_le_one_iff₀]
+    exact Or.inr hw1
+  calc a ^ ((w : ℝ))⁻¹ < (2 : ℝ) ^ ((w : ℝ))⁻¹ :=
+        Real.rpow_lt_rpow ha h hinvpos
+    _ ≤ (2 : ℝ) ^ (1 : ℝ) :=
+        Real.rpow_le_rpow_of_exponent_le (by norm_num) hinvle
+    _ = 2 := Real.rpow_one 2
+
+/-- **The gauge bound on the support.**  Where the mode symbol is nonzero, the
+scale times the anisotropic gauge is bounded by an absolute constant. -/
+theorem scale_mul_radius_lt_of_thirdModeFrequencySymbol_ne_zero
+    (α : Anisotropy) (ν : standardModeLattice) {t : ℝ} (ht : 0 < t) (ξ : E3)
+    (h : thirdModeFrequencySymbol α ν t ξ ≠ 0) :
+    t * α.radius ξ < 6 := by
+  have hsupp := abs_dilated_lt_two_of_thirdModeFrequencySymbol_ne_zero α ν t ξ h
+  rw [← α.radius_dilate ht ξ]
+  have hterm : ∀ i : Fin 3,
+      |(α.dilate t ξ) i| ^ ((α.weight i : ℝ))⁻¹ < 2 := by
+    intro i
+    refine rpow_inv_lt_two (abs_nonneg _) ?_ (α.weight_pos i)
+    have hcoord : (α.dilate t ξ) i = t ^ α.weight i * ξ i := rfl
+    rw [hcoord]
+    exact hsupp i
+  have hsum : ∑ i : Fin 3, |(α.dilate t ξ) i| ^ ((α.weight i : ℝ))⁻¹
+      < ∑ _i : Fin 3, (2 : ℝ) := by
+    refine Finset.sum_lt_sum_of_nonempty ⟨0, Finset.mem_univ 0⟩ ?_
+    intro i _
+    exact hterm i
+  calc α.radius (α.dilate t ξ)
+      = ∑ i : Fin 3, |(α.dilate t ξ) i| ^ ((α.weight i : ℝ))⁻¹ := rfl
+    _ < ∑ _i : Fin 3, (2 : ℝ) := hsum
+    _ = 6 := by simp; norm_num
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Off its support the mode symbol vanishes to infinite order
+
+Source: `lem:symbol_derivatives`, "In a neighborhood of `eta = 0` the cutoff
+and the zero-extended symbol vanish identically, so every derivative there is
+zero".  The same argument applies at the outer edge: the region where some
+dilated coordinate exceeds two in modulus is open and the symbol vanishes on
+it, so all its iterated derivatives vanish there as well.  This is what lets
+the anisotropic derivative bound be checked only on the support.
+-/
+
+/-- The symbol vanishes once some dilated coordinate reaches modulus two. -/
+theorem thirdModeFrequencySymbol_eq_zero_of_two_le
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3) (j : Fin 3)
+    (h : 2 ≤ |t ^ α.weight j * ξ j|) :
+    thirdModeFrequencySymbol α ν t ξ = 0 := by
+  by_contra hne
+  exact absurd
+    (abs_dilated_lt_two_of_thirdModeFrequencySymbol_ne_zero α ν t ξ hne j)
+    (not_lt.mpr h)
+
+/-- **Infinite-order vanishing off the support.**  Where some dilated
+coordinate strictly exceeds two, every iterated derivative of the symbol
+vanishes. -/
+theorem iteratedFDeriv_thirdModeFrequencySymbol_eq_zero_of_two_lt
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (t : ℝ) (ξ : E3) (j : Fin 3)
+    (h : 2 < |t ^ α.weight j * ξ j|) (k : ℕ) :
+    iteratedFDeriv ℝ k
+      (thirdModeFrequencySymbol α (standardModeOfInt ν) t) ξ = 0 := by
+  have hopen : IsOpen {η : E3 | 2 < |t ^ α.weight j * η j|} := by
+    have hcont : Continuous (fun η : E3 ↦ |t ^ α.weight j * η j|) := by
+      fun_prop
+    exact isOpen_lt continuous_const hcont
+  have hmem : ξ ∈ {η : E3 | 2 < |t ^ α.weight j * η j|} := h
+  have heq : thirdModeFrequencySymbol α (standardModeOfInt ν) t
+      =ᶠ[nhds ξ] (fun _ ↦ (0 : ℂ)) := by
+    filter_upwards [hopen.mem_nhds hmem] with η hη
+    exact thirdModeFrequencySymbol_eq_zero_of_two_le α (standardModeOfInt ν)
+      t η j (le_of_lt hη)
+  have hcongr := (heq.iteratedFDeriv ℝ k).self_of_nhds
+  rw [hcongr]
+  simp
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol is a fixed profile precomposed with the dilation
+
+Source: `lem:symbol_derivatives`, whose derivative expansion is organized
+around the rescaled symbol `m(D_t^{-1} eta)`.  The mode symbol has the same
+shape and in a sharper form: every occurrence of the frequency in it is
+through the dilated coordinate `t^{alpha_j} xi_j`, so the symbol is a single
+scale-independent profile precomposed with the anisotropic dilation.  All the
+scale dependence therefore sits in the linear map, where the chain rule turns
+it into the exact factor `t^{alpha . beta}` the derivative bound needs.
+-/
+
+/-- The scale-independent profile carried by one Fourier mode. -/
+def coneModeProfile (ν : standardModeLattice) (η : E3) : ℂ :=
+  ((gaussian (η 0) : ℂ) * (conePhi (η 0) : ℂ)) *
+    ((gaussian (η 1) : ℂ) * (conePhi (η 1) : ℂ)) *
+    ((gaussianDeriv (η 2) : ℂ) ^ 2 * (conePsi (η 2) : ℂ)) *
+    (Real.fourierChar
+      ((8 : ℝ)⁻¹ * (ν : E3) 0 * η 0 +
+        (8 : ℝ)⁻¹ * (ν : E3) 1 * η 1 +
+        (8 : ℝ)⁻¹ * (ν : E3) 2 * η 2 : ℝ) : ℂ)
+
+/-- **The factorization.**  The mode symbol is the profile precomposed with
+the anisotropic dilation. -/
+theorem thirdModeFrequencySymbol_eq_coneModeProfile_dilate
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3) :
+    thirdModeFrequencySymbol α ν t ξ = coneModeProfile ν (α.dilate t ξ) := by
+  rfl
+
+/-- The profile's modulus is the same product of transverse and active factors
+as the symbol's, now with no scale in sight. -/
+theorem norm_coneModeProfile_eq
+    (ν : standardModeLattice) (η : E3) :
+    ‖coneModeProfile ν η‖ =
+      (gaussian (η 0) * conePhi (η 0)) * (gaussian (η 1) * conePhi (η 1)) *
+        coneActiveProfile (η 2) := by
+  have hre : ∀ r : ℝ, 0 ≤ r → ‖(r : ℂ)‖ = r := by
+    intro r hr
+    rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hr]
+  unfold coneModeProfile coneActiveProfile
+  rw [norm_mul, norm_mul, norm_mul, Circle.norm_coe, mul_one,
+    norm_mul, norm_mul, norm_mul,
+    hre _ (gaussian_nonneg _), hre _ (conePhi_nonneg _),
+    hre _ (gaussian_nonneg _), hre _ (conePhi_nonneg _),
+    hre _ (conePsi_nonneg _), norm_pow, Complex.norm_real,
+    Real.norm_eq_abs, sq_abs]
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Smoothness of the mode profile
+
+Source: `lem:symbol_derivatives`, "Smoothness and plateau properties of the
+auxiliary cutoffs follow by differentiating their convolutions with the
+compactly supported smooth density".  Here every factor of the profile is
+smooth on all of the frequency space: the two cutoffs and the Gaussian and its
+derivative by the cutoff construction, and the Fourier character because it is
+a complex exponential of a linear functional.
+-/
+
+/-- The Fourier character of a linear coordinate combination is smooth. -/
+theorem contDiff_fourierChar_linear (c : Fin 3 → ℝ) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      (fun η : E3 ↦ (Real.fourierChar
+        (c 0 * η 0 + c 1 * η 1 + c 2 * η 2 : ℝ) : ℂ)) := by
+  have harg : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      (fun η : E3 ↦ (c 0 * η 0 + c 1 * η 1 + c 2 * η 2 : ℝ)) := by
+    have h0 : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun η : E3 ↦ η 0) :=
+      (contDiff_apply ℝ ℝ 0).comp PiLp.contDiff_ofLp
+    have h1 : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun η : E3 ↦ η 1) :=
+      (contDiff_apply ℝ ℝ 1).comp PiLp.contDiff_ofLp
+    have h2 : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun η : E3 ↦ η 2) :=
+      (contDiff_apply ℝ ℝ 2).comp PiLp.contDiff_ofLp
+    exact ((contDiff_const.mul h0).add (contDiff_const.mul h1)).add
+      (contDiff_const.mul h2)
+  have hexp : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      (fun s : ℝ ↦ Complex.exp ((2 * Real.pi * s : ℝ) * Complex.I)) := by
+    refine Complex.contDiff_exp.comp ?_
+    exact (Complex.ofRealCLM.contDiff.comp
+      (contDiff_const.mul contDiff_id)).mul contDiff_const
+  have hcomp := hexp.comp harg
+  simpa only [Function.comp_def, Real.fourierChar_apply] using hcomp
+
+/-- Each frequency coordinate is a smooth function of the frequency. -/
+theorem contDiff_frequencyCoord (j : Fin 3) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun η : E3 ↦ η j) :=
+  (contDiff_apply ℝ ℝ j).comp PiLp.contDiff_ofLp
+
+theorem contDiff_gaussianDeriv :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) gaussianDeriv := by
+  unfold gaussianDeriv
+  exact ((contDiff_const.mul contDiff_const).mul contDiff_id).mul
+    gaussian_contDiff
+
+/-- **The mode profile is smooth.** -/
+theorem contDiff_coneModeProfile (ν : standardModeLattice) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (coneModeProfile ν) := by
+  have hc : ∀ j : Fin 3, ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      (fun η : E3 ↦ η j) := contDiff_frequencyCoord
+  have hreal : ∀ (f : ℝ → ℝ), ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) f →
+      ∀ j : Fin 3, ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+        (fun η : E3 ↦ ((f (η j) : ℝ) : ℂ)) := by
+    intro f hf j
+    exact Complex.ofRealCLM.contDiff.comp (hf.comp (hc j))
+  have hchar := contDiff_fourierChar_linear
+    (fun j ↦ (8 : ℝ)⁻¹ * (ν : E3) j)
+  unfold coneModeProfile
+  refine ((((hreal _ gaussian_contDiff 0).mul (hreal _ conePhi_contDiff 0)).mul
+    ((hreal _ gaussian_contDiff 1).mul (hreal _ conePhi_contDiff 1))).mul
+    (((hreal _ contDiff_gaussianDeriv 2).pow 2).mul
+      (hreal _ conePsi_contDiff 2))).mul ?_
+  convert hchar using 2 with η
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode profile has compact support and bounded derivatives
+
+Source: `lem:symbol_derivatives`, "All cutoff derivatives are bounded on the
+fixed compact support".  The profile is smooth and vanishes once any
+coordinate reaches modulus two, so it has compact support; a smooth function
+with compact support has every iterated derivative bounded, uniformly over the
+whole space.
+-/
+
+/-- The profile vanishes once some coordinate reaches modulus two. -/
+theorem coneModeProfile_eq_zero_of_two_le
+    (ν : standardModeLattice) (η : E3) (j : Fin 3) (h : 2 ≤ |η j|) :
+    coneModeProfile ν η = 0 := by
+  unfold coneModeProfile
+  rcases (by omega : (j : ℕ) = 0 ∨ (j : ℕ) = 1 ∨ (j : ℕ) = 2) with hj | hj | hj
+  · have hj' : j = 0 := Fin.ext hj
+    subst hj'
+    rw [conePhi_eq_zero_of_two_le_abs h]
+    push_cast
+    ring
+  · have hj' : j = 1 := Fin.ext hj
+    subst hj'
+    rw [conePhi_eq_zero_of_two_le_abs h]
+    push_cast
+    ring
+  · have hj' : j = 2 := Fin.ext hj
+    subst hj'
+    rw [conePsi_eq_zero_of_two_le_abs h]
+    push_cast
+    ring
+
+/-- Small coordinates force a small Euclidean norm. -/
+theorem norm_le_four_of_coords_lt_two {η : E3} (h : ∀ j, |η j| < 2) :
+    ‖η‖ ≤ 4 := by
+  rw [EuclideanSpace.norm_eq]
+  have hsum : ∑ j : Fin 3, ‖η j‖ ^ 2 ≤ 16 := by
+    have hb : ∀ j : Fin 3, ‖η j‖ ^ 2 ≤ 4 := by
+      intro j
+      have := h j
+      rw [Real.norm_eq_abs]
+      nlinarith [abs_nonneg (η j)]
+    calc ∑ j : Fin 3, ‖η j‖ ^ 2 ≤ ∑ _j : Fin 3, (4 : ℝ) :=
+          Finset.sum_le_sum fun j _ ↦ hb j
+      _ = 12 := by simp; norm_num
+      _ ≤ 16 := by norm_num
+  calc Real.sqrt (∑ j : Fin 3, ‖η j‖ ^ 2) ≤ Real.sqrt 16 :=
+        Real.sqrt_le_sqrt hsum
+    _ = 4 := by
+        rw [show (16 : ℝ) = 4 ^ 2 by norm_num, Real.sqrt_sq (by norm_num)]
+
+/-- **The profile has compact support.** -/
+theorem hasCompactSupport_coneModeProfile (ν : standardModeLattice) :
+    HasCompactSupport (coneModeProfile ν) := by
+  refine HasCompactSupport.intro (isCompact_closedBall (0 : E3) 4) ?_
+  intro η hη
+  by_contra hne
+  refine hη ?_
+  have hcoord : ∀ j : Fin 3, |η j| < 2 := by
+    intro j
+    by_contra hj
+    exact hne (coneModeProfile_eq_zero_of_two_le ν η j (not_lt.mp hj))
+  simpa [Metric.mem_closedBall, dist_zero_right] using
+    norm_le_four_of_coords_lt_two hcoord
+
+/-- **Uniform derivative bounds for the profile**, which is the
+"all cutoff derivatives are bounded on the fixed compact support" of the
+source. -/
+theorem exists_bound_iteratedFDeriv_coneModeProfile
+    (ν : standardModeLattice) (k : ℕ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ η : E3,
+      ‖iteratedFDeriv ℝ k (coneModeProfile ν) η‖ ≤ C := by
+  have hcs : HasCompactSupport (iteratedFDeriv ℝ k (coneModeProfile ν)) :=
+    (hasCompactSupport_coneModeProfile ν).iteratedFDeriv k
+  have hle : (k : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by
+    exact_mod_cast le_top
+  have hcont : Continuous (iteratedFDeriv ℝ k (coneModeProfile ν)) :=
+    (contDiff_coneModeProfile ν).continuous_iteratedFDeriv hle
+  obtain ⟨C, hC⟩ := hcs.exists_bound_of_continuous hcont
+  refine ⟨max C 0, le_max_right _ _, fun η ↦ le_trans (hC η) (le_max_left _ _)⟩
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol's coordinate derivatives carry exactly the scale power
+
+Source: `lem:symbol_derivatives`, whose derivative expansion produces the
+factor `t^{-alpha . gamma}` from the anisotropic chain rule.  Here the symbol
+is a fixed profile precomposed with the dilation, so the chain rule is exact
+rather than an expansion: an ordered coordinate derivative of the symbol is
+the same derivative of the profile, evaluated at the dilated frequency, times
+precisely `t^{alpha . beta}`.
+-/
+
+/-- **The exact scale factor.**  An ordered coordinate derivative of the mode
+symbol is `t^{alpha . beta}` times the corresponding derivative of the
+profile. -/
+theorem iteratedFDeriv_thirdModeFrequencySymbol_coordinate
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3)
+    (k : ℕ) (σ : Fin k → Fin 3) :
+    (iteratedFDeriv ℝ k (thirdModeFrequencySymbol α ν t) ξ)
+        (fun r ↦ Anisotropy.coordinateDirection (σ r)) =
+      (t ^ α.derivativeWeight σ) •
+        ((iteratedFDeriv ℝ k (coneModeProfile ν) (α.dilate t ξ))
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))) := by
+  have hLcont : Continuous (α.dilateLinear t) :=
+    LinearMap.continuous_of_finiteDimensional (α.dilateLinear t)
+  let L : E3 →L[ℝ] E3 := { α.dilateLinear t with cont := hLcont }
+  have hLapply : ∀ z : E3, L z = α.dilate t z := fun z ↦ α.dilateLinear_apply t z
+  have hfun : thirdModeFrequencySymbol α ν t = coneModeProfile ν ∘ L := by
+    funext z
+    rw [Function.comp_apply, hLapply z]
+    exact thirdModeFrequencySymbol_eq_coneModeProfile_dilate α ν t z
+  have hle : (k : WithTop ℕ∞) ≤ ((⊤ : ℕ∞) : WithTop ℕ∞) := by exact_mod_cast le_top
+  rw [hfun, L.iteratedFDeriv_comp_right (contDiff_coneModeProfile ν) ξ hle]
+  rw [ContinuousMultilinearMap.compContinuousLinearMap_apply]
+  have hvec : (fun r ↦ L (Anisotropy.coordinateDirection (σ r)))
+      = fun r ↦ (t ^ α.weight (σ r)) • Anisotropy.coordinateDirection (σ r) := by
+    funext r
+    change α.dilateLinear t (Anisotropy.coordinateDirection (σ r)) = _
+    exact dilateLinear_coordinateDirection α t (σ r)
+  rw [hLapply ξ, hvec, ContinuousMultilinearMap.map_smul_univ]
+  congr 1
+  unfold Anisotropy.derivativeWeight
+  rw [Finset.prod_pow_eq_pow_sum]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The gauge bound on the closed box
+
+Source: `lem:symbol_derivatives`.  The derivative bound has to be checked
+wherever a derivative can be nonzero, which is the *closed* box rather than the
+open one, so the gauge bound is recorded there too.
+-/
+
+theorem rpow_inv_le_two {a : ℝ} (ha : 0 ≤ a) (h : a ≤ 2) {w : ℕ} (hw : 0 < w) :
+    a ^ ((w : ℝ))⁻¹ ≤ 2 := by
+  have hwpos : (0 : ℝ) < (w : ℝ) := by exact_mod_cast hw
+  have hw1 : (1 : ℝ) ≤ (w : ℝ) := by exact_mod_cast hw
+  have hinvpos : 0 < ((w : ℝ))⁻¹ := inv_pos.mpr hwpos
+  have hinvle : ((w : ℝ))⁻¹ ≤ 1 := by
+    rw [inv_le_one_iff₀]
+    exact Or.inr hw1
+  calc a ^ ((w : ℝ))⁻¹ ≤ (2 : ℝ) ^ ((w : ℝ))⁻¹ :=
+        Real.rpow_le_rpow ha h hinvpos.le
+    _ ≤ (2 : ℝ) ^ (1 : ℝ) :=
+        Real.rpow_le_rpow_of_exponent_le (by norm_num) hinvle
+    _ = 2 := Real.rpow_one 2
+
+/-- **The gauge bound on the closed box.** -/
+theorem scale_mul_radius_le_of_dilated_coords_le_two
+    (α : Anisotropy) {t : ℝ} (ht : 0 < t) (ξ : E3)
+    (h : ∀ j : Fin 3, |t ^ α.weight j * ξ j| ≤ 2) :
+    t * α.radius ξ ≤ 6 := by
+  rw [← α.radius_dilate ht ξ]
+  have hterm : ∀ i : Fin 3,
+      |(α.dilate t ξ) i| ^ ((α.weight i : ℝ))⁻¹ ≤ 2 := by
+    intro i
+    refine rpow_inv_le_two (abs_nonneg _) ?_ (α.weight_pos i)
+    have hcoord : (α.dilate t ξ) i = t ^ α.weight i * ξ i := rfl
+    rw [hcoord]
+    exact h i
+  calc α.radius (α.dilate t ξ)
+      = ∑ i : Fin 3, |(α.dilate t ξ) i| ^ ((α.weight i : ℝ))⁻¹ := rfl
+    _ ≤ ∑ _i : Fin 3, (2 : ℝ) := Finset.sum_le_sum fun i _ ↦ hterm i
+    _ = 6 := by simp; norm_num
+
+theorem norm_coordinateDirection (i : Fin 3) :
+    ‖Anisotropy.coordinateDirection i‖ = 1 := by
+  unfold Anisotropy.coordinateDirection
+  simp [EuclideanSpace.basisFun]
+
+/-- **The anisotropic derivative bound for the mode symbol.**  Combining the
+exact scale factor, the uniform profile bound and the gauge bound on the
+closed box gives `eq:symbol` for the mode symbol, with a constant independent
+of the scale. -/
+theorem norm_iteratedFDeriv_thirdModeFrequencySymbol_coordinate_le
+    (α : Anisotropy) (ν : Fin 3 → ℤ) {t : ℝ} (ht : 0 < t) {ξ : E3}
+    (hξ : ξ ≠ 0) (k : ℕ) (σ : Fin k → Fin 3) {C : ℝ} (hC : 0 ≤ C)
+    (hprof : ∀ η : E3,
+      ‖iteratedFDeriv ℝ k (coneModeProfile (standardModeOfInt ν)) η‖ ≤ C) :
+    ‖(iteratedFDeriv ℝ k
+        (thirdModeFrequencySymbol α (standardModeOfInt ν) t) ξ)
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))‖
+      ≤ (C * 6 ^ α.derivativeWeight σ) *
+          (α.radius ξ) ^ (-((α.derivativeWeight σ : ℕ) : ℝ)) := by
+  set d : ℕ := α.derivativeWeight σ with hd
+  have hrad : 0 < α.radius ξ := radius_pos_of_ne_zero α hξ
+  have hrpow : (α.radius ξ) ^ (-((d : ℕ) : ℝ)) = ((α.radius ξ) ^ d)⁻¹ := by
+    rw [Real.rpow_neg hrad.le, Real.rpow_natCast]
+  by_cases hbox : ∀ j : Fin 3, |t ^ α.weight j * ξ j| ≤ 2
+  · -- on the closed box the gauge is comparable to the inverse scale
+    have hgauge : t * α.radius ξ ≤ 6 :=
+      scale_mul_radius_le_of_dilated_coords_le_two α ht ξ hbox
+    have hchain := iteratedFDeriv_thirdModeFrequencySymbol_coordinate
+      α (standardModeOfInt ν) t ξ k σ
+    have hvec : ‖(iteratedFDeriv ℝ k
+        (coneModeProfile (standardModeOfInt ν)) (α.dilate t ξ))
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))‖ ≤ C := by
+      refine le_trans (ContinuousMultilinearMap.le_opNorm _ _) ?_
+      have hprod : ∏ r : Fin k, ‖Anisotropy.coordinateDirection (σ r)‖ = 1 := by
+        rw [Finset.prod_congr rfl fun r _ ↦ norm_coordinateDirection (σ r)]
+        simp
+      rw [hprod, mul_one]
+      exact hprof _
+    have hLHS : ‖(iteratedFDeriv ℝ k
+        (thirdModeFrequencySymbol α (standardModeOfInt ν) t) ξ)
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))‖ ≤ t ^ d * C := by
+      rw [hchain, norm_smul, Real.norm_eq_abs, abs_of_pos (pow_pos ht d)]
+      exact mul_le_mul_of_nonneg_left hvec (pow_pos ht d).le
+    refine le_trans hLHS ?_
+    rw [hrpow, ← div_eq_mul_inv, le_div_iff₀ (pow_pos hrad d)]
+    have hpow : (t * α.radius ξ) ^ d ≤ 6 ^ d :=
+      pow_le_pow_left₀ (by positivity) hgauge d
+    calc t ^ d * C * (α.radius ξ) ^ d
+        = C * (t * α.radius ξ) ^ d := by rw [mul_pow]; ring
+      _ ≤ C * 6 ^ d := mul_le_mul_of_nonneg_left hpow hC
+  · -- off the closed box every derivative vanishes
+    push_neg at hbox
+    obtain ⟨j, hj⟩ := hbox
+    rw [iteratedFDeriv_thirdModeFrequencySymbol_eq_zero_of_two_lt
+      α ν t ξ j hj k]
+    simp only [ContinuousMultilinearMap.zero_apply, norm_zero]
+    positivity
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The scale-uniform multiplier certificate for the mode symbol
+
+Source: `thm:cone`, whose bridge from the frequency representation to
+`multiplierForm` is stated conditionally on "a uniform anisotropic multiplier
+certificate for the scale-dependent cone symbol at every positive scale".
+All four components are available, so the certificate is assembled here, with
+a constant depending only on the anisotropy and the mode.
+-/
+
+/-- The mode symbol is smooth, being a fixed profile composed with a linear
+map. -/
+theorem contDiff_thirdModeFrequencySymbol
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      (thirdModeFrequencySymbol α ν t) := by
+  have hLcont : Continuous (α.dilateLinear t) :=
+    LinearMap.continuous_of_finiteDimensional (α.dilateLinear t)
+  let L : E3 →L[ℝ] E3 := { α.dilateLinear t with cont := hLcont }
+  have hLapply : ∀ z : E3, L z = α.dilate t z := fun z ↦ α.dilateLinear_apply t z
+  have hfun : thirdModeFrequencySymbol α ν t = coneModeProfile ν ∘ L := by
+    funext z
+    rw [Function.comp_apply, hLapply z]
+    exact thirdModeFrequencySymbol_eq_coneModeProfile_dilate α ν t z
+  rw [hfun]
+  exact (contDiff_coneModeProfile ν).comp L.contDiff
+
+/-- An ordered coordinate derivative has anisotropic order at most the number
+of derivatives times the total weight. -/
+theorem derivativeWeight_le (α : Anisotropy) {k : ℕ} (σ : Fin k → Fin 3) :
+    α.derivativeWeight σ ≤ k * (α.weight 0 + α.weight 1 + α.weight 2) := by
+  unfold Anisotropy.derivativeWeight
+  have hb : ∀ r : Fin k,
+      α.weight (σ r) ≤ α.weight 0 + α.weight 1 + α.weight 2 := by
+    intro r
+    rcases (by omega : (σ r : ℕ) = 0 ∨ (σ r : ℕ) = 1 ∨ (σ r : ℕ) = 2) with
+      h | h | h
+    · have : σ r = 0 := Fin.ext h
+      rw [this]; omega
+    · have : σ r = 1 := Fin.ext h
+      rw [this]; omega
+    · have : σ r = 2 := Fin.ext h
+      rw [this]; omega
+  calc ∑ r : Fin k, α.weight (σ r)
+      ≤ ∑ _r : Fin k, (α.weight 0 + α.weight 1 + α.weight 2) :=
+        Finset.sum_le_sum fun r _ ↦ hb r
+    _ = k * (α.weight 0 + α.weight 1 + α.weight 2) := by
+        rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
+
+/-- **The scale-uniform multiplier certificate.**  There is a constant,
+depending only on the anisotropy and the mode, for which the mode symbol is an
+anisotropic multiplier at every positive scale.  This is the hypothesis the
+one-mode and cone bridges of `thm:cone` were left conditional on. -/
+theorem exists_isAnisotropicMultiplier_thirdModeFrequencySymbol
+    (α : Anisotropy) (ν : Fin 3 → ℤ) :
+    ∃ M : ℝ, ∀ t : ℝ, 0 < t →
+      Anisotropy.IsAnisotropicMultiplier α M
+        (thirdModeFrequencySymbol α (standardModeOfInt ν) t) := by
+  classical
+  choose Ck hCk0 hCk using fun k : ℕ ↦
+    exists_bound_iteratedFDeriv_coneModeProfile (standardModeOfInt ν) k
+  set W : ℕ := α.weight 0 + α.weight 1 + α.weight 2 with hW
+  set Csum : ℝ := ∑ k ∈ Finset.range 111, Ck k with hCsum
+  have hCsum0 : 0 ≤ Csum := Finset.sum_nonneg fun k _ ↦ hCk0 k
+  refine ⟨Csum * 6 ^ (110 * W), fun t ht ↦ ?_⟩
+  have hsmooth := contDiff_thirdModeFrequencySymbol α (standardModeOfInt ν) t
+  refine ⟨by positivity, measurable_thirdModeFrequencySymbol α ν t,
+    thirdModeFrequencySymbol_zero α (standardModeOfInt ν) t, ?_, ?_⟩
+  · exact (hsmooth.of_le ENat.LEInfty.out).contDiffOn
+  · intro k hk ξ hξ σ
+    have hbound := norm_iteratedFDeriv_thirdModeFrequencySymbol_coordinate_le
+      α ν ht hξ k σ (hCk0 k) (hCk k)
+    refine le_trans hbound ?_
+    have hrad : 0 < α.radius ξ := radius_pos_of_ne_zero α hξ
+    have hrpownn : 0 ≤ (α.radius ξ) ^ (-((α.derivativeWeight σ : ℕ) : ℝ)) :=
+      Real.rpow_nonneg hrad.le _
+    refine mul_le_mul_of_nonneg_right ?_ hrpownn
+    have hCkle : Ck k ≤ Csum := by
+      refine Finset.single_le_sum (f := Ck) (fun i _ ↦ hCk0 i) ?_
+      exact Finset.mem_range.mpr (by omega)
+    have hdle : α.derivativeWeight σ ≤ 110 * W := by
+      refine le_trans (derivativeWeight_le α σ) ?_
+      exact Nat.mul_le_mul_right _ hk
+    have hpowle : (6 : ℝ) ^ α.derivativeWeight σ ≤ 6 ^ (110 * W) :=
+      pow_le_pow_right₀ (by norm_num) hdle
+    exact mul_le_mul hCkle hpowle (by positivity) hCsum0
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The one-mode bridge, unconditionally
+
+Source: `thm:cone`, lines 2998--3015.  The bridge from the one-mode multiplier
+form to the literal active model form was proved conditionally on a
+scale-uniform anisotropic multiplier certificate for the mode symbol.  That
+certificate is now available, so the bridge holds outright.
+-/
+
+/-- **The one-mode bridge with no remaining hypothesis.** -/
+theorem thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm_of_int
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (a : ℝ → ℂ)
+    (F : ModelComplexSchwartzInput) :
+    thirdModeMultiplierFullForm α (standardModeOfInt ν) a F =
+      LiteralActiveModelFullForm α 2
+        (standardModeTranslate (standardModeOfInt ν)) (-a) F := by
+  obtain ⟨M, hM⟩ :=
+    exists_isAnisotropicMultiplier_thirdModeFrequencySymbol α ν
+  exact thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm
+    α M (standardModeOfInt ν) a F hM
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Support and vanishing for the reconstructed cone symbol
+
+Source: `thm:cone`.  The cone symbol is the multiplier itself times the same
+cone cutoffs at dilated coordinates, so its support is confined exactly as the
+mode symbol's is, and it vanishes at the origin for the same reason — the
+active cutoff is zero there.  Unlike the mode symbol it does not factor
+through a scale-independent profile, since the multiplier is not precomposed
+with the dilation; the derivative bound therefore needs the source's Leibniz
+expansion rather than a chain rule.
+-/
+
+/-- The cone symbol vanishes at the origin. -/
+theorem thirdConeFrequencySymbol_zero
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) :
+    thirdConeFrequencySymbol α m t 0 = 0 := by
+  have hd : α.dilate t (0 : E3) = 0 := by
+    ext i
+    simp [Anisotropy.dilate]
+  have hpsi : conePsi (α.dilate t (0 : E3) 2) = 0 := by
+    rw [hd]
+    exact conePsi_eq_zero_of_abs_le_one (by norm_num)
+  unfold thirdConeFrequencySymbol
+  rw [hpsi]
+  push_cast
+  ring
+
+/-- **Support confinement of the cone symbol.** -/
+theorem abs_dilated_lt_two_of_thirdConeFrequencySymbol_ne_zero
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (ξ : E3)
+    (h : thirdConeFrequencySymbol α m t ξ ≠ 0) (j : Fin 3) :
+    |α.dilate t ξ j| < 2 := by
+  by_contra hcon
+  rw [not_lt] at hcon
+  refine h ?_
+  unfold thirdConeFrequencySymbol
+  rcases (by omega : (j : ℕ) = 0 ∨ (j : ℕ) = 1 ∨ (j : ℕ) = 2) with hj | hj | hj
+  · have hj' : j = 0 := Fin.ext hj
+    subst hj'
+    rw [conePhi_eq_zero_of_two_le_abs hcon]
+    push_cast
+    ring
+  · have hj' : j = 1 := Fin.ext hj
+    subst hj'
+    rw [conePhi_eq_zero_of_two_le_abs hcon]
+    push_cast
+    ring
+  · have hj' : j = 2 := Fin.ext hj
+    subst hj'
+    rw [conePsi_eq_zero_of_two_le_abs hcon]
+    push_cast
+    ring
+
+/-- The cone symbol vanishes once some dilated coordinate reaches modulus
+two. -/
+theorem thirdConeFrequencySymbol_eq_zero_of_two_le
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (ξ : E3) (j : Fin 3)
+    (h : 2 ≤ |α.dilate t ξ j|) :
+    thirdConeFrequencySymbol α m t ξ = 0 := by
+  by_contra hne
+  exact absurd
+    (abs_dilated_lt_two_of_thirdConeFrequencySymbol_ne_zero α m t ξ hne j)
+    (not_lt.mpr h)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Infinite-order vanishing of the cone symbol off its support
+
+Source: `lem:symbol_derivatives`.  As for the mode symbol, the region where
+some dilated coordinate strictly exceeds two is open and the cone symbol
+vanishes on it, so every iterated derivative vanishes there.  This holds
+regardless of any regularity of the multiplier, since only the openness of the
+region and the vanishing of the cutoffs are used.
+-/
+
+/-- **Infinite-order vanishing off the support.** -/
+theorem iteratedFDeriv_thirdConeFrequencySymbol_eq_zero_of_two_lt
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (ξ : E3) (j : Fin 3)
+    (h : 2 < |α.dilate t ξ j|) (k : ℕ) :
+    iteratedFDeriv ℝ k (thirdConeFrequencySymbol α m t) ξ = 0 := by
+  have hcont : Continuous (fun η : E3 ↦ |α.dilate t η j|) := by
+    have : Continuous (fun η : E3 ↦ α.dilate t η j) := by
+      have hco : ∀ η : E3, α.dilate t η j = t ^ α.weight j * η j := fun _ ↦ rfl
+      simp only [hco]
+      fun_prop
+    exact this.abs
+  have hopen : IsOpen {η : E3 | 2 < |α.dilate t η j|} :=
+    isOpen_lt continuous_const hcont
+  have hmem : ξ ∈ {η : E3 | 2 < |α.dilate t η j|} := h
+  have heq : thirdConeFrequencySymbol α m t =ᶠ[nhds ξ] (fun _ ↦ (0 : ℂ)) := by
+    filter_upwards [hopen.mem_nhds hmem] with η hη
+    exact thirdConeFrequencySymbol_eq_zero_of_two_le α m t η j (le_of_lt hη)
+  have hcongr := (heq.iteratedFDeriv ℝ k).self_of_nhds
+  rw [hcongr]
+  simp
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone symbol as a precomposition
+
+Source: `lem:symbol_derivatives`, whose rescaled symbol is
+`m(D_t^{-1} eta) chi_i(eta)`.  The reconstructed cone symbol has exactly that
+shape after the substitution `eta = D_t xi`, since `m(D_t^{-1}(D_t xi)) = m(xi)`.
+Naming the rescaled object makes the cone symbol a precomposition with the
+dilation, so the chain rule supplies the direction sensitivity and only a
+direction-insensitive bound on the rescaled object is needed.
+-/
+
+/-- The rescaled cone symbol, in the shape of `lem:symbol_derivatives`. -/
+def coneScaleProfile (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (η : E3) : ℂ :=
+  m (α.dilate t⁻¹ η) *
+    (conePsi (η 2) * gaussianDeriv (η 2) ^ 2 : ℂ) *
+    ((conePhi (η 0) : ℂ) * (conePhi (η 1) : ℂ))
+
+/-- **The cone symbol is a precomposition with the dilation.** -/
+theorem thirdConeFrequencySymbol_eq_coneScaleProfile_dilate
+    (α : Anisotropy) (m : E3 → ℂ) {t : ℝ} (ht : t ≠ 0) (ξ : E3) :
+    thirdConeFrequencySymbol α m t ξ
+      = coneScaleProfile α m t (α.dilate t ξ) := by
+  unfold thirdConeFrequencySymbol coneScaleProfile
+  rw [α.dilate_inv_apply ht ξ]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The rescaled cone symbol in terms of the localized symbol
+
+Source: `lem:symbol_derivatives`.  The cancellation identity already proved for
+the localized symbol says that multiplying it by the active cone factor and the
+passive Gaussian-times-cutoff factors reproduces the rescaled multiplier times
+the bare cone factors.  At the third active coordinate that right-hand side is
+exactly the rescaled cone symbol, so the rescaled cone symbol is the localized
+symbol times a fixed smooth factor — and the localized symbol's derivatives are
+already bounded uniformly.
+-/
+
+/-- **The rescaled cone symbol factors through the localized symbol.** -/
+theorem coneScaleProfile_eq_localizedSymbol_mul
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (η : E3) :
+    coneScaleProfile α m t η =
+      localizedSymbol α m 2 t η *
+          (conePsi (η 2) * gaussianDeriv (η 2) ^ 2 : ℂ) *
+        ∏ j : Fin 3, if j = 2 then 1 else (gaussian (η j) * conePhi (η j) : ℂ) := by
+  rw [localizedSymbol_cone_factor_identity α m 2 t η]
+  unfold coneScaleProfile
+  rw [Fin.prod_univ_three]
+  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
+    if_neg (by decide : ¬((1 : Fin 3) = 2)),
+    if_true, mul_one]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone symbol's extra factor is the zero mode profile
+
+Source: `thm:cone`.  The factor accompanying the localized symbol in the
+rescaled cone symbol is the product of the active cone factor and the two
+transverse Gaussian-times-cutoff factors — which is exactly the mode profile at
+the zero mode, since the Fourier character is then constant.  Its derivative
+bounds and smoothness are therefore already available.
+-/
+
+theorem coneModeProfile_zero_mode (η : E3) :
+    coneModeProfile 0 η =
+      (gaussian (η 0) * conePhi (η 0) : ℂ) *
+        (gaussian (η 1) * conePhi (η 1) : ℂ) *
+        ((gaussianDeriv (η 2) : ℂ) ^ 2 * (conePsi (η 2) : ℂ)) := by
+  unfold coneModeProfile
+  have hz : ∀ j : Fin 3, ((0 : standardModeLattice) : E3) j = 0 := by
+    intro j
+    simp
+  rw [hz 0, hz 1, hz 2]
+  norm_num
+
+/-- **The rescaled cone symbol is the localized symbol times the zero mode
+profile.** -/
+theorem coneScaleProfile_eq_localizedSymbol_mul_zeroProfile
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (η : E3) :
+    coneScaleProfile α m t η =
+      localizedSymbol α m 2 t η * coneModeProfile 0 η := by
+  rw [coneScaleProfile_eq_localizedSymbol_mul α m t η, coneModeProfile_zero_mode,
+    Fin.prod_univ_three]
+  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
+    if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one]
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Uniform derivative bounds for the rescaled cone symbol
+
+Source: `lem:symbol_derivatives`.  The rescaled cone symbol is the localized
+symbol times the zero mode profile.  Both factors are smooth with uniformly
+bounded iterated derivatives — the first by the source's own Leibniz argument,
+the second by compact support — so the product's derivatives are bounded by the
+norm-based product inequality, uniformly in the frequency.
+-/
+
+/-- The rescaled cone symbol is smooth. -/
+theorem coneScaleProfile_contDiff
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) {t : ℝ} (ht : 0 < t) :
+    ContDiff ℝ 110 (coneScaleProfile α m t) := by
+  have hfun : coneScaleProfile α m t
+      = fun η ↦ localizedSymbol α m 2 t η * coneModeProfile 0 η := by
+    funext η
+    exact coneScaleProfile_eq_localizedSymbol_mul_zeroProfile α m t η
+  rw [hfun]
+  exact (localizedSymbol_contDiff α M m hm 2 ht).mul
+    ((contDiff_coneModeProfile 0).of_le ENat.LEInfty.out)
+
+/-- **Uniform derivative bounds for the rescaled cone symbol.** -/
+theorem exists_bound_iteratedFDeriv_coneScaleProfile
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) {t : ℝ} (ht : 0 < t)
+    (k : ℕ) (hk : k ≤ 110) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ η : E3,
+      ‖iteratedFDeriv ℝ k (coneScaleProfile α m t) η‖ ≤ C := by
+  classical
+  have hMnn : 0 ≤ M := hm.nonneg
+  have hall : ∀ n : ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ η : E3, n ≤ 110 →
+      ‖iteratedFDeriv ℝ n (localizedSymbol α m 2 t) η‖ ≤ C * M := by
+    intro n
+    by_cases hn : n ≤ 110
+    · obtain ⟨C, hC0, hC⟩ :=
+        exists_localizedSymbol_derivative_bound α M m hm 2 ht n hn
+      exact ⟨C, hC0, fun η _ ↦ hC η⟩
+    · exact ⟨0, le_rfl, fun η hcon ↦ absurd hcon hn⟩
+  choose C₁ hC₁0 hC₁ using hall
+  choose C₂ hC₂0 hC₂ using fun n : ℕ ↦
+    exists_bound_iteratedFDeriv_coneModeProfile 0 n
+  have hsmooth₁ : ContDiff ℝ 110 (localizedSymbol α m 2 t) :=
+    localizedSymbol_contDiff α M m hm 2 ht
+  have hsmooth₂ : ContDiff ℝ 110 (coneModeProfile (0 : standardModeLattice)) :=
+    (contDiff_coneModeProfile 0).of_le ENat.LEInfty.out
+  have hterm0 : ∀ i : ℕ, 0 ≤ (k.choose i : ℝ) * (C₁ i * M) * C₂ (k - i) := by
+    intro i
+    refine mul_nonneg (mul_nonneg (by positivity) ?_) (hC₂0 (k - i))
+    exact mul_nonneg (hC₁0 i) hMnn
+  refine ⟨∑ i ∈ Finset.range (k + 1),
+    (k.choose i : ℝ) * (C₁ i * M) * C₂ (k - i), ?_, fun η ↦ ?_⟩
+  · exact Finset.sum_nonneg fun i _ ↦ hterm0 i
+  · have hfun : coneScaleProfile α m t
+        = fun z ↦ localizedSymbol α m 2 t z * coneModeProfile 0 z := by
+      funext z
+      exact coneScaleProfile_eq_localizedSymbol_mul_zeroProfile α m t z
+    rw [hfun]
+    refine le_trans (norm_iteratedFDeriv_mul_le hsmooth₁ hsmooth₂ η
+      (by exact_mod_cast hk)) ?_
+    refine Finset.sum_le_sum fun i hi ↦ ?_
+    have hik : i ≤ 110 := le_trans
+      (Nat.lt_succ_iff.mp (Finset.mem_range.mp hi)) hk
+    have hle₁ : ‖iteratedFDeriv ℝ i (localizedSymbol α m 2 t) η‖ ≤ C₁ i * M :=
+      hC₁ i η hik
+    have hle₂ : ‖iteratedFDeriv ℝ (k - i)
+        (coneModeProfile (0 : standardModeLattice)) η‖ ≤ C₂ (k - i) :=
+      hC₂ (k - i) η
+    have hchoose : (0 : ℝ) ≤ (k.choose i : ℝ) := by positivity
+    refine mul_le_mul (mul_le_mul_of_nonneg_left hle₁ hchoose) hle₂
+      (norm_nonneg _) ?_
+    exact mul_nonneg hchoose (mul_nonneg (hC₁0 i) hMnn)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Transporting the cone bound through the dilation
+
+Source: `lem:symbol_derivatives`.  The cone symbol is the rescaled symbol
+precomposed with the dilation, so an ordered coordinate derivative of it is
+exactly `t^{alpha . beta}` times the same derivative of the rescaled symbol,
+just as for the mode symbol.
+-/
+
+/-- **The exact scale factor for the cone symbol.** -/
+theorem iteratedFDeriv_thirdConeFrequencySymbol_coordinate
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) {t : ℝ} (ht : 0 < t)
+    (ξ : E3) (k : ℕ) (hk : k ≤ 110) (σ : Fin k → Fin 3) :
+    (iteratedFDeriv ℝ k (thirdConeFrequencySymbol α m t) ξ)
+        (fun r ↦ Anisotropy.coordinateDirection (σ r)) =
+      (t ^ α.derivativeWeight σ) •
+        ((iteratedFDeriv ℝ k (coneScaleProfile α m t) (α.dilate t ξ))
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))) := by
+  have hLcont : Continuous (α.dilateLinear t) :=
+    LinearMap.continuous_of_finiteDimensional (α.dilateLinear t)
+  let L : E3 →L[ℝ] E3 := { α.dilateLinear t with cont := hLcont }
+  have hLapply : ∀ z : E3, L z = α.dilate t z := fun z ↦ α.dilateLinear_apply t z
+  have hfun : thirdConeFrequencySymbol α m t = coneScaleProfile α m t ∘ L := by
+    funext z
+    rw [Function.comp_apply, hLapply z]
+    exact thirdConeFrequencySymbol_eq_coneScaleProfile_dilate α m ht.ne' z
+  have hle : (k : WithTop ℕ∞) ≤ (110 : WithTop ℕ∞) := by exact_mod_cast hk
+  rw [hfun, L.iteratedFDeriv_comp_right
+    (coneScaleProfile_contDiff α M m hm ht) ξ hle]
+  rw [ContinuousMultilinearMap.compContinuousLinearMap_apply]
+  have hvec : (fun r ↦ L (Anisotropy.coordinateDirection (σ r)))
+      = fun r ↦ (t ^ α.weight (σ r)) • Anisotropy.coordinateDirection (σ r) := by
+    funext r
+    change α.dilateLinear t (Anisotropy.coordinateDirection (σ r)) = _
+    exact dilateLinear_coordinateDirection α t (σ r)
+  rw [hLapply ξ, hvec, ContinuousMultilinearMap.map_smul_univ]
+  congr 1
+  unfold Anisotropy.derivativeWeight
+  rw [Finset.prod_pow_eq_pow_sum]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `eq:symbol` for the reconstructed cone symbol
+
+Source: `lem:symbol_derivatives`.  On the closed box the exact scale factor
+from the dilation chain rule is absorbed against the gauge bound raised to the
+same power, leaving the rescaled symbol's uniform derivative bound times a
+fixed power of six; off the closed box every derivative vanishes.
+-/
+
+/-- **The anisotropic derivative bound for the cone symbol.** -/
+theorem norm_iteratedFDeriv_thirdConeFrequencySymbol_coordinate_le
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) {t : ℝ} (ht : 0 < t)
+    {ξ : E3} (hξ : ξ ≠ 0) (k : ℕ) (hk : k ≤ 110) (σ : Fin k → Fin 3)
+    {C : ℝ} (hC : 0 ≤ C)
+    (hprof : ∀ η : E3, ‖iteratedFDeriv ℝ k (coneScaleProfile α m t) η‖ ≤ C) :
+    ‖(iteratedFDeriv ℝ k (thirdConeFrequencySymbol α m t) ξ)
+        (fun r ↦ Anisotropy.coordinateDirection (σ r))‖
+      ≤ (C * 6 ^ α.derivativeWeight σ) *
+          (α.radius ξ) ^ (-((α.derivativeWeight σ : ℕ) : ℝ)) := by
+  set d : ℕ := α.derivativeWeight σ with hd
+  have hrad : 0 < α.radius ξ := radius_pos_of_ne_zero α hξ
+  have hrpow : (α.radius ξ) ^ (-((d : ℕ) : ℝ)) = ((α.radius ξ) ^ d)⁻¹ := by
+    rw [Real.rpow_neg hrad.le, Real.rpow_natCast]
+  by_cases hbox : ∀ j : Fin 3, |α.dilate t ξ j| ≤ 2
+  · have hbox' : ∀ j : Fin 3, |t ^ α.weight j * ξ j| ≤ 2 := hbox
+    have hgauge : t * α.radius ξ ≤ 6 :=
+      scale_mul_radius_le_of_dilated_coords_le_two α ht ξ hbox'
+    have hchain := iteratedFDeriv_thirdConeFrequencySymbol_coordinate
+      α M m hm ht ξ k hk σ
+    have hvec : ‖(iteratedFDeriv ℝ k (coneScaleProfile α m t) (α.dilate t ξ))
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))‖ ≤ C := by
+      refine le_trans (ContinuousMultilinearMap.le_opNorm _ _) ?_
+      have hprod : ∏ r : Fin k, ‖Anisotropy.coordinateDirection (σ r)‖ = 1 := by
+        rw [Finset.prod_congr rfl fun r _ ↦ norm_coordinateDirection (σ r)]
+        simp
+      rw [hprod, mul_one]
+      exact hprof _
+    have hLHS : ‖(iteratedFDeriv ℝ k (thirdConeFrequencySymbol α m t) ξ)
+          (fun r ↦ Anisotropy.coordinateDirection (σ r))‖ ≤ t ^ d * C := by
+      rw [hchain, norm_smul, Real.norm_eq_abs, abs_of_pos (pow_pos ht d)]
+      exact mul_le_mul_of_nonneg_left hvec (pow_pos ht d).le
+    refine le_trans hLHS ?_
+    rw [hrpow, ← div_eq_mul_inv, le_div_iff₀ (pow_pos hrad d)]
+    have hpow : (t * α.radius ξ) ^ d ≤ 6 ^ d :=
+      pow_le_pow_left₀ (by positivity) hgauge d
+    calc t ^ d * C * (α.radius ξ) ^ d
+        = C * (t * α.radius ξ) ^ d := by rw [mul_pow]; ring
+      _ ≤ C * 6 ^ d := mul_le_mul_of_nonneg_left hpow hC
+  · rw [not_forall] at hbox
+    obtain ⟨j, hj⟩ := hbox
+    rw [not_le] at hj
+    rw [iteratedFDeriv_thirdConeFrequencySymbol_eq_zero_of_two_lt
+      α m t ξ j hj k]
+    simp only [ContinuousMultilinearMap.zero_apply, norm_zero]
+    positivity
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The scale-uniform multiplier certificate for the cone symbol
+
+Source: `thm:cone`, whose conversion of the reconstructed cone from its
+frequency representation to `multiplierForm` was stated conditionally on a
+uniform anisotropic multiplier certificate for the scale-dependent cone
+symbol.  All four components are now available.
+-/
+
+/-- The cone symbol is smooth to order 110. -/
+theorem contDiff_thirdConeFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) {t : ℝ} (ht : 0 < t) :
+    ContDiff ℝ 110 (thirdConeFrequencySymbol α m t) := by
+  have hLcont : Continuous (α.dilateLinear t) :=
+    LinearMap.continuous_of_finiteDimensional (α.dilateLinear t)
+  let L : E3 →L[ℝ] E3 := { α.dilateLinear t with cont := hLcont }
+  have hLapply : ∀ z : E3, L z = α.dilate t z := fun z ↦ α.dilateLinear_apply t z
+  have hfun : thirdConeFrequencySymbol α m t = coneScaleProfile α m t ∘ L := by
+    funext z
+    rw [Function.comp_apply, hLapply z]
+    exact thirdConeFrequencySymbol_eq_coneScaleProfile_dilate α m ht.ne' z
+  rw [hfun]
+  exact (coneScaleProfile_contDiff α M m hm ht).comp L.contDiff
+
+/-- **The scale-uniform certificate for the cone symbol.** -/
+theorem exists_isAnisotropicMultiplier_thirdConeFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) {t : ℝ} (ht : 0 < t) :
+    ∃ M' : ℝ, Anisotropy.IsAnisotropicMultiplier α M'
+      (thirdConeFrequencySymbol α m t) := by
+  classical
+  have hall : ∀ n : ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ η : E3, n ≤ 110 →
+      ‖iteratedFDeriv ℝ n (coneScaleProfile α m t) η‖ ≤ C := by
+    intro n
+    by_cases hn : n ≤ 110
+    · obtain ⟨C, hC0, hC⟩ :=
+        exists_bound_iteratedFDeriv_coneScaleProfile α M m hm ht n hn
+      exact ⟨C, hC0, fun η _ ↦ hC η⟩
+    · exact ⟨0, le_rfl, fun η hcon ↦ absurd hcon hn⟩
+  choose Ck hCk0 hCk using hall
+  set W : ℕ := α.weight 0 + α.weight 1 + α.weight 2 with hW
+  set Csum : ℝ := ∑ k ∈ Finset.range 111, Ck k with hCsum
+  have hCsum0 : 0 ≤ Csum := Finset.sum_nonneg fun k _ ↦ hCk0 k
+  have hsmooth := contDiff_thirdConeFrequencySymbol α M m hm ht
+  refine ⟨Csum * 6 ^ (110 * W), by positivity,
+    hsmooth.continuous.measurable,
+    thirdConeFrequencySymbol_zero α m t, hsmooth.contDiffOn, ?_⟩
+  intro k hk ξ hξ σ
+  have hbound := norm_iteratedFDeriv_thirdConeFrequencySymbol_coordinate_le
+    α M m hm ht hξ k hk σ (hCk0 k) (fun η ↦ hCk k η hk)
+  refine le_trans hbound ?_
+  have hrad : 0 < α.radius ξ := radius_pos_of_ne_zero α hξ
+  have hrpownn : 0 ≤ (α.radius ξ) ^ (-((α.derivativeWeight σ : ℕ) : ℝ)) :=
+    Real.rpow_nonneg hrad.le _
+  refine mul_le_mul_of_nonneg_right ?_ hrpownn
+  have hCkle : Ck k ≤ Csum := by
+    refine Finset.single_le_sum (f := Ck) (fun i _ ↦ hCk0 i) ?_
+    exact Finset.mem_range.mpr (by omega)
+  have hdle : α.derivativeWeight σ ≤ 110 * W := by
+    refine le_trans (derivativeWeight_le α σ) ?_
+    exact Nat.mul_le_mul_right _ hk
+  have hpowle : (6 : ℝ) ^ α.derivativeWeight σ ≤ 6 ^ (110 * W) :=
+    pow_le_pow_right₀ (by norm_num) hdle
+  exact mul_le_mul hCkle hpowle (by positivity) hCsum0
+
+/-- **The cone bridge with no remaining hypothesis.**  The reconstructed cone's
+frequency form equals its multiplier form outright. -/
+theorem thirdConeFrequencyFullForm_eq_multiplierFullForm_of_multiplier
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    thirdConeFrequencyFullForm α m F = thirdConeMultiplierFullForm α m F := by
+  classical
+  choose M' hM' using fun t : {s : ℝ // 0 < s} ↦
+    exists_isAnisotropicMultiplier_thirdConeFrequencySymbol α M m hm t.2
+  unfold thirdConeFrequencyFullForm thirdConeMultiplierFullForm
+  apply setIntegral_congr_fun measurableSet_Ioi
+  intro t ht
+  exact (multiplierForm_eq_frequencyForm α (M' ⟨t, ht⟩)
+    (thirdConeFrequencySymbol α m t) (hM' ⟨t, ht⟩)
+    (F 0) (F 1) (F 2) (F 3)).symm
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The remaining one-mode bridges, unconditionally
+
+Source: `thm:cone`.  The certificate discharges the multiplier premise of the
+finite-scale kernel-product bridge and of the any-active-coordinate one-mode
+bridge, the latter being the form `thm:main` uses after fixing an active
+coordinate and permuting it into the third slot.
+-/
+
+/-- The finite-scale kernel-product bridge, with no remaining premise. -/
+theorem multiplierForm_thirdModeFrequencySymbol_eq_kernelProductIntegral_of_int
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (t : ℝ) (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    multiplierForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+        (F 0) (F 1) (F 2) (F 3) =
+      ∫ ζ : Frequency9,
+        (-thirdModeKernelFourierProduct α (standardModeOfInt ν) t ζ) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ
+        ∂frequencyMeasure := by
+  obtain ⟨M, hM⟩ :=
+    exists_isAnisotropicMultiplier_thirdModeFrequencySymbol α ν
+  exact multiplierForm_thirdModeFrequencySymbol_eq_kernelProductIntegral
+    α M (standardModeOfInt ν) t ht (hM t ht) F
+
+/-- **The any-active-coordinate one-mode bridge, unconditionally.** -/
+theorem thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm_permuted_of_int
+    (α : Anisotropy) (σ : Equiv.Perm (Fin 3)) (i : Fin 3) (hσ : σ 2 = i)
+    (ν : Fin 3 → ℤ) (a : ℝ → ℂ) (F : ModelComplexSchwartzInput) :
+    thirdModeMultiplierFullForm (permutedAnisotropy α σ) (standardModeOfInt ν) a
+        (complexPermutedModelInput σ F) =
+      LiteralActiveModelFullForm α i
+        ((coordinatePermutation σ).symm
+          (standardModeTranslate (standardModeOfInt ν))) (-a) F := by
+  obtain ⟨M, hM⟩ :=
+    exists_isAnisotropicMultiplier_thirdModeFrequencySymbol
+      (permutedAnisotropy α σ) ν
+  exact thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm_permuted
+    α M σ i hσ (standardModeOfInt ν) a F hM
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The one-mode spatial bridge, unconditionally
+
+Source: `thm:cone`.  The docstring accompanying the conditional form notes that
+"Section 8's derivative package is intended to supply this certificate"; the
+certificate is now available, so the bridge holds outright.
+-/
+
+/-- **The one-mode spatial bridge with no remaining premise.** -/
+theorem thirdModeMultiplier_eq_LiteralActiveSpatialMode_of_int
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (t : ℝ) (ht : 0 < t)
+    (a : ℂ) (F : ModelComplexSchwartzInput) :
+    a * multiplierForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+        (F 0) (F 1) (F 2) (F 3) =
+      (-a) * LiteralActiveModelSpatialProfile α 2
+        (standardModeTranslate (standardModeOfInt ν)) F t := by
+  obtain ⟨M, hM⟩ :=
+    exists_isAnisotropicMultiplier_thirdModeFrequencySymbol α ν
+  exact thirdModeMultiplier_eq_LiteralActiveSpatialMode
+    α M (standardModeOfInt ν) t ht (hM t ht) a F
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The certificate transfers to the literal model scale kernel symbol
+
+Source: `thm:cone`.  At a standard mode translate the literal model scale
+kernel symbol is the negation of the mode symbol, an identity already proved in
+this branch.  A multiplier certificate is invariant under negation, so the mode
+certificate supplies one for the literal symbol too.
+-/
+
+/-- An anisotropic multiplier certificate is invariant under negation. -/
+theorem IsAnisotropicMultiplier_neg
+    {α : Anisotropy} {M : ℝ} {m : E3 → ℂ}
+    (h : Anisotropy.IsAnisotropicMultiplier α M m) :
+    Anisotropy.IsAnisotropicMultiplier α M (fun ξ ↦ -m ξ) := by
+  obtain ⟨hM, hmeas, hzero, hsmooth, hderiv⟩ := h
+  refine ⟨hM, hmeas.neg, by simp [hzero], hsmooth.neg, ?_⟩
+  intro k hk ξ hξ σ
+  have hneg : iteratedFDeriv ℝ k (fun z ↦ -m z) ξ
+      = -iteratedFDeriv ℝ k m ξ := by
+    have hfun : (fun z : E3 ↦ -m z) = -m := rfl
+    rw [hfun]
+    exact iteratedFDeriv_neg_apply
+  rw [hneg]
+  simpa using hderiv k hk ξ hξ σ
+
+/-- **The certificate for the literal model scale kernel symbol.** -/
+theorem exists_isAnisotropicMultiplier_literalModelScaleKernelSymbol
+    (α : Anisotropy) (ν : Fin 3 → ℤ) :
+    ∃ M : ℝ, ∀ t : ℝ, 0 < t →
+      Anisotropy.IsAnisotropicMultiplier α M
+        (literalModelScaleKernelSymbol α
+          (standardModeTranslate (standardModeOfInt ν)) t) := by
+  obtain ⟨M, hM⟩ :=
+    exists_isAnisotropicMultiplier_thirdModeFrequencySymbol α ν
+  refine ⟨M, fun t ht ↦ ?_⟩
+  rw [literalModelScaleKernelSymbol_standardMode_eq_neg_thirdModeFrequencySymbol
+    α (standardModeOfInt ν) t ht]
+  exact IsAnisotropicMultiplier_neg (hM t ht)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The literal spatial identity at a mode translate, unconditionally
+
+Source: `thm:cone`.  The fixed-scale literal spatial identity was conditional
+on a multiplier certificate for the literal kernel symbol; at a standard mode
+translate — which is the only case the cone decomposition uses — that
+certificate now follows from the mode certificate by negation.
+-/
+
+/-- **The fixed-scale literal spatial identity with no remaining premise**, at a
+standard mode translate. -/
+theorem LiteralModelSpatialProfile_eq_multiplierForm_of_int
+    (α : Anisotropy) (ν : Fin 3 → ℤ) (F : ModelComplexSchwartzInput)
+    (t : ℝ) (ht : 0 < t) :
+    LiteralModelSpatialProfile α
+        (standardModeTranslate (standardModeOfInt ν)) F t =
+      multiplierForm (literalModelScaleKernelSymbol α
+          (standardModeTranslate (standardModeOfInt ν)) t)
+        (F 0) (F 1) (F 2) (F 3) := by
+  obtain ⟨M, hM⟩ :=
+    exists_isAnisotropicMultiplier_literalModelScaleKernelSymbol α ν
+  exact LiteralModelSpatialProfile_eq_multiplierForm α M
+    (standardModeTranslate (standardModeOfInt ν)) F t ht (hM t ht)
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## Absolute integrability of each mode's frequency integrand
+
+Source: `thm:cone`, absolute-convergence paragraph.  Each mode contributes a
+bounded multiple of the frequency kernel: the coefficient is a constant, the
+mode symbol is bounded uniformly in every parameter, and the frequency kernel
+is integrable.  This is the first of the two premises the frequency-side Fubini
+bridge is stated against.
+-/
+
+/-- **Each mode's frequency integrand is integrable.** -/
+theorem integrable_modeFrequencyIntegrand
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (F : ModelComplexSchwartzInput)
+    (ν : Fin 3 → ℤ) :
+    Integrable
+      (fun ζ : Frequency9 ↦
+        (UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+          thirdModeFrequencySymbol α (standardModeOfInt ν) t
+            (-frequencyDiagonal ζ)) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
+      frequencyMeasure := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  obtain ⟨B, hB0, hB⟩ := exists_bound_thirdModeFrequencySymbol
+  set c : ℂ := UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν
+    with hc
+  have hcont : Continuous (fun ζ : Frequency9 ↦
+      thirdModeFrequencySymbol α (standardModeOfInt ν) t
+        (-frequencyDiagonal ζ)) :=
+    (continuous_thirdModeFrequencySymbol α ν t).comp
+      (frequencyDiagonal.continuous.neg)
+  have hbase : Integrable
+      (fun ζ : Frequency9 ↦
+        thirdModeFrequencySymbol α (standardModeOfInt ν) t
+            (-frequencyDiagonal ζ) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
+      frequencyMeasure := by
+    have hK : Integrable (frequencyKernel (F 0) (F 1) (F 2) (F 3))
+        frequencyMeasure := by
+      rw [frequencyMeasure_eq_volume]
+      exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+    refine hK.bdd_mul (c := B) hcont.aestronglyMeasurable ?_
+    exact Filter.Eventually.of_forall fun ζ ↦ hB α ν t _
+  have hconst := hbase.const_mul c
+  refine hconst.congr ?_
+  filter_upwards with ζ
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## Summability of the mode frequency integrals
+
+Source: `thm:cone`, absolute-convergence paragraph.  Each mode's frequency
+integral of absolute values is at most the modulus of its Fourier coefficient
+times a fixed constant — the uniform bound on the mode symbol times the
+kernel's total mass.  The coefficients are absolutely summable by the
+order-110 decay, so the mode sum converges.  This is the second premise the
+frequency-side Fubini bridge is stated against.
+-/
+
+/-- **The mode frequency integrals are summable.** -/
+theorem summable_modeFrequencyIntegralNorm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (t : ℝ) (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    Summable (fun ν : Fin 3 → ℤ ↦
+      ∫ ζ : Frequency9,
+        ‖(UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            thirdModeFrequencySymbol α (standardModeOfInt ν) t
+              (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖
+        ∂frequencyMeasure) := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  obtain ⟨B, hB0, hB⟩ := exists_bound_thirdModeFrequencySymbol
+  set K : Frequency9 → ℂ :=
+    fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hK
+  have hKint : Integrable K frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  set IK : ℝ := ∫ ζ : Frequency9, ‖K ζ‖ ∂frequencyMeasure with hIK
+  have hIK0 : 0 ≤ IK := integral_nonneg fun ζ ↦ norm_nonneg _
+  have hcoef : Summable (fun ν : Fin 3 → ℤ ↦
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν‖) :=
+    (scratch_summable_mFourierCoeff_unitTorusLocalizedSymbol α M m hm 2 t ht).norm
+  refine Summable.of_nonneg_of_le (fun ν ↦ integral_nonneg fun ζ ↦ norm_nonneg _)
+    (fun ν ↦ ?_) (hcoef.mul_right (B * IK))
+  set a : ℂ := UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν
+    with ha
+  have hint1 : Integrable
+      (fun ζ : Frequency9 ↦ ‖(a * thirdModeFrequencySymbol α
+        (standardModeOfInt ν) t (-frequencyDiagonal ζ)) * K ζ‖)
+      frequencyMeasure :=
+    (integrable_modeFrequencyIntegrand α m t F ν).norm
+  have hint2 : Integrable
+      (fun ζ : Frequency9 ↦ ‖a‖ * B * ‖K ζ‖) frequencyMeasure :=
+    (hKint.norm.const_mul (‖a‖ * B))
+  have hmono : ∀ ζ : Frequency9,
+      ‖(a * thirdModeFrequencySymbol α (standardModeOfInt ν) t
+          (-frequencyDiagonal ζ)) * K ζ‖ ≤ ‖a‖ * B * ‖K ζ‖ := by
+    intro ζ
+    rw [norm_mul, norm_mul]
+    refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
+    exact mul_le_mul_of_nonneg_left (hB α ν t _) (norm_nonneg a)
+  calc (∫ ζ : Frequency9, ‖(a * thirdModeFrequencySymbol α
+          (standardModeOfInt ν) t (-frequencyDiagonal ζ)) * K ζ‖
+        ∂frequencyMeasure)
+      ≤ ∫ ζ : Frequency9, ‖a‖ * B * ‖K ζ‖ ∂frequencyMeasure :=
+        integral_mono hint1 hint2 hmono
+    _ = ‖a‖ * (B * IK) := by
+        rw [integral_const_mul, hIK]
+        ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The Calderón integrand as a sum over active coordinates
+
+Source: `lem:calderon`, `eq:cone_identity`, whose right-hand side is a sum over
+the three active coordinates of the active cone factor against the two
+transverse cutoffs.  The integrand is written out termwise in this development;
+recording it as an indexed sum is what lets the three-cone assembly be stated
+as a sum rather than three separate displays.
+-/
+
+/-- The active cone factor at one coordinate, against the two transverse
+cutoffs. -/
+def coneActiveTerm (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3) : ℝ :=
+  ((α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+      gaussianDeriv (t ^ α.weight i * ξ i) ^ 2) *
+    ∏ j : Fin 3, (if j = i then 1 else conePhi (t ^ α.weight j * ξ j))
+
+/-- **The Calderón integrand is the indexed sum of the three active terms**,
+divided by the scale. -/
+theorem coneProductCalderonIntegrand_eq_sum
+    (α : Anisotropy) (ξ : E3) (t : ℝ) :
+    coneProductCalderonIntegrand α ξ t =
+      (∑ i : Fin 3, coneActiveTerm α ξ t i) / t := by
+  unfold coneProductCalderonIntegrand coneActiveTerm
+  rw [Fin.sum_univ_three]
+  simp only [Fin.prod_univ_three,
+    if_neg (by decide : ¬((0 : Fin 3) = 1)),
+    if_neg (by decide : ¬((0 : Fin 3) = 2)),
+    if_neg (by decide : ¬((1 : Fin 3) = 0)),
+    if_neg (by decide : ¬((1 : Fin 3) = 2)),
+    if_neg (by decide : ¬((2 : Fin 3) = 0)),
+    if_neg (by decide : ¬((2 : Fin 3) = 1)),
+    if_true, one_mul, mul_one]
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The three-cone decomposition of the multiplier
+
+Source: `eq:cone_identity`.  Splitting the Calderón integrand into its three
+active terms and exchanging the finite sum with the scale integral writes the
+multiplier at each frequency as the sum of three cone contributions.
+-/
+
+/-- **The three-cone decomposition at a frequency.**  On a finite scale
+interval carrying the Calderón endpoints, the multiplier is the sum of its
+three cone contributions. -/
+theorem multiplier_coneProduct_interval_sum
+    (α : Anisotropy) (m : E3 → ℂ) (ξ : E3) (a b : ℝ)
+    (ha : 0 < a) (hab : a ≤ b)
+    (hsmall : coneProduct α ξ a = cPsi ^ 3)
+    (hlarge : coneProduct α ξ b = 0)
+    (hint : ∀ i : Fin 3, IntervalIntegrable
+      (fun t : ℝ ↦ m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)) volume a b) :
+    m ξ = ((cPsi : ℂ) ^ 3)⁻¹ *
+      ∑ i : Fin 3,
+        ∫ t in a..b, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) := by
+  have hsum : (∫ t in a..b, m ξ * (coneProductCalderonIntegrand α ξ t : ℂ))
+      = ∑ i : Fin 3,
+          ∫ t in a..b, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) := by
+    rw [← intervalIntegral.integral_finsetSum (fun i _ ↦ hint i)]
+    refine intervalIntegral.integral_congr ?_
+    intro t _
+    show m ξ * (coneProductCalderonIntegrand α ξ t : ℂ)
+      = ∑ i : Fin 3, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)
+    rw [coneProductCalderonIntegrand_eq_sum α ξ t, ← Finset.mul_sum]
+    congr 1
+    push_cast
+    rw [Finset.sum_div]
+  have hbase := multiplier_coneProduct_interval α m ξ a b ha hab hsmall hlarge
+  rw [hsum] at hbase
+  exact hbase
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Interval integrability of the cone terms
+
+Source: `eq:cone_identity`.  Each active term is a product of continuous
+functions of the scale, so dividing by the scale leaves something continuous on
+any compact interval bounded away from zero, hence interval integrable.  This
+discharges the premise carried by the three-cone decomposition.
+-/
+
+theorem continuous_coneActiveTerm
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) :
+    Continuous (fun t : ℝ ↦ coneActiveTerm α ξ t i) := by
+  unfold coneActiveTerm
+  have harg : ∀ j : Fin 3,
+      Continuous (fun t : ℝ ↦ t ^ α.weight j * ξ j) := by
+    intro j
+    exact (continuous_id.pow _).mul continuous_const
+  refine ((continuous_const.mul
+    (conePsi_contDiff.continuous.comp (harg i))).mul
+    ((contDiff_gaussianDeriv.continuous.comp (harg i)).pow 2)).mul ?_
+  refine continuous_finsetProd _ fun j _ ↦ ?_
+  by_cases hj : j = i
+  · simp only [if_pos hj]
+    exact continuous_const
+  · simp only [if_neg hj]
+    exact conePhi_contDiff.continuous.comp (harg j)
+
+/-- **Each cone term is interval integrable** on a compact scale interval
+bounded away from zero. -/
+theorem intervalIntegrable_coneActiveTerm_div
+    (α : Anisotropy) (m : E3 → ℂ) (ξ : E3) {a b : ℝ} (ha : 0 < a) (hab : a ≤ b)
+    (i : Fin 3) :
+    IntervalIntegrable
+      (fun t : ℝ ↦ m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)) volume a b := by
+  refine ContinuousOn.intervalIntegrable ?_
+  have huIcc : Set.uIcc a b = Set.Icc a b := Set.uIcc_of_le hab
+  rw [huIcc]
+  have hne : ∀ t ∈ Set.Icc a b, t ≠ 0 := by
+    intro t ht
+    exact ne_of_gt (lt_of_lt_of_le ha ht.1)
+  have hdiv : ContinuousOn (fun t : ℝ ↦ coneActiveTerm α ξ t i / t)
+      (Set.Icc a b) :=
+    (continuous_coneActiveTerm α ξ i).continuousOn.div continuousOn_id hne
+  exact continuousOn_const.mul
+    (Complex.ofRealCLM.continuous.comp_continuousOn hdiv)
+
+/-- **The three-cone decomposition with no remaining premise.** -/
+theorem multiplier_coneProduct_interval_sum_of_endpoints
+    (α : Anisotropy) (m : E3 → ℂ) (ξ : E3) (a b : ℝ)
+    (ha : 0 < a) (hab : a ≤ b)
+    (hsmall : coneProduct α ξ a = cPsi ^ 3)
+    (hlarge : coneProduct α ξ b = 0) :
+    m ξ = ((cPsi : ℂ) ^ 3)⁻¹ *
+      ∑ i : Fin 3,
+        ∫ t in a..b, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) :=
+  multiplier_coneProduct_interval_sum α m ξ a b ha hab hsmall hlarge
+    (fun i ↦ intervalIntegrable_coneActiveTerm_div α m ξ ha hab i)
+
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The three-cone decomposition at every nonzero frequency
+
+Source: `eq:cone_identity`, which is stated for every `xi` nonzero.  Suitable
+Calderón endpoints exist at each such frequency — the cone product saturates at
+small scales and vanishes at large ones — so the decomposition holds there with
+no hypothesis beyond `xi` being nonzero.
+-/
+
+/-- **`eq:cone_identity` at a nonzero frequency.**  The multiplier is the sum of
+its three cone contributions over some finite scale interval. -/
+theorem exists_multiplier_coneDecomposition
+    (α : Anisotropy) (m : E3 → ℂ) {ξ : E3} (hξ : ξ ≠ 0) :
+    ∃ a b : ℝ, 0 < a ∧ a ≤ b ∧
+      m ξ = ((cPsi : ℂ) ^ 3)⁻¹ *
+        ∑ i : Fin 3,
+          ∫ t in a..b, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) := by
+  obtain ⟨a, b, ha, hab, hsmall, hlarge⟩ := exists_coneProduct_endpoints α ξ hξ
+  exact ⟨a, b, ha, hab,
+    multiplier_coneProduct_interval_sum_of_endpoints α m ξ a b ha hab
+      hsmall hlarge⟩
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone terms have compact scale support
+
+Source: `lem:calderon`.  Each active term carries the cone cutoff `Psi` at its
+own coordinate, so it vanishes unless that dilated coordinate lies strictly
+between one and two.  In the scale variable this confines each term to a
+compact subinterval of the positive half-line, which is what will let the
+finite-interval Calderón identity be read as a full-scale one.
+-/
+
+/-- The active term factors through the active profile. -/
+theorem coneActiveTerm_eq_profile
+    (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3) :
+    coneActiveTerm α ξ t i =
+      (α.weight i : ℝ) * coneActiveProfile (t ^ α.weight i * ξ i) *
+        ∏ j : Fin 3, (if j = i then 1 else conePhi (t ^ α.weight j * ξ j)) := by
+  unfold coneActiveTerm coneActiveProfile
+  ring
+
+/-- **The active term vanishes off its annulus.** -/
+theorem coneActiveTerm_eq_zero_of_not_mem
+    (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3)
+    (h : |t ^ α.weight i * ξ i| ≤ 1 ∨ 2 ≤ |t ^ α.weight i * ξ i|) :
+    coneActiveTerm α ξ t i = 0 := by
+  rw [coneActiveTerm_eq_profile]
+  rcases h with h | h
+  · rw [coneActiveProfile_eq_zero_of_abs_le_one h]
+    ring
+  · rw [coneActiveProfile_eq_zero_of_two_le_abs h]
+    ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Locating the cone term's scale support
+
+Source: `lem:calderon`.  The active term is nonzero only while its dilated
+coordinate lies strictly between one and two, which pins the scale to an
+explicit bounded interval whenever that coordinate of the frequency is nonzero.
+-/
+
+/-- **The scale support of an active term.** -/
+theorem coneActiveTerm_scale_mem_Ioo
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) {t : ℝ} (ht : 0 < t)
+    (hξ : ξ i ≠ 0) (h : coneActiveTerm α ξ t i ≠ 0) :
+    t ∈ Ioo (((|ξ i|)⁻¹) ^ ((α.weight i : ℝ))⁻¹)
+      ((2 / |ξ i|) ^ ((α.weight i : ℝ))⁻¹) := by
+  have hai : 0 < |ξ i| := abs_pos.mpr hξ
+  have hw : 0 < α.weight i := α.weight_pos i
+  have hwr : (0 : ℝ) < ((α.weight i : ℕ) : ℝ) := by exact_mod_cast hw
+  have hinv : 0 < ((α.weight i : ℝ))⁻¹ := inv_pos.mpr hwr
+  have hprof : coneActiveProfile (t ^ α.weight i * ξ i) ≠ 0 := by
+    intro hz
+    refine h ?_
+    rw [coneActiveTerm_eq_profile, hz]
+    ring
+  have h1 : 1 < |t ^ α.weight i * ξ i| := by
+    by_contra hc
+    exact hprof (coneActiveProfile_eq_zero_of_abs_le_one (not_lt.mp hc))
+  have h2 : |t ^ α.weight i * ξ i| < 2 := by
+    by_contra hc
+    exact hprof (coneActiveProfile_eq_zero_of_two_le_abs (not_lt.mp hc))
+  have habs : |t ^ α.weight i * ξ i| = t ^ α.weight i * |ξ i| := by
+    rw [abs_mul, abs_of_pos (pow_pos ht _)]
+  rw [habs] at h1 h2
+  have htw : (0 : ℝ) < t ^ α.weight i := pow_pos ht _
+  have hcast : (t ^ ((α.weight i : ℕ) : ℝ)) = t ^ α.weight i :=
+    Real.rpow_natCast t _
+  have hback : (t ^ α.weight i) ^ ((α.weight i : ℝ))⁻¹ = t := by
+    rw [← hcast, ← Real.rpow_mul ht.le,
+      mul_inv_cancel₀ (ne_of_gt hwr), Real.rpow_one]
+  constructor
+  · have hlt : (|ξ i|)⁻¹ < t ^ α.weight i := by
+      rw [inv_lt_iff_one_lt_mul₀ hai]
+      linarith [h1]
+    calc ((|ξ i|)⁻¹) ^ ((α.weight i : ℝ))⁻¹
+        < (t ^ α.weight i) ^ ((α.weight i : ℝ))⁻¹ :=
+          Real.rpow_lt_rpow (le_of_lt (inv_pos.mpr hai)) hlt hinv
+      _ = t := hback
+  · have hlt : t ^ α.weight i < 2 / |ξ i| := by
+      rw [lt_div_iff₀ hai]
+      exact h2
+    calc t = (t ^ α.weight i) ^ ((α.weight i : ℝ))⁻¹ := hback.symm
+      _ < (2 / |ξ i|) ^ ((α.weight i : ℝ))⁻¹ :=
+          Real.rpow_lt_rpow htw.le hlt hinv
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Calderón endpoints enclosing every cone term's support
+
+Source: `lem:calderon`, `eq:cone_identity`.  The finite-interval form of the
+cone identity holds at whatever endpoints saturate and kill the cone product;
+to read it as a full-scale identity the endpoints must in addition enclose the
+scale supports of all three active terms.  Endpoints chosen from the explicit
+coordinate criteria do both at once.
+-/
+
+/-- **Endpoints that both satisfy the Calderón conditions and enclose every
+active term's scale support.** -/
+theorem exists_coneActiveTerm_enclosing_endpoints (α : Anisotropy) (ξ : E3) :
+    ∃ a b : ℝ, 0 < a ∧ a ≤ b ∧
+      coneProduct α ξ a = cPsi ^ 3 ∧
+      (∀ t : ℝ, 0 < t → t ≤ a → ∀ i : Fin 3, coneActiveTerm α ξ t i = 0) ∧
+      (∀ t : ℝ, b ≤ t → ∀ i : Fin 3, coneActiveTerm α ξ t i = 0) ∧
+      (ξ ≠ 0 → coneProduct α ξ b = 0) := by
+  classical
+  set C : ℝ := 1 + ∑ j : Fin 3, |ξ j| with hC
+  have hCsum : (0 : ℝ) ≤ ∑ j : Fin 3, |ξ j| :=
+    Finset.sum_nonneg fun j _ ↦ abs_nonneg _
+  have hC1 : (1 : ℝ) ≤ C := by rw [hC]; linarith
+  have hC0 : (0 : ℝ) < C := lt_of_lt_of_le zero_lt_one hC1
+  have hle : ∀ i : Fin 3, |ξ i| ≤ C := by
+    intro i
+    have := Finset.single_le_sum (f := fun j : Fin 3 ↦ |ξ j|)
+      (fun j _ ↦ abs_nonneg _) (Finset.mem_univ i)
+    rw [hC]; linarith
+  set a : ℝ := C⁻¹ with ha'
+  have ha : 0 < a := inv_pos.mpr hC0
+  have ha1 : a ≤ 1 := by
+    rw [ha']
+    exact inv_le_one_of_one_le₀ hC1
+  set D : ℝ := ∑ j : Fin 3, (if ξ j = 0 then (0 : ℝ) else (|ξ j|)⁻¹) with hD
+  have hD0 : (0 : ℝ) ≤ D := by
+    refine Finset.sum_nonneg fun j _ ↦ ?_
+    by_cases hj : ξ j = 0
+    · simp [hj]
+    · simp only [if_neg hj]
+      positivity
+  set b : ℝ := 2 * (1 + D) with hb'
+  have hb2 : (2 : ℝ) ≤ b := by rw [hb']; linarith
+  have hb1 : (1 : ℝ) ≤ b := by linarith
+  have hb0 : (0 : ℝ) < b := by linarith
+  have hab : a ≤ b := le_trans ha1 hb1
+  -- the small end: every dilated coordinate sits in the plateau
+  have hsmallAll : ∀ t : ℝ, 0 < t → t ≤ a → ∀ i : Fin 3,
+      |t ^ α.weight i * ξ i| ≤ 1 := by
+    intro t ht hta i
+    have hpow : t ^ α.weight i ≤ a :=
+      le_trans (pow_le_pow_left₀ ht.le hta _)
+        (pow_le_of_le_one ha.le ha1 (Nat.ne_of_gt (α.weight_pos i)))
+    have habs : |t ^ α.weight i * ξ i| = t ^ α.weight i * |ξ i| := by
+      rw [abs_mul, abs_of_pos (pow_pos ht _)]
+    rw [habs]
+    calc t ^ α.weight i * |ξ i| ≤ a * C :=
+          mul_le_mul hpow (hle i) (abs_nonneg _) ha.le
+      _ = 1 := by rw [ha']; field_simp
+  -- the large end: every coordinate that is present leaves the support
+  have hlargeAll : ∀ t : ℝ, b ≤ t → ∀ i : Fin 3,
+      |t ^ α.weight i * ξ i| ≤ 1 ∨ 2 ≤ |t ^ α.weight i * ξ i| := by
+    intro t hbt i
+    by_cases hi : ξ i = 0
+    · left; simp [hi]
+    · right
+      have ht0 : (0 : ℝ) < t := lt_of_lt_of_le hb0 hbt
+      have hai : 0 < |ξ i| := abs_pos.mpr hi
+      have hDi : (|ξ i|)⁻¹ ≤ D := by
+        have := Finset.single_le_sum
+          (f := fun j : Fin 3 ↦ if ξ j = 0 then (0 : ℝ) else (|ξ j|)⁻¹)
+          (fun j _ ↦ by by_cases hj : ξ j = 0 <;> simp [hj])
+          (Finset.mem_univ i)
+        simpa [hD, hi] using this
+      have hbi : 2 * (|ξ i|)⁻¹ ≤ b := by rw [hb']; linarith
+      have hpow : b ≤ t ^ α.weight i :=
+        le_trans (le_self_pow₀ hb1 (Nat.ne_of_gt (α.weight_pos i)))
+          (pow_le_pow_left₀ hb0.le hbt _)
+      have habs : |t ^ α.weight i * ξ i| = t ^ α.weight i * |ξ i| := by
+        rw [abs_mul, abs_of_pos (pow_pos ht0 _)]
+      rw [habs]
+      have h2 : 2 * (|ξ i|)⁻¹ ≤ t ^ α.weight i := le_trans hbi hpow
+      have := mul_le_mul_of_nonneg_right h2 hai.le
+      calc (2 : ℝ) = 2 * (|ξ i|)⁻¹ * |ξ i| := by field_simp
+        _ ≤ t ^ α.weight i * |ξ i| := this
+  refine ⟨a, b, ha, hab, ?_, ?_, ?_, ?_⟩
+  · exact coneProduct_eq_cPsi_pow_of_small α ξ a (hsmallAll a ha le_rfl)
+  · intro t ht hta i
+    exact coneActiveTerm_eq_zero_of_not_mem α ξ t i (Or.inl (hsmallAll t ht hta i))
+  · intro t hbt i
+    exact coneActiveTerm_eq_zero_of_not_mem α ξ t i (hlargeAll t hbt i)
+  · intro hξ
+    obtain ⟨i, hi⟩ : ∃ i : Fin 3, ξ i ≠ 0 := by
+      by_contra hcon
+      apply hξ
+      ext j
+      apply not_ne_iff.mp
+      intro hj
+      exact hcon ⟨j, hj⟩
+    refine coneProduct_eq_zero_of_large α ξ b ⟨i, ?_⟩
+    rcases hlargeAll b le_rfl i with h | h
+    · exact absurd h (by
+        have hai : 0 < |ξ i| := abs_pos.mpr hi
+        have ht0 : (0 : ℝ) < b := hb0
+        have hpow : b ≤ b ^ α.weight i :=
+          le_self_pow₀ hb1 (Nat.ne_of_gt (α.weight_pos i))
+        have hDi : (|ξ i|)⁻¹ ≤ D := by
+          have := Finset.single_le_sum
+            (f := fun j : Fin 3 ↦ if ξ j = 0 then (0 : ℝ) else (|ξ j|)⁻¹)
+            (fun j _ ↦ by by_cases hj : ξ j = 0 <;> simp [hj])
+            (Finset.mem_univ i)
+          simpa [hD, hi] using this
+        have hbi : 2 * (|ξ i|)⁻¹ ≤ b := by rw [hb']; linarith
+        have habs : |b ^ α.weight i * ξ i| = b ^ α.weight i * |ξ i| := by
+          rw [abs_mul, abs_of_pos (pow_pos ht0 _)]
+        have h2 : 2 * (|ξ i|)⁻¹ ≤ b ^ α.weight i := le_trans hbi hpow
+        have := mul_le_mul_of_nonneg_right h2 hai.le
+        rw [habs]
+        have h2' : (2 : ℝ) = 2 * (|ξ i|)⁻¹ * |ξ i| := by field_simp
+        rw [not_le]
+        linarith [h2'.le, this])
+    · exact h
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The three-cone identity over the full scale half-line
+
+Source: `lem:calderon`, `eq:cone_identity`, whose scale integral runs over the
+whole positive half-line.  Each active term has compact scale support, so with
+endpoints chosen to enclose all three supports the finite-interval identity and
+the full-scale one have the same value.
+-/
+
+/-- **`eq:cone_identity` over the full scale half-line.** -/
+theorem multiplier_coneDecomposition_fullScale
+    (α : Anisotropy) (m : E3 → ℂ) {ξ : E3} (hξ : ξ ≠ 0) :
+    m ξ = ((cPsi : ℂ) ^ 3)⁻¹ *
+      ∑ i : Fin 3,
+        ∫ t in Ioi (0 : ℝ), m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) := by
+  classical
+  obtain ⟨a, b, ha, hab, hsmall, hzsmall, hzlarge, hlarge⟩ :=
+    exists_coneActiveTerm_enclosing_endpoints α ξ
+  have hinterval := multiplier_coneProduct_interval_sum_of_endpoints α m ξ a b
+    ha hab hsmall (hlarge hξ)
+  have key : ∀ i : Fin 3,
+      ∫ t in Ioi (0 : ℝ), m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)
+        = ∫ t in a..b, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) := by
+    intro i
+    rw [intervalIntegral.integral_of_le hab]
+    have hcongr : ∫ t in Ioi (0 : ℝ), m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)
+        = ∫ t in Ioi (0 : ℝ), (Ioc a b).indicator
+            (fun t : ℝ ↦ m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)) t := by
+      refine setIntegral_congr_fun measurableSet_Ioi ?_
+      intro t ht
+      by_cases hmem : t ∈ Ioc a b
+      · rw [Set.indicator_of_mem hmem]
+      · rw [Set.indicator_of_notMem hmem]
+        have ht0 : (0 : ℝ) < t := ht
+        have hz : coneActiveTerm α ξ t i = 0 := by
+          simp only [Set.mem_Ioc, not_and_or, not_lt, not_le] at hmem
+          rcases hmem with h | h
+          · exact hzsmall t ht0 h i
+          · exact hzlarge t h.le i
+        simp [hz]
+    have hset : Ioi (0 : ℝ) ∩ Ioc a b = Ioc a b :=
+      Set.inter_eq_right.mpr fun t ht ↦ lt_of_lt_of_le ha (Set.mem_Ioc.mp ht).1.le
+    rw [hcongr, setIntegral_indicator measurableSet_Ioc, hset]
+  have hsum : ∑ i : Fin 3,
+      ∫ t in Ioi (0 : ℝ), m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)
+        = ∑ i : Fin 3, ∫ t in a..b, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) :=
+    Finset.sum_congr rfl fun i _ ↦ key i
+  rw [hsum]
+  exact hinterval
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The scale integral of a cone term
+
+Source: the proof of `thm:cone`, which bounds the nonnegative scale integral of
+the `i`th cone integrand by `c_Psi^3` over the active weight, and notes that it
+vanishes when the active coordinate does.  The transverse cutoffs contribute at
+most `c_Psi` each and the active factor integrates to exactly `c_Psi` by the
+one-dimensional Calderón identity, so the product of the three is the bound.
+-/
+
+/-- The transverse product is nonnegative. -/
+theorem coneTransverseProduct_nonneg (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3) :
+    0 ≤ ∏ j : Fin 3, (if j = i then (1 : ℝ) else conePhi (t ^ α.weight j * ξ j)) := by
+  refine Finset.prod_nonneg fun j _ ↦ ?_
+  by_cases hj : j = i
+  · simp [hj]
+  · simp only [if_neg hj]
+    exact conePhi_nonneg _
+
+/-- The two transverse cutoffs contribute at most `c_Psi` each. -/
+theorem coneTransverseProduct_le (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3) :
+    (∏ j : Fin 3, (if j = i then (1 : ℝ) else conePhi (t ^ α.weight j * ξ j)))
+      ≤ cPsi ^ 2 := by
+  classical
+  rw [← Finset.prod_erase_mul _ _ (Finset.mem_univ i)]
+  simp only [if_true, mul_one]
+  calc (∏ j ∈ Finset.univ.erase i,
+        (if j = i then (1 : ℝ) else conePhi (t ^ α.weight j * ξ j)))
+      = ∏ j ∈ Finset.univ.erase i, conePhi (t ^ α.weight j * ξ j) :=
+        Finset.prod_congr rfl fun j hj ↦ if_neg (Finset.ne_of_mem_erase hj)
+    _ ≤ ∏ _j ∈ Finset.univ.erase i, cPsi :=
+        Finset.prod_le_prod (fun j _ ↦ conePhi_nonneg _)
+          (fun j _ ↦ conePhi_le_cPsi _)
+    _ = cPsi ^ 2 := by
+        rw [Finset.prod_const]
+        congr 1
+        simp [Finset.card_erase_of_mem]
+
+/-- **A cone term with a vanishing active coordinate is identically zero.** -/
+theorem coneActiveTerm_eq_zero_of_coord_eq_zero
+    (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3) (h : ξ i = 0) :
+    coneActiveTerm α ξ t i = 0 := by
+  refine coneActiveTerm_eq_zero_of_not_mem α ξ t i (Or.inl ?_)
+  rw [h, mul_zero, abs_zero]
+  norm_num
+
+/-- Each cone term is nonnegative. -/
+theorem coneActiveTerm_nonneg (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 3) :
+    0 ≤ coneActiveTerm α ξ t i := by
+  unfold coneActiveTerm
+  refine mul_nonneg (mul_nonneg (mul_nonneg ?_ (conePsi_nonneg _)) (sq_nonneg _)) ?_
+  · exact Nat.cast_nonneg _
+  · exact coneTransverseProduct_nonneg α ξ t i
+
+/-- **The scale integral of a cone term is at most `c_Psi^3`.** -/
+theorem intervalIntegral_coneActiveTerm_div_le
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) {a b : ℝ} (ha : 0 < a) (hab : a ≤ b) :
+    (∫ t in a..b, coneActiveTerm α ξ t i / t) ≤ cPsi ^ 3 := by
+  have hcPsi := cPsi_pos
+  by_cases hξ : ξ i = 0
+  · have hzero : (∫ t in a..b, coneActiveTerm α ξ t i / t) = 0 := by
+      have : (fun t : ℝ ↦ coneActiveTerm α ξ t i / t) = fun _ : ℝ ↦ (0 : ℝ) := by
+        funext t
+        rw [coneActiveTerm_eq_zero_of_coord_eq_zero α ξ t i hξ, zero_div]
+      rw [this, intervalIntegral.integral_const]
+      simp
+    rw [hzero]
+    positivity
+  · have hne : ∀ t ∈ Set.Icc a b, t ≠ 0 := fun _ ht ↦ ne_of_gt (lt_of_lt_of_le ha ht.1)
+    have hIcc : Set.uIcc a b = Set.Icc a b := Set.uIcc_of_le hab
+    -- the comparison function: the active factor alone, with the full transverse mass
+    set g : ℝ → ℝ := fun t ↦ cPsi ^ 2 *
+      ((α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+        gaussianDeriv (t ^ α.weight i * ξ i) ^ 2 / t) with hg
+    have hargcont : Continuous (fun t : ℝ ↦ t ^ α.weight i * ξ i) :=
+      (continuous_id.pow _).mul continuous_const
+    have hgcont : ContinuousOn g (Set.Icc a b) := by
+      refine continuousOn_const.mul (ContinuousOn.div ?_ continuousOn_id hne)
+      exact ((continuous_const.mul
+        (conePsi_contDiff.continuous.comp hargcont)).mul
+        ((contDiff_gaussianDeriv.continuous.comp hargcont).pow 2)).continuousOn
+    have hfcont : ContinuousOn (fun t : ℝ ↦ coneActiveTerm α ξ t i / t)
+        (Set.Icc a b) :=
+      (continuous_coneActiveTerm α ξ i).continuousOn.div continuousOn_id hne
+    have hfint : IntervalIntegrable (fun t : ℝ ↦ coneActiveTerm α ξ t i / t)
+        volume a b := by
+      refine ContinuousOn.intervalIntegrable ?_
+      rw [hIcc]; exact hfcont
+    have hgint : IntervalIntegrable g volume a b := by
+      refine ContinuousOn.intervalIntegrable ?_
+      rw [hIcc]; exact hgcont
+    have hle : ∀ t ∈ Set.Icc a b, coneActiveTerm α ξ t i / t ≤ g t := by
+      intro t ht
+      have ht0 : 0 < t := lt_of_lt_of_le ha ht.1
+      have hact : 0 ≤ (α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+          gaussianDeriv (t ^ α.weight i * ξ i) ^ 2 :=
+        mul_nonneg (mul_nonneg (Nat.cast_nonneg _) (conePsi_nonneg _)) (sq_nonneg _)
+      have hprod := coneTransverseProduct_le α ξ t i
+      have hmul : coneActiveTerm α ξ t i ≤ cPsi ^ 2 *
+          ((α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+            gaussianDeriv (t ^ α.weight i * ξ i) ^ 2) := by
+        unfold coneActiveTerm
+        calc ((α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+              gaussianDeriv (t ^ α.weight i * ξ i) ^ 2) *
+                ∏ j : Fin 3, (if j = i then (1 : ℝ)
+                  else conePhi (t ^ α.weight j * ξ j))
+            ≤ ((α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+              gaussianDeriv (t ^ α.weight i * ξ i) ^ 2) * cPsi ^ 2 :=
+              mul_le_mul_of_nonneg_left hprod hact
+          _ = cPsi ^ 2 * ((α.weight i : ℝ) * conePsi (t ^ α.weight i * ξ i) *
+              gaussianDeriv (t ^ α.weight i * ξ i) ^ 2) := by ring
+      rw [hg]
+      simp only
+      rw [mul_div_assoc']
+      exact div_le_div_of_nonneg_right hmul ht0.le
+    have hmono : (∫ t in a..b, coneActiveTerm α ξ t i / t) ≤ ∫ t in a..b, g t :=
+      intervalIntegral.integral_mono_on hab hfint hgint hle
+    have hgval : (∫ t in a..b, g t) =
+        cPsi ^ 2 * (conePhi (a ^ α.weight i * ξ i) -
+          conePhi (b ^ α.weight i * ξ i)) := by
+      rw [hg, intervalIntegral.integral_const_mul,
+        calderon_interval_nat_scale (α.weight i) (α.weight_pos i) (ξ i) a b hξ ha hab]
+    have hdiff : conePhi (a ^ α.weight i * ξ i) -
+        conePhi (b ^ α.weight i * ξ i) ≤ cPsi := by
+      linarith [conePhi_le_cPsi (a ^ α.weight i * ξ i),
+        conePhi_nonneg (b ^ α.weight i * ξ i)]
+    have hfac : (0 : ℝ) ≤ cPsi ^ 2 := by positivity
+    calc (∫ t in a..b, coneActiveTerm α ξ t i / t) ≤ ∫ t in a..b, g t := hmono
+      _ = cPsi ^ 2 * (conePhi (a ^ α.weight i * ξ i) -
+            conePhi (b ^ α.weight i * ξ i)) := hgval
+      _ ≤ cPsi ^ 2 * cPsi := mul_le_mul_of_nonneg_left hdiff hfac
+      _ = cPsi ^ 3 := by ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Reading a compactly supported scale integral over the half-line
+
+Source: the proof of `thm:cone`, whose scale integrals run over the whole
+positive half-line while every bound available for them is proved on a compact
+interval.  A function vanishing off a compact subinterval has the same integral
+and the same integrability over the half-line as over that interval, which is
+what transfers the interval bounds.
+-/
+
+/-- **Truncating a half-line integral to a compact subinterval** carrying the
+whole support. -/
+theorem setIntegral_Ioi_eq_intervalIntegral_of_vanishing
+    {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+    {f : ℝ → F} {a b : ℝ} (ha : 0 < a) (hab : a ≤ b)
+    (hz : ∀ t : ℝ, 0 < t → t ∉ Ioc a b → f t = 0) :
+    (∫ t in Ioi (0 : ℝ), f t) = ∫ t in a..b, f t := by
+  classical
+  rw [intervalIntegral.integral_of_le hab]
+  have hcongr : (∫ t in Ioi (0 : ℝ), f t)
+      = ∫ t in Ioi (0 : ℝ), (Ioc a b).indicator f t := by
+    refine setIntegral_congr_fun measurableSet_Ioi ?_
+    intro t ht
+    by_cases hmem : t ∈ Ioc a b
+    · rw [Set.indicator_of_mem hmem]
+    · rw [Set.indicator_of_notMem hmem, hz t ht hmem]
+  have hset : Ioi (0 : ℝ) ∩ Ioc a b = Ioc a b :=
+    Set.inter_eq_right.mpr fun t ht ↦ lt_of_lt_of_le ha (Set.mem_Ioc.mp ht).1.le
+  rw [hcongr, setIntegral_indicator measurableSet_Ioc, hset]
+
+/-- **Half-line integrability** from integrability on the interval carrying the
+whole support. -/
+theorem integrableOn_Ioi_of_vanishing
+    {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F]
+    {f : ℝ → F} {a b : ℝ}
+    (hf : IntegrableOn f (Ioc a b) volume)
+    (hz : ∀ t : ℝ, 0 < t → t ∉ Ioc a b → f t = 0) :
+    IntegrableOn f (Ioi (0 : ℝ)) volume := by
+  classical
+  have hind : Integrable ((Ioc a b).indicator f) volume :=
+    hf.integrable_indicator measurableSet_Ioc
+  refine (hind.integrableOn (s := Ioi (0 : ℝ))).congr_fun ?_ measurableSet_Ioi
+  intro t ht
+  by_cases hmem : t ∈ Ioc a b
+  · rw [Set.indicator_of_mem hmem]
+  · rw [Set.indicator_of_notMem hmem, hz t ht hmem]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone term's scale integral over the half-line
+
+Source: the proof of `thm:cone`.  The cone term is integrable against the
+multiplicative measure on the whole half-line and its integral is at most
+`c_Psi^3`; it is zero outright when the active coordinate vanishes.
+-/
+
+/-- The cone term, divided by the scale, is integrable on the half-line. -/
+theorem integrableOn_coneActiveTerm_div_Ioi
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) :
+    IntegrableOn (fun t : ℝ ↦ coneActiveTerm α ξ t i / t) (Ioi (0 : ℝ)) volume := by
+  obtain ⟨a, b, ha, hab, _, hzsmall, hzlarge, _⟩ :=
+    exists_coneActiveTerm_enclosing_endpoints α ξ
+  have hne : ∀ t ∈ Set.Icc a b, t ≠ 0 := fun _ ht ↦ ne_of_gt (lt_of_lt_of_le ha ht.1)
+  have hfcont : ContinuousOn (fun t : ℝ ↦ coneActiveTerm α ξ t i / t)
+      (Set.Icc a b) :=
+    (continuous_coneActiveTerm α ξ i).continuousOn.div continuousOn_id hne
+  have hint : IntervalIntegrable (fun t : ℝ ↦ coneActiveTerm α ξ t i / t)
+      volume a b := by
+    refine ContinuousOn.intervalIntegrable ?_
+    rw [Set.uIcc_of_le hab]
+    exact hfcont
+  refine integrableOn_Ioi_of_vanishing
+    ((intervalIntegrable_iff_integrableOn_Ioc_of_le hab).mp hint) ?_
+  intro t ht hmem
+  simp only [Set.mem_Ioc, not_and_or, not_lt, not_le] at hmem
+  rcases hmem with h | h
+  · rw [hzsmall t ht h i, zero_div]
+  · rw [hzlarge t h.le i, zero_div]
+
+/-- **The half-line scale integral of a cone term is at most `c_Psi^3`.** -/
+theorem integral_coneActiveTerm_div_Ioi_le
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) :
+    (∫ t in Ioi (0 : ℝ), coneActiveTerm α ξ t i / t) ≤ cPsi ^ 3 := by
+  obtain ⟨a, b, ha, hab, _, hzsmall, hzlarge, _⟩ :=
+    exists_coneActiveTerm_enclosing_endpoints α ξ
+  have hz : ∀ t : ℝ, 0 < t → t ∉ Ioc a b → coneActiveTerm α ξ t i / t = 0 := by
+    intro t ht hmem
+    simp only [Set.mem_Ioc, not_and_or, not_lt, not_le] at hmem
+    rcases hmem with h | h
+    · rw [hzsmall t ht h i, zero_div]
+    · rw [hzlarge t h.le i, zero_div]
+  rw [setIntegral_Ioi_eq_intervalIntegral_of_vanishing ha hab hz]
+  exact intervalIntegral_coneActiveTerm_div_le α ξ i ha hab
+
+/-- **The scale integral vanishes when the active coordinate does.** -/
+theorem integral_coneActiveTerm_div_Ioi_eq_zero_of_coord_eq_zero
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) (h : ξ i = 0) :
+    (∫ t in Ioi (0 : ℝ), coneActiveTerm α ξ t i / t) = 0 := by
+  have : (fun t : ℝ ↦ coneActiveTerm α ξ t i / t) = fun _ : ℝ ↦ (0 : ℝ) := by
+    funext t
+    rw [coneActiveTerm_eq_zero_of_coord_eq_zero α ξ t i h, zero_div]
+  rw [this, integral_zero]
+
+/-- The half-line scale integral of a cone term is nonnegative. -/
+theorem integral_coneActiveTerm_div_Ioi_nonneg
+    (α : Anisotropy) (ξ : E3) (i : Fin 3) :
+    0 ≤ ∫ t in Ioi (0 : ℝ), coneActiveTerm α ξ t i / t := by
+  refine setIntegral_nonneg measurableSet_Ioi ?_
+  intro t ht
+  exact div_nonneg (coneActiveTerm_nonneg α ξ t i) (le_of_lt ht)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## Exchanging the mode sum with the frequency integral
+
+Source: `thm:cone`, absolute-convergence paragraph, which justifies Fubini
+between frequencies and modes.  Both premises are available — each mode's
+integrand is integrable and the integrals of the norms are summable — so the
+interchange follows, and the mode sum may be moved inside the frequency
+integral and back.
+-/
+
+/-- **The mode sum exchanges with the frequency integral.** -/
+theorem integral_tsum_modeFrequencyIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (t : ℝ) (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    (∑' ν : Fin 3 → ℤ,
+        ∫ ζ : Frequency9,
+          (UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            thirdModeFrequencySymbol α (standardModeOfInt ν) t
+              (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+      = ∫ ζ : Frequency9,
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencySymbol α (standardModeOfInt ν) t
+                (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+  rw [integral_tsum_of_summable_integral_norm
+    (fun ν ↦ integrable_modeFrequencyIntegrand α m t F ν)
+    (summable_modeFrequencyIntegralNorm α M m hm t ht F)]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+  exact tsum_mul_right
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## The cone form at one scale is the sum of its mode forms
+
+Source: `thm:cone`, whose proof inserts the Fourier series of the localized
+symbol into the cone integrand and integrates term by term.  The mode sum
+reconstructs the cone symbol at every frequency, and the mode sum exchanges
+with the frequency integral, so the cone form at a fixed scale is the
+coefficient-weighted sum of the mode forms.
+-/
+
+/-- **The fixed-scale cone form is the mode-coefficient sum of the mode
+forms.** -/
+theorem frequencyForm_thirdConeFrequencySymbol_eq_tsum
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (t : ℝ) (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    frequencyForm (thirdConeFrequencySymbol α m t) (F 0) (F 1) (F 2) (F 3)
+      = ∑' ν : Fin 3 → ℤ,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            frequencyForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+              (F 0) (F 1) (F 2) (F 3) := by
+  have hpt : ∀ ζ : Frequency9,
+      thirdConeFrequencySymbol α m t (-frequencyDiagonal ζ)
+        = ∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencySymbol α (standardModeOfInt ν) t
+                (-frequencyDiagonal ζ) := fun ζ ↦
+    (hasSum_thirdModeFrequencySymbols_eq_thirdConeTerm_global
+      α M m hm t ht (-frequencyDiagonal ζ)).tsum_eq.symm
+  unfold frequencyForm
+  calc ∫ ζ : Frequency9, thirdConeFrequencySymbol α m t (-frequencyDiagonal ζ) *
+        frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure
+      = ∫ ζ : Frequency9,
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencySymbol α (standardModeOfInt ν) t
+                (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+        refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+        simp only [hpt ζ]
+    _ = ∑' ν : Fin 3 → ℤ,
+          ∫ ζ : Frequency9,
+            (UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencySymbol α (standardModeOfInt ν) t
+                (-frequencyDiagonal ζ)) *
+              frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure :=
+        (integral_tsum_modeFrequencyIntegrand α M m hm t ht F).symm
+    _ = ∑' ν : Fin 3 → ℤ,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            ∫ ζ : Frequency9,
+              thirdModeFrequencySymbol α (standardModeOfInt ν) t
+                  (-frequencyDiagonal ζ) *
+                frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+        refine tsum_congr fun ν ↦ ?_
+        rw [← integral_const_mul]
+        refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+        ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## The same decomposition on the multiplier side
+
+Source: `thm:cone`.  Both the cone symbol and each mode symbol carry their own
+anisotropic certificate, so the frequency-side identity transfers to the
+multiplier form, which is the shape `eq:form_decomposition` is stated in.
+-/
+
+/-- **The fixed-scale cone multiplier form is the mode-coefficient sum of the
+mode multiplier forms.** -/
+theorem multiplierForm_thirdConeFrequencySymbol_eq_tsum
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (t : ℝ) (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    multiplierForm (thirdConeFrequencySymbol α m t) (F 0) (F 1) (F 2) (F 3)
+      = ∑' ν : Fin 3 → ℤ,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            multiplierForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+              (F 0) (F 1) (F 2) (F 3) := by
+  obtain ⟨M', hM'⟩ :=
+    exists_isAnisotropicMultiplier_thirdConeFrequencySymbol α M m hm ht
+  rw [multiplierForm_eq_frequencyForm α M' _ hM',
+    frequencyForm_thirdConeFrequencySymbol_eq_tsum α M m hm t ht F]
+  refine tsum_congr fun ν ↦ ?_
+  obtain ⟨Mν, hMν⟩ := exists_isAnisotropicMultiplier_thirdModeFrequencySymbol α ν
+  rw [multiplierForm_eq_frequencyForm α Mν _ (hMν t ht)]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone identity's integrand is the cone symbol
+
+Source: `eq:cone_identity`.  The third summand of the Calderón integrand is,
+factor for factor, the third cone symbol times the active weight: the active
+cutoff and the squared Gaussian derivative sit at the third coordinate and the
+two transverse cutoffs at the others, each evaluated at the dilated frequency.
+This is what lets the scale integral of the cone identity be read as a scale
+integral of cone forms.
+-/
+
+/-- The dilation acts coordinatewise by the weighted power of the scale. -/
+theorem dilate_coord (α : Anisotropy) (t : ℝ) (ξ : E3) (j : Fin 3) :
+    α.dilate t ξ j = t ^ α.weight j * ξ j := rfl
+
+/-- **The third summand of the Calderón integrand is the third cone symbol**,
+weighted by the third anisotropy exponent. -/
+theorem multiplier_mul_coneActiveTerm_two
+    (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (ξ : E3) :
+    m ξ * ((coneActiveTerm α ξ t 2 : ℝ) : ℂ)
+      = (α.weight 2 : ℂ) * thirdConeFrequencySymbol α m t ξ := by
+  unfold coneActiveTerm thirdConeFrequencySymbol
+  rw [Fin.prod_univ_three]
+  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
+    if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one,
+    dilate_coord]
+  push_cast
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone symbol at an arbitrary active coordinate
+
+Source: `eq:cone_identity`, whose three summands are the same expression with
+the active coordinate moved.  Naming the general one puts the identity in the
+blueprint's own display form, with the anisotropy exponents pulled out front
+and the scale integral running over the half-line.
+-/
+
+/-- The cone symbol with active coordinate `i`: the multiplier against the cone
+cutoff and squared Gaussian derivative at that coordinate and the plateau
+cutoffs at the others, all at the dilated frequency. -/
+def coneFrequencySymbol
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ) (ξ : E3) : ℂ :=
+  m ξ *
+    (conePsi (α.dilate t ξ i) * gaussianDeriv (α.dilate t ξ i) ^ 2 : ℂ) *
+    ∏ j : Fin 3, (if j = i then 1 else (conePhi (α.dilate t ξ j) : ℂ))
+
+/-- At the third coordinate the general cone symbol is the third cone symbol. -/
+theorem coneFrequencySymbol_two (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (ξ : E3) :
+    coneFrequencySymbol α m 2 t ξ = thirdConeFrequencySymbol α m t ξ := by
+  unfold coneFrequencySymbol thirdConeFrequencySymbol
+  rw [Fin.prod_univ_three]
+  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
+    if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one]
+
+/-- **Each summand of the Calderón integrand is the corresponding cone
+symbol**, weighted by that coordinate's anisotropy exponent. -/
+theorem multiplier_mul_coneActiveTerm
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ) (ξ : E3) :
+    m ξ * ((coneActiveTerm α ξ t i : ℝ) : ℂ)
+      = (α.weight i : ℂ) * coneFrequencySymbol α m i t ξ := by
+  unfold coneActiveTerm coneFrequencySymbol
+  simp only [dilate_coord]
+  push_cast
+  simp only [apply_ite (fun x : ℝ ↦ ((x : ℂ))), Complex.ofReal_one]
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `eq:cone_identity` in the blueprint's display form
+
+Source: `lem:calderon`, `eq:cone_identity`.  With the summands named as cone
+symbols and the anisotropy exponents pulled out front, the full-scale identity
+reads exactly as displayed: the multiplier is the normalized sum over the three
+active coordinates of the scale integral of the corresponding cone symbol
+against the multiplicative measure.
+-/
+
+/-- **`eq:cone_identity`.** -/
+theorem multiplier_coneSymbol_fullScale
+    (α : Anisotropy) (m : E3 → ℂ) {ξ : E3} (hξ : ξ ≠ 0) :
+    m ξ = ((cPsi : ℂ) ^ 3)⁻¹ *
+      ∑ i : Fin 3, (α.weight i : ℂ) *
+        ∫ t in Ioi (0 : ℝ), coneFrequencySymbol α m i t ξ / (t : ℂ) := by
+  have hid := multiplier_coneDecomposition_fullScale α m hξ
+  have hterm : ∀ i : Fin 3,
+      (∫ t in Ioi (0 : ℝ), m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ))
+        = (α.weight i : ℂ) *
+            ∫ t in Ioi (0 : ℝ), coneFrequencySymbol α m i t ξ / (t : ℂ) := by
+    intro i
+    rw [← integral_const_mul]
+    refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+    rw [Complex.ofReal_div, ← mul_div_assoc,
+      multiplier_mul_coneActiveTerm α m i t ξ, mul_div_assoc]
+  have hsum : (∑ i : Fin 3,
+        ∫ t in Ioi (0 : ℝ), m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ))
+      = ∑ i : Fin 3, (α.weight i : ℂ) *
+          ∫ t in Ioi (0 : ℝ), coneFrequencySymbol α m i t ξ / (t : ℂ) :=
+    Finset.sum_congr rfl fun i _ ↦ hterm i
+  rw [← hsum]
+  exact hid
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Permuting a cone symbol into the third slot
+
+Source: `lem:permutation`, which moves any active coordinate into the third by
+relabeling the anisotropy, the frequency and the inputs together.  At the level
+of the cone symbol this is exactly a reindexing of the transverse product: the
+permuted dilation at a slot is the original dilation at the image slot, and the
+slot excluded from the product moves with the permutation.
+-/
+
+/-- **`lem:permutation` for the cone symbol.** -/
+theorem coneFrequencySymbol_permute_to_two
+    (α : Anisotropy) (m : E3 → ℂ) (σ : Equiv.Perm (Fin 3)) {i : Fin 3}
+    (hσ : σ 2 = i) (t : ℝ) (ξ : E3) :
+    coneFrequencySymbol α m i t ξ
+      = coneFrequencySymbol (permutedAnisotropy α σ)
+          (fun x : E3 ↦ m ((coordinatePermutation σ).symm x)) 2 t
+          (coordinatePermutation σ ξ) := by
+  classical
+  have hco : ∀ j : Fin 3,
+      (permutedAnisotropy α σ).dilate t (coordinatePermutation σ ξ) j
+        = α.dilate t ξ (σ j) := by
+    intro j
+    rw [← coordinatePermutation_dilate]
+    exact coordinatePermutation_apply σ (α.dilate t ξ) j
+  have hm : (fun x : E3 ↦ m ((coordinatePermutation σ).symm x))
+      (coordinatePermutation σ ξ) = m ξ := by
+    simp
+  have hprod :
+      (∏ j : Fin 3, (if j = 2 then (1 : ℂ)
+          else (conePhi ((permutedAnisotropy α σ).dilate t
+            (coordinatePermutation σ ξ) j) : ℂ)))
+        = ∏ j : Fin 3,
+            (if j = i then (1 : ℂ) else (conePhi (α.dilate t ξ j) : ℂ)) := by
+    rw [← Equiv.prod_comp σ
+      (fun k : Fin 3 ↦ if k = i then (1 : ℂ) else (conePhi (α.dilate t ξ k) : ℂ))]
+    refine Finset.prod_congr rfl fun j _ ↦ ?_
+    rw [hco j]
+    by_cases hj : j = 2
+    · subst hj
+      simp [hσ]
+    · have hne : σ j ≠ i := by
+        rw [← hσ]
+        exact fun h ↦ hj (σ.injective h)
+      simp [hj, hne]
+  unfold coneFrequencySymbol
+  rw [hm, hco 2, hσ, hprod]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Every cone symbol is a third cone symbol
+
+Source: `lem:permutation`.  Transposing the active coordinate with the third
+one is a permutation carrying the third slot to it, so every cone symbol is the
+third cone symbol of the transposed anisotropy at the transposed frequency.
+This is what makes the third-cone development apply to all three cones.
+-/
+
+/-- The transposition carrying the third slot to a given one. -/
+theorem swap_two_apply_two (i : Fin 3) : (Equiv.swap 2 i) 2 = i :=
+  Equiv.swap_apply_left 2 i
+
+/-- **Every cone symbol is a third cone symbol** of the transposed data. -/
+theorem coneFrequencySymbol_eq_thirdConeFrequencySymbol_permuted
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ) (ξ : E3) :
+    coneFrequencySymbol α m i t ξ
+      = thirdConeFrequencySymbol (permutedAnisotropy α (Equiv.swap 2 i))
+          (fun x : E3 ↦ m ((coordinatePermutation (Equiv.swap 2 i)).symm x)) t
+          (coordinatePermutation (Equiv.swap 2 i) ξ) := by
+  rw [coneFrequencySymbol_permute_to_two α m (Equiv.swap 2 i)
+      (swap_two_apply_two i) t ξ,
+    coneFrequencySymbol_two]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Relabeling an anisotropic multiplier certificate
+
+Source: `lem:permutation`, which relabels the anisotropy and the frequency
+together.  A multiplier certificate survives that relabeling with the same
+constant: the iterated derivative of the relabeled symbol in the standard
+directions is the original derivative in the permuted directions, the
+anisotropic weight of a direction tuple is permuted along with it, and the
+homogeneous radius is invariant.
+-/
+
+/-- The inverse relabeling carries the standard `j` direction to the standard
+`σ j` direction. -/
+theorem coordinatePermutation_symm_coordinateDirection
+    (σ : Equiv.Perm (Fin 3)) (j : Fin 3) :
+    (coordinatePermutation σ).symm (Anisotropy.coordinateDirection j) =
+      Anisotropy.coordinateDirection (σ j) := by
+  ext k
+  simp [coordinatePermutation_symm_apply, coordinateDirection_apply,
+    Equiv.symm_apply_eq]
+
+/-- **Iterated derivatives compose with a linear isometry equivalence**, with
+no smoothness hypothesis. -/
+theorem iteratedFDeriv_comp_linearIsometryEquiv
+    (g : E3 ≃ₗᵢ[ℝ] E3) (f : E3 → ℂ) (k : ℕ) (x : E3) (v : Fin k → E3) :
+    iteratedFDeriv ℝ k (fun y : E3 ↦ f (g y)) x v
+      = iteratedFDeriv ℝ k f (g x) (fun r ↦ g (v r)) := by
+  have h := g.toContinuousLinearEquiv.iteratedFDerivWithin_comp_right f
+    uniqueDiffOn_univ (Set.mem_univ (g x)) k
+  simp only [Set.preimage_univ, iteratedFDerivWithin_univ] at h
+  have hfun : (f ∘ (g.toContinuousLinearEquiv : E3 → E3))
+      = fun y : E3 ↦ f (g y) := rfl
+  rw [hfun] at h
+  rw [h]
+  rfl
+
+/-- **A multiplier certificate survives coordinate relabeling.** -/
+theorem IsAnisotropicMultiplier_permute
+    {α : Anisotropy} {M : ℝ} {m : E3 → ℂ} (σ : Equiv.Perm (Fin 3))
+    (h : Anisotropy.IsAnisotropicMultiplier α M m) :
+    Anisotropy.IsAnisotropicMultiplier (permutedAnisotropy α σ) M
+      (fun x : E3 ↦ m ((coordinatePermutation σ).symm x)) := by
+  obtain ⟨hM, hmeas, hzero, hsmooth, hderiv⟩ := h
+  have hcont : Continuous (fun x : E3 ↦ (coordinatePermutation σ).symm x) :=
+    (coordinatePermutation σ).symm.continuous
+  have hmaps : Set.MapsTo (fun x : E3 ↦ (coordinatePermutation σ).symm x)
+      ({0}ᶜ : Set E3) ({0}ᶜ : Set E3) := by
+    intro x hx
+    simp only [Set.mem_compl_iff, Set.mem_singleton_iff] at hx ⊢
+    intro hcon
+    exact hx (by
+      have := congrArg (coordinatePermutation σ) hcon
+      rwa [(coordinatePermutation σ).apply_symm_apply, map_zero] at this)
+  refine ⟨hM, hmeas.comp hcont.measurable, by simp [hzero], ?_, ?_⟩
+  · exact hsmooth.comp
+      ((coordinatePermutation σ).symm.toContinuousLinearEquiv.contDiff.contDiffOn)
+      hmaps
+  · intro k hk ξ hξ s
+    have hcomp := iteratedFDeriv_comp_linearIsometryEquiv
+      (coordinatePermutation σ).symm m k ξ
+      (fun r ↦ Anisotropy.coordinateDirection (s r))
+    rw [hcomp]
+    have hdir : (fun r ↦ (coordinatePermutation σ).symm
+        (Anisotropy.coordinateDirection (s r)))
+        = fun r ↦ Anisotropy.coordinateDirection (σ (s r)) := by
+      funext r
+      exact coordinatePermutation_symm_coordinateDirection σ (s r)
+    rw [hdir]
+    have hne : (coordinatePermutation σ).symm ξ ≠ 0 := by
+      intro hcon
+      exact hξ (by
+        have := congrArg (coordinatePermutation σ) hcon
+        rwa [(coordinatePermutation σ).apply_symm_apply, map_zero] at this)
+    have hbound := hderiv k hk ((coordinatePermutation σ).symm ξ) hne
+      (fun r ↦ σ (s r))
+    have hrad : (permutedAnisotropy α σ).radius ξ
+        = α.radius ((coordinatePermutation σ).symm ξ) := by
+      have := permutedAnisotropy_radius α σ ((coordinatePermutation σ).symm ξ)
+      rwa [(coordinatePermutation σ).apply_symm_apply] at this
+    have hwt : ((permutedAnisotropy α σ).derivativeWeight s : ℕ)
+        = α.derivativeWeight (fun r ↦ σ (s r)) := rfl
+    rw [hrad, hwt]
+    exact hbound
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode expansion at every cone
+
+Source: `thm:cone` together with `lem:permutation`.  The mode reconstruction was
+proved at the third cone; transposing the active coordinate into the third slot
+carries both the cone symbol and its certificate, so the same reconstruction
+holds at each of the three cones, in the correspondingly relabeled frame.
+-/
+
+/-- The relabeled anisotropy putting the `i`th coordinate third. -/
+abbrev conePermutedAnisotropy (α : Anisotropy) (i : Fin 3) : Anisotropy :=
+  permutedAnisotropy α (Equiv.swap 2 i)
+
+/-- The relabeled multiplier putting the `i`th coordinate third. -/
+abbrev conePermutedMultiplier (m : E3 → ℂ) (i : Fin 3) : E3 → ℂ :=
+  fun x : E3 ↦ m ((coordinatePermutation (Equiv.swap 2 i)).symm x)
+
+/-- The relabeled certificate at the `i`th cone. -/
+theorem isAnisotropicMultiplier_conePermuted
+    {α : Anisotropy} {M : ℝ} {m : E3 → ℂ}
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) :
+    Anisotropy.IsAnisotropicMultiplier (conePermutedAnisotropy α i) M
+      (conePermutedMultiplier m i) :=
+  IsAnisotropicMultiplier_permute (Equiv.swap 2 i) hm
+
+/-- **The mode series reconstructs every cone symbol.** -/
+theorem hasSum_coneFrequencySymbol_modes
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3)
+    (t : ℝ) (ht : 0 < t) (ξ : E3) :
+    HasSum (fun ν : Fin 3 → ℤ ↦
+      UnitAddTorus.mFourierCoeff
+          (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+            (conePermutedMultiplier m i) 2 t) ν *
+        thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+          (standardModeOfInt ν) t (coordinatePermutation (Equiv.swap 2 i) ξ))
+      (coneFrequencySymbol α m i t ξ) := by
+  rw [coneFrequencySymbol_eq_thirdConeFrequencySymbol_permuted α m i t ξ]
+  exact hasSum_thirdModeFrequencySymbols_eq_thirdConeTerm_global
+    (conePermutedAnisotropy α i) M (conePermutedMultiplier m i)
+    (isAnisotropicMultiplier_conePermuted hm i) t ht
+    (coordinatePermutation (Equiv.swap 2 i) ξ)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Lattice summability indexed by integer triples
+
+Source: the absolute-convergence paragraph of `thm:cone`, whose mode sum runs
+over integer triples while the development's lattice summability is indexed by
+the lattice itself.  The two are connected by the injection sending a triple to
+its lattice point: summability pulls back along an injection, so the majorant
+transfers without needing the injection to be onto.
+-/
+
+/-- The lattice majorant, pulled back to integer triples. -/
+theorem summable_intMode_sourceWeight_inv :
+    Summable (fun ν : Fin 3 → ℤ ↦
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)) :=
+  summable_standardMode_sourceWeight_inv.comp_injective standardModeOfInt_injective
+
+/-- **Absolute convergence of a three-cone mode sum indexed by integer
+triples**, from the same decay and growth budgets as on the lattice. -/
+theorem summable_intModeProducts_of_decay
+    (a b : Fin 3 → (Fin 3 → ℤ) → ℂ) (C D : ℝ)
+    (hC : 0 ≤ C) (_hD : 0 ≤ D)
+    (ha : ∀ i ν, ‖a i ν‖ ≤
+      C * (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ))
+    (hb : ∀ i ν, ‖b i ν‖ ≤
+      D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ)) :
+    Summable (fun ν : Fin 3 → ℤ ↦ ∑ i : Fin 3, a i ν * b i ν) := by
+  set g : (Fin 3 → ℤ) → ℝ := fun ν ↦
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hg
+  apply Summable.of_norm_bounded
+    (summable_intMode_sourceWeight_inv.mul_left (3 * C * D))
+  intro ν
+  set w : ℝ := sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) with hw
+  have hwpos : 0 < w := sourceWeight_pos _
+  have hwne : w ≠ 0 := hwpos.ne'
+  have hpow : w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ) = g ν := by
+    show w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ) = w⁻¹ ^ (10 : ℕ)
+    field_simp [hwne]
+  have hterm : ∀ i : Fin 3, ‖a i ν * b i ν‖ ≤ C * D * g ν := by
+    intro i
+    rw [norm_mul]
+    calc ‖a i ν‖ * ‖b i ν‖
+        ≤ (C * w⁻¹ ^ (110 : ℕ)) * (D * w ^ (100 : ℕ)) := by
+          refine mul_le_mul (ha i ν) (hb i ν) (norm_nonneg _) ?_
+          exact mul_nonneg hC (pow_nonneg (inv_nonneg.mpr hwpos.le) _)
+      _ = C * D * (w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ)) := by ring
+      _ = C * D * g ν := by rw [hpow]
+  calc ‖∑ i : Fin 3, a i ν * b i ν‖
+      ≤ ∑ i : Fin 3, ‖a i ν * b i ν‖ := by
+        simpa using
+          (norm_sum_le (Finset.univ : Finset (Fin 3)) (fun i ↦ a i ν * b i ν))
+    _ ≤ ∑ _i : Fin 3, C * D * g ν := Finset.sum_le_sum fun i _ ↦ hterm i
+    _ = (3 * C * D) * g ν := by
+        simp
+        ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone expansion converges absolutely
+
+Source: `thm:cone`, "The expansion is absolutely convergent."  The two budgets
+it needs are both available without hypotheses beyond the multiplier
+certificate and the exponent region: the mode coefficients decay at order one
+hundred and ten in the translation weight, and the model forms grow at order
+one hundred in it.  Their product is summable over the lattice, hence over the
+integer triples indexing the modes.
+-/
+
+/-- An `L^p` norm is nonnegative. -/
+theorem lpNorm_nonneg' {X : Type*} [MeasurableSpace X]
+    (f : X → ℝ) (p : ℝ≥0∞) (μ : Measure X) : 0 ≤ lpNorm f p μ := by
+  unfold lpNorm
+  split
+  · exact ENNReal.toReal_nonneg
+  · exact le_rfl
+
+/-- **Absolute convergence of the three-cone mode expansion.** -/
+theorem summable_coneModeExpansion
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (t : ℝ) (ht : 0 < t)
+    (c : ℝ → ℝ) (hcmeas : Measurable c) (hc : ∀ s : ℝ, |c s| ≤ 1)
+    (F : ModelSchwartzInput) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j) (hqsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ (i : Fin 3) (j : Fin 4), activeSourceStoppingExponent i j < q j) :
+    Summable (fun ν : Fin 3 → ℤ ↦
+      ∑ i : Fin 3,
+        UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν *
+          (activeModelFullForm α i
+            (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)) := by
+  classical
+  -- the coefficient budget
+  have hcoefEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ s : ℝ, 0 < s → ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i s) ν‖ ≤
+        (A * M) *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := fun i ↦
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      α M m hm i
+  choose Af hAf0 hAfb using hcoefEx
+  set C : ℝ := (∑ i : Fin 3, Af i) * M with hCdef
+  have hM0 : 0 ≤ M := hm.nonneg
+  have hAsum0 : 0 ≤ ∑ i : Fin 3, Af i := Finset.sum_nonneg fun i _ ↦ hAf0 i
+  have hC0 : 0 ≤ C := mul_nonneg hAsum0 hM0
+  have ha : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+        C * (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+          (110 : ℕ) := by
+    intro i ν
+    refine (hAfb i t ht ν).trans ?_
+    have hle : Af i * M ≤ C := by
+      rw [hCdef]
+      exact mul_le_mul_of_nonneg_right
+        (Finset.single_le_sum (fun j _ ↦ hAf0 j) (Finset.mem_univ i)) hM0
+    exact mul_le_mul_of_nonneg_right hle
+      (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  -- the model-form budget
+  have hformEx : ∀ i : Fin 3, ∃ B : ℝ, 0 ≤ B ∧ ∀ (u : E3) (c' : ℝ → ℝ)
+      (F' : ModelSchwartzInput), Measurable c' → (∀ s : ℝ, |c' s| ≤ 1) →
+      |activeModelFullForm α i u c' F'| ≤ B * sourceWeight u ^ 100 *
+        ∏ j : Fin 4, lpNorm (F' j : E3 → ℝ) (ENNReal.ofReal (q j)) volume :=
+    fun i ↦ exists_uniform_activeModelFullForm_bound_weight100 α i q hq hqsum (hqs i)
+  choose Bf hBf0 hBfb using hformEx
+  set P : ℝ := ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume
+    with hPdef
+  have hP0 : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg' _ _ _
+  set D : ℝ := (∑ i : Fin 3, Bf i) * P with hDdef
+  have hBsum0 : 0 ≤ ∑ i : Fin 3, Bf i := Finset.sum_nonneg fun i _ ↦ hBf0 i
+  have hD0 : 0 ≤ D := mul_nonneg hBsum0 hP0
+  have hb : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖(activeModelFullForm α i
+          (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)‖ ≤
+        D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^
+          (100 : ℕ) := by
+    intro i ν
+    have habs := hBfb i (standardModeTranslate (standardModeOfInt ν)) c F hcmeas hc
+    rw [Complex.norm_real]
+    have hwt : sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ (100 : ℕ)
+        ≤ sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) :=
+      sourceWeight_standardModeTranslate_pow_le _
+    have hBle : Bf i ≤ ∑ j : Fin 3, Bf j :=
+      Finset.single_le_sum (fun j _ ↦ hBf0 j) (Finset.mem_univ i)
+    calc |activeModelFullForm α i
+            (standardModeTranslate (standardModeOfInt ν)) c F|
+        ≤ Bf i * sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ 100 * P :=
+          habs
+      _ ≤ (∑ j : Fin 3, Bf j) *
+            sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 * P := by
+          have h1 : Bf i * sourceWeight
+              (standardModeTranslate (standardModeOfInt ν)) ^ 100
+              ≤ (∑ j : Fin 3, Bf j) *
+                sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 :=
+            mul_le_mul hBle hwt (pow_nonneg (sourceWeight_pos _).le _) hBsum0
+          exact mul_le_mul_of_nonneg_right h1 hP0
+      _ = D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 := by
+          rw [hDdef]; ring
+  exact summable_intModeProducts_of_decay
+    (fun i ν ↦ UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν)
+    (fun i ν ↦ (activeModelFullForm α i
+      (standardModeTranslate (standardModeOfInt ν)) c F : ℂ))
+    C D hC0 hD0 ha hb
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The explicit majorant for the mode expansion
+
+Source: the closing paragraph of the proof of `thm:main`, which bounds each
+term of `eq:form_decomposition` by the order-ten decay and then sums.  Stated
+over the integer triples that index the modes, this is the final summation the
+main theorem performs.
+-/
+
+/-- **The three-cone mode sum is bounded by its order-ten lattice
+majorant**, indexed by integer triples. -/
+theorem norm_tsum_intModeProducts_le_of_decay
+    (a b : Fin 3 → (Fin 3 → ℤ) → ℂ) (C D : ℝ)
+    (hC : 0 ≤ C) (hD : 0 ≤ D)
+    (ha : ∀ i ν, ‖a i ν‖ ≤
+      C * (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ))
+    (hb : ∀ i ν, ‖b i ν‖ ≤
+      D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ)) :
+    ‖∑' ν : Fin 3 → ℤ, ∑ i : Fin 3, a i ν * b i ν‖ ≤
+      (3 * C * D) * ∑' ν : Fin 3 → ℤ,
+        (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ) := by
+  classical
+  set G : (Fin 3 → ℤ) → ℂ := fun ν ↦ ∑ i : Fin 3, a i ν * b i ν with hG
+  set g : (Fin 3 → ℤ) → ℝ := fun ν ↦
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hgdef
+  have hGsum : Summable G :=
+    summable_intModeProducts_of_decay a b C D hC hD ha hb
+  have hgsum : Summable g := summable_intMode_sourceWeight_inv
+  have hpoint : ∀ ν : Fin 3 → ℤ, ‖G ν‖ ≤ (3 * C * D) * g ν := by
+    intro ν
+    set w : ℝ := sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) with hw
+    have hwpos : 0 < w := sourceWeight_pos _
+    have hwne : w ≠ 0 := hwpos.ne'
+    have hpow : w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ) = w⁻¹ ^ (10 : ℕ) := by
+      field_simp [hwne]
+    have hterm : ∀ i : Fin 3, ‖a i ν * b i ν‖ ≤ C * D * w⁻¹ ^ (10 : ℕ) := by
+      intro i
+      rw [norm_mul]
+      calc ‖a i ν‖ * ‖b i ν‖
+          ≤ (C * w⁻¹ ^ (110 : ℕ)) * (D * w ^ (100 : ℕ)) := by
+            refine mul_le_mul (ha i ν) (hb i ν) (norm_nonneg _) ?_
+            exact mul_nonneg hC (pow_nonneg (inv_nonneg.mpr hwpos.le) _)
+        _ = C * D * (w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ)) := by ring
+        _ = C * D * w⁻¹ ^ (10 : ℕ) := by rw [hpow]
+    show ‖∑ i : Fin 3, a i ν * b i ν‖ ≤ (3 * C * D) * w⁻¹ ^ (10 : ℕ)
+    calc ‖∑ i : Fin 3, a i ν * b i ν‖
+        ≤ ∑ i : Fin 3, ‖a i ν * b i ν‖ := by
+          simpa using
+            (norm_sum_le (Finset.univ : Finset (Fin 3)) (fun i ↦ a i ν * b i ν))
+      _ ≤ ∑ _i : Fin 3, C * D * w⁻¹ ^ (10 : ℕ) := Finset.sum_le_sum fun i _ ↦ hterm i
+      _ = (3 * C * D) * w⁻¹ ^ (10 : ℕ) := by
+          simp
+          ring
+  calc ‖∑' ν : Fin 3 → ℤ, ∑ i : Fin 3, a i ν * b i ν‖ = ‖∑' ν, G ν‖ := by rfl
+    _ ≤ ∑' ν, ‖G ν‖ := norm_tsum_le_tsum_norm hGsum.norm
+    _ ≤ ∑' ν, (3 * C * D) * g ν :=
+        hGsum.norm.tsum_le_tsum hpoint (hgsum.mul_left _)
+    _ = (3 * C * D) * ∑' ν, g ν := hgsum.tsum_mul_left _
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone expansion obeys the source bound
+
+Source: the closing paragraph of the proof of `thm:main`.  The mode expansion
+is bounded by the multiplier constant times the product of the input norms,
+with a constant depending only on the anisotropy and the exponents — uniformly
+in the scale, the scale coefficient and the inputs.
+-/
+
+/-- **The three-cone mode expansion obeys the source bound.** -/
+theorem exists_norm_tsum_coneModeExpansion_le
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j) (hqsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ (i : Fin 3) (j : Fin 4), activeSourceStoppingExponent i j < q j) :
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ t : ℝ, 0 < t → ∀ c : ℝ → ℝ, Measurable c →
+      (∀ s : ℝ, |c s| ≤ 1) → ∀ F : ModelSchwartzInput,
+      ‖∑' ν : Fin 3 → ℤ, ∑ i : Fin 3,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν *
+            (activeModelFullForm α i
+              (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)‖
+        ≤ K * M *
+            ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume := by
+  classical
+  have hM0 : 0 ≤ M := hm.nonneg
+  have hcoefEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ s : ℝ, 0 < s → ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i s) ν‖ ≤
+        (A * M) *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := fun i ↦
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      α M m hm i
+  choose Af hAf0 hAfb using hcoefEx
+  have hformEx : ∀ i : Fin 3, ∃ B : ℝ, 0 ≤ B ∧ ∀ (u : E3) (c' : ℝ → ℝ)
+      (F' : ModelSchwartzInput), Measurable c' → (∀ s : ℝ, |c' s| ≤ 1) →
+      |activeModelFullForm α i u c' F'| ≤ B * sourceWeight u ^ 100 *
+        ∏ j : Fin 4, lpNorm (F' j : E3 → ℝ) (ENNReal.ofReal (q j)) volume :=
+    fun i ↦ exists_uniform_activeModelFullForm_bound_weight100 α i q hq hqsum (hqs i)
+  choose Bf hBf0 hBfb using hformEx
+  set SA : ℝ := ∑ i : Fin 3, Af i with hSA
+  set SB : ℝ := ∑ i : Fin 3, Bf i with hSB
+  have hSA0 : 0 ≤ SA := Finset.sum_nonneg fun i _ ↦ hAf0 i
+  have hSB0 : 0 ≤ SB := Finset.sum_nonneg fun i _ ↦ hBf0 i
+  set S : ℝ := ∑' ν : Fin 3 → ℤ,
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hS
+  have hS0 : 0 ≤ S := tsum_nonneg fun ν ↦ by positivity
+  refine ⟨3 * SA * SB * S, by positivity, ?_⟩
+  intro t ht c hcmeas hc F
+  set P : ℝ := ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume
+    with hP
+  have hP0 : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg' _ _ _
+  set C : ℝ := SA * M with hC
+  set D : ℝ := SB * P with hD
+  have hC0 : 0 ≤ C := mul_nonneg hSA0 hM0
+  have hD0 : 0 ≤ D := mul_nonneg hSB0 hP0
+  have ha : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+        C * (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+          (110 : ℕ) := by
+    intro i ν
+    refine (hAfb i t ht ν).trans ?_
+    have hle : Af i * M ≤ C :=
+      mul_le_mul_of_nonneg_right
+        (Finset.single_le_sum (fun j _ ↦ hAf0 j) (Finset.mem_univ i)) hM0
+    exact mul_le_mul_of_nonneg_right hle
+      (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  have hb : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖(activeModelFullForm α i
+          (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)‖ ≤
+        D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^
+          (100 : ℕ) := by
+    intro i ν
+    have habs := hBfb i (standardModeTranslate (standardModeOfInt ν)) c F hcmeas hc
+    rw [Complex.norm_real]
+    have hwt : sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ (100 : ℕ)
+        ≤ sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) :=
+      sourceWeight_standardModeTranslate_pow_le _
+    have hBle : Bf i ≤ SB :=
+      Finset.single_le_sum (fun j _ ↦ hBf0 j) (Finset.mem_univ i)
+    calc |activeModelFullForm α i
+            (standardModeTranslate (standardModeOfInt ν)) c F|
+        ≤ Bf i * sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ 100 * P :=
+          habs
+      _ ≤ SB * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 * P := by
+          have h1 : Bf i * sourceWeight
+              (standardModeTranslate (standardModeOfInt ν)) ^ 100
+              ≤ SB * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 :=
+            mul_le_mul hBle hwt (pow_nonneg (sourceWeight_pos _).le _) hSB0
+          exact mul_le_mul_of_nonneg_right h1 hP0
+      _ = D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 := by
+          rw [hD]; ring
+  have hmain := norm_tsum_intModeProducts_le_of_decay
+    (fun i ν ↦ UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν)
+    (fun i ν ↦ (activeModelFullForm α i
+      (standardModeTranslate (standardModeOfInt ν)) c F : ℂ))
+    C D hC0 hD0 ha hb
+  refine hmain.trans (le_of_eq ?_)
+  rw [← hS, hC, hD]
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The expansion bound, with the model estimate as the only input
+
+Source: the closing paragraph of the proof of `thm:main`, which quotes a
+uniform model-form bound at weight one hundred and then sums against the
+order-one-hundred-and-ten coefficient decay.  Stating the summation against an
+arbitrary such bound separates the two ingredients: the summation is
+unconditional, and whichever exponent region the model estimate is available in
+is the region the expansion bound holds in.
+-/
+
+/-- A uniform weight-one-hundred bound for the active model forms at the
+exponents `q`. -/
+def UniformActiveModelBound (α : Anisotropy) (q : Fin 4 → ℝ) : Prop :=
+  ∀ i : Fin 3, ∃ B : ℝ, 0 ≤ B ∧ ∀ (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput),
+    Measurable c → (∀ s : ℝ, |c s| ≤ 1) →
+    |activeModelFullForm α i u c F| ≤ B * sourceWeight u ^ 100 *
+      ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume
+
+/-- In the initial-model exponent region the uniform bound is available. -/
+theorem uniformActiveModelBound_of_stoppingExponents
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j) (hqsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ (i : Fin 3) (j : Fin 4), activeSourceStoppingExponent i j < q j) :
+    UniformActiveModelBound α q :=
+  fun i ↦ exists_uniform_activeModelFullForm_bound_weight100 α i q hq hqsum (hqs i)
+
+/-- **The expansion bound from an arbitrary uniform model estimate.** -/
+theorem exists_norm_tsum_coneModeExpansion_le_of_modelBound
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (q : Fin 4 → ℝ) (hmodel : UniformActiveModelBound α q) :
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ t : ℝ, 0 < t → ∀ c : ℝ → ℝ, Measurable c →
+      (∀ s : ℝ, |c s| ≤ 1) → ∀ F : ModelSchwartzInput,
+      ‖∑' ν : Fin 3 → ℤ, ∑ i : Fin 3,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν *
+            (activeModelFullForm α i
+              (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)‖
+        ≤ K * M *
+            ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume := by
+  classical
+  have hM0 : 0 ≤ M := hm.nonneg
+  have hcoefEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ s : ℝ, 0 < s → ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i s) ν‖ ≤
+        (A * M) *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := fun i ↦
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      α M m hm i
+  choose Af hAf0 hAfb using hcoefEx
+  choose Bf hBf0 hBfb using hmodel
+  set SA : ℝ := ∑ i : Fin 3, Af i with hSA
+  set SB : ℝ := ∑ i : Fin 3, Bf i with hSB
+  have hSA0 : 0 ≤ SA := Finset.sum_nonneg fun i _ ↦ hAf0 i
+  have hSB0 : 0 ≤ SB := Finset.sum_nonneg fun i _ ↦ hBf0 i
+  set S : ℝ := ∑' ν : Fin 3 → ℤ,
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hS
+  have hS0 : 0 ≤ S := tsum_nonneg fun ν ↦ by positivity
+  refine ⟨3 * SA * SB * S, by positivity, ?_⟩
+  intro t ht c hcmeas hc F
+  set P : ℝ := ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume
+    with hP
+  have hP0 : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg' _ _ _
+  set C : ℝ := SA * M with hC
+  set D : ℝ := SB * P with hD
+  have hC0 : 0 ≤ C := mul_nonneg hSA0 hM0
+  have hD0 : 0 ≤ D := mul_nonneg hSB0 hP0
+  have ha : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+        C * (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+          (110 : ℕ) := by
+    intro i ν
+    refine (hAfb i t ht ν).trans ?_
+    have hle : Af i * M ≤ C :=
+      mul_le_mul_of_nonneg_right
+        (Finset.single_le_sum (fun j _ ↦ hAf0 j) (Finset.mem_univ i)) hM0
+    exact mul_le_mul_of_nonneg_right hle
+      (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  have hb : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖(activeModelFullForm α i
+          (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)‖ ≤
+        D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^
+          (100 : ℕ) := by
+    intro i ν
+    have habs := hBfb i (standardModeTranslate (standardModeOfInt ν)) c F hcmeas hc
+    rw [Complex.norm_real]
+    have hwt : sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ (100 : ℕ)
+        ≤ sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) :=
+      sourceWeight_standardModeTranslate_pow_le _
+    have hBle : Bf i ≤ SB :=
+      Finset.single_le_sum (fun j _ ↦ hBf0 j) (Finset.mem_univ i)
+    calc |activeModelFullForm α i
+            (standardModeTranslate (standardModeOfInt ν)) c F|
+        ≤ Bf i * sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ 100 * P :=
+          habs
+      _ ≤ SB * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 * P := by
+          have h1 : Bf i * sourceWeight
+              (standardModeTranslate (standardModeOfInt ν)) ^ 100
+              ≤ SB * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 :=
+            mul_le_mul hBle hwt (pow_nonneg (sourceWeight_pos _).le _) hSB0
+          exact mul_le_mul_of_nonneg_right h1 hP0
+      _ = D * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 := by
+          rw [hD]; ring
+  have hmain := norm_tsum_intModeProducts_le_of_decay
+    (fun i ν ↦ UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν)
+    (fun i ν ↦ (activeModelFullForm α i
+      (standardModeTranslate (standardModeOfInt ν)) c F : ℂ))
+    C D hC0 hD0 ha hb
+  refine hmain.trans (le_of_eq ?_)
+  rw [← hS, hC, hD]
+  ring
+
+/-- **Absolute convergence from an arbitrary uniform model estimate.** -/
+theorem summable_coneModeExpansion_of_modelBound
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (t : ℝ) (ht : 0 < t)
+    (c : ℝ → ℝ) (hcmeas : Measurable c) (hc : ∀ s : ℝ, |c s| ≤ 1)
+    (F : ModelSchwartzInput) (q : Fin 4 → ℝ)
+    (hmodel : UniformActiveModelBound α q) :
+    Summable (fun ν : Fin 3 → ℤ ↦
+      ∑ i : Fin 3,
+        UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν *
+          (activeModelFullForm α i
+            (standardModeTranslate (standardModeOfInt ν)) c F : ℂ)) := by
+  classical
+  have hM0 : 0 ≤ M := hm.nonneg
+  have hcoefEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ s : ℝ, 0 < s → ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i s) ν‖ ≤
+        (A * M) *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := fun i ↦
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      α M m hm i
+  choose Af hAf0 hAfb using hcoefEx
+  choose Bf hBf0 hBfb using hmodel
+  set SA : ℝ := ∑ i : Fin 3, Af i with hSA
+  set SB : ℝ := ∑ i : Fin 3, Bf i with hSB
+  have hSA0 : 0 ≤ SA := Finset.sum_nonneg fun i _ ↦ hAf0 i
+  have hSB0 : 0 ≤ SB := Finset.sum_nonneg fun i _ ↦ hBf0 i
+  set P : ℝ := ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume
+    with hP
+  have hP0 : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg' _ _ _
+  refine summable_intModeProducts_of_decay
+    (fun i ν ↦ UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν)
+    (fun i ν ↦ (activeModelFullForm α i
+      (standardModeTranslate (standardModeOfInt ν)) c F : ℂ))
+    (SA * M) (SB * P) (mul_nonneg hSA0 hM0) (mul_nonneg hSB0 hP0) ?_ ?_
+  · intro i ν
+    refine (hAfb i t ht ν).trans ?_
+    have hle : Af i * M ≤ SA * M :=
+      mul_le_mul_of_nonneg_right
+        (Finset.single_le_sum (fun j _ ↦ hAf0 j) (Finset.mem_univ i)) hM0
+    exact mul_le_mul_of_nonneg_right hle
+      (pow_nonneg (inv_nonneg.mpr (sourceWeight_pos _).le) _)
+  · intro i ν
+    have habs := hBfb i (standardModeTranslate (standardModeOfInt ν)) c F hcmeas hc
+    rw [Complex.norm_real]
+    have hwt : sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ (100 : ℕ)
+        ≤ sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) :=
+      sourceWeight_standardModeTranslate_pow_le _
+    have hBle : Bf i ≤ SB :=
+      Finset.single_le_sum (fun j _ ↦ hBf0 j) (Finset.mem_univ i)
+    calc |activeModelFullForm α i
+            (standardModeTranslate (standardModeOfInt ν)) c F|
+        ≤ Bf i * sourceWeight (standardModeTranslate (standardModeOfInt ν)) ^ 100 * P :=
+          habs
+      _ ≤ SB * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 * P := by
+          have h1 : Bf i * sourceWeight
+              (standardModeTranslate (standardModeOfInt ν)) ^ 100
+              ≤ SB * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 :=
+            mul_le_mul hBle hwt (pow_nonneg (sourceWeight_pos _).le _) hSB0
+          exact mul_le_mul_of_nonneg_right h1 hP0
+      _ = SB * P * sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ 100 := by
+          ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The scale majorant for a cone symbol
+
+Source: the absolute-convergence paragraph of `thm:cone`, which majorizes the
+scale integral of the cone integrand by the multiplier bound against the
+Calderón constant over the active exponent.  In symbol form this is immediate
+from the scale majorant for the Calderón integrand, since the two differ only
+by the multiplier value and that exponent.
+-/
+
+/-- The cone symbol is the multiplier against the Calderón weight. -/
+theorem norm_coneFrequencySymbol
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ) (ξ : E3) :
+    ‖coneFrequencySymbol α m i t ξ‖
+      = ‖m ξ‖ * coneActiveTerm α ξ t i / (α.weight i : ℝ) := by
+  have hw : (0 : ℝ) < (α.weight i : ℝ) := by
+    exact_mod_cast α.weight_pos i
+  have hwne : α.weight i ≠ 0 := Nat.ne_of_gt (α.weight_pos i)
+  have hwC : ((α.weight i : ℕ) : ℂ) ≠ 0 := Nat.cast_ne_zero.mpr hwne
+  have hkey := multiplier_mul_coneActiveTerm α m i t ξ
+  have hsym : coneFrequencySymbol α m i t ξ
+      = m ξ * ((coneActiveTerm α ξ t i : ℝ) : ℂ) / ((α.weight i : ℕ) : ℂ) := by
+    rw [hkey, mul_comm, mul_div_assoc, div_self hwC, mul_one]
+  rw [hsym, norm_div, norm_mul, Complex.norm_real, Complex.norm_natCast,
+    Real.norm_eq_abs, abs_of_nonneg (coneActiveTerm_nonneg α ξ t i)]
+
+/-- The scale integrand of a cone symbol is the Calderón integrand, scaled. -/
+theorem norm_coneFrequencySymbol_div
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ) (ξ : E3) :
+    ‖coneFrequencySymbol α m i t ξ‖ / t
+      = (‖m ξ‖ / (α.weight i : ℝ)) * (coneActiveTerm α ξ t i / t) := by
+  rw [norm_coneFrequencySymbol]
+  ring
+
+/-- **The scale majorant for a cone symbol.** -/
+theorem integral_norm_coneFrequencySymbol_div_le
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (ξ : E3) :
+    (∫ t in Ioi (0 : ℝ), ‖coneFrequencySymbol α m i t ξ‖ / t)
+      ≤ M * cPsi ^ 3 / (α.weight i : ℝ) := by
+  have hw : (0 : ℝ) < (α.weight i : ℝ) := by
+    exact_mod_cast α.weight_pos i
+  have hmnorm : ‖m ξ‖ ≤ M := hm.norm_le_all ξ
+  have hfac0 : 0 ≤ ‖m ξ‖ / (α.weight i : ℝ) := by positivity
+  have heq : (∫ t in Ioi (0 : ℝ), ‖coneFrequencySymbol α m i t ξ‖ / t)
+      = (‖m ξ‖ / (α.weight i : ℝ)) *
+          ∫ t in Ioi (0 : ℝ), coneActiveTerm α ξ t i / t := by
+    rw [← integral_const_mul]
+    refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+    exact norm_coneFrequencySymbol_div α m i t ξ
+  rw [heq]
+  have hint := integral_coneActiveTerm_div_Ioi_le α ξ i
+  have hint0 := integral_coneActiveTerm_div_Ioi_nonneg α ξ i
+  calc (‖m ξ‖ / (α.weight i : ℝ)) *
+        ∫ t in Ioi (0 : ℝ), coneActiveTerm α ξ t i / t
+      ≤ (‖m ξ‖ / (α.weight i : ℝ)) * cPsi ^ 3 :=
+        mul_le_mul_of_nonneg_left hint hfac0
+    _ ≤ (M / (α.weight i : ℝ)) * cPsi ^ 3 := by
+        refine mul_le_mul_of_nonneg_right ?_ (pow_nonneg cPsi_pos.le 3)
+        exact div_le_div_of_nonneg_right hmnorm hw.le
+    _ = M * cPsi ^ 3 / (α.weight i : ℝ) := by ring
+
+/-- The cone symbol is integrable against the multiplicative measure in the
+scale. -/
+theorem integrableOn_norm_coneFrequencySymbol_div
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (ξ : E3) :
+    IntegrableOn (fun t : ℝ ↦ ‖coneFrequencySymbol α m i t ξ‖ / t)
+      (Ioi (0 : ℝ)) volume := by
+  have hbase := integrableOn_coneActiveTerm_div_Ioi α ξ i
+  have hsm : IntegrableOn
+      (fun t : ℝ ↦ (‖m ξ‖ / (α.weight i : ℝ)) * (coneActiveTerm α ξ t i / t))
+      (Ioi (0 : ℝ)) volume := hbase.const_mul _
+  exact hsm.congr_fun
+    (fun t _ ↦ (norm_coneFrequencySymbol_div α m i t ξ).symm) measurableSet_Ioi
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Joint measurability in scale and frequency
+
+Source: the absolute-convergence paragraph of `thm:cone`, which justifies
+Fubini between frequencies and scales.  The cone symbol is the multiplier —
+measurable in the frequency alone — against a cutoff product that is jointly
+continuous, so the pair is jointly measurable, which is the measurability half
+of that interchange.
+-/
+
+/-- The dilated coordinate is jointly continuous in scale and frequency. -/
+theorem continuous_dilate_coord (α : Anisotropy) (j : Fin 3) :
+    Continuous (fun p : ℝ × E3 ↦ α.dilate p.1 p.2 j) := by
+  have hx : Continuous (fun p : ℝ × E3 ↦ p.2 j) :=
+    (PiLp.continuous_apply (p := 2) (β := fun _ : Fin 3 ↦ ℝ) j).comp continuous_snd
+  exact (continuous_fst.pow (α.weight j)).mul hx
+
+/-- The cone cutoff factor is jointly continuous. -/
+theorem continuous_coneCutoffFactor (α : Anisotropy) (i : Fin 3) :
+    Continuous (fun p : ℝ × E3 ↦
+      ((conePsi (α.dilate p.1 p.2 i) : ℂ) *
+        (gaussianDeriv (α.dilate p.1 p.2 i) : ℂ) ^ 2) *
+        ∏ j : Fin 3,
+          (if j = i then 1 else (conePhi (α.dilate p.1 p.2 j) : ℂ))) := by
+  have hact : Continuous (fun p : ℝ × E3 ↦
+      ((conePsi (α.dilate p.1 p.2 i) : ℂ) *
+        (gaussianDeriv (α.dilate p.1 p.2 i) : ℂ) ^ 2)) :=
+    (Complex.continuous_ofReal.comp
+        (conePsi_contDiff.continuous.comp (continuous_dilate_coord α i))).mul
+      ((Complex.continuous_ofReal.comp
+        (contDiff_gaussianDeriv.continuous.comp (continuous_dilate_coord α i))).pow 2)
+  refine hact.mul ?_
+  refine continuous_finsetProd _ fun j _ ↦ ?_
+  by_cases hj : j = i
+  · simp only [if_pos hj]
+    exact continuous_const
+  · simp only [if_neg hj]
+    exact Complex.continuous_ofReal.comp
+      (conePhi_contDiff.continuous.comp (continuous_dilate_coord α j))
+
+/-- **The cone symbol is jointly measurable in scale and frequency.** -/
+theorem measurable_coneFrequencySymbol_uncurry
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) :
+    Measurable (fun p : ℝ × E3 ↦ coneFrequencySymbol α m i p.1 p.2) := by
+  have hm2 : Measurable (fun p : ℝ × E3 ↦ m p.2) := hm.measurable.comp measurable_snd
+  have hcut : Measurable (fun p : ℝ × E3 ↦
+      ((conePsi (α.dilate p.1 p.2 i) : ℂ) *
+        (gaussianDeriv (α.dilate p.1 p.2 i) : ℂ) ^ 2) *
+        ∏ j : Fin 3,
+          (if j = i then 1 else (conePhi (α.dilate p.1 p.2 j) : ℂ))) :=
+    (continuous_coneCutoffFactor α i).measurable
+  have hfun : (fun p : ℝ × E3 ↦ coneFrequencySymbol α m i p.1 p.2)
+      = fun p : ℝ × E3 ↦ (m p.2) *
+        (((conePsi (α.dilate p.1 p.2 i) : ℂ) *
+            (gaussianDeriv (α.dilate p.1 p.2 i) : ℂ) ^ 2) *
+          ∏ j : Fin 3,
+            (if j = i then 1 else (conePhi (α.dilate p.1 p.2 j) : ℂ))) := by
+    funext p
+    unfold coneFrequencySymbol
+    ring
+  rw [hfun]
+  exact hm2.mul hcut
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone symbol is scale integrable
+
+Source: the absolute-convergence paragraph of `thm:cone`.  The cone symbol's
+scale integrand is a fixed complex multiple of the Calderón integrand, which is
+already known to be integrable on the half-line, so the symbol is too.
+-/
+
+/-- The cone symbol's scale integrand as a multiple of the Calderón one. -/
+theorem coneFrequencySymbol_div_eq
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ) (ξ : E3) :
+    coneFrequencySymbol α m i t ξ / (t : ℂ)
+      = (m ξ / ((α.weight i : ℕ) : ℂ)) *
+          ((coneActiveTerm α ξ t i / t : ℝ) : ℂ) := by
+  have hwne : α.weight i ≠ 0 := Nat.ne_of_gt (α.weight_pos i)
+  have hwC : ((α.weight i : ℕ) : ℂ) ≠ 0 := Nat.cast_ne_zero.mpr hwne
+  have hkey := multiplier_mul_coneActiveTerm α m i t ξ
+  have hsym : coneFrequencySymbol α m i t ξ
+      = m ξ * ((coneActiveTerm α ξ t i : ℝ) : ℂ) / ((α.weight i : ℕ) : ℂ) := by
+    rw [hkey, mul_comm, mul_div_assoc, div_self hwC, mul_one]
+  rw [hsym, Complex.ofReal_div]
+  field_simp
+
+/-- **The cone symbol is integrable in the scale** against the multiplicative
+measure. -/
+theorem integrableOn_coneFrequencySymbol_div
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (ξ : E3) :
+    IntegrableOn (fun t : ℝ ↦ coneFrequencySymbol α m i t ξ / (t : ℂ))
+      (Ioi (0 : ℝ)) volume := by
+  have hbase := integrableOn_coneActiveTerm_div_Ioi α ξ i
+  have hofReal : IntegrableOn
+      (fun t : ℝ ↦ ((coneActiveTerm α ξ t i / t : ℝ) : ℂ))
+      (Ioi (0 : ℝ)) volume := by
+    exact hbase.ofReal (𝕜 := ℂ)
+  have hsm : IntegrableOn
+      (fun t : ℝ ↦ (m ξ / ((α.weight i : ℕ) : ℂ)) *
+        ((coneActiveTerm α ξ t i / t : ℝ) : ℂ))
+      (Ioi (0 : ℝ)) volume := hofReal.const_mul _
+  exact hsm.congr_fun
+    (fun t _ ↦ (coneFrequencySymbol_div_eq α m i t ξ).symm) measurableSet_Ioi
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Joint integrability in frequency and scale
+
+Source: the absolute-convergence paragraph of `thm:cone`, which justifies
+Fubini between frequencies and scales.  Sliced in the scale the integrand is
+integrable for every frequency, and the resulting scale mass is bounded by the
+multiplier constant against the Calderón constant, so the frequency integral of
+that mass is controlled by the Schwartz factor alone.
+-/
+
+/-- The joint integrand is measurable. -/
+theorem measurable_coneFrequencySymbol_prod
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (Q : Schwartz3) :
+    Measurable (fun p : E3 × ℝ ↦
+      (coneFrequencySymbol α m i p.2 p.1 / (p.2 : ℂ)) * Q p.1) := by
+  have hswap : Measurable (fun p : E3 × ℝ ↦ (p.2, p.1)) :=
+    measurable_snd.prodMk measurable_fst
+  have hsym : Measurable (fun p : E3 × ℝ ↦ coneFrequencySymbol α m i p.2 p.1) :=
+    (measurable_coneFrequencySymbol_uncurry α M m hm i).comp hswap
+  have hden : Measurable (fun p : E3 × ℝ ↦ ((p.2 : ℝ) : ℂ)) :=
+    Complex.measurable_ofReal.comp measurable_snd
+  have hQ : Measurable (fun p : E3 × ℝ ↦ Q p.1) :=
+    Q.continuous.measurable.comp measurable_fst
+  exact (hsym.div hden).mul hQ
+
+/-- **Joint integrability of the cone integrand** in frequency and scale. -/
+theorem integrable_coneFrequencySymbol_prod
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (Q : Schwartz3) :
+    Integrable (fun p : E3 × ℝ ↦
+        (coneFrequencySymbol α m i p.2 p.1 / (p.2 : ℂ)) * Q p.1)
+      ((volume : Measure E3).prod ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) := by
+  have hw : (0 : ℝ) < (α.weight i : ℝ) := by exact_mod_cast α.weight_pos i
+  set f : E3 × ℝ → ℂ := fun p ↦
+    (coneFrequencySymbol α m i p.2 p.1 / (p.2 : ℂ)) * Q p.1 with hf
+  have hmeas : AEStronglyMeasurable f
+      ((volume : Measure E3).prod ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) :=
+    (measurable_coneFrequencySymbol_prod α M m hm i Q).aestronglyMeasurable
+  refine (integrable_prod_iff hmeas).mpr ⟨?_, ?_⟩
+  · refine Filter.Eventually.of_forall fun ξ ↦ ?_
+    exact (integrableOn_coneFrequencySymbol_div α m i ξ).mul_const (Q ξ)
+  · -- the scale mass is bounded by the multiplier constant times the Schwartz factor
+    have hslice : ∀ ξ : E3,
+        (∫ t in Ioi (0 : ℝ), ‖f (ξ, t)‖)
+          = (∫ t in Ioi (0 : ℝ), ‖coneFrequencySymbol α m i t ξ‖ / t) * ‖Q ξ‖ := by
+      intro ξ
+      rw [← integral_mul_const]
+      refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+      have ht0 : (0 : ℝ) < t := ht
+      rw [hf]
+      simp only [norm_mul, norm_div, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_pos ht0]
+    have hbound : ∀ ξ : E3,
+        ‖∫ t in Ioi (0 : ℝ), ‖f (ξ, t)‖‖ ≤
+          (M * cPsi ^ 3 / (α.weight i : ℝ)) * ‖Q ξ‖ := by
+      intro ξ
+      have hnn : 0 ≤ ∫ t in Ioi (0 : ℝ), ‖f (ξ, t)‖ :=
+        setIntegral_nonneg measurableSet_Ioi fun t _ ↦ norm_nonneg _
+      rw [Real.norm_eq_abs, abs_of_nonneg hnn, hslice ξ]
+      exact mul_le_mul_of_nonneg_right
+        (integral_norm_coneFrequencySymbol_div_le α M m hm i ξ) (norm_nonneg _)
+    refine Integrable.mono' (Q.integrable.norm.const_mul (M * cPsi ^ 3 / (α.weight i : ℝ)))
+      (hmeas.norm.integral_prod_right') (Filter.Eventually.of_forall hbound)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Exchanging the frequency and scale integrals
+
+Source: the absolute-convergence paragraph of `thm:cone`, which justifies
+Fubini between frequencies and scales.  With joint integrability established
+the exchange is immediate, and the frequency integral of the scale-integrated
+cone integrand is itself integrable in the frequency.
+-/
+
+/-- **The frequency and scale integrals exchange.** -/
+theorem integral_integral_swap_coneFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (Q : Schwartz3) :
+    (∫ ξ : E3, ∫ t in Ioi (0 : ℝ),
+        (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ)
+      = ∫ t in Ioi (0 : ℝ), ∫ ξ : E3,
+          (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ :=
+  integral_integral_swap (integrable_coneFrequencySymbol_prod α M m hm i Q)
+
+/-- The scale-integrated cone integrand is integrable in the frequency. -/
+theorem integrable_scaleIntegrated_coneFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (Q : Schwartz3) :
+    Integrable (fun ξ : E3 ↦ ∫ t in Ioi (0 : ℝ),
+      (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ) volume :=
+  (integrable_coneFrequencySymbol_prod α M m hm i Q).integral_prod_left
+
+/-- The frequency-integrated cone integrand is integrable in the scale. -/
+theorem integrable_frequencyIntegrated_coneFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (Q : Schwartz3) :
+    IntegrableOn (fun t : ℝ ↦ ∫ ξ : E3,
+        (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ)
+      (Ioi (0 : ℝ)) volume :=
+  (integrable_coneFrequencySymbol_prod α M m hm i Q).integral_prod_right
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The multiplier form as a scale integral of cone forms
+
+Source: `thm:cone`.  Substituting the cone identity under the frequency
+integral — legitimate almost everywhere, since the identity needs the frequency
+to be nonzero and the origin is a single point — and exchanging the frequency
+and scale integrals presents the multiplier form as the normalized sum over the
+three active coordinates of the scale integral of the corresponding cone form.
+-/
+
+/-- The multiplier form against the reflected Fourier transform of the twisted
+product. -/
+theorem multiplierForm_eq_integral_negFourier
+    (g : E3 → ℂ) (f₀ f₁ f₂ f₃ : Schwartz3) :
+    multiplierForm g f₀ f₁ f₂ f₃
+      = ∫ ξ : E3, g ξ *
+          (schwartzNegate (schwartzFourier (twistedProduct f₀ f₁ f₂ f₃))) ξ := by
+  unfold multiplierForm
+  simp only [schwartzNegate_apply]
+
+/-- Almost every frequency is nonzero. -/
+theorem ae_ne_zero_E3 : ∀ᵐ ξ : E3, ξ ≠ 0 := by
+  have h : (volume : Measure E3) {(0 : E3)} = 0 := measure_singleton 0
+  simp [ae_iff]
+
+/-- **The multiplier form is the scale integral of the cone forms.** -/
+theorem multiplierForm_eq_scaleIntegral_coneMultiplierForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (f₀ f₁ f₂ f₃ : Schwartz3) :
+    multiplierForm m f₀ f₁ f₂ f₃
+      = ((cPsi : ℂ) ^ 3)⁻¹ * ∑ i : Fin 3, (α.weight i : ℂ) *
+          ∫ t in Ioi (0 : ℝ),
+            multiplierForm (coneFrequencySymbol α m i t) f₀ f₁ f₂ f₃ / (t : ℂ) := by
+  classical
+  set Q : Schwartz3 := schwartzNegate (schwartzFourier (twistedProduct f₀ f₁ f₂ f₃))
+    with hQ
+  -- the pointwise cone identity, integrated against the Schwartz factor
+  have hpt : ∀ᵐ ξ : E3, m ξ * Q ξ
+      = ((cPsi : ℂ) ^ 3)⁻¹ * ∑ i : Fin 3, (α.weight i : ℂ) *
+          ∫ t in Ioi (0 : ℝ), (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ := by
+    filter_upwards [ae_ne_zero_E3] with ξ hξ
+    rw [multiplier_coneSymbol_fullScale α m hξ, mul_assoc, Finset.sum_mul]
+    congr 1
+    refine Finset.sum_congr rfl fun i _ ↦ ?_
+    rw [mul_assoc, ← integral_mul_const]
+  -- integrate
+  have hsliceInt : ∀ i : Fin 3, Integrable (fun ξ : E3 ↦
+      ∫ t in Ioi (0 : ℝ), (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ) volume :=
+    fun i ↦ integrable_scaleIntegrated_coneFrequencySymbol α M m hm i Q
+  have hstep : (∫ ξ : E3, m ξ * Q ξ)
+      = ∫ ξ : E3, ((cPsi : ℂ) ^ 3)⁻¹ * ∑ i : Fin 3, (α.weight i : ℂ) *
+          ∫ t in Ioi (0 : ℝ), (coneFrequencySymbol α m i t ξ / (t : ℂ)) * Q ξ :=
+    integral_congr_ae hpt
+  rw [multiplierForm_eq_integral_negFourier, ← hQ, hstep,
+    integral_const_mul,
+    integral_finsetSum _ (fun i _ ↦ (hsliceInt i).const_mul _)]
+  congr 1
+  refine Finset.sum_congr rfl fun i _ ↦ ?_
+  rw [integral_const_mul,
+    integral_integral_swap_coneFrequencySymbol α M m hm i Q]
+  congr 1
+  refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+  rw [multiplierForm_eq_integral_negFourier, ← hQ, ← integral_div]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun ξ ↦ ?_)
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## The third cone's scale integral, mode expanded
+
+Source: `thm:cone`.  The scale integral of the cone form and the mode expansion
+of the cone form at a fixed scale meet here: at every positive scale the third
+cone form is the coefficient-weighted sum of the mode forms, so the scale
+integral may be taken of that sum.  This is the composition point of the two
+halves of the theorem's proof.
+-/
+
+/-- **The third cone's scale integral of mode-expanded forms.** -/
+theorem integral_coneMultiplierForm_two_eq_tsum
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    (∫ t in Set.Ioi (0 : ℝ),
+        multiplierForm (coneFrequencySymbol α m 2 t) (F 0) (F 1) (F 2) (F 3) / (t : ℂ))
+      = ∫ t in Set.Ioi (0 : ℝ),
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              multiplierForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+                (F 0) (F 1) (F 2) (F 3)) / (t : ℂ) := by
+  refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+  have ht0 : (0 : ℝ) < t := ht
+  have hfun : coneFrequencySymbol α m 2 t = thirdConeFrequencySymbol α m t := by
+    funext ξ
+    exact coneFrequencySymbol_two α m t ξ
+  rw [hfun, multiplierForm_thirdConeFrequencySymbol_eq_tsum α M m hm t ht0 F]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## The mode interchange for an arbitrary bounded symbol family
+
+Source: `thm:cone`, absolute-convergence paragraph.  The interchange between
+modes and frequencies was established for the third cone's mode symbols;
+nothing in it uses more than that the symbols are continuous and uniformly
+bounded and that the coefficients are absolutely summable.  Stating it that way
+makes it available at every cone, where the symbols are the same third-cone
+ones evaluated at a relabeled frequency.
+-/
+
+/-- **A bounded continuous symbol against the frequency kernel is
+integrable.** -/
+theorem integrable_boundedSymbol_frequencyIntegrand
+    (c : ℂ) (S : E3 → ℂ) (B : ℝ)
+    (hScont : Continuous S) (hSb : ∀ ξ : E3, ‖S ξ‖ ≤ B)
+    (F : ModelComplexSchwartzInput) :
+    Integrable
+      (fun ζ : Frequency9 ↦
+        (c * S (-frequencyDiagonal ζ)) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
+      frequencyMeasure := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  have hcont : Continuous (fun ζ : Frequency9 ↦ S (-frequencyDiagonal ζ)) :=
+    hScont.comp frequencyDiagonal.continuous.neg
+  have hK : Integrable (frequencyKernel (F 0) (F 1) (F 2) (F 3))
+      frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  have hbase : Integrable
+      (fun ζ : Frequency9 ↦
+        S (-frequencyDiagonal ζ) * frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
+      frequencyMeasure := by
+    refine hK.bdd_mul (c := B) hcont.aestronglyMeasurable ?_
+    exact Filter.Eventually.of_forall fun ζ ↦ hSb _
+  refine (hbase.const_mul c).congr ?_
+  filter_upwards with ζ
+  ring
+
+/-- **The frequency integrals of a bounded symbol family are summable** when
+the coefficients are. -/
+theorem summable_boundedSymbol_frequencyIntegralNorm
+    {ι : Type*} (a : ι → ℂ) (S : ι → E3 → ℂ) (B : ℝ)
+    (hScont : ∀ n : ι, Continuous (S n)) (hSb : ∀ (n : ι) (ξ : E3), ‖S n ξ‖ ≤ B)
+    (ha : Summable (fun n : ι ↦ ‖a n‖))
+    (F : ModelComplexSchwartzInput) :
+    Summable (fun n : ι ↦
+      ∫ ζ : Frequency9,
+        ‖(a n * S n (-frequencyDiagonal ζ)) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖
+        ∂frequencyMeasure) := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  set K : Frequency9 → ℂ :=
+    fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hK
+  have hKint : Integrable K frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  set IK : ℝ := ∫ ζ : Frequency9, ‖K ζ‖ ∂frequencyMeasure with hIK
+  refine Summable.of_nonneg_of_le (fun n ↦ integral_nonneg fun ζ ↦ norm_nonneg _)
+    (fun n ↦ ?_) (ha.mul_right (B * IK))
+  have hint1 : Integrable
+      (fun ζ : Frequency9 ↦
+        ‖(a n * S n (-frequencyDiagonal ζ)) * K ζ‖) frequencyMeasure :=
+    (integrable_boundedSymbol_frequencyIntegrand (a n) (S n) B
+      (hScont n) (hSb n) F).norm
+  have hint2 : Integrable
+      (fun ζ : Frequency9 ↦ ‖a n‖ * B * ‖K ζ‖) frequencyMeasure :=
+    hKint.norm.const_mul (‖a n‖ * B)
+  have hmono : ∀ ζ : Frequency9,
+      ‖(a n * S n (-frequencyDiagonal ζ)) * K ζ‖ ≤ ‖a n‖ * B * ‖K ζ‖ := by
+    intro ζ
+    rw [norm_mul, norm_mul]
+    refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg _)
+    exact mul_le_mul_of_nonneg_left (hSb n _) (norm_nonneg _)
+  calc (∫ ζ : Frequency9, ‖(a n * S n (-frequencyDiagonal ζ)) * K ζ‖
+        ∂frequencyMeasure)
+      ≤ ∫ ζ : Frequency9, ‖a n‖ * B * ‖K ζ‖ ∂frequencyMeasure :=
+        integral_mono hint1 hint2 hmono
+    _ = ‖a n‖ * (B * IK) := by
+        rw [integral_const_mul, hIK]
+        ring
+
+/-- **The mode sum exchanges with the frequency integral**, for any bounded
+symbol family with absolutely summable coefficients. -/
+theorem integral_tsum_boundedSymbol_frequencyIntegrand
+    {ι : Type*} [Countable ι] (a : ι → ℂ) (S : ι → E3 → ℂ) (B : ℝ)
+    (hScont : ∀ n : ι, Continuous (S n)) (hSb : ∀ (n : ι) (ξ : E3), ‖S n ξ‖ ≤ B)
+    (ha : Summable (fun n : ι ↦ ‖a n‖))
+    (F : ModelComplexSchwartzInput) :
+    (∑' n : ι,
+        ∫ ζ : Frequency9,
+          (a n * S n (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+      = ∫ ζ : Frequency9,
+          (∑' n : ι, a n * S n (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+  rw [integral_tsum_of_summable_integral_norm
+    (fun n ↦ integrable_boundedSymbol_frequencyIntegrand (a n) (S n) B
+      (hScont n) (hSb n) F)
+    (summable_boundedSymbol_frequencyIntegralNorm a S B hScont hSb ha F)]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+  exact tsum_mul_right
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter FourierTransform TopologicalSpace
+open scoped BigOperators Convolution ENNReal FourierTransform NNReal Topology
+
+noncomputable section
+
+/-! ## Every cone form is the sum of its mode forms
+
+Source: `thm:cone`.  With the mode interchange stated for an arbitrary bounded
+symbol family, the fixed-scale expansion of the cone form holds at each of the
+three cones: the symbols there are the third cone's mode symbols evaluated at a
+relabeled frequency, which are continuous and carry the same uniform bound, and
+the coefficients are those of the relabeled localized symbol.
+-/
+
+/-- **The fixed-scale cone form is the mode-coefficient sum of the mode forms,
+at every cone.** -/
+theorem frequencyForm_coneFrequencySymbol_eq_tsum
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3)
+    (t : ℝ) (ht : 0 < t) (F : ModelComplexSchwartzInput) :
+    frequencyForm (coneFrequencySymbol α m i t) (F 0) (F 1) (F 2) (F 3)
+      = ∑' ν : Fin 3 → ℤ,
+          UnitAddTorus.mFourierCoeff
+              (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+                (conePermutedMultiplier m i) 2 t) ν *
+            frequencyForm (fun ξ : E3 ↦
+              thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+                (standardModeOfInt ν) t
+                (coordinatePermutation (Equiv.swap 2 i) ξ))
+              (F 0) (F 1) (F 2) (F 3) := by
+  classical
+  obtain ⟨B, hB0, hB⟩ := exists_bound_thirdModeFrequencySymbol
+  set a : (Fin 3 → ℤ) → ℂ := fun ν ↦
+    UnitAddTorus.mFourierCoeff
+      (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+        (conePermutedMultiplier m i) 2 t) ν with ha
+  set S : (Fin 3 → ℤ) → E3 → ℂ := fun ν ξ ↦
+    thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+      (standardModeOfInt ν) t (coordinatePermutation (Equiv.swap 2 i) ξ)
+    with hS
+  have hScont : ∀ ν : Fin 3 → ℤ, Continuous (S ν) := fun ν ↦
+    (continuous_thirdModeFrequencySymbol (conePermutedAnisotropy α i) ν t).comp
+      (coordinatePermutation (Equiv.swap 2 i)).continuous
+  have hSb : ∀ (ν : Fin 3 → ℤ) (ξ : E3), ‖S ν ξ‖ ≤ B := fun ν ξ ↦
+    hB (conePermutedAnisotropy α i) ν t _
+  have hasum : Summable (fun ν : Fin 3 → ℤ ↦ ‖a ν‖) :=
+    (scratch_summable_mFourierCoeff_unitTorusLocalizedSymbol
+      (conePermutedAnisotropy α i) M (conePermutedMultiplier m i)
+      (isAnisotropicMultiplier_conePermuted hm i) 2 t ht).norm
+  have hpt : ∀ ζ : Frequency9,
+      coneFrequencySymbol α m i t (-frequencyDiagonal ζ)
+        = ∑' ν : Fin 3 → ℤ, a ν * S ν (-frequencyDiagonal ζ) := fun ζ ↦
+    (hasSum_coneFrequencySymbol_modes α M m hm i t ht
+      (-frequencyDiagonal ζ)).tsum_eq.symm
+  unfold frequencyForm
+  calc ∫ ζ : Frequency9, coneFrequencySymbol α m i t (-frequencyDiagonal ζ) *
+        frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure
+      = ∫ ζ : Frequency9,
+          (∑' ν : Fin 3 → ℤ, a ν * S ν (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+        refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+        simp only [hpt ζ]
+    _ = ∑' ν : Fin 3 → ℤ,
+          ∫ ζ : Frequency9, (a ν * S ν (-frequencyDiagonal ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure :=
+        (integral_tsum_boundedSymbol_frequencyIntegrand a S B hScont hSb hasum F).symm
+    _ = ∑' ν : Fin 3 → ℤ, a ν *
+          ∫ ζ : Frequency9, S ν (-frequencyDiagonal ζ) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+        refine tsum_congr fun ν ↦ ?_
+        rw [← integral_const_mul]
+        refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+        ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol's scale majorant, at every frequency
+
+Source: the absolute-convergence paragraph of `thm:cone`.  The mode symbol
+carries Gaussians on the two transverse coordinates where the Calderón weight
+carries only the plateau cutoffs, and the Gaussian is at most one, so the mode
+symbol is dominated pointwise by the Calderón weight over the active exponent.
+Its scale integral therefore inherits the Calderón bound at every frequency,
+with no positivity assumption on the active coordinate.
+-/
+
+/-- **The mode symbol is dominated by the Calderón weight.** -/
+theorem norm_thirdModeFrequencySymbol_le_coneActiveTerm
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3) :
+    ‖thirdModeFrequencySymbol α ν t ξ‖
+      ≤ coneActiveTerm α ξ t 2 / ((α.weight 2 : ℕ) : ℝ) := by
+  have hw : (0 : ℝ) < ((α.weight 2 : ℕ) : ℝ) := by exact_mod_cast α.weight_pos 2
+  have hterm : coneActiveTerm α ξ t 2
+      = ((α.weight 2 : ℕ) : ℝ) *
+          (conePhi (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 1 * ξ 1) *
+            coneActiveProfile (t ^ α.weight 2 * ξ 2)) := by
+    unfold coneActiveTerm coneActiveProfile
+    rw [Fin.prod_univ_three]
+    simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
+      if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one]
+    ring
+  rw [norm_thirdModeFrequencySymbol_eq, hterm,
+    mul_div_cancel_left₀ _ (ne_of_gt hw)]
+  have hp : 0 ≤ coneActiveProfile (t ^ α.weight 2 * ξ 2) :=
+    coneActiveProfile_nonneg _
+  have h0 : gaussian (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 0 * ξ 0)
+      ≤ conePhi (t ^ α.weight 0 * ξ 0) := by
+    nlinarith [gaussian_le_one (t ^ α.weight 0 * ξ 0),
+      gaussian_nonneg (t ^ α.weight 0 * ξ 0),
+      conePhi_nonneg (t ^ α.weight 0 * ξ 0)]
+  have h1 : gaussian (t ^ α.weight 1 * ξ 1) * conePhi (t ^ α.weight 1 * ξ 1)
+      ≤ conePhi (t ^ α.weight 1 * ξ 1) := by
+    nlinarith [gaussian_le_one (t ^ α.weight 1 * ξ 1),
+      gaussian_nonneg (t ^ α.weight 1 * ξ 1),
+      conePhi_nonneg (t ^ α.weight 1 * ξ 1)]
+  have h0nn : 0 ≤ gaussian (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 0 * ξ 0) :=
+    mul_nonneg (gaussian_nonneg _) (conePhi_nonneg _)
+  have h1nn : 0 ≤ gaussian (t ^ α.weight 1 * ξ 1) * conePhi (t ^ α.weight 1 * ξ 1) :=
+    mul_nonneg (gaussian_nonneg _) (conePhi_nonneg _)
+  have hmul : (gaussian (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 0 * ξ 0)) *
+      (gaussian (t ^ α.weight 1 * ξ 1) * conePhi (t ^ α.weight 1 * ξ 1))
+      ≤ conePhi (t ^ α.weight 0 * ξ 0) * conePhi (t ^ α.weight 1 * ξ 1) :=
+    mul_le_mul h0 h1 h1nn (conePhi_nonneg _)
+  exact mul_le_mul_of_nonneg_right hmul hp
+
+/-- **The mode symbol's scale integral obeys the Calderón bound**, at every
+frequency. -/
+theorem integral_norm_thirdModeFrequencySymbol_div_Ioi_le
+    (α : Anisotropy) (ν : standardModeLattice) (ξ : E3) :
+    (∫ t in Ioi (0 : ℝ), ‖thirdModeFrequencySymbol α ν t ξ‖ / t)
+      ≤ cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ) := by
+  have hw : (0 : ℝ) < ((α.weight 2 : ℕ) : ℝ) := by exact_mod_cast α.weight_pos 2
+  have hmaj : IntegrableOn
+      (fun t : ℝ ↦ (coneActiveTerm α ξ t 2 / t) / ((α.weight 2 : ℕ) : ℝ))
+      (Ioi (0 : ℝ)) volume :=
+    (integrableOn_coneActiveTerm_div_Ioi α ξ 2).div_const _
+  have hle : ∀ t ∈ Ioi (0 : ℝ),
+      ‖thirdModeFrequencySymbol α ν t ξ‖ / t
+        ≤ (coneActiveTerm α ξ t 2 / t) / ((α.weight 2 : ℕ) : ℝ) := by
+    intro t ht
+    have ht0 : (0 : ℝ) < t := ht
+    have h := norm_thirdModeFrequencySymbol_le_coneActiveTerm α ν t ξ
+    rw [div_right_comm]
+    exact div_le_div_of_nonneg_right h ht0.le
+  have hmono : (∫ t in Ioi (0 : ℝ), ‖thirdModeFrequencySymbol α ν t ξ‖ / t)
+      ≤ ∫ t in Ioi (0 : ℝ),
+          (coneActiveTerm α ξ t 2 / t) / ((α.weight 2 : ℕ) : ℝ) := by
+    refine integral_mono_of_nonneg ?_ hmaj ?_
+    · filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+      have ht0 : (0 : ℝ) < t := ht
+      positivity
+    · filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+      exact hle t ht
+  refine hmono.trans ?_
+  rw [integral_div]
+  exact div_le_div_of_nonneg_right (integral_coneActiveTerm_div_Ioi_le α ξ 2) hw.le
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Joint continuity of the dilation and the mode symbol
+
+Source: the absolute-convergence paragraph of `thm:cone`, which integrates in
+the scale and the frequency together.  The mode symbol is a fixed profile
+precomposed with the anisotropic dilation, so its joint continuity reduces to
+that of the dilation, which acts coordinatewise by a power of the scale.
+-/
+
+/-- **The dilation is jointly continuous** in scale and frequency. -/
+theorem continuous_dilate_uncurry (α : Anisotropy) :
+    Continuous (fun p : ℝ × E3 ↦ α.dilate p.1 p.2) := by
+  refine (PiLp.continuous_toLp 2 (fun _ : Fin 3 ↦ ℝ)).comp ?_
+  refine continuous_pi fun j ↦ ?_
+  exact continuous_dilate_coord α j
+
+/-- **The mode symbol is jointly continuous** in scale and frequency. -/
+theorem continuous_thirdModeFrequencySymbol_uncurry
+    (α : Anisotropy) (ν : standardModeLattice) :
+    Continuous (fun p : ℝ × E3 ↦ thirdModeFrequencySymbol α ν p.1 p.2) := by
+  have hfun : (fun p : ℝ × E3 ↦ thirdModeFrequencySymbol α ν p.1 p.2)
+      = fun p : ℝ × E3 ↦ coneModeProfile ν (α.dilate p.1 p.2) := by
+    funext p
+    rfl
+  rw [hfun]
+  exact (contDiff_coneModeProfile ν).continuous.comp (continuous_dilate_uncurry α)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode symbol is scale integrable
+
+Source: the absolute-convergence paragraph of `thm:cone`.  The mode symbol is
+dominated in the scale by the Calderón integrand, which is integrable on the
+half-line, so the mode symbol is too — at every frequency.
+-/
+
+/-- The mode symbol is continuous in the scale. -/
+theorem continuous_thirdModeFrequencySymbol_scale
+    (α : Anisotropy) (ν : standardModeLattice) (ξ : E3) :
+    Continuous (fun t : ℝ ↦ thirdModeFrequencySymbol α ν t ξ) := by
+  have hfun : (fun t : ℝ ↦ thirdModeFrequencySymbol α ν t ξ)
+      = fun t : ℝ ↦ coneModeProfile ν (α.dilate t ξ) := by
+    funext t
+    exact thirdModeFrequencySymbol_eq_coneModeProfile_dilate α ν t ξ
+  rw [hfun]
+  exact (contDiff_coneModeProfile ν).continuous.comp
+    ((continuous_dilate_uncurry α).comp (continuous_id.prodMk continuous_const))
+
+/-- **The mode symbol is integrable in the scale**, at every frequency. -/
+theorem integrableOn_thirdModeFrequencySymbol_div
+    (α : Anisotropy) (ν : standardModeLattice) (ξ : E3) :
+    IntegrableOn (fun t : ℝ ↦ thirdModeFrequencySymbol α ν t ξ / (t : ℂ))
+      (Ioi (0 : ℝ)) volume := by
+  have hmeas : AEStronglyMeasurable
+      (fun t : ℝ ↦ thirdModeFrequencySymbol α ν t ξ / (t : ℂ))
+      ((volume : Measure ℝ).restrict (Ioi (0 : ℝ))) :=
+    ((continuous_thirdModeFrequencySymbol_scale α ν ξ).measurable.div
+      (Complex.measurable_ofReal.comp measurable_id)).aestronglyMeasurable
+  have hmaj : IntegrableOn
+      (fun t : ℝ ↦ (coneActiveTerm α ξ t 2 / t) / ((α.weight 2 : ℕ) : ℝ))
+      (Ioi (0 : ℝ)) volume :=
+    (integrableOn_coneActiveTerm_div_Ioi α ξ 2).div_const _
+  refine Integrable.mono' hmaj hmeas ?_
+  filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+  have ht0 : (0 : ℝ) < t := ht
+  rw [norm_div, Complex.norm_real, Real.norm_eq_abs, abs_of_pos ht0,
+    div_right_comm]
+  exact div_le_div_of_nonneg_right
+    (norm_thirdModeFrequencySymbol_le_coneActiveTerm α ν t ξ) ht0.le
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Joint integrability of a mode against the frequency kernel
+
+Source: the absolute-convergence paragraph of `thm:cone`, which justifies
+Fubini between scales and modes.  For each mode the integrand is integrable in
+the scale at every frequency, and its scale mass is bounded by the Calderón
+constant over the active exponent uniformly in the frequency, so the frequency
+integral of that mass is controlled by the kernel alone.
+-/
+
+/-- The mode integrand is jointly measurable in frequency and scale. -/
+theorem measurable_thirdModeFrequencySymbol_kernel_prod
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    Measurable (fun p : Frequency9 × ℝ ↦
+      (thirdModeFrequencySymbol α ν p.2 (-frequencyDiagonal p.1) / (p.2 : ℂ)) *
+        frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1) := by
+  have hdil : Continuous (fun p : Frequency9 × ℝ ↦
+      α.dilate p.2 (-frequencyDiagonal p.1)) :=
+    (continuous_dilate_uncurry α).comp
+      (continuous_snd.prodMk (frequencyDiagonal.continuous.comp continuous_fst).neg)
+  have hfun : (fun p : Frequency9 × ℝ ↦
+        thirdModeFrequencySymbol α ν p.2 (-frequencyDiagonal p.1))
+      = fun p : Frequency9 × ℝ ↦
+        coneModeProfile ν (α.dilate p.2 (-frequencyDiagonal p.1)) := by
+    funext p
+    exact thirdModeFrequencySymbol_eq_coneModeProfile_dilate α ν p.2 _
+  have hsym : Continuous (fun p : Frequency9 × ℝ ↦
+      thirdModeFrequencySymbol α ν p.2 (-frequencyDiagonal p.1)) := by
+    rw [hfun]
+    exact (contDiff_coneModeProfile ν).continuous.comp hdil
+  have hden : Measurable (fun p : Frequency9 × ℝ ↦ ((p.2 : ℝ) : ℂ)) :=
+    Complex.measurable_ofReal.comp measurable_snd
+  have hK : Measurable (fun p : Frequency9 × ℝ ↦
+      frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1) :=
+    (frequencyKernel (F 0) (F 1) (F 2) (F 3)).continuous.measurable.comp measurable_fst
+  exact (hsym.measurable.div hden).mul hK
+
+/-- **Joint integrability of a mode against the frequency kernel.** -/
+theorem integrable_thirdModeFrequencySymbol_kernel_prod
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    Integrable (fun p : Frequency9 × ℝ ↦
+        (thirdModeFrequencySymbol α ν p.2 (-frequencyDiagonal p.1) / (p.2 : ℂ)) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1)
+      ((frequencyMeasure : Measure Frequency9).prod
+        ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  have hw : (0 : ℝ) < ((α.weight 2 : ℕ) : ℝ) := by exact_mod_cast α.weight_pos 2
+  set K : Frequency9 → ℂ :=
+    fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
+  have hKint : Integrable K frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  set f : Frequency9 × ℝ → ℂ := fun p ↦
+    (thirdModeFrequencySymbol α ν p.2 (-frequencyDiagonal p.1) / (p.2 : ℂ)) * K p.1
+    with hf
+  have hmeas : AEStronglyMeasurable f
+      ((frequencyMeasure : Measure Frequency9).prod
+        ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) :=
+    (measurable_thirdModeFrequencySymbol_kernel_prod α ν F).aestronglyMeasurable
+  refine (integrable_prod_iff hmeas).mpr ⟨?_, ?_⟩
+  · refine Filter.Eventually.of_forall fun ζ ↦ ?_
+    exact (integrableOn_thirdModeFrequencySymbol_div α ν (-frequencyDiagonal ζ)).mul_const (K ζ)
+  · have hslice : ∀ ζ : Frequency9,
+        (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖)
+          = (∫ t in Ioi (0 : ℝ),
+              ‖thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ)‖ / t) * ‖K ζ‖ := by
+      intro ζ
+      rw [← integral_mul_const]
+      refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+      have ht0 : (0 : ℝ) < t := ht
+      rw [hf]
+      simp only [norm_mul, norm_div, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_pos ht0]
+    have hbound : ∀ ζ : Frequency9,
+        ‖∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖‖ ≤
+          (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) * ‖K ζ‖ := by
+      intro ζ
+      have hnn : 0 ≤ ∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖ :=
+        setIntegral_nonneg measurableSet_Ioi fun t _ ↦ norm_nonneg _
+      rw [Real.norm_eq_abs, abs_of_nonneg hnn, hslice ζ]
+      exact mul_le_mul_of_nonneg_right
+        (integral_norm_thirdModeFrequencySymbol_div_Ioi_le α ν (-frequencyDiagonal ζ))
+        (norm_nonneg _)
+    exact Integrable.mono'
+      (hKint.norm.const_mul (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)))
+      (hmeas.norm.integral_prod_right')
+      (Filter.Eventually.of_forall hbound)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode form is scale integrable
+
+Source: `thm:cone`.  Joint integrability makes the mode's frequency integral
+integrable in the scale, which is the premise the scale/mode interchange needs
+term by term.
+-/
+
+/-- **The mode form is integrable in the scale.** -/
+theorem integrableOn_modeFrequencyForm_div
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    IntegrableOn (fun t : ℝ ↦
+        ∫ ζ : Frequency9,
+          (thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ) / (t : ℂ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+      (Ioi (0 : ℝ)) volume :=
+  (integrable_thirdModeFrequencySymbol_kernel_prod α ν F).integral_prod_right
+
+/-- The frequency and scale integrals exchange for each mode. -/
+theorem integral_integral_swap_thirdModeFrequencySymbol
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    (∫ ζ : Frequency9,
+        (∫ t in Ioi (0 : ℝ),
+          (thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ) / (t : ℂ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ) ∂frequencyMeasure)
+      = ∫ t in Ioi (0 : ℝ),
+          ∫ ζ : Frequency9,
+            (thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ) / (t : ℂ)) *
+              frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure :=
+  integral_integral_swap (integrable_thirdModeFrequencySymbol_kernel_prod α ν F)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode form's scale mass
+
+Source: the absolute-convergence paragraph of `thm:cone`.  The scale mass of a
+mode form is at most the Calderón constant over the active exponent against the
+kernel's total mass — the same bound at every mode, which is what makes the
+mode sum converge once the coefficients decay.
+-/
+
+/-- **The mode form's scale mass is uniformly bounded.** -/
+theorem integral_norm_modeFrequencyForm_div_le
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ),
+        ‖∫ ζ : Frequency9,
+          (thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ) / (t : ℂ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure‖)
+      ≤ (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) *
+          ∫ ζ : Frequency9,
+            ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  set K : Frequency9 → ℂ :=
+    fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
+  have hKint : Integrable K frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  set f : Frequency9 × ℝ → ℂ := fun p ↦
+    (thirdModeFrequencySymbol α ν p.2 (-frequencyDiagonal p.1) / (p.2 : ℂ)) * K p.1
+    with hf
+  have hint : Integrable f
+      ((frequencyMeasure : Measure Frequency9).prod
+        ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) :=
+    integrable_thirdModeFrequencySymbol_kernel_prod α ν F
+  have hslice : ∀ ζ : Frequency9,
+      (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖)
+        = (∫ t in Ioi (0 : ℝ),
+            ‖thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ)‖ / t) * ‖K ζ‖ := by
+    intro ζ
+    rw [← integral_mul_const]
+    refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+    have ht0 : (0 : ℝ) < t := ht
+    rw [hf]
+    simp only [norm_mul, norm_div, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_pos ht0]
+  have hbound : ∀ ζ : Frequency9,
+      (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖)
+        ≤ (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) * ‖K ζ‖ := by
+    intro ζ
+    rw [hslice ζ]
+    exact mul_le_mul_of_nonneg_right
+      (integral_norm_thirdModeFrequencySymbol_div_Ioi_le α ν (-frequencyDiagonal ζ))
+      (norm_nonneg _)
+  calc (∫ t in Ioi (0 : ℝ), ‖∫ ζ : Frequency9, f (ζ, t) ∂frequencyMeasure‖)
+      ≤ ∫ t in Ioi (0 : ℝ), ∫ ζ : Frequency9, ‖f (ζ, t)‖ ∂frequencyMeasure := by
+        refine integral_mono hint.integral_prod_right.norm
+          hint.norm.integral_prod_right ?_
+        intro t
+        exact norm_integral_le_integral_norm _
+    _ = ∫ ζ : Frequency9, (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖) ∂frequencyMeasure :=
+        (integral_integral_swap hint.norm).symm
+    _ ≤ ∫ ζ : Frequency9,
+          (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) * ‖K ζ‖ ∂frequencyMeasure := by
+        refine integral_mono hint.norm.integral_prod_left
+          (hKint.norm.const_mul _) ?_
+        intro ζ
+        exact hbound ζ
+    _ = (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) *
+          ∫ ζ : Frequency9, ‖K ζ‖ ∂frequencyMeasure := integral_const_mul _ _
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Preparing the scale/mode interchange
+
+Source: the absolute-convergence paragraph of `thm:cone`.  The mode form's
+scale integrand is the frequency integral of the mode integrand, the
+translation weight is at least one so its high negative powers are summable
+along with the low ones, and both facts are what the interchange's two premises
+are phrased against.
+-/
+
+/-- The translation weight is at least one. -/
+theorem one_le_sourceWeight (u : E3) : 1 ≤ sourceWeight u := by
+  rw [sourceWeight_eq_one_add_sum_abs]
+  have : (0 : ℝ) ≤ ∑ i : Fin 3, |u i| :=
+    Finset.sum_nonneg fun i _ ↦ abs_nonneg _
+  linarith
+
+/-- The order-110 lattice majorant is summable over integer triples. -/
+theorem summable_intMode_sourceWeight_inv_110 :
+    Summable (fun ν : Fin 3 → ℤ ↦
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ)) := by
+  refine Summable.of_nonneg_of_le (fun ν ↦ by positivity) (fun ν ↦ ?_)
+    summable_intMode_sourceWeight_inv
+  set w : ℝ := sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) with hw
+  have h1 : 1 ≤ w := one_le_sourceWeight _
+  have hinv : w⁻¹ ≤ 1 := inv_le_one_of_one_le₀ h1
+  have hinv0 : 0 ≤ w⁻¹ := inv_nonneg.mpr (by linarith)
+  calc w⁻¹ ^ (110 : ℕ) = w⁻¹ ^ (10 : ℕ) * w⁻¹ ^ (100 : ℕ) := by
+        rw [← pow_add]
+    _ ≤ w⁻¹ ^ (10 : ℕ) * 1 := by
+        exact mul_le_mul_of_nonneg_left (pow_le_one₀ hinv0 hinv) (by positivity)
+    _ = w⁻¹ ^ (10 : ℕ) := mul_one _
+
+/-- The mode form's scale integrand is the frequency integral of the mode
+integrand. -/
+theorem thirdModeFrequencyForm_div_eq
+    (α : Anisotropy) (ν : standardModeLattice) (t : ℝ)
+    (F : ModelComplexSchwartzInput) :
+    thirdModeFrequencyForm α ν t F / (t : ℂ)
+      = ∫ ζ : Frequency9,
+          (thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ) / (t : ℂ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+  unfold thirdModeFrequencyForm frequencyForm
+  rw [← integral_div]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+  ring
+
+/-- **The mode form is scale integrable**, in the divided form. -/
+theorem integrableOn_thirdModeFrequencyForm_div
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    IntegrableOn (fun t : ℝ ↦ thirdModeFrequencyForm α ν t F / (t : ℂ))
+      (Ioi (0 : ℝ)) volume := by
+  refine (integrableOn_modeFrequencyForm_div α ν F).congr_fun ?_ measurableSet_Ioi
+  intro t _
+  exact (thirdModeFrequencyForm_div_eq α ν t F).symm
+
+/-- **The mode form's scale mass is uniformly bounded**, in the divided form. -/
+theorem integral_norm_thirdModeFrequencyForm_div_le
+    (α : Anisotropy) (ν : standardModeLattice) (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ), ‖thirdModeFrequencyForm α ν t F / (t : ℂ)‖)
+      ≤ (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) *
+          ∫ ζ : Frequency9,
+            ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure := by
+  have hcongr : (∫ t in Ioi (0 : ℝ), ‖thirdModeFrequencyForm α ν t F / (t : ℂ)‖)
+      = ∫ t in Ioi (0 : ℝ),
+          ‖∫ ζ : Frequency9,
+            (thirdModeFrequencySymbol α ν t (-frequencyDiagonal ζ) / (t : ℂ)) *
+              frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure‖ := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+    rw [thirdModeFrequencyForm_div_eq α ν t F]
+  rw [hcongr]
+  exact integral_norm_modeFrequencyForm_div_le α ν F
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Exchanging the scale integral with the mode sum
+
+Source: the absolute-convergence paragraph of `thm:cone`, which justifies
+Fubini between scales and modes.  Each mode's scale integrand is integrable,
+and its scale mass is the coefficient bound times a constant independent of the
+mode, so the order-110 decay makes the masses summable.  Those are the two
+premises of the interchange.
+-/
+
+/-- **The scale integral exchanges with the mode sum.** -/
+theorem integral_tsum_modeScaleIntegrand
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    (∑' ν : Fin 3 → ℤ,
+        ∫ t in Ioi (0 : ℝ),
+          (UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            thirdModeFrequencyForm α (standardModeOfInt ν) t F) / (t : ℂ))
+      = ∫ t in Ioi (0 : ℝ),
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencyForm α (standardModeOfInt ν) t F) / (t : ℂ) := by
+  classical
+  obtain ⟨A, hA0, hAb⟩ :=
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      α M m hm 2
+  have hM0 : 0 ≤ M := hm.nonneg
+  set IK : ℝ := ∫ ζ : Frequency9,
+    ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure with hIK
+  have hIK0 : 0 ≤ IK := integral_nonneg fun ζ ↦ norm_nonneg _
+  have hCP : (0 : ℝ) ≤ cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ) := by
+    have hw : (0 : ℝ) < ((α.weight 2 : ℕ) : ℝ) := by exact_mod_cast α.weight_pos 2
+    have := cPsi_pos
+    positivity
+  set a : (Fin 3 → ℤ) → ℝ → ℂ := fun ν t ↦
+    UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν with ha
+  set Φ : (Fin 3 → ℤ) → ℝ → ℂ := fun ν t ↦
+    thirdModeFrequencyForm α (standardModeOfInt ν) t F with hΦ
+  set C : (Fin 3 → ℤ) → ℝ := fun ν ↦ (A * M) *
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ)
+    with hC
+  have hC0 : ∀ ν, 0 ≤ C ν := by
+    intro ν
+    have : (0 : ℝ) ≤ (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ :=
+      inv_nonneg.mpr (sourceWeight_pos _).le
+    rw [hC]
+    positivity
+  have habnd : ∀ (ν : Fin 3 → ℤ) (t : ℝ), 0 < t → ‖a ν t‖ ≤ C ν := by
+    intro ν t ht
+    exact hAb t ht ν
+  have hameas : ∀ ν : Fin 3 → ℤ, Measurable (a ν) := fun ν ↦
+    measurable_mFourierCoeff_unitTorusLocalizedSymbol α M m hm 2 ν
+  have hΦint : ∀ ν : Fin 3 → ℤ,
+      IntegrableOn (fun t : ℝ ↦ Φ ν t / (t : ℂ)) (Ioi (0 : ℝ)) volume := fun ν ↦
+    integrableOn_thirdModeFrequencyForm_div α (standardModeOfInt ν) F
+  have hint : ∀ ν : Fin 3 → ℤ,
+      IntegrableOn (fun t : ℝ ↦ (a ν t * Φ ν t) / (t : ℂ)) (Ioi (0 : ℝ)) volume := by
+    intro ν
+    have hbase : IntegrableOn (fun t : ℝ ↦ a ν t * (Φ ν t / (t : ℂ)))
+        (Ioi (0 : ℝ)) volume := by
+      refine (hΦint ν).bdd_mul (c := C ν) (hameas ν).aestronglyMeasurable ?_
+      filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+      exact habnd ν t ht
+    refine hbase.congr_fun ?_ measurableSet_Ioi
+    intro t _
+    simp only [mul_div_assoc]
+  have hsum : Summable (fun ν : Fin 3 → ℤ ↦
+      ∫ t in Ioi (0 : ℝ), ‖(a ν t * Φ ν t) / (t : ℂ)‖) := by
+    refine Summable.of_nonneg_of_le
+      (fun ν ↦ integral_nonneg fun t ↦ norm_nonneg _) (fun ν ↦ ?_)
+      (((summable_intMode_sourceWeight_inv_110.mul_left (A * M)).mul_right
+        ((cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) * IK)))
+    have hle : (∫ t in Ioi (0 : ℝ), ‖(a ν t * Φ ν t) / (t : ℂ)‖)
+        ≤ ∫ t in Ioi (0 : ℝ), C ν * ‖Φ ν t / (t : ℂ)‖ := by
+      refine integral_mono_ae (hint ν).norm (((hΦint ν).norm).const_mul (C ν)) ?_
+      filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+      have ht0 : (0 : ℝ) < t := ht
+      rw [mul_div_assoc, norm_mul]
+      exact mul_le_mul_of_nonneg_right (habnd ν t ht0) (norm_nonneg _)
+    refine hle.trans ?_
+    rw [integral_const_mul]
+    refine (mul_le_mul_of_nonneg_left
+      (integral_norm_thirdModeFrequencyForm_div_le α (standardModeOfInt ν) F)
+      (hC0 ν)).trans (le_of_eq ?_)
+    rw [hC, ← hIK]
+  rw [integral_tsum_of_summable_integral_norm hint hsum]
+  refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+  exact tsum_div_const
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The third cone's contribution, mode by mode
+
+Source: `thm:cone`.  The third cone's scale integral of cone forms and the
+mode sum are now both available, and the interchange between them is proved, so
+the cone's contribution is the sum over modes of the scale integrals of the
+coefficient-weighted mode forms — which is the third summand of
+`eq:form_decomposition`.
+-/
+
+/-- At a positive scale the mode multiplier form is the mode frequency form. -/
+theorem multiplierForm_thirdMode_eq_frequencyForm_of_int
+    (α : Anisotropy) (ν : Fin 3 → ℤ) {t : ℝ} (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    multiplierForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+        (F 0) (F 1) (F 2) (F 3)
+      = thirdModeFrequencyForm α (standardModeOfInt ν) t F := by
+  obtain ⟨M, hM⟩ := exists_isAnisotropicMultiplier_thirdModeFrequencySymbol α ν
+  exact multiplierForm_eq_frequencyForm α M _ (hM t ht) _ _ _ _
+
+/-- **The third cone's contribution is the mode sum of its scale integrals.** -/
+theorem integral_coneMultiplierForm_two_eq_tsum_scale
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ),
+        multiplierForm (coneFrequencySymbol α m 2 t) (F 0) (F 1) (F 2) (F 3) / (t : ℂ))
+      = ∑' ν : Fin 3 → ℤ,
+          ∫ t in Ioi (0 : ℝ),
+            (UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencyForm α (standardModeOfInt ν) t F) / (t : ℂ) := by
+  rw [integral_coneMultiplierForm_two_eq_tsum α M m hm F]
+  have hcongr : (∫ t in Ioi (0 : ℝ),
+        (∑' ν : Fin 3 → ℤ,
+          UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+            multiplierForm (thirdModeFrequencySymbol α (standardModeOfInt ν) t)
+              (F 0) (F 1) (F 2) (F 3)) / (t : ℂ))
+      = ∫ t in Ioi (0 : ℝ),
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν *
+              thirdModeFrequencyForm α (standardModeOfInt ν) t F) / (t : ℂ) := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+    have ht0 : (0 : ℝ) < t := ht
+    congr 1
+    refine tsum_congr fun ν ↦ ?_
+    rw [multiplierForm_thirdMode_eq_frequencyForm_of_int α ν ht0 F]
+  rw [hcongr, ← integral_tsum_modeScaleIntegrand α M m hm F]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The multiplicative measure written out
+
+Source: the scale integrals of `thm:cone`, which run against `dt/t`.  The
+development carries that as a density on the half-line; writing it out turns
+the full forms into ordinary scale integrals of the divided integrand, which is
+the shape every bound proved here is stated in.
+-/
+
+/-- The multiplicative measure, written out, for any target space. -/
+theorem integral_Ioi_withDensity_cubeScaleDensity_smul
+    {F : Type*} [NormedAddCommGroup F] [NormedSpace ℝ F] (f : ℝ → F) :
+    (∫ t : ℝ in Ioi (0 : ℝ), f t
+      ∂((volume : Measure ℝ).withDensity cubeScaleDensity)) =
+      ∫ t : ℝ in Ioi (0 : ℝ), (t⁻¹ : ℝ) • f t := by
+  have htop : ∀ᵐ t ∂(volume.restrict (Ioi (0 : ℝ))),
+      cubeScaleDensity t < ∞ := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+    rw [cubeScaleDensity_eq_of_pos ht]
+    exact ENNReal.ofReal_lt_top
+  rw [setIntegral_withDensity_eq_setIntegral_toReal_smul
+    measurable_cubeScaleDensity htop f measurableSet_Ioi]
+  refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+  have ht0 : (0 : ℝ) < t := ht
+  rw [cubeScaleDensity_eq_of_pos ht0,
+    ENNReal.toReal_ofReal (inv_pos.mpr ht0).le]
+
+/-- **The mode full form is the scale integral of the divided integrand.** -/
+theorem thirdModeFrequencyFullForm_eq_integral_div
+    (α : Anisotropy) (ν : standardModeLattice) (a : ℝ → ℂ)
+    (F : ModelComplexSchwartzInput) :
+    thirdModeFrequencyFullForm α ν a F
+      = ∫ t in Ioi (0 : ℝ),
+          (a t * thirdModeFrequencyForm α ν t F) / (t : ℂ) := by
+  unfold thirdModeFrequencyFullForm
+  rw [integral_Ioi_withDensity_cubeScaleDensity_smul]
+  refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+  rw [Complex.real_smul, Complex.ofReal_inv, div_eq_mul_inv]
+  ring
+
+/-- **The third cone's contribution is the mode sum of the mode full
+forms.** -/
+theorem integral_coneMultiplierForm_two_eq_tsum_fullForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ),
+        multiplierForm (coneFrequencySymbol α m 2 t) (F 0) (F 1) (F 2) (F 3) / (t : ℂ))
+      = ∑' ν : Fin 3 → ℤ,
+          thirdModeFrequencyFullForm α (standardModeOfInt ν)
+            (fun t ↦ UnitAddTorus.mFourierCoeff
+              (unitTorusLocalizedSymbol α m 2 t) ν) F := by
+  rw [integral_coneMultiplierForm_two_eq_tsum_scale α M m hm F]
+  refine tsum_congr fun ν ↦ ?_
+  rw [thirdModeFrequencyFullForm_eq_integral_div]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The third cone's contribution as model forms
+
+Source: `eq:form_decomposition`, whose summands are model forms at the mode
+translates with the negated normalized coefficients.  The third cone's
+contribution is now exactly that sum, the sign being the one the blueprint
+absorbs into its coefficient.
+-/
+
+/-- **The third summand of `eq:form_decomposition`.** -/
+theorem integral_coneMultiplierForm_two_eq_tsum_modelForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ),
+        multiplierForm (coneFrequencySymbol α m 2 t) (F 0) (F 1) (F 2) (F 3) / (t : ℂ))
+      = ∑' ν : Fin 3 → ℤ,
+          LiteralActiveModelFullForm α 2
+            (standardModeTranslate (standardModeOfInt ν))
+            (-fun t ↦ UnitAddTorus.mFourierCoeff
+              (unitTorusLocalizedSymbol α m 2 t) ν) F := by
+  rw [integral_coneMultiplierForm_two_eq_tsum_fullForm α M m hm F]
+  refine tsum_congr fun ν ↦ ?_
+  exact thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm α
+    (standardModeOfInt ν) _ F
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode/kernel product against an arbitrary frequency map
+
+Source: the absolute-convergence paragraph of `thm:cone`.  At the first two
+cones the mode symbols are third-cone symbols evaluated at a relabeled
+frequency, so the diagonal map is composed with a coordinate relabeling.
+Nothing in the product argument uses more than that the map is continuous and
+linear, and the scale majorant holds at every frequency, so stating it for an
+arbitrary such map covers all three cones.
+-/
+
+/-- The mode integrand against an arbitrary frequency map is jointly
+measurable. -/
+theorem measurable_modeSymbol_kernel_prod
+    (β : Anisotropy) (ν : standardModeLattice) (D : Frequency9 →L[ℝ] E3)
+    (F : ModelComplexSchwartzInput) :
+    Measurable (fun p : Frequency9 × ℝ ↦
+      (thirdModeFrequencySymbol β ν p.2 (-D p.1) / (p.2 : ℂ)) *
+        frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1) := by
+  have hdil : Continuous (fun p : Frequency9 × ℝ ↦ β.dilate p.2 (-D p.1)) :=
+    (continuous_dilate_uncurry β).comp
+      (continuous_snd.prodMk (D.continuous.comp continuous_fst).neg)
+  have hfun : (fun p : Frequency9 × ℝ ↦
+        thirdModeFrequencySymbol β ν p.2 (-D p.1))
+      = fun p : Frequency9 × ℝ ↦ coneModeProfile ν (β.dilate p.2 (-D p.1)) := by
+    funext p
+    exact thirdModeFrequencySymbol_eq_coneModeProfile_dilate β ν p.2 _
+  have hsym : Continuous (fun p : Frequency9 × ℝ ↦
+      thirdModeFrequencySymbol β ν p.2 (-D p.1)) := by
+    rw [hfun]
+    exact (contDiff_coneModeProfile ν).continuous.comp hdil
+  have hden : Measurable (fun p : Frequency9 × ℝ ↦ ((p.2 : ℝ) : ℂ)) :=
+    Complex.measurable_ofReal.comp measurable_snd
+  have hK : Measurable (fun p : Frequency9 × ℝ ↦
+      frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1) :=
+    (frequencyKernel (F 0) (F 1) (F 2) (F 3)).continuous.measurable.comp measurable_fst
+  exact (hsym.measurable.div hden).mul hK
+
+/-- **Joint integrability of a mode against an arbitrary frequency map.** -/
+theorem integrable_modeSymbol_kernel_prod
+    (β : Anisotropy) (ν : standardModeLattice) (D : Frequency9 →L[ℝ] E3)
+    (F : ModelComplexSchwartzInput) :
+    Integrable (fun p : Frequency9 × ℝ ↦
+        (thirdModeFrequencySymbol β ν p.2 (-D p.1) / (p.2 : ℂ)) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1)
+      ((frequencyMeasure : Measure Frequency9).prod
+        ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  set K : Frequency9 → ℂ :=
+    fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
+  have hKint : Integrable K frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  set f : Frequency9 × ℝ → ℂ := fun p ↦
+    (thirdModeFrequencySymbol β ν p.2 (-D p.1) / (p.2 : ℂ)) * K p.1 with hf
+  have hmeas : AEStronglyMeasurable f
+      ((frequencyMeasure : Measure Frequency9).prod
+        ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) :=
+    (measurable_modeSymbol_kernel_prod β ν D F).aestronglyMeasurable
+  refine (integrable_prod_iff hmeas).mpr ⟨?_, ?_⟩
+  · refine Filter.Eventually.of_forall fun ζ ↦ ?_
+    exact (integrableOn_thirdModeFrequencySymbol_div β ν (-D ζ)).mul_const (K ζ)
+  · have hslice : ∀ ζ : Frequency9,
+        (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖)
+          = (∫ t in Ioi (0 : ℝ),
+              ‖thirdModeFrequencySymbol β ν t (-D ζ)‖ / t) * ‖K ζ‖ := by
+      intro ζ
+      rw [← integral_mul_const]
+      refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+      have ht0 : (0 : ℝ) < t := ht
+      rw [hf]
+      simp only [norm_mul, norm_div, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_pos ht0]
+    have hbound : ∀ ζ : Frequency9,
+        ‖∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖‖ ≤
+          (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) * ‖K ζ‖ := by
+      intro ζ
+      have hnn : 0 ≤ ∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖ :=
+        setIntegral_nonneg measurableSet_Ioi fun t _ ↦ norm_nonneg _
+      rw [Real.norm_eq_abs, abs_of_nonneg hnn, hslice ζ]
+      exact mul_le_mul_of_nonneg_right
+        (integral_norm_thirdModeFrequencySymbol_div_Ioi_le β ν (-D ζ))
+        (norm_nonneg _)
+    exact Integrable.mono'
+      (hKint.norm.const_mul (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)))
+      (hmeas.norm.integral_prod_right')
+      (Filter.Eventually.of_forall hbound)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The mode form against an arbitrary frequency map
+
+Source: the absolute-convergence paragraph of `thm:cone`.  Integrability in the
+scale and the uniform scale mass, both stated for an arbitrary frequency map,
+are the two premises the scale/mode interchange needs at each cone.
+-/
+
+/-- The mode form's scale integrand against an arbitrary frequency map. -/
+theorem modeSymbolForm_div_eq
+    (β : Anisotropy) (ν : standardModeLattice) (D : Frequency9 →L[ℝ] E3)
+    (t : ℝ) (F : ModelComplexSchwartzInput) :
+    (∫ ζ : Frequency9, thirdModeFrequencySymbol β ν t (-D ζ) *
+        frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure) / (t : ℂ)
+      = ∫ ζ : Frequency9,
+          (thirdModeFrequencySymbol β ν t (-D ζ) / (t : ℂ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+  rw [← integral_div]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+  ring
+
+/-- **The mode form against an arbitrary frequency map is scale
+integrable.** -/
+theorem integrableOn_modeSymbolForm_div
+    (β : Anisotropy) (ν : standardModeLattice) (D : Frequency9 →L[ℝ] E3)
+    (F : ModelComplexSchwartzInput) :
+    IntegrableOn (fun t : ℝ ↦
+        (∫ ζ : Frequency9, thirdModeFrequencySymbol β ν t (-D ζ) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure) / (t : ℂ))
+      (Ioi (0 : ℝ)) volume := by
+  have hbase : IntegrableOn (fun t : ℝ ↦
+      ∫ ζ : Frequency9,
+        (thirdModeFrequencySymbol β ν t (-D ζ) / (t : ℂ)) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+      (Ioi (0 : ℝ)) volume :=
+    (integrable_modeSymbol_kernel_prod β ν D F).integral_prod_right
+  refine hbase.congr_fun ?_ measurableSet_Ioi
+  intro t _
+  exact (modeSymbolForm_div_eq β ν D t F).symm
+
+/-- **The mode form's scale mass against an arbitrary frequency map.** -/
+theorem integral_norm_modeSymbolForm_div_le
+    (β : Anisotropy) (ν : standardModeLattice) (D : Frequency9 →L[ℝ] E3)
+    (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ),
+        ‖(∫ ζ : Frequency9, thirdModeFrequencySymbol β ν t (-D ζ) *
+          frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure) / (t : ℂ)‖)
+      ≤ (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) *
+          ∫ ζ : Frequency9,
+            ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure := by
+  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure volume volume
+  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+    Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
+  set K : Frequency9 → ℂ :=
+    fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
+  have hKint : Integrable K frequencyMeasure := by
+    rw [frequencyMeasure_eq_volume]
+    exact (frequencyKernel (F 0) (F 1) (F 2) (F 3)).integrable
+  set f : Frequency9 × ℝ → ℂ := fun p ↦
+    (thirdModeFrequencySymbol β ν p.2 (-D p.1) / (p.2 : ℂ)) * K p.1 with hf
+  have hint : Integrable f
+      ((frequencyMeasure : Measure Frequency9).prod
+        ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) :=
+    integrable_modeSymbol_kernel_prod β ν D F
+  have hslice : ∀ ζ : Frequency9,
+      (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖)
+        = (∫ t in Ioi (0 : ℝ),
+            ‖thirdModeFrequencySymbol β ν t (-D ζ)‖ / t) * ‖K ζ‖ := by
+    intro ζ
+    rw [← integral_mul_const]
+    refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+    have ht0 : (0 : ℝ) < t := ht
+    rw [hf]
+    simp only [norm_mul, norm_div, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_pos ht0]
+  have hbound : ∀ ζ : Frequency9,
+      (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖)
+        ≤ (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) * ‖K ζ‖ := by
+    intro ζ
+    rw [hslice ζ]
+    exact mul_le_mul_of_nonneg_right
+      (integral_norm_thirdModeFrequencySymbol_div_Ioi_le β ν (-D ζ))
+      (norm_nonneg _)
+  have hcongr : (∫ t in Ioi (0 : ℝ),
+        ‖(∫ ζ : Frequency9, thirdModeFrequencySymbol β ν t (-D ζ) * K ζ
+          ∂frequencyMeasure) / (t : ℂ)‖)
+      = ∫ t in Ioi (0 : ℝ), ‖∫ ζ : Frequency9, f (ζ, t) ∂frequencyMeasure‖ := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+    rw [modeSymbolForm_div_eq β ν D t F]
+  rw [hcongr]
+  calc (∫ t in Ioi (0 : ℝ), ‖∫ ζ : Frequency9, f (ζ, t) ∂frequencyMeasure‖)
+      ≤ ∫ t in Ioi (0 : ℝ), ∫ ζ : Frequency9, ‖f (ζ, t)‖ ∂frequencyMeasure := by
+        refine integral_mono hint.integral_prod_right.norm
+          hint.norm.integral_prod_right ?_
+        intro t
+        exact norm_integral_le_integral_norm _
+    _ = ∫ ζ : Frequency9, (∫ t in Ioi (0 : ℝ), ‖f (ζ, t)‖) ∂frequencyMeasure :=
+        (integral_integral_swap hint.norm).symm
+    _ ≤ ∫ ζ : Frequency9,
+          (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) * ‖K ζ‖ ∂frequencyMeasure := by
+        refine integral_mono hint.norm.integral_prod_left
+          (hKint.norm.const_mul _) ?_
+        intro ζ
+        exact hbound ζ
+    _ = (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) *
+          ∫ ζ : Frequency9, ‖K ζ‖ ∂frequencyMeasure := integral_const_mul _ _
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The scale/mode interchange against an arbitrary frequency map
+
+Source: the absolute-convergence paragraph of `thm:cone`.  Stated against an
+arbitrary continuous linear frequency map, the interchange between the scale
+integral and the mode sum covers all three cones at once, since the first two
+cones differ from the third only by composing the diagonal with a coordinate
+relabeling.
+-/
+
+/-- **The scale integral exchanges with the mode sum**, against an arbitrary
+frequency map. -/
+theorem integral_tsum_modeSymbolScaleIntegrand
+    (β : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier β M m)
+    (D : Frequency9 →L[ℝ] E3) (F : ModelComplexSchwartzInput) :
+    (∑' ν : Fin 3 → ℤ,
+        ∫ t in Ioi (0 : ℝ),
+          (UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol β m 2 t) ν *
+            ∫ ζ : Frequency9,
+              thirdModeFrequencySymbol β (standardModeOfInt ν) t (-D ζ) *
+                frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+            / (t : ℂ))
+      = ∫ t in Ioi (0 : ℝ),
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol β m 2 t) ν *
+              ∫ ζ : Frequency9,
+                thirdModeFrequencySymbol β (standardModeOfInt ν) t (-D ζ) *
+                  frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+            / (t : ℂ) := by
+  classical
+  obtain ⟨A, hA0, hAb⟩ :=
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      β M m hm 2
+  have hM0 : 0 ≤ M := hm.nonneg
+  set IK : ℝ := ∫ ζ : Frequency9,
+    ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure with hIK
+  have hIK0 : 0 ≤ IK := integral_nonneg fun ζ ↦ norm_nonneg _
+  set a : (Fin 3 → ℤ) → ℝ → ℂ := fun ν t ↦
+    UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol β m 2 t) ν with ha
+  set Φ : (Fin 3 → ℤ) → ℝ → ℂ := fun ν t ↦
+    ∫ ζ : Frequency9,
+      thirdModeFrequencySymbol β (standardModeOfInt ν) t (-D ζ) *
+        frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure with hΦ
+  set C : (Fin 3 → ℤ) → ℝ := fun ν ↦ (A * M) *
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ)
+    with hC
+  have hC0 : ∀ ν, 0 ≤ C ν := by
+    intro ν
+    have : (0 : ℝ) ≤ (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ :=
+      inv_nonneg.mpr (sourceWeight_pos _).le
+    rw [hC]
+    positivity
+  have habnd : ∀ (ν : Fin 3 → ℤ) (t : ℝ), 0 < t → ‖a ν t‖ ≤ C ν := fun ν t ht ↦
+    hAb t ht ν
+  have hameas : ∀ ν : Fin 3 → ℤ, Measurable (a ν) := fun ν ↦
+    measurable_mFourierCoeff_unitTorusLocalizedSymbol β M m hm 2 ν
+  have hΦint : ∀ ν : Fin 3 → ℤ,
+      IntegrableOn (fun t : ℝ ↦ Φ ν t / (t : ℂ)) (Ioi (0 : ℝ)) volume := fun ν ↦
+    integrableOn_modeSymbolForm_div β (standardModeOfInt ν) D F
+  have hint : ∀ ν : Fin 3 → ℤ,
+      IntegrableOn (fun t : ℝ ↦ (a ν t * Φ ν t) / (t : ℂ)) (Ioi (0 : ℝ)) volume := by
+    intro ν
+    have hbase : IntegrableOn (fun t : ℝ ↦ a ν t * (Φ ν t / (t : ℂ)))
+        (Ioi (0 : ℝ)) volume := by
+      refine (hΦint ν).bdd_mul (c := C ν) (hameas ν).aestronglyMeasurable ?_
+      filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+      exact habnd ν t ht
+    refine hbase.congr_fun ?_ measurableSet_Ioi
+    intro t _
+    simp only [mul_div_assoc]
+  have hsum : Summable (fun ν : Fin 3 → ℤ ↦
+      ∫ t in Ioi (0 : ℝ), ‖(a ν t * Φ ν t) / (t : ℂ)‖) := by
+    refine Summable.of_nonneg_of_le
+      (fun ν ↦ integral_nonneg fun t ↦ norm_nonneg _) (fun ν ↦ ?_)
+      (((summable_intMode_sourceWeight_inv_110.mul_left (A * M)).mul_right
+        ((cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) * IK)))
+    have hle : (∫ t in Ioi (0 : ℝ), ‖(a ν t * Φ ν t) / (t : ℂ)‖)
+        ≤ ∫ t in Ioi (0 : ℝ), C ν * ‖Φ ν t / (t : ℂ)‖ := by
+      refine integral_mono_ae (hint ν).norm (((hΦint ν).norm).const_mul (C ν)) ?_
+      filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with t ht
+      have ht0 : (0 : ℝ) < t := ht
+      rw [mul_div_assoc, norm_mul]
+      exact mul_le_mul_of_nonneg_right (habnd ν t ht0) (norm_nonneg _)
+    refine hle.trans ?_
+    rw [integral_const_mul]
+    refine (mul_le_mul_of_nonneg_left
+      (integral_norm_modeSymbolForm_div_le β (standardModeOfInt ν) D F)
+      (hC0 ν)).trans (le_of_eq ?_)
+    rw [hC, ← hIK]
+  rw [integral_tsum_of_summable_integral_norm hint hsum]
+  refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+  exact tsum_div_const
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone relabeling is an involution
+
+Source: `lem:permutation`.  The relabeling that moves an active coordinate into
+the third slot is a transposition, so applying it twice restores the original
+anisotropy, frequency and multiplier.  That is what turns the certificate
+transport, which moves data forward, into one that also moves it back.
+-/
+
+/-- Relabeling twice by the same transposition restores the anisotropy. -/
+theorem permutedAnisotropy_swap_involutive (α : Anisotropy) (i : Fin 3) :
+    permutedAnisotropy (permutedAnisotropy α (Equiv.swap 2 i)) (Equiv.swap 2 i) = α := by
+  cases α with
+  | mk w hw =>
+    simp [permutedAnisotropy]
+
+/-- Relabeling twice by the same transposition restores the frequency. -/
+theorem coordinatePermutation_swap_involutive (i : Fin 3) (x : E3) :
+    coordinatePermutation (Equiv.swap 2 i)
+        (coordinatePermutation (Equiv.swap 2 i) x) = x := by
+  ext j
+  rw [coordinatePermutation_apply, coordinatePermutation_apply,
+    Equiv.swap_apply_self]
+
+/-- The relabeling is its own inverse. -/
+theorem coordinatePermutation_swap_symm_apply (i : Fin 3) (x : E3) :
+    (coordinatePermutation (Equiv.swap 2 i)).symm x
+      = coordinatePermutation (Equiv.swap 2 i) x := by
+  have h := coordinatePermutation_swap_involutive i
+    ((coordinatePermutation (Equiv.swap 2 i)).symm x)
+  rw [(coordinatePermutation (Equiv.swap 2 i)).apply_symm_apply] at h
+  exact h.symm
+
+/-- The relabeled multiplier, relabeled again, is the original. -/
+theorem conePermutedMultiplier_involutive (m : E3 → ℂ) (i : Fin 3) :
+    conePermutedMultiplier (conePermutedMultiplier m i) i = m := by
+  funext x
+  show m ((coordinatePermutation (Equiv.swap 2 i)).symm
+    ((coordinatePermutation (Equiv.swap 2 i)).symm x)) = m x
+  rw [coordinatePermutation_swap_symm_apply,
+    coordinatePermutation_swap_symm_apply,
+    coordinatePermutation_swap_involutive]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone symbol carries a certificate at every cone
+
+Source: `thm:cone` with `lem:permutation`.  The certificate for the third cone
+symbol transports forward to the relabeled frame, and since the relabeling is a
+transposition it transports back, which gives the certificate at the original
+anisotropy for each of the three cone symbols.
+-/
+
+/-- **Every cone symbol carries an anisotropic certificate.** -/
+theorem exists_isAnisotropicMultiplier_coneFrequencySymbol
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) {t : ℝ} (ht : 0 < t) :
+    ∃ M' : ℝ, Anisotropy.IsAnisotropicMultiplier α M' (coneFrequencySymbol α m i t) := by
+  obtain ⟨M', hM'⟩ := exists_isAnisotropicMultiplier_thirdConeFrequencySymbol
+    (conePermutedAnisotropy α i) M (conePermutedMultiplier m i)
+    (isAnisotropicMultiplier_conePermuted hm i) ht
+  refine ⟨M', ?_⟩
+  have hperm := IsAnisotropicMultiplier_permute (Equiv.swap 2 i) hM'
+  rw [permutedAnisotropy_swap_involutive] at hperm
+  have hfun : (fun x : E3 ↦ thirdConeFrequencySymbol (conePermutedAnisotropy α i)
+        (conePermutedMultiplier m i) t ((coordinatePermutation (Equiv.swap 2 i)).symm x))
+      = coneFrequencySymbol α m i t := by
+    funext x
+    rw [coordinatePermutation_swap_symm_apply]
+    exact (coneFrequencySymbol_eq_thirdConeFrequencySymbol_permuted α m i t x).symm
+  rw [hfun] at hperm
+  exact hperm
+
+/-- At a positive scale the cone multiplier form is the cone frequency form. -/
+theorem multiplierForm_coneFrequencySymbol_eq_frequencyForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) {t : ℝ} (ht : 0 < t)
+    (f₀ f₁ f₂ f₃ : Schwartz3) :
+    multiplierForm (coneFrequencySymbol α m i t) f₀ f₁ f₂ f₃
+      = frequencyForm (coneFrequencySymbol α m i t) f₀ f₁ f₂ f₃ := by
+  obtain ⟨M', hM'⟩ :=
+    exists_isAnisotropicMultiplier_coneFrequencySymbol α M m hm i ht
+  exact multiplierForm_eq_frequencyForm α M' _ hM' f₀ f₁ f₂ f₃
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Every cone's contribution, mode by mode
+
+Source: `thm:cone`.  At each cone the mode symbols are third-cone symbols
+evaluated at the diagonal composed with the coordinate relabeling — itself a
+continuous linear map of the frequency — so the interchange stated against an
+arbitrary such map applies, and each cone's contribution is the sum over modes
+of the scale integrals of the coefficient-weighted mode forms.
+-/
+
+/-- The diagonal map, relabeled to put the `i`th coordinate third. -/
+def conePermutedDiagonal (i : Fin 3) : Frequency9 →L[ℝ] E3 :=
+  ((coordinatePermutation (Equiv.swap 2 i)).toContinuousLinearEquiv.toContinuousLinearMap).comp
+    frequencyDiagonal
+
+@[simp] theorem conePermutedDiagonal_apply (i : Fin 3) (ζ : Frequency9) :
+    conePermutedDiagonal i ζ
+      = coordinatePermutation (Equiv.swap 2 i) (frequencyDiagonal ζ) := rfl
+
+/-- The relabeling carries the negated diagonal to the negated relabeled
+diagonal. -/
+theorem coordinatePermutation_neg_frequencyDiagonal (i : Fin 3) (ζ : Frequency9) :
+    coordinatePermutation (Equiv.swap 2 i) (-frequencyDiagonal ζ)
+      = -(conePermutedDiagonal i ζ) := by
+  rw [conePermutedDiagonal_apply, map_neg]
+
+/-- The relabeled mode form, written against the relabeled diagonal. -/
+theorem frequencyForm_permutedMode_eq
+    (α : Anisotropy) (i : Fin 3) (ν : Fin 3 → ℤ) (t : ℝ)
+    (F : ModelComplexSchwartzInput) :
+    frequencyForm (fun ξ : E3 ↦
+        thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+          (standardModeOfInt ν) t (coordinatePermutation (Equiv.swap 2 i) ξ))
+        (F 0) (F 1) (F 2) (F 3)
+      = ∫ ζ : Frequency9,
+          thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+            (standardModeOfInt ν) t (-(conePermutedDiagonal i ζ)) *
+            frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure := by
+  unfold frequencyForm
+  refine integral_congr_ae (Filter.Eventually.of_forall fun ζ ↦ ?_)
+  simp only [coordinatePermutation_neg_frequencyDiagonal]
+
+/-- **Each cone's contribution is the mode sum of its scale integrals.** -/
+theorem integral_coneMultiplierForm_eq_tsum_scale
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3)
+    (F : ModelComplexSchwartzInput) :
+    (∫ t in Ioi (0 : ℝ),
+        multiplierForm (coneFrequencySymbol α m i t) (F 0) (F 1) (F 2) (F 3) / (t : ℂ))
+      = ∑' ν : Fin 3 → ℤ,
+          ∫ t in Ioi (0 : ℝ),
+            (UnitAddTorus.mFourierCoeff
+                (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+                  (conePermutedMultiplier m i) 2 t) ν *
+              ∫ ζ : Frequency9,
+                thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+                  (standardModeOfInt ν) t (-(conePermutedDiagonal i ζ)) *
+                  frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+              / (t : ℂ) := by
+  have hcongr : (∫ t in Ioi (0 : ℝ),
+        multiplierForm (coneFrequencySymbol α m i t) (F 0) (F 1) (F 2) (F 3) / (t : ℂ))
+      = ∫ t in Ioi (0 : ℝ),
+          (∑' ν : Fin 3 → ℤ,
+            UnitAddTorus.mFourierCoeff
+                (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+                  (conePermutedMultiplier m i) 2 t) ν *
+              ∫ ζ : Frequency9,
+                thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+                  (standardModeOfInt ν) t (-(conePermutedDiagonal i ζ)) *
+                  frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+            / (t : ℂ) := by
+    refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+    have ht0 : (0 : ℝ) < t := ht
+    congr 1
+    rw [multiplierForm_coneFrequencySymbol_eq_frequencyForm α M m hm i ht0,
+      frequencyForm_coneFrequencySymbol_eq_tsum α M m hm i t ht0 F]
+    refine tsum_congr fun ν ↦ ?_
+    rw [frequencyForm_permutedMode_eq α i ν t F]
+  rw [hcongr, ← integral_tsum_modeSymbolScaleIntegrand (conePermutedAnisotropy α i) M
+    (conePermutedMultiplier m i) (isAnisotropicMultiplier_conePermuted hm i)
+    (conePermutedDiagonal i) F]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `eq:form_decomposition`
+
+Source: `thm:cone`.  The multiplier form is the normalized sum over the three
+active coordinates and over all integer modes of the scale integrals of the
+coefficient-weighted mode forms.  The scale half comes from the cone identity
+under the frequency integral, the mode half from the Fourier series of the
+localized symbol, and the three interchanges join them.
+-/
+
+/-- **The cone decomposition of the form.** -/
+theorem multiplierForm_eq_coneModeDecomposition
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (F : ModelComplexSchwartzInput) :
+    multiplierForm m (F 0) (F 1) (F 2) (F 3)
+      = ((cPsi : ℂ) ^ 3)⁻¹ * ∑ i : Fin 3, (α.weight i : ℂ) *
+          ∑' ν : Fin 3 → ℤ,
+            ∫ t in Ioi (0 : ℝ),
+              (UnitAddTorus.mFourierCoeff
+                  (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+                    (conePermutedMultiplier m i) 2 t) ν *
+                ∫ ζ : Frequency9,
+                  thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+                    (standardModeOfInt ν) t (-(conePermutedDiagonal i ζ)) *
+                    frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure)
+                / (t : ℂ) := by
+  rw [multiplierForm_eq_scaleIntegral_coneMultiplierForm α M m hm
+    (F 0) (F 1) (F 2) (F 3)]
+  congr 1
+  refine Finset.sum_congr rfl fun i _ ↦ ?_
+  congr 1
+  exact integral_coneMultiplierForm_eq_tsum_scale α M m hm i F
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone theorem's normalization
+
+Source: `thm:cone`, which splits each mode's contribution into a nonnegative
+weight depending only on the mode and a coefficient of modulus at most one.
+The envelope is the decay budget times a constant chosen large enough for
+`eq:coefficient_decay`; dividing by it is what contracts the coefficient, and
+multiplying the weight by it is what restores the value.
+-/
+
+/-- The mode decay envelope. -/
+def modeEnvelope (A0 : ℝ) (ν : Fin 3 → ℤ) : ℝ :=
+  A0 * (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ)
+
+theorem modeEnvelope_pos {A0 : ℝ} (hA0 : 0 < A0) (ν : Fin 3 → ℤ) :
+    0 < modeEnvelope A0 ν := by
+  have hw : (0 : ℝ) < sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) :=
+    sourceWeight_pos _
+  rw [modeEnvelope]
+  positivity
+
+/-- **The weight `w_i(nu)` of `thm:cone`.** -/
+def coneModeWeight (α : Anisotropy) (i : Fin 3) (A0 : ℝ) (ν : Fin 3 → ℤ) : ℝ :=
+  (cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * modeEnvelope A0 ν
+
+theorem nonneg_coneModeWeight (α : Anisotropy) (i : Fin 3) {A0 : ℝ} (hA0 : 0 < A0)
+    (ν : Fin 3 → ℤ) : 0 ≤ coneModeWeight α i A0 ν := by
+  have h1 : (0 : ℝ) < cPsi ^ 3 := by
+    have := cPsi_pos; positivity
+  have h2 : 0 < modeEnvelope A0 ν := modeEnvelope_pos hA0 ν
+  rw [coneModeWeight]
+  positivity
+
+/-- **The contracted coefficient `c_{i,nu}` of `thm:cone`.** -/
+def coneModeCoefficient (A0 : ℝ) (ν : Fin 3 → ℤ) (a : ℂ) : ℂ :=
+  -a / ((modeEnvelope A0 ν : ℝ) : ℂ)
+
+/-- **The normalization identity.**  The cone prefactor against a raw
+coefficient is the weight against the contracted coefficient, up to the sign
+the blueprint absorbs. -/
+theorem coneMode_normalization
+    (α : Anisotropy) (i : Fin 3) {A0 : ℝ} (hA0 : 0 < A0) (ν : Fin 3 → ℤ) (a : ℂ) :
+    ((cPsi : ℂ) ^ 3)⁻¹ * (α.weight i : ℂ) * a
+      = -(((coneModeWeight α i A0 ν : ℝ) : ℂ) * coneModeCoefficient A0 ν a) := by
+  have hE : (0 : ℝ) < modeEnvelope A0 ν := modeEnvelope_pos hA0 ν
+  have hEC : ((modeEnvelope A0 ν : ℝ) : ℂ) ≠ 0 := by
+    exact_mod_cast ne_of_gt hE
+  have hcPsi : ((cPsi : ℝ) : ℂ) ≠ 0 := by
+    exact_mod_cast ne_of_gt cPsi_pos
+  rw [coneModeWeight, coneModeCoefficient]
+  push_cast
+  field_simp
+
+/-- **The contracted coefficient has modulus at most one** as soon as the
+constant dominates the decay budget. -/
+theorem norm_coneModeCoefficient_le_one
+    {A0 Ca M : ℝ} (hA0 : 0 < A0) (hCaM : Ca * M ≤ A0) (ν : Fin 3 → ℤ) {a : ℂ}
+    (ha : ‖a‖ ≤ (Ca * M) *
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ)) :
+    ‖coneModeCoefficient A0 ν a‖ ≤ 1 := by
+  have hw : (0 : ℝ) < sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) :=
+    sourceWeight_pos _
+  have hW : (0 : ℝ) <
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (110 : ℕ) := by
+    positivity
+  have hE : (0 : ℝ) < modeEnvelope A0 ν := modeEnvelope_pos hA0 ν
+  rw [coneModeCoefficient, norm_div, norm_neg, Complex.norm_real,
+    Real.norm_eq_abs, abs_of_pos hE, div_le_one hE, modeEnvelope]
+  refine ha.trans ?_
+  exact mul_le_mul_of_nonneg_right hCaM hW.le
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The decomposition with the weights written out
+
+Source: `thm:cone`, whose statement carries the weight outside the scale
+integral and the contracted coefficient inside it.  Moving the cone prefactor
+through the mode sum and the scale integral puts the decomposition in exactly
+that shape.
+-/
+
+/-- One normalized term of the decomposition. -/
+theorem coneModeTerm_normalized
+    (α : Anisotropy) (i : Fin 3) {A0 : ℝ} (hA0 : 0 < A0) (ν : Fin 3 → ℤ)
+    (aa ΦΦ : ℝ → ℂ) :
+    ((cPsi : ℂ) ^ 3)⁻¹ * ((α.weight i : ℂ) *
+        ∫ t in Ioi (0 : ℝ), (aa t * ΦΦ t) / (t : ℂ))
+      = -(((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+          ∫ t in Ioi (0 : ℝ),
+            (coneModeCoefficient A0 ν (aa t) * ΦΦ t) / (t : ℂ)) := by
+  rw [← mul_assoc, ← integral_const_mul, ← integral_const_mul, ← integral_neg]
+  refine setIntegral_congr_fun measurableSet_Ioi fun t _ ↦ ?_
+  have h := coneMode_normalization α i hA0 ν (aa t)
+  have hgoal : ((cPsi : ℂ) ^ 3)⁻¹ * (α.weight i : ℂ) * ((aa t * ΦΦ t) / (t : ℂ))
+      = -(((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+          ((coneModeCoefficient A0 ν (aa t) * ΦΦ t) / (t : ℂ))) := by
+    rw [mul_comm (aa t) (ΦΦ t), mul_comm (coneModeCoefficient A0 ν (aa t)) (ΦΦ t)]
+    rw [← mul_div_assoc, ← mul_div_assoc]
+    rw [show ((cPsi : ℂ) ^ 3)⁻¹ * (α.weight i : ℂ) * (ΦΦ t * aa t)
+        = (((cPsi : ℂ) ^ 3)⁻¹ * (α.weight i : ℂ) * aa t) * ΦΦ t by ring,
+      show ((coneModeWeight α i A0 ν : ℝ) : ℂ) * (ΦΦ t * coneModeCoefficient A0 ν (aa t))
+        = (((coneModeWeight α i A0 ν : ℝ) : ℂ) * coneModeCoefficient A0 ν (aa t)) * ΦΦ t
+        by ring]
+    rw [h]
+    ring
+  exact hgoal
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `eq:form_decomposition` in the blueprint's normalization
+
+Source: `thm:cone`.  The decomposition, with the nonnegative mode weights
+outside and the contracted coefficients inside, is the equation the theorem
+states.
+-/
+
+/-- **`eq:form_decomposition`, normalized.** -/
+theorem multiplierForm_eq_coneModeDecomposition_normalized
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    {A0 : ℝ} (hA0 : 0 < A0) (F : ModelComplexSchwartzInput) :
+    multiplierForm m (F 0) (F 1) (F 2) (F 3)
+      = -∑ i : Fin 3, ∑' ν : Fin 3 → ℤ,
+          ((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+            ∫ t in Ioi (0 : ℝ),
+              (coneModeCoefficient A0 ν
+                  (UnitAddTorus.mFourierCoeff
+                    (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+                      (conePermutedMultiplier m i) 2 t) ν) *
+                (∫ ζ : Frequency9,
+                  thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+                    (standardModeOfInt ν) t (-(conePermutedDiagonal i ζ)) *
+                    frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure))
+                / (t : ℂ) := by
+  rw [multiplierForm_eq_coneModeDecomposition α M m hm F, Finset.mul_sum,
+    ← Finset.sum_neg_distrib]
+  refine Finset.sum_congr rfl fun i _ ↦ ?_
+  rw [← tsum_mul_left, ← tsum_mul_left, ← tsum_neg]
+  refine tsum_congr fun ν ↦ ?_
+  exact coneModeTerm_normalized α i hA0 ν _ _
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone coefficients are measurable contractions
+
+Source: `thm:cone`, "the coefficients `c_{i,nu}` are measurable with modulus at
+most one".  Choosing the envelope constant above the decay budget at all three
+cones at once makes every contracted coefficient a contraction, and each is
+measurable in the scale because the Fourier coefficient is.
+-/
+
+/-- **A single envelope constant serves all three cones.** -/
+theorem exists_envelope_norm_coneModeCoefficient_le_one
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) :
+    ∃ A0 : ℝ, 0 < A0 ∧ ∀ (i : Fin 3) (t : ℝ), 0 < t → ∀ ν : Fin 3 → ℤ,
+      ‖coneModeCoefficient A0 ν
+        (UnitAddTorus.mFourierCoeff
+          (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+            (conePermutedMultiplier m i) 2 t) ν)‖ ≤ 1 := by
+  classical
+  have hM0 : 0 ≤ M := hm.nonneg
+  have hEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff
+          (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+            (conePermutedMultiplier m i) 2 t) ν‖ ≤
+        (A * M) *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := fun i ↦
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      (conePermutedAnisotropy α i) M (conePermutedMultiplier m i)
+      (isAnisotropicMultiplier_conePermuted hm i) 2
+  choose Af hAf0 hAfb using hEx
+  refine ⟨1 + ∑ j : Fin 3, Af j * M, ?_, ?_⟩
+  · have : (0 : ℝ) ≤ ∑ j : Fin 3, Af j * M :=
+      Finset.sum_nonneg fun j _ ↦ mul_nonneg (hAf0 j) hM0
+    linarith
+  · intro i t ht ν
+    have hA0 : (0 : ℝ) < 1 + ∑ j : Fin 3, Af j * M := by
+      have : (0 : ℝ) ≤ ∑ j : Fin 3, Af j * M :=
+        Finset.sum_nonneg fun j _ ↦ mul_nonneg (hAf0 j) hM0
+      linarith
+    have hle : Af i * M ≤ 1 + ∑ j : Fin 3, Af j * M := by
+      have hmem := Finset.single_le_sum
+        (f := fun j : Fin 3 ↦ Af j * M)
+        (fun j _ ↦ mul_nonneg (hAf0 j) hM0) (Finset.mem_univ i)
+      linarith
+    exact norm_coneModeCoefficient_le_one hA0 hle ν (hAfb i t ht ν)
+
+/-- The cone coefficients are measurable in the scale. -/
+theorem measurable_coneModeCoefficient
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) (i : Fin 3) (A0 : ℝ)
+    (ν : Fin 3 → ℤ) :
+    Measurable (fun t : ℝ ↦ coneModeCoefficient A0 ν
+      (UnitAddTorus.mFourierCoeff
+        (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+          (conePermutedMultiplier m i) 2 t) ν)) := by
+  have hbase : Measurable (fun t : ℝ ↦
+      UnitAddTorus.mFourierCoeff
+        (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+          (conePermutedMultiplier m i) 2 t) ν) :=
+    measurable_mFourierCoeff_unitTorusLocalizedSymbol
+      (conePermutedAnisotropy α i) M (conePermutedMultiplier m i)
+      (isAnisotropicMultiplier_conePermuted hm i) 2 ν
+  exact hbase.neg.div_const _
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `thm:cone`
+
+Source: `thm:cone`, the cone decomposition of the form.  The pieces are named
+here so the statement reads as the blueprint writes it: a nonnegative weight
+per cone and mode, a contracted coefficient, and the form as their sum against
+the mode forms over the scale half-line.
+-/
+
+/-- The raw Fourier coefficient of the `i`th cone's localized symbol. -/
+def coneModeRawCoefficient
+    (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (ν : Fin 3 → ℤ) (t : ℝ) : ℂ :=
+  UnitAddTorus.mFourierCoeff
+    (unitTorusLocalizedSymbol (conePermutedAnisotropy α i)
+      (conePermutedMultiplier m i) 2 t) ν
+
+/-- The `i`th cone's `nu`-th mode form at scale `t`. -/
+def coneModeForm
+    (α : Anisotropy) (i : Fin 3) (ν : Fin 3 → ℤ) (t : ℝ)
+    (F : ModelComplexSchwartzInput) : ℂ :=
+  ∫ ζ : Frequency9,
+    thirdModeFrequencySymbol (conePermutedAnisotropy α i) (standardModeOfInt ν) t
+        (-(conePermutedDiagonal i ζ)) *
+      frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure
+
+/-- **`thm:cone`.**  With the envelope constant chosen above the decay budget,
+the weights are nonnegative, the coefficients are contractions, and the form is
+their weighted mode sum over the scale half-line. -/
+theorem coneDecompositionOfForm
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m) :
+    ∃ A0 : ℝ, 0 < A0 ∧
+      (∀ (i : Fin 3) (ν : Fin 3 → ℤ), 0 ≤ coneModeWeight α i A0 ν) ∧
+      (∀ (i : Fin 3) (t : ℝ), 0 < t → ∀ ν : Fin 3 → ℤ,
+        ‖coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t)‖ ≤ 1) ∧
+      (∀ F : ModelComplexSchwartzInput,
+        multiplierForm m (F 0) (F 1) (F 2) (F 3)
+          = -∑ i : Fin 3, ∑' ν : Fin 3 → ℤ,
+              ((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+                ∫ t in Ioi (0 : ℝ),
+                  (coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t) *
+                    coneModeForm α i ν t F) / (t : ℂ)) := by
+  obtain ⟨A0, hA0, hcoef⟩ :=
+    exists_envelope_norm_coneModeCoefficient_le_one α M m hm
+  refine ⟨A0, hA0, fun i ν ↦ nonneg_coneModeWeight α i hA0 ν, hcoef, fun F ↦ ?_⟩
+  exact multiplierForm_eq_coneModeDecomposition_normalized α M m hm hA0 F
+
+/-- **The degenerate clause of `thm:cone`.**  A multiplier with vanishing
+constant has vanishing form. -/
+theorem coneDecompositionOfForm_zero
+    (α : Anisotropy) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α 0 m)
+    (F : ModelComplexSchwartzInput) :
+    multiplierForm m (F 0) (F 1) (F 2) (F 3) = 0 :=
+  multiplierForm_eq_zero_of_M_eq_zero α 0 m hm rfl (F 0) (F 1) (F 2) (F 3)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone mode full form
+
+Source: `thm:cone` and `thm:main`.  Naming the scale integral of a
+coefficient-weighted mode form puts the decomposition in the shape the main
+theorem quotes it in: a weighted sum of forms each of which the extended model
+estimate bounds.
+-/
+
+/-- The `i`th cone's `nu`-th mode form, integrated over the scale half-line
+against a coefficient. -/
+def coneModeFullForm
+    (α : Anisotropy) (i : Fin 3) (ν : Fin 3 → ℤ) (c : ℝ → ℂ)
+    (F : ModelComplexSchwartzInput) : ℂ :=
+  ∫ t in Ioi (0 : ℝ), (c t * coneModeForm α i ν t F) / (t : ℂ)
+
+/-- **The cone decomposition, written with the mode full forms.** -/
+theorem multiplierForm_eq_coneModeFullForm_sum
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    {A0 : ℝ} (hA0 : 0 < A0) (F : ModelComplexSchwartzInput) :
+    multiplierForm m (F 0) (F 1) (F 2) (F 3)
+      = -∑ i : Fin 3, ∑' ν : Fin 3 → ℤ,
+          ((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+            coneModeFullForm α i ν
+              (fun t ↦ coneModeCoefficient A0 ν
+                (coneModeRawCoefficient α m i ν t)) F :=
+  multiplierForm_eq_coneModeDecomposition_normalized α M m hm hA0 F
+
+/-- A uniform weight-one-hundred bound for the cone mode full forms at the
+exponents `q`.  This is what `thm:extended_model` supplies, through
+`lem:permutation`. -/
+def UniformConeModeFormBound (α : Anisotropy) (q : Fin 4 → ℝ) : Prop :=
+  ∃ C : ℝ, 0 ≤ C ∧ ∀ (i : Fin 3) (ν : Fin 3 → ℤ) (c : ℝ → ℂ),
+    Measurable c → (∀ t : ℝ, ‖c t‖ ≤ 1) → ∀ F : ModelComplexSchwartzInput,
+    ‖coneModeFullForm α i ν c F‖ ≤ C *
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3)) ^ (100 : ℕ) *
+      ∏ j : Fin 4, lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (q j)) volume
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## One cone's weighted mode sum is bounded
+
+Source: the closing paragraph of the proof of `thm:main`.  The weight carries
+the order-110 decay and the model estimate contributes order-100 growth, so
+each term carries order ten, which the lattice sums.
+-/
+
+/-- **A cone's weighted mode sum obeys the order-ten majorant.** -/
+theorem norm_coneModeTermSum_le
+    (α : Anisotropy) (i : Fin 3) {A0 Cm P : ℝ} (hA0 : 0 < A0) (hCm : 0 ≤ Cm)
+    (hP : 0 ≤ P) (Y : (Fin 3 → ℤ) → ℂ)
+    (hY : ∀ ν : Fin 3 → ℤ, ‖Y ν‖ ≤ Cm *
+      (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3)) ^ (100 : ℕ) * P) :
+    ‖∑' ν : Fin 3 → ℤ, ((coneModeWeight α i A0 ν : ℝ) : ℂ) * Y ν‖
+      ≤ ((cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A0 * Cm * P) *
+          ∑' ν : Fin 3 → ℤ,
+            (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+              (10 : ℕ) := by
+  classical
+  set K : ℝ := (cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A0 * Cm * P with hK
+  have hcPsi3 : (0 : ℝ) < cPsi ^ 3 := by have := cPsi_pos; positivity
+  have hK0 : 0 ≤ K := by
+    rw [hK]
+    have : (0 : ℝ) ≤ (cPsi ^ 3)⁻¹ := by positivity
+    have hw : (0 : ℝ) ≤ (α.weight i : ℝ) := Nat.cast_nonneg _
+    positivity
+  set g : (Fin 3 → ℤ) → ℝ := fun ν ↦ K *
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hg
+  have hgsum : Summable g := summable_intMode_sourceWeight_inv.mul_left K
+  have hterm : ∀ ν : Fin 3 → ℤ,
+      ‖((coneModeWeight α i A0 ν : ℝ) : ℂ) * Y ν‖ ≤ g ν := by
+    intro ν
+    set W : ℝ := sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) with hW
+    have hW0 : 0 < W := sourceWeight_pos _
+    have hWne : W ≠ 0 := hW0.ne'
+    have hwt0 : 0 ≤ coneModeWeight α i A0 ν := nonneg_coneModeWeight α i hA0 ν
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hwt0]
+    have hpow : W⁻¹ ^ (110 : ℕ) * W ^ (100 : ℕ) = W⁻¹ ^ (10 : ℕ) := by
+      field_simp
+    refine (mul_le_mul_of_nonneg_left (hY ν) hwt0).trans (le_of_eq ?_)
+    rw [coneModeWeight, modeEnvelope, hg, hK, ← hW]
+    linear_combination ((cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A0 * Cm * P) * hpow
+  have hsum : Summable (fun ν : Fin 3 → ℤ ↦
+      ‖((coneModeWeight α i A0 ν : ℝ) : ℂ) * Y ν‖) :=
+    Summable.of_nonneg_of_le (fun ν ↦ norm_nonneg _) hterm hgsum
+  calc ‖∑' ν : Fin 3 → ℤ, ((coneModeWeight α i A0 ν : ℝ) : ℂ) * Y ν‖
+      ≤ ∑' ν : Fin 3 → ℤ, ‖((coneModeWeight α i A0 ν : ℝ) : ℂ) * Y ν‖ :=
+        norm_tsum_le_tsum_norm hsum
+    _ ≤ ∑' ν : Fin 3 → ℤ, g ν := hsum.tsum_le_tsum hterm hgsum
+    _ = K * ∑' ν : Fin 3 → ℤ,
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (10 : ℕ) := by
+        rw [hg]
+        exact summable_intMode_sourceWeight_inv.tsum_mul_left K
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The form bound from the cone decomposition
+
+Source: the closing paragraph of the proof of `thm:main`.  Each term of the
+decomposition is a nonnegative weight against a mode form the extended model
+estimate bounds at weight one hundred; the weight carries the order-110 decay,
+leaving order ten for the lattice to sum.  The degenerate case of a vanishing
+multiplier constant is handled separately, as the blueprint does.
+-/
+
+/-- The mode full form only sees the coefficient on the positive half-line. -/
+theorem coneModeFullForm_congr_of_eqOn
+    (α : Anisotropy) (i : Fin 3) (ν : Fin 3 → ℤ) {c c' : ℝ → ℂ}
+    (h : ∀ t : ℝ, 0 < t → c t = c' t) (F : ModelComplexSchwartzInput) :
+    coneModeFullForm α i ν c F = coneModeFullForm α i ν c' F := by
+  unfold coneModeFullForm
+  refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+  rw [h t ht]
+
+/-- **The multiplier form obeys the source bound**, given the extended model
+estimate for the cone mode forms. -/
+theorem exists_norm_multiplierForm_le_of_coneModeFormBound
+    (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
+    (hm : Anisotropy.IsAnisotropicMultiplier α M m)
+    (q : Fin 4 → ℝ) (hbound : UniformConeModeFormBound α q) :
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ F : ModelComplexSchwartzInput,
+      ‖multiplierForm m (F 0) (F 1) (F 2) (F 3)‖
+        ≤ K * M *
+            ∏ j : Fin 4, lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (q j)) volume := by
+  classical
+  obtain ⟨Cm, hCm0, hCmb⟩ := hbound
+  have hM0 : 0 ≤ M := hm.nonneg
+  by_cases hMz : M = 0
+  · refine ⟨0, le_rfl, fun F ↦ ?_⟩
+    subst hMz
+    rw [coneDecompositionOfForm_zero α m hm F]
+    simp
+  have hMpos : 0 < M := lt_of_le_of_ne hM0 (Ne.symm hMz)
+  have hEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ,
+      ‖coneModeRawCoefficient α m i ν t‖ ≤
+        (A * M) *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := fun i ↦
+    scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
+      (conePermutedAnisotropy α i) M (conePermutedMultiplier m i)
+      (isAnisotropicMultiplier_conePermuted hm i) 2
+  choose Af hAf0 hAfb using hEx
+  set A' : ℝ := 1 + ∑ j : Fin 3, Af j with hA'
+  have hAsum0 : (0 : ℝ) ≤ ∑ j : Fin 3, Af j := Finset.sum_nonneg fun j _ ↦ hAf0 j
+  have hA'pos : 0 < A' := by rw [hA']; linarith
+  have hAfle : ∀ i : Fin 3, Af i ≤ A' := by
+    intro i
+    have := Finset.single_le_sum (f := fun j : Fin 3 ↦ Af j)
+      (fun j _ ↦ hAf0 j) (Finset.mem_univ i)
+    rw [hA']; linarith
+  set A0 : ℝ := A' * M with hA0def
+  have hA0 : 0 < A0 := mul_pos hA'pos hMpos
+  set S : ℝ := ∑' ν : Fin 3 → ℤ,
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hS
+  have hS0 : 0 ≤ S := tsum_nonneg fun ν ↦ by positivity
+  have hcPsi3 : (0 : ℝ) < cPsi ^ 3 := by have := cPsi_pos; positivity
+  refine ⟨(∑ i : Fin 3, (cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A' * Cm) * S, ?_, ?_⟩
+  · have : (0 : ℝ) ≤ ∑ i : Fin 3, (cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A' * Cm := by
+      refine Finset.sum_nonneg fun i _ ↦ ?_
+      have h1 : (0 : ℝ) ≤ (cPsi ^ 3)⁻¹ := by positivity
+      have h2 : (0 : ℝ) ≤ (α.weight i : ℝ) := Nat.cast_nonneg _
+      positivity
+    positivity
+  intro F
+  set P : ℝ := ∏ j : Fin 4, lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (q j)) volume with hP
+  have hP0 : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ MeasureTheory.lpNorm_nonneg
+  -- the zero-extended contracted coefficients
+  set c : Fin 3 → (Fin 3 → ℤ) → ℝ → ℂ := fun i ν t ↦
+    if 0 < t then coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t) else 0
+    with hc
+  have hcmeas : ∀ (i : Fin 3) (ν : Fin 3 → ℤ), Measurable (c i ν) := by
+    intro i ν
+    exact Measurable.ite measurableSet_Ioi
+      (measurable_coneModeCoefficient α M m hm i A0 ν) measurable_const
+  have hcbnd : ∀ (i : Fin 3) (ν : Fin 3 → ℤ) (t : ℝ), ‖c i ν t‖ ≤ 1 := by
+    intro i ν t
+    rw [hc]
+    by_cases ht : 0 < t
+    · simp only [if_pos ht]
+      refine norm_coneModeCoefficient_le_one hA0 ?_ ν (hAfb i t ht ν)
+      rw [hA0def]
+      exact mul_le_mul_of_nonneg_right (hAfle i) hM0
+    · simp [ht]
+  have hY : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖coneModeFullForm α i ν
+          (fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t)) F‖
+        ≤ Cm *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3)) ^ (100 : ℕ)
+            * P := by
+    intro i ν
+    rw [coneModeFullForm_congr_of_eqOn α i ν
+      (c := fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t))
+      (c' := c i ν) (fun t ht ↦ by rw [hc]; simp only [if_pos ht]) F]
+    exact hCmb i ν (c i ν) (hcmeas i ν) (hcbnd i ν) F
+  rw [multiplierForm_eq_coneModeFullForm_sum α M m hm hA0 F, norm_neg]
+  refine (norm_sum_le _ _).trans ?_
+  have hstep : ∀ i : Fin 3,
+      ‖∑' ν : Fin 3 → ℤ, ((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+          coneModeFullForm α i ν
+            (fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t)) F‖
+        ≤ ((cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A0 * Cm * P) * S := by
+    intro i
+    exact norm_coneModeTermSum_le α i hA0 hCm0 hP0 _ (hY i)
+  refine (Finset.sum_le_sum fun i _ ↦ hstep i).trans (le_of_eq ?_)
+  rw [Finset.sum_mul, Finset.sum_mul, Finset.sum_mul]
+  refine Finset.sum_congr rfl fun i _ ↦ ?_
+  rw [hA0def]
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The localized symbol's derivative constant does not see the multiplier
+
+Source: `lem:symbol_derivatives`.  The constant in the localized symbol's
+derivative bound is assembled from the cutoff's own derivative budget and the
+anisotropic weights of the direction tuples — nothing in it depends on the
+multiplier.  Stating it with the constant quantified first is what makes every
+bound built on it uniform over multipliers, which is what `thm:main` asks for.
+-/
+
+/-- **The localized symbol's derivative bound, with the constant chosen before
+the multiplier.** -/
+theorem exists_uniform_localizedSymbol_derivative_bound_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) (k : ℕ) (hk : k ≤ 110) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ η : E3,
+        ‖iteratedFDeriv ℝ k (localizedSymbol α m i t) η‖ ≤ C * M := by
+  rcases exists_complexLocalizedCutoff_derivative_bound i 110 with ⟨D, hD, hcut⟩
+  have hDnonneg : 0 ≤ D := le_trans (by norm_num) hD
+  set Ck : ℝ := ∑ n ∈ Finset.range (k + 1),
+    (k.choose n : ℝ) *
+      ((3 : ℝ) ^ n * ∑ σ : Fin n → Fin 3,
+        (6 : ℝ) ^ (α.derivativeWeight σ)) * D with hCk
+  have hCknonneg : 0 ≤ Ck := by
+    rw [hCk]
+    refine Finset.sum_nonneg fun n _ ↦ ?_
+    refine mul_nonneg (mul_nonneg (by positivity) (mul_nonneg (by positivity)
+      (Finset.sum_nonneg fun σ _ ↦ by positivity))) hDnonneg
+  refine ⟨Ck, hCknonneg, ?_⟩
+  intro M m hm t ht η
+  by_cases hη : ‖η‖ < 1 / 2
+  · rw [iteratedFDeriv_localizedSymbol_eq_zero_of_norm_lt_half
+      α m i t η hη k]
+    simp only [norm_zero]
+    exact mul_nonneg hCknonneg hm.nonneg
+  · have hhalf : 1 / 2 ≤ ‖η‖ := le_of_not_gt hη
+    have hbound := norm_iteratedFDeriv_localizedSymbol_le_half_compl
+      α M m hm i ht D hcut η k hk hhalf
+    refine hbound.trans (le_of_eq ?_)
+    rw [hCk, Finset.sum_mul]
+    refine Finset.sum_congr rfl fun n _ ↦ ?_
+    rw [← Finset.mul_sum]
+    ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The raw derivative envelopes, with the constant hoisted
+
+Source: `lem:symbol_derivatives`.  Each raw envelope passes the localized
+symbol's derivative constant through a fixed coordinate rescaling, so hoisting
+the constant there hoists it here too.
+-/
+
+theorem exists_uniform_raw_first_scaled_110_deriv_bound_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ x y z : ℝ,
+        ‖iteratedDeriv 110 (fun r : ℝ ↦ localizedSymbolRaw α m i t
+          (8 * r) (8 * y) (8 * z)) x‖ ≤ C * M := by
+  rcases exists_uniform_localizedSymbol_derivative_bound_of_anisotropy
+    α i 110 (by norm_num) with ⟨D, hD, hbound⟩
+  refine ⟨(8 : ℝ) ^ 110 * D, mul_nonneg (by positivity) hD, ?_⟩
+  intro M m hm t ht x y z
+  rw [scratch_iteratedDeriv_raw_first_scaled_eq_iteratedFDeriv_at_order
+    α M m hm i ht 110 (by norm_num) y z x]
+  exact scratch_norm_iteratedFDeriv_repeated_coordinate110_le
+    α M m i 0 t (frequencyAssemble3 (8 * x) (8 * y) (8 * z)) D (hbound M m hm) ht
+
+theorem exists_uniform_raw_middle_scaled_110_deriv_bound_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ x y z : ℝ,
+        ‖iteratedDeriv 110 (fun r : ℝ ↦ localizedSymbolRaw α m i t
+          (8 * x) (8 * r) (8 * z)) y‖ ≤ C * M := by
+  rcases exists_uniform_localizedSymbol_derivative_bound_of_anisotropy
+    α i 110 (by norm_num) with ⟨D, hD, hbound⟩
+  refine ⟨(8 : ℝ) ^ 110 * D, mul_nonneg (by positivity) hD, ?_⟩
+  intro M m hm t ht x y z
+  rw [scratch_iteratedDeriv_raw_middle_scaled_eq_iteratedFDeriv_at_order
+    α M m hm i ht 110 (by norm_num) x z y]
+  exact scratch_norm_iteratedFDeriv_repeated_coordinate110_le
+    α M m i 1 t (frequencyAssemble3 (8 * x) (8 * y) (8 * z)) D (hbound M m hm) ht
+
+theorem exists_uniform_raw_last_scaled_110_deriv_bound_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ x y z : ℝ,
+        ‖iteratedDeriv 110 (fun r : ℝ ↦ localizedSymbolRaw α m i t
+          (8 * x) (8 * y) (8 * r)) z‖ ≤ C * M := by
+  rcases exists_uniform_localizedSymbol_derivative_bound_of_anisotropy
+    α i 110 (by norm_num) with ⟨D, hD, hbound⟩
+  refine ⟨(8 : ℝ) ^ 110 * D, mul_nonneg (by positivity) hD, ?_⟩
+  intro M m hm t ht x y z
+  rw [scratch_iteratedDeriv_raw_last_scaled_eq_iteratedFDeriv_at_order
+    α M m hm i ht 110 (by norm_num) x y z]
+  exact scratch_norm_iteratedFDeriv_repeated_coordinate110_le
+    α M m i 2 t (frequencyAssemble3 (8 * x) (8 * y) (8 * z)) D (hbound M m hm) ht
+
+/-- The order-zero raw envelope, with the constant hoisted. -/
+theorem exists_uniform_raw_scaled_uniform_bound_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ x y z : ℝ,
+        ‖localizedSymbolRaw α m i t (8 * x) (8 * y) (8 * z)‖ ≤ C * M := by
+  rcases exists_uniform_localizedSymbol_derivative_bound_of_anisotropy
+    α i 0 (by norm_num) with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, ?_⟩
+  intro M m hm t ht x y z
+  rw [localizedSymbolRaw_apply]
+  simpa only [norm_iteratedFDeriv_zero] using
+    (hbound M m hm t ht (frequencyAssemble3 (8 * x) (8 * y) (8 * z)))
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The torus coefficient bounds, with the constant hoisted
+
+Source: `lem:fourier_series`.  Each coefficient bound passes a raw derivative
+envelope through the integration-by-parts estimate, so hoisting the constant in
+those envelopes hoists it here as well.
+-/
+
+theorem exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_bound_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ,
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤ C * M := by
+  rcases exists_uniform_raw_scaled_uniform_bound_of_anisotropy α i with ⟨C, hC, hraw⟩
+  refine ⟨C, hC, ?_⟩
+  intro M m hm t ht ν
+  rw [scratch_mFourierCoeff_unitTorusLocalizedSymbol_eq_nestedRaw α M m hm i ht ν]
+  apply scratch_norm_nestedRawUnitFourierCoeff_le_of_first_bound
+    α m i t ν (C * M) (mul_nonneg hC hm.nonneg)
+  intro y z
+  apply scratch_norm_fourierCoeffOn_le_of_norm_le
+    (by norm_num : -(1 / 2 : ℝ) < 1 / 2) (ν 0)
+  intro x _
+  exact hraw M m hm t ht x y z
+
+theorem exists_uniform_mFourierCoeff_first_110_decay_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ, ν 0 ≠ 0 →
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+          (2 * Real.pi * |((ν 0 : ℤ) : ℝ)|)⁻¹ ^ 110 * (C * M) := by
+  rcases exists_uniform_raw_first_scaled_110_deriv_bound_of_anisotropy α i with
+    ⟨C, hC, hraw⟩
+  refine ⟨C, hC, ?_⟩
+  intro M m hm t ht ν hν
+  apply scratch_norm_mFourierCoeff_unitTorusLocalizedSymbol_le_of_first_110_bound
+    α M m hm i ht ν hν (C * M) (mul_nonneg hC hm.nonneg)
+  intro x y z
+  exact hraw M m hm t ht x y z
+
+theorem exists_uniform_mFourierCoeff_middle_110_decay_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ, ν 1 ≠ 0 →
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+          (2 * Real.pi * |((ν 1 : ℤ) : ℝ)|)⁻¹ ^ 110 * (C * M) := by
+  rcases exists_uniform_raw_middle_scaled_110_deriv_bound_of_anisotropy α i with
+    ⟨C, hC, hraw⟩
+  refine ⟨C, hC, ?_⟩
+  intro M m hm t ht ν hν
+  apply scratch_norm_mFourierCoeff_unitTorusLocalizedSymbol_le_of_middle_110_bound
+    α M m hm i ht ν hν (C * M) (mul_nonneg hC hm.nonneg)
+  intro x y z
+  exact hraw M m hm t ht x y z
+
+theorem exists_uniform_mFourierCoeff_last_110_decay_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ, ν 2 ≠ 0 →
+        ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+          (2 * Real.pi * |((ν 2 : ℤ) : ℝ)|)⁻¹ ^ 110 * (C * M) := by
+  rcases exists_uniform_raw_last_scaled_110_deriv_bound_of_anisotropy α i with
+    ⟨C, hC, hraw⟩
+  refine ⟨C, hC, ?_⟩
+  intro M m hm t ht ν hν
+  apply scratch_norm_mFourierCoeff_unitTorusLocalizedSymbol_le_of_last_110_bound
+    α M m hm i ht ν hν (C * M) (mul_nonneg hC hm.nonneg)
+  intro x y z
+  exact hraw M m hm t ht x y z
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The assembled order-110 decay, with the constant hoisted
+
+Source: `lem:fourier_series`, `eq:coefficient_decay`.  The constant combines
+the four coefficient budgets with a fixed geometric factor, so hoisting those
+budgets hoists the assembled constant, which is what the main theorem needs.
+-/
+
+theorem exists_uniform_mFourierCoeff_sourceWeight_110_decay_of_anisotropy
+    (α : Anisotropy) (i : Fin 3) :
+    ∃ A : ℝ, 0 ≤ A ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ,
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+        (A * M) *
+          (sourceWeight ((scratch_standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+            (110 : ℕ) := by
+  rcases exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_bound_of_anisotropy
+    α i with ⟨Cz, hCz, hzero⟩
+  rcases exists_uniform_mFourierCoeff_first_110_decay_of_anisotropy
+    α i with ⟨C0, hC0, hfirst⟩
+  rcases exists_uniform_mFourierCoeff_middle_110_decay_of_anisotropy
+    α i with ⟨C1, hC1, hmiddle⟩
+  rcases exists_uniform_mFourierCoeff_last_110_decay_of_anisotropy
+    α i with ⟨C2, hC2, hlast⟩
+  let D : ℝ := Cz + C0 + C1 + C2
+  let R : ℝ := (1 + 4 * (2 * Real.pi)⁻¹) ^ (110 : ℕ)
+  let A : ℝ := D * R
+  have hD : 0 ≤ D := by
+    dsimp [D]
+    linarith
+  have hCzD : Cz ≤ D := by
+    dsimp [D]
+    linarith
+  have hC0D : C0 ≤ D := by
+    dsimp [D]
+    linarith
+  have hC1D : C1 ≤ D := by
+    dsimp [D]
+    linarith
+  have hC2D : C2 ≤ D := by
+    dsimp [D]
+    linarith
+  have hR : 0 ≤ R := by
+    dsimp [R]
+    positivity
+  have hRone : 1 ≤ R := by
+    dsimp [R]
+    apply one_le_pow₀
+    exact le_add_of_nonneg_right (by positivity)
+  refine ⟨A, mul_nonneg hD hR, ?_⟩
+  intro M m hm t ht ν
+  let W : ℝ := sourceWeight ((scratch_standardModeOfInt ν : standardModeLattice) : E3)
+  have hW : 0 < W := by
+    dsimp [W]
+    exact sourceWeight_pos _
+  by_cases hν : ν = 0
+  · subst ν
+    have hWeightzero : sourceWeight
+        ((scratch_standardModeOfInt (0 : Fin 3 → ℤ) : standardModeLattice) : E3) = 1 := by
+      simp [scratch_sourceWeight_standardModeOfInt]
+    rw [hWeightzero]
+    simp only [inv_one, one_pow, mul_one]
+    change ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) 0‖ ≤
+      (D * R) * M
+    calc
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) 0‖ ≤ Cz * M :=
+        hzero M m hm t ht 0
+      _ ≤ D * M := mul_le_mul_of_nonneg_right hCzD hm.nonneg
+      _ = (D * M) * 1 := by ring
+      _ ≤ (D * M) * R :=
+        mul_le_mul_of_nonneg_left hRone (mul_nonneg hD hm.nonneg)
+      _ = (D * R) * M := by ring
+  · have hfinish (j : Fin 3) (C : ℝ) (hC : 0 ≤ C) (hCD : C ≤ D)
+      (hj : ν j ≠ 0)
+      (hmax : ∀ k : Fin 3, scratch_intModeAbs ν k ≤ scratch_intModeAbs ν j)
+      (hcoeff : ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+        (2 * Real.pi * scratch_intModeAbs ν j)⁻¹ ^ (110 : ℕ) * (C * M)) :
+      ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m i t) ν‖ ≤
+        (A * M) * W⁻¹ ^ (110 : ℕ) := by
+      have hWa : W ≤ 4 * scratch_intModeAbs ν j := by
+        dsimp [W]
+        exact scratch_sourceWeight_le_four_mul_intModeAbs_of_max ν j hj hmax
+      have hone : (1 : ℝ) ≤ scratch_intModeAbs ν j := by
+        rw [scratch_intModeAbs, ← Int.cast_one, ← Int.cast_abs]
+        exact_mod_cast Int.one_le_abs hj
+      have ha : 0 < scratch_intModeAbs ν j := lt_of_lt_of_le zero_lt_one hone
+      have hmain := scratch_le_sourceWeight_decay_of_coordinate_bound
+        hW ha hWa hC hCD hm.nonneg hcoeff
+      simpa only [A, R] using hmain
+    by_cases h10 : scratch_intModeAbs ν 1 ≤ scratch_intModeAbs ν 0
+    · by_cases h20 : scratch_intModeAbs ν 2 ≤ scratch_intModeAbs ν 0
+      · have hmax : ∀ k : Fin 3,
+            scratch_intModeAbs ν k ≤ scratch_intModeAbs ν 0 := by
+          intro k
+          fin_cases k
+          · exact le_rfl
+          · exact h10
+          · exact h20
+        have h0 : ν 0 ≠ 0 :=
+          scratch_intMode_coordinate_max_ne_zero ν 0 hν hmax
+        apply hfinish 0 C0 hC0 hC0D h0 hmax
+        simpa only [scratch_intModeAbs] using hfirst M m hm t ht ν h0
+      · have h02 : scratch_intModeAbs ν 0 ≤ scratch_intModeAbs ν 2 :=
+          le_of_not_ge h20
+        have h12 : scratch_intModeAbs ν 1 ≤ scratch_intModeAbs ν 2 := h10.trans h02
+        have hmax : ∀ k : Fin 3,
+            scratch_intModeAbs ν k ≤ scratch_intModeAbs ν 2 := by
+          intro k
+          fin_cases k
+          · exact h02
+          · exact h12
+          · exact le_rfl
+        have h2 : ν 2 ≠ 0 :=
+          scratch_intMode_coordinate_max_ne_zero ν 2 hν hmax
+        apply hfinish 2 C2 hC2 hC2D h2 hmax
+        simpa only [scratch_intModeAbs] using hlast M m hm t ht ν h2
+    · have h01 : scratch_intModeAbs ν 0 ≤ scratch_intModeAbs ν 1 :=
+        le_of_not_ge h10
+      by_cases h21 : scratch_intModeAbs ν 2 ≤ scratch_intModeAbs ν 1
+      · have hmax : ∀ k : Fin 3,
+            scratch_intModeAbs ν k ≤ scratch_intModeAbs ν 1 := by
+          intro k
+          fin_cases k
+          · exact h01
+          · exact le_rfl
+          · exact h21
+        have h1 : ν 1 ≠ 0 :=
+          scratch_intMode_coordinate_max_ne_zero ν 1 hν hmax
+        apply hfinish 1 C1 hC1 hC1D h1 hmax
+        simpa only [scratch_intModeAbs] using hmiddle M m hm t ht ν h1
+      · have h12 : scratch_intModeAbs ν 1 ≤ scratch_intModeAbs ν 2 :=
+          le_of_not_ge h21
+        have h02 : scratch_intModeAbs ν 0 ≤ scratch_intModeAbs ν 2 := h01.trans h12
+        have hmax : ∀ k : Fin 3,
+            scratch_intModeAbs ν k ≤ scratch_intModeAbs ν 2 := by
+          intro k
+          fin_cases k
+          · exact h02
+          · exact h12
+          · exact le_rfl
+        have h2 : ν 2 ≠ 0 :=
+          scratch_intMode_coordinate_max_ne_zero ν 2 hν hmax
+        apply hfinish 2 C2 hC2 hC2D h2 hmax
+        simpa only [scratch_intModeAbs] using hlast M m hm t ht ν h2
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The form bound with a constant depending only on the data
+
+Source: `thm:main`, whose constant depends on the anisotropy and the exponents
+alone.  With the coefficient decay's constant hoisted above the multiplier, the
+constant assembled from it is hoisted too, which is what the theorem asks for.
+-/
+
+/-- **The multiplier form obeys the source bound with a uniform constant.** -/
+theorem exists_uniform_norm_multiplierForm_le_of_coneModeFormBound
+    (α : Anisotropy) (q : Fin 4 → ℝ) (hbound : UniformConeModeFormBound α q) :
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ F : ModelComplexSchwartzInput,
+        ‖multiplierForm m (F 0) (F 1) (F 2) (F 3)‖
+          ≤ K * M *
+              ∏ j : Fin 4, lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (q j)) volume := by
+  classical
+  obtain ⟨Cm, hCm0, hCmb⟩ := hbound
+  have hEx : ∀ i : Fin 3, ∃ A : ℝ, 0 ≤ A ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ t : ℝ, 0 < t → ∀ ν : Fin 3 → ℤ,
+        ‖coneModeRawCoefficient α m i ν t‖ ≤
+          (A * M) *
+            (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^
+              (110 : ℕ) := by
+    intro i
+    obtain ⟨A, hA0, hAb⟩ :=
+      exists_uniform_mFourierCoeff_sourceWeight_110_decay_of_anisotropy
+        (conePermutedAnisotropy α i) 2
+    exact ⟨A, hA0, fun M m hm t ht ν ↦
+      hAb M (conePermutedMultiplier m i)
+        (isAnisotropicMultiplier_conePermuted hm i) t ht ν⟩
+  choose Af hAf0 hAfb using hEx
+  set A' : ℝ := 1 + ∑ j : Fin 3, Af j with hA'
+  have hAsum0 : (0 : ℝ) ≤ ∑ j : Fin 3, Af j := Finset.sum_nonneg fun j _ ↦ hAf0 j
+  have hA'pos : 0 < A' := by rw [hA']; linarith
+  have hAfle : ∀ i : Fin 3, Af i ≤ A' := by
+    intro i
+    have := Finset.single_le_sum (f := fun j : Fin 3 ↦ Af j)
+      (fun j _ ↦ hAf0 j) (Finset.mem_univ i)
+    rw [hA']; linarith
+  set S : ℝ := ∑' ν : Fin 3 → ℤ,
+    (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3))⁻¹ ^ (10 : ℕ)
+    with hS
+  have hS0 : 0 ≤ S := tsum_nonneg fun ν ↦ by positivity
+  have hcPsi3 : (0 : ℝ) < cPsi ^ 3 := by have := cPsi_pos; positivity
+  refine ⟨(∑ i : Fin 3, (cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A' * Cm) * S, ?_, ?_⟩
+  · have : (0 : ℝ) ≤ ∑ i : Fin 3, (cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A' * Cm := by
+      refine Finset.sum_nonneg fun i _ ↦ ?_
+      have h1 : (0 : ℝ) ≤ (cPsi ^ 3)⁻¹ := by positivity
+      have h2 : (0 : ℝ) ≤ (α.weight i : ℝ) := Nat.cast_nonneg _
+      positivity
+    positivity
+  intro M m hm F
+  have hM0 : 0 ≤ M := hm.nonneg
+  set P : ℝ := ∏ j : Fin 4, lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (q j)) volume with hP
+  have hP0 : 0 ≤ P := Finset.prod_nonneg fun j _ ↦ MeasureTheory.lpNorm_nonneg
+  by_cases hMz : M = 0
+  · subst hMz
+    rw [coneDecompositionOfForm_zero α m hm F]
+    simp
+  have hMpos : 0 < M := lt_of_le_of_ne hM0 (Ne.symm hMz)
+  set A0 : ℝ := A' * M with hA0def
+  have hA0 : 0 < A0 := mul_pos hA'pos hMpos
+  set c : Fin 3 → (Fin 3 → ℤ) → ℝ → ℂ := fun i ν t ↦
+    if 0 < t then coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t) else 0
+    with hc
+  have hcmeas : ∀ (i : Fin 3) (ν : Fin 3 → ℤ), Measurable (c i ν) := by
+    intro i ν
+    exact Measurable.ite measurableSet_Ioi
+      (measurable_coneModeCoefficient α M m hm i A0 ν) measurable_const
+  have hcbnd : ∀ (i : Fin 3) (ν : Fin 3 → ℤ) (t : ℝ), ‖c i ν t‖ ≤ 1 := by
+    intro i ν t
+    rw [hc]
+    by_cases ht : 0 < t
+    · simp only [if_pos ht]
+      refine norm_coneModeCoefficient_le_one hA0 ?_ ν (hAfb i M m hm t ht ν)
+      rw [hA0def]
+      exact mul_le_mul_of_nonneg_right (hAfle i) hM0
+    · simp [ht]
+  have hY : ∀ (i : Fin 3) (ν : Fin 3 → ℤ),
+      ‖coneModeFullForm α i ν
+          (fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t)) F‖
+        ≤ Cm *
+          (sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3)) ^ (100 : ℕ)
+            * P := by
+    intro i ν
+    rw [coneModeFullForm_congr_of_eqOn α i ν
+      (c := fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t))
+      (c' := c i ν) (fun t ht ↦ by rw [hc]; simp only [if_pos ht]) F]
+    exact hCmb i ν (c i ν) (hcmeas i ν) (hcbnd i ν) F
+  rw [multiplierForm_eq_coneModeFullForm_sum α M m hm hA0 F, norm_neg]
+  refine (norm_sum_le _ _).trans ?_
+  have hstep : ∀ i : Fin 3,
+      ‖∑' ν : Fin 3 → ℤ, ((coneModeWeight α i A0 ν : ℝ) : ℂ) *
+          coneModeFullForm α i ν
+            (fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t)) F‖
+        ≤ ((cPsi ^ 3)⁻¹ * (α.weight i : ℝ) * A0 * Cm * P) * S := by
+    intro i
+    exact norm_coneModeTermSum_le α i hA0 hCm0 hP0 _ (hY i)
+  refine (Finset.sum_le_sum fun i _ ↦ hstep i).trans (le_of_eq ?_)
+  rw [Finset.sum_mul, Finset.sum_mul, Finset.sum_mul]
+  refine Finset.sum_congr rfl fun i _ ↦ ?_
+  rw [hA0def]
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The main theorem's exponents lie in the extended region
+
+Source: the opening of the proof of `thm:main`, which passes from the exponent
+hypotheses to the reciprocal inequalities and hence to `eq:extended_region`.
+The arithmetic was recorded in reciprocal form; stating it against the
+exponents themselves is what connects the theorem's hypotheses to the model
+estimate it quotes.
+-/
+
+/-- **The main theorem's exponents give the extended model region.** -/
+theorem extendedModelRegion_of_mainExponents
+    (p : Fin 4 → ℝ) (hp0 : 4 < p 0)
+    (hp1 : 1 < p 1) (hp1' : p 1 < 4)
+    (hp2 : 1 < p 2) (hp2' : p 2 < 4)
+    (hp3 : 1 < p 3) (hp3' : p 3 < 4)
+    (hsum : ∑ j : Fin 4, (p j)⁻¹ = 1) :
+    ExtendedModelRegion ((p 0)⁻¹) ((p 1)⁻¹) ((p 2)⁻¹) ((p 3)⁻¹) := by
+  have h0pos : (0 : ℝ) < p 0 := by linarith
+  have h1pos : (0 : ℝ) < p 1 := by linarith
+  have h2pos : (0 : ℝ) < p 2 := by linarith
+  have h3pos : (0 : ℝ) < p 3 := by linarith
+  have hb0 : (0 : ℝ) < (p 0)⁻¹ := inv_pos.mpr h0pos
+  have hb0small : (p 0)⁻¹ < 1 / 4 := by
+    rw [inv_lt_comm₀ h0pos (by norm_num)]
+    linarith
+  have hb1 : (1 : ℝ) / 4 < (p 1)⁻¹ := by
+    rw [lt_inv_comm₀ (by norm_num) h1pos]
+    linarith
+  have hb2 : (1 : ℝ) / 4 < (p 2)⁻¹ := by
+    rw [lt_inv_comm₀ (by norm_num) h2pos]
+    linarith
+  have hb3 : (1 : ℝ) / 4 < (p 3)⁻¹ := by
+    rw [lt_inv_comm₀ (by norm_num) h3pos]
+    linarith
+  have hsum' : (p 0)⁻¹ + (p 1)⁻¹ + (p 2)⁻¹ + (p 3)⁻¹ = 1 := by
+    rw [Fin.sum_univ_four] at hsum
+    linarith
+  exact extendedModelRegion_of_mainInequalities hb0 hb1 hb2 hb3 hsum' hb0small
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `thm:main`
+
+Source: `thm:main`, the anisotropic paraproduct bound.  The exponent
+hypotheses are exactly those of the blueprint; they place the reciprocals in
+the extended model region, which is the region over which the model estimate
+quoted here is stated.  That estimate is `thm:extended_model`, carried as a
+hypothesis because the blueprint proves it from an external interpolation
+result it does not itself supply.
+-/
+
+/-- **`thm:main`.**  Under the blueprint's exponent hypotheses the reciprocals
+lie in the extended model region, and — given the model estimate available
+there — every anisotropic multiplier's form is bounded by its constant against
+the product of the four input norms, with a constant depending only on the
+anisotropy and the exponents. -/
+theorem anisotropicParaproduct
+    (α : Anisotropy) (p : Fin 4 → ℝ)
+    (hp0 : 4 < p 0)
+    (hp1 : 1 < p 1) (hp1' : p 1 < 4)
+    (hp2 : 1 < p 2) (hp2' : p 2 < 4)
+    (hp3 : 1 < p 3) (hp3' : p 3 < 4)
+    (hsum : ∑ j : Fin 4, (p j)⁻¹ = 1)
+    (hmodel : UniformConeModeFormBound α p) :
+    ExtendedModelRegion ((p 0)⁻¹) ((p 1)⁻¹) ((p 2)⁻¹) ((p 3)⁻¹) ∧
+      ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+        Anisotropy.IsAnisotropicMultiplier α M m →
+        ∀ F : ModelComplexSchwartzInput,
+          ‖multiplierForm m (F 0) (F 1) (F 2) (F 3)‖
+            ≤ C * M *
+                ∏ j : Fin 4,
+                  lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (p j)) volume :=
+  ⟨extendedModelRegion_of_mainExponents p hp0 hp1 hp1' hp2 hp2' hp3 hp3' hsum,
+    exists_uniform_norm_multiplierForm_le_of_coneModeFormBound α p hmodel⟩
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## Interpolating at the simplex interior
+
+Source: the step of `thm:extended_model` that applies `ext:interpolation` with
+the weights of `eq:weights`.  Every side condition the external theorem asks
+for — the endpoint exponents exceeding one, the output exponents, the affine
+independence of the four reciprocal vectors, the positivity of the weights and
+their summing to one, and the weighted combination reproducing the target — is
+supplied by the simplex geometry of `lem:exponent_simplex`.
+-/
+
+/-- The output exponents of the four vertices are at least one. -/
+theorem one_le_simplexVertexOutput {b : Fin 3 → ℝ} {b₀ : ℝ}
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j) (a : Fin 4) :
+    1 ≤ simplexVertexOutput b b₀ a := by
+  have hsum : (0 : ℝ) < ∑ j : Fin 3, b j :=
+    Finset.sum_pos (fun j _ ↦ hb j) ⟨0, Finset.mem_univ 0⟩
+  have hlt : b₀ < 1 := by rw [hbsum]; linarith
+  refine Fin.cases ?_ ?_ a
+  · rw [simplexVertexOutput_zero b hbsum]
+    rw [le_inv_comm₀ (by norm_num) (by linarith)]
+    linarith
+  · intro m
+    rw [simplexVertexOutput_succ b hbsum m]
+
+/-- **The interpolation step of `thm:extended_model`.**  Weak bounds at the
+four simplex vertices give the strong bound at the interior target. -/
+theorem exists_strong_bound_at_simplex_interior
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {T : (Fin 3 → (X → ℝ)) → (X → ℝ)} (hT : FourVertexMarcinkiewicz μ T)
+    (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ)
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hβ₀ : 0 < β₀) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (p : Fin 3 → ℝ) (hp : ∀ j, (p j)⁻¹ = β j)
+    (R : ℝ)
+    (hR : R⁻¹ = ∑ a : Fin 4,
+      simplexWeight β b β₀ b₀ a * (simplexVertexOutput b b₀ a)⁻¹)
+    (hR1 : 1 < R)
+    (A : Fin 4 → ℝ) (hA : ∀ a, 0 ≤ A a)
+    (hweak : ∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (f j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(f j))) (simplexVertexOutput b b₀ a)
+        ≤ ENNReal.ofReal (A a *
+            ∏ j : Fin 3, lpNorm (⇑(f j))
+              (ENNReal.ofReal (simplexVertexExponent b b₀ a j)) μ)) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (f : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (f j).FinMeasSupp μ) →
+      lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
+        ≤ C * (∏ a : Fin 4, A a ^ simplexWeight β b β₀ b₀ a) *
+            ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ := by
+  refine strong_bound_of_fourVertexMarcinkiewicz hT
+    (simplexVertexExponent b b₀) (simplexVertexOutput b b₀) A
+    (simplexWeight β b β₀ b₀) p R
+    (fun a j ↦ one_lt_simplexVertexExponent hb hb₀ hbsum a j)
+    (fun a ↦ one_le_simplexVertexOutput hb hb₀ hbsum a)
+    (fun a ↦ simplexVertexOutput_inv b b₀ a)
+    (affineIndependent_simplexVertexExponent (ne_of_gt hb₀))
+    hA
+    (fun a ↦ simplexWeight_pos hβ₀ hb₀ hlt a)
+    (sum_simplexWeight (ne_of_gt hb₀) hβsum hbsum)
+    ?_ hR hR1 hweak
+  intro j
+  rw [hp j, ← sum_simplexWeight_mul_reciprocal (ne_of_gt hb₀) hβsum hbsum j]
+  refine Finset.sum_congr rfl fun a _ ↦ ?_
+  rw [simplexVertexExponent_inv]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The base vertex's weak bound
+
+Source: the line of `thm:extended_model` recording that the base strong bound
+is also a weak bound at `b`.  That is the fourth of the four endpoints the
+interpolation consumes; the other three are the one-fiber extensions.
+-/
+
+/-- A strong bound is a weak bound. -/
+theorem weakNorm_le_of_lpNorm_le
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    (hv : AEMeasurable v μ) {R : ℝ} (hR : 0 < R)
+    (hmem : MemLp v (ENNReal.ofReal R) μ) {A : ℝ}
+    (h : lpNorm v (ENNReal.ofReal R) μ ≤ A) :
+    weakNorm μ v R ≤ ENNReal.ofReal A :=
+  (weakNorm_le_ofReal_lpNorm μ v hv hR hmem).trans (ENNReal.ofReal_le_ofReal h)
+
+/-- **The base vertex endpoint.**  The strong bound at the simplex base gives
+the weak bound the interpolation asks for there. -/
+theorem simplexWeakEndpoint_zero_of_strong
+    {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) (b : Fin 3 → ℝ) {b₀ : ℝ}
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j) (A₀ : ℝ)
+    (hmeas : ∀ f : Fin 3 → SimpleFunc X ℝ,
+      AEMeasurable (T (fun j ↦ ⇑(f j))) μ)
+    (hmem : ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
+      MemLp (T (fun j ↦ ⇑(f j)))
+        (ENNReal.ofReal (simplexVertexOutput b b₀ 0)) μ)
+    (hstrong : ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
+      lpNorm (T (fun j ↦ ⇑(f j)))
+          (ENNReal.ofReal (simplexVertexOutput b b₀ 0)) μ
+        ≤ A₀ * ∏ j : Fin 3, lpNorm (⇑(f j))
+            (ENNReal.ofReal (simplexVertexExponent b b₀ 0 j)) μ) :
+    ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(f j))) (simplexVertexOutput b b₀ 0)
+        ≤ ENNReal.ofReal (A₀ * ∏ j : Fin 3, lpNorm (⇑(f j))
+            (ENNReal.ofReal (simplexVertexExponent b b₀ 0 j)) μ) := by
+  intro f hf
+  have hR : 0 < simplexVertexOutput b b₀ 0 :=
+    lt_of_lt_of_le zero_lt_one (one_le_simplexVertexOutput hb hb₀ hbsum 0)
+  exact weakNorm_le_of_lpNorm_le μ _ (hmeas f) hR (hmem f hf) (hstrong f hf)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## From the operator bound to the form bound
+
+Source: the closing display of `thm:extended_model`, which pairs the zeroth
+input against the operator output at conjugate exponents and then substitutes
+the operator estimate.  This is that display, with the operator estimate left
+as a hypothesis so it can be supplied by the interpolation step.
+-/
+
+/-- **The form bound from the operator bound.** -/
+theorem abs_formPairing_le_of_operator_bound
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (f₀ U : X → ℝ)
+    {p₀ R : ℝ} (hpq : Real.HolderConjugate p₀ R)
+    (hf₀ : MemLp f₀ (ENNReal.ofReal p₀) μ)
+    (hU : MemLp U (ENNReal.ofReal R) μ)
+    {A : ℝ} (hbound : lpNorm U (ENNReal.ofReal R) μ ≤ A) :
+    |∫ x, f₀ x * U x ∂μ| ≤ lpNorm f₀ (ENNReal.ofReal p₀) μ * A := by
+  refine (abs_integral_mul_le_lpNorm_mul_lpNorm μ f₀ U hpq hf₀ hU).trans ?_
+  exact mul_le_mul_of_nonneg_left hbound MeasureTheory.lpNorm_nonneg
+
+/-- The conjugate pair of the extended model range: the output exponent is
+conjugate to the zeroth input exponent. -/
+theorem holderConjugate_of_inv_add_inv
+    {p₀ R : ℝ} (hp₀ : 1 < p₀) (h : (p₀)⁻¹ + R⁻¹ = 1) :
+    Real.HolderConjugate p₀ R :=
+  Real.holderConjugate_iff.mpr ⟨hp₀, h⟩
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## From per-level budgets to the weak bound
+
+Source: `lem:one_fiber`.  The Calderón–Zygmund argument produces, at each
+level, an exceptional, a good and a tail budget, each normalized to the same
+multiple of the target constant.  Combining them at every level is exactly a
+weak-`L^1` bound, which is the lemma's conclusion.
+-/
+
+/-- **The one-fiber conclusion from the three budgets.** -/
+theorem weakNorm_one_le_of_canonical_budgets
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {v : X → ℝ}
+    {Ce Cg Ct A : ℝ} (hA : 0 ≤ A) (hCe : 0 ≤ Ce) (hCg : 0 ≤ Cg) (hCt : 0 ≤ Ct)
+    (h : ∀ lam : ℝ, 0 < lam →
+      ∃ Aexception Agood Atail : ℝ≥0∞,
+        ENNReal.ofReal lam * μ {x | lam < |v x|}
+            ≤ Aexception + 2 * Agood + 2 * Atail ∧
+          Aexception ≤ ENNReal.ofReal (Ce * A) ∧
+          Agood ≤ ENNReal.ofReal (Cg * A) ∧
+          Atail ≤ ENNReal.ofReal (Ct * A)) :
+    weakNorm μ v 1 ≤ ENNReal.ofReal ((Ce + 2 * Cg + 2 * Ct) * A) := by
+  refine weakNorm_one_le_of_forall_level μ v fun lam hlam ↦ ?_
+  obtain ⟨Aexception, Agood, Atail, hmain, he, hg, ht⟩ := h lam hlam
+  exact weakOne_combine_normalized_budgets hA hCe hCg hCt hmain he hg ht
 
 end
 end Twisted
