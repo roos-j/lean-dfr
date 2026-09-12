@@ -81298,3 +81298,2012 @@ theorem weakNorm_one_le_of_canonical_budgets
 end
 end Twisted
 end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The decomposition height chosen from the level
+
+Source: `lem:one_fiber`, which puts the Calderón–Zygmund height at a fixed
+multiple of the level divided by the endpoint constant.  With the inputs
+normalized, the selected-length estimate then lands exactly on the exceptional
+budget.
+-/
+
+/-- The reciprocal of the height chosen from the level. -/
+theorem inv_selectionHeight {lam A : ℝ} (hlam : 0 < lam) (hA : 0 < A) :
+    ((lam / A) / 2)⁻¹ = 2 * (lam / A)⁻¹ := by
+  have h : (0 : ℝ) < lam / A := div_pos hlam hA
+  field_simp
+
+/-- **The exceptional budget at the chosen height.**  The selected-length
+estimate, against normalized mass, is the exceptional budget. -/
+theorem weakOne_exception_budget_of_inv_height
+    {lam A H mass : ℝ} (hlam : 0 < lam) (hA : 0 < A) {E : Set E3}
+    (hmeas : volume E ≠ ⊤) (hH : H = (lam / A) / 2) (hmass : mass ≤ 1)
+    (hE : volume.real E ≤ H⁻¹ * mass) :
+    ENNReal.ofReal lam * volume E ≤ ENNReal.ofReal (2 * A) := by
+  have hla : (0 : ℝ) < lam / A := div_pos hlam hA
+  have hHpos : 0 < H := by rw [hH]; linarith
+  have hHinv : (0 : ℝ) < H⁻¹ := inv_pos.mpr hHpos
+  refine weakOne_exception_budget_of_measureReal_le hlam hA hmeas ?_
+  refine hE.trans ?_
+  calc H⁻¹ * mass ≤ H⁻¹ * 1 := mul_le_mul_of_nonneg_left hmass hHinv.le
+    _ = H⁻¹ := mul_one _
+    _ = 2 * (lam / A)⁻¹ := by rw [hH, inv_selectionHeight hlam hA]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The good part's constant at the chosen height
+
+Source: `lem:one_fiber`, where the good part's bound reads `H^{1/p-1/P}` and
+the budget normalization consumes it as a power of the level.  At the height
+chosen from the level the two agree, which is what makes the good budget land
+on the same multiple of the target constant as the other two.
+-/
+
+/-- **The good part's height identity.**  At the chosen height, the
+Calderón–Zygmund gain and the budget's constant are the same power of the
+level. -/
+theorem selectionHeight_pow_eq_goodConstant
+    {R0 lam A delta H : ℝ} (hlam : 0 < lam) (hA : 0 < A)
+    (hdelta : delta * R0 = R0 - 1) (hH : H = (lam / A) / 2) :
+    (2 * H) ^ (R0 - 1) = ((lam / A) ^ delta) ^ R0 := by
+  have hla : (0 : ℝ) < lam / A := div_pos hlam hA
+  have htwo : 2 * H = lam / A := by rw [hH]; ring
+  rw [htwo, ← Real.rpow_mul hla.le, hdelta]
+
+/-- The exponent the blueprint uses for the good part is admissible whenever
+the output exponent exceeds one. -/
+theorem goodExponent_spec {R0 : ℝ} (hR0 : 0 < R0) :
+    ((R0 - 1) / R0) * R0 = R0 - 1 := by
+  field_simp
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The exceptional set, seen in the ambient space
+
+Source: `lem:fiber_cz` and `lem:one_fiber`.  The selected-length estimate is
+proved on the fiber product, where the decomposition lives, while the weak
+bound is a statement about the ambient space.  The coordinate split preserves
+measure, so the exceptional set's ambient preimage has the same mass, which is
+what lets the estimate be quoted where the budget needs it.
+-/
+
+/-- The exceptional set's ambient preimage is measurable. -/
+theorem measurableSet_coordinateExceptional
+    (m : Fin 3) {Z : Set (TransverseSpace m)} (hZ : MeasurableSet Z)
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ)
+    (hA : ∀ I, Measurable (A I)) (H : ℝ) (T : Finset FiberDyadicInterval) :
+    MeasurableSet (coordinateSplit m ⁻¹'
+      (fiberDyadicExceptionalSetFinset T Z A H)) :=
+  (measurableSet_fiberDyadicExceptionalSetFinset T Z hZ A hA H).preimage
+    (coordinateSplit_measurePreserving m).measurable
+
+/-- **The exceptional set's ambient mass.**  The coordinate split carries the
+fiber-product estimate to the ambient space unchanged. -/
+theorem measure_coordinateExceptional_eq
+    (m : Fin 3) {Z : Set (TransverseSpace m)} (hZ : MeasurableSet Z)
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ)
+    (hA : ∀ I, Measurable (A I)) (H : ℝ) (T : Finset FiberDyadicInterval) :
+    volume (coordinateSplit m ⁻¹' (fiberDyadicExceptionalSetFinset T Z A H))
+      = volume (fiberDyadicExceptionalSetFinset T Z A H) :=
+  (coordinateSplit_measurePreserving m).measure_preimage
+    (measurableSet_fiberDyadicExceptionalSetFinset T Z hZ A hA H).nullMeasurableSet
+
+/-- The same statement for the real-valued measure, which is the form the
+exceptional budget consumes. -/
+theorem measureReal_coordinateExceptional_eq
+    (m : Fin 3) {Z : Set (TransverseSpace m)} (hZ : MeasurableSet Z)
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ)
+    (hA : ∀ I, Measurable (A I)) (H : ℝ) (T : Finset FiberDyadicInterval) :
+    volume.real (coordinateSplit m ⁻¹' (fiberDyadicExceptionalSetFinset T Z A H))
+      = (volume : Measure (ℝ × TransverseSpace m)).real
+          (fiberDyadicExceptionalSetFinset T Z A H) := by
+  unfold Measure.real
+  rw [measure_coordinateExceptional_eq m hZ A hA H T]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The exceptional budget in the ambient space
+
+Source: `lem:one_fiber`.  The selected-length estimate lives on the fiber
+product and the budget is needed in the ambient space; the coordinate split
+carries one to the other, and at the height chosen from the level the estimate
+lands on the budget.
+-/
+
+/-- **The exceptional budget, from the fiber estimate.** -/
+theorem weakOne_exception_budget_coordinate
+    (m : Fin 3) {Z : Set (TransverseSpace m)} (hZ : MeasurableSet Z)
+    (A : FiberDyadicInterval → TransverseSpace m → ℝ)
+    (hA : ∀ I, Measurable (A I)) (T : Finset FiberDyadicInterval)
+    {lam Aconst H mass : ℝ} (hlam : 0 < lam) (hAc : 0 < Aconst)
+    (hH : H = (lam / Aconst) / 2) (hmass : mass ≤ 1)
+    (hfinite : (volume : Measure (ℝ × TransverseSpace m))
+      (fiberDyadicExceptionalSetFinset T Z A H) ≠ ⊤)
+    (hE : (volume : Measure (ℝ × TransverseSpace m)).real
+        (fiberDyadicExceptionalSetFinset T Z A H) ≤ H⁻¹ * mass) :
+    ENNReal.ofReal lam *
+        volume (coordinateSplit m ⁻¹' (fiberDyadicExceptionalSetFinset T Z A H))
+      ≤ ENNReal.ofReal (2 * Aconst) := by
+  have htransfer := measure_coordinateExceptional_eq m hZ A hA H T
+  refine weakOne_exception_budget_of_inv_height (E := coordinateSplit m ⁻¹'
+      (fiberDyadicExceptionalSetFinset T Z A H)) hlam hAc ?_ hH hmass ?_
+  · rw [htransfer]
+    exact hfinite
+  · rw [measureReal_coordinateExceptional_eq m hZ A hA H T]
+    exact hE
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The good part at normalized mass
+
+Source: `lem:one_fiber`, which normalizes all input norms to one before
+choosing the decomposition height.  With that normalization the good part's
+Calderón–Zygmund estimate is a bare power of the height, which is the form the
+good budget consumes.
+-/
+
+/-- **The good part's estimate at normalized mass.** -/
+theorem lintegral_rpow_coordinateFiberDyadicCountableGoodField_le_of_normalized
+    (m : Fin 3) (f : E3 → ℝ) {p P : ℝ} (hp : 1 ≤ p) (hpP : p ≤ P)
+    {H : ℝ} (hH : 0 < H) (hf : Measurable f)
+    (hmass : ∫⁻ x : E3, ENNReal.ofReal (|f x| ^ p) ≤ 1) :
+    ∫⁻ x : E3, ENNReal.ofReal (|coordinateFiberDyadicCountableGoodField m f
+        (coordinateSourceFiberFiniteMassSet m f p)
+        (coordinateSourceFiberAverage m f p) H x| ^ P) ≤
+      ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) := by
+  refine (lintegral_rpow_coordinateFiberDyadicCountableGoodField_le
+    m f hp hpP hH hf).trans ?_
+  calc ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) *
+        ∫⁻ x : E3, ENNReal.ofReal (|f x| ^ p)
+      ≤ ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) * 1 :=
+        mul_le_mul' le_rfl hmass
+    _ = ENNReal.ofReal ((2 * H) ^ ((P - p) / p)) := mul_one _
+
+/-- At the height chosen from the level, with the distinguished input in `L^1`,
+the good part's estimate is the good budget's constant. -/
+theorem lintegral_rpow_goodField_le_goodConstant
+    (m : Fin 3) (f : E3 → ℝ) {R0 : ℝ} (hR0 : 1 ≤ R0)
+    {lam Aconst delta H : ℝ} (hlam : 0 < lam) (hAc : 0 < Aconst)
+    (hdelta : delta * R0 = R0 - 1) (hH : H = (lam / Aconst) / 2)
+    (hf : Measurable f)
+    (hmass : ∫⁻ x : E3, ENNReal.ofReal (|f x| ^ (1 : ℝ)) ≤ 1) :
+    ∫⁻ x : E3, ENNReal.ofReal (|coordinateFiberDyadicCountableGoodField m f
+        (coordinateSourceFiberFiniteMassSet m f 1)
+        (coordinateSourceFiberAverage m f 1) H x| ^ R0) ≤
+      ENNReal.ofReal (((lam / Aconst) ^ delta) ^ R0) := by
+  have hHpos : 0 < H := by
+    have : (0 : ℝ) < lam / Aconst := div_pos hlam hAc
+    rw [hH]; linarith
+  have hstep := lintegral_rpow_coordinateFiberDyadicCountableGoodField_le_of_normalized
+    m f (le_refl (1 : ℝ)) hR0 hHpos hf hmass
+  refine hstep.trans (le_of_eq ?_)
+  congr 1
+  rw [show (R0 - 1) / (1 : ℝ) = R0 - 1 by ring]
+  exact selectionHeight_pow_eq_goodConstant hlam hAc hdelta hH
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The tail's norm, seen in the ambient space
+
+Source: `lem:one_fiber`.  The selected tail's mass is estimated on the fiber
+product; the tail budget needs its norm in the ambient space.  The coordinate
+split preserves measure, so the two agree.
+-/
+
+/-- **The ambient norm of a fiber function.** -/
+theorem eLpNorm_comp_coordinateSplit
+    (m : Fin 3) (g : ℝ × TransverseSpace m → ℝ) (p : ℝ≥0∞)
+    (hg : AEStronglyMeasurable g volume) :
+    eLpNorm (fun x : E3 ↦ g (coordinateSplit m x)) p volume = eLpNorm g p volume :=
+  eLpNorm_comp_measurePreserving hg (coordinateSplit_measurePreserving m)
+
+/-- **The tail budget's first factor.**  The ambient tail's `L^1` norm inherits
+the fiberwise mass estimate. -/
+theorem eLpNorm_one_coordinateSelectedTail_le
+    (m : Fin 3) (tail F : ℝ × TransverseSpace m → ℝ) (H : ℝ)
+    (htailmeas : AEStronglyMeasurable tail volume)
+    (htail : Integrable tail volume)
+    (htail_nonneg : ∀ w : ℝ × TransverseSpace m, 0 ≤ tail w)
+    (hF : Integrable F volume)
+    (hmass : ∀ z : TransverseSpace m, (∫ y : ℝ, tail (y, z)) ≤
+      intervalTailMass * (H⁻¹ * ∫ y : ℝ, F (y, z))) :
+    eLpNorm (fun x : E3 ↦ tail (coordinateSplit m x)) 1 volume
+      ≤ ENNReal.ofReal (intervalTailMass * H⁻¹ * ∫ w : ℝ × TransverseSpace m, F w) := by
+  rw [eLpNorm_comp_coordinateSplit m tail 1 htailmeas]
+  exact eLpNorm_one_selectedTail_le (volume : Measure (TransverseSpace m))
+    tail F H htail htail_nonneg hF hmass
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal
+
+noncomputable section
+
+/-! ## The one-fiber conclusion for the truncated operator
+
+Source: `eq:one_fiber`.  The lemma's conclusion is a weak bound for the
+truncated operator; stated against the three per-level budgets it is exactly
+what the Calderón–Zygmund argument delivers, and naming it fixes the target the
+remaining budget verifications aim at.
+-/
+
+/-- **The one-fiber weak bound for the truncated operator**, from the three
+budgets at every level. -/
+theorem ModelTruncatedOperator_weakNorm_one_le_of_budgets
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (a b : ℝ)
+    {Ce Cg Ct A : ℝ} (hA : 0 ≤ A) (hCe : 0 ≤ Ce) (hCg : 0 ≤ Cg) (hCt : 0 ≤ Ct)
+    (h : ∀ lam : ℝ, 0 < lam →
+      ∃ Aexception Agood Atail : ℝ≥0∞,
+        ENNReal.ofReal lam *
+            volume {x | lam < |ModelTruncatedOperator α u c f a b x|}
+            ≤ Aexception + 2 * Agood + 2 * Atail ∧
+          Aexception ≤ ENNReal.ofReal (Ce * A) ∧
+          Agood ≤ ENNReal.ofReal (Cg * A) ∧
+          Atail ≤ ENNReal.ofReal (Ct * A)) :
+    weakNorm volume (ModelTruncatedOperator α u c f a b) 1
+      ≤ ENNReal.ofReal ((Ce + 2 * Cg + 2 * Ct) * A) :=
+  weakNorm_one_le_of_canonical_budgets hA hCe hCg hCt h
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Strong bounds pass to an almost-everywhere limit
+
+Source: `lem:one_fiber`, where the starting estimate is applied to a field that
+is merely in the right Lebesgue space by passing through Schwartz
+approximants.  The weak version of this passage is already recorded; the strong
+version is Fatou's lemma, and it is what lets the good part's estimate be
+quoted for the limit.
+-/
+
+/-- **Strong bounds survive an almost-everywhere limit.** -/
+theorem lintegral_rpow_le_of_ae_tendsto
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {v : ℕ → X → ℝ} {w : X → ℝ}
+    {R : ℝ} (hR : 0 < R) {K : ℝ≥0∞}
+    (hmeas : ∀ n, AEMeasurable (v n) μ)
+    (htend : ∀ᵐ x ∂μ, Filter.Tendsto (fun n ↦ v n x) Filter.atTop (𝓝 (w x)))
+    (hbound : ∀ n, ∫⁻ x, ENNReal.ofReal (|v n x| ^ R) ∂μ ≤ K) :
+    ∫⁻ x, ENNReal.ofReal (|w x| ^ R) ∂μ ≤ K := by
+  have hptw : ∀ᵐ x ∂μ,
+      Filter.Tendsto (fun n ↦ ENNReal.ofReal (|v n x| ^ R)) Filter.atTop
+        (𝓝 (ENNReal.ofReal (|w x| ^ R))) := by
+    filter_upwards [htend] with x hx
+    have h1 : Filter.Tendsto (fun n ↦ |v n x|) Filter.atTop (𝓝 |w x|) := hx.abs
+    have h2 : Filter.Tendsto (fun n ↦ |v n x| ^ R) Filter.atTop (𝓝 (|w x| ^ R)) :=
+      ((Real.continuousAt_rpow_const |w x| R (Or.inr hR.le)).tendsto).comp h1
+    exact (ENNReal.continuous_ofReal.tendsto _).comp h2
+  have heq : ∫⁻ x, ENNReal.ofReal (|w x| ^ R) ∂μ
+      = ∫⁻ x, Filter.liminf (fun n ↦ ENNReal.ofReal (|v n x| ^ R))
+          Filter.atTop ∂μ := by
+    refine lintegral_congr_ae ?_
+    filter_upwards [hptw] with x hx
+    exact hx.liminf_eq.symm
+  have hmeas' : ∀ n, AEMeasurable
+      (fun x ↦ ENNReal.ofReal (|v n x| ^ R)) μ := by
+    intro n
+    have habs : AEMeasurable (fun x ↦ |v n x|) μ :=
+      continuous_abs.measurable.comp_aemeasurable (hmeas n)
+    have hcont : Continuous fun y : ℝ ↦ y ^ R :=
+      continuous_iff_continuousAt.mpr fun y ↦
+        Real.continuousAt_rpow_const y R (Or.inr hR.le)
+    exact ENNReal.measurable_ofReal.comp_aemeasurable
+      (hcont.measurable.comp_aemeasurable habs)
+  rw [heq]
+  refine le_trans (lintegral_liminf_le' hmeas') ?_
+  exact Filter.liminf_le_of_frequently_le' (Filter.Frequently.of_forall hbound)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The starting estimate survives the approximation
+
+Source: `lem:one_fiber`, where the starting estimate is applied to a field that
+is not Schwartz by passing through approximants and identifying the limit with
+the preliminary truncated bound.  The operator is continuous along uniformly
+bounded pointwise-convergent inputs, and strong bounds survive an
+almost-everywhere limit, so the estimate transfers to the limiting field.
+-/
+
+/-- **The strong estimate transfers to the limiting input.** -/
+theorem lintegral_rpow_ModelTruncatedOperator_le_of_tendsto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ)
+    (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (Bm C : ℝ) (Bf : Fin 3 → ℝ)
+    {R : ℝ} (hR : 0 < R) {K : ℝ≥0∞}
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hgmeas : ∀ n, Measurable (g n)) (hBm : 0 ≤ Bm)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ Bm)
+    (htend : ∀ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y)))
+    (hopmeas : ∀ n, AEMeasurable
+      (ModelTruncatedOperator α u c (modelOperatorReplace f m (g n)) a b) volume)
+    (hbound : ∀ n, ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c
+          (modelOperatorReplace f m (g n)) a b x| ^ R) ≤ K) :
+    ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c
+          (modelOperatorReplace f m glim) a b x| ^ R) ≤ K := by
+  refine lintegral_rpow_le_of_ae_tendsto hR hopmeas ?_ hbound
+  refine Filter.Eventually.of_forall fun x ↦ ?_
+  exact tendsto_ModelTruncatedOperator_replace_of_tendsto α u c f m a b x
+    g glim Bm C Bf ha hC hcm hcC hf hBf hfB hgmeas hBm hgB htend
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A null set meets almost every coordinate line in a null set
+
+Source: `lem:one_fiber`, the approximation step.  Almost-everywhere
+convergence of the inputs says nothing along any single coordinate line, since
+a line is itself null; but the exceptional set is null on almost every line,
+which is all the convolution needs.  This is the Fubini step that lets the
+approximation be run with almost-everywhere convergent approximants.
+-/
+
+/-- **A null set is null on almost every coordinate line.** -/
+theorem ae_measure_coordinateLine_null
+    (i : Fin 3) {N : Set E3} (hNmeas : MeasurableSet N) (hN : volume N = 0) :
+    ∀ᵐ x : E3, volume {r : ℝ | x - r • Anisotropy.coordinateDirection i ∈ N} = 0 := by
+  classical
+  set e : E3 := Anisotropy.coordinateDirection i with he
+  set S : Set (ℝ × E3) := {p : ℝ × E3 | p.2 - p.1 • e ∈ N} with hS
+  have hcont : Continuous fun p : ℝ × E3 ↦ p.2 - p.1 • e :=
+    continuous_snd.sub (continuous_fst.smul continuous_const)
+  have hSmeas : MeasurableSet S := hcont.measurable hNmeas
+  have hslice : ∀ r : ℝ, volume (Prod.mk r ⁻¹' S) = 0 := by
+    intro r
+    have hpre : Prod.mk r ⁻¹' S = (fun x : E3 ↦ x + (-(r • e))) ⁻¹' N := by
+      ext x
+      simp [hS, sub_eq_add_neg]
+    rw [hpre, measure_preimage_add_right]
+    exact hN
+  have hprodnull : (volume : Measure (ℝ × E3)) S = 0 := by
+    rw [Measure.volume_eq_prod, Measure.prod_apply hSmeas]
+    simp [hslice]
+  have hswap : (volume : Measure (E3 × ℝ)) (Prod.swap ⁻¹' S) = 0 := by
+    have hmp : MeasurePreserving (Prod.swap : E3 × ℝ → ℝ × E3) volume volume := by
+      rw [Measure.volume_eq_prod, Measure.volume_eq_prod]
+      exact Measure.measurePreserving_swap
+    rw [hmp.measure_preimage hSmeas.nullMeasurableSet]
+    exact hprodnull
+  have hswapmeas : MeasurableSet (Prod.swap ⁻¹' S) :=
+    measurable_swap hSmeas
+  rw [Measure.volume_eq_prod, Measure.prod_apply hswapmeas] at hswap
+  have := (lintegral_eq_zero_iff
+    (measurable_measure_prodMk_left hswapmeas)).mp hswap
+  filter_upwards [this] with x hx
+  have hxs : Prod.mk x ⁻¹' (Prod.swap ⁻¹' S)
+      = {r : ℝ | x - r • e ∈ N} := by
+    ext r
+    simp [hS]
+  rwa [hxs] at hx
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The coordinate convolution under almost-everywhere convergence
+
+Source: `lem:one_fiber`, the approximation step.  The inputs enter the
+convolution only through an integral, so almost-everywhere convergence of the
+inputs against a uniform bound suffices — at almost every point, since the
+exceptional set is null on almost every coordinate line.
+-/
+
+/-- **The coordinate convolution converges almost everywhere** under
+almost-everywhere convergent, uniformly bounded inputs. -/
+theorem ae_tendsto_ModelCoordinateConvolution_of_ae_tendsto
+    (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ)
+    (hg : ∀ n, Measurable (g n)) (hglim : Measurable glim)
+    (B : ℝ) (hgB : ∀ n, ∀ y : E3, |g n y| ≤ B)
+    (hk : Integrable k) (hs : 0 < s)
+    (htend : ∀ᵐ y : E3, Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y))) :
+    ∀ᵐ x : E3, Filter.Tendsto
+      (fun n ↦ ModelCoordinateConvolution i (g n) k s x) Filter.atTop
+      (𝓝 (ModelCoordinateConvolution i glim k s x)) := by
+  classical
+  set e : E3 := Anisotropy.coordinateDirection i with he
+  set G : Set E3 := {y : E3 | Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y))}
+    with hG
+  have hGmeas : MeasurableSet G :=
+    MeasureTheory.measurableSet_tendsto_fun hg hglim
+  have hNnull : volume (Gᶜ) = 0 := MeasureTheory.ae_iff.mp htend
+  have hslice := ae_measure_coordinateLine_null i hGmeas.compl hNnull
+  filter_upwards [hslice] with x hx
+  have hFint : ∀ n, Integrable (fun r : ℝ ↦
+      g n (x - r • e) * kernelDilate k s r) := fun n ↦
+    integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      i (g n) k s x (hg n) B (hgB n) hk hs
+  have hbound_int : Integrable (fun r : ℝ ↦ B * |kernelDilate k s r|) := by
+    exact (integrable_abs_kernelDilate k hk hs).const_mul B
+  have hdom : ∀ n, ∀ᵐ r : ℝ,
+      ‖g n (x - r • e) * kernelDilate k s r‖ ≤ B * |kernelDilate k s r| := by
+    intro n
+    refine Filter.Eventually.of_forall fun r ↦ ?_
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul_of_nonneg_right (hgB n _) (abs_nonneg _)
+  have hlim : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • e) * kernelDilate k s r) Filter.atTop
+      (𝓝 (glim (x - r • e) * kernelDilate k s r)) := by
+    have hmem : ∀ᵐ r : ℝ, x - r • e ∈ G := by
+      rw [MeasureTheory.ae_iff]
+      simpa using hx
+    filter_upwards [hmem] with r hr
+    exact hr.mul_const _
+  exact tendsto_integral_of_dominated_convergence
+    (fun r : ℝ ↦ B * |kernelDilate k s r|)
+    (fun n ↦ (hFint n).aestronglyMeasurable) hbound_int hdom hlim
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The convolution at a point whose line is good
+
+Source: `lem:one_fiber`, the approximation step.  What the convolution needs at
+a point is convergence along that point's own coordinate line, not everywhere.
+Phrasing it that way matters, because the condition does not involve the scale:
+a single good point serves every scale at once, which is what the scale
+integral defining the truncated operator requires.
+-/
+
+/-- **The coordinate convolution converges at a point whose line is good.** -/
+theorem tendsto_ModelCoordinateConvolution_of_ae_line
+    (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
+    (hg : ∀ n, Measurable (g n)) (B : ℝ) (hgB : ∀ n, ∀ y : E3, |g n y| ≤ B)
+    (hk : Integrable k) (hs : 0 < s)
+    (hline : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection i)) Filter.atTop
+      (𝓝 (glim (x - r • Anisotropy.coordinateDirection i)))) :
+    Filter.Tendsto (fun n ↦ ModelCoordinateConvolution i (g n) k s x)
+      Filter.atTop (𝓝 (ModelCoordinateConvolution i glim k s x)) := by
+  have hFint : ∀ n, Integrable (fun r : ℝ ↦
+      g n (x - r • Anisotropy.coordinateDirection i) * kernelDilate k s r) := fun n ↦
+    integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      i (g n) k s x (hg n) B (hgB n) hk hs
+  have hbound_int : Integrable (fun r : ℝ ↦ B * |kernelDilate k s r|) :=
+    (integrable_abs_kernelDilate k hk hs).const_mul B
+  have hdom : ∀ n, ∀ᵐ r : ℝ,
+      ‖g n (x - r • Anisotropy.coordinateDirection i) * kernelDilate k s r‖
+        ≤ B * |kernelDilate k s r| := by
+    intro n
+    refine Filter.Eventually.of_forall fun r ↦ ?_
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul_of_nonneg_right (hgB n _) (abs_nonneg _)
+  have hlim : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r) Filter.atTop
+      (𝓝 (glim (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r)) := by
+    filter_upwards [hline] with r hr
+    exact hr.mul_const _
+  exact tendsto_integral_of_dominated_convergence
+    (fun r : ℝ ↦ B * |kernelDilate k s r|)
+    (fun n ↦ (hFint n).aestronglyMeasurable) hbound_int hdom hlim
+
+/-- **Almost every point has a good line.** -/
+theorem ae_line_tendsto_of_ae_tendsto
+    (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ)
+    (hg : ∀ n, Measurable (g n)) (hglim : Measurable glim)
+    (htend : ∀ᵐ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y))) :
+    ∀ᵐ x : E3, ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection i)) Filter.atTop
+      (𝓝 (glim (x - r • Anisotropy.coordinateDirection i))) := by
+  classical
+  set G : Set E3 :=
+    {y : E3 | Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y))} with hG
+  have hGmeas : MeasurableSet G :=
+    MeasureTheory.measurableSet_tendsto_fun hg hglim
+  have hNnull : volume (Gᶜ) = 0 := MeasureTheory.ae_iff.mp htend
+  filter_upwards [ae_measure_coordinateLine_null i hGmeas.compl hNnull] with x hx
+  rw [MeasureTheory.ae_iff]
+  simpa [hG] using hx
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The truncated operator under a good line
+
+Source: `lem:one_fiber`, the approximation step.  The operator's continuity in
+its replaced input needs only convergence along the point's own coordinate
+line, since that is all the convolution inside it needs.
+-/
+
+/-- **The truncated operator converges at a point whose line is good.** -/
+theorem tendsto_ModelTruncatedOperator_replace_of_ae_line
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ) (x : E3)
+    (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (Bm C : ℝ) (Bf : Fin 3 → ℝ)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hgmeas : ∀ n, Measurable (g n)) (hBm : 0 ≤ Bm)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ Bm)
+    (hline : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection m)) Filter.atTop
+      (nhds (glim (x - r • Anisotropy.coordinateDirection m)))) :
+    Filter.Tendsto (fun n ↦ ModelTruncatedOperator α u c
+        (modelOperatorReplace f m (g n)) a b x) Filter.atTop
+      (nhds (ModelTruncatedOperator α u c
+        (modelOperatorReplace f m glim) a b x)) := by
+  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  set Cn : Fin 3 → ℝ := fun j ↦ if j = m then Bm else Bf j with hCn
+  have hCnnonneg : ∀ j, 0 ≤ Cn j := by
+    intro j
+    by_cases hj : j = m
+    · simp only [hCn, if_pos hj]; exact hBm
+    · simp only [hCn, if_neg hj]; exact hBf j
+  have hrep : ∀ (h : E3 → ℝ), Measurable h → (∀ y : E3, |h y| ≤ Bm) →
+      (∀ j, Measurable (modelOperatorReplace f m h j)) ∧
+      (∀ j, ∀ y : E3, |modelOperatorReplace f m h j y| ≤ Cn j) := by
+    intro h hh hhB
+    constructor
+    · intro j
+      by_cases hj : j = m
+      · subst hj; simpa only [modelOperatorReplace_same] using hh
+      · simpa only [modelOperatorReplace_ne f m j h hj] using hf j
+    · intro j y
+      by_cases hj : j = m
+      · subst hj
+        simpa only [modelOperatorReplace_same, hCn, if_pos rfl] using hhB y
+      · simpa only [modelOperatorReplace_ne f m j h hj, hCn, if_neg hj] using
+          hfB j y
+  set D : ℝ := C * (Cn 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+    (Cn 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+      (Cn 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) with hD
+  have hmeasF : ∀ n, AEStronglyMeasurable (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g n)) t x)
+      (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioc a b)) := by
+    intro n
+    exact ((stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+      α u c (modelOperatorReplace f m (g n)) hcm
+      ((hrep (g n) (hgmeas n) (hgB n)).1)).comp_measurable
+      (measurable_id.prodMk measurable_const)).aestronglyMeasurable
+  have hbound : ∀ n, ∀ᵐ t ∂(((volume : Measure ℝ).withDensity
+      cubeScaleDensity).restrict (Set.Ioc a b)),
+      ‖modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g n)) t x‖ ≤ D := by
+    intro n
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    rw [Real.norm_eq_abs]
+    exact abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+      α u c (modelOperatorReplace f m (g n)) t x (lt_trans ha ht.1) C Cn hC
+      (hcC t) ((hrep (g n) (hgmeas n) (hgB n)).1) hCnnonneg
+      ((hrep (g n) (hgmeas n) (hgB n)).2)
+  have hlim : ∀ᵐ t ∂(((volume : Measure ℝ).withDensity
+      cubeScaleDensity).restrict (Set.Ioc a b)),
+      Filter.Tendsto (fun n ↦ modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g n)) t x) Filter.atTop
+        (nhds (modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m glim) t x)) := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    have htpos : (0 : ℝ) < t := lt_trans ha ht.1
+    have hs : (0 : ℝ) < t ^ α.weight m := pow_pos htpos _
+    have hconv := tendsto_ModelCoordinateConvolution_of_ae_line
+      m g glim (activeModelKernel 2 m u) (t ^ α.weight m) x hgmeas Bm hgB
+      (integrable_activeModelKernel 2 m u) hs hline
+    simp only [modelTruncatedOperatorIntegrand_replace_eq_passive_mul]
+    exact hconv.const_mul _
+  exact tendsto_integral_of_dominated_convergence (fun _ : ℝ ↦ D) hmeasF
+    (integrable_const D) hbound hlim
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The approximation step under almost-everywhere convergence
+
+Source: `lem:one_fiber`, the approximation step.  Uniformly bounded inputs
+converging almost everywhere give outputs converging almost everywhere, and
+strong bounds survive that passage — which is the estimate transfer the good
+budget needs, now available for the approximants that actually exist.
+-/
+
+/-- **The truncated operator converges almost everywhere** under uniformly
+bounded, almost-everywhere convergent inputs. -/
+theorem ae_tendsto_ModelTruncatedOperator_replace_of_ae_tendsto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ)
+    (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (Bm C : ℝ) (Bf : Fin 3 → ℝ)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hgmeas : ∀ n, Measurable (g n)) (hBm : 0 ≤ Bm)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ Bm)
+    (hglimmeas : Measurable glim)
+    (htend : ∀ᵐ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y))) :
+    ∀ᵐ x : E3, Filter.Tendsto
+      (fun n ↦ ModelTruncatedOperator α u c
+        (modelOperatorReplace f m (g n)) a b x) Filter.atTop
+      (𝓝 (ModelTruncatedOperator α u c
+        (modelOperatorReplace f m glim) a b x)) := by
+  filter_upwards [ae_line_tendsto_of_ae_tendsto m g glim hgmeas hglimmeas htend]
+    with x hx
+  exact tendsto_ModelTruncatedOperator_replace_of_ae_line α u c f m a b x
+    g glim Bm C Bf ha hC hcm hcC hf hBf hfB hgmeas hBm hgB hx
+
+/-- **The strong estimate transfers along almost-everywhere convergent
+approximants.** -/
+theorem lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (a b : ℝ)
+    (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (Bm C : ℝ) (Bf : Fin 3 → ℝ)
+    {R : ℝ} (hR : 0 < R) {K : ℝ≥0∞}
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hf : ∀ j, Measurable (f j)) (hBf : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hgmeas : ∀ n, Measurable (g n)) (hBm : 0 ≤ Bm)
+    (hgB : ∀ n, ∀ y : E3, |g n y| ≤ Bm)
+    (hglimmeas : Measurable glim)
+    (htend : ∀ᵐ y : E3,
+      Filter.Tendsto (fun n ↦ g n y) Filter.atTop (𝓝 (glim y)))
+    (hopmeas : ∀ n, AEMeasurable
+      (ModelTruncatedOperator α u c (modelOperatorReplace f m (g n)) a b) volume)
+    (hbound : ∀ n, ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c
+          (modelOperatorReplace f m (g n)) a b x| ^ R) ≤ K) :
+    ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c
+          (modelOperatorReplace f m glim) a b x| ^ R) ≤ K :=
+  lintegral_rpow_le_of_ae_tendsto hR hopmeas
+    (ae_tendsto_ModelTruncatedOperator_replace_of_ae_tendsto α u c f m a b
+      g glim Bm C Bf ha hC hcm hcC hf hBf hfB hgmeas hBm hgB hglimmeas htend)
+    hbound
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology Convolution
+
+noncomputable section
+
+/-! ## Mollification keeps the bound
+
+Source: `lem:one_fiber`, the approximation step.  The approximants must be
+uniformly bounded, and mollifying against a normalized bump does not increase
+the supremum, because the bump is nonnegative with unit mass.
+-/
+
+/-- **Mollification does not increase the bound.** -/
+theorem abs_bump_convolution_le
+    (φ : ContDiffBump (0 : E3)) {g : E3 → ℝ}
+    (hg : AEStronglyMeasurable g volume) {B : ℝ}
+    (hB : ∀ y : E3, |g y| ≤ B) (x : E3) :
+    |((φ.normed (volume : Measure E3)) ⋆[ContinuousLinearMap.lsmul ℝ ℝ,
+        (volume : Measure E3)] g) x| ≤ B := by
+  have hB0 : 0 ≤ B := le_trans (abs_nonneg (g x)) (hB x)
+  have hpt : ∀ t : E3,
+      ‖φ.normed (volume : Measure E3) t * g (x - t)‖
+        ≤ φ.normed (volume : Measure E3) t * B := by
+    intro t
+    rw [Real.norm_eq_abs, abs_mul,
+      abs_of_nonneg (φ.nonneg_normed (μ := (volume : Measure E3)) t)]
+    exact mul_le_mul_of_nonneg_left (hB _)
+      (φ.nonneg_normed (μ := (volume : Measure E3)) t)
+  have hdom : Integrable (fun t : E3 ↦ φ.normed (volume : Measure E3) t * B) :=
+    (φ.integrable_normed (μ := (volume : Measure E3))).mul_const B
+  have hint : Integrable (fun t : E3 ↦
+      φ.normed (volume : Measure E3) t * g (x - t)) volume := by
+    refine Integrable.mono' hdom ?_ (Filter.Eventually.of_forall hpt)
+    exact (φ.integrable_normed
+      (μ := (volume : Measure E3))).aestronglyMeasurable.mul
+      ((hg.comp_measurePreserving
+        ((volume : Measure E3).measurePreserving_sub_left x)))
+  calc |((φ.normed (volume : Measure E3)) ⋆[ContinuousLinearMap.lsmul ℝ ℝ,
+        (volume : Measure E3)] g) x|
+      = |∫ t : E3, φ.normed (volume : Measure E3) t * g (x - t)| := by
+        rw [convolution]
+        simp
+    _ ≤ ∫ t : E3, ‖φ.normed (volume : Measure E3) t * g (x - t)‖ :=
+        abs_integral_le_integral_abs.trans (le_of_eq (by simp [Real.norm_eq_abs]))
+    _ ≤ ∫ t : E3, φ.normed (volume : Measure E3) t * B :=
+        integral_mono hint.norm hdom hpt
+    _ = B := by
+        rw [integral_mul_const, φ.integral_normed (μ := (volume : Measure E3)),
+          one_mul]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## An exhausting family of smooth cutoffs
+
+Source: `lem:one_fiber`, the approximation step.  A mollification is smooth and
+bounded but has no decay; multiplying by a cutoff that is one on a ball growing
+to the whole space restores compact support, hence membership in the Schwartz
+class, without disturbing the bound or the pointwise limit.
+-/
+
+/-- The `n`-th cutoff: one on the ball of radius `n+1`, supported in the ball
+of radius `n+2`. -/
+def cutoffBump (n : ℕ) : ContDiffBump (0 : E3) where
+  rIn := (n : ℝ) + 1
+  rOut := (n : ℝ) + 2
+  rIn_pos := by positivity
+  rIn_lt_rOut := by linarith
+
+@[simp] theorem cutoffBump_rIn (n : ℕ) : (cutoffBump n).rIn = (n : ℝ) + 1 := rfl
+
+@[simp] theorem cutoffBump_rOut (n : ℕ) : (cutoffBump n).rOut = (n : ℝ) + 2 := rfl
+
+theorem cutoffBump_nonneg (n : ℕ) (x : E3) : 0 ≤ cutoffBump n x :=
+  (cutoffBump n).nonneg
+
+theorem cutoffBump_le_one (n : ℕ) (x : E3) : cutoffBump n x ≤ 1 :=
+  (cutoffBump n).le_one
+
+theorem abs_cutoffBump_le_one (n : ℕ) (x : E3) : |cutoffBump n x| ≤ 1 := by
+  rw [abs_of_nonneg (cutoffBump_nonneg n x)]
+  exact cutoffBump_le_one n x
+
+theorem cutoffBump_eq_one (n : ℕ) {x : E3} (hx : ‖x‖ ≤ (n : ℝ) + 1) :
+    cutoffBump n x = 1 := by
+  refine (cutoffBump n).one_of_mem_closedBall ?_
+  simpa [Metric.mem_closedBall, dist_eq_norm] using hx
+
+/-- **The cutoffs exhaust the space.**  At every point they are eventually
+one. -/
+theorem tendsto_cutoffBump (x : E3) :
+    Filter.Tendsto (fun n : ℕ ↦ cutoffBump n x) Filter.atTop (𝓝 1) := by
+  refine Filter.Tendsto.congr' ?_ tendsto_const_nhds
+  obtain ⟨N, hN⟩ := exists_nat_ge ‖x‖
+  filter_upwards [Filter.eventually_ge_atTop N] with n hn
+  refine (cutoffBump_eq_one n ?_).symm
+  have : (N : ℝ) ≤ (n : ℝ) := Nat.cast_le.mpr hn
+  linarith
+
+theorem cutoffBump_contDiff (n : ℕ) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (cutoffBump n) :=
+  (cutoffBump n).contDiff
+
+theorem cutoffBump_hasCompactSupport (n : ℕ) :
+    HasCompactSupport (cutoffBump n) :=
+  (cutoffBump n).hasCompactSupport
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology Convolution
+
+noncomputable section
+
+/-! ## The approximants
+
+Source: `lem:one_fiber`, the approximation step.  A bounded measurable field is
+approximated by mollifying it and cutting it off: the mollification is smooth
+and keeps the bound, the cutoff restores compact support without disturbing
+either, and the product is therefore Schwartz.
+-/
+
+/-- The `n`-th mollifier: a bump of outer radius shrinking like `1/n`, with
+inner radius half of it. -/
+def mollifierBump (n : ℕ) : ContDiffBump (0 : E3) where
+  rIn := 1 / ((n : ℝ) + 1)
+  rOut := 2 / ((n : ℝ) + 1)
+  rIn_pos := by positivity
+  rIn_lt_rOut := by
+    have h : (0 : ℝ) < (n : ℝ) + 1 := by positivity
+    rw [div_lt_div_iff_of_pos_right h]
+    norm_num
+
+@[simp] theorem mollifierBump_rOut (n : ℕ) :
+    (mollifierBump n).rOut = 2 / ((n : ℝ) + 1) := rfl
+
+@[simp] theorem mollifierBump_rIn (n : ℕ) :
+    (mollifierBump n).rIn = 1 / ((n : ℝ) + 1) := rfl
+
+/-- The `n`-th approximant of a field: mollify, then cut off. -/
+def mollifiedApprox (g : E3 → ℝ) (n : ℕ) : E3 → ℝ :=
+  fun x ↦ (((mollifierBump n).normed (volume : Measure E3)) ⋆[
+      ContinuousLinearMap.lsmul ℝ ℝ, (volume : Measure E3)] g) x * cutoffBump n x
+
+/-- **The approximants keep the bound.** -/
+theorem abs_mollifiedApprox_le
+    {g : E3 → ℝ} (hg : AEStronglyMeasurable g volume) {B : ℝ}
+    (hB : ∀ y : E3, |g y| ≤ B) (n : ℕ) (x : E3) :
+    |mollifiedApprox g n x| ≤ B := by
+  have hB0 : 0 ≤ B := le_trans (abs_nonneg (g x)) (hB x)
+  rw [mollifiedApprox, abs_mul]
+  calc |(((mollifierBump n).normed (volume : Measure E3)) ⋆[
+          ContinuousLinearMap.lsmul ℝ ℝ, (volume : Measure E3)] g) x| *
+        |cutoffBump n x|
+      ≤ B * 1 :=
+        mul_le_mul (abs_bump_convolution_le (mollifierBump n) hg hB x)
+          (abs_cutoffBump_le_one n x) (abs_nonneg _) hB0
+    _ = B := mul_one B
+
+/-- **The approximants are smooth.** -/
+theorem contDiff_mollifiedApprox
+    {g : E3 → ℝ} (hg : LocallyIntegrable g (volume : Measure E3)) (n : ℕ) :
+    ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (mollifiedApprox g n) := by
+  have hconv : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
+      ((((mollifierBump n).normed (volume : Measure E3)) ⋆[
+        ContinuousLinearMap.lsmul ℝ ℝ, (volume : Measure E3)] g)) :=
+    ((mollifierBump n).hasCompactSupport_normed).contDiff_convolution_left _
+      ((mollifierBump n).contDiff_normed) hg
+  exact hconv.mul (cutoffBump_contDiff n)
+
+/-- **The approximants have compact support.** -/
+theorem hasCompactSupport_mollifiedApprox (g : E3 → ℝ) (n : ℕ) :
+    HasCompactSupport (mollifiedApprox g n) :=
+  (cutoffBump_hasCompactSupport n).mul_left
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology Convolution
+
+noncomputable section
+
+/-! ## The approximants converge
+
+Source: `lem:one_fiber`, the approximation step.  The mollification converges
+to the field at almost every point — this is Lebesgue differentiation, and the
+library supplies it — and the cutoffs are eventually one at every point, so the
+product converges almost everywhere to the field.
+-/
+
+/-- The mollifiers' radii shrink. -/
+theorem tendsto_mollifierBump_rOut :
+    Filter.Tendsto (fun n : ℕ ↦ (mollifierBump n).rOut) Filter.atTop (𝓝 0) := by
+  have h : Filter.Tendsto (fun n : ℕ ↦ (2 : ℝ) * (1 / ((n : ℝ) + 1)))
+      Filter.atTop (𝓝 (2 * 0)) :=
+    tendsto_one_div_add_atTop_nhds_zero_nat.const_mul 2
+  rw [mul_zero] at h
+  refine h.congr fun n ↦ ?_
+  rw [mollifierBump_rOut]
+  ring
+
+/-- The mollifiers have bounded eccentricity. -/
+theorem mollifierBump_rOut_le :
+    ∀ n : ℕ, (mollifierBump n).rOut ≤ 2 * (mollifierBump n).rIn := by
+  intro n
+  rw [mollifierBump_rOut, mollifierBump_rIn]
+  ring_nf
+  exact le_rfl
+
+/-- **The approximants converge to the field almost everywhere.** -/
+theorem ae_tendsto_mollifiedApprox
+    {g : E3 → ℝ} (hg : LocallyIntegrable g (volume : Measure E3)) :
+    ∀ᵐ x : E3, Filter.Tendsto (fun n ↦ mollifiedApprox g n x) Filter.atTop (𝓝 (g x)) := by
+  have hconv := ContDiffBump.ae_convolution_tendsto_right_of_locallyIntegrable
+    (φ := mollifierBump) (l := Filter.atTop) (K := 2)
+    tendsto_mollifierBump_rOut
+    (Filter.Eventually.of_forall mollifierBump_rOut_le) hg
+  filter_upwards [hconv] with x hx
+  have hmul := hx.mul (tendsto_cutoffBump x)
+  rw [mul_one] at hmul
+  exact hmul
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology Convolution
+
+noncomputable section
+
+/-! ## Schwartz approximants for a bounded field
+
+Source: `lem:one_fiber`, the approximation step, which asks for Schwartz
+approximants to a field that is only bounded and measurable.  Mollifying and
+cutting off produces them, with the bound preserved and convergence almost
+everywhere — which is exactly what the estimate transfer consumes.
+-/
+
+/-- The `n`-th approximant as a Schwartz map. -/
+def mollifiedApproxSchwartz {g : E3 → ℝ}
+    (hg : LocallyIntegrable g (volume : Measure E3)) (n : ℕ) : SchwartzMap E3 ℝ :=
+  (hasCompactSupport_mollifiedApprox g n).toSchwartzMap
+    (contDiff_mollifiedApprox hg n)
+
+@[simp] theorem mollifiedApproxSchwartz_apply {g : E3 → ℝ}
+    (hg : LocallyIntegrable g (volume : Measure E3)) (n : ℕ) (x : E3) :
+    mollifiedApproxSchwartz hg n x = mollifiedApprox g n x := rfl
+
+/-- **A bounded measurable field has Schwartz approximants** that keep its
+bound and converge to it almost everywhere. -/
+theorem exists_schwartz_approx
+    {g : E3 → ℝ} (hgloc : LocallyIntegrable g (volume : Measure E3))
+    (hgmeas : AEStronglyMeasurable g volume) {B : ℝ}
+    (hB : ∀ y : E3, |g y| ≤ B) :
+    ∃ G : ℕ → SchwartzMap E3 ℝ,
+      (∀ (n : ℕ) (y : E3), |G n y| ≤ B) ∧
+      (∀ᵐ x : E3, Filter.Tendsto (fun n ↦ G n x) Filter.atTop (𝓝 (g x))) := by
+  refine ⟨mollifiedApproxSchwartz hgloc, fun n y ↦ ?_, ?_⟩
+  · rw [mollifiedApproxSchwartz_apply]
+    exact abs_mollifiedApprox_le hgmeas hB n y
+  · filter_upwards [ae_tendsto_mollifiedApprox hgloc] with x hx
+    simpa only [mollifiedApproxSchwartz_apply] using hx
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The dual test function
+
+Source: the duality step of `thm:extended_model`, which passes from the form
+bound of `thm:initial_model` to an operator norm bound.  The test function that
+saturates Hölder is the one below; the two identities it satisfies are what the
+duality argument runs on.
+-/
+
+/-- The test function saturating Hölder against `v` at exponent `R`. -/
+def dualTest {X : Type*} (v : X → ℝ) (R : ℝ) : X → ℝ := fun x ↦ |v x| ^ (R - 2) * v x
+
+/-- **The pairing is the full power.** -/
+theorem dualTest_mul {X : Type*} (v : X → ℝ) {R : ℝ} (hR : 0 < R) (x : X) :
+    dualTest v R x * v x = |v x| ^ R := by
+  rw [dualTest]
+  by_cases hx : v x = 0
+  · rw [hx]
+    simp [Real.zero_rpow (ne_of_gt hR)]
+  · have hax : 0 < |v x| := abs_pos.mpr hx
+    have hsq : v x * v x = |v x| ^ (2 : ℝ) := by
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast, sq_abs]
+      ring
+    calc |v x| ^ (R - 2) * v x * v x = |v x| ^ (R - 2) * (v x * v x) := by ring
+      _ = |v x| ^ (R - 2) * |v x| ^ (2 : ℝ) := by rw [hsq]
+      _ = |v x| ^ R := by
+          rw [← Real.rpow_add hax]
+          ring_nf
+
+/-- **The test function's size.** -/
+theorem abs_dualTest {X : Type*} (v : X → ℝ) {R : ℝ} (hR : 1 < R) (x : X) :
+    |dualTest v R x| = |v x| ^ (R - 1) := by
+  rw [dualTest, abs_mul, abs_of_nonneg (Real.rpow_nonneg (abs_nonneg _) _)]
+  by_cases hx : v x = 0
+  · rw [hx]
+    simp [Real.zero_rpow (by linarith : R - 1 ≠ 0)]
+  · have hax : 0 < |v x| := abs_pos.mpr hx
+    have hone : |v x| = |v x| ^ (1 : ℝ) := (Real.rpow_one _).symm
+    calc |v x| ^ (R - 2) * |v x| = |v x| ^ (R - 2) * |v x| ^ (1 : ℝ) := by
+          rw [← hone]
+      _ = |v x| ^ (R - 1) := by
+          rw [← Real.rpow_add hax]
+          ring_nf
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The arithmetic of the duality step
+
+Source: the duality step of `thm:extended_model`.  Two facts carry it: the test
+function's exponent is chosen so that its own power matches the function's, and
+a quantity dominated by the constant times its own power one lower is dominated
+by the constant.
+-/
+
+/-- The conjugate exponent turns the test function's power into the
+function's. -/
+theorem conjugate_sub_one_mul {p₀ R : ℝ} (h : Real.HolderConjugate p₀ R) :
+    (R - 1) * p₀ = R := by
+  obtain ⟨hp, hsum⟩ := Real.holderConjugate_iff.mp h
+  have hp0 : p₀ ≠ 0 := by linarith
+  have hRpos : 0 < R := by
+    have hinv : R⁻¹ = 1 - p₀⁻¹ := by linarith
+    have hlt : p₀⁻¹ < 1 := by
+      rw [inv_lt_one_iff₀]
+      right; exact hp
+    have : 0 < R⁻¹ := by rw [hinv]; linarith
+    exact inv_pos.mp this
+  have hR0 : R ≠ 0 := ne_of_gt hRpos
+  field_simp at hsum
+  linarith [hsum]
+
+/-- A quantity dominated by the constant against its own lower power is
+dominated by the constant. -/
+theorem le_of_rpow_le_mul_rpow_sub_one {t A R : ℝ}
+    (ht : 0 ≤ t) (hA : 0 ≤ A)
+    (h : t ^ R ≤ A * t ^ (R - 1)) : t ≤ A := by
+  rcases eq_or_lt_of_le ht with hzero | hpos
+  · rw [← hzero]; exact hA
+  · have h2 := Real.rpow_add hpos (R - 1) 1
+    rw [Real.rpow_one] at h2
+    have hsplit : t ^ R = t ^ (R - 1) * t := by
+      rw [← h2]
+      congr 1
+      ring
+    have hpow : 0 < t ^ (R - 1) := Real.rpow_pos_of_pos hpos _
+    rw [hsplit] at h
+    have hcomm : t ^ (R - 1) * t ≤ t ^ (R - 1) * A := by linarith
+    exact le_of_mul_le_mul_left hcomm hpow
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The test function's norm
+
+Source: the duality step of `thm:extended_model`.  Raised to the conjugate
+exponent, the test function is the function raised to its own — so the two
+carry the same mass, which is what makes the cancellation at the end of the
+duality argument possible.
+-/
+
+/-- **The test function's power is the function's.** -/
+theorem abs_dualTest_rpow {X : Type*} (v : X → ℝ) {p₀ R : ℝ}
+    (h : Real.HolderConjugate p₀ R) (x : X) :
+    |dualTest v R x| ^ p₀ = |v x| ^ R := by
+  have hR : 1 < R := (Real.holderConjugate_iff.mp h.symm).1
+  rw [abs_dualTest v hR x, ← Real.rpow_mul (abs_nonneg _),
+    conjugate_sub_one_mul h]
+
+/-- **The test function carries the same mass.** -/
+theorem lintegral_abs_dualTest_rpow
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) {p₀ R : ℝ}
+    (h : Real.HolderConjugate p₀ R) :
+    ∫⁻ x, ENNReal.ofReal (|dualTest v R x| ^ p₀) ∂μ
+      = ∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ := by
+  refine lintegral_congr fun x ↦ ?_
+  rw [abs_dualTest_rpow v h x]
+
+/-- The test function is measurable when the function is. -/
+theorem measurable_dualTest
+    {X : Type*} [MeasurableSpace X] {v : X → ℝ} (hv : Measurable v) (R : ℝ) :
+    Measurable (dualTest v R) := by
+  unfold dualTest
+  fun_prop
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Lebesgue duality
+
+Source: the duality step of `thm:extended_model`, which turns the form bound of
+`thm:initial_model` into an operator norm bound.  Pairing against the test
+function that saturates Hölder recovers the norm, because that function's own
+norm is the function's raised to one power lower.
+-/
+
+/-- The `L^R` norm as an integral. -/
+theorem lpNorm_ofReal_eq (μ : Measure E3) (v : E3 → ℝ) {R : ℝ} (hR : 0 < R)
+    (hv : AEStronglyMeasurable v μ) :
+    lpNorm v (ENNReal.ofReal R) μ = (∫ x, |v x| ^ R ∂μ) ^ R⁻¹ := by
+  rw [lpNorm_eq_integral_norm_rpow_toReal (by simp [hR]) (by simp) hv,
+    ENNReal.toReal_ofReal hR.le]
+  simp only [Real.norm_eq_abs]
+
+/-- **Lebesgue duality.**  A function paired against every test function of the
+conjugate exponent with a common bound has that bound as its norm. -/
+theorem lpNorm_le_of_forall_integral_mul_le
+    {μ : Measure E3} {v : E3 → ℝ} {p₀ R : ℝ}
+    (hpq : Real.HolderConjugate p₀ R)
+    (hvmeas : Measurable v) (hv : MemLp v (ENNReal.ofReal R) μ)
+    {A : ℝ} (hA : 0 ≤ A)
+    (h : ∀ f : E3 → ℝ, MemLp f (ENNReal.ofReal p₀) μ →
+      |∫ x, f x * v x ∂μ| ≤ A * lpNorm f (ENNReal.ofReal p₀) μ) :
+    lpNorm v (ENNReal.ofReal R) μ ≤ A := by
+  classical
+  have hR1 : 1 < R := (Real.holderConjugate_iff.mp hpq.symm).1
+  have hRpos : 0 < R := by linarith
+  have hp1 : 1 < p₀ := (Real.holderConjugate_iff.mp hpq).1
+  have hppos : 0 < p₀ := by linarith
+  set f : E3 → ℝ := dualTest v R with hf
+  have hfmeas : Measurable f := measurable_dualTest hvmeas R
+  -- the two functions carry the same mass
+  have hmass : ∀ x : E3, |f x| ^ p₀ = |v x| ^ R := fun x ↦
+    abs_dualTest_rpow v hpq x
+  have hIR : ∫ x, |f x| ^ p₀ ∂μ = ∫ x, |v x| ^ R ∂μ :=
+    integral_congr_ae (Filter.Eventually.of_forall hmass)
+  -- the test function lies in the conjugate space
+  have hfmem : MemLp f (ENNReal.ofReal p₀) μ := by
+    refine ⟨hfmeas.aestronglyMeasurable, ?_⟩
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hppos]) (by simp),
+      ENNReal.toReal_ofReal hppos.le]
+    have hlint : ∫⁻ x, ‖f x‖ₑ ^ p₀ ∂μ = ∫⁻ x, ‖v x‖ₑ ^ R ∂μ := by
+      refine lintegral_congr fun x ↦ ?_
+      have h1 : ‖f x‖ₑ ^ p₀ = ENNReal.ofReal (|f x| ^ p₀) := by
+        rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hppos.le,
+          Real.norm_eq_abs]
+      have h2 : ‖v x‖ₑ ^ R = ENNReal.ofReal (|v x| ^ R) := by
+        rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hRpos.le,
+          Real.norm_eq_abs]
+      rw [h1, h2, hmass x]
+    rw [hlint]
+    have hvtop := hv.eLpNorm_lt_top
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hRpos]) (by simp),
+      ENNReal.toReal_ofReal hRpos.le] at hvtop
+    have hfin : ∫⁻ x, ‖v x‖ₑ ^ R ∂μ ≠ ⊤ := by
+      intro hcon
+      rw [hcon, ENNReal.top_rpow_of_pos (by positivity)] at hvtop
+      exact lt_irrefl _ hvtop
+    exact ENNReal.rpow_lt_top_of_nonneg (by positivity) hfin
+  -- the pairing recovers the mass
+  have hpair : ∫ x, f x * v x ∂μ = ∫ x, |v x| ^ R ∂μ :=
+    integral_congr_ae (Filter.Eventually.of_forall fun x ↦ dualTest_mul v hRpos x)
+  set I : ℝ := ∫ x, |v x| ^ R ∂μ with hI
+  have hI0 : 0 ≤ I := integral_nonneg fun x ↦ Real.rpow_nonneg (abs_nonneg _) _
+  set t : ℝ := lpNorm v (ENNReal.ofReal R) μ with ht
+  have ht0 : 0 ≤ t := MeasureTheory.lpNorm_nonneg
+  have hteq : t = I ^ R⁻¹ := lpNorm_ofReal_eq μ v hRpos hv.1
+  have htR : t ^ R = I := by
+    rw [hteq, ← Real.rpow_mul hI0, inv_mul_cancel₀ (ne_of_gt hRpos), Real.rpow_one]
+  have hfnorm : lpNorm f (ENNReal.ofReal p₀) μ = t ^ (R - 1) := by
+    rw [lpNorm_ofReal_eq μ f hppos hfmeas.aestronglyMeasurable, hIR, ← htR,
+      ← Real.rpow_mul ht0]
+    congr 1
+    field_simp
+    linarith [conjugate_sub_one_mul hpq]
+  have hbound := h f hfmem
+  rw [hpair, hfnorm] at hbound
+  have hfinal : t ^ R ≤ A * t ^ (R - 1) := by
+    rw [htR]
+    calc I = |I| := (abs_of_nonneg hI0).symm
+      _ ≤ A * t ^ (R - 1) := hbound
+  exact le_of_rpow_le_mul_rpow_sub_one ht0 hA hfinal
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Truncating a field to a bounded, compactly supported one
+
+Source: the duality step of `thm:extended_model`.  The test function that
+saturates Hölder is neither bounded nor compactly supported, so it cannot be
+reached directly by the approximants; truncating it in both value and support
+gives a sequence that can be, and that returns it in the limit.
+-/
+
+/-- The `n`-th truncation: clamp the values to `[-n, n]` and the support to the
+ball of radius `n`. -/
+def truncateSeq (f : E3 → ℝ) (n : ℕ) : E3 → ℝ :=
+  fun x ↦ if ‖x‖ ≤ (n : ℝ) then max (-(n : ℝ)) (min (n : ℝ) (f x)) else 0
+
+theorem abs_truncateSeq_le (f : E3 → ℝ) (n : ℕ) (x : E3) :
+    |truncateSeq f n x| ≤ (n : ℝ) := by
+  have hn : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
+  rw [truncateSeq]
+  by_cases hx : ‖x‖ ≤ (n : ℝ)
+  · rw [if_pos hx, abs_le]
+    constructor
+    · exact le_max_left _ _
+    · exact max_le (by linarith) (min_le_left _ _)
+  · rw [if_neg hx, abs_zero]
+    exact hn
+
+theorem measurable_truncateSeq {f : E3 → ℝ} (hf : Measurable f) (n : ℕ) :
+    Measurable (truncateSeq f n) := by
+  unfold truncateSeq
+  refine Measurable.ite ?_ ?_ measurable_const
+  · exact measurableSet_le (by fun_prop) measurable_const
+  · exact measurable_const.max (measurable_const.min hf)
+
+/-- **The truncations return the field.**  At every point they are eventually
+the field itself. -/
+theorem tendsto_truncateSeq (f : E3 → ℝ) (x : E3) :
+    Filter.Tendsto (fun n : ℕ ↦ truncateSeq f n x) Filter.atTop (𝓝 (f x)) := by
+  refine Filter.Tendsto.congr' ?_ tendsto_const_nhds
+  obtain ⟨N, hN⟩ := exists_nat_ge (max ‖x‖ |f x|)
+  filter_upwards [Filter.eventually_ge_atTop N] with n hn
+  have hNn : (N : ℝ) ≤ (n : ℝ) := Nat.cast_le.mpr hn
+  have hx : ‖x‖ ≤ (n : ℝ) := le_trans (le_trans (le_max_left _ _) hN) hNn
+  have hfx : |f x| ≤ (n : ℝ) := le_trans (le_trans (le_max_right _ _) hN) hNn
+  rw [abs_le] at hfx
+  rw [truncateSeq, if_pos hx, min_eq_right hfx.2, max_eq_right hfx.1]
+
+/-- The truncations vanish off a ball. -/
+theorem truncateSeq_eq_zero_of_lt (f : E3 → ℝ) (n : ℕ) {x : E3}
+    (hx : (n : ℝ) < ‖x‖) : truncateSeq f n x = 0 := by
+  rw [truncateSeq, if_neg (not_le.mpr hx)]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The truncation limit in the pairing
+
+Source: the duality step of `thm:extended_model`.  The truncations never
+exceed the field in size, so the pairing against them is dominated by the
+pairing against the field itself, and the bound they satisfy passes to the
+limit.
+-/
+
+/-- **Truncating never increases the size.** -/
+theorem abs_truncateSeq_le_abs (f : E3 → ℝ) (n : ℕ) (x : E3) :
+    |truncateSeq f n x| ≤ |f x| := by
+  have hn : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
+  rw [truncateSeq]
+  by_cases hx : ‖x‖ ≤ (n : ℝ)
+  · rw [if_pos hx]
+    rcases le_total (f x) (-(n : ℝ)) with hlo | hlo
+    · have hval : max (-(n : ℝ)) (min (n : ℝ) (f x)) = -(n : ℝ) := by
+        rw [min_eq_right (by linarith)]
+        exact max_eq_left hlo
+      rw [hval, abs_neg, abs_of_nonneg hn, abs_of_nonpos (by linarith)]
+      linarith
+    · rcases le_total (f x) (n : ℝ) with hhi | hhi
+      · have hval : max (-(n : ℝ)) (min (n : ℝ) (f x)) = f x := by
+          rw [min_eq_right hhi]
+          exact max_eq_right hlo
+        rw [hval]
+      · have hval : max (-(n : ℝ)) (min (n : ℝ) (f x)) = (n : ℝ) := by
+          rw [min_eq_left hhi]
+          exact max_eq_right (by linarith)
+        rw [hval, abs_of_nonneg hn, abs_of_nonneg (by linarith)]
+        exact hhi
+  · rw [if_neg hx, abs_zero]
+    exact abs_nonneg _
+
+/-- **The pairing bound passes to the limit of the truncations.** -/
+theorem abs_integral_mul_le_of_truncations
+    {μ : Measure E3} {f v : E3 → ℝ} {C : ℝ}
+    (hfmeas : Measurable f) (hvmeas : Measurable v)
+    (hint : Integrable (fun x ↦ f x * v x) μ)
+    (h : ∀ n : ℕ, |∫ x, truncateSeq f n x * v x ∂μ| ≤ C) :
+    |∫ x, f x * v x ∂μ| ≤ C := by
+  have hdom : ∀ n : ℕ, ∀ᵐ x ∂μ,
+      ‖truncateSeq f n x * v x‖ ≤ |f x * v x| := by
+    intro n
+    refine Filter.Eventually.of_forall fun x ↦ ?_
+    rw [Real.norm_eq_abs, abs_mul, abs_mul]
+    exact mul_le_mul_of_nonneg_right (abs_truncateSeq_le_abs f n x) (abs_nonneg _)
+  have hlim : ∀ᵐ x ∂μ, Filter.Tendsto
+      (fun n : ℕ ↦ truncateSeq f n x * v x) Filter.atTop (𝓝 (f x * v x)) := by
+    refine Filter.Eventually.of_forall fun x ↦ ?_
+    exact (tendsto_truncateSeq f x).mul_const _
+  have htend : Filter.Tendsto
+      (fun n : ℕ ↦ ∫ x, truncateSeq f n x * v x ∂μ) Filter.atTop
+      (𝓝 (∫ x, f x * v x ∂μ)) :=
+    tendsto_integral_of_dominated_convergence (fun x ↦ |f x * v x|)
+      (fun n ↦ ((measurable_truncateSeq hfmeas n).mul hvmeas).aestronglyMeasurable)
+      hint.abs hdom hlim
+  have habs : Filter.Tendsto
+      (fun n : ℕ ↦ |∫ x, truncateSeq f n x * v x ∂μ|) Filter.atTop
+      (𝓝 |∫ x, f x * v x ∂μ|) := htend.abs
+  exact le_of_tendsto habs (Filter.Eventually.of_forall h)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The pairing is continuous in its first slot
+
+Source: the duality step of `thm:extended_model`.  Pairing against a fixed
+function of the conjugate exponent is a continuous functional, by Hölder
+applied to the difference — which is what lets a bound proved on a dense class
+be extended to the whole space.
+-/
+
+/-- **The pairing separates by Hölder.** -/
+theorem abs_integral_mul_sub_le
+    {μ : Measure E3} {f g U : E3 → ℝ} {p₀ R : ℝ}
+    (hpq : Real.HolderConjugate p₀ R)
+    (hf : MemLp f (ENNReal.ofReal p₀) μ) (hg : MemLp g (ENNReal.ofReal p₀) μ)
+    (hU : MemLp U (ENNReal.ofReal R) μ)
+    (hfi : Integrable (fun x ↦ f x * U x) μ)
+    (hgi : Integrable (fun x ↦ g x * U x) μ) :
+    |(∫ x, f x * U x ∂μ) - ∫ x, g x * U x ∂μ|
+      ≤ lpNorm (f - g) (ENNReal.ofReal p₀) μ *
+          lpNorm U (ENNReal.ofReal R) μ := by
+  have hsub : (∫ x, f x * U x ∂μ) - ∫ x, g x * U x ∂μ
+      = ∫ x, (f - g) x * U x ∂μ := by
+    rw [← integral_sub hfi hgi]
+    refine integral_congr_ae (Filter.Eventually.of_forall fun x ↦ ?_)
+    simp [Pi.sub_apply]
+    ring
+  rw [hsub]
+  exact abs_integral_mul_le_lpNorm_mul_lpNorm μ (f - g) U hpq (hf.sub hg) hU
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Extending a pairing bound from a dense class
+
+Source: the duality step of `thm:extended_model`.  The form bound is proved for
+Schwartz inputs; the pairing is continuous in that slot, so a sequence
+converging in norm carries the bound to the limit, and no mollification is
+needed for this slot at all.
+-/
+
+/-- **A pairing bound extends along a norm-convergent sequence.** -/
+theorem abs_integral_mul_le_of_approx
+    {μ : Measure E3} {f U : E3 → ℝ} {p₀ R A : ℝ}
+    (hpq : Real.HolderConjugate p₀ R) (hA : 0 ≤ A)
+    (hp1 : (1 : ℝ≥0∞) ≤ ENNReal.ofReal p₀)
+    (hf : MemLp f (ENNReal.ofReal p₀) μ) (hU : MemLp U (ENNReal.ofReal R) μ)
+    (hfi : Integrable (fun x ↦ f x * U x) μ)
+    (g : ℕ → E3 → ℝ)
+    (hg : ∀ n, MemLp (g n) (ENNReal.ofReal p₀) μ)
+    (hgi : ∀ n, Integrable (fun x ↦ g n x * U x) μ)
+    (hgconv : Filter.Tendsto
+      (fun n ↦ lpNorm (f - g n) (ENNReal.ofReal p₀) μ) Filter.atTop (𝓝 0))
+    (hbound : ∀ n, |∫ x, g n x * U x ∂μ|
+      ≤ A * lpNorm (g n) (ENNReal.ofReal p₀) μ) :
+    |∫ x, f x * U x ∂μ| ≤ A * lpNorm f (ENNReal.ofReal p₀) μ := by
+  classical
+  set If : ℝ := ∫ x, f x * U x ∂μ with hIf
+  set Ig : ℕ → ℝ := fun n ↦ ∫ x, g n x * U x ∂μ with hIg
+  set Nf : ℝ := lpNorm f (ENNReal.ofReal p₀) μ with hNf
+  -- the pairings converge
+  have hdiff : ∀ n, |If - Ig n|
+      ≤ lpNorm (f - g n) (ENNReal.ofReal p₀) μ *
+          lpNorm U (ENNReal.ofReal R) μ := fun n ↦
+    abs_integral_mul_sub_le hpq hf (hg n) hU hfi (hgi n)
+  have hzero : Filter.Tendsto (fun n ↦ |If - Ig n|) Filter.atTop (𝓝 0) := by
+    refine squeeze_zero (fun n ↦ abs_nonneg _) hdiff ?_
+    have := hgconv.mul_const (lpNorm U (ENNReal.ofReal R) μ)
+    rwa [zero_mul] at this
+  have htend : Filter.Tendsto Ig Filter.atTop (𝓝 If) := by
+    rw [tendsto_iff_dist_tendsto_zero]
+    refine hzero.congr fun n ↦ ?_
+    rw [Real.dist_eq, abs_sub_comm]
+  -- the bounds converge
+  have hsplit : ∀ n, lpNorm (g n) (ENNReal.ofReal p₀) μ
+      ≤ Nf + lpNorm (f - g n) (ENNReal.ofReal p₀) μ := by
+    intro n
+    exact lpNorm_le_lpNorm_add_lpNorm_sub (f := g n) (g := f) hf hp1
+  have hlimit : Filter.Tendsto
+      (fun n ↦ A * (Nf + lpNorm (f - g n) (ENNReal.ofReal p₀) μ))
+      Filter.atTop (𝓝 (A * Nf)) := by
+    have hsum : Filter.Tendsto
+        (fun n ↦ Nf + lpNorm (f - g n) (ENNReal.ofReal p₀) μ)
+        Filter.atTop (𝓝 (Nf + 0)) := tendsto_const_nhds.add hgconv
+    rw [add_zero] at hsum
+    exact hsum.const_mul A
+  refine le_of_tendsto_of_tendsto htend.abs hlimit ?_
+  refine Filter.Eventually.of_forall fun n ↦ ?_
+  exact (hbound n).trans (mul_le_mul_of_nonneg_left (hsplit n) hA)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A Schwartz sequence converging in `L^p`
+
+Source: the duality step of `thm:extended_model`.  Density is stated for the
+map into the `L^p` quotient; this turns it into an honest sequence of Schwartz
+functions whose `L^p` distance to the given function tends to zero.
+-/
+
+theorem exists_schwartz_lpNorm_tendsto_zero {p : ℝ≥0∞} (hp : p ≠ ⊤) [Fact (1 ≤ p)]
+    {f : E3 → ℝ} (hf : MemLp f p (volume : Measure E3)) :
+    ∃ g : ℕ → SchwartzMap E3 ℝ,
+      Filter.Tendsto (fun n ↦ lpNorm (f - (g n : E3 → ℝ)) p (volume : Measure E3))
+        Filter.atTop (𝓝 0) := by
+  classical
+  set F : Lp ℝ p (volume : Measure E3) := hf.toLp f with hF
+  have hdense : DenseRange (SchwartzMap.toLpCLM (E := E3) ℝ ℝ p (volume : Measure E3)) :=
+    SchwartzMap.denseRange_toLpCLM (E := E3) (F := ℝ) hp
+  obtain ⟨x, hxmem, hxtend⟩ := mem_closure_iff_seq_limit.mp (hdense F)
+  choose g hg using hxmem
+  refine ⟨g, ?_⟩
+  -- the `Lp` distances are the `lpNorm` distances
+  have hkey : ∀ n, lpNorm (f - (g n : E3 → ℝ)) p (volume : Measure E3) = ‖x n - F‖ := by
+    intro n
+    have hae : ((x n - F : Lp ℝ p (volume : Measure E3)) : E3 → ℝ)
+        =ᵐ[(volume : Measure E3)] (g n : E3 → ℝ) - f := by
+      have h1 := Lp.coeFn_sub (x n) F
+      have h2 : ((x n : Lp ℝ p (volume : Measure E3)) : E3 → ℝ)
+          =ᵐ[(volume : Measure E3)] (g n : E3 → ℝ) := by
+        rw [← hg n]
+        simpa using (g n).coeFn_toLp p (volume : Measure E3)
+      have h3 := hf.coeFn_toLp
+      filter_upwards [h1, h2, h3] with y hy1 hy2 hy3
+      simp only [Pi.sub_apply] at hy1 ⊢
+      rw [hy1, hy2, hy3]
+    rw [Lp.norm_def, eLpNorm_congr_ae hae,
+      toReal_eLpNorm (((g n).continuous.aestronglyMeasurable).sub hf.aestronglyMeasurable),
+      lpNorm_sub_comm]
+  simp only [hkey]
+  have := hxtend.sub (tendsto_const_nhds (x := F) (f := Filter.atTop (α := ℕ)))
+  rw [sub_self] at this
+  simpa using this.norm
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Carrying the pairing bound from Schwartz inputs to all of `L^{p_0}`
+
+Source: the duality step of `thm:extended_model`.  The form bound is available
+for Schwartz inputs in the zeroth slot; the pairing against a fixed `L^{R}`
+function is Hölder-continuous there, so density of the Schwartz class in
+`L^{p_0}` carries the bound to every `L^{p_0}` input.
+-/
+
+/-- The `ENNReal` Hölder triple attached to a real conjugate pair. -/
+theorem holderTriple_ofReal_one {p₀ R : ℝ} (hpq : Real.HolderConjugate p₀ R) :
+    ENNReal.HolderTriple (ENNReal.ofReal p₀) (ENNReal.ofReal R) 1 := by
+  refine ⟨?_⟩
+  have hp : 0 < p₀ := hpq.pos
+  have hq : 0 < R := hpq.symm.pos
+  rw [← ENNReal.ofReal_inv_of_pos hp, ← ENNReal.ofReal_inv_of_pos hq,
+    ← ENNReal.ofReal_add (by positivity) (by positivity), hpq.inv_add_inv_eq_one]
+  simp
+
+/-- Hölder integrability of the pairing. -/
+theorem integrable_mul_of_holderConjugate {μ : Measure E3} {f U : E3 → ℝ} {p₀ R : ℝ}
+    (hpq : Real.HolderConjugate p₀ R)
+    (hf : MemLp f (ENNReal.ofReal p₀) μ) (hU : MemLp U (ENNReal.ofReal R) μ) :
+    Integrable (fun x ↦ f x * U x) μ := by
+  haveI := holderTriple_ofReal_one hpq
+  exact hf.integrable_mul hU
+
+/-- **The pairing bound extends from the Schwartz class to `L^{p_0}`.** -/
+theorem abs_integral_mul_le_of_schwartz_bound
+    {U : E3 → ℝ} {p₀ R A : ℝ} (hpq : Real.HolderConjugate p₀ R) (hA : 0 ≤ A)
+    (hp1 : 1 ≤ p₀) (hU : MemLp U (ENNReal.ofReal R) (volume : Measure E3))
+    (hSchwartz : ∀ g : SchwartzMap E3 ℝ, |∫ x, g x * U x|
+      ≤ A * lpNorm ((g : E3 → ℝ)) (ENNReal.ofReal p₀) (volume : Measure E3))
+    {f : E3 → ℝ} (hf : MemLp f (ENNReal.ofReal p₀) (volume : Measure E3)) :
+    |∫ x, f x * U x| ≤ A * lpNorm f (ENNReal.ofReal p₀) (volume : Measure E3) := by
+  classical
+  haveI hfact : Fact ((1 : ℝ≥0∞) ≤ ENNReal.ofReal p₀) := by
+    refine ⟨?_⟩
+    rw [show (1 : ℝ≥0∞) = ENNReal.ofReal 1 by simp]
+    exact ENNReal.ofReal_le_ofReal hp1
+  have htop : ENNReal.ofReal p₀ ≠ ⊤ := ENNReal.ofReal_ne_top
+  obtain ⟨g, hgtend⟩ := exists_schwartz_lpNorm_tendsto_zero htop hf
+  refine abs_integral_mul_le_of_approx hpq hA hfact.out hf hU
+    (integrable_mul_of_holderConjugate hpq hf hU)
+    (fun n ↦ ((g n : E3 → ℝ))) (fun n ↦ (g n).memLp _ _)
+    (fun n ↦ integrable_mul_of_holderConjugate hpq ((g n).memLp _ _) hU)
+    hgtend (fun n ↦ hSchwartz (g n))
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Duality against the Schwartz class alone
+
+Source: the duality step of `thm:extended_model`.  The form bound is only ever
+proved for Schwartz inputs, and this is all duality needs: density carries it to
+the full predual, and the dual norm identification then gives the output bound.
+-/
+
+/-- **The `L^R` norm is controlled by the pairing against Schwartz functions.** -/
+theorem lpNorm_le_of_forall_schwartz_integral_mul_le
+    {v : E3 → ℝ} {p₀ R : ℝ} (hpq : Real.HolderConjugate p₀ R)
+    (hvmeas : Measurable v) (hv : MemLp v (ENNReal.ofReal R) (volume : Measure E3))
+    {A : ℝ} (hA : 0 ≤ A)
+    (h : ∀ g : SchwartzMap E3 ℝ, |∫ x, g x * v x|
+      ≤ A * lpNorm ((g : E3 → ℝ)) (ENNReal.ofReal p₀) (volume : Measure E3)) :
+    lpNorm v (ENNReal.ofReal R) (volume : Measure E3) ≤ A :=
+  lpNorm_le_of_forall_integral_mul_le hpq hvmeas hv hA
+    (fun _ hf ↦ abs_integral_mul_le_of_schwartz_bound hpq hA
+      (Real.holderConjugate_iff.mp hpq).1.le hv h hf)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The good budget in its canonical lower-integral form
+
+Source: `lem:one_fiber`, the Chebyshev good budget.  The budget is quoted as a
+bound on the lower integral of the `R_0`-th power; what the operator theory
+delivers is a bound on the `L^{R_0}` norm.  This converts one into the other.
+-/
+
+/-- An `L^{R_0}` bound gives the good budget in the form `lem:one_fiber` quotes
+it. -/
+theorem lintegral_ofReal_abs_rpow_le_of_lpNorm_le
+    {v : E3 → ℝ} {R0 Kgood : ℝ} (hR0 : 0 < R0)
+    (hv : MemLp v (ENNReal.ofReal R0) (volume : Measure E3))
+    (h : lpNorm v (ENNReal.ofReal R0) (volume : Measure E3) ≤ Kgood) :
+    ∫⁻ x : E3, ENNReal.ofReal (|v x| ^ R0) ≤ ENNReal.ofReal (Kgood ^ R0) := by
+  classical
+  have hne : ENNReal.ofReal R0 ≠ 0 := by simp [hR0]
+  have hint : Integrable (fun x : E3 ↦ |v x| ^ R0) (volume : Measure E3) := by
+    have := hv.integrable_norm_rpow hne (by simp)
+    rw [ENNReal.toReal_ofReal hR0.le] at this
+    simpa only [Real.norm_eq_abs] using this
+  have hnonneg : ∀ x : E3, 0 ≤ |v x| ^ R0 := fun x ↦
+    Real.rpow_nonneg (abs_nonneg _) R0
+  have hlint : ∫⁻ x : E3, ENNReal.ofReal (|v x| ^ R0)
+      = ENNReal.ofReal (∫ x : E3, |v x| ^ R0) :=
+    (ofReal_integral_eq_lintegral_ofReal hint
+      (Filter.Eventually.of_forall hnonneg)).symm
+  rw [hlint]
+  refine ENNReal.ofReal_le_ofReal ?_
+  -- the integral is the norm raised to the exponent
+  have hnorm : lpNorm v (ENNReal.ofReal R0) (volume : Measure E3)
+      = (∫ x : E3, |v x| ^ R0) ^ R0⁻¹ :=
+    lpNorm_ofReal_eq (volume : Measure E3) v hR0 hv.aestronglyMeasurable
+  set I : ℝ := ∫ x : E3, |v x| ^ R0 with hI
+  have hIpos : 0 ≤ I := integral_nonneg hnonneg
+  have hle : I ^ R0⁻¹ ≤ Kgood := by rw [← hnorm]; exact h
+  have := Real.rpow_le_rpow (by positivity) hle hR0.le
+  rwa [← Real.rpow_mul hIpos, inv_mul_cancel₀ (ne_of_gt hR0), Real.rpow_one] at this
+
+/-- **The good budget from a Schwartz-slot form bound.**  This is the shape the
+operator theory actually produces: a bound on the pairing of the operator
+against Schwartz functions.  Duality and the conversion above turn it into the
+budget `lem:one_fiber` quotes. -/
+theorem lintegral_ofReal_abs_rpow_le_of_schwartz_bound
+    {v : E3 → ℝ} {p₀ R0 Kgood : ℝ} (hpq : Real.HolderConjugate p₀ R0)
+    (hvmeas : Measurable v) (hv : MemLp v (ENNReal.ofReal R0) (volume : Measure E3))
+    (hK : 0 ≤ Kgood)
+    (h : ∀ g : SchwartzMap E3 ℝ, |∫ x, g x * v x|
+      ≤ Kgood * lpNorm ((g : E3 → ℝ)) (ENNReal.ofReal p₀) (volume : Measure E3)) :
+    ∫⁻ x : E3, ENNReal.ofReal (|v x| ^ R0) ≤ ENNReal.ofReal (Kgood ^ R0) :=
+  lintegral_ofReal_abs_rpow_le_of_lpNorm_le hpq.symm.pos hv
+    (lpNorm_le_of_forall_schwartz_integral_mul_le hpq hvmeas hv hK h)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The seminorm as a lower integral
+
+Source: `lem:one_fiber`.  The good budget is quoted as a bound on the lower
+integral of the `R_0`-th power, while the estimates that feed it are stated as
+seminorm bounds; this is the identity that moves between the two
+normalizations.
+-/
+
+/-- The `L^R` seminorm as a lower integral of the `R`-th power. -/
+theorem eLpNorm_ofReal_eq_lintegral_rpow
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) {R : ℝ} (hR : 0 < R) :
+    eLpNorm v (ENNReal.ofReal R) μ
+      = (∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ) ^ (1 / R) := by
+  have hp0 : ENNReal.ofReal R ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hR)
+  have hptop : ENNReal.ofReal R ≠ ∞ := ENNReal.ofReal_ne_top
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hR.le]
+  congr 1
+  refine lintegral_congr fun x ↦ ?_
+  rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hR.le,
+    Real.norm_eq_abs]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The strict-range output estimate on the real operator
+
+Source: the display following the `L^p` duality step of `thm:extended_model`.
+The duality step was carried out on the complexified operator, because the
+model form is complex; the budgets of `lem:one_fiber` are about the real
+operator.  Complexification is an isometry on every `L^p`, so the two
+statements are the same estimate.
+-/
+
+/-- Complexifying a real function preserves every `lpNorm`. -/
+theorem lpNorm_complex_ofReal
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) (p : ℝ≥0∞) :
+    lpNorm (fun x ↦ (v x : ℂ)) p μ = lpNorm v p μ := by
+  by_cases hv : AEStronglyMeasurable v μ
+  · rw [← toReal_eLpNorm (Complex.continuous_ofReal.comp_aestronglyMeasurable hv),
+      ← toReal_eLpNorm hv]
+    apply congrArg ENNReal.toReal
+    apply eLpNorm_congr_norm_ae
+    filter_upwards with x
+    simp
+  · have hc : ¬ AEStronglyMeasurable (fun x ↦ (v x : ℂ)) μ := by
+      intro h
+      exact hv (by simpa using Complex.reCLM.continuous.comp_aestronglyMeasurable h)
+    rw [lpNorm_of_not_aestronglyMeasurable hv,
+      lpNorm_of_not_aestronglyMeasurable hc]
+
+/-- **The strict-range output estimate, stated on the real operator.** -/
+theorem lpNorm_real_ModelTruncatedOperator_le_of_realSchwartz
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ)
+      (G : Fin 3 → SchwartzMap E3 ℝ) (a b : ℝ),
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      lpNorm (ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b)
+          (ENNReal.ofReal (q 0).conjExponent) volume ≤
+        64 * C * sourceWeight u ^ 100 *
+          ∏ j : Fin 3, lpNorm (G j : E3 → ℝ)
+            (ENNReal.ofReal (q j.succ)) volume := by
+  rcases lpNorm_ModelTruncatedOperator_le_of_realSchwartz α q hq hsum hqs
+    with ⟨C, hC, hbound⟩
+  refine ⟨C, hC, fun u c G a b ha hcm hc ↦ ?_⟩
+  have h := hbound u c G a b ha hcm hc
+  rwa [lpNorm_complex_ofReal] at h
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Approximating every slot at once
+
+Source: `lem:one_fiber`, the approximation step.  The Calderon--Zygmund
+argument carries bounded measurable fields in all three slots, while the
+strict-range output estimate is available only for Schwartz ones, so all three
+slots have to be replaced together.  Replacing them one at a time would need a
+diagonal argument; approximating simultaneously does not, because each slot
+enters the integrand through its own convolution factor and the three limits
+multiply.
+-/
+
+/-- **The truncated operator converges when every slot converges along the
+point's own lines.** -/
+theorem tendsto_ModelTruncatedOperator_of_ae_line_all
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (a b : ℝ) (x : E3)
+    (g : ℕ → ModelOperatorRealInput) (glim : ModelOperatorRealInput)
+    (C : ℝ) (B : Fin 3 → ℝ)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hgmeas : ∀ n j, Measurable (g n j)) (hB : ∀ j, 0 ≤ B j)
+    (hgB : ∀ n j, ∀ y : E3, |g n j y| ≤ B j)
+    (hline : ∀ j : Fin 3, ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n j (x - r • Anisotropy.coordinateDirection j)) Filter.atTop
+      (𝓝 (glim j (x - r • Anisotropy.coordinateDirection j)))) :
+    Filter.Tendsto (fun n ↦ ModelTruncatedOperator α u c (g n) a b x)
+      Filter.atTop (𝓝 (ModelTruncatedOperator α u c glim a b x)) := by
+  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  set D : ℝ := C * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
+    (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
+      (B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) with hD
+  have hmeasF : ∀ n, AEStronglyMeasurable (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c (g n) t x)
+      (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
+        (Set.Ioc a b)) := fun n ↦
+    ((stronglyMeasurable_modelTruncatedOperatorIntegrand_joint_of_measurable
+      α u c (g n) hcm (hgmeas n)).comp_measurable
+      (measurable_id.prodMk measurable_const)).aestronglyMeasurable
+  have hbound : ∀ n, ∀ᵐ t ∂(((volume : Measure ℝ).withDensity
+      cubeScaleDensity).restrict (Set.Ioc a b)),
+      ‖modelTruncatedOperatorIntegrand α u c (g n) t x‖ ≤ D := by
+    intro n
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    rw [Real.norm_eq_abs]
+    exact abs_modelTruncatedOperatorIntegrand_le_of_bounded_measurable
+      α u c (g n) t x (lt_trans ha ht.1) C B hC (hcC t) (hgmeas n) hB (hgB n)
+  have hlim : ∀ᵐ t ∂(((volume : Measure ℝ).withDensity
+      cubeScaleDensity).restrict (Set.Ioc a b)),
+      Filter.Tendsto (fun n ↦ modelTruncatedOperatorIntegrand α u c (g n) t x)
+        Filter.atTop
+        (𝓝 (modelTruncatedOperatorIntegrand α u c glim t x)) := by
+    filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+    have htpos : (0 : ℝ) < t := lt_trans ha ht.1
+    have hconv : ∀ j : Fin 3, Filter.Tendsto
+        (fun n ↦ ModelCoordinateConvolution j (g n j)
+          (activeModelKernel 2 j u) (t ^ α.weight j) x) Filter.atTop
+        (𝓝 (ModelCoordinateConvolution j (glim j)
+          (activeModelKernel 2 j u) (t ^ α.weight j) x)) := by
+    -- each slot's factor converges, since that slot's line is good
+      intro j
+      exact tendsto_ModelCoordinateConvolution_of_ae_line j
+        (fun n ↦ g n j) (glim j) (activeModelKernel 2 j u) (t ^ α.weight j) x
+        (fun n ↦ hgmeas n j) (B j) (fun n ↦ hgB n j)
+        (integrable_activeModelKernel 2 j u) (pow_pos htpos _) (hline j)
+    have h0 := hconv 0
+    have h1 := hconv 1
+    have h2 := hconv 2
+    simp only [activeModelKernel, show ((0 : Fin 3) = 2) = False by simp,
+      show ((1 : Fin 3) = 2) = False by simp, if_false] at h0 h1 h2
+    unfold modelTruncatedOperatorIntegrand
+    exact (((tendsto_const_nhds.mul h0).mul h1).mul h2)
+  exact tendsto_integral_of_dominated_convergence (fun _ : ℝ ↦ D) hmeasF
+    (integrable_const D) hbound hlim
+
+/-- **Almost everywhere, every slot's lines are good at once.** -/
+theorem ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (a b : ℝ)
+    (g : ℕ → ModelOperatorRealInput) (glim : ModelOperatorRealInput)
+    (C : ℝ) (B : Fin 3 → ℝ)
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hgmeas : ∀ n j, Measurable (g n j)) (hB : ∀ j, 0 ≤ B j)
+    (hgB : ∀ n j, ∀ y : E3, |g n j y| ≤ B j)
+    (hglimmeas : ∀ j, Measurable (glim j))
+    (htend : ∀ j : Fin 3, ∀ᵐ y : E3,
+      Filter.Tendsto (fun n ↦ g n j y) Filter.atTop (𝓝 (glim j y))) :
+    ∀ᵐ x : E3, Filter.Tendsto
+      (fun n ↦ ModelTruncatedOperator α u c (g n) a b x) Filter.atTop
+      (𝓝 (ModelTruncatedOperator α u c glim a b x)) := by
+  have hslice : ∀ j : Fin 3, ∀ᵐ x : E3, ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n j (x - r • Anisotropy.coordinateDirection j)) Filter.atTop
+      (𝓝 (glim j (x - r • Anisotropy.coordinateDirection j))) := fun j ↦
+    ae_line_tendsto_of_ae_tendsto j (fun n ↦ g n j) (glim j)
+      (fun n ↦ hgmeas n j) (hglimmeas j) (htend j)
+  filter_upwards [hslice 0, hslice 1, hslice 2] with x h0 h1 h2
+  refine tendsto_ModelTruncatedOperator_of_ae_line_all α u c a b x g glim C B
+    ha hC hcm hcC hgmeas hB hgB ?_
+  intro j
+  fin_cases j
+  · exact h0
+  · exact h1
+  · exact h2
+
+/-- **The strong estimate transfers when every slot is approximated.**  This is
+the form the good budget consumes: the bound is known for Schwartz fields in
+all three slots, and the fields it is needed for are only bounded and
+measurable. -/
+theorem lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto_all
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (a b : ℝ)
+    (g : ℕ → ModelOperatorRealInput) (glim : ModelOperatorRealInput)
+    (C : ℝ) (B : Fin 3 → ℝ) {R : ℝ} (hR : 0 < R) {K : ℝ≥0∞}
+    (ha : 0 < a) (hC : 0 ≤ C) (hcm : Measurable c) (hcC : ∀ t : ℝ, |c t| ≤ C)
+    (hgmeas : ∀ n j, Measurable (g n j)) (hB : ∀ j, 0 ≤ B j)
+    (hgB : ∀ n j, ∀ y : E3, |g n j y| ≤ B j)
+    (hglimmeas : ∀ j, Measurable (glim j))
+    (htend : ∀ j : Fin 3, ∀ᵐ y : E3,
+      Filter.Tendsto (fun n ↦ g n j y) Filter.atTop (𝓝 (glim j y)))
+    (hopmeas : ∀ n, AEMeasurable
+      (ModelTruncatedOperator α u c (g n) a b) volume)
+    (hbound : ∀ n, ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c (g n) a b x| ^ R) ≤ K) :
+    ∫⁻ x : E3, ENNReal.ofReal
+        (|ModelTruncatedOperator α u c glim a b x| ^ R) ≤ K :=
+  lintegral_rpow_le_of_ae_tendsto hR hopmeas
+    (ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all α u c a b g glim C B
+      ha hC hcm hcC hgmeas hB hgB hglimmeas htend)
+    hbound
+
+end
+end Twisted
+end Auto
