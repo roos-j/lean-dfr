@@ -91260,3 +91260,4104 @@ theorem weak_bad_budget_canonical_countable
 end
 end Twisted
 end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The normalisation in the forms the three budgets consume
+
+Source: `lem:one_fiber`, "normalize all input norms to one".  The three budgets
+state the distinguished input's normalisation differently -- as an ambient
+integral, as an ambient lower integral, as `L^p` membership, and as an integral
+over the fiber product -- and all four follow from the first.
+-/
+
+/-- **The normalisation, in the four forms the budgets consume.** -/
+theorem aux_canonical_mass_forms
+    (m : Fin 3) (g : E3 → ℝ) (hg : Measurable g) {p : ℝ} (hp : 0 < p)
+    (hint : Integrable (fun x : E3 ↦ |g x| ^ p) (volume : Measure E3))
+    (hmass : (∫ x : E3, |g x| ^ p) ≤ 1) :
+    (∫⁻ x : E3, ENNReal.ofReal (|g x| ^ p) ≤ 1) ∧
+    MemLp g (ENNReal.ofReal p) (volume : Measure E3) ∧
+    Integrable (fun yz ↦ |coordinateFiberInput m g yz| ^ p)
+      ((volume : Measure ℝ).prod (volume : Measure (TransverseSpace m))) ∧
+    (∫ yz, |coordinateFiberInput m g yz| ^ p
+      ∂((volume : Measure ℝ).prod
+        (volume : Measure (TransverseSpace m)))) ≤ 1 := by
+  classical
+  have hnn : ∀ x : E3, 0 ≤ |g x| ^ p := fun x ↦ Real.rpow_nonneg (abs_nonneg _) p
+  have habs : ∀ x : E3, ‖g x‖ ^ p = |g x| ^ p := by
+    intro x
+    rw [Real.norm_eq_abs]
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · rw [← ofReal_integral_eq_lintegral_ofReal hint
+      (Filter.Eventually.of_forall hnn)]
+    calc ENNReal.ofReal (∫ x : E3, |g x| ^ p) ≤ ENNReal.ofReal 1 :=
+          ENNReal.ofReal_le_ofReal hmass
+      _ = 1 := by simp
+  · refine (integrable_norm_rpow_iff hg.aestronglyMeasurable
+      (by simp [hp]) (by simp)).mp ?_
+    rw [ENNReal.toReal_ofReal hp.le]
+    exact hint.congr (Filter.Eventually.of_forall fun x ↦ (habs x).symm)
+  · have hprod : (volume : Measure (ℝ × TransverseSpace m))
+        = (volume : Measure ℝ).prod (volume : Measure (TransverseSpace m)) :=
+      Measure.volume_eq_prod _ _
+    have hjoin : MeasurePreserving (coordinateJoin m)
+        (volume : Measure (ℝ × TransverseSpace m)) (volume : Measure E3) :=
+      (coordinateSplitEquiv_measurePreserving m).symm (coordinateSplitEquiv m)
+    have h0 : Integrable (fun yz ↦ |coordinateFiberInput m g yz| ^ p)
+        (volume : Measure (ℝ × TransverseSpace m)) :=
+      MeasurePreserving.integrable_comp_of_integrable hjoin hint
+    rw [← hprod]
+    exact h0
+  · have hprod : (volume : Measure (ℝ × TransverseSpace m))
+        = (volume : Measure ℝ).prod (volume : Measure (TransverseSpace m)) :=
+      Measure.volume_eq_prod _ _
+    rw [← hprod]
+    have hEq : (∫ yz : ℝ × TransverseSpace m,
+        |coordinateFiberInput m g yz| ^ p) = ∫ x : E3, |g x| ^ p := by
+      rw [← MeasurePreserving.integral_comp'
+        (f := coordinateSplitEquiv m)
+        (coordinateSplitEquiv_measurePreserving m)
+        (fun yz ↦ |coordinateFiberInput m g yz| ^ p)]
+      apply integral_congr_ae
+      filter_upwards with x
+      simp only [coordinateFiberInput, coordinateSplitEquiv_apply,
+        coordinateJoin_split]
+    rw [hEq]
+    exact hmass
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The weak-`L^R` bound at the canonical stopping data
+
+Source: `lem:one_fiber`.  The three budgets at the height `H = (τ/A_u)^R/2`,
+combined at every level, are the lemma's conclusion.
+-/
+
+/-- **The one-fiber weak bound at the canonical stopping data.** -/
+theorem ModelTruncatedOperator_weakNorm_le_canonical
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) (hq0 : 1 < q 0)
+    {P₁ P₂ p qc R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 1 ≤ R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : qc.HolderConjugate p) (hqc : 1 < qc) :
+    ∃ Cw Ct C : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (Bd : Fin 3 → ℝ)
+        (a b : ℝ) (m : Fin 3) (j₁ j₂ : Fin 3) {Aconst : ℝ},
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
+      1 ≤ p → p ≤ q m.succ → 0 < Aconst →
+      Integrable (fun x : E3 ↦ |f m x| ^ p) (volume : Measure E3) →
+      (∫ x : E3, |f m x| ^ p) ≤ 1 →
+      (∀ jj, lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ 1) →
+      (∀ z : TransverseSpace m, Integrable (fun y : ℝ ↦
+        coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3) ≤ 1 →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3) ≤ 1 →
+      64 * C * sourceWeight u ^ 100 ≤ Aconst →
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) *
+        sourceWeight u ^ 100 ≤ Aconst →
+      (R * (1 / p - 1 / q m.succ)) * (q 0).conjExponent = (q 0).conjExponent - R →
+      weakNorm volume (ModelTruncatedOperator α u c f a b) R
+        ≤ ENNReal.ofReal ((4 + 2 * 2 ^ ((q 0).conjExponent / R - 1) + 2 * 1) *
+            Aconst) := by
+  classical
+  have hR0 : (0 : ℝ) < R := lt_of_lt_of_le zero_lt_one hR
+  rcases weak_bad_budget_canonical_countable (P₁ := P₁) (P₂ := P₂) (p := p)
+    (q := qc) (R := R) (r23 := r23) hR0 hP₁ hP₂ hpq hqc with
+    ⟨Cw, Ct, hCw, hCt, hbad⟩
+  rcases weak_good_budget_canonical α q hq hsum hqs hq1 hq0 with ⟨C, hC, hgood⟩
+  refine ⟨Cw, Ct, C, hCw, hCt, hC, ?_⟩
+  intro u c f Bd a b m j₁ j₂ Aconst hsplit ha hcm hc hfmeas hBd0 hfB hfmem hp
+    hpP hAc hint hmassE3 hnorm hfiber hn₁ hn₂ hCA hAu hexp
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  obtain ⟨hlint, hfp, hFint, hFmass⟩ :=
+    aux_canonical_mass_forms m (f m) (hfmeas m) hp0 hint hmassE3
+  refine ModelTruncatedOperator_weakNorm_le_of_countable_stopping_data α u c f m
+    a b 1 Bd hR hAc.le (by norm_num) (by positivity) (by norm_num) ha
+    (by norm_num) hcm hc hfmeas hBd0 hfB ?_
+  intro lam hlam
+  have hla : (0 : ℝ) < lam / Aconst := div_pos hlam hAc
+  set H : ℝ := (lam / Aconst) ^ R / 2 with hH
+  have hHpos : 0 < H := by
+    rw [hH]
+    have : (0 : ℝ) < (lam / Aconst) ^ R := Real.rpow_pos_of_pos hla R
+    linarith
+  refine ⟨coordinateSourceFiberFiniteMassSet m (f m) p,
+    coordinateSourceFiberAverage m (f m) p, H,
+    coordinateSplit m ⁻¹' (fiberDyadicDoubledExceptionalSet
+      (coordinateSourceFiberFiniteMassSet m (f m) p)
+      (coordinateSourceFiberAverage m (f m) p) H), ?_, ?_, ?_, ?_, ?_⟩
+  · exact measurableSet_sourceFiberFiniteMassSet _ p
+      (measurable_coordinateFiberInput m (f m) (hfmeas m))
+  · exact fun I ↦ measurable_fiberDyadicIntervalAverage _
+      ((continuous_abs.measurable.comp
+        (measurable_coordinateFiberInput m (f m) (hfmeas m))).pow_const p) I
+  · exact weak_exception_budget_doubled_canonical m (f m) (hfmeas m) hint
+      hmassE3 hR hlam hAc hH hHpos
+  · exact hgood u c f Bd a b m ha hcm hc hfmeas hBd0 hfB hfmem hfp hp hpP hR0
+      hlam hAc hH hlint hnorm hCA hexp
+  · rw [one_mul]
+    exact hbad α u c f m a b lam H Bd j₁ j₂ hsplit ha hlam hHpos hcm hc hfmeas
+      hBd0 hfB hfiber hn₁ hn₂ hFint hFmass hAu
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Off the finite-mass set the bad branch vanishes
+
+Source: `lem:one_fiber`.  The selection sets lie in the finite-mass fiber set,
+so on a fiber outside it every selected atom is zero and the scale tail
+vanishes.  This is what lets the fiber-integrability hypothesis be asked for
+only where the source establishes it.
+-/
+
+/-- The selection set lies in the finite-mass fiber set.
+
+Auxiliary. -/
+theorem aux_fiberDyadicSelectionSet_subset
+    {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (I : FiberDyadicInterval) :
+    fiberDyadicSelectionSet Zf A H I ⊆ Zf := fun _ hz ↦ hz.1.1
+
+/-- The bad atoms vanish on a fiber outside the finite-mass set.
+
+Auxiliary. -/
+theorem aux_fiberCZBadAtom_eq_zero_of_notMem
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (I : FiberDyadicInterval)
+    {z : Z} (hz : z ∉ Zf) (y : ℝ) :
+    fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I (y, z) = 0 := by
+  unfold fiberCZBadAtom
+  rw [Set.indicator_of_notMem]
+  intro hmem
+  exact hz (aux_fiberDyadicSelectionSet_subset Zf A H I hmem.2)
+
+/-- **The scale tail vanishes on a fiber outside the finite-mass set.** -/
+theorem aux_selectedFiberScaleTail_eq_zero_of_notMem
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
+    (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+    (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ)
+    (qz : ℝ × Z) (hz : qz.2 ∉ Zf) :
+    selectedFiberScaleTail F Zf Astop H T i j u alpha qz = 0 := by
+  unfold selectedFiberScaleTail
+  refine Finset.sum_eq_zero fun I _ ↦ ?_
+  have hzero : ∀ y : ℝ, fiberCZBadAtom F
+      (fiberDyadicSelectionSet Zf Astop H) I (y, qz.2) = 0 :=
+    aux_fiberCZBadAtom_eq_zero_of_notMem F Zf Astop H I hz
+  simp [hzero]
+
+/-- **The scale tail against the tail majorant, with fiber integrability only
+where the source establishes it.** -/
+theorem selectedFiberScaleTail_le_tail_majorant_outside_of_mass_weak :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ {Z : Type*} [MeasurableSpace Z]
+      (F : ℝ × Z → ℝ) (Zf : Set Z)
+      (Astop : FiberDyadicInterval → Z → ℝ) (H : ℝ)
+      (T : Finset FiberDyadicInterval) (i j : Fin 3) (u : E3) (alpha : ℝ)
+      (qz : ℝ × Z) (B A : ℝ),
+      0 < alpha → 0 ≤ B → 0 ≤ A → Measurable F → MeasurableSet Zf →
+      (∀ I, Measurable (Astop I)) →
+      (qz.2 ∈ Zf → Integrable (fun y : ℝ ↦ F (y, qz.2))) →
+      (∀ yz : ℝ × Z, |F yz| ≤ B) →
+      (∀ I ∈ T, qz.2 ∈ fiberDyadicSelectionSet Zf Astop H I →
+        (∫ y : ℝ, |fiberCZBadAtom F
+          (fiberDyadicSelectionSet Zf Astop H) I (y, qz.2)|)
+          ≤ A * fiberDyadicIntervalRadius I) →
+      qz ∉ fiberDyadicDoubledExceptionalSet Zf Astop H →
+      selectedFiberScaleTail F Zf Astop H T i j u alpha qz ≤
+        C * sourceWeight u ^ 10 * A * (alpha⁻¹ * (1 / 72)) *
+          aux_selectedFiberIntervalTail T Zf Astop H qz := by
+  classical
+  rcases selectedFiberScaleTail_le_tail_majorant_outside_of_mass with
+    ⟨C, hC, hmain⟩
+  refine ⟨C, hC, ?_⟩
+  intro Z _ F Zf Astop H T i j u alpha qz B A halpha hB hA0 hFmeas hZf hAmeas
+    hFint hFB hmass hout
+  by_cases hz : qz.2 ∈ Zf
+  · exact hmain F Zf Astop H T i j u alpha qz B A halpha hB hFmeas hZf hAmeas
+      (hFint hz) hFB hmass hout
+  · rw [aux_selectedFiberScaleTail_eq_zero_of_notMem F Zf Astop H T i j u alpha
+      qz hz]
+    have hw : (0 : ℝ) ≤ sourceWeight u := sourceWeight_nonneg u
+    have hinv : (0 : ℝ) ≤ alpha⁻¹ := inv_nonneg.mpr halpha.le
+    have htail : (0 : ℝ) ≤ aux_selectedFiberIntervalTail T Zf Astop H qz := by
+      unfold aux_selectedFiberIntervalTail
+      refine Finset.sum_nonneg fun I _ ↦ ?_
+      by_cases hmem : qz.2 ∈ fiberDyadicSelectionSet Zf Astop H I
+      · rw [Set.indicator_of_mem hmem]
+        exact intervalTail_nonneg _ _ _
+      · rw [Set.indicator_of_notMem hmem]
+    positivity
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The bad branch with fiber integrability only where it is available
+
+Source: `lem:one_fiber`.  Off the finite-mass fiber set the selected atoms
+vanish, so the scale tail's integrability is trivial there and the hypothesis
+is only needed on that set.
+-/
+
+/-- The scale tail is integrable, assuming fiber integrability only on the
+finite-mass set.
+
+Auxiliary. -/
+theorem integrableOn_scaleTail_fiberCZBadAtom_outside_weak
+    {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (hFmeas : Measurable F)
+    (Zf : Set Z) (A : FiberDyadicInterval → Z → ℝ) (hA : ∀ I, Measurable (A I))
+    (hZf : MeasurableSet Zf) (Hh : ℝ)
+    (I : FiberDyadicInterval) (q : ℝ) (z : Z)
+    (i j : Fin 3) (u : E3) (alpha : ℝ) (halpha : 0 < alpha)
+    (hF : z ∈ Zf → Integrable (fun y : ℝ ↦ F (y, z)))
+    {B : ℝ} (hB0 : 0 ≤ B) (hFB : ∀ yz : ℝ × Z, |F yz| ≤ B)
+    (hout : (q, z) ∉ fiberDyadicDoubledExceptionalSet Zf A Hh) :
+    IntegrableOn (fun t : ℝ ↦
+      |∫ y : ℝ, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A Hh) I (y, z) *
+        kernelDilate (activeModelKernel i j u) (t ^ alpha) (q - y)| * t⁻¹)
+      (Set.Ioi (0 : ℝ)) := by
+  classical
+  by_cases hz : z ∈ fiberDyadicSelectionSet Zf A Hh I
+  · exact integrableOn_scaleTail_fiberCZBadAtom_outside F hFmeas Zf A hA hZf Hh
+      I q z i j u alpha halpha
+      (hF (aux_fiberDyadicSelectionSet_subset Zf A Hh I hz)) hB0 hFB hout
+  · have hzero : ∀ t : ℝ,
+        |∫ y : ℝ, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A Hh) I (y, z) *
+          kernelDilate (activeModelKernel i j u) (t ^ alpha) (q - y)| * t⁻¹
+          = 0 := by
+      intro t
+      have hatom : ∀ y : ℝ,
+          fiberCZBadAtom F (fiberDyadicSelectionSet Zf A Hh) I (y, z) *
+            kernelDilate (activeModelKernel i j u) (t ^ alpha) (q - y) = 0 := by
+        intro y
+        have h0 : fiberCZBadAtom F (fiberDyadicSelectionSet Zf A Hh) I (y, z)
+            = 0 := by
+          rw [fiberCZBadAtom, Set.indicator_of_notMem]
+          intro hmem
+          exact hz hmem.2
+        rw [h0, zero_mul]
+      simp [hatom]
+    exact (integrableOn_zero (μ := volume)).congr_fun (fun t _ ↦ (hzero t).symm)
+      measurableSet_Ioi
+
+/-- **The bad part outside the doubled exceptional set, with fiber
+integrability only on the finite-mass set.** -/
+theorem abs_ModelTruncatedOperator_bad_le_outside_weak :
+    ∃ Cw : ℝ, 0 ≤ Cw ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
+      (f : ModelOperatorRealInput) (m : Fin 3) (a b : ℝ) (x : E3)
+      (Zf : Set (TransverseSpace m))
+      (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+      (T : Finset FiberDyadicInterval) (B : Fin 3 → ℝ),
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ B jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ B jj) →
+      MeasurableSet Zf → (∀ I, Measurable (Astop I)) →
+      ((coordinateSplit m x).2 ∈ Zf → Integrable (fun y : ℝ ↦
+        coordinateFiberInput m (f m) (y, (coordinateSplit m x).2))) →
+      coordinateSplit m x ∉ fiberDyadicDoubledExceptionalSet Zf Astop H →
+      |ModelTruncatedOperator α u c (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        (∏ jj ∈ Finset.univ.erase m, Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal jj (fun y ↦ (f jj y : ℂ)) x) *
+          selectedFiberScaleTail (coordinateFiberInput m (f m)) Zf Astop H T
+            2 m u ((α.weight m : ℕ) : ℝ) (coordinateSplit m x) := by
+  classical
+  rcases abs_ModelTruncatedOperator_bad_le_maximalWeight_mul_selectedFiberScaleTail
+    with ⟨Cw, hCw, hmain⟩
+  refine ⟨Cw, hCw, ?_⟩
+  intro α u c f m a b x Zf Astop H T B ha hcm hc hfmeas hB0 hfB hZf hA hfiber
+    hout
+  set S : FiberDyadicInterval → Set (TransverseSpace m) :=
+    fiberDyadicSelectionSet Zf Astop H with hS
+  have hSmeas : ∀ I, MeasurableSet (S I) := fun I ↦
+    measurableSet_fiberDyadicSelectionSet Zf hZf Astop hA H I
+  have hFmeas : Measurable (coordinateFiberInput m (f m)) :=
+    measurable_coordinateFiberInput m (f m) (hfmeas m)
+  have hbadmeas : Measurable (coordinateFiberBadField m (f m) T S) :=
+    measurable_coordinateFiberBadField m (f m) T S (hfmeas m) hSmeas
+  have hrep : ∀ jj, Measurable (modelOperatorReplace f m
+      (coordinateFiberBadField m (f m) T S) jj) := by
+    intro jj
+    by_cases hjj : jj = m
+    · subst hjj; simpa only [modelOperatorReplace_same] using hbadmeas
+    · simpa only [modelOperatorReplace_ne f m jj _ hjj] using hfmeas jj
+  have hmeasbad : Measurable (fun t : ℝ ↦ ModelCoordinateConvolution m
+      (coordinateFiberBadField m (f m) T S)
+      (activeModelKernel 2 m u) (t ^ ((α.weight m : ℕ) : ℝ)) x) := by
+    refine measurable_ModelCoordinateConvolution_scale m _ _ _ x hbadmeas ?_
+    unfold activeModelKernel
+    by_cases hji : m = 2
+    · subst hji; simp only [if_pos]; exact measurable_ModelThirdKernel _
+    · simp only [if_neg hji]; exact measurable_ModelLowKernel _
+  have hFB : ∀ yz : ℝ × TransverseSpace m,
+      |coordinateFiberInput m (f m) yz| ≤ B m := fun yz ↦ hfB m _
+  exact hmain α u c f m a b x Zf Astop H T B ha hcm hc hfmeas hB0 hfB hrep
+    hmeasbad
+    (fun t ht I _ ↦ integrable_fiberCZBadAtom_mul_kernelDilate
+      (coordinateFiberInput m (f m)) hFmeas S hSmeas I _ (hB0 m) hFB
+      (integrable_activeModelKernel 2 m u)
+      (Real.rpow_pos_of_pos (Set.mem_Ioi.mp ht) _) _)
+    (fun I _ ↦ integrableOn_scaleTail_fiberCZBadAtom_outside_weak
+      (coordinateFiberInput m (f m)) hFmeas Zf Astop hA hZf H I _ _ 2 m u _
+      (Nat.cast_pos.mpr (α.weight_pos m)) hfiber (hB0 m) hFB
+      (by simpa using hout))
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The bad branch's pointwise bound and level budget, with fiber
+integrability only on the finite-mass set -/
+
+theorem abs_ModelTruncatedOperator_bad_le_majorant_outside_of_mass_weak :
+    ∃ Cw Ct : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
+      (f : ModelOperatorRealInput) (m : Fin 3) (a b : ℝ) (x : E3)
+      (Zf : Set (TransverseSpace m))
+      (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+      (T : Finset FiberDyadicInterval) (B : Fin 3 → ℝ) (A : ℝ),
+      0 < a → 0 ≤ A → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ B jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ B jj) →
+      MeasurableSet Zf → (∀ I, Measurable (Astop I)) →
+      ((coordinateSplit m x).2 ∈ Zf → Integrable (fun y : ℝ ↦
+        coordinateFiberInput m (f m) (y, (coordinateSplit m x).2))) →
+      (∀ I ∈ T, (coordinateSplit m x).2 ∈
+          fiberDyadicSelectionSet Zf Astop H I →
+        (∫ y : ℝ, |fiberCZBadAtom (coordinateFiberInput m (f m))
+          (fiberDyadicSelectionSet Zf Astop H) I
+            (y, (coordinateSplit m x).2)|)
+          ≤ A * fiberDyadicIntervalRadius I) →
+      coordinateSplit m x ∉ fiberDyadicDoubledExceptionalSet Zf Astop H →
+      |ModelTruncatedOperator α u c (modelOperatorReplace f m
+          (coordinateFiberBadField m (f m) T
+            (fiberDyadicSelectionSet Zf Astop H))) a b x| ≤
+        (∏ jj ∈ Finset.univ.erase m, Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal jj (fun y ↦ (f jj y : ℂ)) x) *
+          (Ct * sourceWeight u ^ 10 * A *
+            (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+            aux_selectedFiberIntervalTail T Zf Astop H (coordinateSplit m x)) := by
+  classical
+  rcases abs_ModelTruncatedOperator_bad_le_outside_weak with ⟨Cw, hCw, hpt⟩
+  rcases selectedFiberScaleTail_le_tail_majorant_outside_of_mass_weak with
+    ⟨Ct, hCt, htail⟩
+  refine ⟨Cw, Ct, hCw, hCt, ?_⟩
+  intro α u c f m a b x Zf Astop H T B A ha hA0 hcm hc hfmeas hB0 hfB hZf hA
+    hfiber hmass hout
+  have hprodnn : (0 : ℝ) ≤ ∏ jj ∈ Finset.univ.erase m, Cw * sourceWeight u ^ 10 *
+      coordinateDyadicBallMaximal jj (fun y ↦ (f jj y : ℂ)) x := by
+    refine Finset.prod_nonneg fun jj _ ↦ ?_
+    have h1 : (0 : ℝ) ≤ sourceWeight u := sourceWeight_nonneg u
+    have h2 : (0 : ℝ) ≤ coordinateDyadicBallMaximal jj
+        (fun y ↦ (f jj y : ℂ)) x := ENNReal.toReal_nonneg
+    positivity
+  have hbase := hpt α u c f m a b x Zf Astop H T B ha hcm hc hfmeas hB0 hfB
+    hZf hA hfiber hout
+  refine le_trans hbase ?_
+  refine mul_le_mul_of_nonneg_left ?_ hprodnn
+  exact htail (coordinateFiberInput m (f m)) Zf Astop H T 2 m u
+    ((α.weight m : ℕ) : ℝ) (coordinateSplit m x) (B m) A
+    (Nat.cast_pos.mpr (α.weight_pos m)) (hB0 m) hA0
+    (measurable_coordinateFiberInput m (f m) (hfmeas m)) hZf hA hfiber
+    (fun yz ↦ hfB m _) hmass hout
+
+theorem weak_bad_level_budget_majorant_outside_of_mass_weak
+    {p1 p2 p3 r23 : ENNReal} {R : ℝ} (hR : 0 < R)
+    [ENNReal.HolderTriple p2 p3 r23]
+    [ENNReal.HolderTriple p1 r23 (ENNReal.ofReal R)] :
+    ∃ Cw Ct : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
+      (f : ModelOperatorRealInput) (m : Fin 3) (a b lam : ℝ)
+      (Zf : Set (TransverseSpace m))
+      (Astop : FiberDyadicInterval → TransverseSpace m → ℝ) (H : ℝ)
+      (T : Finset FiberDyadicInterval) (B : Fin 3 → ℝ) (A : ℝ)
+      (j₁ j₂ : Fin 3),
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      0 < a → 0 < lam → 0 ≤ A → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ B jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ B jj) →
+      MeasurableSet Zf → (∀ I, Measurable (Astop I)) →
+      (∀ z : TransverseSpace m, z ∈ Zf → Integrable (fun y : ℝ ↦
+        coordinateFiberInput m (f m) (y, z))) →
+      (∀ (z : TransverseSpace m) (I : FiberDyadicInterval), I ∈ T →
+        z ∈ fiberDyadicSelectionSet Zf Astop H I →
+        (∫ y : ℝ, |fiberCZBadAtom (coordinateFiberInput m (f m))
+          (fiberDyadicSelectionSet Zf Astop H) I (y, z)|)
+          ≤ A * fiberDyadicIntervalRadius I) →
+      ENNReal.ofReal (lam / 2) *
+          volume ({x : E3 | lam / 2 < |ModelTruncatedOperator α u c
+            (modelOperatorReplace f m
+              (coordinateFiberBadField m (f m) T
+                (fiberDyadicSelectionSet Zf Astop H))) a b x|} ∩
+            (coordinateSplit m ⁻¹'
+              (fiberDyadicDoubledExceptionalSet Zf Astop H))ᶜ) ^ (1 / R) ≤
+        eLpNorm (fun x : E3 ↦ Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j₁ (fun y ↦ (f j₁ y : ℂ)) x) p1 volume *
+          eLpNorm (fun x : E3 ↦ Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j₂ (fun y ↦ (f j₂ y : ℂ)) x) p2 volume *
+          eLpNorm (fun x : E3 ↦ Ct * sourceWeight u ^ 10 * A *
+            (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+            aux_selectedFiberIntervalTail T Zf Astop H (coordinateSplit m x))
+            p3 volume := by
+  classical
+  rcases abs_ModelTruncatedOperator_bad_le_majorant_outside_of_mass_weak with
+    ⟨Cw, Ct, hCw, hCt, hpt⟩
+  refine ⟨Cw, Ct, hCw, hCt, ?_⟩
+  intro α u c f m a b lam Zf Astop H T B A j₁ j₂ hsplit ha hlam hA0 hcm hc
+    hfmeas hB0 hfB hZf hA hfiber hmass
+  refine weak_level_budget_of_pointwise_outside (p1 := p1) (p2 := p2)
+    (p3 := p3) (r23 := r23) hR _ _ _ _ _ hlam ?_ ?_ ?_ ?_
+  · exact ((coordinateDyadicBallMaximal_measurable j₁ _
+      (hfmeas j₁).complex_ofReal).const_mul _).aestronglyMeasurable
+  · exact ((coordinateDyadicBallMaximal_measurable j₂ _
+      (hfmeas j₂).complex_ofReal).const_mul _).aestronglyMeasurable
+  · exact (((aux_measurable_selectedFiberIntervalTail T Zf hZf Astop hA H).comp
+      (coordinateSplit_measurePreserving m).measurable).const_mul
+        _).aestronglyMeasurable
+  · intro x hx
+    have hout : coordinateSplit m x
+        ∉ fiberDyadicDoubledExceptionalSet Zf Astop H := hx
+    have hbase := hpt α u c f m a b x Zf Astop H T B A ha hA0 hcm hc hfmeas hB0
+      hfB hZf hA (fun hzf ↦ hfiber (coordinateSplit m x).2 hzf)
+      (fun I hI hz ↦ hmass (coordinateSplit m x).2 I hI hz) hout
+    rw [hsplit (fun jj ↦ Cw * sourceWeight u ^ 10 *
+      coordinateDyadicBallMaximal jj (fun y ↦ (f jj y : ℂ)) x)] at hbase
+    simpa only [mul_assoc] using hbase
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The canonical bad budget and weak bound, asking fiber integrability only
+on the finite-mass set -/
+
+theorem weak_bad_budget_canonical_finite_weak
+    {P₁ P₂ p q R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 0 < R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : q.HolderConjugate p) (hq : 1 < q) :
+    ∃ Cw Ct : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
+      (f : ModelOperatorRealInput) (m : Fin 3) (a b lam H : ℝ)
+      (T : Finset FiberDyadicInterval) (B : Fin 3 → ℝ) (j₁ j₂ : Fin 3)
+      {Aconst : ℝ},
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      0 < a → 0 < lam → 0 < H → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ B jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ B jj) →
+      (∀ z : TransverseSpace m,
+        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
+          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3) ≤ 1 →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3) ≤ 1 →
+      Integrable (fun yz ↦ |coordinateFiberInput m (f m) yz| ^ p)
+        ((volume : Measure ℝ).prod (volume : Measure (TransverseSpace m))) →
+      (∫ yz, |coordinateFiberInput m (f m) yz| ^ p
+        ∂((volume : Measure ℝ).prod
+          (volume : Measure (TransverseSpace m)))) ≤ 1 →
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum q) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) *
+        sourceWeight u ^ 100 ≤ Aconst →
+      ENNReal.ofReal (lam / 2) *
+          volume ({x : E3 | lam / 2 < |ModelTruncatedOperator α u c
+            (modelOperatorReplace f m
+              (coordinateFiberBadField m (f m) T
+                (fiberDyadicSelectionSet
+                  (coordinateSourceFiberFiniteMassSet m (f m) p)
+                  (coordinateSourceFiberAverage m (f m) p) H))) a b x|} ∩
+            (coordinateSplit m ⁻¹'
+              (fiberDyadicDoubledExceptionalSet
+                (coordinateSourceFiberFiniteMassSet m (f m) p)
+                (coordinateSourceFiberAverage m (f m) p) H))ᶜ) ^ (1 / R)
+        ≤ ENNReal.ofReal Aconst := by
+  classical
+  rcases weak_bad_level_budget_majorant_outside_of_mass_weak
+    (p1 := ENNReal.ofReal P₁) (p2 := ENNReal.ofReal P₂)
+    (p3 := ENNReal.ofReal p) (r23 := r23) hR with ⟨Cw, Ct, hCw, hCt, hbudget⟩
+  refine ⟨Cw, Ct, hCw, hCt, ?_⟩
+  intro α u c f m a b lam H T B j₁ j₂ Aconst hsplit ha hlam hH hcm hc hfmeas
+    hB0 hfB hfiber hn₁ hn₂ hFint hmass hAu
+  have hFinput : Measurable (coordinateFiberInput m (f m)) :=
+    measurable_coordinateFiberInput m (f m) (hfmeas m)
+  have hZf : MeasurableSet (coordinateSourceFiberFiniteMassSet m (f m) p) :=
+    measurableSet_sourceFiberFiniteMassSet _ p hFinput
+  have hA : ∀ I, Measurable (coordinateSourceFiberAverage m (f m) p I) :=
+    fun I ↦ measurable_fiberDyadicIntervalAverage _
+      ((continuous_abs.measurable.comp hFinput).pow_const p) I
+  have hstep := hbudget α u c f m a b lam
+    (coordinateSourceFiberFiniteMassSet m (f m) p)
+    (coordinateSourceFiberAverage m (f m) p) H T B (4 * (2 * H) ^ (1 / p))
+    j₁ j₂ hsplit ha hlam (by positivity) hcm hc hfmeas hB0 hfB hZf hA hfiber
+    (fun z I _ hz ↦ aux_canonical_atom_mass_le m (f m) (hfmeas m) hpq.symm hH.le
+      z I (hfiber z (aux_fiberDyadicSelectionSet_subset _ _ _ I hz)) hz)
+  refine le_trans hstep ?_
+  have hconst := aux_canonical_bad_term_le_of_weight m f hfmeas B hB0 hfB u α
+    Cw Ct hCw hCt j₁ j₂ hP₁ hP₂ hn₁ hn₂ hpq hq hH hFint hmass T hAu
+  calc eLpNorm (fun x : E3 ↦ Cw * sourceWeight u ^ 10 *
+          coordinateDyadicBallMaximal j₁ (fun y ↦ (f j₁ y : ℂ)) x)
+          (ENNReal.ofReal P₁) volume *
+        eLpNorm (fun x : E3 ↦ Cw * sourceWeight u ^ 10 *
+          coordinateDyadicBallMaximal j₂ (fun y ↦ (f j₂ y : ℂ)) x)
+          (ENNReal.ofReal P₂) volume *
+        eLpNorm (fun x : E3 ↦ Ct * sourceWeight u ^ 10 *
+          (4 * (2 * H) ^ (1 / p)) *
+          (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+          aux_selectedFiberIntervalTail T
+            (coordinateSourceFiberFiniteMassSet m (f m) p)
+            (coordinateSourceFiberAverage m (f m) p) H
+            (coordinateSplit m x)) (ENNReal.ofReal p) volume
+      = eLpNorm (fun x : E3 ↦ Ct * sourceWeight u ^ 10 *
+            (4 * (2 * H) ^ (1 / p)) *
+            (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+            aux_selectedFiberIntervalTail T
+              (coordinateSourceFiberFiniteMassSet m (f m) p)
+              (coordinateSourceFiberAverage m (f m) p) H
+              (coordinateSplit m x)) (ENNReal.ofReal p) volume *
+          eLpNorm (fun x : E3 ↦ Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j₁ (fun y ↦ (f j₁ y : ℂ)) x)
+            (ENNReal.ofReal P₁) volume *
+          eLpNorm (fun x : E3 ↦ Cw * sourceWeight u ^ 10 *
+            coordinateDyadicBallMaximal j₂ (fun y ↦ (f j₂ y : ℂ)) x)
+            (ENNReal.ofReal P₂) volume := by ring
+    _ ≤ ENNReal.ofReal Aconst := hconst
+
+theorem weak_bad_budget_canonical_countable_weak
+    {P₁ P₂ p q R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 0 < R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : q.HolderConjugate p) (hq : 1 < q) :
+    ∃ Cw Ct : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
+      (f : ModelOperatorRealInput) (m : Fin 3) (a b lam H : ℝ)
+      (B : Fin 3 → ℝ) (j₁ j₂ : Fin 3) {Aconst : ℝ},
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      0 < a → 0 < lam → 0 < H → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ B jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ B jj) →
+      (∀ z : TransverseSpace m,
+        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
+          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3) ≤ 1 →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3) ≤ 1 →
+      Integrable (fun yz ↦ |coordinateFiberInput m (f m) yz| ^ p)
+        ((volume : Measure ℝ).prod (volume : Measure (TransverseSpace m))) →
+      (∫ yz, |coordinateFiberInput m (f m) yz| ^ p
+        ∂((volume : Measure ℝ).prod
+          (volume : Measure (TransverseSpace m)))) ≤ 1 →
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum q) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) *
+        sourceWeight u ^ 100 ≤ Aconst →
+      ENNReal.ofReal (lam / 2) *
+          volume ({x : E3 | lam / 2 < |ModelTruncatedOperator α u c
+            (modelOperatorReplace f m
+              (coordinateFiberDyadicCountableBadField m (f m)
+                (coordinateSourceFiberFiniteMassSet m (f m) p)
+                (coordinateSourceFiberAverage m (f m) p) H)) a b x|} ∩
+            (coordinateSplit m ⁻¹'
+              (fiberDyadicDoubledExceptionalSet
+                (coordinateSourceFiberFiniteMassSet m (f m) p)
+                (coordinateSourceFiberAverage m (f m) p) H))ᶜ) ^ (1 / R)
+        ≤ ENNReal.ofReal Aconst := by
+  classical
+  rcases weak_bad_budget_canonical_finite_weak (P₁ := P₁) (P₂ := P₂) (p := p)
+    (q := q) (R := R) (r23 := r23) hR hP₁ hP₂ hpq hq with
+    ⟨Cw, Ct, hCw, hCt, hfin⟩
+  refine ⟨Cw, Ct, hCw, hCt, ?_⟩
+  intro α u c f m a b lam H B j₁ j₂ Aconst hsplit ha hlam hH hcm hc hfmeas hB0
+    hfB hfiber hn₁ hn₂ hFint hmass hAu
+  have hFinput : Measurable (coordinateFiberInput m (f m)) :=
+    measurable_coordinateFiberInput m (f m) (hfmeas m)
+  have hZf : MeasurableSet (coordinateSourceFiberFiniteMassSet m (f m) p) :=
+    measurableSet_sourceFiberFiniteMassSet _ p hFinput
+  have hA : ∀ I, Measurable (coordinateSourceFiberAverage m (f m) p I) :=
+    fun I ↦ measurable_fiberDyadicIntervalAverage _
+      ((continuous_abs.measurable.comp hFinput).pow_const p) I
+  have hS : ∀ I, MeasurableSet (fiberDyadicSelectionSet
+      (coordinateSourceFiberFiniteMassSet m (f m) p)
+      (coordinateSourceFiberAverage m (f m) p) H I) := fun I ↦
+    measurableSet_fiberDyadicSelectionSet _ hZf _ hA H I
+  have hEmeas : MeasurableSet ((coordinateSplit m ⁻¹'
+      (fiberDyadicDoubledExceptionalSet
+        (coordinateSourceFiberFiniteMassSet m (f m) p)
+        (coordinateSourceFiberAverage m (f m) p) H))ᶜ) := by
+    refine MeasurableSet.compl ?_
+    exact ((coordinateSplit_measurePreserving m).measurable)
+      (measurableSet_fiberDyadicDoubledExceptionalSet _ hZf _ hA H)
+  exact ModelTruncatedOperator_weak_countable_of_finite_restrict α u c f m a b
+    (coordinateSourceFiberFiniteMassSet m (f m) p)
+    (coordinateSourceFiberAverage m (f m) p) H
+    aux_fiberDyadicExhaustion aux_fiberDyadicExhaustion_monotone
+    aux_fiberDyadicExhaustion_exhausts 1 B (lam / 2) hR
+    (ENNReal.ofReal Aconst) _ hEmeas ha (by norm_num) hcm hc hfmeas hB0 hfB
+    (fun n ↦ measurable_coordinateFiberBadField m (f m) _ _ (hfmeas m) hS)
+    (fun n ↦ hfin α u c f m a b lam H (aux_fiberDyadicExhaustion n) B j₁ j₂
+      hsplit ha hlam hH hcm hc hfmeas hB0 hfB hfiber hn₁ hn₂ hFint hmass hAu)
+
+theorem ModelTruncatedOperator_weakNorm_le_canonical_weak
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) (hq0 : 1 < q 0)
+    {P₁ P₂ p qc R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 1 ≤ R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : qc.HolderConjugate p) (hqc : 1 < qc) :
+    ∃ Cw Ct C : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (Bd : Fin 3 → ℝ)
+        (a b : ℝ) (m : Fin 3) (j₁ j₂ : Fin 3) {Aconst : ℝ},
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
+      1 ≤ p → p ≤ q m.succ → 0 < Aconst →
+      Integrable (fun x : E3 ↦ |f m x| ^ p) (volume : Measure E3) →
+      (∫ x : E3, |f m x| ^ p) ≤ 1 →
+      (∀ jj, lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ 1) →
+      (∀ z : TransverseSpace m,
+        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
+          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3) ≤ 1 →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3) ≤ 1 →
+      64 * C * sourceWeight u ^ 100 ≤ Aconst →
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) *
+        sourceWeight u ^ 100 ≤ Aconst →
+      (R * (1 / p - 1 / q m.succ)) * (q 0).conjExponent = (q 0).conjExponent - R →
+      weakNorm volume (ModelTruncatedOperator α u c f a b) R
+        ≤ ENNReal.ofReal ((4 + 2 * 2 ^ ((q 0).conjExponent / R - 1) + 2 * 1) *
+            Aconst) := by
+  classical
+  have hR0 : (0 : ℝ) < R := lt_of_lt_of_le zero_lt_one hR
+  rcases weak_bad_budget_canonical_countable_weak (P₁ := P₁) (P₂ := P₂) (p := p)
+    (q := qc) (R := R) (r23 := r23) hR0 hP₁ hP₂ hpq hqc with
+    ⟨Cw, Ct, hCw, hCt, hbad⟩
+  rcases weak_good_budget_canonical α q hq hsum hqs hq1 hq0 with ⟨C, hC, hgood⟩
+  refine ⟨Cw, Ct, C, hCw, hCt, hC, ?_⟩
+  intro u c f Bd a b m j₁ j₂ Aconst hsplit ha hcm hc hfmeas hBd0 hfB hfmem hp
+    hpP hAc hint hmassE3 hnorm hfiber hn₁ hn₂ hCA hAu hexp
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  obtain ⟨hlint, hfp, hFint, hFmass⟩ :=
+    aux_canonical_mass_forms m (f m) (hfmeas m) hp0 hint hmassE3
+  refine ModelTruncatedOperator_weakNorm_le_of_countable_stopping_data α u c f m
+    a b 1 Bd hR hAc.le (by norm_num) (by positivity) (by norm_num) ha
+    (by norm_num) hcm hc hfmeas hBd0 hfB ?_
+  intro lam hlam
+  have hla : (0 : ℝ) < lam / Aconst := div_pos hlam hAc
+  set H : ℝ := (lam / Aconst) ^ R / 2 with hH
+  have hHpos : 0 < H := by
+    rw [hH]
+    have : (0 : ℝ) < (lam / Aconst) ^ R := Real.rpow_pos_of_pos hla R
+    linarith
+  refine ⟨coordinateSourceFiberFiniteMassSet m (f m) p,
+    coordinateSourceFiberAverage m (f m) p, H,
+    coordinateSplit m ⁻¹' (fiberDyadicDoubledExceptionalSet
+      (coordinateSourceFiberFiniteMassSet m (f m) p)
+      (coordinateSourceFiberAverage m (f m) p) H), ?_, ?_, ?_, ?_, ?_⟩
+  · exact measurableSet_sourceFiberFiniteMassSet _ p
+      (measurable_coordinateFiberInput m (f m) (hfmeas m))
+  · exact fun I ↦ measurable_fiberDyadicIntervalAverage _
+      ((continuous_abs.measurable.comp
+        (measurable_coordinateFiberInput m (f m) (hfmeas m))).pow_const p) I
+  · exact weak_exception_budget_doubled_canonical m (f m) (hfmeas m) hint
+      hmassE3 hR hlam hAc hH hHpos
+  · exact hgood u c f Bd a b m ha hcm hc hfmeas hBd0 hfB hfmem hfp hp hpP hR0
+      hlam hAc hH hlint hnorm hCA hexp
+  · rw [one_mul]
+    exact hbad α u c f m a b lam H Bd j₁ j₂ hsplit ha hlam hHpos hcm hc hfmeas
+      hBd0 hfB hfiber hn₁ hn₂ hFint hFmass hAu
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The weak norm is homogeneous
+
+Source: `lem:one_fiber`, "normalize all input norms to one".  Restoring the
+norms at the end uses that the weak norm scales.
+-/
+
+/-- The level set of a positive multiple.
+
+Auxiliary. -/
+theorem aux_setOf_lt_abs_const_mul
+    {X : Type*} (v : X → ℝ) {k τ : ℝ} (hk : 0 < k) :
+    {x : X | τ < |k * v x|} = {x : X | τ / k < |v x|} := by
+  ext x
+  simp only [Set.mem_setOf_eq, abs_mul, abs_of_pos hk]
+  constructor
+  · intro h
+    exact (div_lt_iff₀ hk).mpr (by linarith [h])
+  · intro h
+    have := (div_lt_iff₀ hk).mp h
+    linarith
+
+/-- **The weak norm is homogeneous.** -/
+theorem weakNorm_const_mul
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) (R : ℝ)
+    {k : ℝ} (hk : 0 < k) :
+    weakNorm μ (fun x ↦ k * v x) R = ENNReal.ofReal k * weakNorm μ v R := by
+  unfold weakNorm
+  rw [ENNReal.mul_iSup]
+  refine le_antisymm ?_ ?_
+  · refine iSup₂_le fun τ hτ ↦ ?_
+    have hτ0 : 0 < τ := Set.mem_Ioi.mp hτ
+    have hdiv : 0 < τ / k := div_pos hτ0 hk
+    have hset := aux_setOf_lt_abs_const_mul v (τ := τ) hk
+    have hsplit : ENNReal.ofReal τ = ENNReal.ofReal k * ENNReal.ofReal (τ / k) := by
+      rw [← ENNReal.ofReal_mul hk.le]
+      congr 1
+      field_simp
+    rw [hset, hsplit, mul_assoc]
+    refine le_iSup_of_le (τ / k) ?_
+    rw [ENNReal.mul_iSup]
+    exact le_iSup_of_le (Set.mem_Ioi.mpr hdiv) le_rfl
+  · refine iSup_le fun σ ↦ ?_
+    rw [ENNReal.mul_iSup]
+    refine iSup_le fun hσ ↦ ?_
+    have hσ0 : 0 < σ := Set.mem_Ioi.mp hσ
+    have hks : 0 < k * σ := mul_pos hk hσ0
+    have hset := aux_setOf_lt_abs_const_mul v (τ := k * σ) hk
+    have hcancel : k * σ / k = σ := by field_simp
+    rw [hcancel] at hset
+    refine le_iSup_of_le (k * σ) ?_
+    refine le_iSup_of_le (Set.mem_Ioi.mpr hks) ?_
+    rw [hset, ← mul_assoc]
+    refine mul_le_mul' (le_of_eq ?_) le_rfl
+    rw [← ENNReal.ofReal_mul hk.le]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The truncated operator is trilinear in its inputs
+
+Source: `lem:one_fiber`, "normalize all input norms to one".  Restoring the
+norms at the end uses that the operator scales in each slot.
+-/
+
+/-- Independently rescale the three real inputs of the truncated operator. -/
+noncomputable def modelOperatorRealRescale
+    (k : Fin 3 → ℝ) (f : ModelOperatorRealInput) : ModelOperatorRealInput :=
+  fun j ↦ k j • f j
+
+@[simp] theorem modelOperatorRealRescale_apply
+    (k : Fin 3 → ℝ) (f : ModelOperatorRealInput) (j : Fin 3) (x : E3) :
+    modelOperatorRealRescale k f j x = k j * f j x := by
+  simp [modelOperatorRealRescale]
+
+/-- The truncated operator's integrand is trilinear in rescaled inputs. -/
+theorem modelTruncatedOperatorIntegrand_rescale
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (k : Fin 3 → ℝ)
+    (f : ModelOperatorRealInput) (t : ℝ) (x : E3) :
+    modelTruncatedOperatorIntegrand α u c (modelOperatorRealRescale k f) t x =
+      (∏ j : Fin 3, k j) * modelTruncatedOperatorIntegrand α u c f t x := by
+  unfold modelTruncatedOperatorIntegrand
+  have h0 : modelOperatorRealRescale k f 0 = k 0 • f 0 := rfl
+  have h1 : modelOperatorRealRescale k f 1 = k 1 • f 1 := rfl
+  have h2 : modelOperatorRealRescale k f 2 = k 2 • f 2 := rfl
+  rw [h0, h1, h2, ModelCoordinateConvolution_smul,
+    ModelCoordinateConvolution_smul, ModelCoordinateConvolution_smul,
+    Fin.prod_univ_three]
+  ring
+
+/-- **The truncated operator is trilinear in its inputs.** -/
+theorem ModelTruncatedOperator_rescale
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (k : Fin 3 → ℝ)
+    (f : ModelOperatorRealInput) (a b : ℝ) (x : E3) :
+    ModelTruncatedOperator α u c (modelOperatorRealRescale k f) a b x =
+      (∏ j : Fin 3, k j) * ModelTruncatedOperator α u c f a b x := by
+  unfold ModelTruncatedOperator
+  rw [← integral_const_mul]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun t ↦ ?_)
+  exact modelTruncatedOperatorIntegrand_rescale α u c k f t x
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The weak norm of the truncated operator under rescaling
+
+Source: `lem:one_fiber`.  Combining the operator's trilinearity with the weak
+norm's homogeneity: rescaling the inputs rescales the weak bound by the product
+of the factors.  This is what restores the input norms after the manuscript's
+normalisation.
+-/
+
+/-- **The weak norm of the truncated operator scales with its inputs.** -/
+theorem weakNorm_ModelTruncatedOperator_rescale
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (k : Fin 3 → ℝ)
+    (hk : 0 < ∏ j : Fin 3, k j)
+    (f : ModelOperatorRealInput) (a b R : ℝ) :
+    weakNorm volume
+        (ModelTruncatedOperator α u c (modelOperatorRealRescale k f) a b) R
+      = ENNReal.ofReal (∏ j : Fin 3, k j) *
+          weakNorm volume (ModelTruncatedOperator α u c f a b) R := by
+  have hfun : (ModelTruncatedOperator α u c (modelOperatorRealRescale k f) a b)
+      = fun x ↦ (∏ j : Fin 3, k j) * ModelTruncatedOperator α u c f a b x := by
+    funext x
+    exact ModelTruncatedOperator_rescale α u c k f a b x
+  rw [hfun]
+  exact weakNorm_const_mul volume _ R hk
+
+/-- Rescaling by the reciprocals recovers the original inputs.
+
+Auxiliary. -/
+theorem aux_modelOperatorRealRescale_inv
+    (k : Fin 3 → ℝ) (hk : ∀ j, k j ≠ 0) (f : ModelOperatorRealInput) :
+    modelOperatorRealRescale k (modelOperatorRealRescale (fun j ↦ (k j)⁻¹) f)
+      = f := by
+  funext j x
+  simp only [modelOperatorRealRescale_apply]
+  field_simp [hk j]
+
+/-- **The weak bound with the input norms restored.**
+
+If the operator's weak norm obeys a bound for the rescaled inputs, it obeys the
+bound scaled by the reciprocal product for the originals. -/
+theorem weakNorm_ModelTruncatedOperator_of_rescaled
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (k : Fin 3 → ℝ)
+    (hk : ∀ j, 0 < k j) (f : ModelOperatorRealInput) (a b R : ℝ) {K : ℝ≥0∞}
+    (hbound : weakNorm volume
+      (ModelTruncatedOperator α u c (modelOperatorRealRescale k f) a b) R ≤ K) :
+    weakNorm volume (ModelTruncatedOperator α u c f a b) R
+      ≤ ENNReal.ofReal (∏ j : Fin 3, (k j)⁻¹) * K := by
+  have hkpos : 0 < ∏ j : Fin 3, k j := Finset.prod_pos fun j _ ↦ hk j
+  have hinvpos : 0 < ∏ j : Fin 3, (k j)⁻¹ :=
+    Finset.prod_pos fun j _ ↦ inv_pos.mpr (hk j)
+  have hprod : (∏ j : Fin 3, (k j)⁻¹) * (∏ j : Fin 3, k j) = 1 := by
+    rw [← Finset.prod_mul_distrib]
+    refine Finset.prod_eq_one fun j _ ↦ ?_
+    exact inv_mul_cancel₀ (hk j).ne'
+  have hscale := weakNorm_ModelTruncatedOperator_rescale α u c k hkpos f a b R
+  calc weakNorm volume (ModelTruncatedOperator α u c f a b) R
+      = ENNReal.ofReal (∏ j : Fin 3, (k j)⁻¹) *
+          (ENNReal.ofReal (∏ j : Fin 3, k j) *
+            weakNorm volume (ModelTruncatedOperator α u c f a b) R) := by
+        rw [← mul_assoc, ← ENNReal.ofReal_mul hinvpos.le, hprod]
+        simp
+    _ = ENNReal.ofReal (∏ j : Fin 3, (k j)⁻¹) *
+          weakNorm volume (ModelTruncatedOperator α u c
+            (modelOperatorRealRescale k f) a b) R := by
+        rw [hscale]
+    _ ≤ ENNReal.ofReal (∏ j : Fin 3, (k j)⁻¹) * K :=
+        mul_le_mul' le_rfl hbound
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## How the normalisation quantities scale
+
+Source: `lem:one_fiber`, "normalize all input norms to one".  Rescaling an
+input scales its `L^p` norm and its `p`-th mass, which is what turns the
+normalised hypotheses into the general ones.
+-/
+
+/-- The `L^p` norm of a multiple.
+
+Auxiliary. -/
+theorem aux_lpNorm_const_mul
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} (k : ℝ) (v : X → ℝ)
+    (hv : AEStronglyMeasurable v μ) (p : ℝ≥0∞) :
+    lpNorm (fun x ↦ k * v x) p μ = |k| * lpNorm v p μ := by
+  have hkv : AEStronglyMeasurable (fun x ↦ k * v x) μ := hv.const_mul k
+  rw [← toReal_eLpNorm hkv, ← toReal_eLpNorm hv, aux_eLpNorm_const_mul,
+    ENNReal.toReal_mul, ENNReal.toReal_ofReal (abs_nonneg k)]
+
+/-- The `p`-th mass of a multiple.
+
+Auxiliary. -/
+theorem aux_integral_abs_rpow_const_mul
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} (k : ℝ) (v : X → ℝ)
+    {p : ℝ} :
+    (∫ x, |k * v x| ^ p ∂μ) = |k| ^ p * ∫ x, |v x| ^ p ∂μ := by
+  have hfun : (fun x ↦ |k * v x| ^ p) = fun x ↦ |k| ^ p * |v x| ^ p := by
+    funext x
+    rw [abs_mul, Real.mul_rpow (abs_nonneg k) (abs_nonneg (v x))]
+  rw [hfun, integral_const_mul]
+
+/-- Integrability of the `p`-th power of a multiple.
+
+Auxiliary. -/
+theorem aux_integrable_abs_rpow_const_mul
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} (k : ℝ) (v : X → ℝ)
+    {p : ℝ} (hint : Integrable (fun x ↦ |v x| ^ p) μ) :
+    Integrable (fun x ↦ |k * v x| ^ p) μ := by
+  have hfun : (fun x ↦ |k * v x| ^ p) = fun x ↦ |k| ^ p * |v x| ^ p := by
+    funext x
+    rw [abs_mul, Real.mul_rpow (abs_nonneg k) (abs_nonneg (v x))]
+  rw [hfun]
+  exact hint.const_mul _
+
+/-- The complexification of a multiple.
+
+Auxiliary.  The maximal factors of the bad budget are stated for the complex
+inputs, so the rescaling has to be seen there too. -/
+theorem aux_eLpNorm_complex_const_mul
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} (k : ℝ) (v : X → ℝ)
+    (p : ℝ≥0∞) :
+    eLpNorm (fun x ↦ ((k * v x : ℝ) : ℂ)) p μ
+      = ENNReal.ofReal |k| * eLpNorm (fun x ↦ (v x : ℂ)) p μ := by
+  have hfun : (fun x ↦ ((k * v x : ℝ) : ℂ)) = fun x ↦ (k : ℂ) * (v x : ℂ) := by
+    funext x
+    push_cast
+    ring
+  rw [hfun]
+  have hsmul : (fun x ↦ (k : ℂ) * (v x : ℂ)) = (k : ℂ) • fun x ↦ (v x : ℂ) := by
+    funext x
+    simp [Pi.smul_apply, smul_eq_mul]
+  rw [hsmul, eLpNorm_const_smul]
+  congr 1
+  rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The de-normalised weak bound
+
+Source: `lem:one_fiber`, "normalize all input norms to one, with zero inputs
+treated separately".  Both halves: the rescaling that restores the norms, and
+the vanishing of the operator at a zero input.
+-/
+
+/-- **The weak bound with the input norms restored.** -/
+theorem weakNorm_ModelTruncatedOperator_denormalized
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b R : ℝ) (N : Fin 3 → ℝ) (hN : ∀ j, 0 < N j) {K : ℝ≥0∞}
+    (hbound : weakNorm volume (ModelTruncatedOperator α u c
+      (modelOperatorRealRescale (fun j ↦ (N j)⁻¹) f) a b) R ≤ K) :
+    weakNorm volume (ModelTruncatedOperator α u c f a b) R
+      ≤ ENNReal.ofReal (∏ j : Fin 3, N j) * K := by
+  have hstep := weakNorm_ModelTruncatedOperator_of_rescaled α u c
+    (fun j ↦ (N j)⁻¹) (fun j ↦ inv_pos.mpr (hN j)) f a b R hbound
+  have hinv : (∏ j : Fin 3, ((N j)⁻¹)⁻¹) = ∏ j : Fin 3, N j := by
+    refine Finset.prod_congr rfl fun j _ ↦ ?_
+    exact inv_inv (N j)
+  rwa [hinv] at hstep
+
+/-- The coordinate convolution of the zero input vanishes.
+
+Auxiliary. -/
+theorem aux_ModelCoordinateConvolution_zero
+    (i : Fin 3) (k : ℝ → ℝ) (s : ℝ) (x : E3) :
+    ModelCoordinateConvolution i (0 : E3 → ℝ) k s x = 0 := by
+  have hz : (0 : E3 → ℝ) = (0 : ℝ) • (0 : E3 → ℝ) := by
+    funext y; simp
+  rw [hz, ModelCoordinateConvolution_smul, zero_mul]
+
+/-- **The truncated operator vanishes at a zero input.** -/
+theorem ModelTruncatedOperator_eq_zero_of_input_zero
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (a b : ℝ) {j : Fin 3} (hj : f j = 0) (x : E3) :
+    ModelTruncatedOperator α u c f a b x = 0 := by
+  have hint : ∀ t : ℝ, modelTruncatedOperatorIntegrand α u c f t x = 0 := by
+    intro t
+    unfold modelTruncatedOperatorIntegrand
+    fin_cases j
+    · rw [show f 0 = 0 from hj, aux_ModelCoordinateConvolution_zero]
+      ring
+    · rw [show f 1 = 0 from hj, aux_ModelCoordinateConvolution_zero]
+      ring
+    · rw [show f 2 = 0 from hj, aux_ModelCoordinateConvolution_zero]
+      ring
+  unfold ModelTruncatedOperator
+  simp [hint]
+
+/-- **The weak norm of the zero function vanishes.** -/
+theorem weakNorm_zero
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) {R : ℝ} (hR : 0 < R) :
+    weakNorm μ (fun _ : X ↦ (0 : ℝ)) R = 0 := by
+  unfold weakNorm
+  refine le_antisymm ?_ bot_le
+  refine iSup₂_le fun τ hτ ↦ ?_
+  have hτ0 : 0 < τ := Set.mem_Ioi.mp hτ
+  have hempty : {x : X | τ < |(0 : ℝ)|} = (∅ : Set X) := by
+    ext x
+    simp only [abs_zero, Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false,
+      not_lt]
+    exact hτ0.le
+  rw [hempty, measure_empty, ENNReal.zero_rpow_of_pos (by positivity), mul_zero]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The good budget and weak bound, normalising only the passive inputs
+
+Source: `lem:one_fiber`, which normalises `‖f_m‖_p = 1` and `‖f_j‖_{P_j} = 1`
+for `j ≠ m`.  The distinguished slot's `L^{P_m}` norm is not normalised, and the
+good budget never used it: the product over the passive slots is the only place
+the normalisation enters.
+-/
+
+theorem weak_good_budget_canonical_passive
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) (hq0 : 1 < q 0) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+      (Bd : Fin 3 → ℝ) (a b : ℝ) (m : Fin 3) {p R Aconst lam H : ℝ},
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
+      MemLp (f m) (ENNReal.ofReal p) (volume : Measure E3) →
+      1 ≤ p → p ≤ q m.succ → 0 < R → 0 < lam → 0 < Aconst →
+      H = (lam / Aconst) ^ R / 2 →
+      (∫⁻ x : E3, ENNReal.ofReal (|f m x| ^ p) ≤ 1) →
+      (∀ jj, jj ≠ m →
+        lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ 1) →
+      64 * C * sourceWeight u ^ 100 ≤ Aconst →
+      (R * (1 / p - 1 / q m.succ)) * (q 0).conjExponent = (q 0).conjExponent - R →
+      ENNReal.ofReal (lam / 2) *
+          volume {x | lam / 2 < |ModelTruncatedOperator α u c
+            (modelOperatorReplace f m
+              (coordinateFiberDyadicCountableGoodField m (f m)
+                (coordinateSourceFiberFiniteMassSet m (f m) p)
+                (coordinateSourceFiberAverage m (f m) p) H)) a b x|} ^ (1 / R)
+        ≤ ENNReal.ofReal (2 ^ ((q 0).conjExponent / R - 1) * Aconst) := by
+  classical
+  rcases lintegral_rpow_ModelTruncatedOperator_countableGoodField_le
+    α q hq hsum hqs hq1 with ⟨C, hC, hstrong⟩
+  refine ⟨C, hC, ?_⟩
+  intro u c f Bd a b m p R Aconst lam H ha hcm hc hfmeas hBd0 hfbd hfmem hfp hp
+    hpP hR hlam hAc hH hmass hnorm hCA hexp
+  set R0 : ℝ := (q 0).conjExponent with hR0def
+  have hR0 : 0 < R0 := by
+    rw [hR0def, Real.conjExponent]
+    exact div_pos (by linarith) (by linarith)
+  have hla : (0 : ℝ) < lam / Aconst := div_pos hlam hAc
+  have hHpos : 0 < H := by
+    rw [hH]
+    have : (0 : ℝ) < (lam / Aconst) ^ R := Real.rpow_pos_of_pos hla R
+    linarith
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  have hP0 : (0 : ℝ) < q m.succ := lt_of_lt_of_le hp0 hpP
+  set e : ℝ := R * (1 / p - 1 / q m.succ) with hedef
+  set G : E3 → ℝ := coordinateFiberDyadicCountableGoodField m (f m)
+    (coordinateSourceFiberFiniteMassSet m (f m) p)
+    (coordinateSourceFiberAverage m (f m) p) H with hG
+  -- the good field is measurable and its norm is a power of the level
+  have hFinput : Measurable (coordinateFiberInput m (f m)) :=
+    measurable_coordinateFiberInput m (f m) (hfmeas m)
+  have hZf : MeasurableSet (coordinateSourceFiberFiniteMassSet m (f m) p) :=
+    measurableSet_sourceFiberFiniteMassSet _ p hFinput
+  have hA : ∀ I, Measurable (coordinateSourceFiberAverage m (f m) p I) :=
+    fun I ↦ measurable_fiberDyadicIntervalAverage _
+      ((continuous_abs.measurable.comp hFinput).pow_const p) I
+  have hGmeas : Measurable G :=
+    measurable_coordinateFiberDyadicCountableGoodField m (f m) _ _ H (hfmeas m)
+      hZf hA
+  have hGnorm : lpNorm G (ENNReal.ofReal (q m.succ)) volume
+      ≤ (lam / Aconst) ^ e :=
+    aux_lpNorm_le_of_lintegral_rpow_le hGmeas.aestronglyMeasurable hP0
+      (Real.rpow_nonneg hla.le e)
+      (lintegral_rpow_goodField_le_goodConstant_rpow m (f m) hp hpP hlam hAc hH
+        (hfmeas m) hmass)
+  -- the replaced input
+  set fG : ModelOperatorRealInput := modelOperatorReplace f m G with hfG
+  have hfGmeas : ∀ jj, Measurable (fG jj) := by
+    intro jj
+    by_cases hjj : jj = m
+    · subst hjj; simpa only [hfG, modelOperatorReplace_same] using hGmeas
+    · simpa only [hfG, modelOperatorReplace_ne f m jj _ hjj] using hfmeas jj
+  have hopmeas : Measurable (ModelTruncatedOperator α u c fG a b) :=
+    measurable_ModelTruncatedOperator_of_measurable α u c fG a b hcm hfGmeas
+  -- the product of the norms
+  have hprod : (∏ jj : Fin 3, lpNorm (fG jj) (ENNReal.ofReal (q jj.succ))
+      (volume : Measure E3)) ≤ (lam / Aconst) ^ e := by
+    rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ m)]
+    have h1 : lpNorm (fG m) (ENNReal.ofReal (q m.succ)) volume
+        ≤ (lam / Aconst) ^ e := by
+      simpa only [hfG, modelOperatorReplace_same] using hGnorm
+    have h2 : (∏ jj ∈ Finset.univ.erase m, lpNorm (fG jj)
+        (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) ≤ 1 := by
+      refine Finset.prod_le_one (fun jj _ ↦ MeasureTheory.lpNorm_nonneg) ?_
+      intro jj hjj
+      have hne : jj ≠ m := (Finset.mem_erase.mp hjj).1
+      simpa only [hfG, modelOperatorReplace_ne f m jj _ hne] using hnorm jj hne
+    calc lpNorm (fG m) (ENNReal.ofReal (q m.succ)) volume *
+          ∏ jj ∈ Finset.univ.erase m, lpNorm (fG jj)
+            (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)
+        ≤ (lam / Aconst) ^ e * 1 :=
+          mul_le_mul h1 h2 (Finset.prod_nonneg fun _ _ ↦ MeasureTheory.lpNorm_nonneg)
+            (Real.rpow_nonneg hla.le e)
+      _ = (lam / Aconst) ^ e := mul_one _
+  -- the strong bound, with the constant dominated by `Aconst`
+  have hK : 64 * C * sourceWeight u ^ 100 *
+      ∏ jj : Fin 3, lpNorm (fG jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)
+      ≤ Aconst * (lam / Aconst) ^ e := by
+    have hw : (0 : ℝ) ≤ sourceWeight u := sourceWeight_nonneg u
+    have hnn : (0 : ℝ) ≤ 64 * C * sourceWeight u ^ 100 := by positivity
+    calc 64 * C * sourceWeight u ^ 100 *
+          ∏ jj : Fin 3, lpNorm (fG jj) (ENNReal.ofReal (q jj.succ))
+            (volume : Measure E3)
+        ≤ 64 * C * sourceWeight u ^ 100 * (lam / Aconst) ^ e :=
+          mul_le_mul_of_nonneg_left hprod hnn
+      _ ≤ Aconst * (lam / Aconst) ^ e :=
+          mul_le_mul_of_nonneg_right hCA (Real.rpow_nonneg hla.le e)
+  have hKpos : (0 : ℝ) ≤ Aconst * (lam / Aconst) ^ e :=
+    mul_nonneg hAc.le (Real.rpow_nonneg hla.le e)
+  have hgoodlint : ∫⁻ x : E3, ENNReal.ofReal
+      (|ModelTruncatedOperator α u c fG a b x| ^ R0)
+      ≤ ENNReal.ofReal ((Aconst * (lam / Aconst) ^ e) ^ R0) := by
+    refine le_trans (hstrong u c f Bd a b m p H ha hcm hc hfmeas hBd0 hfbd hfmem
+      hp hpP hHpos hfp) ?_
+    have hw : (0 : ℝ) ≤ sourceWeight u := sourceWeight_nonneg u
+    have hnn0 : (0 : ℝ) ≤ 64 * C * sourceWeight u ^ 100 *
+        ∏ jj : Fin 3, lpNorm (fG jj) (ENNReal.ofReal (q jj.succ))
+          (volume : Measure E3) :=
+      mul_nonneg (by positivity)
+        (Finset.prod_nonneg fun _ _ ↦ MeasureTheory.lpNorm_nonneg)
+    exact ENNReal.ofReal_le_ofReal (Real.rpow_le_rpow hnn0 hK hR0.le)
+  -- the budget
+  have hbudget := weak_good_budget_of_lintegral_le volume
+    (ModelTruncatedOperator α u c fG a b) hopmeas hR0 hR hlam hKpos hgoodlint
+  refine le_trans hbudget (le_of_eq ?_)
+  have he : e * R0 = R0 - R := hexp
+  exact weak_good_budget_term_eq hR0 hR hlam hAc he
+
+theorem ModelTruncatedOperator_weakNorm_le_canonical_passive
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) (hq0 : 1 < q 0)
+    {P₁ P₂ p qc R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 1 ≤ R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : qc.HolderConjugate p) (hqc : 1 < qc) :
+    ∃ Cw Ct C : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (Bd : Fin 3 → ℝ)
+        (a b : ℝ) (m : Fin 3) (j₁ j₂ : Fin 3) {Aconst : ℝ},
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
+      1 ≤ p → p ≤ q m.succ → 0 < Aconst →
+      Integrable (fun x : E3 ↦ |f m x| ^ p) (volume : Measure E3) →
+      (∫ x : E3, |f m x| ^ p) ≤ 1 →
+      (∀ jj, jj ≠ m →
+        lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ 1) →
+      (∀ z : TransverseSpace m,
+        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
+          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3) ≤ 1 →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3) ≤ 1 →
+      64 * C * sourceWeight u ^ 100 ≤ Aconst →
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) *
+        sourceWeight u ^ 100 ≤ Aconst →
+      (R * (1 / p - 1 / q m.succ)) * (q 0).conjExponent = (q 0).conjExponent - R →
+      weakNorm volume (ModelTruncatedOperator α u c f a b) R
+        ≤ ENNReal.ofReal ((4 + 2 * 2 ^ ((q 0).conjExponent / R - 1) + 2 * 1) *
+            Aconst) := by
+  classical
+  have hR0 : (0 : ℝ) < R := lt_of_lt_of_le zero_lt_one hR
+  rcases weak_bad_budget_canonical_countable_weak (P₁ := P₁) (P₂ := P₂) (p := p)
+    (q := qc) (R := R) (r23 := r23) hR0 hP₁ hP₂ hpq hqc with
+    ⟨Cw, Ct, hCw, hCt, hbad⟩
+  rcases weak_good_budget_canonical_passive α q hq hsum hqs hq1 hq0 with
+    ⟨C, hC, hgood⟩
+  refine ⟨Cw, Ct, C, hCw, hCt, hC, ?_⟩
+  intro u c f Bd a b m j₁ j₂ Aconst hsplit ha hcm hc hfmeas hBd0 hfB hfmem hp
+    hpP hAc hint hmassE3 hnorm hfiber hn₁ hn₂ hCA hAu hexp
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  obtain ⟨hlint, hfp, hFint, hFmass⟩ :=
+    aux_canonical_mass_forms m (f m) (hfmeas m) hp0 hint hmassE3
+  refine ModelTruncatedOperator_weakNorm_le_of_countable_stopping_data α u c f m
+    a b 1 Bd hR hAc.le (by norm_num) (by positivity) (by norm_num) ha
+    (by norm_num) hcm hc hfmeas hBd0 hfB ?_
+  intro lam hlam
+  have hla : (0 : ℝ) < lam / Aconst := div_pos hlam hAc
+  set H : ℝ := (lam / Aconst) ^ R / 2 with hH
+  have hHpos : 0 < H := by
+    rw [hH]
+    have : (0 : ℝ) < (lam / Aconst) ^ R := Real.rpow_pos_of_pos hla R
+    linarith
+  refine ⟨coordinateSourceFiberFiniteMassSet m (f m) p,
+    coordinateSourceFiberAverage m (f m) p, H,
+    coordinateSplit m ⁻¹' (fiberDyadicDoubledExceptionalSet
+      (coordinateSourceFiberFiniteMassSet m (f m) p)
+      (coordinateSourceFiberAverage m (f m) p) H), ?_, ?_, ?_, ?_, ?_⟩
+  · exact measurableSet_sourceFiberFiniteMassSet _ p
+      (measurable_coordinateFiberInput m (f m) (hfmeas m))
+  · exact fun I ↦ measurable_fiberDyadicIntervalAverage _
+      ((continuous_abs.measurable.comp
+        (measurable_coordinateFiberInput m (f m) (hfmeas m))).pow_const p) I
+  · exact weak_exception_budget_doubled_canonical m (f m) (hfmeas m) hint
+      hmassE3 hR hlam hAc hH hHpos
+  · exact hgood u c f Bd a b m ha hcm hc hfmeas hBd0 hfB hfmem hfp hp hpP hR0
+      hlam hAc hH hlint hnorm hCA hexp
+  · rw [one_mul]
+    exact hbad α u c f m a b lam H Bd j₁ j₂ hsplit ha hlam hHpos hcm hc hfmeas
+      hBd0 hfB hfiber hn₁ hn₂ hFint hFmass hAu
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Rescaling an input passes through the fiber data
+
+Source: `lem:one_fiber`.  The stopping data is built from `|f_m|^p` on the
+fibers; rescaling the input scales the fiber input and leaves the finite-mass
+set unchanged, so the canonical stopping data of the rescaled input is the
+stopping data of the original at a rescaled height.
+-/
+
+/-- The fiber input of a multiple.
+
+Auxiliary. -/
+theorem aux_coordinateFiberInput_const_mul
+    (m : Fin 3) (k : ℝ) (f : E3 → ℝ) (yz : ℝ × TransverseSpace m) :
+    coordinateFiberInput m (fun x ↦ k * f x) yz
+      = k * coordinateFiberInput m f yz := rfl
+
+/-- The fiber mass of a multiple.
+
+Auxiliary. -/
+theorem aux_lintegral_fiber_abs_rpow_const_mul
+    (m : Fin 3) (k : ℝ) (f : E3 → ℝ) {p : ℝ} (z : TransverseSpace m) :
+    (∫⁻ y : ℝ, ENNReal.ofReal
+        (|coordinateFiberInput m (fun x ↦ k * f x) (y, z)| ^ p))
+      = ENNReal.ofReal (|k| ^ p) *
+          ∫⁻ y : ℝ, ENNReal.ofReal (|coordinateFiberInput m f (y, z)| ^ p) := by
+  rw [← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
+  refine lintegral_congr fun y ↦ ?_
+  rw [aux_coordinateFiberInput_const_mul, abs_mul,
+    Real.mul_rpow (abs_nonneg k) (abs_nonneg _),
+    ← ENNReal.ofReal_mul (Real.rpow_nonneg (abs_nonneg k) p)]
+
+/-- **Rescaling leaves the finite-mass fiber set unchanged.** -/
+theorem aux_coordinateSourceFiberFiniteMassSet_const_mul
+    (m : Fin 3) {k : ℝ} (hk : k ≠ 0) (f : E3 → ℝ) {p : ℝ} (_hp : 0 < p) :
+    coordinateSourceFiberFiniteMassSet m (fun x ↦ k * f x) p
+      = coordinateSourceFiberFiniteMassSet m f p := by
+  have hkp : (0 : ℝ) < |k| ^ p := Real.rpow_pos_of_pos (abs_pos.mpr hk) p
+  ext z
+  simp only [coordinateSourceFiberFiniteMassSet, sourceFiberFiniteMassSet,
+    fiberFiniteMassSet, Set.mem_setOf_eq]
+  rw [aux_lintegral_fiber_abs_rpow_const_mul m k f z]
+  constructor
+  · intro h
+    by_contra hcon
+    rw [not_lt, top_le_iff] at hcon
+    rw [hcon, ENNReal.mul_top (by simp [hkp])] at h
+    exact absurd h (lt_irrefl _)
+  · intro h
+    exact ENNReal.mul_lt_top ENNReal.ofReal_lt_top h
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The one-fiber weak bound with the input norms restored
+
+Source: `lem:one_fiber`, `eq:one_fiber`.  The canonical bound holds under the
+manuscript's normalisation; rescaling each slot by its own norm restores the
+general statement, with the constant multiplied by the product of the norms.
+-/
+
+/-- **The one-fiber weak bound, with the input norms restored.** -/
+theorem ModelTruncatedOperator_weakNorm_le_one_fiber
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) (hq0 : 1 < q 0)
+    {P₁ P₂ p qc R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 1 ≤ R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : qc.HolderConjugate p) (hqc : 1 < qc) :
+    ∃ Cw Ct C : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (Bd : Fin 3 → ℝ)
+        (a b : ℝ) (m : Fin 3) (j₁ j₂ : Fin 3) (N : Fin 3 → ℝ) {Aconst : ℝ},
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      (∀ j, 0 < N j) →
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
+      1 ≤ p → p ≤ q m.succ → 0 < Aconst →
+      Integrable (fun x : E3 ↦ |f m x| ^ p) (volume : Measure E3) →
+      (∫ x : E3, |f m x| ^ p) ≤ (N m) ^ p →
+      (∀ jj, jj ≠ m →
+        lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ N jj) →
+      (∀ z : TransverseSpace m,
+        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
+          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3)
+        ≤ ENNReal.ofReal (N j₁) →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3)
+        ≤ ENNReal.ofReal (N j₂) →
+      64 * C * sourceWeight u ^ 100 ≤ Aconst →
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) *
+        sourceWeight u ^ 100 ≤ Aconst →
+      (R * (1 / p - 1 / q m.succ)) * (q 0).conjExponent = (q 0).conjExponent - R →
+      weakNorm volume (ModelTruncatedOperator α u c f a b) R
+        ≤ ENNReal.ofReal (∏ j : Fin 3, N j) *
+            ENNReal.ofReal ((4 + 2 * 2 ^ ((q 0).conjExponent / R - 1) + 2 * 1) *
+              Aconst) := by
+  classical
+  rcases ModelTruncatedOperator_weakNorm_le_canonical_passive α q hq hsum hqs
+    hq1 hq0 (P₁ := P₁) (P₂ := P₂) (p := p) (qc := qc) (R := R) (r23 := r23)
+    hR hP₁ hP₂ hpq hqc with ⟨Cw, Ct, C, hCw, hCt, hC, hmain⟩
+  refine ⟨Cw, Ct, C, hCw, hCt, hC, ?_⟩
+  intro u c f Bd a b m j₁ j₂ N Aconst hsplit hN ha hcm hc hfmeas hBd0 hfB hfmem
+    hp hpP hAc hint hmassN hnormN hfiber hn₁ hn₂ hCA hAu hexp
+  have hp0 : (0 : ℝ) < p := lt_of_lt_of_le zero_lt_one hp
+  set g : ModelOperatorRealInput :=
+    modelOperatorRealRescale (fun j ↦ (N j)⁻¹) f with hg
+  have hgapp : ∀ jj, g jj = fun x ↦ (N jj)⁻¹ * f jj x := fun jj ↦ rfl
+  have hNne : ∀ j, (N j) ≠ 0 := fun j ↦ (hN j).ne'
+  have hNinv : ∀ j, (0 : ℝ) < (N j)⁻¹ := fun j ↦ inv_pos.mpr (hN j)
+  -- the rescaled inputs are measurable and bounded
+  have hgmeas : ∀ jj, Measurable (g jj) := fun jj ↦ (hfmeas jj).const_mul _
+  have hgB : ∀ jj, ∀ y : E3, |g jj y| ≤ (N jj)⁻¹ * Bd jj := by
+    intro jj y
+    rw [hgapp jj, abs_mul, abs_of_pos (hNinv jj)]
+    exact mul_le_mul_of_nonneg_left (hfB jj y) (hNinv jj).le
+  have hgBd0 : ∀ jj, (0 : ℝ) ≤ (N jj)⁻¹ * Bd jj := fun jj ↦
+    mul_nonneg (hNinv jj).le (hBd0 jj)
+  have hgmem : ∀ jj, MemLp (g jj) (ENNReal.ofReal (q jj.succ))
+      (volume : Measure E3) := by
+    intro jj
+    rw [hgapp jj]
+    exact (hfmem jj).const_mul _
+  -- the rescaled distinguished input is normalised
+  have hgint : Integrable (fun x : E3 ↦ |g m x| ^ p) (volume : Measure E3) := by
+    rw [hgapp m]
+    exact aux_integrable_abs_rpow_const_mul _ _ hint
+  have hgmass : (∫ x : E3, |g m x| ^ p) ≤ 1 := by
+    rw [hgapp m, aux_integral_abs_rpow_const_mul]
+    have hNm : |(N m)⁻¹| ^ p = ((N m) ^ p)⁻¹ := by
+      rw [abs_of_pos (hNinv m), ← Real.rpow_neg_one (N m),
+        ← Real.rpow_mul (hN m).le, ← Real.rpow_neg (hN m).le]
+      ring_nf
+    rw [hNm]
+    rw [inv_mul_le_iff₀ (Real.rpow_pos_of_pos (hN m) p), mul_one]
+    exact hmassN
+  have hgnorm : ∀ jj, jj ≠ m →
+      lpNorm (g jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ 1 := by
+    intro jj hne
+    rw [hgapp jj, aux_lpNorm_const_mul _ _ (hfmeas jj).aestronglyMeasurable,
+      abs_of_pos (hNinv jj)]
+    rw [inv_mul_le_iff₀ (hN jj), mul_one]
+    exact hnormN jj hne
+  -- the rescaled passive inputs are normalised in the complex form
+  have hgn₁ : eLpNorm (fun y ↦ (g j₁ y : ℂ)) (ENNReal.ofReal P₁)
+      (volume : Measure E3) ≤ 1 := by
+    rw [hgapp j₁, aux_eLpNorm_complex_const_mul, abs_of_pos (hNinv j₁)]
+    refine le_trans (mul_le_mul' le_rfl hn₁) (le_of_eq ?_)
+    rw [← ENNReal.ofReal_mul (hNinv j₁).le, inv_mul_cancel₀ (hNne j₁)]
+    simp
+  have hgn₂ : eLpNorm (fun y ↦ (g j₂ y : ℂ)) (ENNReal.ofReal P₂)
+      (volume : Measure E3) ≤ 1 := by
+    rw [hgapp j₂, aux_eLpNorm_complex_const_mul, abs_of_pos (hNinv j₂)]
+    refine le_trans (mul_le_mul' le_rfl hn₂) (le_of_eq ?_)
+    rw [← ENNReal.ofReal_mul (hNinv j₂).le, inv_mul_cancel₀ (hNne j₂)]
+    simp
+  -- the stopping set is unchanged, so fiber integrability transfers
+  have hZeq : coordinateSourceFiberFiniteMassSet m (g m) p
+      = coordinateSourceFiberFiniteMassSet m (f m) p := by
+    rw [hgapp m]
+    exact aux_coordinateSourceFiberFiniteMassSet_const_mul m
+      (inv_ne_zero (hNne m)) (f m) hp0
+  have hgfiber : ∀ z : TransverseSpace m,
+      z ∈ coordinateSourceFiberFiniteMassSet m (g m) p → Integrable
+        (fun y : ℝ ↦ coordinateFiberInput m (g m) (y, z)) := by
+    intro z hz
+    rw [hZeq] at hz
+    have hfun : (fun y : ℝ ↦ coordinateFiberInput m (g m) (y, z))
+        = fun y : ℝ ↦ (N m)⁻¹ * coordinateFiberInput m (f m) (y, z) := by
+      funext y
+      rw [hgapp m]
+      exact aux_coordinateFiberInput_const_mul m _ (f m) (y, z)
+    rw [hfun]
+    exact (hfiber z hz).const_mul _
+  -- apply the normalised bound and restore the norms
+  refine weakNorm_ModelTruncatedOperator_denormalized α u c f a b R N hN ?_
+  exact hmain u c g (fun jj ↦ (N jj)⁻¹ * Bd jj) a b m j₁ j₂ hsplit ha hcm hc
+    hgmeas hgBd0 hgB hgmem hp hpP hAc hgint hgmass hgnorm hgfiber hgn₁ hgn₂ hCA
+    hAu hexp
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The one-fiber bound at an explicit constant
+
+Source: `lem:one_fiber`.  The manuscript chooses `A_u = C_1U(u)^{100}` with
+`C_1` large enough for the starting estimate and the fixed kernel constants;
+naming that constant discharges the two domination hypotheses.
+-/
+
+/-- The constant of the one-fiber weak bound.
+
+It is large enough both for the starting estimate and for the bad branch's
+kernel constants. -/
+noncomputable def C_ModelTruncatedOperator_weakNorm_le_one_fiber
+    (α : Anisotropy) (m : Fin 3) (C Cw Ct p qc P₁ P₂ : ℝ) : ℝ :=
+  max (64 * C)
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) + 1
+
+/-- **The one-fiber weak bound at the manuscript's own constant.** -/
+theorem ModelTruncatedOperator_weakNorm_le_one_fiber_explicit
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) (hq0 : 1 < q 0)
+    (m j₁ j₂ : Fin 3)
+    {P₁ P₂ p qc R : ℝ} {r23 : ENNReal}
+    [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
+    [ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal R)]
+    (hR : 1 ≤ R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
+    (hpq : qc.HolderConjugate p) (hqc : 1 < qc) :
+    ∃ C₁ : ℝ, 0 < C₁ ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (Bd : Fin 3 → ℝ)
+        (a b : ℝ) (N : Fin 3 → ℝ),
+      (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
+      (∀ j, 0 < N j) →
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
+      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
+      1 ≤ p → p ≤ q m.succ →
+      Integrable (fun x : E3 ↦ |f m x| ^ p) (volume : Measure E3) →
+      (∫ x : E3, |f m x| ^ p) ≤ (N m) ^ p →
+      (∀ jj, jj ≠ m →
+        lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ N jj) →
+      (∀ z : TransverseSpace m,
+        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
+          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
+      eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3)
+        ≤ ENNReal.ofReal (N j₁) →
+      eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3)
+        ≤ ENNReal.ofReal (N j₂) →
+      (R * (1 / p - 1 / q m.succ)) * (q 0).conjExponent = (q 0).conjExponent - R →
+      weakNorm volume (ModelTruncatedOperator α u c f a b) R
+        ≤ ENNReal.ofReal (∏ j : Fin 3, N j) *
+            ENNReal.ofReal ((4 + 2 * 2 ^ ((q 0).conjExponent / R - 1) + 2 * 1) *
+              (C₁ * sourceWeight u ^ 100)) := by
+  classical
+  rcases ModelTruncatedOperator_weakNorm_le_one_fiber α q hq hsum hqs hq1 hq0
+    (P₁ := P₁) (P₂ := P₂) (p := p) (qc := qc) (R := R) (r23 := r23)
+    hR hP₁ hP₂ hpq hqc with ⟨Cw, Ct, C, hCw, hCt, hC, hmain⟩
+  set C₁ : ℝ := C_ModelTruncatedOperator_weakNorm_le_one_fiber α m C Cw Ct p qc
+    P₁ P₂ with hC₁
+  have hmax0 : (0 : ℝ) ≤ max (64 * C)
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂)) :=
+    le_trans (by positivity) (le_max_left _ _)
+  have hC₁pos : 0 < C₁ := by
+    rw [hC₁, C_ModelTruncatedOperator_weakNorm_le_one_fiber]
+    linarith
+  refine ⟨C₁, hC₁pos, ?_⟩
+  intro u c f Bd a b N hsplit hN ha hcm hc hfmeas hBd0 hfB hfmem hp hpP hint
+    hmassN hnormN hfiber hn₁ hn₂ hexp
+  have hw : (1 : ℝ) ≤ sourceWeight u := aux_one_le_sourceWeight u
+  have hw100 : (0 : ℝ) < sourceWeight u ^ 100 := by positivity
+  have hAc : 0 < C₁ * sourceWeight u ^ 100 := mul_pos hC₁pos hw100
+  refine hmain u c f Bd a b m j₁ j₂ N hsplit hN ha hcm hc hfmeas hBd0 hfB hfmem
+    hp hpP hAc hint hmassN hnormN hfiber hn₁ hn₂ ?_ ?_ hexp
+  · refine mul_le_mul_of_nonneg_right ?_ hw100.le
+    rw [hC₁, C_ModelTruncatedOperator_weakNorm_le_one_fiber]
+    have := le_max_left (64 * C)
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂))
+    linarith
+  · refine mul_le_mul_of_nonneg_right ?_ hw100.le
+    rw [hC₁, C_ModelTruncatedOperator_weakNorm_le_one_fiber]
+    have := le_max_right (64 * C)
+      (Ct * (((α.weight m : ℕ) : ℝ)⁻¹ * (1 / 72)) *
+        (4 * 2 ^ (1 / p) *
+          C_lpNorm_finset_double_intervalTails_le_of_radius_sum qc) *
+        (Cw * aux_lineMaximalConst P₁) * (Cw * aux_lineMaximalConst P₂))
+    linarith
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Weak bounds pass to limits in norm
+
+Source: `lem:one_fiber`, "choose Schwartz approximants converging in `L^{P_m}`,
+and use the preliminary truncated-operator bound to identify their output
+limit".  Norm convergence gives an almost-everywhere convergent subsequence,
+and the weak bound survives that.
+-/
+
+/-- Convergence in `L^p` gives an almost-everywhere convergent subsequence.
+
+Auxiliary. -/
+theorem aux_exists_subseq_ae_of_eLpNorm_tendsto
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {p : ℝ≥0∞} (hp : p ≠ 0)
+    {v : ℕ → X → ℝ} {w : X → ℝ}
+    (hv : ∀ n, AEStronglyMeasurable (v n) μ) (hw : AEStronglyMeasurable w μ)
+    (htend : Filter.Tendsto (fun n ↦ eLpNorm (v n - w) p μ) Filter.atTop (𝓝 0)) :
+    ∃ ns : ℕ → ℕ, StrictMono ns ∧
+      ∀ᵐ x ∂μ, Filter.Tendsto (fun i ↦ v (ns i) x) Filter.atTop (𝓝 (w x)) :=
+  (tendstoInMeasure_of_tendsto_eLpNorm hp hv hw htend).exists_seq_tendsto_ae
+
+/-- **A weak-`L^R` bound passes to a limit in norm.**
+
+If each approximant obeys the bound at every level and the approximants
+converge in `L^p`, the limit obeys it. -/
+theorem weakNorm_le_of_eLpNorm_tendsto
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {p : ℝ≥0∞} (hp : p ≠ 0)
+    {R : ℝ} (hR : 0 < R) {K : ℝ≥0∞}
+    {v : ℕ → X → ℝ} {w : X → ℝ}
+    (hv : ∀ n, AEStronglyMeasurable (v n) μ) (hw : AEStronglyMeasurable w μ)
+    (htend : Filter.Tendsto (fun n ↦ eLpNorm (v n - w) p μ) Filter.atTop (𝓝 0))
+    (hbound : ∀ n, weakNorm μ (v n) R ≤ K) :
+    weakNorm μ w R ≤ K := by
+  obtain ⟨ns, hns, hae⟩ := aux_exists_subseq_ae_of_eLpNorm_tendsto hp hv hw htend
+  refine weakNorm_le_of_forall_level μ w R fun τ hτ ↦ ?_
+  refine weakBound_rpow_of_ae_tendsto μ (fun i ↦ v (ns i)) w K hR hae
+    (fun i ↦ ?_)
+  exact le_trans (le_weakNorm μ (v (ns i)) R hτ) (hbound (ns i))
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The truncated operator's slotwise difference
+
+Source: `lem:one_fiber`, the approximation step.  Comparing the operator at an
+input and at its approximant needs the difference expressed through the slot,
+which is additivity read backwards.
+-/
+
+/-- **The truncated operator's difference in one slot.** -/
+theorem ModelTruncatedOperator_replace_sub
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (g h : E3 → ℝ) (a b : ℝ) (x : E3)
+    (hlined : ∀ t : ℝ, Integrable (fun r : ℝ ↦
+      (g - h) (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hlineh : ∀ t : ℝ, Integrable (fun r : ℝ ↦
+      h (x - r • Anisotropy.coordinateDirection m) *
+        kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r))
+    (hd : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m (g - h)) t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity))
+    (hh : IntegrableOn (fun t : ℝ ↦
+      modelTruncatedOperatorIntegrand α u c
+        (modelOperatorReplace f m h) t x) (Set.Ioc a b)
+      ((volume : Measure ℝ).withDensity cubeScaleDensity)) :
+    ModelTruncatedOperator α u c (modelOperatorReplace f m g) a b x -
+        ModelTruncatedOperator α u c (modelOperatorReplace f m h) a b x
+      = ModelTruncatedOperator α u c
+          (modelOperatorReplace f m (g - h)) a b x := by
+  have hsum : (g - h) + h = g := by
+    funext y
+    simp
+  have hadd := ModelTruncatedOperator_replace_add α u c f m (g - h) h a b x
+    hlined hlineh hd hh
+  rw [hsum] at hadd
+  rw [hadd]
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Fibers of a simple input
+
+Source: `thm:extended_model`, which feeds `lem:one_fiber` into the
+interpolation on simple functions of finite-measure support.  For such an
+input a fiber of finite `p`-mass is integrable, because the nonzero values are
+bounded away from zero.
+-/
+
+/-- **A function whose nonzero values are bounded away from zero and above is
+integrable as soon as its `p`-th power is.** -/
+theorem aux_integrable_of_uniform_lower_bound
+    {g : ℝ → ℝ} (hgmeas : Measurable g) {c B p : ℝ} (hc : 0 < c) (hp : 0 < p)
+    (hlow : ∀ y, g y ≠ 0 → c ≤ |g y|) (hB : ∀ y, |g y| ≤ B)
+    (hint : Integrable (fun y : ℝ ↦ |g y| ^ p) volume) :
+    Integrable g volume := by
+  classical
+  set S : Set ℝ := {y | g y ≠ 0} with hS
+  have hSmeas : MeasurableSet S := by
+    have : S = (g ⁻¹' {0})ᶜ := by
+      ext y
+      simp [hS, Set.mem_setOf_eq]
+    rw [this]
+    exact (hgmeas (measurableSet_singleton 0)).compl
+  have hcp : (0 : ℝ) < c ^ p := Real.rpow_pos_of_pos hc p
+  -- the support has finite measure
+  have hlower : ∀ y ∈ S, c ^ p ≤ |g y| ^ p := by
+    intro y hy
+    exact Real.rpow_le_rpow hc.le (hlow y hy) hp.le
+  have hnn : ∀ y : ℝ, 0 ≤ |g y| ^ p := fun y ↦ Real.rpow_nonneg (abs_nonneg _) p
+  have hSfin : volume S ≠ ⊤ := by
+    intro htop
+    have hconst : ∀ y ∈ S, (fun _ : ℝ ↦ c ^ p) y ≤ (fun y ↦ |g y| ^ p) y :=
+      fun y hy ↦ hlower y hy
+    have hle : ∫⁻ y in S, ENNReal.ofReal (c ^ p) ≤
+        ∫⁻ y in S, ENNReal.ofReal (|g y| ^ p) := by
+      refine setLIntegral_mono' hSmeas fun y hy ↦ ?_
+      exact ENNReal.ofReal_le_ofReal (hconst y hy)
+    have hleft : (∫⁻ _y in S, ENNReal.ofReal (c ^ p)) = ⊤ := by
+      rw [setLIntegral_const, htop, ENNReal.mul_top (by simp [hcp])]
+    have hright : (∫⁻ y in S, ENNReal.ofReal (|g y| ^ p)) ≠ ⊤ := by
+      refine ne_of_lt (lt_of_le_of_lt (setLIntegral_le_lintegral _ _) ?_)
+      have := hint.hasFiniteIntegral
+      rw [hasFiniteIntegral_iff_enorm] at this
+      refine lt_of_le_of_lt (le_of_eq ?_) this
+      refine lintegral_congr fun y ↦ ?_
+      rw [← ofReal_norm, Real.norm_of_nonneg (hnn y)]
+    exact hright (by rw [← top_le_iff, ← hleft]; exact hle)
+  -- domination by a constant on a set of finite measure
+  have hdom : Integrable (S.indicator (fun _ : ℝ ↦ B)) volume :=
+    (integrable_indicator_iff hSmeas).mpr
+      (integrableOn_const (by simpa using hSfin) enorm_ne_top)
+  refine Integrable.mono hdom hgmeas.aestronglyMeasurable ?_
+  filter_upwards with y
+  by_cases hy : y ∈ S
+  · rw [Set.indicator_of_mem hy, Real.norm_eq_abs, Real.norm_eq_abs,
+      abs_of_nonneg (le_trans (abs_nonneg (g y)) (hB y))]
+    exact hB y
+  · have hz : g y = 0 := by
+      simpa [hS, Set.mem_setOf_eq] using hy
+    rw [Set.indicator_of_notMem hy, hz]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Simple inputs are bounded, with nonzero values bounded away from zero
+
+Source: `thm:extended_model`, whose interpolation consumes weak endpoints on
+simple functions of finite-measure support.  These are the two facts that let
+`lem:one_fiber`'s side conditions be discharged there.
+-/
+
+/-- **A simple function is bounded.** -/
+theorem aux_exists_bound_of_simpleFunc {X : Type*} [MeasurableSpace X]
+    (s : SimpleFunc X ℝ) :
+    ∃ B : ℝ, 0 ≤ B ∧ ∀ x, |s x| ≤ B := by
+  classical
+  set T : Finset ℝ := insert (0 : ℝ) (s.range.image (fun v ↦ |v|)) with hT
+  have hne : T.Nonempty := ⟨0, by simp [hT]⟩
+  refine ⟨T.max' hne, ?_, ?_⟩
+  · exact T.le_max' 0 (by simp [hT])
+  · intro x
+    refine T.le_max' _ ?_
+    refine Finset.mem_insert_of_mem ?_
+    exact Finset.mem_image_of_mem _ (SimpleFunc.mem_range_self s x)
+
+/-- **A simple function's nonzero values are bounded away from zero.** -/
+theorem aux_exists_lower_bound_of_simpleFunc {X : Type*} [MeasurableSpace X]
+    (s : SimpleFunc X ℝ) :
+    ∃ c : ℝ, 0 < c ∧ ∀ x, s x ≠ 0 → c ≤ |s x| := by
+  classical
+  set T : Finset ℝ := (s.range.filter (fun v ↦ v ≠ 0)).image (fun v ↦ |v|)
+    with hT
+  by_cases hne : T.Nonempty
+  · refine ⟨T.min' hne, ?_, ?_⟩
+    · have hmem : T.min' hne ∈ T := T.min'_mem hne
+      have hmem' : T.min' hne ∈
+          (s.range.filter (fun v ↦ v ≠ 0)).image (fun v ↦ |v|) := by
+        simpa only [hT] using hmem
+      obtain ⟨v, hv, hvabs⟩ := Finset.mem_image.mp hmem'
+      rw [Finset.mem_filter] at hv
+      rw [← hvabs]
+      exact abs_pos.mpr hv.2
+    · intro x hx
+      refine T.min'_le _ ?_
+      rw [hT, Finset.mem_image]
+      exact ⟨s x, Finset.mem_filter.mpr ⟨SimpleFunc.mem_range_self s x, hx⟩, rfl⟩
+  · refine ⟨1, one_pos, ?_⟩
+    intro x hx
+    exfalso
+    refine hne ⟨|s x|, ?_⟩
+    rw [hT, Finset.mem_image]
+    exact ⟨s x, Finset.mem_filter.mpr ⟨SimpleFunc.mem_range_self s x, hx⟩, rfl⟩
+
+/-- **A fiber of a simple input with finite `p`-mass is integrable.**
+
+This is `lem:one_fiber`'s fiber-integrability side condition, discharged on the
+class `thm:extended_model` uses. -/
+theorem aux_integrable_fiber_of_simpleFunc
+    (m : Fin 3) (s : SimpleFunc E3 ℝ) {p : ℝ} (hp : 0 < p)
+    (z : TransverseSpace m)
+    (hint : Integrable
+      (fun y : ℝ ↦ |coordinateFiberInput m (⇑s) (y, z)| ^ p) volume) :
+    Integrable (fun y : ℝ ↦ coordinateFiberInput m (⇑s) (y, z)) volume := by
+  obtain ⟨B, hB0, hB⟩ := aux_exists_bound_of_simpleFunc s
+  obtain ⟨c, hc, hlow⟩ := aux_exists_lower_bound_of_simpleFunc s
+  have hmeas : Measurable (fun y : ℝ ↦ coordinateFiberInput m (⇑s) (y, z)) := by
+    have hjoin : Measurable (fun y : ℝ ↦ coordinateJoin m (y, z)) :=
+      (coordinateJoin_continuous m).measurable.comp
+        (measurable_id.prodMk measurable_const)
+    exact s.measurable.comp hjoin
+  exact aux_integrable_of_uniform_lower_bound hmeas hc hp
+    (fun y hy ↦ hlow _ hy) (fun y ↦ hB _) hint
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A strong bound is a weak bound
+
+Source: `thm:extended_model`, "the base strong bound is also a weak bound at
+`b`".  This is the fourth vertex of the interpolation simplex.
+-/
+
+/-- **The base vertex of the interpolation simplex.**
+
+A strong `L^R` bound for the operator, read as the weak bound the assembly
+consumes. -/
+theorem weakNorm_le_of_lpNorm_bound
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {v : X → ℝ} {R : ℝ}
+    (hR : 0 < R) (hvmeas : AEMeasurable v μ)
+    (hv : MemLp v (ENNReal.ofReal R) μ) {K : ℝ}
+    (hbound : lpNorm v (ENNReal.ofReal R) μ ≤ K) :
+    weakNorm μ v R ≤ ENNReal.ofReal K := by
+  refine le_trans (weakNorm_le_eLpNorm μ v hvmeas hR) ?_
+  rw [← ofReal_lpNorm hv]
+  exact ENNReal.ofReal_le_ofReal hbound
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The shifted vertices' exponent data
+
+Source: `thm:extended_model`.  At the vertex `b + b₀e_m` the input exponents
+are `P_j^{(m)} = (b_m+b₀)^{-1}` at the distinguished slot and `P_j = b_j^{-1}`
+elsewhere, and the output exponent is `1`.  These are the identities that match
+`lem:one_fiber`'s hypotheses to the simplex data.
+-/
+
+/-- The shifted vertex's distinguished exponent. -/
+theorem aux_simplexVertexExponent_succ_self
+    (b : Fin 3 → ℝ) (b₀ : ℝ) (m : Fin 3) :
+    simplexVertexExponent b b₀ m.succ m = (b m + b₀)⁻¹ := by
+  unfold simplexVertexExponent simplexVertexReciprocal
+  congr 1
+  simp
+
+/-- The shifted vertex's passive exponents are the base ones. -/
+theorem aux_simplexVertexExponent_succ_ne
+    (b : Fin 3 → ℝ) (b₀ : ℝ) {m j : Fin 3} (hj : j ≠ m) :
+    simplexVertexExponent b b₀ m.succ j = (b j)⁻¹ := by
+  unfold simplexVertexExponent simplexVertexReciprocal
+  congr 1
+  have hne : ((m.succ : Fin 4) : ℕ) ≠ (j : ℕ) + 1 := by
+    simp only [Fin.val_succ]
+    intro h
+    exact hj (Fin.ext (Nat.succ_injective h).symm)
+  rw [if_neg hne, add_zero]
+
+/-- **The shifted vertex satisfies `lem:one_fiber`'s scaling identity.**
+
+With `R = 1`, `1/p - 1/P_m = b₀` and `R_0 = (1-b₀)^{-1}`, the identity
+`R·R_0·(1/p - 1/P_m) = R_0 - R` holds. -/
+theorem aux_shifted_vertex_scaling {b₀ R₀ : ℝ} (hb₀ : b₀ ≠ 1)
+    (hR₀ : R₀ = (1 - b₀)⁻¹) :
+    (1 : ℝ) * b₀ * R₀ = R₀ - 1 := by
+  have hne : (1 : ℝ) - b₀ ≠ 0 := sub_ne_zero.mpr (Ne.symm hb₀)
+  rw [hR₀]
+  field_simp
+  ring
+
+/-- The shifted vertex's reciprocals sum to one.
+
+Auxiliary.  This is the Hoelder relation `1/P_1 + 1/P_2 + 1/p = 1` that the
+triple instances encode. -/
+theorem aux_shifted_vertex_reciprocal_sum
+    (b : Fin 3 → ℝ) {b₀ : ℝ} (hb₀ : b₀ = 1 - ∑ j : Fin 3, b j) (m : Fin 3) :
+    (∑ j : Fin 3, (simplexVertexExponent b b₀ m.succ j)⁻¹) = 1 := by
+  rw [Finset.sum_congr rfl fun j _ ↦
+    simplexVertexExponent_inv (b := b) (b₀ := b₀) m.succ j]
+  exact sum_simplexVertexReciprocal_succ b hb₀ m
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Removing a positivity margin in the limit
+
+Source: `thm:extended_model`.  `lem:one_fiber` is stated with strictly positive
+norm bounds; the interpolation's endpoints are stated with the norms
+themselves, which may vanish.  Proving the bound with a margin and letting the
+margin tend to zero avoids a separate zero-input analysis.
+-/
+
+/-- **A bound with a vanishing margin passes to the limit.** -/
+theorem aux_le_ofReal_of_forall_pos
+    {L : ℝ≥0∞} {g : ℝ → ℝ} {c : ℝ}
+    (hg : Filter.Tendsto g (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 c))
+    (h : ∀ δ : ℝ, 0 < δ → L ≤ ENNReal.ofReal (g δ)) :
+    L ≤ ENNReal.ofReal c := by
+  have htend : Filter.Tendsto (fun δ ↦ ENNReal.ofReal (g δ))
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 (ENNReal.ofReal c)) :=
+    (ENNReal.continuous_ofReal.tendsto c).comp hg
+  refine ge_of_tendsto htend ?_
+  filter_upwards [self_mem_nhdsWithin] with δ hδ
+  exact h δ (Set.mem_Ioi.mp hδ)
+
+/-- The margin-shifted product tends to the product.
+
+Auxiliary. -/
+theorem aux_tendsto_prod_add_const
+    {n : ℕ} (N : Fin n → ℝ) (K : ℝ) :
+    Filter.Tendsto (fun δ : ℝ ↦ (∏ j : Fin n, (N j + δ)) * K)
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 ((∏ j : Fin n, N j) * K)) := by
+  have hprod : Filter.Tendsto (fun δ : ℝ ↦ ∏ j : Fin n, (N j + δ))
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 (∏ j : Fin n, N j)) := by
+    have hcont : Continuous (fun δ : ℝ ↦ ∏ j : Fin n, (N j + δ)) := by
+      refine continuous_finsetProd _ fun j _ ↦ ?_
+      exact continuous_const.add continuous_id
+    have h0 : Filter.Tendsto (fun δ : ℝ ↦ ∏ j : Fin n, (N j + δ))
+        (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 (∏ j : Fin n, (N j + 0))) :=
+      (hcont.tendsto (0 : ℝ)).mono_left nhdsWithin_le_nhds
+    simpa using h0
+  exact hprod.mul_const K
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Simple inputs of finite-measure support lie in every `L^p`
+
+Source: `thm:extended_model`, whose interpolation ranges over simple functions
+of finite-measure support.  `lem:one_fiber` asks for `L^{P_j}` membership and
+for the `p`-th power of the distinguished input to be integrable; both follow
+from the support being of finite measure.
+-/
+
+/-- **A simple function of finite-measure support lies in every `L^p`.** -/
+theorem aux_memLp_of_simpleFunc_finMeasSupp
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {s : SimpleFunc X ℝ} (hs : s.FinMeasSupp μ) {p : ℝ} (hp : 0 < p) :
+    MemLp (⇑s) (ENNReal.ofReal p) μ :=
+  (SimpleFunc.memLp_iff_finMeasSupp (by simp [hp]) (by simp)).mpr hs
+
+/-- **The `p`-th power of a simple function of finite-measure support is
+integrable.** -/
+theorem aux_integrable_rpow_of_simpleFunc_finMeasSupp
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {s : SimpleFunc X ℝ} (hs : s.FinMeasSupp μ) {p : ℝ} (hp : 0 < p) :
+    Integrable (fun x ↦ |s x| ^ p) μ := by
+  have hmem : MemLp (⇑s) (ENNReal.ofReal p) μ :=
+    aux_memLp_of_simpleFunc_finMeasSupp hs hp
+  have h := hmem.integrable_norm_rpow (by simp [hp]) (by simp)
+  rw [ENNReal.toReal_ofReal hp.le] at h
+  refine h.congr (Filter.Eventually.of_forall fun x ↦ ?_)
+  simp only [Real.norm_eq_abs]
+
+/-- The fiber of a simple input of finite-measure support has finite `p`-mass
+exactly on the canonical stopping set, and is integrable there.
+
+Auxiliary.  This is `lem:one_fiber`'s fiber hypothesis in the form the
+interpolation supplies it. -/
+theorem aux_fiber_integrable_of_simpleFunc_mem
+    (m : Fin 3) (s : SimpleFunc E3 ℝ) {p : ℝ} (hp : 0 < p)
+    (z : TransverseSpace m)
+    (hz : z ∈ coordinateSourceFiberFiniteMassSet m (⇑s) p) :
+    Integrable (fun y : ℝ ↦ coordinateFiberInput m (⇑s) (y, z)) volume := by
+  refine aux_integrable_fiber_of_simpleFunc m s hp z ?_
+  have hFmeas : Measurable (coordinateFiberInput m (⇑s)) :=
+    measurable_coordinateFiberInput m (⇑s) s.measurable
+  have hFnn : ∀ yz, 0 ≤ |coordinateFiberInput m (⇑s) yz| ^ p := fun yz ↦
+    Real.rpow_nonneg (abs_nonneg _) p
+  exact mem_fiberFiniteMassSet_integrable _
+    ((continuous_abs.measurable.comp hFmeas).pow_const p) hFnn z hz
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+
+/-- The conjugate exponent of `b₀⁻¹` is `(1-b₀)⁻¹`.
+
+Auxiliary. -/
+theorem aux_conjExponent_inv {b₀ : ℝ} (hb₀ : 0 < b₀) (hb₀1 : b₀ < 1) :
+    Real.conjExponent b₀⁻¹ = (1 - b₀)⁻¹ := by
+  have h1 : b₀ ≠ 0 := ne_of_gt hb₀
+  have h2 : (1 : ℝ) - b₀ ≠ 0 := sub_ne_zero.mpr (Ne.symm (ne_of_lt hb₀1))
+  rw [Real.conjExponent]
+  field_simp
+
+/-- The `p`-mass of a simple function is its `L^p` norm to the `p`.
+
+Auxiliary. -/
+theorem aux_integral_abs_rpow_eq_lpNorm_rpow
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    (s : X → ℝ) (hs : AEStronglyMeasurable s μ) {p : ℝ} (hp : 0 < p) :
+    (∫ x, |s x| ^ p ∂μ) = (lpNorm s (ENNReal.ofReal p) μ) ^ p := by
+  have hA : (0 : ℝ) ≤ ∫ x, |s x| ^ p ∂μ :=
+    integral_nonneg fun x ↦ Real.rpow_nonneg (abs_nonneg _) p
+  have hL : lpNorm s (ENNReal.ofReal p) μ = (∫ x, |s x| ^ p ∂μ) ^ p⁻¹ := by
+    rw [lpNorm_eq_integral_norm_rpow_toReal (by simp [hp]) (by simp) hs,
+      ENNReal.toReal_ofReal hp.le]
+    simp only [Real.norm_eq_abs]
+  rw [hL, ← Real.rpow_mul hA, inv_mul_cancel₀ (ne_of_gt hp), Real.rpow_one]
+
+
+
+/-! ## Removing the positivity margin from a product bound -/
+
+/-- **A product bound with a vanishing margin passes to the limit.** -/
+theorem weakNorm_le_prod_of_margin
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {v : X → ℝ} {R : ℝ}
+    (L : Fin 3 → ℝ) (K : ℝ)
+    (h : ∀ δ : ℝ, 0 < δ →
+      weakNorm μ v R ≤ ENNReal.ofReal ((∏ j : Fin 3, (L j + δ)) * K)) :
+    weakNorm μ v R ≤ ENNReal.ofReal ((∏ j : Fin 3, L j) * K) :=
+  aux_le_ofReal_of_forall_pos (aux_tendsto_prod_add_const L K) h
+
+
+
+/-- **The shifted-vertex weak endpoint of `thm:extended_model`.** -/
+theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
+    (α : Anisotropy) (b : Fin 3 → ℝ) (b₀ : ℝ)
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (m j₁ j₂ : Fin 3) (hne : j₁ ≠ j₂)
+    (herase : Finset.univ.erase m = ({j₁, j₂} : Finset (Fin 3))) :
+    ∃ K : ℝ, 0 ≤ K ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (aa bb : ℝ) (f : Fin 3 → SimpleFunc E3 ℝ),
+        (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+        0 < aa → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+        weakNorm volume
+            (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+            (simplexVertexOutput b b₀ m.succ)
+          ≤ ENNReal.ofReal ((K * sourceWeight u ^ 100) *
+              ∏ j : Fin 3, lpNorm (⇑(f j))
+                (ENNReal.ofReal (simplexVertexExponent b b₀ m.succ j))
+                (volume : Measure E3)) := by
+  classical
+  have hj₁m : j₁ ≠ m :=
+    Finset.ne_of_mem_erase (s := (Finset.univ : Finset (Fin 3)))
+      (by rw [herase]; simp)
+  have hj₂m : j₂ ≠ m :=
+    Finset.ne_of_mem_erase (s := (Finset.univ : Finset (Fin 3)))
+      (by rw [herase]; simp)
+  have hb₀1 : b₀ < 1 := by linarith
+  have hbsum' : b₀ + ∑ j : Fin 3, b j = 1 := by rw [hbsum]; ring
+  have hsplitsum : ∑ j ∈ Finset.univ.erase m, b j = b j₁ + b j₂ := by
+    rw [herase, Finset.sum_pair hne]
+  have hsumsplit : b m + (b j₁ + b j₂) = ∑ j : Fin 3, b j := by
+    rw [← hsplitsum]
+    exact Finset.add_sum_erase _ _ (Finset.mem_univ m)
+  have hbj₁ := hb j₁
+  have hbj₂ := hb j₂
+  have hbm := hb m
+  have hbm1 : b m + b₀ < 1 := by linarith
+  have hbm0 : (0 : ℝ) < b m + b₀ := by linarith
+  have hbinv1 : ∀ j : Fin 3, (1 : ℝ) < (b j)⁻¹ := by
+    intro j
+    have h := hbq j
+    by_cases hj : j = 2
+    · rw [if_pos hj] at h; linarith
+    · rw [if_neg hj] at h; linarith
+  set p : ℝ := (b m + b₀)⁻¹ with hp_def
+  set P₁ : ℝ := (b j₁)⁻¹ with hP₁_def
+  set P₂ : ℝ := (b j₂)⁻¹ with hP₂_def
+  have hp1 : (1 : ℝ) < p := by
+    rw [hp_def, one_lt_inv_iff₀]
+    exact ⟨hbm0, hbm1⟩
+  have hp0 : (0 : ℝ) < p := by linarith
+  have hP₁1 : (1 : ℝ) < P₁ := by rw [hP₁_def]; exact hbinv1 j₁
+  have hP₂1 : (1 : ℝ) < P₂ := by rw [hP₂_def]; exact hbinv1 j₂
+  set q : Fin 4 → ℝ := Fin.cons b₀⁻¹ (fun j ↦ (b j)⁻¹) with hq_def
+  have hq0v : q 0 = b₀⁻¹ := by rw [hq_def]; simp
+  have hqsv : ∀ j : Fin 3, q j.succ = (b j)⁻¹ := by
+    intro j; rw [hq_def]; simp
+  have hq : ∀ j : Fin 4, 0 < q j := by
+    refine Fin.cases ?_ ?_
+    · rw [hq0v]; exact inv_pos.mpr hb₀
+    · intro j; rw [hqsv]; exact inv_pos.mpr (hb j)
+  have hsum : ∑ j : Fin 4, (q j)⁻¹ = 1 := by
+    rw [Fin.sum_univ_succ]
+    simp only [hq0v, hqsv, inv_inv]
+    linarith
+  have hb₀inv4 : (4 : ℝ) < b₀⁻¹ := by
+    have hh : b₀ * b₀⁻¹ = 1 := mul_inv_cancel₀ (ne_of_gt hb₀)
+    nlinarith [inv_pos.mpr hb₀, hb₀, hb₀4, hh]
+  have hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j := by
+    refine Fin.cases ?_ ?_
+    · rw [activeSourceStoppingExponent_zero, hq0v]; exact hb₀inv4
+    · intro j
+      rw [activeSourceStoppingExponent_succ, hqsv]
+      exact hbq j
+  have hq1 : ∀ j : Fin 3, (1 : ℝ) ≤ q j.succ := by
+    intro j; rw [hqsv]; exact (hbinv1 j).le
+  have hq0 : (1 : ℝ) < q 0 := by rw [hq0v]; linarith
+  have hpP : p ≤ q m.succ := by
+    rw [hqsv, hp_def]
+    have h := one_div_le_one_div_of_le hbm (by linarith : b m ≤ b m + b₀)
+    simpa [one_div] using h
+  set qc : ℝ := Real.conjExponent p with hqc_def
+  have hpq : qc.HolderConjugate p := (Real.HolderConjugate.conjExponent hp1).symm
+  have hqc : (1 : ℝ) < qc := by
+    rw [hqc_def, Real.conjExponent, lt_div_iff₀ (by linarith)]
+    linarith
+  set r23 : ℝ≥0∞ := ((ENNReal.ofReal P₂)⁻¹ + (ENNReal.ofReal p)⁻¹)⁻¹ with hr23
+  haveI hT23 : ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23 :=
+    ENNReal.HolderTriple.of _ _
+  have e1 : (ENNReal.ofReal P₁)⁻¹ = ENNReal.ofReal (b j₁) := by
+    rw [hP₁_def, ← ENNReal.ofReal_inv_of_pos (inv_pos.mpr hbj₁), inv_inv]
+  have e2 : (ENNReal.ofReal P₂)⁻¹ = ENNReal.ofReal (b j₂) := by
+    rw [hP₂_def, ← ENNReal.ofReal_inv_of_pos (inv_pos.mpr hbj₂), inv_inv]
+  have e3 : (ENNReal.ofReal p)⁻¹ = ENNReal.ofReal (b m + b₀) := by
+    rw [hp_def, ← ENNReal.ofReal_inv_of_pos (inv_pos.mpr hbm0), inv_inv]
+  haveI hT1 : ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal 1) := by
+    constructor
+    rw [hr23, inv_inv, e1, e2, e3,
+      ← ENNReal.ofReal_add hbj₂.le hbm0.le,
+      ← ENNReal.ofReal_add hbj₁.le (by positivity),
+      show b j₁ + (b j₂ + (b m + b₀)) = 1 by linarith]
+    simp
+  obtain ⟨C₁, hC₁pos, hmain⟩ :=
+    ModelTruncatedOperator_weakNorm_le_one_fiber_explicit α q hq hsum hqs hq1 hq0
+      m j₁ j₂ (P₁ := P₁) (P₂ := P₂) (p := p) (qc := qc) (R := 1) (r23 := r23)
+      le_rfl hP₁1 hP₂1 hpq hqc
+  set R₀ : ℝ := (1 - b₀)⁻¹ with hR₀
+  have hconj : Real.conjExponent (q 0) = R₀ := by
+    rw [hq0v, hR₀]; exact aux_conjExponent_inv hb₀ hb₀1
+  set Kc : ℝ := 4 + 2 * (2 : ℝ) ^ (R₀ - 1) + 2 * 1 with hKc
+  have hKc0 : (0 : ℝ) ≤ Kc := by rw [hKc]; positivity
+  refine ⟨Kc * C₁, mul_nonneg hKc0 hC₁pos.le, ?_⟩
+  intro u c aa bb f hfs haa hcm hc
+  have hexpm : simplexVertexExponent b b₀ m.succ m = p := by
+    rw [aux_simplexVertexExponent_succ_self, hp_def]
+  have hexpn : ∀ j : Fin 3, j ≠ m →
+      simplexVertexExponent b b₀ m.succ j = q j.succ := by
+    intro j hj
+    rw [aux_simplexVertexExponent_succ_ne b b₀ hj, hqsv]
+  have hLnn : ∀ j : Fin 3, (0 : ℝ) ≤ lpNorm (⇑(f j))
+      (ENNReal.ofReal (simplexVertexExponent b b₀ m.succ j))
+      (volume : Measure E3) := fun j ↦ lpNorm_nonneg
+  rw [simplexVertexOutput_succ b hbsum m,
+    show (Kc * C₁ * sourceWeight u ^ 100) *
+        (∏ j : Fin 3, lpNorm (⇑(f j))
+          (ENNReal.ofReal (simplexVertexExponent b b₀ m.succ j))
+          (volume : Measure E3))
+      = (∏ j : Fin 3, lpNorm (⇑(f j))
+          (ENNReal.ofReal (simplexVertexExponent b b₀ m.succ j))
+          (volume : Measure E3)) * (Kc * C₁ * sourceWeight u ^ 100) from by ring]
+  refine weakNorm_le_prod_of_margin _ _ ?_
+  intro δ hδ
+  choose Bd hBd0 hfB using fun jj : Fin 3 ↦ aux_exists_bound_of_simpleFunc (f jj)
+  have hstep := hmain u c (fun j ↦ ⇑(f j)) Bd aa bb
+    (fun j ↦ lpNorm (⇑(f j))
+      (ENNReal.ofReal (simplexVertexExponent b b₀ m.succ j))
+      (volume : Measure E3) + δ)
+    (fun F ↦ by rw [herase, Finset.prod_pair hne])
+    (fun j ↦ by have := hLnn j; linarith)
+    haa hcm hc (fun jj ↦ (f jj).measurable) hBd0 (fun jj y ↦ hfB jj y)
+    (fun jj ↦ aux_memLp_of_simpleFunc_finMeasSupp (hfs jj) (hq jj.succ))
+    hp1.le hpP
+    (aux_integrable_rpow_of_simpleFunc_finMeasSupp (hfs m) hp0)
+    (by
+      rw [aux_integral_abs_rpow_eq_lpNorm_rpow _ (f m).aestronglyMeasurable hp0]
+      refine Real.rpow_le_rpow lpNorm_nonneg ?_ hp0.le
+      rw [hexpm]
+      linarith)
+    (by
+      intro jj hjj
+      rw [← hexpn jj hjj]
+      have := hLnn jj
+      linarith)
+    (fun z hz ↦ aux_fiber_integrable_of_simpleFunc_mem m (f m) hp0 z hz)
+    (by
+      have hcx : eLpNorm (fun y : E3 ↦ (((f j₁) y : ℝ) : ℂ))
+          (ENNReal.ofReal P₁) (volume : Measure E3)
+          = eLpNorm (⇑(f j₁)) (ENNReal.ofReal P₁) (volume : Measure E3) :=
+        eLpNorm_congr_norm_ae (by filter_upwards with x; simp)
+      rw [hcx, show P₁ = q j₁.succ by rw [hP₁_def, hqsv],
+        ← ofReal_lpNorm (aux_memLp_of_simpleFunc_finMeasSupp (hfs j₁) (hq j₁.succ))]
+      refine ENNReal.ofReal_le_ofReal ?_
+      rw [← hexpn j₁ hj₁m]
+      have := hLnn j₁
+      linarith)
+    (by
+      have hcx : eLpNorm (fun y : E3 ↦ (((f j₂) y : ℝ) : ℂ))
+          (ENNReal.ofReal P₂) (volume : Measure E3)
+          = eLpNorm (⇑(f j₂)) (ENNReal.ofReal P₂) (volume : Measure E3) :=
+        eLpNorm_congr_norm_ae (by filter_upwards with x; simp)
+      rw [hcx, show P₂ = q j₂.succ by rw [hP₂_def, hqsv],
+        ← ofReal_lpNorm (aux_memLp_of_simpleFunc_finMeasSupp (hfs j₂) (hq j₂.succ))]
+      refine ENNReal.ofReal_le_ofReal ?_
+      rw [← hexpn j₂ hj₂m]
+      have := hLnn j₂
+      linarith)
+    (by
+      rw [show (1:ℝ) / p = b m + b₀ by rw [hp_def, one_div, inv_inv],
+        show (1:ℝ) / q m.succ = b m by rw [hqsv, one_div, inv_inv], hconj,
+        show b m + b₀ - b m = b₀ by ring]
+      exact aux_shifted_vertex_scaling (ne_of_lt hb₀1) hR₀)
+  refine hstep.trans_eq ?_
+  rw [← ENNReal.ofReal_mul
+    (Finset.prod_nonneg fun j _ ↦ by have := hLnn j; linarith)]
+  congr 1
+  rw [hconj, div_one, ← hKc]
+  ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `ext:interpolation` with the constant uniform in the operator
+
+Source: `ext:interpolation`, which supplies an interpolation constant
+"depending only on the exponent vectors and the weights".  The per-operator
+form `FourVertexMarcinkiewicz` records the conclusion for one fixed operator
+and therefore permits its constant to depend on that operator; the source's
+constant does not.  `thm:extended_model` needs the stronger reading, because
+its constant must be uniform in the mode `u`, and the only data separating the
+operators `U^{a,b}_{u,c}` is `u` and `c`.
+-/
+
+/-- **`ext:interpolation` as a hypothesis, with the constant uniform in the
+operator.**  Given four affinely independent input reciprocal vectors, their
+output exponents, the weights and the interior target, there is one constant
+that converts the four weak endpoint bounds of *any* trilinear operator, at
+*any* endpoint constants, into the strong bound at the interior point.  The
+conclusion records that the output lies in `L^R`, which is part of what the
+source's `‖T f‖_R ≤ C ⋯` asserts and which the norm inequality alone does not
+carry, `lpNorm` being zero off `L^R`. -/
+def FourVertexMarcinkiewiczUniform
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) : Prop :=
+  ∀ (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (ϑ : Fin 4 → ℝ)
+    (p : Fin 3 → ℝ) (R : ℝ),
+    (∀ a j, 1 < P a j) →
+    (∀ a, 1 ≤ r a) →
+    (∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹) →
+    AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹)) →
+    (∀ a, 0 < ϑ a) → (∑ a : Fin 4, ϑ a = 1) →
+    (∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹) →
+    R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹ → 1 < R →
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
+      ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
+      (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
+        (∀ j, (f j).FinMeasSupp μ) →
+        weakNorm μ (T (fun j ↦ ⇑(f j))) (r a)
+          ≤ ENNReal.ofReal (A a *
+              ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P a j)) μ)) →
+      ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
+        MemLp (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ ∧
+          lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
+            ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
+                ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ
+
+/-- The uniform reading implies the per-operator reading. -/
+theorem fourVertexMarcinkiewicz_of_uniform
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    (hU : FourVertexMarcinkiewiczUniform μ)
+    (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) :
+    FourVertexMarcinkiewicz μ T := by
+  intro P r A ϑ p R hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
+  obtain ⟨C, hC0, hmain⟩ :=
+    hU P r ϑ p R hP hr hrsum hindep hϑpos hϑsum hp hR hR1
+  exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hweak f hf).2⟩
+
+/-- **The interior strong bound, with the constant uniform in the operator.**
+
+The simplex form of `fourVertexMarcinkiewicz_of_uniform`: one constant serves
+every operator and every choice of endpoint constants. -/
+theorem exists_strong_bound_at_simplex_interior_uniform
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    (hU : FourVertexMarcinkiewiczUniform μ)
+    (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ)
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hβ₀ : 0 < β₀) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (p : Fin 3 → ℝ) (hp : ∀ j, (p j)⁻¹ = β j)
+    (R : ℝ)
+    (hR : R⁻¹ = ∑ a : Fin 4,
+      simplexWeight β b β₀ b₀ a * (simplexVertexOutput b b₀ a)⁻¹)
+    (hR1 : 1 < R) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
+      ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
+      (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
+        (∀ j, (f j).FinMeasSupp μ) →
+        weakNorm μ (T (fun j ↦ ⇑(f j))) (simplexVertexOutput b b₀ a)
+          ≤ ENNReal.ofReal (A a *
+              ∏ j : Fin 3, lpNorm (⇑(f j))
+                (ENNReal.ofReal (simplexVertexExponent b b₀ a j)) μ)) →
+      ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
+        MemLp (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ ∧
+          lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
+            ≤ C * (∏ a : Fin 4, A a ^ simplexWeight β b β₀ b₀ a) *
+                ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ := by
+  refine hU (simplexVertexExponent b b₀) (simplexVertexOutput b b₀)
+    (simplexWeight β b β₀ b₀) p R
+    (fun a j ↦ one_lt_simplexVertexExponent hb hb₀ hbsum a j)
+    (fun a ↦ one_le_simplexVertexOutput hb hb₀ hbsum a)
+    (fun a ↦ simplexVertexOutput_inv b b₀ a)
+    (affineIndependent_simplexVertexExponent (ne_of_gt hb₀))
+    (fun a ↦ simplexWeight_pos hβ₀ hb₀ hlt a)
+    (sum_simplexWeight (ne_of_gt hb₀) hβsum hbsum)
+    ?_ hR hR1
+  intro j
+  rw [hp j, ← sum_simplexWeight_mul_reciprocal (ne_of_gt hb₀) hβsum hbsum j]
+  refine Finset.sum_congr rfl fun a _ ↦ ?_
+  rw [simplexVertexExponent_inv]
+
+/-! ## The extended model range, at the operator level
+
+Source: `thm:extended_model`, equation `eq:extended_operator_bound`.  The base
+vertex supplies the strong bound of `thm:initial_model` read as a weak bound;
+the three shifted vertices supply `lem:one_fiber`; `ext:interpolation` with the
+weights `eq:weights` converts them into the strong bound at the target.  Every
+endpoint constant carries the factor `U(u)^{100}`, and since the weights sum to
+one the interpolated constant carries exactly one such factor.
+-/
+
+/-- **`eq:extended_operator_bound`.**
+
+`‖U^{a,b}_{u,c}(f₁,f₂,f₃)‖_R ≤ C_{α,p} U(u)^{100} ∏_{j=1}^3 ‖f_j‖_{p_j}`,
+with `R⁻¹ = 1 - β₀`, uniformly in `u`, `c` and the truncation. -/
+theorem exists_ModelTruncatedOperator_extended_strong_bound
+    (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ A₀ : ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (hβ₀ : 0 < β₀) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m) (hA₀ : 0 ≤ A₀)
+    (pp : Fin 3 → ℝ) (hpp : ∀ j, (pp j)⁻¹ = β j)
+    (RR : ℝ) (hRR : RR⁻¹ = 1 - β₀) (hRR1 : 1 < RR) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (aa bb : ℝ),
+        0 < aa → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+        (∀ f : Fin 3 → SimpleFunc E3 ℝ,
+          AEMeasurable (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+            (volume : Measure E3)) →
+        (∀ f : Fin 3 → SimpleFunc E3 ℝ,
+          (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+          MemLp (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+            (ENNReal.ofReal (simplexVertexOutput b b₀ 0))
+            (volume : Measure E3)) →
+        (∀ f : Fin 3 → SimpleFunc E3 ℝ,
+          (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+          lpNorm (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+              (ENNReal.ofReal (simplexVertexOutput b b₀ 0))
+              (volume : Measure E3)
+            ≤ A₀ * sourceWeight u ^ 100 *
+                ∏ j : Fin 3, lpNorm (⇑(f j))
+                  (ENNReal.ofReal (simplexVertexExponent b b₀ 0 j))
+                  (volume : Measure E3)) →
+        ∀ f : Fin 3 → SimpleFunc E3 ℝ,
+          (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+          MemLp (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+              (ENNReal.ofReal RR) (volume : Measure E3) ∧
+            lpNorm (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+                (ENNReal.ofReal RR) (volume : Measure E3)
+              ≤ C * sourceWeight u ^ 100 *
+                  ∏ j : Fin 3, lpNorm (⇑(f j))
+                    (ENNReal.ofReal (pp j)) (volume : Measure E3) := by
+  classical
+  obtain ⟨C₀, hC₀0, hinterp⟩ :=
+    exists_strong_bound_at_simplex_interior_uniform hU β b β₀ b₀ hb hb₀ hbsum
+      hβ₀ hβsum hlt pp hpp RR
+      (by rw [hRR]
+          exact (sum_simplexWeight_mul_outputReciprocal (ne_of_gt hb₀) hβsum
+            hbsum).symm)
+      hRR1
+  have hpair : ∀ m : Fin 3, ∃ jj₁ jj₂ : Fin 3, jj₁ ≠ jj₂ ∧
+      Finset.univ.erase m = ({jj₁, jj₂} : Finset (Fin 3)) := by decide
+  choose jA jB hjne hjerase using hpair
+  choose K hK0 hKmain using fun m : Fin 3 ↦
+    weakNorm_ModelTruncatedOperator_simplexVertex_succ α b b₀ hb hb₀ hbsum
+      hb₀4 hbq m (jA m) (jB m) (hjne m) (hjerase m)
+  set KK : Fin 4 → ℝ := Fin.cons A₀ K with hKK
+  have hKK0 : ∀ a : Fin 4, 0 ≤ KK a := by
+    refine Fin.cases ?_ ?_
+    · rw [hKK]; simpa using hA₀
+    · intro m; rw [hKK]; simpa using hK0 m
+  refine ⟨C₀ * ∏ a : Fin 4, KK a ^ simplexWeight β b β₀ b₀ a,
+    mul_nonneg hC₀0
+      (Finset.prod_nonneg fun a _ ↦ Real.rpow_nonneg (hKK0 a) _), ?_⟩
+  intro u c aa bb haa hcm hc hmeas hmem hstrong f hfs
+  have hw1 : (1 : ℝ) ≤ sourceWeight u := aux_one_le_sourceWeight u
+  have hw0 : (0 : ℝ) < sourceWeight u ^ 100 := by positivity
+  have hend : ∀ (a : Fin 4) (f' : Fin 3 → SimpleFunc E3 ℝ),
+      (∀ j, (f' j).FinMeasSupp (volume : Measure E3)) →
+      weakNorm volume
+          ((fun g ↦ ModelTruncatedOperator α u c g aa bb) (fun j ↦ ⇑(f' j)))
+          (simplexVertexOutput b b₀ a)
+        ≤ ENNReal.ofReal ((KK a * sourceWeight u ^ 100) *
+            ∏ j : Fin 3, lpNorm (⇑(f' j))
+              (ENNReal.ofReal (simplexVertexExponent b b₀ a j))
+              (volume : Measure E3)) := by
+    refine Fin.cases ?_ ?_
+    · intro f' hf'
+      have h0 : KK 0 = A₀ := by rw [hKK]; simp
+      rw [h0]
+      exact simplexWeakEndpoint_zero_of_strong volume
+        (fun g ↦ ModelTruncatedOperator α u c g aa bb) b hb hb₀ hbsum
+        (A₀ * sourceWeight u ^ 100) hmeas hmem hstrong f' hf'
+    · intro m f' hf'
+      have hs : KK m.succ = K m := by rw [hKK]; simp
+      rw [hs]
+      exact hKmain m u c aa bb f' hf' haa hcm hc
+  have hkey := hinterp (fun a ↦ KK a * sourceWeight u ^ 100)
+    (fun a ↦ mul_nonneg (hKK0 a) hw0.le)
+    (fun g ↦ ModelTruncatedOperator α u c g aa bb) hend f hfs
+  have hprod : (∏ a : Fin 4,
+        (KK a * sourceWeight u ^ 100) ^ simplexWeight β b β₀ b₀ a)
+      = (∏ a : Fin 4, KK a ^ simplexWeight β b β₀ b₀ a)
+          * sourceWeight u ^ 100 := by
+    have hmul : ∀ a : Fin 4,
+        (KK a * sourceWeight u ^ 100) ^ simplexWeight β b β₀ b₀ a
+          = KK a ^ simplexWeight β b β₀ b₀ a
+              * (sourceWeight u ^ 100) ^ simplexWeight β b β₀ b₀ a :=
+      fun a ↦ Real.mul_rpow (hKK0 a) hw0.le
+    rw [Finset.prod_congr rfl fun a _ ↦ hmul a, Finset.prod_mul_distrib]
+    congr 1
+    have hsum1 : ∑ a : Fin 4, simplexWeight β b β₀ b₀ a = 1 :=
+      sum_simplexWeight (ne_of_gt hb₀) hβsum hbsum
+    rw [Fin.sum_univ_four] at hsum1
+    rw [Fin.prod_univ_four, ← Real.rpow_add hw0, ← Real.rpow_add hw0,
+      ← Real.rpow_add hw0, hsum1, Real.rpow_one]
+  obtain ⟨hmemU, hkeyle⟩ := hkey
+  rw [hprod] at hkeyle
+  refine ⟨hmemU, hkeyle.trans_eq ?_⟩
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- A finite `P`-th power integral gives `L^P` membership.
+
+Auxiliary. -/
+theorem aux_memLp_of_lintegral_rpow_lt_top
+    {X : Type*} [MeasurableSpace X] {μ : Measure X} {v : X → ℝ}
+    (hv : AEStronglyMeasurable v μ) {P : ℝ} (hP : 0 < P)
+    (h : (∫⁻ x, ENNReal.ofReal (|v x| ^ P) ∂μ) < ∞) :
+    MemLp v (ENNReal.ofReal P) μ := by
+  have heq : ∀ x, ‖v x‖ₑ ^ P = ENNReal.ofReal (|v x| ^ P) := by
+    intro x
+    rw [← ofReal_norm, Real.norm_eq_abs,
+      ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hP.le]
+  refine ⟨hv, ?_⟩
+  rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top (by simp [hP]) (by simp),
+    ENNReal.toReal_ofReal hP.le]
+  simp_rw [heq]
+  exact h
+
+/-! ## The base vertex, on the class the interpolation uses
+
+Source: `thm:extended_model`, the display following the `L^p` duality step.
+The strict-range output estimate is available for bounded measurable fields of
+finite `L^{P_j}` norm; simple functions of finite-measure support are such
+fields, so the base vertex of the interpolation simplex is unconditional.
+-/
+
+/-- **The base vertex's strong bound, for simple inputs of finite-measure
+support.**  `‖U^{a,b}_{u,c}(f)‖_{R_0} ≤ C·U(u)^{100}·∏_j‖f_j‖_{P_j}`, together
+with the `L^{R_0}` membership the interpolation also consumes. -/
+theorem exists_lpNorm_ModelTruncatedOperator_le_of_simpleFunc
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hq : ∀ j : Fin 4, 0 < q j)
+    (hsum : ∑ j : Fin 4, (q j)⁻¹ = 1)
+    (hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j)
+    (hq1 : ∀ j : Fin 3, 1 ≤ q j.succ) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ) (f : Fin 3 → SimpleFunc E3 ℝ)
+      (a b : ℝ),
+      (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+      0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      MemLp (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) a b)
+          (ENNReal.ofReal (q 0).conjExponent) (volume : Measure E3) ∧
+        lpNorm (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) a b)
+            (ENNReal.ofReal (q 0).conjExponent) (volume : Measure E3)
+          ≤ C * sourceWeight u ^ 100 *
+              ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (q j.succ))
+                (volume : Measure E3) := by
+  classical
+  obtain ⟨C, hC0, hbound⟩ :=
+    lintegral_rpow_ModelTruncatedOperator_le_of_boundedMeasurable α q hq hsum
+      hqs hq1
+  refine ⟨64 * C, by linarith, ?_⟩
+  intro u c f a b hfs ha hcm hc
+  have hq0 : (1 : ℝ) < q 0 := by
+    have := hqs 0
+    rw [activeSourceStoppingExponent_zero] at this
+    linarith
+  have hR0 : (0 : ℝ) < (q 0).conjExponent :=
+    lt_trans zero_lt_one (Real.HolderConjugate.conjExponent hq0).symm.lt
+  choose Bd hBd0 hfB using fun j : Fin 3 ↦ aux_exists_bound_of_simpleFunc (f j)
+  have hkey := hbound u c (fun j ↦ ⇑(f j)) Bd a b ha hcm hc
+    (fun j ↦ (f j).measurable) hBd0 (fun j y ↦ hfB j y)
+    (fun j ↦ aux_memLp_of_simpleFunc_finMeasSupp (hfs j) (hq j.succ))
+  have hw1 : (1 : ℝ) ≤ sourceWeight u := aux_one_le_sourceWeight u
+  have hK0 : (0 : ℝ) ≤ 64 * C * sourceWeight u ^ 100 *
+      ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (q j.succ))
+        (volume : Measure E3) := by
+    have hw : (0 : ℝ) ≤ sourceWeight u ^ 100 := by positivity
+    have hp : (0 : ℝ) ≤ ∏ j : Fin 3, lpNorm (⇑(f j))
+        (ENNReal.ofReal (q j.succ)) (volume : Measure E3) :=
+      Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg
+    have : (0 : ℝ) ≤ 64 * C := by linarith
+    positivity
+  have hmeasU : Measurable (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) a b) :=
+    measurable_ModelTruncatedOperator_of_measurable α u c _ a b hcm
+      (fun j ↦ (f j).measurable)
+  refine ⟨?_, ?_⟩
+  · refine aux_memLp_of_lintegral_rpow_lt_top hmeasU.aestronglyMeasurable hR0 ?_
+    exact lt_of_le_of_lt hkey ENNReal.ofReal_lt_top
+  · exact aux_lpNorm_le_of_lintegral_rpow_le hmeasU.aestronglyMeasurable hR0
+      hK0 hkey
+
+/-! ## The extended model range, unconditionally
+
+Source: `thm:extended_model`, equation `eq:extended_operator_bound`.  With the
+base vertex now available on the interpolation's own class, the operator-level
+statement carries no hypotheses beyond the exponent conditions and the external
+interpolation theorem.
+-/
+
+/-- **`eq:extended_operator_bound`, with every side condition discharged.** -/
+theorem exists_ModelTruncatedOperator_extended_strong_bound_unconditional
+    (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (hβ₀ : 0 < β₀) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (pp : Fin 3 → ℝ) (hpp : ∀ j, (pp j)⁻¹ = β j)
+    (RR : ℝ) (hRR : RR⁻¹ = 1 - β₀) (hRR1 : 1 < RR) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (aa bb : ℝ),
+        0 < aa → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+        ∀ f : Fin 3 → SimpleFunc E3 ℝ,
+          (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+          MemLp (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+              (ENNReal.ofReal RR) (volume : Measure E3) ∧
+            lpNorm (ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb)
+                (ENNReal.ofReal RR) (volume : Measure E3)
+              ≤ C * sourceWeight u ^ 100 *
+                  ∏ j : Fin 3, lpNorm (⇑(f j))
+                    (ENNReal.ofReal (pp j)) (volume : Measure E3) := by
+  classical
+  have hb₀1 : b₀ < 1 := by linarith
+  have hbinv1 : ∀ j : Fin 3, (1 : ℝ) < (b j)⁻¹ := by
+    intro j
+    have h := hbq j
+    by_cases hj : j = 2
+    · rw [if_pos hj] at h; linarith
+    · rw [if_neg hj] at h; linarith
+  set q : Fin 4 → ℝ := Fin.cons b₀⁻¹ (fun j ↦ (b j)⁻¹) with hq_def
+  have hq0v : q 0 = b₀⁻¹ := by rw [hq_def]; simp
+  have hqsv : ∀ j : Fin 3, q j.succ = (b j)⁻¹ := by
+    intro j; rw [hq_def]; simp
+  have hq : ∀ j : Fin 4, 0 < q j := by
+    refine Fin.cases ?_ ?_
+    · rw [hq0v]; exact inv_pos.mpr hb₀
+    · intro j; rw [hqsv]; exact inv_pos.mpr (hb j)
+  have hbsum' : b₀ + ∑ j : Fin 3, b j = 1 := by rw [hbsum]; ring
+  have hsum : ∑ j : Fin 4, (q j)⁻¹ = 1 := by
+    rw [Fin.sum_univ_succ]
+    simp only [hq0v, hqsv, inv_inv]
+    linarith
+  have hb₀inv4 : (4 : ℝ) < b₀⁻¹ := by
+    have hh : b₀ * b₀⁻¹ = 1 := mul_inv_cancel₀ (ne_of_gt hb₀)
+    nlinarith [inv_pos.mpr hb₀, hb₀, hb₀4, hh]
+  have hqs : ∀ j : Fin 4, activeSourceStoppingExponent 2 j < q j := by
+    refine Fin.cases ?_ ?_
+    · rw [activeSourceStoppingExponent_zero, hq0v]; exact hb₀inv4
+    · intro j
+      rw [activeSourceStoppingExponent_succ, hqsv]
+      exact hbq j
+  have hq1 : ∀ j : Fin 3, (1 : ℝ) ≤ q j.succ := by
+    intro j; rw [hqsv]; exact (hbinv1 j).le
+  obtain ⟨A₀, hA₀, hbase⟩ :=
+    exists_lpNorm_ModelTruncatedOperator_le_of_simpleFunc α q hq hsum hqs hq1
+  have hconj0 : Real.conjExponent (q 0) = simplexVertexOutput b b₀ 0 := by
+    rw [hq0v, simplexVertexOutput_zero b hbsum]
+    exact aux_conjExponent_inv hb₀ hb₀1
+  have hexp0 : ∀ j : Fin 3, simplexVertexExponent b b₀ 0 j = q j.succ := by
+    intro j
+    rw [hqsv, simplexVertexExponent, simplexVertexReciprocal_zero]
+  obtain ⟨C, hC0, hmain⟩ :=
+    exists_ModelTruncatedOperator_extended_strong_bound α b β b₀ β₀ A₀ hU
+      hb hb₀ hbsum hb₀4 hbq hβ₀ hβsum hlt hA₀ pp hpp RR hRR hRR1
+  refine ⟨C, hC0, ?_⟩
+  intro u c aa bb haa hcm hc
+  refine hmain u c aa bb haa hcm hc ?_ ?_ ?_
+  · intro f
+    exact (measurable_ModelTruncatedOperator_of_measurable α u c _ aa bb hcm
+      (fun j ↦ (f j).measurable)).aemeasurable
+  · intro f hfs
+    rw [← hconj0]
+    exact (hbase u c f aa bb hfs haa hcm hc).1
+  · intro f hfs
+    rw [← hconj0, Finset.prod_congr rfl fun j _ ↦ by rw [hexp0 j]]
+    exact (hbase u c f aa bb hfs haa hcm hc).2
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The extended range, at the level of the form
+
+Source: the closing Hoelder display of `thm:extended_model`,
+`|Λ^{a,b}_{u,c}(f)| = |∫ f_0 U^{a,b}_{u,c}(f_1,f_2,f_3)|
+  ≤ ‖f_0‖_{p_0}‖U^{a,b}_{u,c}(f_1,f_2,f_3)‖_R ≤ C U(u)^{100}∏_{j=0}^3‖f_j‖_{p_j}`,
+valid because `R^{-1} + p_0^{-1} = 1`.
+-/
+
+/-- **The extended model range for the truncated form.**
+
+`|∫ f₀ · U^{a,b}_{u,c}(f₁,f₂,f₃)| ≤ C·U(u)^{100}·∏_{j=0}^3‖f_j‖_{p_j}`,
+uniformly in the mode, the coefficient and the truncation. -/
+theorem exists_abs_formPairing_ModelTruncatedOperator_le_extended
+    (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (hβ₀ : 0 < β₀) (hβ₀1 : β₀ < 1) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (pp : Fin 3 → ℝ) (hpp : ∀ j, (pp j)⁻¹ = β j) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (aa bb : ℝ),
+        0 < aa → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+        ∀ (f₀ : E3 → ℝ) (f : Fin 3 → SimpleFunc E3 ℝ),
+          MemLp f₀ (ENNReal.ofReal β₀⁻¹) (volume : Measure E3) →
+          (∀ j, (f j).FinMeasSupp (volume : Measure E3)) →
+          |∫ x : E3, f₀ x *
+              ModelTruncatedOperator α u c (fun j ↦ ⇑(f j)) aa bb x|
+            ≤ C * sourceWeight u ^ 100 *
+                (lpNorm f₀ (ENNReal.ofReal β₀⁻¹) (volume : Measure E3) *
+                  ∏ j : Fin 3, lpNorm (⇑(f j))
+                    (ENNReal.ofReal (pp j)) (volume : Measure E3)) := by
+  classical
+  have hβ₀inv1 : (1 : ℝ) < β₀⁻¹ := by
+    rw [one_lt_inv_iff₀]; exact ⟨hβ₀, hβ₀1⟩
+  have hRR1 : (1 : ℝ) < (1 - β₀)⁻¹ := one_lt_targetOutput hβ₀ hβ₀1
+  have hRRinv : ((1 - β₀)⁻¹)⁻¹ = 1 - β₀ := inv_inv _
+  have hpq : Real.HolderConjugate β₀⁻¹ (1 - β₀)⁻¹ := by
+    refine holderConjugate_of_inv_add_inv hβ₀inv1 ?_
+    rw [inv_inv, hRRinv]
+    ring
+  obtain ⟨C, hC0, hmain⟩ :=
+    exists_ModelTruncatedOperator_extended_strong_bound_unconditional α b β b₀ β₀
+      hU hb hb₀ hbsum hb₀4 hbq hβ₀ hβsum hlt pp hpp (1 - β₀)⁻¹ hRRinv hRR1
+  refine ⟨C, hC0, ?_⟩
+  intro u c aa bb haa hcm hc f₀ f hf₀ hfs
+  obtain ⟨hmemU, hle⟩ := hmain u c aa bb haa hcm hc f hfs
+  refine le_trans (abs_formPairing_le_of_operator_bound volume f₀ _ hpq hf₀
+    hmemU hle) (le_of_eq ?_)
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## From simple inputs to bounded measurable ones
+
+Source: `thm:extended_model`.  `ext:interpolation` delivers the strong bound on
+simple functions of finite-measure support; the inputs the model form is stated
+for are not simple.  Approximating each slot by `SimpleFunc.approxOn` keeps the
+sup bound up to a factor two, converges pointwise, and does not increase the
+`L^{p_j}` norms by more than the same factor, so Fatou carries the bound to the
+limit with a constant enlarged by `2^3`.
+-/
+
+/-- **`eq:extended_operator_bound` for bounded measurable inputs.** -/
+theorem exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable
+    (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (hβ₀ : 0 < β₀) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (pp : Fin 3 → ℝ) (hpp : ∀ j, (pp j)⁻¹ = β j)
+    (RR : ℝ) (hRR : RR⁻¹ = 1 - β₀) (hRR1 : 1 < RR) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (aa bb : ℝ),
+        0 < aa → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+        ∀ (h : ModelOperatorRealInput) (B : Fin 3 → ℝ),
+          (∀ j, Measurable (h j)) → (∀ j, 0 ≤ B j) →
+          (∀ j, ∀ y : E3, |h j y| ≤ B j) →
+          (∀ j, MemLp (h j) (ENNReal.ofReal (pp j)) (volume : Measure E3)) →
+          MemLp (ModelTruncatedOperator α u c h aa bb)
+              (ENNReal.ofReal RR) (volume : Measure E3) ∧
+            lpNorm (ModelTruncatedOperator α u c h aa bb)
+                (ENNReal.ofReal RR) (volume : Measure E3)
+              ≤ C * sourceWeight u ^ 100 *
+                  ∏ j : Fin 3, lpNorm (h j)
+                    (ENNReal.ofReal (pp j)) (volume : Measure E3) := by
+  classical
+  have hRR0 : (0 : ℝ) < RR := by linarith
+  have hppos : ∀ j : Fin 3, 0 < pp j := by
+    intro j
+    refine inv_pos.mp ?_
+    rw [hpp j]
+    linarith [hb j, hlt j]
+  obtain ⟨C, hC0, hsimple⟩ :=
+    exists_ModelTruncatedOperator_extended_strong_bound_unconditional α b β b₀ β₀
+      hU hb hb₀ hbsum hb₀4 hbq hβ₀ hβsum hlt pp hpp RR hRR hRR1
+  refine ⟨8 * C, by linarith, ?_⟩
+  intro u c aa bb haa hcm hc h B hmeas hB0 hbd hmem
+  have hw1 : (1 : ℝ) ≤ sourceWeight u := aux_one_le_sourceWeight u
+  have hw0 : (0 : ℝ) < sourceWeight u ^ 100 := by positivity
+  -- the simple approximants, slot by slot
+  have hpack : ∀ j : Fin 3, ∃ sq : ℕ → SimpleFunc E3 ℝ,
+      (∀ n, (sq n).FinMeasSupp (volume : Measure E3)) ∧
+      (∀ n, ∀ x : E3, |sq n x| ≤ 2 * B j) ∧
+      (∀ x : E3, Filter.Tendsto (fun n ↦ sq n x) Filter.atTop (𝓝 (h j x))) ∧
+      (∀ n, lpNorm (⇑(sq n)) (ENNReal.ofReal (pp j)) (volume : Measure E3)
+        ≤ 2 * lpNorm (h j) (ENNReal.ofReal (pp j)) (volume : Measure E3)) := by
+    intro j
+    set P : ℝ≥0∞ := ENNReal.ofReal (pp j) with hP
+    have hPne : P ≠ 0 := by rw [hP]; simp [hppos j]
+    have hPtop : P ≠ ∞ := by rw [hP]; simp
+    refine ⟨fun n ↦ SimpleFunc.approxOn (h j) (hmeas j)
+      (Set.range (h j) ∪ {0}) 0 (by simp) n, ?_, ?_, ?_, ?_⟩
+    · intro n
+      exact (SimpleFunc.memLp_iff_finMeasSupp hPne hPtop).mp
+        (SimpleFunc.memLp_approxOn_range (hmeas j) (hmem j) n)
+    · intro n x
+      have hz := SimpleFunc.norm_approxOn_zero_le (hmeas j)
+        (s := Set.range (h j) ∪ {0}) (by simp) x n
+      simp only [Real.norm_eq_abs] at hz
+      have := hbd j x
+      linarith
+    · intro x
+      exact SimpleFunc.tendsto_approxOn (hmeas j) (by simp)
+        (subset_closure (by simp))
+    · intro n
+      have hsmem : MemLp (⇑(SimpleFunc.approxOn (h j) (hmeas j)
+          (Set.range (h j) ∪ {0}) 0 (by simp) n)) P (volume : Measure E3) :=
+        SimpleFunc.memLp_approxOn_range (hmeas j) (hmem j) n
+      have h2mem : MemLp (fun x : E3 ↦ (2 : ℝ) * h j x) P
+          (volume : Measure E3) := (hmem j).const_mul 2
+      have hmono : eLpNorm (⇑(SimpleFunc.approxOn (h j) (hmeas j)
+            (Set.range (h j) ∪ {0}) 0 (by simp) n)) P (volume : Measure E3)
+          ≤ eLpNorm (fun x : E3 ↦ (2 : ℝ) * h j x) P (volume : Measure E3) := by
+        refine eLpNorm_mono (fun x ↦ ?_)
+        have hz := SimpleFunc.norm_approxOn_zero_le (hmeas j)
+          (s := Set.range (h j) ∪ {0}) (by simp) x n
+        simp only [Real.norm_eq_abs] at hz ⊢
+        rw [abs_mul, abs_two]
+        linarith
+      have hle : lpNorm (⇑(SimpleFunc.approxOn (h j) (hmeas j)
+            (Set.range (h j) ∪ {0}) 0 (by simp) n)) P (volume : Measure E3)
+          ≤ lpNorm (fun x : E3 ↦ (2 : ℝ) * h j x) P (volume : Measure E3) := by
+        rw [← toReal_eLpNorm hsmem.aestronglyMeasurable,
+          ← toReal_eLpNorm h2mem.aestronglyMeasurable]
+        exact ENNReal.toReal_mono h2mem.eLpNorm_ne_top hmono
+      rw [aux_lpNorm_const_mul 2 (h j) (hmem j).aestronglyMeasurable] at hle
+      simpa using hle
+  choose sq hsqfin hsqbd hsqtend hsqnorm using hpack
+  -- the bound at each approximation stage
+  have hKnn : ∀ n : ℕ,
+      lpNorm (ModelTruncatedOperator α u c (fun j ↦ ⇑(sq j n)) aa bb)
+          (ENNReal.ofReal RR) (volume : Measure E3)
+        ≤ 8 * C * sourceWeight u ^ 100 *
+            ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (pp j))
+              (volume : Measure E3) := by
+    intro n
+    refine le_trans (hsimple u c aa bb haa hcm hc (fun j ↦ sq j n)
+      (fun j ↦ hsqfin j n)).2 ?_
+    have hmono : (∏ j : Fin 3, lpNorm (⇑(sq j n)) (ENNReal.ofReal (pp j))
+          (volume : Measure E3))
+        ≤ ∏ j : Fin 3, (2 * lpNorm (h j) (ENNReal.ofReal (pp j))
+          (volume : Measure E3)) :=
+      Finset.prod_le_prod (fun j _ ↦ lpNorm_nonneg) (fun j _ ↦ hsqnorm j n)
+    have h8 : (∏ j : Fin 3, (2 * lpNorm (h j) (ENNReal.ofReal (pp j))
+          (volume : Measure E3)))
+        = 8 * ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (pp j))
+          (volume : Measure E3) := by
+      rw [Fin.prod_univ_three, Fin.prod_univ_three]; ring
+    have hCw : (0 : ℝ) ≤ C * sourceWeight u ^ 100 := mul_nonneg hC0 hw0.le
+    calc C * sourceWeight u ^ 100 *
+          ∏ j : Fin 3, lpNorm (⇑(sq j n)) (ENNReal.ofReal (pp j))
+            (volume : Measure E3)
+        ≤ C * sourceWeight u ^ 100 *
+            ∏ j : Fin 3, (2 * lpNorm (h j) (ENNReal.ofReal (pp j))
+              (volume : Measure E3)) := mul_le_mul_of_nonneg_left hmono hCw
+      _ = 8 * C * sourceWeight u ^ 100 *
+            ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (pp j))
+              (volume : Measure E3) := by rw [h8]; ring
+  -- pass to the limit
+  set K : ℝ := 8 * C * sourceWeight u ^ 100 *
+      ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (pp j))
+        (volume : Measure E3) with hK
+  have hK0 : (0 : ℝ) ≤ K := by
+    rw [hK]
+    have : (0 : ℝ) ≤ 8 * C := by linarith
+    have hp : (0 : ℝ) ≤ ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (pp j))
+        (volume : Measure E3) := Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg
+    positivity
+  have hlint : ∀ n : ℕ, ∫⁻ x : E3, ENNReal.ofReal
+      (|ModelTruncatedOperator α u c (fun j ↦ ⇑(sq j n)) aa bb x| ^ RR)
+      ≤ ENNReal.ofReal (K ^ RR) := by
+    intro n
+    refine lintegral_ofReal_abs_rpow_le_of_lpNorm_le hRR0 ?_ (hKnn n)
+    exact (hsimple u c aa bb haa hcm hc (fun j ↦ sq j n)
+      (fun j ↦ hsqfin j n)).1
+  have hfat : ∫⁻ x : E3, ENNReal.ofReal
+      (|ModelTruncatedOperator α u c h aa bb x| ^ RR)
+      ≤ ENNReal.ofReal (K ^ RR) := by
+    refine lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto_all α u c aa bb
+      (fun n j ↦ ⇑(sq j n)) h 1 (fun j ↦ 2 * B j) hRR0 haa zero_le_one hcm hc
+      (fun n j ↦ (sq j n).measurable) (fun j ↦ by linarith [hB0 j])
+      (fun n j y ↦ hsqbd j n y) hmeas
+      (fun j ↦ Filter.Eventually.of_forall (hsqtend j)) ?_ hlint
+    intro n
+    exact (measurable_ModelTruncatedOperator_of_measurable α u c _ aa bb hcm
+      (fun j ↦ (sq j n).measurable)).aemeasurable
+  have hmeasU : Measurable (ModelTruncatedOperator α u c h aa bb) :=
+    measurable_ModelTruncatedOperator_of_measurable α u c h aa bb hcm hmeas
+  exact ⟨aux_memLp_of_lintegral_rpow_lt_top hmeasU.aestronglyMeasurable hRR0
+      (lt_of_le_of_lt hfat ENNReal.ofReal_lt_top),
+    aux_lpNorm_le_of_lintegral_rpow_le hmeasU.aestronglyMeasurable hRR0 hK0 hfat⟩
+
+/-! ## The extended range for the truncated form, on bounded measurable inputs
+
+Source: the closing Hoelder display of `thm:extended_model`, now on the class
+the manuscript states the theorem for: the three active slots are bounded
+measurable fields of finite `L^{p_j}` norm, which includes every Schwartz
+tuple.
+-/
+
+/-- **`thm:extended_model` for the truncated form.**
+
+`|∫ f₀ · U^{a,b}_{u,c}(f₁,f₂,f₃)| ≤ C·U(u)^{100}·∏_{j=0}^3‖f_j‖_{p_j}`, for
+bounded measurable active slots of finite `L^{p_j}` norm, uniformly in the
+mode, the coefficient and the truncation. -/
+theorem exists_abs_formPairing_ModelTruncatedOperator_le_extended_boundedMeasurable
+    (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (hβ₀ : 0 < β₀) (hβ₀1 : β₀ < 1) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (pp : Fin 3 → ℝ) (hpp : ∀ j, (pp j)⁻¹ = β j) :
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (u : E3) (c : ℝ → ℝ) (aa bb : ℝ),
+        0 < aa → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+        ∀ (f₀ : E3 → ℝ) (h : ModelOperatorRealInput) (B : Fin 3 → ℝ),
+          MemLp f₀ (ENNReal.ofReal β₀⁻¹) (volume : Measure E3) →
+          (∀ j, Measurable (h j)) → (∀ j, 0 ≤ B j) →
+          (∀ j, ∀ y : E3, |h j y| ≤ B j) →
+          (∀ j, MemLp (h j) (ENNReal.ofReal (pp j)) (volume : Measure E3)) →
+          |∫ x : E3, f₀ x * ModelTruncatedOperator α u c h aa bb x|
+            ≤ C * sourceWeight u ^ 100 *
+                (lpNorm f₀ (ENNReal.ofReal β₀⁻¹) (volume : Measure E3) *
+                  ∏ j : Fin 3, lpNorm (h j)
+                    (ENNReal.ofReal (pp j)) (volume : Measure E3)) := by
+  classical
+  have hβ₀inv1 : (1 : ℝ) < β₀⁻¹ := by
+    rw [one_lt_inv_iff₀]; exact ⟨hβ₀, hβ₀1⟩
+  have hRR1 : (1 : ℝ) < (1 - β₀)⁻¹ := one_lt_targetOutput hβ₀ hβ₀1
+  have hRRinv : ((1 - β₀)⁻¹)⁻¹ = 1 - β₀ := inv_inv _
+  have hpq : Real.HolderConjugate β₀⁻¹ (1 - β₀)⁻¹ := by
+    refine holderConjugate_of_inv_add_inv hβ₀inv1 ?_
+    rw [inv_inv, hRRinv]
+    ring
+  obtain ⟨C, hC0, hmain⟩ :=
+    exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable α b β
+      b₀ β₀ hU hb hb₀ hbsum hb₀4 hbq hβ₀ hβsum hlt pp hpp (1 - β₀)⁻¹ hRRinv hRR1
+  refine ⟨C, hC0, ?_⟩
+  intro u c aa bb haa hcm hc f₀ h B hf₀ hmeas hB0 hbd hmem
+  obtain ⟨hmemU, hle⟩ := hmain u c aa bb haa hcm hc h B hmeas hB0 hbd hmem
+  refine le_trans (abs_formPairing_le_of_operator_bound volume f₀ _ hpq hf₀
+    hmemU hle) (le_of_eq ?_)
+  ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The extended range for the full-scale model form
+
+Source: `thm:extended_model`, "The constants are independent of `a,b`; take the
+scale limit for Schwartz inputs by Lemma `lem:model_convergence`".  The
+interval form is bounded uniformly in the truncation by the interpolated
+operator estimate, and the scale truncations converge to the full form.
+-/
+
+/-- **`thm:extended_model` for the real full-scale model form.** -/
+theorem exists_abs_ModelFullForm_le_extended
+    (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
+    (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
+    (hb₀4 : b₀ < 1 / 4)
+    (hbq : ∀ j : Fin 3, (if j = 2 then (2 : ℝ) else 4) < (b j)⁻¹)
+    (hβ₀ : 0 < β₀) (hβ₀1 : β₀ < 1) (hβsum : β₀ = 1 - ∑ j : Fin 3, β j)
+    (hlt : ∀ m, b m < β m)
+    (pq : Fin 4 → ℝ) (hpq0 : pq 0 = β₀⁻¹)
+    (hpqj : ∀ j : Fin 3, (pq j.succ)⁻¹ = β j) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput),
+      Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+      |ModelFullForm α u c F| ≤ C * sourceWeight u ^ 100 *
+        ∏ j : Fin 4, lpNorm (fun x : E3 ↦ F j x)
+          (ENNReal.ofReal (pq j)) (volume : Measure E3) := by
+  classical
+  have hβ₀inv1 : (1 : ℝ) < β₀⁻¹ := by
+    rw [one_lt_inv_iff₀]; exact ⟨hβ₀, hβ₀1⟩
+  have hRR1 : (1 : ℝ) < (1 - β₀)⁻¹ := one_lt_targetOutput hβ₀ hβ₀1
+  have hRRinv : ((1 - β₀)⁻¹)⁻¹ = 1 - β₀ := inv_inv _
+  have hconj : Real.HolderConjugate (pq 0) ((1 - β₀)⁻¹) := by
+    rw [hpq0]
+    refine holderConjugate_of_inv_add_inv hβ₀inv1 ?_
+    rw [inv_inv, hRRinv]
+    ring
+  obtain ⟨C, hC0, hmain⟩ :=
+    exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable α b β
+      b₀ β₀ hU hb hb₀ hbsum hb₀4 hbq hβ₀ hβsum hlt (fun j ↦ pq j.succ) hpqj
+      (1 - β₀)⁻¹ hRRinv hRR1
+  refine ⟨C, hC0, ?_⟩
+  intro u c F hcm hc
+  have hf0 : MemLp (fun x : E3 ↦ F 0 x) (ENNReal.ofReal (pq 0))
+      (volume : Measure E3) := SchwartzMap.memLp (F 0) _ volume
+  choose Bd hBd0 hFB using fun j : Fin 3 ↦ exists_bound_realSchwartz (F j.succ)
+  have hmeas : ∀ j : Fin 3, Measurable (modelOperatorInput F j) := fun j ↦
+    (F j.succ).continuous.measurable
+  have hmemj : ∀ j : Fin 3, MemLp (modelOperatorInput F j)
+      (ENNReal.ofReal (pq j.succ)) (volume : Measure E3) := fun j ↦
+    SchwartzMap.memLp (F j.succ) _ volume
+  have htrunc : ∀ N : ℕ, |ModelScaleTruncation α u c F N|
+      ≤ C * sourceWeight u ^ 100 *
+        ∏ j : Fin 4, lpNorm (fun x : E3 ↦ F j x)
+          (ENNReal.ofReal (pq j)) (volume : Measure E3) := by
+    intro N
+    have ha : (0 : ℝ) < (2 : ℝ) ^ (-(N : ℤ) - 1) := zpow_pos (by norm_num) _
+    obtain ⟨hUmem, hop⟩ := hmain u c ((2 : ℝ) ^ (-(N : ℤ) - 1)) ((2 : ℝ) ^ (N : ℤ))
+      ha hcm hc (modelOperatorInput F) Bd hmeas hBd0 (fun j y ↦ hFB j y) hmemj
+    have hjoint := integrable_modelTruncatedOperatorPairingIntegrand α u c F
+      (b := (2 : ℝ) ^ (N : ℤ)) ha hcm hc
+    have hstep := abs_ModelScaleIntervalTruncation_le_of_extended_operator_bound
+      α u c F ((2 : ℝ) ^ (-(N : ℤ) - 1)) ((2 : ℝ) ^ (N : ℤ)) hjoint pq
+      hconj hf0 hUmem hop
+    exact hstep
+  have hlim := tendsto_ModelScaleTruncation_of_realSchwartz α u c F hcm hc
+  have hlimabs : Filter.Tendsto (fun N ↦ |ModelScaleTruncation α u c F N|)
+      Filter.atTop (𝓝 |ModelFullForm α u c F|) :=
+    (continuous_abs.tendsto _).comp hlim
+  exact le_of_tendsto hlimabs (Filter.Eventually.of_forall htrunc)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The model-form bound as a hypothesis, and its complex bridges
+
+Source: `thm:extended_model` together with the closing paragraph of
+`thm:main`.  The passage from the real full-scale model form to the complex
+active-coordinate form is exponent-blind: it uses the `2^5` real/imaginary
+expansion and the coordinate relabeling and nothing about which exponent
+region the real bound holds in.  Isolating the real bound as a hypothesis lets
+the same passage serve the initial range and the extended range.
+-/
+
+/-- A uniform weight-one-hundred bound for the real full-scale model form at
+the exponents `q`. -/
+def UniformRealModelFormBound (α : Anisotropy) (q : Fin 4 → ℝ) : Prop :=
+  ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput),
+    Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
+    |ModelFullForm α u c F| ≤ C * sourceWeight u ^ 100 *
+      ∏ j : Fin 4, lpNorm (F j : E3 → ℝ)
+        (ENNReal.ofReal (q j)) (volume : Measure E3)
+
+/-- **The complex model form from the real one.**  The `2^5` real/imaginary
+expansion costs a factor `32`. -/
+theorem exists_uniform_LiteralModelFullForm_bound_of_real
+    (α : Anisotropy) (q : Fin 4 → ℝ) (hreal : UniformRealModelFormBound α q) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℂ)
+      (F : ModelComplexSchwartzInput),
+      Measurable c → (∀ t : ℝ, ‖c t‖ ≤ 1) →
+      ‖LiteralModelFullForm α u c F‖ ≤
+        C * sourceWeight u ^ 100 * ∏ j : Fin 4,
+          lpNorm (F j : E3 → ℂ) (ENNReal.ofReal (q j)) (volume : Measure E3) := by
+  obtain ⟨C, hC0, hbound⟩ := hreal
+  refine ⟨32 * C, by linarith, ?_⟩
+  intro u c F hcmeas hc
+  exact norm_LiteralModelFullForm_le_weight100 α u c C hC0 q hcmeas hc
+    (fun d hd hd1 G ↦ hbound u d G hd hd1) F
+
+/-- **The complex active-coordinate model form from the real one.**  The real
+bound is needed for the permuted anisotropy at the permuted exponents, which is
+what the coordinate relabeling of `lem:permutation` produces. -/
+theorem exists_uniform_LiteralActiveModelFullForm_bound_of_real
+    (α : Anisotropy) (i : Fin 3) (q : Fin 4 → ℝ)
+    (hreal : ∀ σ : Equiv.Perm (Fin 3),
+      UniformRealModelFormBound (permutedAnisotropy α σ)
+        (permutedModelExponent σ q)) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (u : E3) (c : ℝ → ℂ)
+      (F : ModelComplexSchwartzInput),
+      Measurable c → (∀ t : ℝ, ‖c t‖ ≤ 1) →
+      ‖LiteralActiveModelFullForm α i u c F‖ ≤
+        C * sourceWeight u ^ 100 * ∏ j : Fin 4,
+          lpNorm (F j : E3 → ℂ) (ENNReal.ofReal (q j)) (volume : Measure E3) := by
+  obtain ⟨σ, hσ⟩ := exists_coordinatePermutation_to_active i
+  obtain ⟨C, hC0, hbound⟩ :=
+    exists_uniform_LiteralModelFullForm_bound_of_real (permutedAnisotropy α σ)
+      (permutedModelExponent σ q) (hreal σ)
+  refine ⟨C, hC0, ?_⟩
+  intro u c F hcmeas hc
+  rw [LiteralActiveModelFullForm_permute_to_third α σ i u c F hσ]
+  have hbound' := hbound (coordinatePermutation σ u) c
+    (complexPermutedModelInput σ F) hcmeas hc
+  rw [sourceWeight_coordinatePermutation σ u,
+    prod_lpNorm_complexPermutedModelInput σ F q] at hbound'
+  exact hbound'
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology RealInnerProductSpace
+
+noncomputable section
+
+/-! ## The Fourier transform under a coordinate relabeling
+
+Source: `lem:permutation`.  The frequency-side transport of the model form
+needs the Fourier transform to commute with the coordinate relabeling; the
+relabeling is an isometry, so its adjoint is its inverse and the character is
+carried across unchanged.
+-/
+
+/-- Relabeling one argument of the Fourier character moves to the other.
+
+Auxiliary. -/
+theorem aux_frequencyPhase_isometry (P : E3 ≃ₗᵢ[ℝ] E3) (x y : E3) :
+    frequencyPhase (P.symm x) y = frequencyPhase x (P y) := by
+  unfold frequencyPhase
+  congr 2
+  rw [← P.inner_map_map (P.symm x) y, P.apply_symm_apply]
+
+/-- **The Fourier transform commutes with a coordinate relabeling.**
+
+Auxiliary. -/
+theorem aux_schwartzFourier_comp_isometry (P : E3 ≃ₗᵢ[ℝ] E3) (f g : Schwartz3)
+    (hg : ∀ x : E3, g x = f (P x)) (ξ : E3) :
+    schwartzFourier g ξ = schwartzFourier f (P ξ) := by
+  have hP : MeasurePreserving (P : E3 → E3) volume volume :=
+    LinearIsometryEquiv.measurePreserving _
+  have hemb : MeasurableEmbedding (P : E3 → E3) :=
+    P.toHomeomorph.measurableEmbedding
+  have key : ∀ s : E3, schwartzFourier g (-s) = schwartzFourier f (-(P s)) := by
+    intro s
+    rw [schwartzFourier_neg_apply, schwartzFourier_neg_apply]
+    have h1 : (∫ x : E3, frequencyPhase x s * g x)
+        = ∫ x : E3, frequencyPhase (P.symm (P x)) s * f (P x) := by
+      refine integral_congr_ae (Filter.Eventually.of_forall fun x ↦ ?_)
+      simp only [LinearIsometryEquiv.symm_apply_apply, hg x]
+    have h2 : (∫ x : E3, frequencyPhase (P.symm (P x)) s * f (P x))
+        = ∫ y : E3, frequencyPhase (P.symm y) s * f y :=
+      hP.integral_comp hemb (fun y : E3 ↦ frequencyPhase (P.symm y) s * f y)
+    have h3 : (∫ y : E3, frequencyPhase (P.symm y) s * f y)
+        = ∫ y : E3, frequencyPhase y (P s) * f y := by
+      refine integral_congr_ae (Filter.Eventually.of_forall fun y ↦ ?_)
+      simp only [aux_frequencyPhase_isometry P y s]
+    rw [h1, h2, h3]
+  simpa using key (-ξ)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology RealInnerProductSpace
+
+noncomputable section
+
+
+/-! ## The twisted product under a coordinate relabeling
+
+Source: `lem:permutation`.  Relabeling the three spatial coordinates and the
+three active inputs together leaves the translated product `P_f` unchanged, up
+to the same relabeling of its argument.  This is what transports the model
+estimate between active coordinates on the multiplier side.
+-/
+
+/-- Pulling a shifted coordinate line back through the coordinate relabeling.
+
+Auxiliary. -/
+theorem aux_coordinatePermutation_symm_add_smul_coordinateDirection
+    (σ : Equiv.Perm (Fin 3)) (j : Fin 3) (x : E3) (r : ℝ) :
+    (coordinatePermutation σ).symm
+      (coordinatePermutation σ x + r • Anisotropy.coordinateDirection j) =
+        x + r • Anisotropy.coordinateDirection (σ j) := by
+  rw [map_add, map_smul, (coordinatePermutation σ).symm_apply_apply]
+  congr 1
+  ext k
+  simp [coordinatePermutation_symm_apply, coordinateDirection_apply,
+    Equiv.symm_apply_eq]
+
+/-- The translated product, written as a product over the three active slots.
+
+Auxiliary. -/
+theorem aux_twistedProduct_apply_prod (F : ModelComplexSchwartzInput) (t : E3) :
+    twistedProduct (F 0) (F 1) (F 2) (F 3) t
+      = ∫ x : E3, F 0 x *
+          ∏ j : Fin 3, F j.succ
+            (x + t j • Anisotropy.coordinateDirection j) := by
+  rw [twistedProduct_apply]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun x ↦ ?_)
+  simp only [Fin.prod_univ_three, show (0 : Fin 3).succ = (1 : Fin 4) from rfl,
+    show (1 : Fin 3).succ = (2 : Fin 4) from rfl,
+    show (2 : Fin 3).succ = (3 : Fin 4) from rfl]
+  ring
+
+/-- **The translated product under a coordinate relabeling.** -/
+theorem twistedProduct_complexPermutedModelInput
+    (σ : Equiv.Perm (Fin 3)) (F : ModelComplexSchwartzInput) (s : E3) :
+    twistedProduct (complexPermutedModelInput σ F 0)
+        (complexPermutedModelInput σ F 1)
+        (complexPermutedModelInput σ F 2)
+        (complexPermutedModelInput σ F 3) s
+      = twistedProduct (F 0) (F 1) (F 2) (F 3)
+          ((coordinatePermutation σ).symm s) := by
+  classical
+  rw [aux_twistedProduct_apply_prod (complexPermutedModelInput σ F) s,
+    aux_twistedProduct_apply_prod F ((coordinatePermutation σ).symm s)]
+  have hP : MeasurePreserving ((coordinatePermutation σ : E3 → E3))
+      volume volume := coordinatePermutation_measurePreserving σ
+  have hemb : MeasurableEmbedding ((coordinatePermutation σ : E3 → E3)) :=
+    (coordinatePermutation σ).toHomeomorph.measurableEmbedding
+  have hstep : (∫ y : E3, complexPermutedModelInput σ F 0 y *
+        ∏ j : Fin 3, complexPermutedModelInput σ F j.succ
+          (y + s j • Anisotropy.coordinateDirection j))
+      = ∫ x : E3, (fun y : E3 ↦ complexPermutedModelInput σ F 0 y *
+          ∏ j : Fin 3, complexPermutedModelInput σ F j.succ
+            (y + s j • Anisotropy.coordinateDirection j))
+          (coordinatePermutation σ x) := (hP.integral_comp hemb _).symm
+  rw [hstep]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun x ↦ ?_)
+  simp only [complexPermutedModelInput_apply, modelInputIndex_zero,
+    modelInputIndex_succ, LinearIsometryEquiv.symm_apply_apply,
+    aux_coordinatePermutation_symm_add_smul_coordinateDirection]
+  congr 1
+  have hbody : ∀ j : Fin 3,
+      F (σ j).succ (x + s j • Anisotropy.coordinateDirection (σ j))
+        = (fun k : Fin 3 ↦ F k.succ
+            (x + ((coordinatePermutation σ).symm s) k •
+              Anisotropy.coordinateDirection k)) (σ j) := by
+    intro j
+    simp only [coordinatePermutation_symm_apply, Equiv.symm_apply_apply]
+  rw [Finset.prod_congr rfl (fun j _ ↦ hbody j)]
+  exact Equiv.prod_comp σ (fun k : Fin 3 ↦ F k.succ
+    (x + ((coordinatePermutation σ).symm s) k •
+      Anisotropy.coordinateDirection k))
+
+/-! ## The multiplier form under a coordinate relabeling
+
+Source: `lem:permutation`.  Composing the symbol with the coordinate
+relabeling is the same as relabeling the four inputs; this is the identity that
+moves the model estimate between the three active coordinates on the
+multiplier side.
+-/
+
+/-- **The multiplier form under a coordinate relabeling.** -/
+theorem multiplierForm_comp_coordinatePermutation
+    (σ : Equiv.Perm (Fin 3)) (S : E3 → ℂ) (F : ModelComplexSchwartzInput) :
+    multiplierForm (fun ξ : E3 ↦ S (coordinatePermutation σ ξ))
+        (F 0) (F 1) (F 2) (F 3)
+      = multiplierForm S (complexPermutedModelInput σ F 0)
+          (complexPermutedModelInput σ F 1)
+          (complexPermutedModelInput σ F 2)
+          (complexPermutedModelInput σ F 3) := by
+  classical
+  have hP : MeasurePreserving ((coordinatePermutation σ : E3 → E3))
+      volume volume := coordinatePermutation_measurePreserving σ
+  have hemb : MeasurableEmbedding ((coordinatePermutation σ : E3 → E3)) :=
+    (coordinatePermutation σ).toHomeomorph.measurableEmbedding
+  have hfour : ∀ ξ : E3,
+      schwartzFourier (twistedProduct (complexPermutedModelInput σ F 0)
+          (complexPermutedModelInput σ F 1)
+          (complexPermutedModelInput σ F 2)
+          (complexPermutedModelInput σ F 3)) ξ
+        = schwartzFourier (twistedProduct (F 0) (F 1) (F 2) (F 3))
+            ((coordinatePermutation σ).symm ξ) := by
+    intro ξ
+    exact aux_schwartzFourier_comp_isometry (coordinatePermutation σ).symm
+      (twistedProduct (F 0) (F 1) (F 2) (F 3))
+      (twistedProduct (complexPermutedModelInput σ F 0)
+        (complexPermutedModelInput σ F 1)
+        (complexPermutedModelInput σ F 2)
+        (complexPermutedModelInput σ F 3))
+      (fun x ↦ twistedProduct_complexPermutedModelInput σ F x) ξ
+  unfold multiplierForm
+  have hrhs : (∫ ξ : E3, S ξ *
+        schwartzFourier (twistedProduct (complexPermutedModelInput σ F 0)
+          (complexPermutedModelInput σ F 1)
+          (complexPermutedModelInput σ F 2)
+          (complexPermutedModelInput σ F 3)) (-ξ))
+      = ∫ ξ : E3, S ξ *
+          schwartzFourier (twistedProduct (F 0) (F 1) (F 2) (F 3))
+            ((coordinatePermutation σ).symm (-ξ)) := by
+    refine integral_congr_ae (Filter.Eventually.of_forall fun ξ ↦ ?_)
+    simp only [hfour (-ξ)]
+  rw [hrhs]
+  have hcov := (hP.integral_comp hemb (fun ξ : E3 ↦ S ξ *
+    schwartzFourier (twistedProduct (F 0) (F 1) (F 2) (F 3))
+      ((coordinatePermutation σ).symm (-ξ)))).symm
+  rw [hcov]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun η ↦ ?_)
+  simp only [map_neg, LinearIsometryEquiv.symm_apply_apply]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The cone mode form is a third-coordinate mode form
+
+Source: `lem:permutation`.  The `i`th cone's mode symbol is the third-cone
+symbol evaluated at a relabeled frequency, so by the relabeling identity for the
+multiplier form the `i`th cone's mode form is the third-coordinate mode form of
+the relabeled input tuple.
+-/
+
+/-- **The `i`th cone's mode form, in permuted coordinates.** -/
+theorem coneModeForm_eq_thirdModeFrequencyForm_permuted
+    (α : Anisotropy) (i : Fin 3) (ν : Fin 3 → ℤ) {t : ℝ} (ht : 0 < t)
+    (F : ModelComplexSchwartzInput) :
+    coneModeForm α i ν t F
+      = thirdModeFrequencyForm (conePermutedAnisotropy α i)
+          (standardModeOfInt ν) t
+          (complexPermutedModelInput (Equiv.swap 2 i) F) := by
+  classical
+  obtain ⟨M, hM⟩ := exists_isAnisotropicMultiplier_thirdModeFrequencySymbol
+    (conePermutedAnisotropy α i) ν
+  have hcertβ : Anisotropy.IsAnisotropicMultiplier (conePermutedAnisotropy α i) M
+      (thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+        (standardModeOfInt ν) t) := hM t ht
+  have hcertα : Anisotropy.IsAnisotropicMultiplier α M
+      (fun ξ : E3 ↦ thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+        (standardModeOfInt ν) t
+        (coordinatePermutation (Equiv.swap 2 i) ξ)) := by
+    have h := IsAnisotropicMultiplier_permute (Equiv.swap 2 i) hcertβ
+    rw [conePermutedAnisotropy, permutedAnisotropy_swap_involutive] at h
+    simpa only [coordinatePermutation_swap_symm_apply] using h
+  calc coneModeForm α i ν t F
+      = frequencyForm (fun ξ : E3 ↦
+            thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+              (standardModeOfInt ν) t (coordinatePermutation (Equiv.swap 2 i) ξ))
+            (F 0) (F 1) (F 2) (F 3) :=
+        (frequencyForm_permutedMode_eq α i ν t F).symm
+    _ = multiplierForm (fun ξ : E3 ↦
+            thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+              (standardModeOfInt ν) t (coordinatePermutation (Equiv.swap 2 i) ξ))
+            (F 0) (F 1) (F 2) (F 3) :=
+        (multiplierForm_eq_frequencyForm α M _ hcertα (F 0) (F 1) (F 2) (F 3)).symm
+    _ = multiplierForm
+            (thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+              (standardModeOfInt ν) t)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 0)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 1)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 2)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 3) :=
+        multiplierForm_comp_coordinatePermutation (Equiv.swap 2 i) _ F
+    _ = frequencyForm
+            (thirdModeFrequencySymbol (conePermutedAnisotropy α i)
+              (standardModeOfInt ν) t)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 0)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 1)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 2)
+            (complexPermutedModelInput (Equiv.swap 2 i) F 3) :=
+        multiplierForm_eq_frequencyForm (conePermutedAnisotropy α i) M _ hcertβ _ _ _ _
+    _ = thirdModeFrequencyForm (conePermutedAnisotropy α i)
+            (standardModeOfInt ν) t
+            (complexPermutedModelInput (Equiv.swap 2 i) F) := rfl
+
+/-! ## The cone mode full form, and the uniform cone bound
+
+Source: the closing paragraph of `thm:main`.  Integrating the one-mode
+identification in the scale identifies the `i`th cone's mode full form with a
+literal complex active-coordinate model form, at the translation attached to the
+mode.  The model bound then gives the uniform cone estimate the multiplier
+theorem consumes.
+-/
+
+/-- **The `i`th cone's mode full form is an active-coordinate model form.** -/
+theorem coneModeFullForm_eq_LiteralActiveModelFullForm
+    (α : Anisotropy) (i : Fin 3) (ν : Fin 3 → ℤ) (c : ℝ → ℂ)
+    (F : ModelComplexSchwartzInput) :
+    coneModeFullForm α i ν c F
+      = LiteralActiveModelFullForm α i
+          ((coordinatePermutation (Equiv.swap 2 i)).symm
+            (standardModeTranslate (standardModeOfInt ν))) (-c) F := by
+  have hσ : (Equiv.swap (2 : Fin 3) i) 2 = i := Equiv.swap_apply_left 2 i
+  have hstep : coneModeFullForm α i ν c F
+      = thirdModeFrequencyFullForm (conePermutedAnisotropy α i)
+          (standardModeOfInt ν) c
+          (complexPermutedModelInput (Equiv.swap 2 i) F) := by
+    rw [thirdModeFrequencyFullForm_eq_integral_div]
+    unfold coneModeFullForm
+    refine setIntegral_congr_fun measurableSet_Ioi fun t ht ↦ ?_
+    have ht0 : (0 : ℝ) < t := ht
+    rw [coneModeForm_eq_thirdModeFrequencyForm_permuted α i ν ht0 F]
+  rw [hstep]
+  exact thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm_permuted
+    α (Equiv.swap 2 i) i hσ (standardModeOfInt ν) c F
+
+/-- **The uniform cone mode bound from the real model bound.**
+
+This is the hypothesis `thm:main` is stated against, discharged from the
+full-scale real model estimate at the exponents `q`. -/
+theorem uniformConeModeFormBound_of_real
+    (α : Anisotropy) (q : Fin 4 → ℝ)
+    (hreal : ∀ σ : Equiv.Perm (Fin 3),
+      UniformRealModelFormBound (permutedAnisotropy α σ)
+        (permutedModelExponent σ q)) :
+    UniformConeModeFormBound α q := by
+  classical
+  choose Cf hCf0 hCfb using fun i : Fin 3 ↦
+    exists_uniform_LiteralActiveModelFullForm_bound_of_real α i q hreal
+  refine ⟨∑ i : Fin 3, Cf i, Finset.sum_nonneg fun i _ ↦ hCf0 i, ?_⟩
+  intro i ν c hcm hc F
+  rw [coneModeFullForm_eq_LiteralActiveModelFullForm α i ν c F]
+  have hb := hCfb i
+    ((coordinatePermutation (Equiv.swap 2 i)).symm
+      (standardModeTranslate (standardModeOfInt ν))) (-c) F hcm.neg
+    (fun t ↦ by simpa using hc t)
+  refine hb.trans ?_
+  have hprod : (0 : ℝ) ≤ ∏ j : Fin 4,
+      lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (q j)) (volume : Measure E3) :=
+    Finset.prod_nonneg fun j _ ↦ lpNorm_nonneg
+  have hw : sourceWeight ((coordinatePermutation (Equiv.swap 2 i)).symm
+        (standardModeTranslate (standardModeOfInt ν)))
+      = sourceWeight (standardModeTranslate (standardModeOfInt ν)) := by
+    have h := sourceWeight_coordinatePermutation (Equiv.swap 2 i)
+      ((coordinatePermutation (Equiv.swap 2 i)).symm
+        (standardModeTranslate (standardModeOfInt ν)))
+    rw [(coordinatePermutation (Equiv.swap 2 i)).apply_symm_apply] at h
+    exact h.symm
+  have hpow : sourceWeight ((coordinatePermutation (Equiv.swap 2 i)).symm
+        (standardModeTranslate (standardModeOfInt ν))) ^ (100 : ℕ)
+      ≤ sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) := by
+    rw [hw]
+    exact sourceWeight_standardModeTranslate_pow_le (standardModeOfInt ν)
+  have hCle : Cf i ≤ ∑ k : Fin 3, Cf k :=
+    Finset.single_le_sum (fun k _ ↦ hCf0 k) (Finset.mem_univ i)
+  have hw0 : (0 : ℝ) ≤ sourceWeight ((coordinatePermutation (Equiv.swap 2 i)).symm
+      (standardModeTranslate (standardModeOfInt ν))) ^ (100 : ℕ) :=
+    pow_nonneg (sourceWeight_pos _).le _
+  have hmid : Cf i * sourceWeight ((coordinatePermutation (Equiv.swap 2 i)).symm
+        (standardModeTranslate (standardModeOfInt ν))) ^ (100 : ℕ)
+      ≤ (∑ k : Fin 3, Cf k) *
+        sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) := by
+    calc Cf i * sourceWeight ((coordinatePermutation (Equiv.swap 2 i)).symm
+            (standardModeTranslate (standardModeOfInt ν))) ^ (100 : ℕ)
+        ≤ (∑ k : Fin 3, Cf k) *
+            sourceWeight ((coordinatePermutation (Equiv.swap 2 i)).symm
+              (standardModeTranslate (standardModeOfInt ν))) ^ (100 : ℕ) :=
+          mul_le_mul_of_nonneg_right hCle hw0
+      _ ≤ (∑ k : Fin 3, Cf k) *
+            sourceWeight ((standardModeOfInt ν : standardModeLattice) : E3) ^ (100 : ℕ) :=
+          mul_le_mul_of_nonneg_left hpow (Finset.sum_nonneg fun k _ ↦ hCf0 k)
+  exact mul_le_mul_of_nonneg_right hmid hprod
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The real model bound at the exponents of `thm:main`
+
+Source: the opening line of the proof of `thm:extended_model`, "Choose `b` by
+Lemma `lem:exponent_simplex`", together with the observation in the proof of
+`thm:main` that the extended region holds for every choice of active
+coordinate.  The base point depends on which coordinate is active, which is why
+the bound has to be produced separately for every relabeling.
+-/
+
+/-- A reciprocal below `1/4` has inverse above `4`.
+
+Auxiliary. -/
+theorem aux_four_lt_inv {c : ℝ} (hc : 0 < c) (h : c < 1 / 4) : (4 : ℝ) < c⁻¹ := by
+  have hh : c * c⁻¹ = 1 := mul_inv_cancel₀ (ne_of_gt hc)
+  nlinarith [inv_pos.mpr hc]
+
+/-- A reciprocal below `1/2` has inverse above `2`.
+
+Auxiliary. -/
+theorem aux_two_lt_inv {c : ℝ} (hc : 0 < c) (h : c < 1 / 2) : (2 : ℝ) < c⁻¹ := by
+  have hh : c * c⁻¹ = 1 := mul_inv_cancel₀ (ne_of_gt hc)
+  nlinarith [inv_pos.mpr hc]
+
+/-- **The real full-scale model bound at the exponents of `thm:main`, for every
+coordinate relabeling.** -/
+theorem uniformRealModelFormBound_permuted_of_main_bounds
+    (α : Anisotropy) (p : Fin 4 → ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hp0 : 4 < p 0)
+    (hp1 : 1 < p 1) (hp1' : p 1 < 4)
+    (hp2 : 1 < p 2) (hp2' : p 2 < 4)
+    (hp3 : 1 < p 3) (hp3' : p 3 < 4)
+    (hsum : ∑ j : Fin 4, (p j)⁻¹ = 1)
+    (σ : Equiv.Perm (Fin 3)) :
+    UniformRealModelFormBound (permutedAnisotropy α σ)
+      (permutedModelExponent σ p) := by
+  classical
+  have hq0 : permutedModelExponent σ p 0 = p 0 := rfl
+  have hqsucc : ∀ j : Fin 3,
+      permutedModelExponent σ p j.succ = p (σ j).succ := fun j ↦ rfl
+  have hthree : ∀ j : Fin 3, j = 0 ∨ j = 1 ∨ j = 2 := by decide
+  have hprec : ∀ j : Fin 3, 1 / 4 < (p j.succ)⁻¹ := by
+    intro j
+    rcases hthree j with rfl | rfl | rfl
+    · rw [show ((0 : Fin 3).succ) = (1 : Fin 4) from rfl, ← one_div]
+      exact one_div_lt_one_div_of_lt (by linarith) hp1'
+    · rw [show ((1 : Fin 3).succ) = (2 : Fin 4) from rfl, ← one_div]
+      exact one_div_lt_one_div_of_lt (by linarith) hp2'
+    · rw [show ((2 : Fin 3).succ) = (3 : Fin 4) from rfl, ← one_div]
+      exact one_div_lt_one_div_of_lt (by linarith) hp3'
+  have hβ₀lt : (p 0)⁻¹ < 1 / 4 := by
+    rw [← one_div]
+    exact one_div_lt_one_div_of_lt (by norm_num) hp0
+  have hβ₀pos : 0 < (p 0)⁻¹ := inv_pos.mpr (by linarith)
+  set β : Fin 3 → ℝ := fun j ↦ (permutedModelExponent σ p j.succ)⁻¹ with hβ
+  have hβpos : ∀ j : Fin 3, 1 / 4 < β j := by
+    intro j
+    rw [hβ]
+    simp only [hqsucc j]
+    exact hprec (σ j)
+  have hβsum : (p 0)⁻¹ = 1 - ∑ j : Fin 3, β j := by
+    have hre : (∑ j : Fin 3, β j) = ∑ k : Fin 3, (p k.succ)⁻¹ := by
+      rw [hβ]
+      simp only [hqsucc]
+      exact Equiv.sum_comp σ (fun k : Fin 3 ↦ (p k.succ)⁻¹)
+    have h4 : (p 0)⁻¹ + ∑ k : Fin 3, (p k.succ)⁻¹ = 1 := by
+      have hexp := Fin.sum_univ_succ (f := fun j : Fin 4 ↦ (p j)⁻¹)
+      linarith [hsum, hexp]
+    rw [hre]; linarith
+  have hβthree : ∑ j : Fin 3, β j = β 0 + β 1 + β 2 := Fin.sum_univ_three β
+  obtain ⟨hreg₀, hreg₃, hreg₁₂, hreg₁₃, hreg₂₃⟩ :=
+    extendedRegion_of_main_bounds (β₀ := (p 0)⁻¹) (β₁ := β 0) (β₂ := β 1)
+      (β₃ := β 2) hβ₀lt (hβpos 0) (hβpos 1) (hβpos 2)
+  obtain ⟨c₁, c₂, c₃, hc₁, hc₂, hc₃, hc₁β, hc₂β, hc₃β, hc₁q, hc₂q, hc₃low,
+    hc₃h, hcsum, hcsum', hcβ₀, hcq⟩ :=
+    exists_exponentSimplex_base (β₀ := (p 0)⁻¹) (β₁ := β 0) (β₂ := β 1)
+      (β₃ := β 2) hβ₀pos (by linarith [hβpos 0]) (by linarith [hβpos 1])
+      (by linarith [hβpos 2]) (by linarith) hreg₀ hreg₃ hreg₁₂ hreg₁₃ hreg₂₃
+  refine exists_abs_ModelFullForm_le_extended (permutedAnisotropy α σ)
+    ![c₁, c₂, c₃] β (1 - (c₁ + c₂ + c₃)) ((p 0)⁻¹) hU ?_ (by linarith) ?_
+    hcq ?_ hβ₀pos (by linarith) hβsum ?_ (permutedModelExponent σ p) ?_ ?_
+  · intro j
+    rcases hthree j with rfl | rfl | rfl <;> simpa using ‹_›
+  · have : ∑ j : Fin 3, (![c₁, c₂, c₃] : Fin 3 → ℝ) j = c₁ + c₂ + c₃ := by
+      rw [Fin.sum_univ_three]; simp
+    rw [this]
+  · intro j
+    rcases hthree j with rfl | rfl | rfl
+    · simpa using aux_four_lt_inv hc₁ hc₁q
+    · simpa using aux_four_lt_inv hc₂ hc₂q
+    · simpa using aux_two_lt_inv hc₃ hc₃h
+  · intro m
+    rcases hthree m with rfl | rfl | rfl <;> simpa using ‹_›
+  · rw [hq0, inv_inv]
+  · intro j; rw [hβ]
+
+/-! ## `thm:main`, conditional only on `ext:interpolation`
+
+Source: `thm:main`.  Every hypothesis of the Lean statement other than the
+external interpolation theorem is now discharged: the exponent simplex supplies
+a base point for each active coordinate, the extended model range supplies the
+real full-scale model bound there, the complexification and relabeling bridges
+carry it to the cone mode forms, and `thm:cone` sums the modes.
+-/
+
+/-- **The uniform cone mode bound at the exponents of `thm:main`.** -/
+theorem uniformConeModeFormBound_of_main_bounds
+    (α : Anisotropy) (p : Fin 4 → ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hp0 : 4 < p 0)
+    (hp1 : 1 < p 1) (hp1' : p 1 < 4)
+    (hp2 : 1 < p 2) (hp2' : p 2 < 4)
+    (hp3 : 1 < p 3) (hp3' : p 3 < 4)
+    (hsum : ∑ j : Fin 4, (p j)⁻¹ = 1) :
+    UniformConeModeFormBound α p :=
+  uniformConeModeFormBound_of_real α p
+    (fun σ ↦ uniformRealModelFormBound_permuted_of_main_bounds α p hU hp0 hp1
+      hp1' hp2 hp2' hp3 hp3' hsum σ)
+
+/-- **`thm:main` (Anisotropic paraproduct), conditional only on
+`ext:interpolation`.**
+
+Suppose `4 < p₀ < ∞`, `1 < p₁, p₂, p₃ < 4`, and `∑_{j=0}^3 p_j^{-1} = 1`.
+There exists `C_{α,p} > 0` such that every multiplier in Definition
+`def:multiplier` and every complex Schwartz tuple satisfy
+`|Λ_m(f)| ≤ C_{α,p} M ∏_{j=0}^3 ‖f_j‖_{p_j}`. -/
+theorem anisotropicParaproduct_of_interpolation
+    (α : Anisotropy) (p : Fin 4 → ℝ)
+    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hp0 : 4 < p 0)
+    (hp1 : 1 < p 1) (hp1' : p 1 < 4)
+    (hp2 : 1 < p 2) (hp2' : p 2 < 4)
+    (hp3 : 1 < p 3) (hp3' : p 3 < 4)
+    (hsum : ∑ j : Fin 4, (p j)⁻¹ = 1) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ F : ModelComplexSchwartzInput,
+        ‖multiplierForm m (F 0) (F 1) (F 2) (F 3)‖
+          ≤ C * M *
+              ∏ j : Fin 4,
+                lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (p j)) volume :=
+  (anisotropicParaproduct α p hp0 hp1 hp1' hp2 hp2' hp3 hp3' hsum
+    (uniformConeModeFormBound_of_main_bounds α p hU hp0 hp1 hp1' hp2 hp2' hp3
+      hp3' hsum)).2
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Convergence of the coordinate convolution without a uniform bound
+
+Source: `lem:one_fiber`, "choose Schwartz approximants converging in `L^{P_m}`
+… the remaining inputs can be approximated in their `L^{P_j}` norms in the same
+way".  The approximants supplied by `SimpleFunc.approxOn` are dominated by twice
+the limit rather than by a constant, so the dominated-convergence step has to be
+run against that majorant instead of a constant one.
+-/
+
+/-- **The coordinate convolution converges under pointwise domination.** -/
+theorem tendsto_ModelCoordinateConvolution_of_ae_line_dominated
+    (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
+    (hg : ∀ n, Measurable (g n)) (hk : Measurable k)
+    (hdomp : ∀ n, ∀ y : E3, |g n y| ≤ 2 * |glim y|)
+    (hint : Integrable (fun r : ℝ ↦
+      2 * |glim (x - r • Anisotropy.coordinateDirection i)| *
+        |kernelDilate k s r|))
+    (hline : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection i)) Filter.atTop
+      (𝓝 (glim (x - r • Anisotropy.coordinateDirection i)))) :
+    Filter.Tendsto (fun n ↦ ModelCoordinateConvolution i (g n) k s x)
+      Filter.atTop (𝓝 (ModelCoordinateConvolution i glim k s x)) := by
+  have hkd : Measurable (fun r : ℝ ↦ kernelDilate k s r) :=
+    measurable_kernelDilate k hk s (fun r : ℝ ↦ r) measurable_id
+  have hmeasline : ∀ n, Measurable (fun r : ℝ ↦
+      g n (x - r • Anisotropy.coordinateDirection i)) := fun n ↦
+    (hg n).comp (measurable_const.sub
+      (measurable_id.smul_const (Anisotropy.coordinateDirection i)))
+  have hdomr : ∀ n, ∀ r : ℝ,
+      ‖g n (x - r • Anisotropy.coordinateDirection i) * kernelDilate k s r‖
+        ≤ 2 * |glim (x - r • Anisotropy.coordinateDirection i)| *
+            |kernelDilate k s r| := by
+    intro n r
+    rw [Real.norm_eq_abs, abs_mul]
+    exact mul_le_mul_of_nonneg_right (hdomp n _) (abs_nonneg _)
+  have hFint : ∀ n, Integrable (fun r : ℝ ↦
+      g n (x - r • Anisotropy.coordinateDirection i) * kernelDilate k s r) := by
+    intro n
+    refine hint.mono' ((hmeasline n).mul hkd).aestronglyMeasurable ?_
+    exact Filter.Eventually.of_forall (hdomr n)
+  have hlim : ∀ᵐ r : ℝ, Filter.Tendsto
+      (fun n ↦ g n (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r) Filter.atTop
+      (𝓝 (glim (x - r • Anisotropy.coordinateDirection i) *
+        kernelDilate k s r)) := by
+    filter_upwards [hline] with r hr
+    exact hr.mul_const _
+  exact tendsto_integral_of_dominated_convergence
+    (fun r : ℝ ↦ 2 * |glim (x - r • Anisotropy.coordinateDirection i)| *
+      |kernelDilate k s r|)
+    (fun n ↦ (hFint n).aestronglyMeasurable) hint
+    (fun n ↦ Filter.Eventually.of_forall (hdomr n)) hlim
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A scale-uniform majorant for the model kernels
+
+Source: `lem:one_fiber`, the approximation step.  Passing to the limit inside
+the scale integral over `Ioc a b` with `0 < a` needs a majorant for the
+integrand that does not depend on the scale.  Since the scales run over a
+compact interval bounded away from zero, the bracket majorant at the largest
+scale serves, at the cost of the factor `b/a`.
+-/
+
+/-- The bracket kernel is antitone in the size of its argument.
+
+Auxiliary. -/
+theorem aux_bracketKernel_anti {x y : ℝ} (h : |x| ≤ |y|) :
+    bracketKernel y ≤ bracketKernel x := by
+  unfold bracketKernel
+  have hx : (0 : ℝ) < 1 + |x| := by positivity
+  have hxy : (1 : ℝ) + |x| ≤ 1 + |y| := by linarith
+  rw [Real.rpow_neg (by positivity), Real.rpow_neg (by positivity)]
+  have hpow : (1 + |x|) ^ (10 : ℝ) ≤ (1 + |y|) ^ (10 : ℝ) :=
+    Real.rpow_le_rpow (by positivity) hxy (by norm_num)
+  have hpos : (0 : ℝ) < (1 + |x|) ^ (10 : ℝ) := Real.rpow_pos_of_pos hx _
+  have h := one_div_le_one_div_of_le hpos hpow
+  simpa [one_div] using h
+
+/-- **The bracket kernel at a small scale is dominated by the one at a larger
+scale**, uniformly over scales in a compact interval away from zero. -/
+theorem aux_bracketKernelAt_le_scaled {a b s r : ℝ}
+    (ha : 0 < a) (has : a ≤ s) (hsb : s ≤ b) :
+    bracketKernelAt s 0 r ≤ (b / a) * bracketKernelAt b 0 r := by
+  have hs : 0 < s := lt_of_lt_of_le ha has
+  have hb : 0 < b := lt_of_lt_of_le hs hsb
+  have hker : bracketKernel (r / s) ≤ bracketKernel (r / b) := by
+    refine aux_bracketKernel_anti ?_
+    rw [abs_div, abs_div, abs_of_pos hs, abs_of_pos hb]
+    exact div_le_div_of_nonneg_left (abs_nonneg r) hs hsb
+  have hsinv : s⁻¹ ≤ a⁻¹ := by
+    have h := one_div_le_one_div_of_le ha has
+    simpa [one_div] using h
+  have hknn : 0 ≤ bracketKernel (r / b) := bracketKernel_nonneg _
+  have hexp : bracketKernelAt s 0 r = s⁻¹ * bracketKernel (r / s) := by
+    unfold bracketKernelAt kernelAt kernelDilate
+    simp [smul_eq_mul]
+  have hexpb : bracketKernelAt b 0 r = b⁻¹ * bracketKernel (r / b) := by
+    unfold bracketKernelAt kernelAt kernelDilate
+    simp [smul_eq_mul]
+  rw [hexp, hexpb]
+  have hrw : b / a * (b⁻¹ * bracketKernel (r / b))
+      = a⁻¹ * bracketKernel (r / b) := by
+    field_simp
+  rw [hrw]
+  calc s⁻¹ * bracketKernel (r / s)
+      ≤ s⁻¹ * bracketKernel (r / b) :=
+        mul_le_mul_of_nonneg_left hker (by positivity)
+    _ ≤ a⁻¹ * bracketKernel (r / b) :=
+        mul_le_mul_of_nonneg_right hsinv hknn
+
+/-- **A scale-uniform majorant for the model coordinate kernels.** -/
+theorem exists_uniform_scale_majorant_activeModelKernel :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (i j : Fin 3) (u : E3) (a b s r : ℝ),
+      0 < a → a ≤ s → s ≤ b →
+      |kernelDilate (activeModelKernel i j u) s r|
+        ≤ C * sourceWeight u ^ 10 * (b / a) * bracketKernelAt b 0 r := by
+  obtain ⟨C, hC, hmaj⟩ := kernelDilate_activeModelKernel_sourceWeight_bracket_majorant
+  refine ⟨C, hC, ?_⟩
+  intro i j u a b s r ha has hsb
+  have hs : 0 < s := lt_of_lt_of_le ha has
+  have hw : (0 : ℝ) ≤ C * sourceWeight u ^ 10 :=
+    mul_nonneg hC (pow_nonneg (sourceWeight_nonneg u) _)
+  calc |kernelDilate (activeModelKernel i j u) s r|
+      ≤ C * sourceWeight u ^ 10 * bracketKernelAt s 0 r := hmaj i j u s r hs
+    _ ≤ C * sourceWeight u ^ 10 * ((b / a) * bracketKernelAt b 0 r) :=
+        mul_le_mul_of_nonneg_left (aux_bracketKernelAt_le_scaled ha has hsb) hw
+    _ = C * sourceWeight u ^ 10 * (b / a) * bracketKernelAt b 0 r := by ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Almost every fiber of an `L^p` input has finite mass
+
+Source: `lem:one_fiber`.  The stopping data is built on the set of transverse
+points whose fiber carries finite `p`-mass; for an `L^p` input that set is of
+full measure, by Tonelli through the measure-preserving coordinate split.
+-/
+
+/-- **Almost every fiber of an `L^p` input carries finite `p`-mass.** -/
+theorem ae_mem_coordinateSourceFiberFiniteMassSet
+    (m : Fin 3) (f : E3 → ℝ) (hf : Measurable f) {p : ℝ} (hp : 0 < p)
+    (hmem : MemLp f (ENNReal.ofReal p) (volume : Measure E3)) :
+    ∀ᵐ z : TransverseSpace m, z ∈ coordinateSourceFiberFiniteMassSet m f p := by
+  classical
+  have hG : Measurable (coordinateFiberInput m f) :=
+    measurable_coordinateFiberInput m f hf
+  have hsplit : ∀ x : E3, coordinateFiberInput m f (coordinateSplit m x) = f x := by
+    intro x
+    simp only [coordinateFiberInput, coordinateJoin_split]
+  have hfin : (∫⁻ x : E3, ‖f x‖ₑ ^ p) < ∞ := by
+    have h := hmem.2
+    rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top (by simp [hp]) (by simp),
+      ENNReal.toReal_ofReal hp.le] at h
+    exact h
+  have hiter : (∫⁻ z : TransverseSpace m, ∫⁻ q : ℝ,
+      ‖coordinateFiberInput m f (q, z)‖ₑ ^ p) < ∞ := by
+    rw [← aux_lintegral_rpow_enorm_comp_coordinateSplit_eq_iterated m
+      (coordinateFiberInput m f) hG p]
+    refine lt_of_le_of_lt (le_of_eq ?_) hfin
+    refine lintegral_congr fun x ↦ ?_
+    rw [hsplit x]
+  have hmeasz : Measurable (fun z : TransverseSpace m ↦ ∫⁻ q : ℝ,
+      ‖coordinateFiberInput m f (q, z)‖ₑ ^ p) := by
+    have : Measurable (fun w : ℝ × TransverseSpace m ↦
+        ‖coordinateFiberInput m f w‖ₑ ^ p) := hG.enorm.pow_const p
+    exact this.lintegral_prod_left'
+  have hae := ae_lt_top hmeasz (ne_of_lt hiter)
+  filter_upwards [hae] with z hz
+  show (∫⁻ q : ℝ, ENNReal.ofReal
+    (|coordinateFiberInput m f (q, z)| ^ p)) < ∞
+  refine lt_of_le_of_lt (le_of_eq ?_) hz
+  refine lintegral_congr fun q ↦ ?_
+  rw [← ofReal_norm, Real.norm_eq_abs,
+    ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hp.le]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A scale-uniform bound for the coordinate convolution
+
+Source: `lem:one_fiber`, the approximation step.  On a compact scale interval
+away from zero the model kernel is dominated by a single integrable profile, so
+Hoelder against the input's line restriction bounds the convolution uniformly in
+the scale.  That bound is the dominating function the scale integral needs.
+-/
+
+/-- The bracket profile at a fixed positive scale lies in every `L^q`, `q ≥ 1`.
+
+Auxiliary. -/
+theorem aux_memLp_bracketKernelAt {b : ℝ} (hb : 0 < b) {q : ℝ} (hq : 1 ≤ q) :
+    MemLp (bracketKernelAt b 0) (ENNReal.ofReal q) (volume : Measure ℝ) := by
+  have hexp : ∀ r : ℝ, bracketKernelAt b 0 r = b⁻¹ * bracketKernel (r / b) := by
+    intro r
+    unfold bracketKernelAt kernelAt kernelDilate
+    simp [smul_eq_mul]
+  have hg0 : ∀ r : ℝ, 0 ≤ bracketKernel (r / b) := fun r ↦ bracketKernel_nonneg _
+  have hg1 : ∀ r : ℝ, bracketKernel (r / b) ≤ 1 := fun r ↦ bracketKernel_le_one _
+  have hgmeas : Measurable (fun r : ℝ ↦ bracketKernel (r / b)) := by
+    have := measurable_bracketKernelAt (s := b) (ne_of_gt hb) 0
+    have hfun : (fun r : ℝ ↦ bracketKernel (r / b))
+        = fun r : ℝ ↦ b * bracketKernelAt b 0 r := by
+      funext r
+      rw [hexp r]
+      field_simp
+    rw [hfun]
+    exact measurable_const.mul this
+  have hgint : Integrable (fun r : ℝ ↦ bracketKernel (r / b))
+      (volume : Measure ℝ) := by
+    have hfun : (fun r : ℝ ↦ bracketKernel (r / b))
+        = fun r : ℝ ↦ b * bracketKernelAt b 0 r := by
+      funext r
+      rw [hexp r]
+      field_simp
+    rw [hfun]
+    exact (integrable_bracketKernelAt hb 0).const_mul b
+  have hgmem : MemLp (fun r : ℝ ↦ bracketKernel (r / b))
+      (ENNReal.ofReal q) (volume : Measure ℝ) :=
+    aux_memLp_of_le_one_of_integrable hgmeas hg0 hg1 hgint hq
+  have hfun : bracketKernelAt b 0
+      = fun r : ℝ ↦ b⁻¹ * bracketKernel (r / b) := by
+    funext r; exact hexp r
+  rw [hfun]
+  exact hgmem.const_mul _
+
+/-- **The coordinate convolution, bounded uniformly over a compact scale
+range.** -/
+theorem exists_uniform_scale_bound_ModelCoordinateConvolution :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (i j : Fin 3) (u : E3) (f : E3 → ℝ) (x : E3)
+      (a b s : ℝ), Measurable f → 0 < a → a ≤ s → s ≤ b →
+      Integrable (fun r : ℝ ↦
+        |f (x - r • Anisotropy.coordinateDirection j)| *
+          bracketKernelAt b 0 r) (volume : Measure ℝ) →
+      |ModelCoordinateConvolution j f (activeModelKernel i j u) s x|
+        ≤ C * sourceWeight u ^ 10 * (b / a) *
+            ∫ r : ℝ, |f (x - r • Anisotropy.coordinateDirection j)| *
+              bracketKernelAt b 0 r := by
+  obtain ⟨C, hC, hmaj⟩ := exists_uniform_scale_majorant_activeModelKernel
+  refine ⟨C, hC, ?_⟩
+  intro i j u f x a b s hf ha has hsb hint
+  have hs : 0 < s := lt_of_lt_of_le ha has
+  have hb : 0 < b := lt_of_lt_of_le hs hsb
+  have hKnn : (0 : ℝ) ≤ C * sourceWeight u ^ 10 * (b / a) := by
+    have h1 : (0 : ℝ) ≤ sourceWeight u ^ 10 :=
+      pow_nonneg (sourceWeight_nonneg u) _
+    have h2 : (0 : ℝ) ≤ b / a := le_of_lt (div_pos hb ha)
+    positivity
+  have hlinemeas : Measurable (fun r : ℝ ↦
+      f (x - r • Anisotropy.coordinateDirection j)) :=
+    hf.comp (measurable_const.sub
+      (measurable_id.smul_const (Anisotropy.coordinateDirection j)))
+  have hakmeas : Measurable (activeModelKernel i j u) := by
+    unfold activeModelKernel
+    by_cases hji : j = i
+    · rw [if_pos hji]; exact measurable_ModelThirdKernel (u j)
+    · rw [if_neg hji]; exact measurable_ModelLowKernel (u j)
+  have hkd : Measurable (fun r : ℝ ↦
+      kernelDilate (activeModelKernel i j u) s r) :=
+    measurable_kernelDilate _ hakmeas s (fun r : ℝ ↦ r) measurable_id
+  have hdom : ∀ r : ℝ,
+      ‖f (x - r • Anisotropy.coordinateDirection j) *
+          kernelDilate (activeModelKernel i j u) s r‖
+        ≤ (C * sourceWeight u ^ 10 * (b / a)) *
+            (|f (x - r • Anisotropy.coordinateDirection j)| *
+              bracketKernelAt b 0 r) := by
+    intro r
+    rw [Real.norm_eq_abs, abs_mul]
+    calc |f (x - r • Anisotropy.coordinateDirection j)| *
+          |kernelDilate (activeModelKernel i j u) s r|
+        ≤ |f (x - r • Anisotropy.coordinateDirection j)| *
+            (C * sourceWeight u ^ 10 * (b / a) * bracketKernelAt b 0 r) :=
+          mul_le_mul_of_nonneg_left (hmaj i j u a b s r ha has hsb)
+            (abs_nonneg _)
+      _ = (C * sourceWeight u ^ 10 * (b / a)) *
+            (|f (x - r • Anisotropy.coordinateDirection j)| *
+              bracketKernelAt b 0 r) := by ring
+  have hintprod : Integrable (fun r : ℝ ↦
+      f (x - r • Anisotropy.coordinateDirection j) *
+        kernelDilate (activeModelKernel i j u) s r) (volume : Measure ℝ) := by
+    refine Integrable.mono' (hint.const_mul (C * sourceWeight u ^ 10 * (b / a)))
+      (hlinemeas.mul hkd).aestronglyMeasurable
+      (Filter.Eventually.of_forall hdom)
+  calc |ModelCoordinateConvolution j f (activeModelKernel i j u) s x|
+      ≤ ∫ r : ℝ, ‖f (x - r • Anisotropy.coordinateDirection j) *
+            kernelDilate (activeModelKernel i j u) s r‖ := by
+        unfold ModelCoordinateConvolution
+        exact abs_integral_le_integral_abs.trans
+          (le_of_eq (integral_congr_ae (Filter.Eventually.of_forall
+            fun r ↦ (Real.norm_eq_abs _).symm)))
+    _ ≤ ∫ r : ℝ, (C * sourceWeight u ^ 10 * (b / a)) *
+            (|f (x - r • Anisotropy.coordinateDirection j)| *
+              bracketKernelAt b 0 r) :=
+        integral_mono hintprod.norm
+          (hint.const_mul (C * sourceWeight u ^ 10 * (b / a))) hdom
+    _ = C * sourceWeight u ^ 10 * (b / a) *
+          ∫ r : ℝ, |f (x - r • Anisotropy.coordinateDirection j)| *
+            bracketKernelAt b 0 r := integral_const_mul _ _
+
+end
+end Twisted
+end Auto

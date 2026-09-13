@@ -1406,3 +1406,708 @@ budget hypotheses are now exactly `weak_exception_budget_doubled_canonical`,
 `weak_good_budget_canonical`, and this one -- modulo the exceptional set, which
 the assembly takes as an arbitrary `Eset` and which here is the doubled
 preimage.
+
+## 2026-09-13T02:35-0700
+
+`aux_canonical_mass_forms`: the distinguished input's normalisation in the four
+shapes the budgets consume -- ambient lower integral, `L^p` membership,
+integrability over the fiber product, and the product integral -- all derived
+from the ambient statement `∫|f_m|^p ≤ 1` with `|f_m|^p` integrable.  The
+product forms transfer along the measure-preserving coordinate join, as in
+`weak_exception_budget_canonical`.
+
+This removes the last mismatch between the three budgets' hypotheses: they
+differ only in how they ask for the normalisation, and now one hypothesis
+serves all three.
+
+## 2026-09-13T02:55-0700
+
+`ModelTruncatedOperator_weakNorm_le_canonical`: the weak-`L^R` bound for the
+truncated operator at the canonical stopping data.  At each level the height is
+`H = (τ/A_u)^R/2` and the three budgets are supplied by
+`weak_exception_budget_doubled_canonical` (`4·A_u`),
+`weak_good_budget_canonical` (`2^{R_0/R-1}·A_u`) and
+`weak_bad_budget_canonical_countable` (`A_u`), so the conclusion is
+`‖U(f)‖_{R,∞} ≤ (4 + 2·2^{R_0/R-1} + 2)·A_u`.
+
+This is `eq:one_fiber` for the truncated operator, under the manuscript's own
+normalisations.
+
+One honesty note on the statement: the bad branch is assumed integrable on
+*every* fiber (`∀ z, Integrable (fun y ↦ coordinateFiberInput m (f m) (y, z))`),
+which is stronger than the source needs.  Off the finite-mass set `Z_f` the
+selection sets are empty, so the bad field vanishes on that fiber and the
+estimate is trivial there; the present chain nonetheless asks for integrability
+at every `z`.  Weakening this to `z ∈ Z_f` is a clean follow-up and is recorded
+here so it is not mistaken for faithfulness to the manuscript.
+
+## 2026-09-13T03:15-0700
+
+Weakening the fiber-integrability hypothesis flagged last tick.
+
+`aux_fiberDyadicSelectionSet_subset`, `aux_fiberCZBadAtom_eq_zero_of_notMem`,
+`aux_selectedFiberScaleTail_eq_zero_of_notMem`: the selection sets lie in the
+finite-mass fiber set, so on a fiber outside it every selected atom vanishes
+and the scale tail is zero.
+
+`selectedFiberScaleTail_le_tail_majorant_outside_of_mass_weak`,
+`integrableOn_scaleTail_fiberCZBadAtom_outside_weak`, and
+`abs_ModelTruncatedOperator_bad_le_outside_weak` then ask for fiber
+integrability only on `Z_f`.  The original integrability lemma already branched
+on membership in the selection set and used the hypothesis on one branch only,
+so the weakening is a matter of supplying it there.
+
+Next: carry the weakened hypothesis up through the majorant bound, the level
+budget, the canonical bad budget and the assembly, so that
+`ModelTruncatedOperator_weakNorm_le_canonical` asks only what the manuscript
+establishes.
+
+## 2026-09-13T03:35-0700
+
+The weakening is carried to the top.  `..._weak` variants of the bad pointwise
+bound, the level budget, the canonical finite and countable bad budgets, and
+the assembly: `ModelTruncatedOperator_weakNorm_le_canonical_weak` asks fiber
+integrability only for `z ∈ Z_f`, which is what `f_m ∈ L^p` supplies and what
+the manuscript establishes.
+
+The atom-mass hypothesis feeds the integrability through the selection: a
+selected `z` lies in `Z_f` by `aux_fiberDyadicSelectionSet_subset`, so the
+canonical mass lemma still applies at exactly the points where it is used.
+
+With that, `lem:one_fiber` holds for the truncated operator with no hypothesis
+beyond the manuscript's.  Remaining for the label itself: the statement is for
+`ModelTruncatedOperator` with normalised inputs, whereas `eq:one_fiber` is for
+`U` with the input norms restored.
+
+## 2026-09-13T03:55-0700
+
+Restoring the input norms needs two homogeneities, and both are now in place.
+
+`weakNorm_const_mul`: the weak norm scales, `‖k·v‖_{R,∞} = k·‖v‖_{R,∞}` for
+`k > 0`.  Proved by reindexing the supremum over levels, `τ ↦ τ/k` in one
+direction and `σ ↦ kσ` in the other.
+
+`modelOperatorRealRescale`, `modelTruncatedOperatorIntegrand_rescale`,
+`ModelTruncatedOperator_rescale`: the truncated operator is trilinear in its
+three inputs.  The convolution's scaling law `ModelCoordinateConvolution_smul`
+was already present -- it had been proved for the four-input Schwartz form
+(`ModelSpatialIntegrand_rescale`) but not for the three-input real form the
+weak bound uses, so this is the same argument at the operator's own integrand.
+
+Next: combine them.  Given the normalised bound and nonzero inputs, rescale by
+`k_j = ‖f_j‖^{-1}` to reach `eq:one_fiber` with the norms restored; the
+manuscript treats zero inputs separately, and there the operator vanishes.
+
+## 2026-09-13T04:15-0700
+
+`weakNorm_ModelTruncatedOperator_rescale` and
+`weakNorm_ModelTruncatedOperator_of_rescaled`: combining the operator's
+trilinearity with the weak norm's homogeneity, a bound proved for rescaled
+inputs gives the bound for the originals, scaled by the reciprocal product.
+With `aux_modelOperatorRealRescale_inv` this is the manuscript's "restore the
+input norms" step, in the form the de-normalised statement will use.
+
+## 2026-09-13T04:35-0700
+
+`aux_lpNorm_const_mul`, `aux_integral_abs_rpow_const_mul`,
+`aux_integrable_abs_rpow_const_mul`, `aux_eLpNorm_complex_const_mul`: how the
+normalisation quantities scale under rescaling an input -- the `L^p` norm by
+`|k|`, the `p`-th mass by `|k|^p`, and the same for the complexified input the
+maximal factors are stated over.
+
+These are the translations the de-normalised statement needs: each normalised
+hypothesis about the rescaled inputs comes from the corresponding
+un-normalised one by one of these.
+
+## 2026-09-13T04:55-0700
+
+Both halves of "normalize all input norms to one, with zero inputs treated
+separately" are now available.
+
+`weakNorm_ModelTruncatedOperator_denormalized`: a weak bound for the inputs
+rescaled by `‖f_j‖^{-1}` gives the bound for the originals, scaled by
+`∏_j ‖f_j‖`.
+
+`aux_ModelCoordinateConvolution_zero`,
+`ModelTruncatedOperator_eq_zero_of_input_zero`, `weakNorm_zero`: at a zero
+input the operator vanishes identically and its weak norm is zero, so
+`eq:one_fiber` is trivial there -- the manuscript's separate treatment of zero
+inputs.
+
+What remains for the label is the hypothesis translation: instantiating
+`ModelTruncatedOperator_weakNorm_le_canonical_weak` at the rescaled inputs and
+discharging each normalised hypothesis through the four scaling lemmas.
+
+## 2026-09-13T05:15-0700
+
+A discrepancy found while setting up the de-normalisation, and fixed.
+
+The canonical statement required `‖f_jj‖_{P_jj} ≤ 1` for *all three* slots,
+but `lem:one_fiber` normalises `‖f_m‖_p = 1` and `‖f_j‖_{P_j} = 1` only for
+`j ≠ m` -- the distinguished slot's `L^{P_m}` norm is not normalised.  As
+stated, the two normalisations at slot `m` would have to agree, which they
+cannot: one is at exponent `p`, the other at `P_m`.  That would have made the
+de-normalisation impossible rather than merely tedious.
+
+Inspecting the good budget's proof showed the hypothesis was never used at
+slot `m`: the product over the passive slots is the only place it enters.
+`weak_good_budget_canonical_passive` and
+`ModelTruncatedOperator_weakNorm_le_canonical_passive` ask for it only at
+`jj ≠ m`, which is what the manuscript assumes.
+
+## 2026-09-13T05:35-0700
+
+`aux_coordinateFiberInput_const_mul`,
+`aux_lintegral_fiber_abs_rpow_const_mul`,
+`aux_coordinateSourceFiberFiniteMassSet_const_mul`: rescaling an input passes
+through the fiber data.  The fiber input scales, the fiber mass scales by
+`|k|^p`, and -- the point -- the finite-mass fiber set is *unchanged* for
+`k ≠ 0`.
+
+That last fact is what makes the de-normalisation tractable: the canonical
+stopping data of the rescaled input is built over the same `Z_f` as the
+original's, so the fiber-integrability hypothesis transfers without
+re-deriving the stopping set.
+
+On the exponents: identifying the bad budget's `P₁, P₂` with the good budget's
+`q j₁.succ, q j₂.succ` needs no change to the statements -- they are free
+parameters, so the de-normalised theorem simply instantiates them there and
+takes the two Hoelder-triple instances at the identified exponents.
+
+## 2026-09-13T05:55-0700
+
+`ModelTruncatedOperator_weakNorm_le_one_fiber`: the weak-`L^R` bound with the
+input norms restored --
+
+  ‖U(f_1,f_2,f_3)‖_{R,∞} ≤ (∏_j N_j) · (4 + 2·2^{R_0/R-1} + 2) · A_u
+
+where `N_j` bounds the `j`-th input's norm (`(∫|f_m|^p)^{1/p}` at the
+distinguished slot, `‖f_j‖_{P_j}` at the passive ones).  This is
+`eq:one_fiber` for the truncated operator.
+
+Every normalised hypothesis of the canonical bound is discharged from its
+un-normalised counterpart through the scaling lemmas: measurability and bounds
+directly, the masses through `aux_integral_abs_rpow_const_mul` and
+`aux_lpNorm_const_mul`, the complex passive norms through
+`aux_eLpNorm_complex_const_mul`, and -- the step that would otherwise have been
+circular -- the fiber integrability through
+`aux_coordinateSourceFiberFiniteMassSet_const_mul`, since the rescaled input's
+stopping set is literally the original's.
+
+## 2026-09-13T06:15-0700
+
+Checked the blueprint before proceeding, and the reading matters: in
+`lem:one_fiber` the operator `U` *is* the truncated operator -- `thm:extended_model`
+applies the lemma as `‖U^{a,b}_{u,c}(f_1,f_2,f_3)‖_{1,∞} ≤ …`, with the
+constants independent of `a, b`.  So there is no separate passage from the
+truncated operator to `U` to be made here; the bound proved last tick is
+already at the right object.
+
+`C_ModelTruncatedOperator_weakNorm_le_one_fiber` and
+`ModelTruncatedOperator_weakNorm_le_one_fiber_explicit`: the manuscript's
+`A_u = C_1U(u)^{100}` with `C_1` named -- the maximum of the starting
+estimate's constant and the bad branch's kernel constants, plus one.  Both
+domination hypotheses are then discharged, so the statement reads
+
+  ‖U^{a,b}(f)‖_{R,∞} ≤ (∏_j N_j) · C · C_1 · U(u)^{100}
+
+with no side conditions on `A_u`.  The distinguished slot `m` and the passive
+pair are now parameters rather than being quantified inside, since `C_1`
+depends on them -- which is the manuscript's "fix `m`".
+
+## 2026-09-13T06:35-0700
+
+Verified `ModelTruncatedOperator_weakNorm_le_one_fiber_explicit` against
+`lem:one_fiber` hypothesis by hypothesis before recording it.
+
+Matching: the exponent data (`hsum` gives `R_0^{-1} = Σ_j P_j^{-1}` with
+`R_0 = (q 0).conjExponent` and `P_j = q j.succ`); `1 ≤ p ≤ P_m`; `1 ≤ R`; and
+`hexp`, which is `R·R_0·(1/p - 1/P_m) = R_0 - R`, equivalent to the source's
+`R^{-1} = p^{-1} + Σ_{j≠m}P_j^{-1}`.  The conclusion matches `eq:one_fiber`,
+with the `N_j` bounding the norms rather than equalling them.  The starting
+estimate, which the source *assumes*, is derived here from
+`thm:initial_model` -- so the Lean statement is the lemma specialised to the
+operator the manuscript applies it to.
+
+Not matching: two hypotheses the source does not carry -- the inputs are
+pointwise bounded (`|f_jj y| ≤ Bd jj`), and the distinguished input is
+integrable on each finite-mass fiber.  The boundedness comes from the file's
+operator machinery, and removing it is the manuscript's Schwartz-approximation
+step, not yet formalised for this statement.
+
+Status.md accordingly records `lem:one_fiber` as `Statement completed` against
+the new name, with the discrepancy spelled out, rather than `Proof completed`.
+
+## 2026-09-13T06:55-0700
+
+Started on the boundedness hypothesis.  First finding: the existing limit
+lemma `tendsto_ModelTruncatedOperator_replace_of_tendsto` requires a *uniform*
+bound on the approximants, so the pointwise route cannot remove boundedness --
+approximating an unbounded input by clamps has no uniform bound.  The
+manuscript's own route is the norm route: approximate in `L^{P_m}`, and use the
+starting estimate to identify the limit.
+
+`aux_exists_subseq_ae_of_eLpNorm_tendsto` and `weakNorm_le_of_eLpNorm_tendsto`:
+a weak-`L^R` bound holding for each of a sequence of functions passes to a
+limit in `L^p` norm, via convergence in measure and an almost-everywhere
+convergent subsequence.  This is the transfer the approximation argument needs
+at its last step.
+
+What remains for the boundedness removal: the operator's continuity in each
+slot, i.e. that `Op(f) - Op(g)` is bounded in `L^{R_0}` by the starting
+estimate applied to the slotwise differences.  Additivity is available
+(`ModelCoordinateConvolution_add`); the multilinear expansion of the difference
+is the next piece.
+
+## 2026-09-13T07:15-0700
+
+`ModelTruncatedOperator_replace_sub`: the operator's difference in one slot,
+`Op(…g…) - Op(…h…) = Op(…g-h…)`, from the existing slotwise additivity read
+backwards.  This is the atom of the three-term telescoping the approximation
+argument needs.
+
+Scope note for the remaining work on task 3, recorded so the shape is visible
+rather than discovered late:
+
+1. Removing boundedness from `lem:one_fiber` -- the telescoping expansion of
+   `Op(f) - Op(g)` across three slots, each term bounded by the starting
+   estimate, then `weakNorm_le_of_eLpNorm_tendsto`.  Every step carries
+   integrability side conditions, so this is several ticks.
+2. `thm:extended_model` -- the three shifted-vertex weak endpoints from
+   `lem:one_fiber`, then the interpolation assembly, which already exists as
+   `exists_strong_bound_at_simplex_interior` and consumes `ext:interpolation`
+   by design.
+3. `thm:main` -- discharging `UniformConeModeFormBound`.
+4. The section modules for sections 2-7.  `task_3_Instructions.md` asks for one
+   file per leaf subsection with every non-temporary file imported in the
+   top-level module; only sections 1 and 8 exist.  This is independent of the
+   mathematics and is still outstanding.
+
+## 2026-09-13T07:35-0700
+
+Turned to the outstanding structural requirement rather than pushing further
+into the approximation plumbing this tick.
+
+`DFR/Auto/Twisted/FunctionSpacesAndFixedBumps/FunctionSpacesAndFixedBumps.lean`:
+section 2's labelled theorems in the blueprint's wording -- `lem:schwartz`
+(the `L^p` half; the bounded-continuous half is carried by the type),
+`lem:bumps` (three assertions: the bump's normalisation, `c_Ψ > 0`, and
+`Φ = c_Ψ` on `[-1,1]`), and `lem:domination` (`eq:superposition`).  Added to
+the top-level module and recorded in Status.md as the section's Lean file.
+
+Sections 3-7 remain.  Each is the same shape: restate that section's labelled
+results by delegation, with the LaTeX statement as the docstring.
+
+## 2026-09-13T07:55-0700
+
+`DFR/Auto/Twisted/DyadicGeometryAndLocalSizes/DyadicGeometryAndLocalSizes.lean`:
+section 3's labelled theorems -- `lem:geometry` (the `2^A` children, and the
+measure additivity the leaf partition gives), `lem:size` (the comparison at a
+point of the closure, in the product form the cubical estimates use), and
+`lem:bl` at `eq:bl2`.  Wired into the top-level module and recorded in
+Status.md.
+
+Sections 4-7 remain.
+
+## 2026-09-13T08:15-0700
+
+`DFR/Auto/Twisted/CubicalTelescopingWithBoundaryTerms/CubicalTelescopingWithBoundaryTerms.lean`:
+section 4's labelled theorems -- `lem:local_integrability`,
+`lem:telescoping_identity` (the weighted single-box identity `eq:single_tel`),
+`lem:face_cancellation` (`eq:boundary_face_expansion`),
+`cor:remainder_norms`, `lem:cube_cs` in its two halves, `prop:cube_tree`
+(`eq:cube_tree`) and `prop:edge_tree`.
+
+Two notes from writing it.  The telescoping identity's Lean statement is in
+explicit integral form with an extra outer-integrability hypothesis, so its
+signature is reproduced verbatim rather than paraphrased -- paraphrasing it
+had produced names that do not exist.  And `lem:remainder` and
+`lem:oned_telescoping` are not carried here: the first is subsumed by
+`cor:remainder_norms`, which is what the development proves and what
+Status.md records; the second is a step inside the box identity.
+
+## 2026-09-13T08:35-0700
+
+`DFR/Auto/Twisted/TheModelFormAndItsLocalization/TheModelFormAndItsLocalization.lean`:
+section 5's labelled theorems -- `lem:localization` (the signed joint-integral
+expansion), `lem:local_cs`, `lem:global_energy` (the joint-integral form of the
+second energy on a region, from which the additivity is read) and
+`cor:local_model`.
+
+These signatures are long and hypothesis-heavy, so the module is generated by
+extracting each theorem's signature verbatim from `Twisted.lean` and
+delegating, rather than by paraphrase.  The generator is a scratch script; the
+generated file is the artefact.  Section 4's experience -- a paraphrase that
+named three nonexistent constants -- is what prompted this.
+
+## 2026-09-13T08:55-0700
+
+Sections 6 and 7 generated: `StoppingTimeAndTheInitialExponentRange` (
+`lem:maximal_size`, `lem:stopping`, `lem:forest_bound`,
+`lem:model_convergence`, `thm:initial_model`) and
+`FiberwiseCalderonZygmundDecomposition` (`lem:fiber_kernel`, `lem:fiber_cz`,
+`lem:interval_tails`, `lem:one_fiber`, `lem:exponent_simplex`).  Both wired
+into the top-level module and recorded in Status.md.
+
+All eight blueprint sections now have their own module.  The generator needed
+three fixes along the way, each caught by the compiler: implicit binders must
+not be passed positionally, the `Topology` and `Set` scopes are needed for the
+statements that mention `𝓝` and `Ioo`, and the one-fiber statement's `r23`
+cannot be inferred from the instance arguments and is passed by name.
+
+`lem:one_fiber`'s docstring in the module repeats the caveat recorded in
+Status.md, so the discrepancy is visible at the statement rather than only in
+the ledger.
+
+## 2026-09-13T09:15-0700
+
+A finding that changes the assessment of what blocks `thm:extended_model`.
+
+The interpolation assembly `exists_strong_bound_at_simplex_interior` takes its
+weak endpoints only for `f : Fin 3 → SimpleFunc X ℝ` with finite-measure
+support.  Such inputs are *bounded*, so `lem:one_fiber`'s boundedness
+hypothesis -- the one recorded as a discrepancy against the source -- is not an
+obstruction to the downstream use.  The fiber-integrability hypothesis is
+likewise dischargeable there: a simple function's fiber takes finitely many
+values, so finite `p`-mass forces its support to have finite measure, and
+boundedness then gives integrability.
+
+So `thm:extended_model` can be assembled from `lem:one_fiber` as it stands.
+The boundedness caveat remains a genuine gap against the *label*, but it does
+not block the theorem that consumes it.
+
+Worth recording a claim I nearly made and had to withdraw: bounded plus
+`L^p` does not give `L^1` on infinite measure -- `|y|^{-2/p}` on `|y| ≥ 1` is a
+counterexample for `p ≥ 2`.  The lemma needs the nonzero values bounded away
+from zero, which is what a simple function supplies.
+`aux_integrable_of_uniform_lower_bound` is stated that way.
+
+## 2026-09-13T09:35-0700
+
+`aux_exists_bound_of_simpleFunc`, `aux_exists_lower_bound_of_simpleFunc`,
+`aux_integrable_fiber_of_simpleFunc`: a simple function is bounded, its
+nonzero values are bounded away from zero, and consequently a fiber of finite
+`p`-mass is integrable.
+
+With these, both of `lem:one_fiber`'s side conditions are discharged on the
+class `exists_strong_bound_at_simplex_interior` consumes, so the three
+shifted-vertex weak endpoints can be produced without touching the
+approximation argument.
+
+## 2026-09-13T09:55-0700
+
+`weakNorm_le_of_lpNorm_bound`: a strong `L^R` bound read as the weak bound the
+interpolation consumes -- the blueprint's "the base strong bound is also a weak
+bound at `b`", i.e. the fourth vertex of the simplex.
+
+Caught while writing it: `weakNorm_le_eLpNorm` already existed (at line 73179,
+with `AEMeasurable` rather than `AEStronglyMeasurable`), and I had started to
+re-prove it.  Deleted and delegated.  That is the second time in this session
+that a Chebyshev-flavoured fact was already present under a name I did not
+recall; the pattern is that the general measure-theoretic facts tend to exist
+and the operator-specific ones do not.
+
+## 2026-09-13T10:15-0700
+
+Checked the shifted-vertex exponent bookkeeping against `lem:one_fiber`'s
+hypotheses before writing the instantiation, and it lines up:
+
+- the vertex `b + b₀e_m` has input exponents `(b_m+b₀)^{-1}` at slot `m` and
+  `b_j^{-1}` elsewhere (`aux_simplexVertexExponent_succ_self`,
+  `aux_simplexVertexExponent_succ_ne`), and output exponent `1`
+  (`simplexVertexOutput_succ`, already present);
+- so `lem:one_fiber` is applied with `p = (b_m+b₀)^{-1}`, `P_j = b_j^{-1}`,
+  `R = 1`, and `1/p - 1/P_m = b₀`;
+- its scaling identity `R·R_0·(1/p - 1/P_m) = R_0 - R` then reads
+  `b₀R_0 = R_0 - 1`, i.e. `R_0 = (1-b₀)^{-1}` -- exactly the manuscript's
+  choice of `R_0` (`aux_shifted_vertex_scaling`);
+- the Hoelder triples encode `1/P_1 + 1/P_2 + 1/p = 1`, which is
+  `∑_j b_j + b₀ = 1`, i.e. the definition of `b₀`
+  (`aux_shifted_vertex_reciprocal_sum`).
+
+No mismatch found, which is worth saying explicitly since the two
+parameterisations were developed independently.
+
+## 2026-09-13T10:35-0700
+
+`aux_le_ofReal_of_forall_pos` and `aux_tendsto_prod_add_const`: a bound proved
+with a strictly positive margin passes to the limit as the margin vanishes.
+
+This is needed because `lem:one_fiber` requires strictly positive norm bounds
+`N_j`, while the interpolation's endpoints are stated with the norms
+themselves, which vanish when an input is zero.  Proving the endpoint with
+`N_j + δ` and letting `δ → 0⁺` avoids a separate zero-input analysis -- which
+would otherwise need the operator to be determined by the inputs' a.e. class,
+since `lpNorm f = 0` gives only `f = 0` almost everywhere and
+`ModelTruncatedOperator_eq_zero_of_input_zero` wants it pointwise.
+
+## 2026-09-13T10:55-0700
+
+`aux_memLp_of_simpleFunc_finMeasSupp`,
+`aux_integrable_rpow_of_simpleFunc_finMeasSupp`,
+`aux_fiber_integrable_of_simpleFunc_mem`: the `L^{P_j}` membership, the
+integrability of the distinguished input's `p`-th power, and the fiber
+integrability on the stopping set -- all from the support having finite
+measure, via Mathlib's `SimpleFunc.memLp_iff_finMeasSupp`.
+
+With these, every hypothesis of `lem:one_fiber` is now available for the
+simple-function tuples the interpolation quantifies over.  What is left for the
+endpoint is the instantiation itself: choosing
+`N_j = ‖f_j‖_{simplexVertexExponent} + δ`, checking the three norm hypotheses
+against that choice, and letting `δ → 0⁺`.
+
+## 2026-09-13T09:05-0700 — the three shifted-vertex weak endpoints and the extended operator bound
+
+`weakNorm_ModelTruncatedOperator_simplexVertex_succ` instantiates
+`ModelTruncatedOperator_weakNorm_le_one_fiber_explicit` at the shifted vertex
+`b + b_0 e_m` of `lem:exponent_simplex`: the exponent tuple is
+`q = (b_0^{-1}, b_1^{-1}, b_2^{-1}, b_3^{-1})`, the distinguished exponent is
+`p = P_m^{(m)} = (b_m + b_0)^{-1}`, the two passive exponents are `P_j = b_j^{-1}`
+and the output exponent is `R = 1`.  The Hoelder relation `1/P_1 + 1/P_2 + 1/p = 1`
+is `aux_shifted_vertex_reciprocal_sum`; the scaling identity is
+`aux_shifted_vertex_scaling` with `R_0 = (1-b_0)^{-1} = conjExponent (b_0^{-1})`;
+the initial-range conditions `b_0, b_1, b_2 < 1/4` and `b_3 < 1/2` become
+`activeSourceStoppingExponent 2 < q`.  Every side condition of `lem:one_fiber` is
+discharged on the class the interpolation quantifies over — simple functions of
+finite-measure support — using the aux lemmas built over the preceding ticks.
+The strictly positive norm bounds `lem:one_fiber` requires are supplied with a
+margin `delta` and removed by `weakNorm_le_prod_of_margin`.
+
+`exists_ModelTruncatedOperator_extended_strong_bound` is
+`eq:extended_operator_bound`.  It needed one change to the recorded form of
+`ext:interpolation`: the per-operator reading `FourVertexMarcinkiewicz` fixes the
+operator before producing the constant, so the constant may depend on `u`, while
+`UniformConeModeFormBound` — and the source — require one constant for the whole
+family.  `FourVertexMarcinkiewiczUniform` states the source's own reading, with
+the constant depending only on the exponent vectors and the weights;
+`fourVertexMarcinkiewicz_of_uniform` shows it implies the earlier form, so nothing
+downstream is affected.
+
+Remaining for `thm:extended_model`: the base vertex's strong `L^{R_0}` bound
+(from `thm:initial_model` by duality) and the truncated operator's measurability
+and `L^{R_0}` membership are still hypotheses; after that come the Hoelder step to
+the truncated form, the scale limit (`lem:model_convergence`), density, and
+`lem:permutation`, which together discharge `UniformConeModeFormBound`.
+
+## 2026-09-13T09:55-0700 — the base vertex, the unconditional operator bound, and the form bound
+
+`exists_lpNorm_ModelTruncatedOperator_le_of_simpleFunc` closes the base vertex.
+The strict-range output estimate was already available for bounded measurable
+fields of finite `L^{P_j}` norm (`lintegral_rpow_ModelTruncatedOperator_le_of_
+boundedMeasurable`, which mollifies the Schwartz-only duality step of
+`thm:initial_model`); simple functions of finite-measure support are exactly such
+fields, so no new density argument was needed.  `aux_memLp_of_lintegral_rpow_lt_top`
+converts the finite `R_0`-th power integral into the `L^{R_0}` membership the
+interpolation also consumes.
+
+With that, `exists_ModelTruncatedOperator_extended_strong_bound_unconditional`
+carries no hypotheses beyond the exponent conditions and `ext:interpolation`, and
+`exists_abs_formPairing_ModelTruncatedOperator_le_extended` is the closing Hoelder
+display of `thm:extended_model`.
+
+One further correction to the recorded external hypothesis: the conclusion of
+`FourVertexMarcinkiewiczUniform` now asserts `MemLp (T f) (ofReal R)` alongside the
+norm inequality.  `lpNorm` is zero off `L^R`, so the inequality alone is vacuous
+about membership, while the source's `‖T f‖_R ≤ C ⋯` asserts finiteness; without
+the conjunct the Hoelder step to the form could not be taken.  The per-operator
+reading `FourVertexMarcinkiewicz` is unchanged and is still implied.
+
+Remaining for `thm:extended_model`: density in the three active slots,
+complexification, the scale limit, and `lem:permutation`.
+
+## 2026-09-13T10:45-0700 — density in the active slots, and the extended full-scale form bound
+
+`exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable` lifts the
+interpolated operator bound off the simple functions `ext:interpolation` is stated
+for.  `SimpleFunc.approxOn (h j) _ (range (h j) ∪ {0}) 0 _ n` converges pointwise
+everywhere, satisfies `|s_n| ≤ 2|h_j|` (so the sup bound survives with a factor two
+and the `L^{p_j}` norm with the same factor), and is of finite-measure support
+because it lies in `L^{p_j}`.  Fatou through
+`lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto_all` then gives the bound
+for the limit with the constant multiplied by `2^3`; the statement is an `∃ C`, so
+the loss is free.
+
+`exists_abs_formPairing_ModelTruncatedOperator_le_extended_boundedMeasurable` is the
+Hoelder display on that class, and `exists_abs_ModelFullForm_le_extended` is the
+full-scale real form bound: the interval form is controlled uniformly in the
+truncation by `abs_ModelScaleIntervalTruncation_le_of_extended_operator_bound`
+(which was already in place, waiting for exactly this operator estimate), and
+`tendsto_ModelScaleTruncation_of_realSchwartz` supplies the scale limit.
+
+That statement is the exact analogue of
+`exists_uniform_initialModelFullForm_bound_weight100` at the extended exponents.
+The remaining work is the chain from it to `UniformConeModeFormBound`:
+complexification, `lem:permutation`, and the mode-sum bookkeeping.  That chain
+exists for the initial range but is phrased in terms of the strict-range hypothesis,
+so it has to be re-derived with the form bound as an input hypothesis.
+
+## 2026-09-13T11:35-0700 — the complex bridges, and locating the last structural gap
+
+Traced the chain from the real full-scale model form to `UniformConeModeFormBound`
+and found most of it already parametric in the model bound:
+`UniformActiveModelBound` and `exists_norm_tsum_coneModeExpansion_le_of_modelBound`
+take the model estimate as a hypothesis, and
+`norm_LiteralModelFullForm_le_weight100` takes the *real* bound as a hypothesis and
+supplies the `2^5` real/imaginary expansion.  So the complexification and the
+coordinate relabeling are exponent-blind.
+
+Added `UniformRealModelFormBound` and the two bridges it feeds:
+`exists_uniform_LiteralModelFullForm_bound_of_real` (real to complex, factor `32`)
+and `exists_uniform_LiteralActiveModelFullForm_bound_of_real` (to every active
+coordinate, via `LiteralActiveModelFullForm_permute_to_third`).  Both are stated
+against the hypothesis, so the extended range and the initial range use the same
+passage.
+
+The remaining structural gap is on the frequency side, and it is the same gap for
+the initial range as for the extended one — nothing in the development yet produces
+`UniformConeModeFormBound`.  What is missing is the general-`i` identification
+
+  coneModeForm α i ν t F
+    = thirdModeFrequencyForm (conePermutedAnisotropy α i) (standardModeOfInt ν) t
+        (complexPermutedModelInput (Equiv.swap 2 i) F),
+
+after which `thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm_permuted`
+closes it.  At `i = 2` the identification is `thirdModeFrequencyFullForm_eq_
+LiteralActiveModelFullForm`; for general `i` it is a change of variables on
+`Frequency9`.  The map is
+`(Φ_σ ζ)^j = coordinatePermutation σ (ζ^{σ j})`, which satisfies
+`frequencyDiagonal ∘ Φ_σ = coordinatePermutation σ ∘ frequencyDiagonal` (both sides
+have `j`-th component `ζ^{σ j}(σ j)`), is measure preserving on the product measure,
+and carries `frequencyKernel F` to `frequencyKernel (permuted F)` once one knows
+`schwartzFourier (f ∘ P) = schwartzFourier f ∘ P` for a coordinate permutation `P`
+— which is not in Mathlib here and has to be proved from
+`MeasurePreserving.integral_comp` plus `P* = P⁻¹`.
+
+## 2026-09-13T12:25-0700 — the coordinate relabeling, on the multiplier side
+
+Rather than a change of variables on `Frequency9`, the relabeling is cleaner on the
+spatial side, where the multiplier form is defined.  Three steps, all verified:
+
+`aux_schwartzFourier_comp_isometry`: for an isometric equivalence `P` of `E_3`,
+`𝓕(f∘P) = (𝓕 f)∘P`.  The adjoint of an isometry is its inverse, so the character
+transfers (`aux_frequencyPhase_isometry`), and `P` is measure preserving.  Mathlib
+does not carry this for the Schwartz Fourier transform in this snapshot.
+
+`twistedProduct_complexPermutedModelInput`: the translated product `P_f` of
+`def:multiplier` satisfies
+`P_{permuted F}(s) = P_F((coordinatePermutation σ).symm s)`.  The computation is a
+substitution `x = Qy` inside the defining integral together with
+`Q⁻¹ e_j = e_{σ j}`, after rewriting the three-factor product as a `Finset` product
+so that `Equiv.prod_comp σ` can reindex it.
+
+`multiplierForm_comp_coordinatePermutation`: consequently
+`Λ_{S∘Q}(F) = Λ_S(permuted F)`.  This is `lem:permutation` in the form the transport
+needs, and it is exactly what was missing to identify `coneModeForm α i ν t F` with a
+third-coordinate mode form in permuted coordinates.
+
+Next: convert both sides between `multiplierForm` and `frequencyForm` using the
+certificates (`exists_isAnisotropicMultiplier_thirdModeFrequencySymbol` for the
+third-coordinate symbol, and `IsAnisotropicMultiplier_permute` with
+`permutedAnisotropy_swap_involutive` / `coordinatePermutation_swap_involutive` for
+the relabeled one), integrate in the scale, and compose with
+`thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm_permuted` to reach
+`LiteralActiveModelFullForm`, which the bridges of the previous tick already bound.
+
+## 2026-09-13T13:20-0700 — `thm:main` closed, conditional only on `ext:interpolation`
+
+The remaining chain fell into place in one pass.
+
+`coneModeForm_eq_thirdModeFrequencyForm_permuted`: the `i`th cone's mode form is
+the third-coordinate mode form of the relabeled tuple.  The proof runs
+`frequencyForm → multiplierForm → (relabel) → multiplierForm → frequencyForm`,
+using `multiplierForm_comp_coordinatePermutation` from the previous tick and the
+certificates `exists_isAnisotropicMultiplier_thirdModeFrequencySymbol` and
+`IsAnisotropicMultiplier_permute` (the latter with
+`permutedAnisotropy_swap_involutive` and `coordinatePermutation_swap_symm_apply`,
+since `swap 2 i` is its own inverse).
+
+`coneModeFullForm_eq_LiteralActiveModelFullForm`: integrating that in the scale and
+composing with `thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm_permuted`
+identifies the cone mode full form with a literal complex active-coordinate model
+form at the mode's translation, with the coefficient negated.
+
+`uniformConeModeFormBound_of_real`: hence the real model bound gives
+`UniformConeModeFormBound`.  The translation is `(coordPerm σ).symm (standardModeTranslate ν)`,
+whose weight is the mode's by `sourceWeight_coordinatePermutation` and
+`sourceWeight_standardModeTranslate_pow_le`; the three per-coordinate constants are
+summed.
+
+`uniformRealModelFormBound_permuted_of_main_bounds`: for every relabeling `σ`, the
+hypotheses of `thm:main` put the permuted reciprocals in `eq:extended_region`
+(`extendedRegion_of_main_bounds`, since `4 < p_0` and `1 < p_j < 4` give
+`beta_0 < 1/4` and every `beta_j > 1/4`), so `exists_exponentSimplex_base` produces a
+base point adapted to that relabeling and `exists_abs_ModelFullForm_le_extended`
+applies.  The base point genuinely has to depend on `σ`: the simplex needs one
+coordinate in `(1/4, 1/2)` and the other two below `1/4`, and which coordinate that
+is moves with the relabeling.
+
+`anisotropicParaproduct_of_interpolation` and the section-1 `thm_main` now carry
+only `hU : FourVertexMarcinkiewiczUniform volume`, which is `ext:interpolation`.
+Both audit to `propext, Classical.choice, Quot.sound`.
+
+## 2026-09-13T14:05-0700 — verification pass, and the remaining faithfulness gap
+
+`lake build` completes successfully (3343 jobs) on the pinned toolchain
+`leanprover/lean4:v4.33.0-rc1`; `Auto` remains outside `lakefile.toml` and is
+checked with `lake env lean`.  `Auto.Twisted.thm_main` audits to
+`propext, Classical.choice, Quot.sound`.  All eight section modules and
+`DFR/Auto/Twisted.olean` rebuild clean; `git diff --check` is clean; no `sorry`.
+
+Every labelled item in `automation/Status.md` is now `Proof completed` or
+`Completed` except one: `\label{lem:one_fiber}` remains `Statement completed`.
+The Lean statement carries two hypotheses the manuscript's does not — the inputs
+are pointwise bounded, and the distinguished input is integrable on each
+finite-mass fiber.  Where `lem:one_fiber` is used (the three shifted-vertex weak
+endpoints of `thm:extended_model`, on simple functions of finite-measure support)
+both hypotheses are free, so `thm:main` is unaffected; the gap is one of
+faithfulness to the lemma as stated.
+
+Removing the boundedness is the manuscript's approximation step, and the obstacle
+is precise: `ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all` dominates the
+scale integrand by a constant built from a uniform sup bound on the inputs.  With
+`SimpleFunc.approxOn` approximants the domination is by twice the limit, not by a
+constant, so two replacements are needed.
+
+`tendsto_ModelCoordinateConvolution_of_ae_line_dominated` is the first of them:
+the convolution's inner dominated-convergence step now runs against the majorant
+`2|f_j(x - r e_j)| |kernelDilate k s r|` instead of a constant.  What remains is
+the outer step, the domination in the scale variable `t` over `Ioc a b`.  The
+right tool is the scale-uniform maximal bound
+`abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal`, which is
+already proved but currently assumes a sup bound; its own ingredient
+`abs_activeModelCoordinateConvolution_le_coordinateBracketConvolution_of_integrable`
+assumes only line integrability, so a boundedness-free version looks reachable.
+It then needs the almost-everywhere finiteness of the coordinate maximal function
+for `L^{P_j}` inputs with `P_j > 1`.
+
+## 2026-09-13T14:50-0700 — toward removing `lem:one_fiber`'s side hypotheses
+
+Two ingredients, both verified.
+
+`exists_uniform_scale_majorant_activeModelKernel`: for scales in a compact
+interval away from zero, `|kernelDilate (activeModelKernel i j u) s r| ≤
+C U(u)^{10} (b/a) bracketKernelAt b 0 r`, uniformly in `s ∈ [a,b]`.  This replaces
+the maximal-function route sketched last tick: the scale range in
+`ModelTruncatedOperator` is `Ioc a b` with `0 < a`, so `s⁻¹ ≤ a⁻¹` and the bracket
+profile is antitone (`aux_bracketKernel_anti`), which is all that is needed.  No
+maximal theorem, no a.e. finiteness of a maximal function.
+
+`ae_mem_coordinateSourceFiberFiniteMassSet`: for an `L^p` input, almost every
+transverse fiber carries finite `p`-mass.  Tonelli through the measure-preserving
+coordinate split (`aux_lintegral_rpow_enorm_comp_coordinateSplit_eq_iterated`) plus
+`ae_lt_top`.
+
+With these, the remaining step for the boundedness-free `lem:one_fiber` is the
+outer dominated convergence in the scale variable: for almost every `x`, the line
+restriction of each `f_j` is in `L^{P_j}(ℝ)` (the same Tonelli argument), Hoelder
+against the fixed majorant `bracketKernelAt b 0` gives a bound on
+`|ModelCoordinateConvolution j (f_j) k_j s x|` independent of `s ∈ [a,b]`, and the
+product of the three is then a constant dominating function on a finite measure
+space.
+
+Separately, the second side hypothesis — global integrability of the distinguished
+input on each finite-mass fiber — looks stronger than the source needs: the atoms
+only require local integrability on the selecting interval, which Hoelder gives from
+finite `p`-mass on a bounded interval.  Removing it would mean localizing that
+hypothesis inside the atom construction, which is a deeper refactor than the
+boundedness removal.

@@ -26,15 +26,21 @@ Lean file: DFR/Auto/Twisted/ConventionsAndMainStatement/ConventionsAndMainStatem
 ### Theorems
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_integrable) (2026-09-12T14:22-0700)
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_eq_frequencyForm) (2026-09-12T14:22-0700)
-\label{thm:main}: Statement completed (Lean: Auto.Twisted.thm_main) (2026-09-12T14:22-0700)
+\label{thm:main}: Proof completed (Lean: Auto.Twisted.thm_main, Auto.Twisted.anisotropicParaproduct_of_interpolation) (2026-09-13T13:20-0700)
 
-`thm:main` is proved from the hypothesis `UniformConeModeFormBound`, which
-carries `thm:extended_model`.  Discharging that hypothesis is the remaining
-work; until then the Lean statement has an assumption the manuscript does not,
-so the status is `Statement completed` rather than `Proof completed`.
+`thm:main` is proved from `ext:interpolation` alone, which is the manuscript's
+own single external input.  The chain is:
+`exists_exponentSimplex_base` (`lem:exponent_simplex`) supplies a base point for
+each coordinate relabeling, `exists_abs_ModelFullForm_le_extended`
+(`thm:extended_model`) supplies the real full-scale model bound there,
+`exists_uniform_LiteralActiveModelFullForm_bound_of_real` complexifies it and
+carries it to every active coordinate, `coneModeFullForm_eq_
+LiteralActiveModelFullForm` (`lem:permutation`) identifies the cone mode forms
+with active-coordinate model forms, and `thm:cone` sums the modes.  The Lean
+hypothesis `hU : FourVertexMarcinkiewiczUniform volume` is `ext:interpolation`.
 
 ## Section 2: Function spaces and fixed bumps
-Lean file: DFR/Auto/Twisted/Twisted.lean
+Lean file: DFR/Auto/Twisted/FunctionSpacesAndFixedBumps/FunctionSpacesAndFixedBumps.lean
 
 ### Definitions
 \label{def:schwartz}: Completed (Lean: Auto.Schwartz3) (2026-09-12T14:22-0700)
@@ -47,7 +53,7 @@ Lean file: DFR/Auto/Twisted/Twisted.lean
 \label{lem:domination}: Proof completed (Lean: Auto.gaussianSuperposition_domination) (2026-09-12T14:22-0700)
 
 ## Section 3: Dyadic geometry and local sizes
-Lean file: DFR/Auto/Twisted/Twisted.lean
+Lean file: DFR/Auto/Twisted/DyadicGeometryAndLocalSizes/DyadicGeometryAndLocalSizes.lean
 
 ### Definitions
 \label{def:tree}: Completed (Lean: Auto.AnisoBox, Auto.BoxCollection) (2026-09-12T14:22-0700)
@@ -60,7 +66,7 @@ Lean file: DFR/Auto/Twisted/Twisted.lean
 \label{lem:bl}: Proof completed (Lean: Auto.cubeEdgeBracketAverage_le_product_secondMoments) (2026-09-12T14:22-0700)
 
 ## Section 4: Cubical telescoping with boundary terms
-Lean file: DFR/Auto/Twisted/Twisted.lean
+Lean file: DFR/Auto/Twisted/CubicalTelescopingWithBoundaryTerms/CubicalTelescopingWithBoundaryTerms.lean
 
 ### Definitions
 \label{def:cube}: Completed (Lean: Auto.localCubeForm) (2026-09-12T14:22-0700)
@@ -78,7 +84,7 @@ Lean file: DFR/Auto/Twisted/Twisted.lean
 \label{prop:edge_tree}: Proof completed (Lean: Auto.edgeTreeEstimate_of_boundedContinuous) (2026-09-12T14:22-0700)
 
 ## Section 5: The model form and its localization
-Lean file: DFR/Auto/Twisted/Twisted.lean
+Lean file: DFR/Auto/Twisted/TheModelFormAndItsLocalization/TheModelFormAndItsLocalization.lean
 
 ### Definitions
 \label{def:model}: Completed (Lean: Auto.Twisted.ModelSpatialIntegrand) (2026-09-12T14:22-0700)
@@ -92,7 +98,7 @@ Lean file: DFR/Auto/Twisted/Twisted.lean
 \label{cor:local_model}: Proof completed (Lean: Auto.stoppingTree_localModel_bound_of_energyBounds) (2026-09-12T14:22-0700)
 
 ## Section 6: Stopping time and the initial exponent range
-Lean file: DFR/Auto/Twisted/Twisted.lean
+Lean file: DFR/Auto/Twisted/StoppingTimeAndTheInitialExponentRange/StoppingTimeAndTheInitialExponentRange.lean
 
 ### Definitions
 \label{def:stopping}: Completed (Lean: Auto.sourceStoppingTree, Auto.sourceStoppingMaximal) (2026-09-12T14:22-0700)
@@ -106,7 +112,7 @@ Lean file: DFR/Auto/Twisted/Twisted.lean
 \label{thm:initial_model}: Proof completed (Lean: Auto.exists_uniform_initialModelFullForm_bound_weight100) (2026-09-12T14:22-0700)
 
 ## Section 7: Fiberwise Calderon-Zygmund decomposition
-Lean file: DFR/Auto/Twisted/Twisted.lean
+Lean file: DFR/Auto/Twisted/FiberwiseCalderonZygmundDecomposition/FiberwiseCalderonZygmundDecomposition.lean
 
 ### Definitions
 \label{def:fiber_maximal}: Completed (Lean: Auto.coordinateDyadicBallMaximal) (2026-09-12T14:22-0700)
@@ -116,19 +122,86 @@ Lean file: DFR/Auto/Twisted/Twisted.lean
 \label{lem:fiber_kernel}: Proof completed (Lean: Auto.abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal) (2026-09-12T14:22-0700)
 \label{lem:fiber_cz}: Proof completed (Lean: Auto.lintegral_prod_rpow_fiberDyadicCountableGoodField_le) (2026-09-12T14:22-0700)
 \label{lem:interval_tails}: Proof completed (Lean: Auto.Twisted.lpNorm_finset_double_intervalTails_le_of_radius_sum, Auto.integral_finset_double_intervalTails_le_of_radius_sum) (2026-09-12T18:55-0700)
-\label{lem:one_fiber}: Statement completed (Lean: Auto.Twisted.ModelTruncatedOperator_weakNorm_one_le_of_countable_stopping_data) (2026-09-12T16:16-0700)
-\label{ext:interpolation}: External (Lean: Auto.Twisted.FourVertexMarcinkiewicz) (2026-09-12T14:22-0700)
+\label{lem:one_fiber}: Statement completed (Lean: Auto.Twisted.ModelTruncatedOperator_weakNorm_le_one_fiber_explicit) (2026-09-13T06:35-0700)
+\label{ext:interpolation}: External (Lean: Auto.Twisted.FourVertexMarcinkiewicz, Auto.Twisted.FourVertexMarcinkiewiczUniform) (2026-09-13T09:05-0700)
 \label{lem:exponent_simplex}: Proof completed (Lean: Auto.Twisted.affineIndependent_exponentSimplex_vertices) (2026-09-12T14:22-0700)
-\label{thm:extended_model}: Statement completed (Lean: Auto.Twisted.exists_strong_bound_at_simplex_interior) (2026-09-12T14:22-0700)
+\label{thm:extended_model}: Proof completed (Lean: Auto.Twisted.exists_abs_ModelFullForm_le_extended) (2026-09-13T13:20-0700)
 
-`lem:one_fiber` is proved from level-wise stopping data: given, at each level,
-data whose exceptional, good and bad budgets hold there, the weak bound
-follows.  All three budgets now exist in the countable form the source uses, as
-does the good budget for the operator, so what the statement still assumes is
-the source's normalisation -- the choice of constant making each budget's mass
-at most one.  `thm:extended_model` is the interpolation assembly, which
-consumes `ext:interpolation` as a hypothesis by design, the manuscript
-supplying no proof of it.
+`lem:one_fiber` is proved for the truncated operator at the manuscript's own
+constant `A_u = C_1U(u)^{100}`: the three budgets are discharged at the
+canonical stopping data, combined into the weak-`L^R` bound, and the input
+norms are restored by rescaling.  The exponent conditions match the source
+(`R^{-1} = p^{-1} + Σ_{j≠m}P_j^{-1}`, `1 ≤ p ≤ P_m`, `1 ≤ R`), and the
+starting estimate is not assumed but derived from `thm:initial_model`.
+
+It is recorded as `Statement completed` rather than `Proof completed` because
+the Lean theorem carries two hypotheses the lemma does not: the inputs are
+pointwise bounded, and the distinguished input is integrable on each
+finite-mass fiber.  Removing the boundedness is the manuscript's
+Schwartz-approximation step, which is not yet formalised for this statement.
+
+`thm:extended_model` is the interpolation assembly, which consumes
+`ext:interpolation` as a hypothesis by design, the manuscript supplying no
+proof of it.
+
+`ext:interpolation` is now recorded in two readings.  `FourVertexMarcinkiewicz`
+fixes the operator and then produces the constant, so it permits the constant to
+depend on the operator.  `FourVertexMarcinkiewiczUniform` produces the constant
+from the exponent vectors and the weights alone, and then serves every choice of
+endpoint constants and every operator; that is the source's own wording
+("with constant depending only on the exponent vectors and the weights") and it
+is what `thm:extended_model` needs, since its constant has to be uniform in the
+mode `u` while the operators `U^{a,b}_{u,c}` differ exactly in `u` and `c`.
+`fourVertexMarcinkiewicz_of_uniform` shows the uniform reading implies the
+per-operator one, so nothing that consumed the earlier form is affected.
+
+`exists_ModelTruncatedOperator_extended_strong_bound` is equation
+`eq:extended_operator_bound`: the three shifted-vertex weak endpoints
+(`weakNorm_ModelTruncatedOperator_simplexVertex_succ`, obtained from
+`lem:one_fiber` at `p = P_m^{(m)}`) together with the base vertex
+(`simplexWeakEndpoint_zero_of_strong`) are fed to
+`exists_strong_bound_at_simplex_interior_uniform`, and the factor `U(u)^{100}`
+common to the four endpoint constants is pulled out of the weighted product
+because the weights sum to one.
+
+`exists_ModelTruncatedOperator_extended_strong_bound_unconditional` discharges the
+base vertex on the interpolation's own class:
+`exists_lpNorm_ModelTruncatedOperator_le_of_simpleFunc` reads the strict-range
+output estimate for bounded measurable fields
+(`lintegral_rpow_ModelTruncatedOperator_le_of_boundedMeasurable`, itself the
+duality step applied to `thm:initial_model` and mollified to non-Schwartz inputs)
+at simple inputs of finite-measure support, which are bounded and lie in every
+`L^{P_j}`.  Nothing is left as a hypothesis there beyond the exponent conditions
+and `ext:interpolation`.
+
+`exists_abs_formPairing_ModelTruncatedOperator_le_extended` is the closing Hoelder
+display: `R^{-1} + p_0^{-1} = 1` turns the operator bound into
+`|∫ f_0 U^{a,b}_{u,c}(f_1,f_2,f_3)| ≤ C U(u)^{100} ∏_{j=0}^3 ‖f_j‖_{p_j}`, uniform
+in the mode, the coefficient and the truncation.
+
+`exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable` removes the
+restriction to simple inputs.  `ext:interpolation` delivers the strong bound on
+simple functions of finite-measure support; `SimpleFunc.approxOn` approximates each
+slot pointwise, keeping the sup bound and the `L^{p_j}` norm up to a factor two,
+and Fatou (`lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto_all`) carries the
+bound to the limit with the constant enlarged by `2^3`.  Schwartz tuples are in
+that class.
+
+`exists_abs_ModelFullForm_le_extended` is `thm:extended_model` for the real
+full-scale model form: the interval form is bounded uniformly in the truncation by
+`abs_ModelScaleIntervalTruncation_le_of_extended_operator_bound`, and the scale
+truncations converge to the full form by
+`tendsto_ModelScaleTruncation_of_realSchwartz` (`lem:model_convergence`).  It is the
+exact analogue of `exists_uniform_initialModelFullForm_bound_weight100`, at the
+extended exponents instead of the strict initial range.
+
+What remains is the passage from the real full-scale model form to
+`UniformConeModeFormBound`: complexification, `lem:permutation` to reach every
+active coordinate, and the mode-sum bookkeeping.  The corresponding chain already
+exists for the initial range, starting from
+`exists_uniform_initialModelFullForm_bound_weight100`; it is stated there in terms
+of the strict-range hypothesis `hqs`, so it has to be re-derived taking the form
+bound itself as input.
 
 ## Section 8: Cone decomposition and the multiplier theorem
 Lean file: DFR/Auto/Twisted/ConeDecompositionMultiplierTheorem/ConeDecompositionMultiplierTheorem.lean
