@@ -138,6 +138,52 @@ Lean file: DFR/Auto/Twisted/FiberwiseCalderonZygmundDecomposition/FiberwiseCalde
 \label{lem:exponent_simplex}: Proof completed (Lean: Auto.Twisted.affineIndependent_exponentSimplex_vertices) (2026-09-12T14:22-0700)
 \label{thm:extended_model}: Proof completed (Lean: Auto.Twisted.exists_abs_ModelFullForm_le_extended) (2026-09-13T13:20-0700)
 
+`ext:interpolation` remains External, and the entry records what is and is not
+proved about it, since a substantial amount now is.
+
+Proved unconditionally, from the four endpoint hypotheses alone:
+`weakNorm_le_of_four_weakNorm` combines the four endpoint weak bounds into one at
+any interior exponent, with the geometric-mean constant;
+`lintegral_rpow_le_of_symmetric_weight_pair` upgrades that to the *strong* `L^R`
+bound, losslessly, at every weight vector whose exponent is `R`, by placing two
+weight vectors symmetrically about it;
+`exists_straddling_output_exponents` shows the affine independence forces the
+target output exponent to be strictly straddled by two of the four, which is what
+makes the weak-to-strong passage applicable at all; and
+`weakNorm_interior_le_of_indicator_inputs` proves the theorem's own conclusion,
+with its own constant `∏_a A_a^{ϑ_a}` and no slack, on inputs that are constant
+multiples of indicators — the restricted weak type of the interpolated point.
+
+Not proved: the passage from those inputs to general simple functions.  The
+obstruction is recorded in StatusLog.md with an explicit witness.  Decomposing
+the inputs into dyadic bands and bounding each term of the trilinear expansion
+separately cannot work: for three equal inputs with `M` bands, the `k`-th of
+measure `2^{-pk}/M`, the `M` diagonal terms each have target size `M^{-1/R}`, so
+the sum of the term bounds is `M^{1-1/R}`, which diverges, while the truth is
+bounded.  The same example localises the loss — the `ℓ^R` sum of the same bounds
+is `1` — so it is the triangle inequality `‖∑_k W_k‖_R ≤ ∑_k ‖W_k‖_R` that is
+lossy, and no per-term bound can repair it.  What is needed is to apply the
+endpoint hypotheses to groups of bands rather than to single bands;
+`trilinearOnSimple_expand_three_general` is the expansion over arbitrary finite
+decompositions that such a grouping requires, and
+`lintegral_rpow_enorm_high_le`, `lintegral_rpow_enorm_low_le`,
+`sum_measure_dyadicLevelSet_le` and `sum_triple_dyadicLevelSet_le` are the
+estimates a grouping would consume.
+
+The blocker has since been identified precisely, and is recorded in
+ErrorReport.md under "Missing prerequisite: the real interpolation method".  The
+level split with a tent share (`exists_normalized_lattice_tent`,
+`sum_tent_levels_le`) together with the two-sided summation bound
+(`exists_sum_min_two_geometric_bound`) gives weak type at the interior exponent,
+and that is sharp for the route: off balance the level-set bound is
+`D₁(k₀) τ^{-r₁} + D₂(k₀) τ^{-r₂}`, and the two integrability constraints on `k₀`
+meet exactly at the balance, where the bound is `τ^{-R}` and the strong-norm
+integral diverges logarithmically.  Closing the gap classically needs the `ℓ^s`
+aggregation of the real interpolation method, which converts the divergent `ℓ¹`
+sum of the layer bounds into a convergent `ℓ^R` one.  Mathlib has no Lorentz
+spaces, no `K`- or `J`-functionals and no real interpolation functor, and the
+pinned `lean_spherical` supplies only the complex method.
+
 `lem:one_fiber` is proved for the truncated operator at the manuscript's own
 constant `A_u = C_1U(u)^{100}`: the three budgets are discharged at the
 canonical stopping data, combined into the weak-`L^R` bound, and the input

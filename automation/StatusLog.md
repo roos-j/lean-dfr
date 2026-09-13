@@ -2382,3 +2382,901 @@ its own dyadic bands.
 Applying that in all three slots gives the three-parameter expansion the vertex
 bounds are applied to; that iteration, and then the summation where the interior gap
 supplies geometric decay, is what remains.
+
+## 2026-09-14T00:25-0700 — `ext:interpolation`: the three-slot expansion
+
+`trilinearOnSimple_expand_three` writes `T(f_1,f_2,f_3)` as the finite triple sum
+over the dyadic bands of the three inputs, each term being `T` applied to the tuple
+with all three slots replaced by level pieces.  The iteration is three applications
+of `trilinearOnSimple_sum_levels`, each preceded by rewriting the tuple as an update
+at that slot by its own entry (`Function.update_eq_self`) and followed by
+`coe_update_eq`, which moves the update across the coercion from simple functions to
+functions.  `update_three_apply` reads the triple update back slot by slot, which is
+how the vertex bounds will address the individual pieces.
+
+The scaffolding for `ext:interpolation` is now complete: the interior gap, the band
+decomposition with its measure and norm bounds, trilinearity, and this expansion.
+What is left is the estimate itself — attaching the four vertex weak bounds to each
+term and summing over the three-parameter index set, where the gap gives geometric
+decay.  That is the substantial remainder.
+
+## 2026-09-14T00:55-0700 — `ext:interpolation`: vertex bounds on the expansion terms
+
+`measure_dyadicLevelSet_lt_top` — a band of a simple function of finite-measure
+support has finite measure, since the band sits inside the support.
+
+`lpNorm_dyadicLevelPiece_le` is the real-valued form of the band norm estimate:
+`‖piece‖_q ≤ 2^{k+1} μ(band)^{1/q}`, obtained from the extended-valued form by
+`toReal`, which is legitimate because both sides are finite.
+
+`weakNorm_expansion_term_le` attaches the vertex bounds: for every vertex `a` and
+every triple of bands `k`, the corresponding term of the expansion satisfies
+`‖T(pieces)‖_{r_a,∞} ≤ A_a ∏_j (2^{k_j+1} μ(band_j)^{1/P_{a,j}})`.  The right-hand
+side now involves only the band heights and the band measures, which is the form the
+summation consumes.
+
+What remains is the summation: choosing, for each `k`, the vertex that makes the
+bound smallest — which is where `exists_gap_of_affineIndependent` supplies geometric
+decay in `k` — and assembling the weak bounds on the terms into a strong `L^R` bound
+on the sum.
+
+## 2026-09-14T01:30-0700 — survey correction: much of the interpolation machinery already existed
+
+A process mistake to record.  Before building the level decomposition this session I
+did not survey what the repository already contained for `ext:interpolation`.  It
+contains a great deal, built in an earlier session and sitting between lines 71292
+and 72672:
+
+* `dyadicLayer` / `dyadicLayerSet` with measurability, the indicator form, the
+  strict bounds `2^k ≤ |layer| < 2^{k+1}`, `finite_dyadicLayer_support`,
+  `dyadicLayerIndices` and `sum_dyadicLayerIndices` (the finite reconstruction), and
+  the two-sided layer norm bounds `eLpNorm_dyadicLayer_le` and
+  `le_eLpNorm_dyadicLayer`.
+* `weakNorm` with `meas_lt_le_of_weakNorm_le` (the Chebyshev form) and
+  `lintegral_rpow_le_of_two_weakNorm`, the two-point weak-to-strong passage with the
+  geometric-mean constant.
+* The exponent bookkeeping: `dyadicLevel_measure_rpow_exchange`,
+  `sum_weights_exchange_eq_zero`, `prod_dyadicLevel_exchange_eq_one`,
+  `rpow_four_weighted_mean_eq`, `outputReciprocal_identities`,
+  `one_lt_outputExponent_lt`.
+* The summation frame: `meas_lt_of_triple_expansion_bounds` (splitting a level
+  across a triple sum) and `sum_weighted_levels_le`.
+
+So this session's `dyadicLevelSet`, `dyadicLevelPiece`, `dyadicLevelIndices`,
+`sum_dyadicLevelPiece`, `measure_dyadicLevelSet_le` and
+`eLpNorm_dyadicLevelPiece_le` duplicate existing lemmas under different names.  They
+are correct and harmless but redundant; the `dyadicLayer` API is the one the rest of
+the argument is written against and is what later work should use.
+
+What this session added that is genuinely new: the `TrilinearOnSimple` correction and
+its discharge at the model operator; `dyadicLevelPieceSimple`, realising a layer as a
+simple function; the trilinear expansion lemmas up to
+`trilinearOnSimple_expand_three`; `weakNorm_expansion_term_le`; and the interior gap
+lemmas `eq_zero_of_forall_gapPairing_nonpos` and `exists_gap_of_affineIndependent`,
+which have no counterpart in the earlier work.
+
+The remaining gap for `ext:interpolation` is therefore smaller than it looked: the
+pieces to connect are the expansion, the per-term vertex bounds, the level splitting
+of `meas_lt_of_triple_expansion_bounds`, the exponent exchange, and
+`lintegral_rpow_le_of_two_weakNorm`.  The choice of weights `w k1 k2 k3` and the
+per-term vertex selection remain to be made.
+
+## 2026-09-14T02:05-0700 — the intended architecture, recovered
+
+Reading the existing sections end to end makes the earlier session's plan for
+`ext:interpolation` explicit, and it is a good one:
+
+1. `trilinear_expand_three_finsets` expands `T(∑ f_1^{k}, ∑ f_2^{k}, ∑ f_3^{k})` into
+   the finite triple sum over layer multi-indices.
+2. `sum_weighted_levels_le` splits a level `t` across that sum in proportion to
+   weights summing to one, and `meas_lt_of_triple_expansion_bounds` converts
+   per-term level-set bounds into a level-set bound for the whole sum.
+3. `meas_lt_le_of_weakNorm_le` turns each of the four vertex weak bounds into a
+   level-set bound for each term, and
+   `norm_triple_finset_sum_le_geometric_mean` combines the four by weighted
+   geometric mean.
+4. `dyadicLevel_measure_rpow_exchange` and `prod_dyadicLevel_exchange_eq_one` make
+   the pure powers of the dyadic level cancel in that four-fold mean, leaving the
+   target-exponent size.
+5. `summable_min_two_rpow` — "along each simplex edge the smallest of the four
+   vertex bounds is a two-sided geometric minimum, which is summable" — supplies the
+   convergence of the multi-index sum.
+6. `lintegral_rpow_le_of_two_weakNorm` performs the final weak-to-strong passage,
+   using that the target output exponent is straddled (`one_lt_outputExponent_lt`).
+
+The step that was never carried out, and that remains, is the choice of the weights
+`w k1 k2 k3` in (2) together with the verification that the resulting per-term bound
+really has the two-sided geometric form (5) demands.  That is where this session's
+`exists_gap_of_affineIndependent` belongs: it is exactly the statement that along
+every direction in the multi-index lattice some vertex gives strictly positive decay,
+which is what makes the minimum two-sided.
+
+Note that step (5) cannot be replaced by summing the geometric means of the four
+*norm* bounds: that product is the target-exponent size, whose sum over the layers
+is not controlled by the target norm.  The weak norms and the level splitting are
+essential, which is consistent with the design above.
+
+## 2026-09-14T02:40-0700 — the decay bridge: the gap becomes geometric decay
+
+`exchange_exponent_eq_neg_gapPairing` identifies the exchange exponent with the gap
+pairing: after `dyadicLevel_measure_rpow_exchange` the `a`-th vertex bound carries
+the pure level factor `2` to the power `∑_j (β_j w_j)(1 - v_{a,j}/β_j)`, and that
+exponent is exactly `-⟨w, v_a - β⟩`, where `w` is the multi-index rescaled by the
+target reciprocals.
+
+`exists_vertex_geometric_decay` then converts the interior gap into geometric decay:
+for every `w` some vertex has `⟨w, v_a - β⟩ ≥ δ‖w‖`, hence carries a level factor at
+most `2^{-δ‖w‖}`.  That is precisely the two-sided geometric minimum
+`summable_min_two_rpow` is stated for, now in the three-dimensional form the
+multi-index sum needs.
+
+So the hinge the earlier session left open is supplied.  What remains to assemble:
+the lattice summability over `Fin 3 → ℤ` of `2^{-δ‖k‖}` (a product of three
+one-dimensional geometric sums, via `Summable.mul_of_nonneg` and the equivalence
+`(Fin 3 → ℤ) ≃ ℤ × ℤ × ℤ`), then the choice of weights in
+`sum_weighted_levels_le` proportional to that summable family, and finally the
+composition with `meas_lt_of_triple_expansion_bounds` and
+`lintegral_rpow_le_of_two_weakNorm`.
+
+## 2026-09-14T03:20-0700 — lattice summability, and a limit of the term-by-term route
+
+Two results are in.
+
+`summable_two_rpow_neg_norm` supplies the lattice summability the previous entry
+named: over `Fin 3 → ℤ` the family `2^{-δ‖k‖}` is summable, with `‖·‖` the
+supremum norm.  The proof dominates the supremum norm by a third of the sum of
+the coordinates, so the family is dominated by a product of three one-dimensional
+geometric series; the one-dimensional factor `summable_two_rpow_neg_abs` is the
+existing `summable_min_two_rpow` rewritten through the absolute value, and the
+product is transported from `ℤ × ℤ × ℤ` along the injection that reads off the
+three coordinates.
+
+`weakNorm_le_of_four_weakNorm` combines the four endpoint weak bounds into one at
+the interior exponent: if `weakNorm v (r_a) ≤ Γ_a` for each vertex, then
+`weakNorm v R ≤ ∏_a Γ_a^{ϑ_a}`.  The combining weights are `ϑ_a R / r_a`, which
+sum to one exactly because `R^{-1} = ∑_a ϑ_a r_a^{-1}`; the proof is the
+elementary one, splitting `μ{τ < |v|}` as the product of its own `ϑ_a R / r_a`
+powers and applying the `a`-th Chebyshev bound to each factor.
+
+That second lemma also settles, negatively, a question the architecture left
+open, and the finding is worth stating precisely because it redirects the work.
+
+Fix a layer triple and write `Γ_a` for the `a`-th endpoint bound on it.  The four
+hypotheses give `μ{|W| > s} ≤ (Γ_a/s)^{r_a}` for each `a`, and nothing more.  The
+best bound on the interior weak norm derivable from those four is
+`sup_s s·μ(s)^{1/R}`, and taking logarithms this supremum is a finite linear
+program whose dual is: minimise `∑_a κ_a r_a log Γ_a` over probability vectors
+`κ` with `∑_a κ_a r_a = R`.  The value `∏_a Γ_a^{ϑ_a}` is attained at
+`κ_a = ϑ_a R / r_a`, so the lemma above is sharp, and — this is the point — the
+dual optimum can be *exactly* that value even when one vertex bound is very
+small.  A concrete configuration: three vertices with `r_a = 1` and one with
+`r_a = 2`, and a layer triple whose three equal-`r` endpoint bounds coincide.
+There the geometric decay carried by the fourth vertex cancels identically
+against the other three in the dual, and the interior bound on that triple shows
+no gain at all.
+
+Such configurations form a one-dimensional cone of directions in the multi-index
+lattice, so the layer sum over that cone has bounded terms and diverges.  The
+consequence is architectural: `ext:interpolation` cannot be proved by bounding
+each layer triple's contribution to the interior norm and summing.  The level
+splitting has to be chosen as a function of the level `τ` itself — as it is in
+the classical two-endpoint argument, where the cut level depends on `τ` — so
+that for each `τ` only boundedly many layer triples contribute.  The pieces now
+in the file (`meas_lt_of_triple_expansion_bounds`, `sum_weighted_levels_le`,
+`lintegral_rpow_le_of_two_weakNorm`) already admit a `τ`-dependent weight family;
+what has to be built is the choice of centre.
+
+## 2026-09-14T03:55-0700 — the interior bound on a single expansion term
+
+A survey of the file first, following the rule the error report now carries
+twice.  The expansion machinery for `ext:interpolation` is already complete and
+already wired to `TrilinearOnSimple`: `dyadicLevelPieceSimple` realizes a level
+piece of a simple function as a simple function of finite measure support,
+`trilinearOnSimple_sum_levels` expands one slot, `trilinearOnSimple_expand_three`
+expands all three into the finite triple sum, and `weakNorm_expansion_term_le`
+applies each of the four endpoint hypotheses to a term, in the form
+
+  weakNorm (T (level pieces)) (r a) ≤ A a * ∏_j 2^{k_j+1} m_{j,k_j}^{1/P_{a,j}}
+
+with `m_{j,k}` the measure of the `k`-th band of the `j`-th input.  So the
+`dyadicLayer` family is the one that is not wired in; the `dyadicLevel` family
+is.
+
+On top of that, `weakNorm_expansion_term_interior_le` now gives each term its
+interior bound:
+
+  weakNorm (T (level pieces)) R ≤ (∏_a A_a^{ϑ_a}) * ∏_j 2^{k_j+1} m_{j,k_j}^{1/p_j}.
+
+The proof feeds the four endpoint sizes to `weakNorm_le_of_four_weakNorm` and
+then collapses their weighted geometric mean with `aux_prod_endpoint_sizes`:
+the four sizes differ only in the exponent of `m_{j,k_j}`, and those exponents
+average to `1/p_j` by the definition of the target reciprocal, while the level
+factors carry total weight one.  This is the same cancellation
+`rpow_four_weighted_mean_eq` performs in `ℝ≥0∞`, done here in the real
+normalization the expansion bound produces.
+
+What this does not do — and the previous entry explains why it cannot — is give
+the term any decay in the multi-index.  The remaining work is the choice of the
+level splitting, which has to depend on the level.
+
+## 2026-09-14T04:30-0700 — band orthogonality: the bands of one input sum against its norm
+
+`sum_measure_dyadicLevelSet_le` and its seminorm form
+`sum_measure_dyadicLevelSet_le_eLpNorm` supply the orthogonality any
+level-dependent splitting consumes: for a single input `f` and any finite
+family `S` of bands,
+
+  ∑_{k ∈ S} (2^k)^q · μ(band k) ≤ ∫ ‖f‖^q = ‖f‖_q^q.
+
+The proof is the disjointness of the bands: on band `k` the integrand `‖f‖^q`
+dominates `(2^k)^q`, so each summand is bounded by the band's integral, and the
+bands being pairwise disjoint the sum of the band integrals is the integral over
+their union (`lintegral_biUnion_finset`), which is at most the whole integral.
+
+This is the missing quantitative input.  The per-term interior bound from the
+previous tick controls a single layer triple by the product of the three band
+sizes `2^{k_j+1} m_{j,k_j}^{1/p_j}`; this lemma says those band sizes are
+`ℓ^{p_j}`-summable in `k_j` with total `‖f_j‖_{p_j}`.  What connects them is
+still the level-dependent centring: at level `τ` only the bands with
+`∑_j (k_j+1)/p_j` near `log τ` contribute, and the geometric decay from
+`exists_vertex_geometric_decay` makes the off-centre bands sum to a convergent
+tail.  That assembly is the next tick.
+
+## 2026-09-14T05:05-0700 — triple band orthogonality: layer triples sum against the product of norms
+
+`sum_triple_product_factor` and `sum_triple_dyadicLevelSet_le` lift the
+single-input band orthogonality of the previous tick to the three inputs
+together.  The first is the elementary factorization of a triple sum of a
+separable product into the product of the three one-dimensional sums (over
+`ℝ≥0∞`); the second applies it to the band sizes, giving
+
+  ∑_{k1,k2,k3} ∏_j (2^{k_j})^{q_j} μ(band_{j,k_j})
+    ≤ ∏_j ∫ ‖f_j‖^{q_j} = ∏_j ‖f_j‖_{q_j}^{q_j}.
+
+Taking `q_j = p_j` this is the total `ℓ^1` mass of the target sizes of the
+layer triples: the product of the three input `L^{p_j}` norms.  This is the
+budget the level-dependent argument spends — the geometric decay of
+`exists_vertex_geometric_decay` weights this convergent family, and the min over
+the four vertices per triple picks, in each lattice direction, the vertex whose
+size is smallest.  With the budget and the decay both in hand, the remaining
+assembly is the arrangement that pays the decay against the budget at each output
+level; that is what the next ticks build, on top of `meas_lt_of_triple_expansion_bounds`.
+
+## 2026-09-14T05:40-0700 — the expansion bridge: operator level set → term level sets
+
+`trilinearOnSimple_expand_three_multiIndex` restates the three-slot expansion
+with each term written as `T (fun j ↦ dyadicLevelPiece (⇑(f j)) (![k0,k1,k2] j))`,
+the exact form the vertex bound `weakNorm_expansion_term_le` and the interior
+bound `weakNorm_expansion_term_interior_le` are stated in.  The reindexing
+lemma `aux_expansion_tuple_eq` identifies the triple-`Function.update` tuple of
+`trilinearOnSimple_expand_three` with the `Fin 3 → ℤ` multi-index tuple, slot by
+slot through `update_three_apply` and `coe_dyadicLevelPieceSimple`.
+
+`meas_lt_operator_expansion` then connects the expansion to the level-set
+splitting: for any budget family `s k0 k1 k2` whose split levels sum (over the
+finite index set of nonzero bands) to the target level `t`, and any per-term
+level-set bounds `B`, the operator's level set measure is at most `∑ B`.  It is
+`meas_lt_of_triple_expansion_bounds` with `V = T(f)` and the pointwise
+reconstruction `V x = ∑ (term x)` supplied by the multi-index expansion.
+
+So the two ends now meet at the term level set: on one side
+`meas_lt_operator_expansion` reduces the operator to its terms under a budget;
+on the other, `weakNorm_expansion_term_le` bounds each term's level set by the
+vertex sizes and `sum_triple_dyadicLevelSet_le` sums those sizes against the
+input norms.  The remaining tick chooses the budget `s` — the level split — and
+the per-term vertex, spending the geometric decay against the summed sizes.
+
+## 2026-09-14T06:15-0700 — affine independence straddles the target output exponent
+
+`exists_straddling_output_exponents` records a structural consequence of the
+hypotheses that the earlier design had not isolated: the four output exponents
+`r_a` are never all equal, so the target `R` is *strictly* straddled — some
+vertex has `r_a < R` and some has `r_a > R`.
+
+The reason is the relation `r_a^{-1} = ∑_j P_{a,j}^{-1}` that
+`ext:interpolation` imposes on each vertex.  If all four `r_a` agreed, the four
+input reciprocal vectors would all lie in the plane `{x : x_0+x_1+x_2 = c}` of
+`ℝ³`, and four points of a plane are never affinely independent.
+`aux_exists_ne_coordSum` makes this precise by reusing
+`eq_zero_of_forall_gapPairing_nonpos`: the constant covector `1` would pair to
+zero with every vertex offset from the barycentre, forcing `1 = 0`.
+`aux_exists_gt_and_lt_of_weighted_mean` then converts "not all equal" into
+strict straddling, since `R^{-1}` is the strict convex combination
+`∑_a ϑ_a r_a^{-1}`.
+
+This matters because `lintegral_rpow_le_of_two_weakNorm` needs exactly two
+exponents straddling `R`, and until now nothing in the file supplied them.
+
+A second finding, recorded so it is not rediscovered.  With the straddling pair
+in hand one can bound each expansion term's *strong* norm,
+`‖W_k‖_R ≲ Γ_{a₁,k}^{α₁} Γ_{a₂,k}^{α₂}` with `α₁+α₂ = 1`, and then try
+`‖T f‖_R ≤ ∑_k ‖W_k‖_R`.  That fails, and quantitatively: the mixed exponent
+vector `α₁ v_{a₁} + α₂ v_{a₂}` lies on the edge between the two chosen vertices,
+not at the target `β`, so the per-input factor becomes `∑_k 2^k m_k^{w_j}` with
+`w_j ≠ β_j`, which the `ℓ^{p_j}` band orthogonality does not control.  Even at
+`w = β` it fails: for an input with `M` bands of equal size the triple sum is
+`M^{3 - 1/R}`, which diverges since `R > 1`.  So no route that sums a per-term
+norm can work — neither the strong norm, nor the interior weak norm of the
+previous entries.  The level split has to be made before the norms are taken.
+
+## 2026-09-14T06:50-0700 — restricted weak type at the interior point, with the exact constant
+
+`weakNorm_interior_le_of_indicator_inputs` proves the interior conclusion of
+`ext:interpolation` on inputs that are constant multiples of indicators:
+
+  weakNorm (T f) R ≤ (∏_a A_a^{ϑ_a}) · ∏_j ‖f_j‖_{p_j}.
+
+This is the restricted weak type of the interpolated point, and it costs
+nothing: on such an input all four endpoint norms of `f_j` are powers of the
+single number `μ(E_j)` (`aux_lpNorm_indicator_const`), so their weighted
+geometric mean is exactly the target norm — the same collapse
+`aux_prod_endpoint_sizes` performs — and `weakNorm_le_of_four_weakNorm`
+supplies the combination.  Neither the level decomposition nor the geometric
+decay is used.
+
+Two things worth recording.  First, the constant that comes out is exactly the
+`∏_a A_a^{ϑ_a}` the theorem asserts, with no slack, which confirms the constant
+in the statement is the right one.  Second, the same argument runs at *every*
+interior point of the simplex, not just the target: any positive weights
+summing to one give the restricted weak bound at the point they define.
+
+So the theorem is proved on multiples of indicators.  What remains is the
+passage from restricted weak type on an open set of exponents to the strong
+bound at the target — the classical Lorentz-space step.  The obstruction
+already recorded stands: on general simple inputs the endpoint norms are no
+longer powers of one number, the geometric mean of the endpoint norms exceeds
+the target norm by log-convexity, and the layer decomposition that repairs this
+cannot be summed term by term.
+
+## 2026-09-14T07:25-0700 — the symmetric pair: a lossless strong bound at every weight vector
+
+`lintegral_rpow_le_of_symmetric_weight_pair` is the step the previous entries
+were missing, and it removes the obstruction they recorded.
+
+Combining the four endpoint weak bounds with a weight vector `ψ` gives a weak
+bound at the exponent `R_ψ` with `R_ψ^{-1} = ∑_a ψ_a r_a^{-1}`, with constant
+the geometric mean `∏_a Γ_a^{ψ_a}`.  Place two weight vectors symmetrically
+about `χ`, so `ψ⁺ + ψ⁻ = 2χ`.  Then `R^{-1}` is the average of `R_{ψ⁺}^{-1}` and
+`R_{ψ⁻}^{-1}`, so the two exponents straddle `R`, and the two-sided passage
+returns the geometric mean at `χ` *exactly*: the two interpolation exponents
+come out both equal to `R/2`, and
+
+  (∏ Γ^{ψ⁺})^{R/2} · (∏ Γ^{ψ⁻})^{R/2} = ((∏ Γ^{χ})^2)^{R/2} = (∏ Γ^{χ})^R.
+
+So `‖W‖_R ≤ C · ∏_a Γ_a^{χ_a}` for *every* weight vector `χ` whose exponent is
+`R`, with `C` depending only on how far apart the symmetric pair is placed —
+not on `χ`.  Nothing is lost in the passage from weak to strong.
+
+Why this unblocks the argument.  The earlier entries kept failing because the
+weight vector was fixed at `ϑ`, which makes the per-term bound the target size
+with no decay.  Being free to move `χ` per multi-index changes the picture: the
+term bound becomes
+
+  (∏_a A_a^{ϑ_a}) · N_k · 2^{⟨e, α⟩ + ⟨Φ e, L(k)⟩},  χ = ϑ + e,
+
+with `α_a = log_2 A_a`, `Φ e = ∑_a e_a v_a`, and `L(k)` the log band measures.
+Minimising the linear functional over a small ball `‖e‖ ≤ ε` gives
+`-ε‖P α + Φ* L(k)‖`, and since `Φ*` is an isomorphism (affine independence) this
+is a genuine geometric decay `2^{-δ‖L(k) - L₀‖}` — centred not at the origin but
+at the fixed point `L₀` determined by the constants `A_a`.  So the dependence on
+the `A_a`, which the earlier attempts could not keep out of the constant, is
+absorbed into a *translation of the decay centre*, and the convergence estimate
+for `∑_k N_k 2^{-δ‖L(k) - L₀‖}` is translation invariant.
+
+The remaining pieces are the tilt construction, the identification of the decay,
+and the summation, all against the toolkit now in place.
+
+## 2026-09-14T08:00-0700 — correction to the previous entry, and the grouping that replaces it
+
+The previous entry claimed the symmetric-pair lemma removes the obstruction.
+That claim was too strong and is withdrawn; the lemma itself stands and is
+correct, but it does not by itself close the argument.  The reason is a
+constraint I had not accounted for.
+
+The symmetric pair forces `∑_a χ_a r_a^{-1} = R^{-1}`, because `R^{-1}` is the
+average of the two exponents' reciprocals.  So the admissible tilts `e = χ - ϑ`
+satisfy two linear constraints, `∑_a e_a = 0` and `∑_a e_a r_a^{-1} = 0`, and
+form a *two*-dimensional space, not three.  Minimising the tilt functional over
+a ball in that space gives decay proportional to the norm of the projection of
+`α + Φ* L` onto it, and that projection vanishes on a line in `L`-space.
+Working out which line: since `∑_j v_{a,j} = r_a^{-1}`, the degenerate set is
+exactly `L ∈ ℝ·(1,1,1)` when the constants `A_a` are equal, and a translate of
+it otherwise.  So the diagonal direction — all three bands of equal measure —
+carries no gain.
+
+And on that diagonal the term-by-term sum really does diverge.  Take all
+`p_j = p` equal and all three inputs equal, with `M` bands, the `k`-th of
+measure `2^{-pk}/M`.  Then `‖f_j‖_p = 1`, each band has target size
+`2^k m_k^{1/p} = M^{-1/p}`, the diagonal triples `k_1 = k_2 = k_3` have target
+size `M^{-1/R}`, and there are `M` of them, so the sum of the term bounds is
+`M^{1 - 1/R}`, which diverges since `R > 1`.
+
+The same example says where the loss is.  The `ℓ^R` sum of the same term bounds
+is `∑_k (M^{-1/R})^R = 1`, bounded.  So the term bounds are fine; it is
+`‖∑_k W_k‖_R ≤ ∑_k ‖W_k‖_R` that is too lossy, and no choice of per-term bound
+can repair a triangle inequality.
+
+What replaces it is grouping.  The four vertex hypotheses apply to any simple
+function of finite measure support, so they apply to a *sum* of bands just as
+well as to a single band, and a product block of bands is handled by one
+application rather than by summing its terms.
+`trilinearOnSimple_expand_three_general`, added this tick, is the expansion for
+an arbitrary finite decomposition of each slot — the freedom the summation
+needs.  Choosing the blocks is the remaining work.
+
+## 2026-09-14T08:35-0700 — the truncation estimates in seminorm form, and where the diagonal degeneracy comes from
+
+`eLpNorm_high_le` and `eLpNorm_low_le` restate the truncation bounds for the
+`L^Q` seminorm: the part of an input above a level `lam` satisfies
+
+  ‖f·1_{|f|>lam}‖_Q ≤ lam^{1 - p/Q} ‖f‖_p^{p/Q}   for Q ≤ p,
+
+and the part below satisfies the same bound for `Q ≥ p`.  `aux_eLpNorm_indicator_restrict`
+identifies the seminorm of an indicator restriction with the restricted integral,
+which is what lets the two lintegral bounds of the previous tick be read as
+seminorms.  Note the two bounds have the *same* form; which piece a given
+exponent controls is decided only by whether `Q` is below or above `p`.
+
+A computation worth recording, because it explains the diagonal degeneracy in a
+way the abstract argument did not.  For three equal inputs with `M` bands, the
+`k`-th of measure `M^{-1}2^{-kp}`, the `a`-th endpoint size of the diagonal term
+`k_1 = k_2 = k_3 = k` is
+
+  Γ_{a,k} = A_a M^{-1/r_a} 2^{3k(1 - R/r_a)}.
+
+So `Γ_{a,k}` decays in `k` for the vertices with `r_a < R` and grows for those
+with `r_a > R` — there is decay available at the individual vertices.  But the
+weighted geometric mean that the symmetric pair produces has exponent
+`∑_a χ_a (1 - R/r_a) = 1 - R ∑_a χ_a r_a^{-1} = 0`, precisely because
+`∑_a χ_a r_a^{-1} = R^{-1}` is what makes the pair land on `R`.  The constraint
+that gives the strong bound at the right exponent is exactly the constraint that
+cancels the decay.  That is the degeneracy, stated without reference to the
+geometry.
+
+It also says what a proof must do: keep the vertex exponents `r_a` rather than
+collapsing to `R` per term, which means summing level sets and integrating in the
+level, not summing norms.  The level-dependent split remains the open step.
+
+## 2026-09-14T09:10-0700 — corpus consistency check, and a scenario audit of the open step
+
+Housekeeping first, since a batch of results had gone in without one.  All eight
+section modules and the top-level module `DFR/Auto/Twisted.lean` were rebuilt
+against the current `Twisted.olean`: zero errors, zero failures.  The
+development remains sorry-free and every new declaration audits to
+`propext, Classical.choice, Quot.sound`.
+
+Then an audit of the open step, by asking what the hypotheses actually force in
+the witness example rather than what the available inequalities give.  Recall
+the diagonal terms have `Γ_{a,k} = A_a M^{-1/r_a} 2^{3k(1 - R/r_a)}` and the
+sum of the per-term `L^R` bounds is `M^{1-1/R}`, divergent.  Three concrete
+shapes for the terms `W_k` consistent with the hypotheses were checked:
+
+- `W_k` pairwise disjointly supported: `‖∑ W_k‖_R = (∑ ‖W_k‖_R^R)^{1/R}`, which
+  is bounded.
+- `W_k` all equal to one `W`: then `‖W‖_{r_a,∞} ≤ min_k Γ_{a,k}`, and for the
+  vertices with `r_a < R` that minimum is exponentially small in `M`, so `M‖W‖_R`
+  is exponentially small.
+- `W_k = c_k ψ` for a common profile, and `W_k = c_k 1_{B_k}` for nested balls:
+  in both, `c_k` is forced to be a geometric tent in `k`, so `∑_k c_k` is
+  comparable to its peak, and the total comes out `M^{-1/R}` — bounded.
+
+In every shape the truth is bounded, which is consistent with the theorem and
+localises the loss precisely in the triangle inequality rather than in any
+per-term estimate.  It also shows where the missing mechanism lives: the
+hypotheses constrain the terms *jointly*, through the fact that one profile has
+to satisfy every `Γ_{a,k}` at once, and none of the inequalities currently in the
+file express a joint constraint.  A two-piece split by the multi-index does not
+recover it either — splitting the diagonal at `k_0` and using the low vertices on
+one side and the high vertices on the other gives `2^{Pk_0} + 2^{P(M-k_0)}` with
+`P > 0`, worse than the term-by-term bound.
+
+So the open step is not a missing inequality among the ones tried; it needs a
+statement that uses the terms themselves and not only their bounds.
+
+## 2026-09-14T09:45-0700 — the tent sums to a bounded multiple of its peak
+
+`exists_tent_sum_bound` is the summation mechanism the previous audit isolated,
+in the form that is uniform in where the peak sits: for rates `α, β > 0` there is
+a constant `K` such that for *every* real centre `c` and every finite set `S` of
+integers,
+
+  ∑_{k ∈ S} min(2^{-α(k-c)}, 2^{β(k-c)}) ≤ K.
+
+The proof is self-contained and avoids any shift-invariance of infinite sums,
+which this Mathlib does not expose for `ℤ` in a convenient form.  The index set
+is split at the centre; on the right half the first branch is used and the index
+`k` is reindexed injectively by `(k - ⌈c⌉).toNat`, on the left half the second
+branch and `(⌊c⌋ - k).toNat`.  Because `c ≤ ⌈c⌉` and `⌊c⌋ ≤ c`, each reindexing
+only decreases the exponent, so both halves are dominated by the geometric series
+`∑_n (2^{-α})^n` and `∑_n (2^{-β})^n`, summed over the image of an injection and
+hence bounded by the whole series.
+
+The point of the uniformity in `c` is that the peak of the tent moves with the
+data — in the witness example it sits where the endpoint bounds cross, which
+depends on the constants `A_a` and on the input — so a bound that degraded as the
+peak moved would be useless.  This is the first statement in the file that is
+insensitive to that movement.
+
+## 2026-09-14T10:15-0700 — the two-sided geometric minimum sums to the geometric mean
+
+`min_two_geometric_eq_tent` identifies the minimum of a decaying and a growing
+geometric family with a centred tent:
+
+  min(C₁ 2^{-αk}, C₂ 2^{βk})
+    = (C₁^{β/(α+β)} C₂^{α/(α+β)}) · min(2^{-α(k-c)}, 2^{β(k-c)}),
+
+with the centre `c = log(C₁/C₂)/((α+β) log 2)` — the crossing point of the two
+families — and the peak their weighted geometric mean, weighted by the two rates.
+Feeding this to `exists_tent_sum_bound` gives
+`exists_sum_min_two_geometric_bound`: for rates `α, β > 0` there is a constant
+`K` such that for all positive `C₁, C₂` and every finite set of integer indices,
+
+  ∑_k min(C₁ 2^{-αk}, C₂ 2^{βk}) ≤ K · C₁^{β/(α+β)} C₂^{α/(α+β)}.
+
+So the multi-index sum of the two-sided minimum costs only the geometric mean of
+the two constants, with a constant depending on the rates alone.  This is the
+quantitative form of `summable_min_two_rpow`, which gave convergence but no
+bound, and it is the shape the endpoint sizes present along each lattice
+direction: one vertex with `r_a < R` makes the size decay, one with `r_a > R`
+makes it grow, and `exists_straddling_output_exponents` guarantees both exist.
+
+Note this avoids `Real.logb`, which the corpus does not import; the centre is
+written through `Real.log` directly.
+
+## 2026-09-14T10:50-0700 — a tent weight family on the multi-index lattice
+
+`exists_lattice_tent_sum_bound` lifts the tent bound to the three-dimensional
+lattice: for a rate `η > 0` there is a constant `K` such that for every centre
+`c` and all finite index sets,
+
+  ∑_{k1,k2,k3} 2^{-η|k1-c₀|} 2^{-η|k2-c₁|} 2^{-η|k3-c₂|} ≤ K,
+
+uniformly in `c`.  The summand factors, so the triple sum factors
+(`sum_triple_product_factor_real`) into three one-dimensional tent sums, each
+bounded by `exists_sum_abs_tent_bound`, which is the previous tick's bound read
+through the absolute value using the file's own `aux_min_two_rpow_eq_abs`.
+
+Why this is the right share.  The level assigned to a layer triple by
+`meas_lt_of_triple_expansion_bounds` must be a share of the output level with the
+shares summing to at most one, and the choice of share is where the earlier
+attempts lost.  A uniform share `1/M` over `M` active triples costs `M^R` in the
+level-set bound, which is why the diagonal came out as `M^{R-1}`.  A tent share
+costs nothing of the sort: because the tent is normalisable over the *whole*
+lattice, every triple near the centre gets a share bounded below by a constant,
+and the number of active triples never enters.  The uniformity in the centre is
+what lets the centre track the peak of the endpoint sizes, which moves with the
+constants `A_a` and with the input.
+
+With this the level-splitting estimate can be assembled at the interior exponent.
+What it yields is a weak bound at `R`, not a strong one, and the earlier
+computation shows why: the two-sided structure that makes the sum converge is
+exactly what forces the exponent to be `R` on the nose.  Bridging that last gap
+remains open.
+
+## 2026-09-14T11:20-0700 — the normalized tent, and the level budget it respects
+
+`exists_normalized_lattice_tent` rescales the lattice tent by the reciprocal of
+its uniform bound: for a rate `η > 0` there is a constant `C > 0` such that at
+every centre, the family
+
+  w(k1,k2,k3) = C · 2^{-η|k1-c₀|} · 2^{-η|k2-c₁|} · 2^{-η|k3-c₂|}
+
+sums to at most one over any finite index sets.  `sum_tent_levels_le` then feeds
+this to `sum_weighted_levels_le`: the shares `t · w(k1,k2,k3)` of an output level
+`t` sum to at most `t`, which is exactly the budget hypothesis that
+`meas_lt_of_triple_expansion_bounds` and `meas_lt_operator_expansion` consume.
+
+So the level split is now available as a drop-in: the level assigned to a layer
+triple may be taken proportional to a tent at any centre, with the constant
+depending only on the rate.  Every ingredient of the level-set estimate at the
+interior exponent is in place — the expansion (`meas_lt_operator_expansion`), the
+per-term vertex bounds (`weakNorm_expansion_term_le`), the Chebyshev conversion
+(`meas_lt_le_of_weakNorm_le`), the budget (this tick), and the summation
+(`exists_sum_min_two_geometric_bound`).
+
+The gap that remains is the one identified two ticks ago and is not a missing
+ingredient: the two-sided structure that makes the multi-index sum converge fixes
+the output exponent at `R` exactly, so what the assembly yields is weak type at
+`R`, and the strong bound needs something further.
+
+## 2026-09-14T11:50-0700 — bands aggregate in ℓ^q, which is the joint constraint
+
+`lintegral_rpow_enorm_sum_dyadicLevelPiece` records the fact the scenario audit
+said was missing from the file: because the bands of an input are disjointly
+supported, the `L^q` norm of a *group* of bands is the `ℓ^q` aggregate of the
+individual band norms,
+
+  ∫ ‖∑_{k ∈ E} band_k‖^q = ∑_{k ∈ E} ∫ ‖band_k‖^q,
+
+not their sum.  `aux_rpow_enorm_sum_dyadicLevelPiece` is the pointwise statement:
+at each point at most one band is active, by `dyadicLevelSet_disjoint`, so the
+`q`-th power of the sum is the sum of the `q`-th powers with no cross terms.
+
+This is the joint constraint the four endpoint hypotheses place on a grouping.
+Applying a vertex bound to a group of bands is strictly stronger than applying it
+to each band and adding, and the gap between the `ℓ^q` aggregate and the `ℓ^1`
+sum is exactly the slack the term-by-term route discards — in the witness example
+that gap is the factor `M^{1-1/R}`.
+
+With this the file now holds both halves of the tension: the one-group bound,
+whose cost is the geometric mean `∏_a ‖f_j‖_{P_{a,j}}^{ϑ_a}` and which exceeds
+the target norm by log-convexity when the input is spread across scales; and the
+all-bands bound, whose cost is an `ℓ^1` sum that diverges.  A correct proof
+interpolates between them by grouping adaptively.  The adaptive grouping is the
+one thing still missing, and it is the research content of the theorem.
+
+## 2026-09-14T12:20-0700 — a correction, and the ceiling of the level-split route
+
+`weakNorm_le_of_meas_lt_le` supplies the converse of
+`meas_lt_le_of_weakNorm_le`: a level-set bound decaying like `D τ^{-R}` is a weak
+bound with constant `D^{1/R}`.  That is the packaging the level-splitting
+estimate needs, since it produces a level-set bound and the downstream steps are
+stated for the weak norm.
+
+A correction to an earlier entry.  The entry of 2026-09-14T09:10 reported that
+splitting the level uniformly over `M` active triples costs `M^{R-1}`, and left
+the impression that the level-split route is lossy.  That was an artefact of the
+uniform share.  Redoing the witness example with the *tent* share now in the file:
+the `a`-th term is
+`(A_a/(τC))^{r_a} M^{-1} 2^{3(r_a-R)k + η r_a |k - k_0|}`, which decays away from
+`k_0` on both sides once `η` is below `3|R - r_a|/r_a`, so the sum over `k` is
+comparable to its value at `k_0`; choosing `k_0` at the balance point of the two
+straddling vertices gives
+
+  μ{τ < |T f|} ≤ C M^{-1} A_1^{r_1 θ} A_2^{r_2 (1-θ)} τ^{-R},
+
+with no power of `M` left over.  So the level-split with a tent share gives the
+right weak bound at `R`, and the earlier `M^{R-1}` was the cost of the wrong
+share, not of the route.
+
+What that same computation also shows is the ceiling.  The balance that removes
+the `M` is exactly what pins the exponent: off balance the bound is a sum
+`D₁(k_0) τ^{-r_1} + D₂(k_0) τ^{-r_2}`, and minimising over `k_0` returns
+`A^* τ^{-R}`.  Integrating `τ^{R-1}·τ^{-R}` diverges logarithmically at both ends,
+so weak type at `R` is the natural output of this route and the strong bound needs
+a further step.  Interpolating between two nearby interior points does not supply
+it: the constants there carry `∏_j ‖f_j‖_{p'_j}`, and log-convexity of
+`q ↦ ‖f_j‖_q` bounds the target norm *below* the geometric mean of those, which is
+the wrong direction.
+
+## 2026-09-14T12:50-0700 — the weak norm is a quasi-norm
+
+`weakNorm_add_le` proves the triangle inequality with a factor two:
+
+  weakNorm (u + v) r ≤ 2 (weakNorm u r + weakNorm v r)   for r ≥ 1.
+
+A point where the sum exceeds a level `σ` is a point where one summand exceeds
+`σ/2`, so the level set of the sum at `σ` is covered by the two level sets of the
+summands at `σ/2`; the measures add, and the `1/r`-th power is subadditive
+because `r ≥ 1`.
+
+The file did not have this, and any aggregation of the layer pieces in the weak
+norms has to start from it — in particular the `K`-functional of the couple
+`(L^{r₁,∞}, L^{r₂,∞})`, which is the first object the real interpolation route
+recorded in ErrorReport.md needs.  Note the factor two is not removable: the weak
+norm is genuinely only a quasi-norm, which is one of the reasons that route
+cannot be run with the naive subadditive estimates.
+
+## 2026-09-14T13:20-0700 — the K-functional of the weak couple
+
+`weakK μ r₁ r₂ t v` is the `K`-functional of the couple formed by the two weak
+spaces, the infimum over decompositions `v = (v - w) + w` of
+`weakNorm (v-w) r₁ + t · weakNorm w r₂`.  `weakK_le_left` and `weakK_le_right`
+are the two trivial decompositions, and `weakK_le_weakJ` combines them: at any
+scale `s`, the `K`-functional at scale `t` is at most the `J`-functional
+`max(weakNorm v r₁, s · weakNorm v r₂)` at scale `s`, and also at most `t/s`
+times it.  That pair of bounds is the input to the `J`-method estimate the
+ErrorReport entry describes.
+
+A near miss worth recording, and the same one as before.  I wrote a
+`weakNorm_zero` as a helper and found the file already had it, at line 92402,
+stated for `fun _ : X ↦ (0 : ℝ)` rather than `(0 : X → ℝ)` — which is why a
+search for the latter spelling missed it.  The duplicate was removed before
+promotion and the existing lemma used, bridged by a `have` at the `(0 : X → ℝ)`
+spelling since the two are definitionally but not syntactically equal.
+
+## 2026-09-14T13:50-0700 — the K-functional on a sum, and a longer prerequisite chain
+
+`weakK_add_le` estimates the `K`-functional of a sum by testing it against the
+sum of any two chosen decompositions, carrying the factor two of
+`weakNorm_add_le` in each slot.  This is the honest two-term form: the infimum
+form `weakK (v₁+v₂) ≤ 2 (weakK v₁ + weakK v₂)` needs an approximation argument on
+the two infima, and the two-term form is what applications use anyway, since the
+caller supplies the decompositions.
+
+Working on this turned up a further link in the prerequisite chain, now recorded
+in ErrorReport.md.  The `J`-method estimate is applied to a decomposition with
+infinitely many pieces and needs `K` to be genuinely subadditive; a factor two
+per addition compounds to `2^n`.  The classical repair is that `L^{r,∞}` is
+normable for `r > 1`, via `sup_E μ(E)^{1/r-1} ∫_E |f|`, which is equivalent to
+the weak quasi-norm with constant the conjugate exponent.  So the chain is
+normability, then subadditivity of `K`, then the `J`-method, then the
+identification of the interpolation space — four known theorems, none of them in
+Mathlib.
+
+## 2026-09-14T14:20-0700 — the candidate norm on weak L^r
+
+`weakNormPrime μ r v` is the classical candidate norm on the weak space: the
+supremum, over measurable sets of finite positive measure, of
+`μ(E)^{1/r - 1} ∫_E |v|`.  Being a supremum of quantities each of which is
+subadditive in `v`, it is a genuine norm, which is what the `K`-functional needs
+and what the weak quasi-norm does not supply.
+
+`le_weakNormPrime` is the defining bound, and
+`ofReal_mul_rpow_le_weakNormPrime` is the elementary half of the equivalence: if
+`E` has finite positive measure and sits inside the level set `{τ < |v|}`, then
+`|v| ≥ τ` on `E`, so the normalized average is at least `τ μ(E)^{1/r}` — the
+summand of the weak norm at level `τ` computed on `E`.  Both hypotheses `0 < r`
+and `0 < τ` turned out to be unnecessary and were dropped.
+
+What remains for the equivalence is the other half, `weakNormPrime ≤ r' · weakNorm`,
+which is the layer-cake estimate
+`∫_E |v| ≤ ∫_0^∞ min(μ(E), (A/τ)^r) dτ = r' A μ(E)^{1-1/r}`, split at
+`τ₀ = A μ(E)^{-1/r}`; and the passage from the level-set summand to the weak norm
+itself, which needs an exhaustion of `{τ < |v|}` by sets of finite measure.  The
+file already has the two power integrals `lintegral_Ioc_zero_rpow` and
+`lintegral_Ioi_rpow` that the split consumes.
+
+## 2026-09-14T14:50-0700 — the layer cake on a set
+
+`lintegral_enorm_restrict_eq_meas_lt` writes the integral of `|v|` over a set as
+the integral over levels of the measures of the level sets met with that set:
+
+  ∫_E ‖v‖ₑ = ∫_{t > 0} μ({t < |v|} ∩ E).
+
+It is Mathlib's `lintegral_eq_lintegral_meas_lt` applied to the restricted
+measure, with `Measure.restrict_apply` turning the restricted measure of a level
+set into the measure of its intersection with `E`.  Measurability of `E` turned
+out not to be needed — only the level set has to be measurable — so the
+hypothesis was dropped.
+
+This is the first step of the normability estimate.  What follows is bounding
+`μ({t < |v|} ∩ E)` in the two available ways, by `μ(E)` and by the weak norm's
+`A^r t^{-r}`, and splitting the level integral where the two agree, at
+`t₀ = A μ(E)^{-1/r}`; the two pieces are the power integrals
+`lintegral_Ioc_zero_rpow` and `lintegral_Ioi_rpow` already in the file, and they
+sum to `r' A μ(E)^{1-1/r}`.
+
+## 2026-09-14T15:20-0700 — splitting the level integral
+
+`lintegral_Ioi_le_of_two_bounds` is the split the normability estimate performs:
+if a level function `g` is bounded both by a constant `m` and by
+`A^r t^{-r}`, then for any splitting level `t₀ > 0`
+
+  ∫_{t > 0} g ≤ m · t₀ + A^r · (-t₀^{1-r} / (1-r)),
+
+the first piece from the constant bound over `Ioc 0 t₀` and the second from the
+power bound over `Ioi t₀`, using `lintegral_Ioi_rpow` at exponent `-r < -1`.  The
+splitting level is left free so the caller can put it where the two bounds meet.
+
+Composed with `lintegral_enorm_restrict_eq_meas_lt` and the Chebyshev bound
+`meas_lt_le_of_weakNorm_le`, this gives `∫_E |v| ≤ μ(E) t₀ + A^r t₀^{1-r}/(r-1)`
+for every `t₀`, and at `t₀ = A μ(E)^{-1/r}` the right side is
+`r' A μ(E)^{1-1/r}` — the half of the normability equivalence that was named as
+remaining two ticks ago.  What is left is the optimisation at that `t₀`, which is
+arithmetic in `ℝ≥0∞` with the measure's `toReal`, and then the other direction,
+which needs an exhaustion of the level set by sets of finite measure.
+
+## 2026-09-14T15:50-0700 — the integral over a set, from the weak norm
+
+`lintegral_enorm_restrict_le_of_weakNorm` composes the two previous ticks: the
+layer cake on a set turns `∫_E |v|` into the level integral of
+`μ({t < |v|} ∩ E)`, that measure is bounded by `μ(E)` through one side of the
+intersection and by the weak norm's `A^r t^{-r}` through the other, and the split
+of the level integral then gives, for every `t₀ > 0`,
+
+  ∫_E ‖v‖ₑ ≤ μ(E) · t₀ + A^r · (-t₀^{1-r} / (1-r)).
+
+Both bounds on the intersection are one-liners — `measure_mono` on the two sides
+of `inter_subset` — and the weak side is exactly `meas_lt_le_of_weakNorm_le`,
+which is stated in precisely the `A^r τ^{-r}` shape the split consumes.
+
+What remains for this half of the normability equivalence is putting `t₀` at the
+crossing, `t₀ = A μ(E)^{-1/r}`, where the two terms become equal and their sum is
+`r' A μ(E)^{1-1/r}`.  That step is arithmetic rather than measure theory, but it
+has to be done with the measure as an `ℝ≥0∞`, so it needs the finiteness of
+`μ(E)` that `weakNormPrime` already carries in its index type.
+
+## 2026-09-14T16:20-0700 — the normalized average, from the weak norm
+
+`lintegral_enorm_restrict_le_conj` puts the splitting level at the crossing,
+`t₀ = A μ(E)^{-1/r}`, and gets
+
+  ∫_E ‖v‖ₑ ≤ (r / (r-1)) · A · μ(E)^{1 - 1/r}
+
+for every set of finite positive measure, whenever `weakNorm v r ≤ A` and
+`r > 1`.  The constant is the conjugate exponent, as it should be: at that level
+the two terms of the split are equal, each `A μ(E)^{1-1/r}` and
+`A μ(E)^{1-1/r}/(r-1)`, and they sum to `r/(r-1)` times the first.
+
+Multiplying by `μ(E)^{1/r - 1}` this says the normalized averages that
+`weakNormPrime` takes the supremum of are all at most `r' · weakNorm v r`.  That
+is one half of the normability equivalence; with
+`ofReal_mul_rpow_le_weakNormPrime` giving the other half on subsets of level
+sets, what is left is only the passage from those subsets to the level set
+itself, which needs an exhaustion by sets of finite measure.
+
+## 2026-09-14T16:50-0700 — one half of the normability equivalence
+
+`weakNormPrime_le_conj_mul_weakNorm` takes the supremum of the previous tick's
+estimate over sets of finite positive measure:
+
+  weakNormPrime v ≤ (r / (r-1)) · weakNorm v r,  for r > 1.
+
+Each normalized average is `μ(E)^{1/r-1} ∫_E |v|`, the integral is at most
+`r' A μ(E)^{1-1/r}` by `lintegral_enorm_restrict_le_conj`, and the two powers of
+`μ(E)` cancel exactly, leaving `r' A` with no dependence on the set — which is
+what makes the supremum finite.
+
+This is the direction that says the candidate norm is not larger than the weak
+quasi-norm up to the conjugate constant.  The other direction — that it is not
+smaller — is `ofReal_mul_rpow_le_weakNormPrime` on subsets of level sets, and
+needs only the passage from such subsets to the level set itself, by exhaustion.
+With both, weak `L^r` is normable for `r > 1`, which is the first link of the
+four-link chain the ErrorReport entry lists.
+
+## 2026-09-14T17:20-0700 — weak L^r is normable for r > 1
+
+`weakNorm_le_weakNormPrime` supplies the direction that was missing: on a
+σ-finite measure,
+
+  weakNorm v r ≤ weakNormPrime v.
+
+The approximation is Mathlib's `Measure.exists_subset_measure_lt_top`: every
+`c` strictly below the measure of a level set is strictly below the measure of
+some measurable subset of finite measure, and on such a subset
+`ofReal_mul_rpow_le_weakNormPrime` already gives the bound.  Density of the order
+on `ℝ≥0∞` then upgrades "every `c` below" to the level set itself, after
+rearranging the target into `μ(level) ≤ (K / τ)^r` so that the approximation can
+be applied to a measure rather than to a product.
+
+With the previous tick this closes the first link of the chain:
+
+  weakNorm v r ≤ weakNormPrime v ≤ (r/(r-1)) · weakNorm v r,   r > 1,
+
+so weak `L^r` is normable, and `weakNormPrime` — a supremum of quantities each
+subadditive in `v` — is the genuine norm the `K`-functional needs.  Three links
+remain: subadditivity of `K` in that norm, the `J`-method estimate, and the
+identification of the interpolation space.
+
+## 2026-09-14T17:50-0700 — the candidate norm is subadditive
+
+`weakNormPrime_add_le` proves what the whole detour was for:
+
+  weakNormPrime (u + v) ≤ weakNormPrime u + weakNormPrime v,
+
+with no constant.  Each normalized average is subadditive, because the integral
+of `‖u + v‖ₑ` over a set is at most the sum of the two integrals, and a supremum
+of subadditive quantities is subadditive.  Measurability of only the first
+summand is needed, since `lintegral_add_left` asks for it on one side; the
+hypothesis on the second was dropped.
+
+So the first link of the chain is complete and has the shape it needs:
+`weakNormPrime` is equivalent to the weak norm for `r > 1`
+(`weakNorm_le_weakNormPrime`, `weakNormPrime_le_conj_mul_weakNorm`) and is a
+genuine norm.  A `K`-functional built from `weakNormPrime` at the two straddling
+exponents is therefore subadditive without the factor two that
+`weakNorm_add_le` carries, and the compounding `2^n` over infinitely many pieces
+that the ErrorReport entry identified does not arise.
+
+## 2026-09-14T18:20-0700 — the K-functional on the genuine norm
+
+`primeK` is the `K`-functional of the couple of *candidate* norms, and
+`primeK_add_le` is the estimate on a sum with **no constant**:
+
+  primeK (v₁ + v₂) ≤ (‖v₁-w₁‖' + t‖w₁‖') + (‖v₂-w₂‖' + t‖w₂‖'),
+
+for any chosen decompositions.  Compare `weakK_add_le`, which carries a factor
+two in each slot because the weak quasi-norm does; that factor was the reason an
+aggregation over infinitely many pieces was impossible, and it is now gone.
+`primeK_le_left` and `primeK_le_right` are the two trivial decompositions, using
+`weakNormPrime_zero`.
+
+Only the first summand of each slot needs measurability, inherited from
+`weakNormPrime_add_le`.
+
+The chain now stands at: link one complete (normability, both directions and
+subadditivity); link two complete (subadditivity of `K`, in the form
+applications use).  Remaining: the `J`-method estimate, which aggregates the
+pieces in `ℓ^s` against `2^{-νθ} J(2^ν, v_ν)`, and the identification of the
+interpolation space of the couple with `L^R`.

@@ -72731,13 +72731,20 @@ noncomputable section
 /-! ## The external four-vertex multilinear interpolation theorem
 
 Source: `ext:interpolation`.  The blueprint states this as an external theorem
-and gives no proof of it; two dependency audits (recorded in ErrorReport.md)
-established that the pinned `lean_spherical` checkout does not supply it and
-that iterating its unary Marcinkiewicz theorems slot by slot cannot reach a
+and gives no proof of it.  Two dependency facts bear on formalizing it: the
+pinned `lean_spherical` checkout supplies Riesz--Thorin and Stein interpolation,
+both for the complex method with strong endpoints, and a unary Marcinkiewicz
+theorem at the weak-(1,1) and `L^∞` endpoints, but no multilinear real
+interpolation; and iterating a two-point interpolation slot by slot yields
+bounds only at points of a segment joining two vertices, so it cannot reach a
 point interior to the three-dimensional tetrahedron.  It is therefore recorded
 here as an explicit hypothesis, stated exactly as the source states it, so that
 the one external input to `thm:main` is localized and everything downstream of
-it stays machine checked.
+it stays machine checked.  The toolkit for an eventual proof is in this file:
+see the sections `Dyadic level layers`, `Trilinear expansion over finite
+decompositions`, `Combining the four vertex bounds over layer multi-indices`,
+`Splitting a level among summands`, `The weak-to-strong passage` and `Trading
+one endpoint exponent for another`.
 -/
 
 /-- **Trilinearity on simple functions of finite-measure support.**
@@ -97161,6 +97168,2620 @@ theorem trilinearOnSimple_sum_levels {X : Type*} [MeasurableSpace X]
   refine Finset.sum_congr rfl fun k _ ↦ ?_
   rw [coe_dyadicLevelPieceSimple]
 
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The three-slot expansion
+
+Source: `ext:interpolation`.  Expanding each of the three slots over its own
+dyadic bands turns the operator into a finite three-parameter sum, and it is the
+terms of that sum the four vertex bounds are applied to.
+-/
+
+/-- Coercion commutes with updating one slot.
+
+Auxiliary. -/
+theorem coe_update_eq {X : Type*} [MeasurableSpace X]
+    (f : Fin 3 → SimpleFunc X ℝ) (j : Fin 3) (g : SimpleFunc X ℝ) :
+    (fun i ↦ (⇑(Function.update f j g i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑g := by
+  funext i
+  by_cases hi : i = j
+  · subst hi; simp
+  · rw [Function.update_of_ne hi, Function.update_of_ne hi]
+
+/-- Updating one slot preserves finite-measure support.
+
+Auxiliary. -/
+theorem finMeasSupp_update {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {f : Fin 3 → SimpleFunc X ℝ} (hf : ∀ i, (f i).FinMeasSupp μ) (j : Fin 3)
+    {g : SimpleFunc X ℝ} (hg : g.FinMeasSupp μ) :
+    ∀ i, (Function.update f j g i).FinMeasSupp μ := by
+  intro i
+  by_cases hi : i = j
+  · subst hi; simpa using hg
+  · rw [Function.update_of_ne hi]; exact hf i
+
+/-- **The three-slot dyadic expansion of a trilinear operator.** -/
+theorem trilinearOnSimple_expand_three {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ) :
+    T (fun i ↦ (⇑(f i) : X → ℝ))
+      = ∑ k0 ∈ dyadicLevelIndices (f 0), ∑ k1 ∈ dyadicLevelIndices (f 1),
+          ∑ k2 ∈ dyadicLevelIndices (f 2),
+            T (fun i ↦ (⇑(Function.update
+              (Function.update
+                (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
+                1 (dyadicLevelPieceSimple (f 1) k1))
+              2 (dyadicLevelPieceSimple (f 2) k2) i) : X → ℝ)) := by
+  classical
+  -- slot 0
+  have hself0 : (fun i ↦ (⇑(f i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(f i) : X → ℝ)) 0 ⇑(f 0) := by
+    rw [Function.update_eq_self]
+  rw [hself0, trilinearOnSimple_sum_levels hT 0 f hf (f 0) (hf 0)]
+  refine Finset.sum_congr rfl fun k0 _ ↦ ?_
+  -- rewrite the updated tuple as a tuple of simple functions
+  set F0 : Fin 3 → SimpleFunc X ℝ :=
+    Function.update f 0 (dyadicLevelPieceSimple (f 0) k0) with hF0
+  have hF0coe : (fun i ↦ (⇑(F0 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(f i) : X → ℝ)) 0
+          (dyadicLevelPiece (⇑(f 0)) k0) := by
+    rw [hF0, coe_update_eq, coe_dyadicLevelPieceSimple]
+  have hF0fin : ∀ i, (F0 i).FinMeasSupp μ := by
+    rw [hF0]
+    exact finMeasSupp_update hf 0 (finMeasSupp_dyadicLevelPieceSimple (hf 0) k0)
+  rw [← hF0coe]
+  -- slot 1
+  have hF0one : F0 1 = f 1 := by
+    rw [hF0, Function.update_of_ne (by decide)]
+  have hself1 : (fun i ↦ (⇑(F0 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(F0 i) : X → ℝ)) 1 ⇑(f 1) := by
+    rw [← hF0one, Function.update_eq_self]
+  rw [hself1, trilinearOnSimple_sum_levels hT 1 F0 hF0fin (f 1) (hf 1)]
+  refine Finset.sum_congr rfl fun k1 _ ↦ ?_
+  set F1 : Fin 3 → SimpleFunc X ℝ :=
+    Function.update F0 1 (dyadicLevelPieceSimple (f 1) k1) with hF1
+  have hF1coe : (fun i ↦ (⇑(F1 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(F0 i) : X → ℝ)) 1
+          (dyadicLevelPiece (⇑(f 1)) k1) := by
+    rw [hF1, coe_update_eq, coe_dyadicLevelPieceSimple]
+  have hF1fin : ∀ i, (F1 i).FinMeasSupp μ := by
+    rw [hF1]
+    exact finMeasSupp_update hF0fin 1
+      (finMeasSupp_dyadicLevelPieceSimple (hf 1) k1)
+  rw [← hF1coe]
+  -- slot 2
+  have hF1two : F1 2 = f 2 := by
+    rw [hF1, Function.update_of_ne (by decide), hF0,
+      Function.update_of_ne (by decide)]
+  have hself2 : (fun i ↦ (⇑(F1 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(F1 i) : X → ℝ)) 2 ⇑(f 2) := by
+    rw [← hF1two, Function.update_eq_self]
+  rw [hself2, trilinearOnSimple_sum_levels hT 2 F1 hF1fin (f 2) (hf 2)]
+  refine Finset.sum_congr rfl fun k2 _ ↦ ?_
+  rw [← coe_dyadicLevelPieceSimple (f 2) k2, ← coe_update_eq]
+
+
+/-- The triple update, read slot by slot.
+
+Auxiliary. -/
+theorem update_three_apply {X : Type*} [MeasurableSpace X]
+    (f : Fin 3 → SimpleFunc X ℝ) (a b c : SimpleFunc X ℝ) :
+    (Function.update (Function.update (Function.update f 0 a) 1 b) 2 c 0 = a) ∧
+    (Function.update (Function.update (Function.update f 0 a) 1 b) 2 c 1 = b) ∧
+    (Function.update (Function.update (Function.update f 0 a) 1 b) 2 c 2 = c) := by
+  refine ⟨?_, ?_, ?_⟩
+  · rw [Function.update_of_ne (by decide), Function.update_of_ne (by decide)]
+    simp
+  · rw [Function.update_of_ne (by decide)]
+    simp
+  · simp
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The vertex bounds on one term of the expansion
+
+Source: `ext:interpolation`.  Each term of the three-parameter expansion obeys
+all four vertex weak bounds, and the level-piece norm estimate turns those into
+bounds involving only the band heights and the band measures.
+-/
+
+/-- A dyadic band of a simple function of finite-measure support has finite
+measure. -/
+theorem measure_dyadicLevelSet_lt_top {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : SimpleFunc X ℝ} (hf : f.FinMeasSupp μ) (k : ℤ) :
+    μ (dyadicLevelSet (⇑f) k) < ∞ := by
+  rw [SimpleFunc.finMeasSupp_iff_support] at hf
+  refine lt_of_le_of_lt (measure_mono ?_) hf
+  intro x hx
+  rw [Function.mem_support]
+  intro hfx
+  have h1 : (2 : ℝ) ^ k ≤ |f x| := hx.1
+  rw [hfx, abs_zero] at h1
+  exact absurd h1 (not_le.mpr (zpow_pos (by norm_num) _))
+
+/-- **The level piece's `L^q` norm, in real form.** -/
+theorem lpNorm_dyadicLevelPiece_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : SimpleFunc X ℝ} (hf : f.FinMeasSupp μ) {q : ℝ}
+    (hq : 0 < q) (k : ℤ) :
+    lpNorm (dyadicLevelPiece (⇑f) k) (ENNReal.ofReal q) μ
+      ≤ (2 : ℝ) ^ (k + 1) * (μ (dyadicLevelSet (⇑f) k)).toReal ^ (1 / q) := by
+  have hmeas : Measurable (dyadicLevelPiece (⇑f) k) :=
+    measurable_dyadicLevelPiece f.measurable k
+  have hbase := eLpNorm_dyadicLevelPiece_le (μ := μ) f.measurable hq k
+  have hfin : μ (dyadicLevelSet (⇑f) k) ≠ ∞ :=
+    ne_of_lt (measure_dyadicLevelSet_lt_top hf k)
+  have hrhs : ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) *
+      (μ (dyadicLevelSet (⇑f) k)) ^ (1 / q) ≠ ∞ := by
+    refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top ?_
+    exact ENNReal.rpow_ne_top_of_nonneg (by positivity) hfin
+  have htoReal := ENNReal.toReal_mono hrhs hbase
+  rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal (by positivity),
+    ← ENNReal.toReal_rpow] at htoReal
+  rw [← toReal_eLpNorm hmeas.aestronglyMeasurable]
+  exact htoReal
+
+/-- **Each term of the expansion obeys every vertex bound.** -/
+theorem weakNorm_expansion_term_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    {P : Fin 4 → Fin 3 → ℝ} {r : Fin 4 → ℝ} {A : Fin 4 → ℝ}
+    (hP : ∀ a j, 0 < P a j) (hA : ∀ a, 0 ≤ A a)
+    (hweak : ∀ (a : Fin 4) (g : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (g j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(g j))) (r a)
+        ≤ ENNReal.ofReal (A a *
+            ∏ j : Fin 3, lpNorm (⇑(g j)) (ENNReal.ofReal (P a j)) μ))
+    (f : Fin 3 → SimpleFunc X ℝ) (hf : ∀ j, (f j).FinMeasSupp μ)
+    (a : Fin 4) (k : Fin 3 → ℤ) :
+    weakNorm μ (T (fun j ↦ dyadicLevelPiece (⇑(f j)) (k j))) (r a)
+      ≤ ENNReal.ofReal (A a *
+          ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) *
+            (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal ^ (1 / P a j))) := by
+  classical
+  set g : Fin 3 → SimpleFunc X ℝ :=
+    fun j ↦ dyadicLevelPieceSimple (f j) (k j) with hg
+  have hgfin : ∀ j, (g j).FinMeasSupp μ := fun j ↦ by
+    rw [hg]; exact finMeasSupp_dyadicLevelPieceSimple (hf j) (k j)
+  have hgcoe : (fun j ↦ (⇑(g j) : X → ℝ))
+      = fun j ↦ dyadicLevelPiece (⇑(f j)) (k j) := by
+    funext j
+    rw [hg, coe_dyadicLevelPieceSimple]
+  have hstep := hweak a g hgfin
+  rw [hgcoe] at hstep
+  refine hstep.trans (ENNReal.ofReal_le_ofReal ?_)
+  refine mul_le_mul_of_nonneg_left ?_ (hA a)
+  refine Finset.prod_le_prod (fun j _ ↦ lpNorm_nonneg) fun j _ ↦ ?_
+  rw [hg, coe_dyadicLevelPieceSimple]
+  exact lpNorm_dyadicLevelPiece_le (hf j) (hP a j) (k j)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Geometric decay from the interior gap
+
+Source: `ext:interpolation`.  After the exchange of endpoint exponents, the
+pure power of the dyadic level carried by the `a`-th vertex bound is
+`2^{-⟨w, v_a - x⟩}`, where `x` is the target reciprocal vector and `w` is the
+multi-index rescaled by the target reciprocals.  The interior gap says some
+vertex pairs at least `δ‖w‖` with `w`, so for that vertex the factor is at most
+`2^{-δ‖w‖}`: along every direction of the multi-index lattice the smallest of
+the four vertex bounds decays geometrically, which is the two-sided minimum the
+summation consumes.
+-/
+
+/-- **Some vertex gives geometric decay.** -/
+theorem exists_vertex_geometric_decay
+    {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
+    {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hsum : ∑ a : Fin 4, ϑ a = 1) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ w : Fin 3 → ℝ, ∃ a : Fin 4,
+      (2 : ℝ) ^ (-gapPairing w (v a - simplexBarycentre v ϑ))
+        ≤ (2 : ℝ) ^ (-(δ * ‖w‖)) := by
+  obtain ⟨δ, hδ, hgap⟩ := exists_gap_of_affineIndependent hv hϑ hsum
+  refine ⟨δ, hδ, fun w ↦ ?_⟩
+  obtain ⟨a, ha⟩ := hgap w
+  refine ⟨a, ?_⟩
+  refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+  have : δ * ‖w‖ ≤ gapPairing w (v a - simplexBarycentre v ϑ) := by
+    simpa [gapPairing, Pi.sub_apply] using ha
+  linarith
+
+/-- The exchange exponent of a vertex, as a pairing.
+
+Auxiliary.  With `k` the multi-index and `β` the target reciprocals, the pure
+power of the level carried by the `a`-th bound is `2` to this exponent. -/
+theorem exchange_exponent_eq_neg_gapPairing
+    (β : Fin 3 → ℝ) (hβ : ∀ j, 0 < β j) (va : Fin 3 → ℝ) (w : Fin 3 → ℝ) :
+    (∑ j : Fin 3, (β j * w j) * (1 - va j / β j))
+      = -gapPairing w (va - β) := by
+  unfold gapPairing
+  rw [← Finset.sum_neg_distrib]
+  refine Finset.sum_congr rfl fun j _ ↦ ?_
+  have hj : β j ≠ 0 := ne_of_gt (hβ j)
+  simp only [Pi.sub_apply]
+  field_simp
+  ring
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Summability of the geometric decay over the multi-index lattice
+
+Source: `ext:interpolation`, blueprint lines 2538--2558.  The previous section
+produces, for every multi-index, a vertex whose bound decays like
+`2^{-δ‖w‖}` with `‖·‖` the supremum norm.  Summing over the three-dimensional
+lattice of multi-indices is then a product of three one-dimensional geometric
+series, because the supremum norm dominates a third of the sum of the
+coordinates.
+-/
+
+/-- A one-sided geometric factor, written through the absolute value. -/
+theorem aux_min_two_rpow_eq_abs {a t : ℝ} :
+    min ((2 : ℝ) ^ (a * t)) ((2 : ℝ) ^ (-(a * t))) = (2 : ℝ) ^ (-|a * t|) := by
+  rcases le_total (0 : ℝ) (a * t) with h | h
+  · rw [abs_of_nonneg h, min_eq_right]
+    exact Real.rpow_le_rpow_of_exponent_le (by norm_num) (by linarith)
+  · rw [abs_of_nonpos h, min_eq_left]
+    · congr 1
+      ring
+    · exact Real.rpow_le_rpow_of_exponent_le (by norm_num) (by linarith)
+
+/-- The one-dimensional geometric decay is summable over the integers. -/
+theorem summable_two_rpow_neg_abs {a : ℝ} (ha : 0 < a) :
+    Summable (fun n : ℤ ↦ (2 : ℝ) ^ (-(a * |(n : ℝ)|))) := by
+  refine (summable_min_two_rpow ha ha).congr (fun n ↦ ?_)
+  rw [aux_min_two_rpow_eq_abs]
+  congr 1
+  rw [abs_mul, abs_of_pos ha]
+
+/-- Reading the three coordinates of a lattice multi-index is injective. -/
+theorem aux_injective_fin3_coords :
+    Function.Injective (fun k : Fin 3 → ℤ ↦ (k 0, k 1, k 2)) := by
+  intro a b h
+  simp only [Prod.mk.injEq] at h
+  funext i
+  fin_cases i
+  · exact h.1
+  · exact h.2.1
+  · exact h.2.2
+
+/-- **The lattice sum of the vertex decay converges.**  Over the
+three-dimensional lattice of dyadic multi-indices, the geometric decay produced
+by the interior gap is summable. -/
+theorem summable_two_rpow_neg_norm {δ : ℝ} (hδ : 0 < δ) :
+    Summable (fun k : Fin 3 → ℤ ↦
+      (2 : ℝ) ^ (-(δ * ‖(fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ)‖))) := by
+  have h2 : (0 : ℝ) < 2 := by norm_num
+  set g : ℤ → ℝ := fun n ↦ (2 : ℝ) ^ (-(δ / 3 * |(n : ℝ)|)) with hgdef
+  have hg : Summable g := summable_two_rpow_neg_abs (by linarith)
+  have hgnn : ∀ n : ℤ, 0 ≤ g n := fun n ↦ Real.rpow_nonneg h2.le _
+  have hpair : Summable (fun q : ℤ × ℤ ↦ g q.1 * g q.2) :=
+    hg.mul_of_nonneg hg (fun n ↦ hgnn n) (fun n ↦ hgnn n)
+  have htriple : Summable (fun p : ℤ × ℤ × ℤ ↦ g p.1 * (g p.2.1 * g p.2.2)) :=
+    hg.mul_of_nonneg hpair (fun n ↦ hgnn n)
+      (fun q ↦ mul_nonneg (hgnn q.1) (hgnn q.2))
+  have hcomp := htriple.comp_injective aux_injective_fin3_coords
+  refine Summable.of_nonneg_of_le (fun k ↦ Real.rpow_nonneg h2.le _)
+    (fun k ↦ ?_) hcomp
+  show (2 : ℝ) ^ (-(δ * ‖(fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ)‖))
+      ≤ g (k 0) * (g (k 1) * g (k 2))
+  have hcoord : ∀ j : Fin 3,
+      |((k j : ℝ))| ≤ ‖(fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ)‖ := by
+    intro j
+    have := norm_le_pi_norm (fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ) j
+    simpa [Real.norm_eq_abs] using this
+  have hprod : g (k 0) * (g (k 1) * g (k 2))
+      = (2 : ℝ) ^ (-(δ / 3 * |((k 0 : ℝ))|) + (-(δ / 3 * |((k 1 : ℝ))|)
+          + -(δ / 3 * |((k 2 : ℝ))|))) := by
+    rw [hgdef]
+    rw [← Real.rpow_add h2, ← Real.rpow_add h2]
+  rw [hprod]
+  refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+  have h0 := hcoord 0
+  have h1 := hcoord 1
+  have h2' := hcoord 2
+  nlinarith [hδ, h0, h1, h2']
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Combining four weak bounds at the interior exponent
+
+Source: `ext:interpolation`.  Four weak bounds at the endpoint exponents
+`r_a` combine, by the elementary interpolation of level-set bounds, into a
+single weak bound at the interior exponent `R` with the geometric-mean
+constant.  The combining weights are `ϑ_a R / r_a`, which sum to one exactly
+because `R^{-1} = ∑_a ϑ_a r_a^{-1}`.
+-/
+
+/-- The level-set form of the four-fold combination. -/
+theorem meas_lt_rpow_le_of_four_weakNorm
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    {r Γ ϑ : Fin 4 → ℝ} {R : ℝ}
+    (hr : ∀ a, 0 < r a) (hΓ : ∀ a, 0 ≤ Γ a) (hϑ : ∀ a, 0 ≤ ϑ a)
+    (hϑsum : ∑ a : Fin 4, ϑ a = 1) (hR : 0 < R)
+    (hRdef : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹)
+    (hw : ∀ a, weakNorm μ v (r a) ≤ ENNReal.ofReal (Γ a))
+    {τ : ℝ} (hτ : 0 < τ) :
+    μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal ((∏ a : Fin 4, Γ a ^ ϑ a) / τ) := by
+  set m : ℝ≥0∞ := μ {x | τ < |v x|} with hm
+  -- each endpoint bound, in the quotient form
+  have hstep : ∀ a : Fin 4, m ≤ ENNReal.ofReal ((Γ a / τ) ^ r a) := by
+    intro a
+    have h := meas_lt_le_of_weakNorm_le μ v (hr a) (hΓ a) (hw a) hτ
+    refine le_trans h (le_of_eq ?_)
+    congr 1
+    rw [Real.div_rpow (hΓ a) hτ.le, Real.rpow_neg hτ.le, div_eq_mul_inv]
+  have hmtop : m ≠ ∞ := by
+    refine ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hstep 0)
+  -- the factorwise bound
+  have hfac : ∀ a : Fin 4,
+      m ^ (ϑ a / r a) ≤ ENNReal.ofReal ((Γ a / τ) ^ ϑ a) := by
+    intro a
+    have hexp : (0 : ℝ) ≤ ϑ a / r a := div_nonneg (hϑ a) (hr a).le
+    refine le_trans (ENNReal.rpow_le_rpow (hstep a) hexp) (le_of_eq ?_)
+    rw [ENNReal.ofReal_rpow_of_nonneg
+      (Real.rpow_nonneg (div_nonneg (hΓ a) hτ.le) _) hexp,
+      ← Real.rpow_mul (div_nonneg (hΓ a) hτ.le)]
+    congr 2
+    have hra : r a ≠ 0 := ne_of_gt (hr a)
+    field_simp
+  by_cases hm0 : m = 0
+  · rw [hm0, ENNReal.zero_rpow_of_pos (by positivity)]
+    simp
+  · -- split the exponent `1/R` into the four pieces
+    have hsplit : m ^ (1 / R) = ∏ a : Fin 4, m ^ (ϑ a / r a) := by
+      rw [Fin.prod_univ_four, ← ENNReal.rpow_add _ _ hm0 hmtop,
+        ← ENNReal.rpow_add _ _ hm0 hmtop, ← ENNReal.rpow_add _ _ hm0 hmtop]
+      congr 1
+      rw [one_div, hRdef, Fin.sum_univ_four]
+      simp only [div_eq_mul_inv]
+    rw [hsplit]
+    refine le_trans (Finset.prod_le_prod' fun a _ ↦ hfac a) (le_of_eq ?_)
+    rw [← ENNReal.ofReal_prod_of_nonneg
+      (fun a _ ↦ Real.rpow_nonneg (div_nonneg (hΓ a) hτ.le) _)]
+    congr 1
+    have hdiv : ∀ a : Fin 4, (Γ a / τ) ^ ϑ a = Γ a ^ ϑ a / τ ^ ϑ a :=
+      fun a ↦ Real.div_rpow (hΓ a) hτ.le _
+    have hτprod : (∏ a : Fin 4, τ ^ ϑ a) = τ := by
+      rw [Fin.prod_univ_four, ← Real.rpow_add hτ, ← Real.rpow_add hτ,
+        ← Real.rpow_add hτ,
+        show ϑ 0 + ϑ 1 + ϑ 2 + ϑ 3 = 1 by rw [← hϑsum, Fin.sum_univ_four],
+        Real.rpow_one]
+    rw [Finset.prod_congr rfl (fun a _ ↦ hdiv a), Finset.prod_div_distrib,
+      hτprod]
+
+/-- **Four weak bounds give one at the interior exponent.** -/
+theorem weakNorm_le_of_four_weakNorm
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    {r Γ ϑ : Fin 4 → ℝ} {R : ℝ}
+    (hr : ∀ a, 0 < r a) (hΓ : ∀ a, 0 ≤ Γ a) (hϑ : ∀ a, 0 ≤ ϑ a)
+    (hϑsum : ∑ a : Fin 4, ϑ a = 1) (hR : 0 < R)
+    (hRdef : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹)
+    (hw : ∀ a, weakNorm μ v (r a) ≤ ENNReal.ofReal (Γ a)) :
+    weakNorm μ v R ≤ ENNReal.ofReal (∏ a : Fin 4, Γ a ^ ϑ a) := by
+  refine weakNorm_le μ v R fun τ hτ ↦ ?_
+  have h := meas_lt_rpow_le_of_four_weakNorm μ v hr hΓ hϑ hϑsum hR hRdef hw hτ
+  calc ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal τ * ENNReal.ofReal ((∏ a : Fin 4, Γ a ^ ϑ a) / τ) :=
+        mul_le_mul' le_rfl h
+    _ = ENNReal.ofReal (∏ a : Fin 4, Γ a ^ ϑ a) := by
+        rw [← ENNReal.ofReal_mul hτ.le]
+        congr 1
+        field_simp
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The interior bound on a single expansion term
+
+Source: `ext:interpolation`.  Each term of the trilinear expansion carries all
+four endpoint bounds, whose sizes differ only in the exponent to which the
+level set's measure is raised.  Combining them with the weights of
+`eq:weights` collapses the four sizes into the single target size, because the
+target reciprocal is their convex combination; the weak norms combine by
+`weakNorm_le_of_four_weakNorm`.
+-/
+
+/-- **The four endpoint sizes have the target size as geometric mean.** -/
+theorem aux_prod_endpoint_sizes
+    {A ϑ : Fin 4 → ℝ} {P : Fin 4 → Fin 3 → ℝ} {p c m : Fin 3 → ℝ}
+    (hA : ∀ a, 0 ≤ A a) (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1)
+    (hP : ∀ a j, 0 < P a j) (hc : ∀ j, 0 ≤ c j) (hm : ∀ j, 0 ≤ m j)
+    (hp : ∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹) :
+    (∏ a : Fin 4, (A a * ∏ j : Fin 3, (c j * m j ^ (1 / P a j))) ^ ϑ a)
+      = (∏ a : Fin 4, A a ^ ϑ a) * ∏ j : Fin 3, (c j * m j ^ (1 / p j)) := by
+  have hterm : ∀ (a : Fin 4) (j : Fin 3), (0 : ℝ) ≤ c j * m j ^ (1 / P a j) :=
+    fun a j ↦ mul_nonneg (hc j) (Real.rpow_nonneg (hm j) _)
+  have hQ : ∀ a : Fin 4, (0 : ℝ) ≤ ∏ j : Fin 3, (c j * m j ^ (1 / P a j)) :=
+    fun a ↦ Finset.prod_nonneg fun j _ ↦ hterm a j
+  have h1 : ∀ a : Fin 4,
+      (A a * ∏ j : Fin 3, (c j * m j ^ (1 / P a j))) ^ ϑ a
+        = A a ^ ϑ a * ∏ j : Fin 3, (c j * m j ^ (1 / P a j)) ^ ϑ a := by
+    intro a
+    rw [Real.mul_rpow (hA a) (hQ a),
+      Real.finsetProd_rpow _ _ (fun j _ ↦ hterm a j)]
+  rw [Finset.prod_congr rfl (fun a _ ↦ h1 a), Finset.prod_mul_distrib]
+  congr 1
+  rw [Finset.prod_comm]
+  refine Finset.prod_congr rfl fun j _ ↦ ?_
+  have h2 : ∀ a : Fin 4, (c j * m j ^ (1 / P a j)) ^ ϑ a
+      = c j ^ ϑ a * m j ^ (ϑ a * (P a j)⁻¹) := by
+    intro a
+    rw [Real.mul_rpow (hc j) (Real.rpow_nonneg (hm j) _),
+      ← Real.rpow_mul (hm j)]
+    congr 2
+    rw [one_div]
+    ring
+  rw [Finset.prod_congr rfl (fun a _ ↦ h2 a), Finset.prod_mul_distrib,
+    ← Real.rpow_sum_of_nonneg (hc j) (fun a _ ↦ (hϑ a).le), hϑsum,
+    Real.rpow_one,
+    ← Real.rpow_sum_of_nonneg (hm j)
+      (fun a _ ↦ mul_nonneg (hϑ a).le (inv_nonneg.mpr (hP a j).le)),
+    ← hp j, one_div]
+
+/-- **Each expansion term obeys the interior weak bound.** -/
+theorem weakNorm_expansion_term_interior_le
+    {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    {P : Fin 4 → Fin 3 → ℝ} {r A ϑ : Fin 4 → ℝ} {p : Fin 3 → ℝ} {R : ℝ}
+    (hP : ∀ a j, 0 < P a j) (hA : ∀ a, 0 ≤ A a) (hr : ∀ a, 0 < r a)
+    (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1) (hR : 0 < R)
+    (hRdef : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹)
+    (hp : ∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹)
+    (hweak : ∀ (a : Fin 4) (g : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (g j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(g j))) (r a)
+        ≤ ENNReal.ofReal (A a *
+            ∏ j : Fin 3, lpNorm (⇑(g j)) (ENNReal.ofReal (P a j)) μ))
+    (f : Fin 3 → SimpleFunc X ℝ) (hf : ∀ j, (f j).FinMeasSupp μ)
+    (k : Fin 3 → ℤ) :
+    weakNorm μ (T (fun j ↦ dyadicLevelPiece (⇑(f j)) (k j))) R
+      ≤ ENNReal.ofReal ((∏ a : Fin 4, A a ^ ϑ a) *
+          ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) *
+            (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal ^ (1 / p j))) := by
+  classical
+  set c : Fin 3 → ℝ := fun j ↦ (2 : ℝ) ^ (k j + 1) with hcdef
+  set m : Fin 3 → ℝ :=
+    fun j ↦ (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal with hmdef
+  have hc : ∀ j, (0 : ℝ) ≤ c j := fun j ↦ le_of_lt (zpow_pos (by norm_num) _)
+  have hm : ∀ j, (0 : ℝ) ≤ m j := fun j ↦ ENNReal.toReal_nonneg
+  set Γ : Fin 4 → ℝ :=
+    fun a ↦ A a * ∏ j : Fin 3, (c j * m j ^ (1 / P a j)) with hΓdef
+  have hΓnn : ∀ a, 0 ≤ Γ a := by
+    intro a
+    refine mul_nonneg (hA a) (Finset.prod_nonneg fun j _ ↦ ?_)
+    exact mul_nonneg (hc j) (Real.rpow_nonneg (hm j) _)
+  have hw : ∀ a : Fin 4,
+      weakNorm μ (T (fun j ↦ dyadicLevelPiece (⇑(f j)) (k j))) (r a)
+        ≤ ENNReal.ofReal (Γ a) :=
+    fun a ↦ weakNorm_expansion_term_le hP hA hweak f hf a k
+  refine (weakNorm_le_of_four_weakNorm μ _ hr hΓnn (fun a ↦ (hϑ a).le) hϑsum hR
+    hRdef hw).trans (le_of_eq ?_)
+  congr 1
+  exact aux_prod_endpoint_sizes hA hϑ hϑsum hP hc hm hp
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The bands of one input are summable against its norm
+
+Source: `ext:interpolation`.  The dyadic bands of an input are disjoint, so the
+sum over any finite family of bands of the band's level to the power `q` times
+its measure is bounded by the `q`-th power of the input's `L^q` norm.  This is
+the orthogonality the level-dependent splitting consumes: the target sizes of
+the level pieces of one input are `ℓ^{p_j}`-summable with norm at most the
+input's `L^{p_j}` norm.
+-/
+
+/-- **Band sizes sum against the norm.** -/
+theorem sum_measure_dyadicLevelSet_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {q : ℝ} (hq : 0 < q)
+    (S : Finset ℤ) :
+    ∑ k ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q * μ (dyadicLevelSet f k)
+      ≤ ∫⁻ x, ‖f x‖ₑ ^ q ∂μ := by
+  have hpt : ∀ k : ℤ, ∀ x ∈ dyadicLevelSet f k,
+      (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q ≤ ‖f x‖ₑ ^ q := by
+    intro k x hx
+    refine ENNReal.rpow_le_rpow ?_ hq.le
+    rw [← ofReal_norm, Real.norm_eq_abs]
+    exact ENNReal.ofReal_le_ofReal hx.1
+  have hd : Set.PairwiseDisjoint (↑S : Set ℤ) (dyadicLevelSet f) := by
+    intro k _ l _ hkl
+    exact dyadicLevelSet_disjoint hkl
+  have hm : ∀ k ∈ S, MeasurableSet (dyadicLevelSet f k) :=
+    fun k _ ↦ measurableSet_dyadicLevelSet hf k
+  calc ∑ k ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q * μ (dyadicLevelSet f k)
+      = ∑ k ∈ S, ∫⁻ _ in dyadicLevelSet f k,
+          (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q ∂μ := by
+        refine Finset.sum_congr rfl fun k _ ↦ ?_
+        rw [setLIntegral_const]
+    _ ≤ ∑ k ∈ S, ∫⁻ x in dyadicLevelSet f k, ‖f x‖ₑ ^ q ∂μ := by
+        refine Finset.sum_le_sum fun k _ ↦ ?_
+        refine lintegral_mono_ae ?_
+        filter_upwards [ae_restrict_mem (measurableSet_dyadicLevelSet hf k)]
+          with x hx
+        exact hpt k x hx
+    _ = ∫⁻ x in ⋃ k ∈ S, dyadicLevelSet f k, ‖f x‖ₑ ^ q ∂μ :=
+        (lintegral_biUnion_finset hd hm _).symm
+    _ ≤ ∫⁻ x, ‖f x‖ₑ ^ q ∂μ := setLIntegral_le_lintegral _ _
+
+/-- The same bound, against the `L^q` seminorm. -/
+theorem sum_measure_dyadicLevelSet_le_eLpNorm {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {q : ℝ} (hq : 0 < q)
+    (S : Finset ℤ) :
+    ∑ k ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q * μ (dyadicLevelSet f k)
+      ≤ (eLpNorm f (ENNReal.ofReal q) μ) ^ q := by
+  have hqne : (ENNReal.ofReal q) ≠ 0 := by simp [hq]
+  have hqtop : (ENNReal.ofReal q) ≠ ∞ := by simp
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop,
+    ENNReal.toReal_ofReal hq.le, ← ENNReal.rpow_mul, one_div,
+    inv_mul_cancel₀ (ne_of_gt hq), ENNReal.rpow_one]
+  exact sum_measure_dyadicLevelSet_le hf hq S
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The band sizes of the three inputs sum against the product of norms
+
+Source: `ext:interpolation`.  The target size of a layer triple factors as a
+product over the three inputs, and the band-orthogonality of each input makes
+each factor summable against that input's norm.  So the target sizes of the
+layer triples are summable against the product of the three input norms — the
+`ℓ^1` control the level-dependent argument spends against the geometric decay.
+-/
+
+/-- A triple sum of a product factors as the product of the three sums. -/
+theorem sum_triple_product_factor {S1 S2 S3 : Finset ℤ}
+    (b1 b2 b3 : ℤ → ℝ≥0∞) :
+    ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, b1 k1 * b2 k2 * b3 k3
+      = (∑ k1 ∈ S1, b1 k1) * (∑ k2 ∈ S2, b2 k2) * (∑ k3 ∈ S3, b3 k3) := by
+  have h3 : ∀ k1 k2 : ℤ, ∑ k3 ∈ S3, b1 k1 * b2 k2 * b3 k3
+      = b1 k1 * b2 k2 * ∑ k3 ∈ S3, b3 k3 :=
+    fun k1 k2 ↦ (Finset.mul_sum _ _ _).symm
+  simp_rw [h3]
+  have h2 : ∀ k1 : ℤ, ∑ k2 ∈ S2, b1 k1 * b2 k2 * (∑ k3 ∈ S3, b3 k3)
+      = b1 k1 * (∑ k2 ∈ S2, b2 k2) * (∑ k3 ∈ S3, b3 k3) := by
+    intro k1
+    rw [← Finset.sum_mul, ← Finset.mul_sum]
+  simp_rw [h2]
+  rw [← Finset.sum_mul, ← Finset.sum_mul]
+
+/-- **The triple band sizes sum against the product of norms.** -/
+theorem sum_triple_dyadicLevelSet_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : Fin 3 → X → ℝ} (hf : ∀ j, Measurable (f j))
+    {q : Fin 3 → ℝ} (hq : ∀ j, 0 < q j) (S : Fin 3 → Finset ℤ) :
+    ∑ k1 ∈ S 0, ∑ k2 ∈ S 1, ∑ k3 ∈ S 2,
+        ((ENNReal.ofReal ((2 : ℝ) ^ k1)) ^ q 0 * μ (dyadicLevelSet (f 0) k1)) *
+          ((ENNReal.ofReal ((2 : ℝ) ^ k2)) ^ q 1 * μ (dyadicLevelSet (f 1) k2)) *
+          ((ENNReal.ofReal ((2 : ℝ) ^ k3)) ^ q 2 * μ (dyadicLevelSet (f 2) k3))
+      ≤ (∫⁻ x, ‖f 0 x‖ₑ ^ q 0 ∂μ) * (∫⁻ x, ‖f 1 x‖ₑ ^ q 1 ∂μ) *
+          (∫⁻ x, ‖f 2 x‖ₑ ^ q 2 ∂μ) := by
+  rw [sum_triple_product_factor
+    (fun k ↦ (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q 0 * μ (dyadicLevelSet (f 0) k))
+    (fun k ↦ (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q 1 * μ (dyadicLevelSet (f 1) k))
+    (fun k ↦ (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q 2 * μ (dyadicLevelSet (f 2) k))]
+  exact mul_le_mul'
+    (mul_le_mul'
+      (sum_measure_dyadicLevelSet_le (hf 0) (hq 0) (S 0))
+      (sum_measure_dyadicLevelSet_le (hf 1) (hq 1) (S 1)))
+    (sum_measure_dyadicLevelSet_le (hf 2) (hq 2) (S 2))
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The three-slot expansion in level-piece form
+
+Source: `ext:interpolation`.  The three-slot expansion
+`trilinearOnSimple_expand_three` is restated with each term written as the
+operator applied to the tuple of dyadic level pieces indexed by a
+`Fin 3 → ℤ` multi-index, the form the vertex bounds
+(`weakNorm_expansion_term_le`) are stated in.
+-/
+
+/-- The expansion term tuple, read as a function of the multi-index. -/
+theorem aux_expansion_tuple_eq {X : Type*} [MeasurableSpace X]
+    (f : Fin 3 → SimpleFunc X ℝ) (k0 k1 k2 : ℤ) :
+    (fun i ↦ (⇑(Function.update
+      (Function.update
+        (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
+        1 (dyadicLevelPieceSimple (f 1) k1))
+      2 (dyadicLevelPieceSimple (f 2) k2) i) : X → ℝ))
+      = fun j ↦ dyadicLevelPiece (⇑(f j)) (![k0, k1, k2] j) := by
+  obtain ⟨h0, h1, h2⟩ := update_three_apply f
+    (dyadicLevelPieceSimple (f 0) k0) (dyadicLevelPieceSimple (f 1) k1)
+    (dyadicLevelPieceSimple (f 2) k2)
+  funext j
+  fin_cases j
+  · show (⇑(Function.update
+      (Function.update
+        (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
+        1 (dyadicLevelPieceSimple (f 1) k1))
+      2 (dyadicLevelPieceSimple (f 2) k2) 0) : X → ℝ)
+        = dyadicLevelPiece (⇑(f 0)) k0
+    rw [h0, coe_dyadicLevelPieceSimple]
+  · show (⇑(Function.update
+      (Function.update
+        (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
+        1 (dyadicLevelPieceSimple (f 1) k1))
+      2 (dyadicLevelPieceSimple (f 2) k2) 1) : X → ℝ)
+        = dyadicLevelPiece (⇑(f 1)) k1
+    rw [h1, coe_dyadicLevelPieceSimple]
+  · show (⇑(Function.update
+      (Function.update
+        (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
+        1 (dyadicLevelPieceSimple (f 1) k1))
+      2 (dyadicLevelPieceSimple (f 2) k2) 2) : X → ℝ)
+        = dyadicLevelPiece (⇑(f 2)) k2
+    rw [h2, coe_dyadicLevelPieceSimple]
+
+/-- **The level-piece expansion.** -/
+theorem trilinearOnSimple_expand_three_multiIndex {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ) :
+    T (fun i ↦ (⇑(f i) : X → ℝ))
+      = ∑ k0 ∈ dyadicLevelIndices (f 0), ∑ k1 ∈ dyadicLevelIndices (f 1),
+          ∑ k2 ∈ dyadicLevelIndices (f 2),
+            T (fun j ↦ dyadicLevelPiece (⇑(f j)) (![k0, k1, k2] j)) := by
+  rw [trilinearOnSimple_expand_three hT f hf]
+  refine Finset.sum_congr rfl fun k0 _ ↦ ?_
+  refine Finset.sum_congr rfl fun k1 _ ↦ ?_
+  refine Finset.sum_congr rfl fun k2 _ ↦ ?_
+  rw [aux_expansion_tuple_eq f k0 k1 k2]
+
+/-- **The operator level set is covered by the term level sets.**  For any budget
+family whose split levels sum to the target level, the level set of the whole
+operator is covered by the term level sets, so its measure is bounded by the sum
+of the term bounds. -/
+theorem meas_lt_operator_expansion {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ)
+    (t : ℝ) (s : ℤ → ℤ → ℤ → ℝ)
+    (hs : ∑ k0 ∈ dyadicLevelIndices (f 0), ∑ k1 ∈ dyadicLevelIndices (f 1),
+        ∑ k2 ∈ dyadicLevelIndices (f 2), s k0 k1 k2 ≤ t)
+    (B : ℤ → ℤ → ℤ → ℝ≥0∞)
+    (hB : ∀ k0 ∈ dyadicLevelIndices (f 0), ∀ k1 ∈ dyadicLevelIndices (f 1),
+      ∀ k2 ∈ dyadicLevelIndices (f 2),
+      μ {x | s k0 k1 k2 < |T (fun j ↦ dyadicLevelPiece (⇑(f j)) (![k0, k1, k2] j)) x|}
+        ≤ B k0 k1 k2) :
+    μ {x | t < |T (fun i ↦ (⇑(f i) : X → ℝ)) x|}
+      ≤ ∑ k0 ∈ dyadicLevelIndices (f 0), ∑ k1 ∈ dyadicLevelIndices (f 1),
+          ∑ k2 ∈ dyadicLevelIndices (f 2), B k0 k1 k2 := by
+  refine meas_lt_of_triple_expansion_bounds μ
+    (T (fun i ↦ (⇑(f i) : X → ℝ)))
+    (dyadicLevelIndices (f 0)) (dyadicLevelIndices (f 1)) (dyadicLevelIndices (f 2))
+    (fun k0 k1 k2 ↦ T (fun j ↦ dyadicLevelPiece (⇑(f j)) (![k0, k1, k2] j)))
+    ?_ t s hs B hB
+  intro x
+  rw [trilinearOnSimple_expand_three_multiIndex hT f hf]
+  simp only [Finset.sum_apply]
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Affine independence straddles the target output exponent
+
+Source: `ext:interpolation`.  The output reciprocal of a vertex is the sum of
+its three input reciprocals, so if all four vertices had the same output
+exponent they would lie in a common plane of `ℝ³` and could not be affinely
+independent.  Hence the four output exponents are not all equal, and since the
+target output reciprocal is their strict convex combination, some vertex has
+output exponent strictly below the target and some vertex strictly above.  That
+is exactly the straddling hypothesis of `lintegral_rpow_le_of_two_weakNorm`.
+-/
+
+/-- A strict convex combination of values that are not all equal is strictly
+straddled. -/
+theorem aux_exists_gt_and_lt_of_weighted_mean
+    {y ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1)
+    {Y : ℝ} (hY : Y = ∑ a : Fin 4, ϑ a * y a)
+    (hne : ∃ a b : Fin 4, y a ≠ y b) :
+    (∃ a : Fin 4, Y < y a) ∧ (∃ a : Fin 4, y a < Y) := by
+  classical
+  obtain ⟨a₀, b₀, hab⟩ := hne
+  have key : ∀ z : Fin 4 → ℝ, (∀ a, 0 ≤ z a) →
+      (∑ a : Fin 4, ϑ a * z a) = 0 → ∀ a, z a = 0 := by
+    intro z hz hsum a
+    have hnn : ∀ b ∈ (Finset.univ : Finset (Fin 4)), 0 ≤ ϑ b * z b :=
+      fun b _ ↦ mul_nonneg (hϑ b).le (hz b)
+    have := (Finset.sum_eq_zero_iff_of_nonneg hnn).mp hsum a (Finset.mem_univ a)
+    rcases mul_eq_zero.mp this with h | h
+    · exact absurd h (ne_of_gt (hϑ a))
+    · exact h
+  constructor
+  · by_contra hcon
+    push Not at hcon
+    have hz : ∀ a : Fin 4, 0 ≤ Y - y a := fun a ↦ sub_nonneg.mpr (hcon a)
+    have hsum : (∑ a : Fin 4, ϑ a * (Y - y a)) = 0 := by
+      have hexp : (∑ a : Fin 4, ϑ a * (Y - y a))
+          = Y * (∑ a : Fin 4, ϑ a) - ∑ a : Fin 4, ϑ a * y a := by
+        rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+        exact Finset.sum_congr rfl fun a _ ↦ by ring
+      rw [hexp, hϑsum, mul_one, ← hY, sub_self]
+    have h0 := key _ hz hsum a₀
+    have h1 := key _ hz hsum b₀
+    exact hab (by linarith)
+  · by_contra hcon
+    push Not at hcon
+    have hz : ∀ a : Fin 4, 0 ≤ y a - Y := fun a ↦ sub_nonneg.mpr (hcon a)
+    have hsum : (∑ a : Fin 4, ϑ a * (y a - Y)) = 0 := by
+      have hexp : (∑ a : Fin 4, ϑ a * (y a - Y))
+          = (∑ a : Fin 4, ϑ a * y a) - Y * (∑ a : Fin 4, ϑ a) := by
+        rw [Finset.mul_sum, ← Finset.sum_sub_distrib]
+        exact Finset.sum_congr rfl fun a _ ↦ by ring
+      rw [hexp, hϑsum, mul_one, ← hY, sub_self]
+    have h0 := key _ hz hsum a₀
+    have h1 := key _ hz hsum b₀
+    exact hab (by linarith)
+
+/-- Affinely independent vertices cannot all have the same coordinate sum. -/
+theorem aux_exists_ne_coordSum
+    {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
+    {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1) :
+    ∃ a b : Fin 4, (∑ j : Fin 3, v a j) ≠ ∑ j : Fin 3, v b j := by
+  by_contra hcon
+  push Not at hcon
+  set w : Fin 3 → ℝ := fun _ ↦ (1 : ℝ) with hw
+  have hbary : (∑ j : Fin 3, simplexBarycentre v ϑ j) = ∑ j : Fin 3, v 0 j := by
+    have hstep : ∀ j : Fin 3, simplexBarycentre v ϑ j = ∑ b : Fin 4, ϑ b * v b j :=
+      fun j ↦ simplexBarycentre_apply v ϑ j
+    rw [Finset.sum_congr rfl (fun j _ ↦ hstep j), Finset.sum_comm]
+    have hrow : ∀ b : Fin 4, (∑ j : Fin 3, ϑ b * v b j)
+        = ϑ b * ∑ j : Fin 3, v 0 j := by
+      intro b
+      rw [← Finset.mul_sum, hcon b 0]
+    rw [Finset.sum_congr rfl (fun b _ ↦ hrow b), ← Finset.sum_mul, hϑsum,
+      one_mul]
+  have hle : ∀ a : Fin 4,
+      gapPairing w (v a - simplexBarycentre v ϑ) ≤ 0 := by
+    intro a
+    have : gapPairing w (v a - simplexBarycentre v ϑ)
+        = (∑ j : Fin 3, v a j) - ∑ j : Fin 3, simplexBarycentre v ϑ j := by
+      unfold gapPairing
+      rw [← Finset.sum_sub_distrib]
+      exact Finset.sum_congr rfl fun j _ ↦ by simp [hw, Pi.sub_apply]
+    rw [this, hbary, hcon a 0, sub_self]
+  have hzero := eq_zero_of_forall_gapPairing_nonpos hv hϑ hϑsum hle
+  have : (1 : ℝ) = 0 := congrFun hzero 0
+  exact one_ne_zero this
+
+/-- **The target output exponent is strictly straddled.** -/
+theorem exists_straddling_output_exponents
+    {P : Fin 4 → Fin 3 → ℝ} {r ϑ : Fin 4 → ℝ} {R : ℝ}
+    (hindep : AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹)))
+    (hr : ∀ a, 0 < r a)
+    (hrsum : ∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹)
+    (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1)
+    (hR : 0 < R) (hRdef : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹) :
+    ∃ a₁ a₂ : Fin 4, r a₁ < R ∧ R < r a₂ := by
+  obtain ⟨a, b, hab⟩ := aux_exists_ne_coordSum hindep hϑ hϑsum
+  have hne : ∃ a b : Fin 4, (r a)⁻¹ ≠ (r b)⁻¹ := by
+    refine ⟨a, b, ?_⟩
+    rw [hrsum a, hrsum b]
+    exact hab
+  obtain ⟨⟨a₁, h₁⟩, ⟨a₂, h₂⟩⟩ :=
+    aux_exists_gt_and_lt_of_weighted_mean (y := fun a ↦ (r a)⁻¹) hϑ hϑsum hRdef hne
+  refine ⟨a₁, a₂, ?_, ?_⟩
+  · exact (inv_lt_inv₀ hR (hr a₁)).mp h₁
+  · exact (inv_lt_inv₀ (hr a₂) hR).mp h₂
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Restricted weak type at the interior point
+
+Source: `ext:interpolation`.  On inputs that are constant multiples of
+indicators, all four endpoint norms of an input are powers of one number — the
+measure of its set — so their weighted geometric mean is exactly the target
+norm.  Combining the four endpoint weak bounds therefore gives the interior
+weak bound with the constant the theorem asserts, `∏_a A_a^{ϑ_a}`, and with no
+loss: this is the restricted weak type of the interpolated point, and it needs
+neither the level decomposition nor the geometric decay.
+-/
+
+/-- The `L^q` norm of a constant multiple of an indicator. -/
+theorem aux_lpNorm_indicator_const {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {E : Set X} (hE : MeasurableSet E)
+    (c : ℝ) {q : ℝ} (hq : 0 < q) :
+    lpNorm (E.indicator (fun _ ↦ c)) (ENNReal.ofReal q) μ
+      = |c| * (μ E).toReal ^ (1 / q) := by
+  have hmeas : AEStronglyMeasurable (E.indicator (fun _ ↦ c)) μ :=
+    (aestronglyMeasurable_const.indicator hE)
+  have hqne : (ENNReal.ofReal q) ≠ 0 := by simp [hq]
+  have hqtop : (ENNReal.ofReal q) ≠ ∞ := by simp
+  rw [lpNorm, if_pos hmeas, eLpNorm_indicator_const hE hqne hqtop,
+    ENNReal.toReal_ofReal hq.le, ENNReal.toReal_mul,
+    ← ENNReal.toReal_rpow]
+  congr 1
+
+/-- **Restricted weak type at the interior point.**  On multiples of
+indicators the four endpoint weak bounds combine, with no loss, into the
+interior weak bound with constant `∏_a A_a^{ϑ_a}` times the target norms. -/
+theorem weakNorm_interior_le_of_indicator_inputs {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    {P : Fin 4 → Fin 3 → ℝ} {r A ϑ : Fin 4 → ℝ} {p : Fin 3 → ℝ} {R : ℝ}
+    (hP : ∀ a j, 0 < P a j) (hA : ∀ a, 0 ≤ A a) (hr : ∀ a, 0 < r a)
+    (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1) (hR : 0 < R)
+    (hp : ∀ j, 0 < p j)
+    (hRdef : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹)
+    (hpdef : ∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹)
+    (hweak : ∀ (a : Fin 4) (g : Fin 3 → SimpleFunc X ℝ),
+      (∀ j, (g j).FinMeasSupp μ) →
+      weakNorm μ (T (fun j ↦ ⇑(g j))) (r a)
+        ≤ ENNReal.ofReal (A a *
+            ∏ j : Fin 3, lpNorm (⇑(g j)) (ENNReal.ofReal (P a j)) μ))
+    (f : Fin 3 → SimpleFunc X ℝ) (hf : ∀ j, (f j).FinMeasSupp μ)
+    (Es : Fin 3 → Set X) (cs : Fin 3 → ℝ)
+    (hEmeas : ∀ j, MeasurableSet (Es j))
+    (hfE : ∀ j, (⇑(f j) : X → ℝ) = (Es j).indicator (fun _ ↦ cs j)) :
+    weakNorm μ (T (fun j ↦ (⇑(f j) : X → ℝ))) R
+      ≤ ENNReal.ofReal ((∏ a : Fin 4, A a ^ ϑ a) *
+          ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ) := by
+  classical
+  set m : Fin 3 → ℝ := fun j ↦ (μ (Es j)).toReal with hmdef
+  have hm : ∀ j, (0 : ℝ) ≤ m j := fun j ↦ ENNReal.toReal_nonneg
+  have hnorm : ∀ (j : Fin 3) (q : ℝ), 0 < q →
+      lpNorm (⇑(f j)) (ENNReal.ofReal q) μ = |cs j| * m j ^ (1 / q) := by
+    intro j q hq
+    rw [hfE j]
+    exact aux_lpNorm_indicator_const (hEmeas j) (cs j) hq
+  set Γ : Fin 4 → ℝ :=
+    fun a ↦ A a * ∏ j : Fin 3, (|cs j| * m j ^ (1 / P a j)) with hΓdef
+  have hΓnn : ∀ a, 0 ≤ Γ a := by
+    intro a
+    refine mul_nonneg (hA a) (Finset.prod_nonneg fun j _ ↦ ?_)
+    exact mul_nonneg (abs_nonneg _) (Real.rpow_nonneg (hm j) _)
+  have hw : ∀ a : Fin 4,
+      weakNorm μ (T (fun j ↦ (⇑(f j) : X → ℝ))) (r a) ≤ ENNReal.ofReal (Γ a) := by
+    intro a
+    refine (hweak a f hf).trans (le_of_eq ?_)
+    congr 1
+    rw [hΓdef]
+    congr 1
+    exact Finset.prod_congr rfl fun j _ ↦ hnorm j (P a j) (hP a j)
+  refine (weakNorm_le_of_four_weakNorm μ _ hr hΓnn (fun a ↦ (hϑ a).le) hϑsum hR
+    hRdef hw).trans (le_of_eq ?_)
+  congr 1
+  rw [hΓdef,
+    aux_prod_endpoint_sizes hA hϑ hϑsum hP (fun j ↦ abs_nonneg (cs j)) hm hpdef]
+  congr 1
+  exact (Finset.prod_congr rfl fun j _ ↦ hnorm j (p j) (hp j)).symm
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A symmetric pair of weights gives the strong bound with no loss
+
+Source: `ext:interpolation`.  Combining the four endpoint weak bounds with a
+weight vector `ψ` gives a weak bound at the exponent `R_ψ` determined by
+`R_ψ^{-1} = ∑_a ψ_a r_a^{-1}`, with constant the weighted geometric mean
+`∏_a Γ_a^{ψ_a}`.  If two weight vectors `ψ⁺` and `ψ⁻` are placed symmetrically
+about `χ`, that is `ψ⁺ + ψ⁻ = 2χ`, then their exponents `R_ψ⁺` and `R_ψ⁻`
+straddle the exponent `R` of `χ` — because `R^{-1}` is the average of the two —
+and the two-sided passage returns *exactly* the geometric mean at `χ`: the two
+interpolation exponents are both `R/2`, and the two geometric means multiply to
+the square of the one at `χ`.
+
+This is what makes the four-vertex argument lossless at every weight vector, not
+only at the given weights `ϑ`: the strong `L^R` bound holds with constant
+`∏_a Γ_a^{χ_a}` for *every* `χ` whose exponent is `R`, at the cost of a constant
+depending only on how far apart the symmetric pair is placed.
+-/
+
+/-- **The symmetric pair is lossless.** -/
+theorem lintegral_rpow_le_of_symmetric_weight_pair
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
+    (hv : AEMeasurable v μ)
+    {r Γ ψp ψm : Fin 4 → ℝ} {Rp Rm R : ℝ}
+    (hr : ∀ a, 0 < r a) (hΓ : ∀ a, 0 < Γ a)
+    (hψp : ∀ a, 0 ≤ ψp a) (hψpsum : ∑ a : Fin 4, ψp a = 1)
+    (hψm : ∀ a, 0 ≤ ψm a) (hψmsum : ∑ a : Fin 4, ψm a = 1)
+    (hRp : 0 < Rp) (hRpdef : Rp⁻¹ = ∑ a : Fin 4, ψp a * (r a)⁻¹)
+    (hRm : 0 < Rm) (hRmdef : Rm⁻¹ = ∑ a : Fin 4, ψm a * (r a)⁻¹)
+    (hlt : Rp < R) (hgt : R < Rm)
+    (hmid : R⁻¹ = (Rp⁻¹ + Rm⁻¹) / 2)
+    (hw : ∀ a, weakNorm μ v (r a) ≤ ENNReal.ofReal (Γ a)) :
+    ∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ
+      ≤ ENNReal.ofReal ((R * (1 / (R - Rp) + 1 / (Rm - R))) *
+          (∏ a : Fin 4, Γ a ^ ((ψp a + ψm a) / 2)) ^ R) := by
+  have hR : 0 < R := lt_trans hRp hlt
+  set A₁ : ℝ := ∏ a : Fin 4, Γ a ^ ψp a with hA₁def
+  set A₂ : ℝ := ∏ a : Fin 4, Γ a ^ ψm a with hA₂def
+  have hA₁ : 0 < A₁ := Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hΓ a) _
+  have hA₂ : 0 < A₂ := Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hΓ a) _
+  have h₁ : weakNorm μ v Rp ≤ ENNReal.ofReal A₁ :=
+    weakNorm_le_of_four_weakNorm μ v hr (fun a ↦ (hΓ a).le) hψp hψpsum hRp hRpdef hw
+  have h₂ : weakNorm μ v Rm ≤ ENNReal.ofReal A₂ :=
+    weakNorm_le_of_four_weakNorm μ v hr (fun a ↦ (hΓ a).le) hψm hψmsum hRm hRmdef hw
+  refine (lintegral_rpow_le_of_two_weakNorm μ v hv hRp hlt hgt hA₁ hA₂ h₁ h₂).trans
+    (le_of_eq ?_)
+  congr 1
+  -- the two interpolation exponents are both `R / 2`
+  have hRpne : Rp ≠ 0 := ne_of_gt hRp
+  have hRmne : Rm ≠ 0 := ne_of_gt hRm
+  have hRne : R ≠ 0 := ne_of_gt hR
+  have hgap : Rm - Rp ≠ 0 := by
+    have : Rp < Rm := lt_trans hlt hgt
+    exact sub_ne_zero.mpr (ne_of_gt this)
+  have key : 2 * (Rp * Rm) = R * (Rm + Rp) := by
+    have h := hmid
+    field_simp at h
+    linarith
+  have hexp1 : Rp * ((Rm - R) / (Rm - Rp)) = R / 2 := by
+    field_simp
+    linarith
+  have hexp2 : Rm * ((R - Rp) / (Rm - Rp)) = R / 2 := by
+    field_simp
+    linarith
+  have hstep1 : (A₁ ^ Rp) ^ ((Rm - R) / (Rm - Rp)) = A₁ ^ (R / 2) := by
+    rw [← Real.rpow_mul hA₁.le, hexp1]
+  have hstep2 : (A₂ ^ Rm) ^ ((R - Rp) / (Rm - Rp)) = A₂ ^ (R / 2) := by
+    rw [← Real.rpow_mul hA₂.le, hexp2]
+  rw [hstep1, hstep2]
+  -- the two geometric means multiply to the square of the one at the midpoint
+  have hprod : A₁ * A₂ = (∏ a : Fin 4, Γ a ^ ((ψp a + ψm a) / 2)) ^ (2 : ℝ) := by
+    rw [hA₁def, hA₂def, ← Finset.prod_mul_distrib,
+      ← Real.finsetProd_rpow _ _ (fun a _ ↦ (Real.rpow_nonneg (hΓ a).le _))]
+    refine Finset.prod_congr rfl fun a _ ↦ ?_
+    rw [← Real.rpow_add (hΓ a), ← Real.rpow_mul (hΓ a).le,
+      show ((ψp a + ψm a) / 2) * 2 = ψp a + ψm a by ring]
+  have hcomb : A₁ ^ (R / 2) * A₂ ^ (R / 2) = (A₁ * A₂) ^ (R / 2) :=
+    (Real.mul_rpow hA₁.le hA₂.le).symm
+  rw [hcomb, hprod, ← Real.rpow_mul (Finset.prod_nonneg
+    fun a _ ↦ Real.rpow_nonneg (hΓ a).le _),
+    show (2 : ℝ) * (R / 2) = R by ring]
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The three-slot expansion over arbitrary finite decompositions
+
+Source: `ext:interpolation`.  The dyadic expansion
+`trilinearOnSimple_expand_three` splits each slot into its individual bands.
+The four vertex hypotheses apply just as well to any grouping of the bands,
+because a group is again a simple function of finite measure support, and it is
+the freedom to choose the grouping that the summation needs: the individual
+bands cannot be summed term by term, while suitable product blocks can.  This
+is the expansion for an arbitrary finite decomposition of each slot.
+-/
+
+/-- **The three-slot expansion for arbitrary finite decompositions.** -/
+theorem trilinearOnSimple_expand_three_general {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) {ι : Type*} [DecidableEq ι]
+    (f : Fin 3 → SimpleFunc X ℝ) (hf : ∀ i, (f i).FinMeasSupp μ)
+    (S : Fin 3 → Finset ι) (G : Fin 3 → ι → SimpleFunc X ℝ)
+    (hG : ∀ j, ∀ b ∈ S j, (G j b).FinMeasSupp μ)
+    (hdec : ∀ j, (⇑(f j) : X → ℝ) = ∑ b ∈ S j, (⇑(G j b) : X → ℝ)) :
+    T (fun i ↦ (⇑(f i) : X → ℝ))
+      = ∑ b0 ∈ S 0, ∑ b1 ∈ S 1, ∑ b2 ∈ S 2,
+          T (fun j ↦ (⇑(Function.update
+            (Function.update (Function.update f 0 (G 0 b0)) 1 (G 1 b1))
+            2 (G 2 b2) j) : X → ℝ)) := by
+  classical
+  -- slot 0
+  have hself0 : (fun i ↦ (⇑(f i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(f i) : X → ℝ)) 0
+          (∑ b ∈ S 0, (⇑(G 0 b) : X → ℝ)) := by
+    rw [← hdec 0, Function.update_eq_self]
+  rw [hself0, trilinearOnSimple_sum_slot hT 0 f hf (S 0) (G 0) (hG 0)]
+  refine Finset.sum_congr rfl fun b0 hb0 ↦ ?_
+  set F0 : Fin 3 → SimpleFunc X ℝ := Function.update f 0 (G 0 b0) with hF0
+  have hF0coe : (fun i ↦ (⇑(F0 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(f i) : X → ℝ)) 0 ⇑(G 0 b0) := by
+    rw [hF0, coe_update_eq]
+  have hF0fin : ∀ i, (F0 i).FinMeasSupp μ := by
+    rw [hF0]
+    exact finMeasSupp_update hf 0 (hG 0 b0 hb0)
+  rw [← hF0coe]
+  -- slot 1
+  have hF0one : F0 1 = f 1 := by
+    rw [hF0, Function.update_of_ne (by decide)]
+  have hself1 : (fun i ↦ (⇑(F0 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(F0 i) : X → ℝ)) 1
+          (∑ b ∈ S 1, (⇑(G 1 b) : X → ℝ)) := by
+    rw [← hdec 1, ← hF0one, Function.update_eq_self]
+  rw [hself1, trilinearOnSimple_sum_slot hT 1 F0 hF0fin (S 1) (G 1) (hG 1)]
+  refine Finset.sum_congr rfl fun b1 hb1 ↦ ?_
+  set F1 : Fin 3 → SimpleFunc X ℝ := Function.update F0 1 (G 1 b1) with hF1
+  have hF1coe : (fun i ↦ (⇑(F1 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(F0 i) : X → ℝ)) 1 ⇑(G 1 b1) := by
+    rw [hF1, coe_update_eq]
+  have hF1fin : ∀ i, (F1 i).FinMeasSupp μ := by
+    rw [hF1]
+    exact finMeasSupp_update hF0fin 1 (hG 1 b1 hb1)
+  rw [← hF1coe]
+  -- slot 2
+  have hF1two : F1 2 = f 2 := by
+    rw [hF1, Function.update_of_ne (by decide), hF0,
+      Function.update_of_ne (by decide)]
+  have hself2 : (fun i ↦ (⇑(F1 i) : X → ℝ))
+      = Function.update (fun i ↦ (⇑(F1 i) : X → ℝ)) 2
+          (∑ b ∈ S 2, (⇑(G 2 b) : X → ℝ)) := by
+    rw [← hdec 2, ← hF1two, Function.update_eq_self]
+  rw [hself2, trilinearOnSimple_sum_slot hT 2 F1 hF1fin (S 2) (G 2) (hG 2)]
+  refine Finset.sum_congr rfl fun b2 _ ↦ ?_
+  rw [← coe_update_eq]
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Truncating an input above and below a level
+
+Source: `ext:interpolation`.  The classical Marcinkiewicz estimates: the part
+of an input above a level has small norm at any exponent below the target one,
+and the part below the level has small norm at any exponent above it, both
+controlled by the target norm and a power of the level.  These are the
+estimates that let a grouping of the bands be used in place of the individual
+bands.
+-/
+
+/-- **The high part has small norm at a lower exponent.** -/
+theorem lintegral_rpow_enorm_high_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {Q p lam : ℝ}
+    (hQ : 0 < Q) (hQp : Q ≤ p) (hlam : 0 < lam) :
+    ∫⁻ x in {x | lam < |f x|}, ‖f x‖ₑ ^ Q ∂μ
+      ≤ ENNReal.ofReal (lam ^ (Q - p)) * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ := by
+  have hpt : ∀ x ∈ {x | lam < |f x|},
+      ‖f x‖ₑ ^ Q ≤ ENNReal.ofReal (lam ^ (Q - p)) * ‖f x‖ₑ ^ p := by
+    intro x hx
+    have hfx : 0 < |f x| := lt_trans hlam hx
+    have hreal : |f x| ^ Q ≤ lam ^ (Q - p) * |f x| ^ p := by
+      have hsplit : |f x| ^ Q = |f x| ^ (Q - p) * |f x| ^ p := by
+        rw [← Real.rpow_add hfx]
+        congr 1
+        ring
+      rw [hsplit]
+      exact mul_le_mul_of_nonneg_right
+        (Real.rpow_le_rpow_of_nonpos hlam (le_of_lt hx) (by linarith))
+        (Real.rpow_nonneg (abs_nonneg _) _)
+    calc ‖f x‖ₑ ^ Q = ENNReal.ofReal (|f x| ^ Q) := by
+          rw [← ofReal_norm, Real.norm_eq_abs,
+            ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hQ.le]
+      _ ≤ ENNReal.ofReal (lam ^ (Q - p) * |f x| ^ p) :=
+          ENNReal.ofReal_le_ofReal hreal
+      _ = ENNReal.ofReal (lam ^ (Q - p)) * ‖f x‖ₑ ^ p := by
+          rw [ENNReal.ofReal_mul (Real.rpow_nonneg hlam.le _), ← ofReal_norm,
+            Real.norm_eq_abs, ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _)
+              (by linarith : (0:ℝ) ≤ p)]
+  calc ∫⁻ x in {x | lam < |f x|}, ‖f x‖ₑ ^ Q ∂μ
+      ≤ ∫⁻ x in {x | lam < |f x|},
+          ENNReal.ofReal (lam ^ (Q - p)) * ‖f x‖ₑ ^ p ∂μ := by
+        refine setLIntegral_mono' (measurableSet_lt measurable_const
+          (continuous_abs.measurable.comp hf)) hpt
+    _ = ENNReal.ofReal (lam ^ (Q - p)) *
+          ∫⁻ x in {x | lam < |f x|}, ‖f x‖ₑ ^ p ∂μ :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ ENNReal.ofReal (lam ^ (Q - p)) * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ :=
+        mul_le_mul' le_rfl (setLIntegral_le_lintegral _ _)
+
+/-- **The low part has small norm at a higher exponent.** -/
+theorem lintegral_rpow_enorm_low_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {Q p lam : ℝ}
+    (hp : 0 < p) (hpQ : p ≤ Q) (hlam : 0 < lam) :
+    ∫⁻ x in {x | |f x| ≤ lam}, ‖f x‖ₑ ^ Q ∂μ
+      ≤ ENNReal.ofReal (lam ^ (Q - p)) * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ := by
+  have hQ : 0 < Q := lt_of_lt_of_le hp hpQ
+  have hpt : ∀ x ∈ {x | |f x| ≤ lam},
+      ‖f x‖ₑ ^ Q ≤ ENNReal.ofReal (lam ^ (Q - p)) * ‖f x‖ₑ ^ p := by
+    intro x hx
+    have hreal : |f x| ^ Q ≤ lam ^ (Q - p) * |f x| ^ p := by
+      rcases eq_or_lt_of_le (abs_nonneg (f x)) with h | h
+      · rw [← h, Real.zero_rpow (ne_of_gt hQ), Real.zero_rpow (ne_of_gt hp),
+          mul_zero]
+      · have hsplit : |f x| ^ Q = |f x| ^ (Q - p) * |f x| ^ p := by
+          rw [← Real.rpow_add h]
+          congr 1
+          ring
+        rw [hsplit]
+        exact mul_le_mul_of_nonneg_right
+          (Real.rpow_le_rpow (abs_nonneg _) hx (by linarith))
+          (Real.rpow_nonneg (abs_nonneg _) _)
+    calc ‖f x‖ₑ ^ Q = ENNReal.ofReal (|f x| ^ Q) := by
+          rw [← ofReal_norm, Real.norm_eq_abs,
+            ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hQ.le]
+      _ ≤ ENNReal.ofReal (lam ^ (Q - p) * |f x| ^ p) :=
+          ENNReal.ofReal_le_ofReal hreal
+      _ = ENNReal.ofReal (lam ^ (Q - p)) * ‖f x‖ₑ ^ p := by
+          rw [ENNReal.ofReal_mul (Real.rpow_nonneg hlam.le _), ← ofReal_norm,
+            Real.norm_eq_abs, ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hp.le]
+  calc ∫⁻ x in {x | |f x| ≤ lam}, ‖f x‖ₑ ^ Q ∂μ
+      ≤ ∫⁻ x in {x | |f x| ≤ lam},
+          ENNReal.ofReal (lam ^ (Q - p)) * ‖f x‖ₑ ^ p ∂μ := by
+        refine setLIntegral_mono' (measurableSet_le
+          (continuous_abs.measurable.comp hf) measurable_const) hpt
+    _ = ENNReal.ofReal (lam ^ (Q - p)) *
+          ∫⁻ x in {x | |f x| ≤ lam}, ‖f x‖ₑ ^ p ∂μ :=
+        lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+    _ ≤ ENNReal.ofReal (lam ^ (Q - p)) * ∫⁻ x, ‖f x‖ₑ ^ p ∂μ :=
+        mul_le_mul' le_rfl (setLIntegral_le_lintegral _ _)
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The truncation estimates in seminorm form
+
+Source: `ext:interpolation`.  The lintegral truncation bounds, restated for the
+`L^Q` seminorm of the truncated input.  These are the forms a grouping of the
+bands consumes: a group above a level is controlled at every exponent below the
+target one, a group below a level at every exponent above it.
+-/
+
+/-- The `L^Q` seminorm of an indicator restriction, as a restricted integral. -/
+theorem aux_eLpNorm_indicator_restrict {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} (f : X → ℝ) (S : Set X) (hS : MeasurableSet S)
+    {Q : ℝ} (hQ : 0 < Q) :
+    eLpNorm (S.indicator f) (ENNReal.ofReal Q) μ
+      = (∫⁻ x in S, ‖f x‖ₑ ^ Q ∂μ) ^ (1 / Q) := by
+  have hqne : (ENNReal.ofReal Q) ≠ 0 := by simp [hQ]
+  have hqtop : (ENNReal.ofReal Q) ≠ ∞ := by simp
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop,
+    ENNReal.toReal_ofReal hQ.le]
+  congr 1
+  have hpt : ∀ x, ‖S.indicator f x‖ₑ ^ Q
+      = S.indicator (fun y ↦ ‖f y‖ₑ ^ Q) x := by
+    intro x
+    by_cases hx : x ∈ S
+    · rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx]
+    · rw [Set.indicator_of_notMem hx, Set.indicator_of_notMem hx, enorm_zero,
+        ENNReal.zero_rpow_of_pos hQ]
+  rw [lintegral_congr hpt, lintegral_indicator hS]
+
+/-- **The high part, in seminorm form.** -/
+theorem eLpNorm_high_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {Q p lam : ℝ}
+    (hQ : 0 < Q) (hQp : Q ≤ p) (hlam : 0 < lam) :
+    eLpNorm ({x | lam < |f x|}.indicator f) (ENNReal.ofReal Q) μ
+      ≤ ENNReal.ofReal (lam ^ (1 - p / Q)) *
+          (eLpNorm f (ENNReal.ofReal p) μ) ^ (p / Q) := by
+  have hp : 0 < p := lt_of_lt_of_le hQ hQp
+  have hpne : (ENNReal.ofReal p) ≠ 0 := by simp [hp]
+  have hptop : (ENNReal.ofReal p) ≠ ∞ := by simp
+  have hS : MeasurableSet {x | lam < |f x|} :=
+    measurableSet_lt measurable_const (continuous_abs.measurable.comp hf)
+  rw [aux_eLpNorm_indicator_restrict f _ hS hQ,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop,
+    ENNReal.toReal_ofReal hp.le]
+  have hQne : Q ≠ 0 := ne_of_gt hQ
+  have hpne' : p ≠ 0 := ne_of_gt hp
+  have hstep := lintegral_rpow_enorm_high_le (μ := μ) hf hQ hQp hlam
+  have hscal : (ENNReal.ofReal (lam ^ (Q - p))) ^ (1 / Q)
+      = ENNReal.ofReal (lam ^ (1 - p / Q)) := by
+    rw [ENNReal.ofReal_rpow_of_pos (Real.rpow_pos_of_pos hlam _),
+      ← Real.rpow_mul hlam.le]
+    congr 1
+    field_simp
+  have hint : (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (1 / Q)
+      = ((∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (1 / p)) ^ (p / Q) := by
+    rw [← ENNReal.rpow_mul]
+    congr 1
+    field_simp
+  refine le_trans (ENNReal.rpow_le_rpow hstep (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:ℝ) ≤ 1 / Q), hscal,
+    hint]
+
+/-- **The low part, in seminorm form.** -/
+theorem eLpNorm_low_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {Q p lam : ℝ}
+    (hp : 0 < p) (hpQ : p ≤ Q) (hlam : 0 < lam) :
+    eLpNorm ({x | |f x| ≤ lam}.indicator f) (ENNReal.ofReal Q) μ
+      ≤ ENNReal.ofReal (lam ^ (1 - p / Q)) *
+          (eLpNorm f (ENNReal.ofReal p) μ) ^ (p / Q) := by
+  have hQ : 0 < Q := lt_of_lt_of_le hp hpQ
+  have hpne : (ENNReal.ofReal p) ≠ 0 := by simp [hp]
+  have hptop : (ENNReal.ofReal p) ≠ ∞ := by simp
+  have hS : MeasurableSet {x | |f x| ≤ lam} :=
+    measurableSet_le (continuous_abs.measurable.comp hf) measurable_const
+  rw [aux_eLpNorm_indicator_restrict f _ hS hQ,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop,
+    ENNReal.toReal_ofReal hp.le]
+  have hQne : Q ≠ 0 := ne_of_gt hQ
+  have hpne' : p ≠ 0 := ne_of_gt hp
+  have hstep := lintegral_rpow_enorm_low_le (μ := μ) hf hp hpQ hlam
+  have hscal : (ENNReal.ofReal (lam ^ (Q - p))) ^ (1 / Q)
+      = ENNReal.ofReal (lam ^ (1 - p / Q)) := by
+    rw [ENNReal.ofReal_rpow_of_pos (Real.rpow_pos_of_pos hlam _),
+      ← Real.rpow_mul hlam.le]
+    congr 1
+    field_simp
+  have hint : (∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (1 / Q)
+      = ((∫⁻ x, ‖f x‖ₑ ^ p ∂μ) ^ (1 / p)) ^ (p / Q) := by
+    rw [← ENNReal.rpow_mul]
+    congr 1
+    field_simp
+  refine le_trans (ENNReal.rpow_le_rpow hstep (by positivity)) (le_of_eq ?_)
+  rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity : (0:ℝ) ≤ 1 / Q), hscal,
+    hint]
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A geometric tent sums to a bounded multiple of its peak
+
+Source: `ext:interpolation`.  When the four endpoint bounds are compared at a
+fixed size, the smallest of them is, along each direction of the multi-index
+lattice, a two-sided geometric function of the index — decaying on one side at
+rate `α` and on the other at rate `β`.  Such a tent sums over any finite set of
+indices to a bounded multiple of its peak, with the bound depending only on the
+two rates and not on where the peak sits.  This is the summation mechanism the
+argument needs, in the form that is uniform in the location of the peak.
+-/
+
+/-- **A centred geometric tent has bounded sums.** -/
+theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (c : ℝ) (S : Finset ℤ),
+      ∑ k ∈ S, min ((2:ℝ) ^ (-(α * ((k:ℝ) - c))))
+        ((2:ℝ) ^ (β * ((k:ℝ) - c))) ≤ K := by
+  classical
+  have h2 : (0:ℝ) < 2 := by norm_num
+  have hpos : ∀ x : ℝ, (0:ℝ) < (2:ℝ) ^ x := fun x ↦ Real.rpow_pos_of_pos h2 x
+  have hra : (2:ℝ) ^ (-α) < 1 := by
+    rw [show (1:ℝ) = (2:ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
+    exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by linarith)
+  have hrb : (2:ℝ) ^ (-β) < 1 := by
+    rw [show (1:ℝ) = (2:ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
+    exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by linarith)
+  have hga : Summable (fun n : ℕ ↦ ((2:ℝ) ^ (-α)) ^ n) :=
+    summable_geometric_of_lt_one (hpos (-α)).le hra
+  have hgb : Summable (fun n : ℕ ↦ ((2:ℝ) ^ (-β)) ^ n) :=
+    summable_geometric_of_lt_one (hpos (-β)).le hrb
+  set Ka : ℝ := ∑' n : ℕ, ((2:ℝ) ^ (-α)) ^ n with hKa
+  set Kb : ℝ := ∑' n : ℕ, ((2:ℝ) ^ (-β)) ^ n with hKb
+  have hKapos : 0 < Ka := by
+    rw [hKa, tsum_geometric_of_lt_one (hpos (-α)).le hra]
+    have : (0:ℝ) < 1 - (2:ℝ) ^ (-α) := by linarith
+    positivity
+  have hKbpos : 0 < Kb := by
+    rw [hKb, tsum_geometric_of_lt_one (hpos (-β)).le hrb]
+    have : (0:ℝ) < 1 - (2:ℝ) ^ (-β) := by linarith
+    positivity
+  refine ⟨Ka + Kb, by linarith, ?_⟩
+  intro c S
+  set F : ℤ → ℝ := fun k ↦ min ((2:ℝ) ^ (-(α * ((k:ℝ) - c))))
+    ((2:ℝ) ^ (β * ((k:ℝ) - c))) with hF
+  have hFnn : ∀ k : ℤ, 0 ≤ F k := fun k ↦
+    le_min (hpos _).le (hpos _).le
+  set A : Finset ℤ := S.filter (fun k ↦ c ≤ (k:ℝ)) with hA
+  set B : Finset ℤ := S.filter (fun k ↦ ¬ (c ≤ (k:ℝ))) with hB
+  have hsplit : ∑ k ∈ S, F k = (∑ k ∈ A, F k) + ∑ k ∈ B, F k :=
+    (Finset.sum_filter_add_sum_filter_not S _ F).symm
+  -- the right half
+  set m : ℤ := ⌈c⌉ with hm
+  have hAle : ∑ k ∈ A, F k ≤ Ka := by
+    have hstep : ∀ k ∈ A, F k ≤ ((2:ℝ) ^ (-α)) ^ ((k - m).toNat) := by
+      intro k hk
+      have hck : c ≤ (k:ℝ) := (Finset.mem_filter.mp hk).2
+      have hmk : m ≤ k := Int.ceil_le.mpr hck
+      have hcast : (((k - m).toNat : ℕ) : ℝ) = (k:ℝ) - (m:ℝ) := by
+        have h0 : (0:ℤ) ≤ k - m := by omega
+        rw [← Int.cast_natCast, Int.toNat_of_nonneg h0]
+        push_cast
+        ring
+      have hle : ((k - m).toNat : ℝ) ≤ (k:ℝ) - c := by
+        rw [hcast]
+        have : (m:ℝ) ≥ c := Int.le_ceil c
+        linarith
+      calc F k ≤ (2:ℝ) ^ (-(α * ((k:ℝ) - c))) := min_le_left _ _
+        _ ≤ (2:ℝ) ^ (-(α * ((k - m).toNat : ℝ))) := by
+            refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+            nlinarith [hα, hle]
+        _ = ((2:ℝ) ^ (-α)) ^ ((k - m).toNat) := by
+            rw [← Real.rpow_natCast ((2:ℝ) ^ (-α)), ← Real.rpow_mul h2.le]
+            congr 1
+            ring
+    have hinj : ∀ x ∈ A, ∀ y ∈ A, (x - m).toNat = (y - m).toNat → x = y := by
+      intro x hx y hy hxy
+      have hxm : m ≤ x := Int.ceil_le.mpr (Finset.mem_filter.mp hx).2
+      have hym : m ≤ y := Int.ceil_le.mpr (Finset.mem_filter.mp hy).2
+      omega
+    calc ∑ k ∈ A, F k ≤ ∑ k ∈ A, ((2:ℝ) ^ (-α)) ^ ((k - m).toNat) :=
+          Finset.sum_le_sum hstep
+      _ = ∑ n ∈ A.image (fun k ↦ (k - m).toNat), ((2:ℝ) ^ (-α)) ^ n :=
+          (Finset.sum_image hinj).symm
+      _ ≤ Ka := hga.sum_le_tsum _ (fun n _ ↦ by positivity)
+  -- the left half
+  set m' : ℤ := ⌊c⌋ with hm'
+  have hBle : ∑ k ∈ B, F k ≤ Kb := by
+    have hstep : ∀ k ∈ B, F k ≤ ((2:ℝ) ^ (-β)) ^ ((m' - k).toNat) := by
+      intro k hk
+      have hck : (k:ℝ) < c := lt_of_not_ge (Finset.mem_filter.mp hk).2
+      have hkm : k ≤ m' := Int.le_floor.mpr (le_of_lt hck)
+      have hcast : (((m' - k).toNat : ℕ) : ℝ) = (m':ℝ) - (k:ℝ) := by
+        have h0 : (0:ℤ) ≤ m' - k := by omega
+        rw [← Int.cast_natCast, Int.toNat_of_nonneg h0]
+        push_cast
+        ring
+      have hle : ((m' - k).toNat : ℝ) ≤ c - (k:ℝ) := by
+        rw [hcast]
+        have : (m':ℝ) ≤ c := Int.floor_le c
+        linarith
+      calc F k ≤ (2:ℝ) ^ (β * ((k:ℝ) - c)) := min_le_right _ _
+        _ ≤ (2:ℝ) ^ (-(β * ((m' - k).toNat : ℝ))) := by
+            refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
+            nlinarith [hβ, hle]
+        _ = ((2:ℝ) ^ (-β)) ^ ((m' - k).toNat) := by
+            rw [← Real.rpow_natCast ((2:ℝ) ^ (-β)), ← Real.rpow_mul h2.le]
+            congr 1
+            ring
+    have hinj : ∀ x ∈ B, ∀ y ∈ B, (m' - x).toNat = (m' - y).toNat → x = y := by
+      intro x hx y hy hxy
+      have hxm : x ≤ m' := Int.le_floor.mpr
+        (le_of_lt (lt_of_not_ge (Finset.mem_filter.mp hx).2))
+      have hym : y ≤ m' := Int.le_floor.mpr
+        (le_of_lt (lt_of_not_ge (Finset.mem_filter.mp hy).2))
+      omega
+    calc ∑ k ∈ B, F k ≤ ∑ k ∈ B, ((2:ℝ) ^ (-β)) ^ ((m' - k).toNat) :=
+          Finset.sum_le_sum hstep
+      _ = ∑ n ∈ B.image (fun k ↦ (m' - k).toNat), ((2:ℝ) ^ (-β)) ^ n :=
+          (Finset.sum_image hinj).symm
+      _ ≤ Kb := hgb.sum_le_tsum _ (fun n _ ↦ by positivity)
+  rw [hsplit]
+  linarith
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The minimum of two geometric families is a centred tent
+
+Source: `ext:interpolation`.  Along a direction of the multi-index lattice one
+endpoint size decays geometrically and another grows; their minimum is a tent
+centred where they cross, with peak the weighted geometric mean of the two
+constants — the weights being the two rates, normalized.  Combining this with
+`exists_tent_sum_bound` gives the estimate the multi-index sum needs: the sum of
+the two-sided minimum over any finite set of indices is bounded by a constant
+times that geometric mean, with the constant depending only on the two rates.
+-/
+
+/-- The minimum of a decaying and a growing geometric family, as a centred
+tent. -/
+theorem min_two_geometric_eq_tent {α β C₁ C₂ : ℝ} (hα : 0 < α) (hβ : 0 < β)
+    (hC₁ : 0 < C₁) (hC₂ : 0 < C₂) (k : ℝ) :
+    min (C₁ * (2:ℝ) ^ (-(α * k))) (C₂ * (2:ℝ) ^ (β * k))
+      = (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) *
+          min ((2:ℝ) ^ (-(α * (k - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
+            ((2:ℝ) ^ (β * (k - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) := by
+  have h2 : (0:ℝ) < 2 := by norm_num
+  have hαβ : 0 < α + β := by linarith
+  have hquot : 0 < C₁ / C₂ := div_pos hC₁ hC₂
+  set c : ℝ := Real.log (C₁ / C₂) / ((α + β) * Real.log 2) with hc
+  set V : ℝ := C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β)) with hV
+  have hVnn : 0 ≤ V := by positivity
+  have hlog2 : Real.log 2 ≠ 0 := ne_of_gt (Real.log_pos (by norm_num))
+  have hαβne : α + β ≠ 0 := ne_of_gt hαβ
+  have hpow : ∀ t : ℝ, (2:ℝ) ^ (t * c) = (C₁ / C₂) ^ (t / (α + β)) := by
+    intro t
+    rw [Real.rpow_def_of_pos h2, Real.rpow_def_of_pos hquot, hc]
+    congr 1
+    field_simp
+  have hsum1 : β / (α + β) + α / (α + β) = 1 := by field_simp; ring
+  have hA : V * (2:ℝ) ^ (α * c) = C₁ := by
+    rw [hpow α, Real.div_rpow hC₁.le hC₂.le, hV]
+    field_simp
+    rw [← Real.rpow_add hC₁]
+    rw [show β / (α + β) + α / (α + β) = 1 from hsum1, Real.rpow_one]
+  have hB : V * (2:ℝ) ^ (-(β * c)) = C₂ := by
+    rw [show -(β * c) = (-β) * c by ring, hpow (-β),
+      Real.div_rpow hC₁.le hC₂.le, hV]
+    rw [show (-β) / (α + β) = -(β / (α + β)) by ring,
+      Real.rpow_neg hC₁.le, Real.rpow_neg hC₂.le]
+    field_simp
+    rw [← Real.rpow_add hC₂]
+    rw [show α / (α + β) + β / (α + β) = 1 by rw [add_comm]; exact hsum1,
+      Real.rpow_one]
+  have hL : V * (2:ℝ) ^ (-(α * (k - c))) = C₁ * (2:ℝ) ^ (-(α * k)) := by
+    rw [show -(α * (k - c)) = -(α * k) + α * c by ring, Real.rpow_add h2, ← hA]
+    ring
+  have hR : V * (2:ℝ) ^ (β * (k - c)) = C₂ * (2:ℝ) ^ (β * k) := by
+    rw [show β * (k - c) = β * k + -(β * c) by ring, Real.rpow_add h2, ← hB]
+    ring
+  rw [← hL, ← hR, ← mul_min_of_nonneg _ _ hVnn]
+
+/-- **The two-sided geometric minimum sums to the geometric mean.** -/
+theorem exists_sum_min_two_geometric_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (C₁ C₂ : ℝ), 0 < C₁ → 0 < C₂ → ∀ S : Finset ℤ,
+      ∑ k ∈ S, min (C₁ * (2:ℝ) ^ (-(α * (k:ℝ)))) (C₂ * (2:ℝ) ^ (β * (k:ℝ)))
+        ≤ K * (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) := by
+  obtain ⟨K, hKpos, hK⟩ := exists_tent_sum_bound hα hβ
+  refine ⟨K, hKpos, fun C₁ C₂ hC₁ hC₂ S ↦ ?_⟩
+  have hV : (0:ℝ) ≤ C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β)) := by positivity
+  calc ∑ k ∈ S, min (C₁ * (2:ℝ) ^ (-(α * (k:ℝ)))) (C₂ * (2:ℝ) ^ (β * (k:ℝ)))
+      = ∑ k ∈ S, (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) *
+          min ((2:ℝ) ^ (-(α * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
+            ((2:ℝ) ^ (β * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) :=
+        Finset.sum_congr rfl fun k _ ↦
+          min_two_geometric_eq_tent hα hβ hC₁ hC₂ (k:ℝ)
+    _ = (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) *
+          ∑ k ∈ S, min ((2:ℝ) ^ (-(α * ((k:ℝ) -
+              Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
+            ((2:ℝ) ^ (β * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) :=
+        (Finset.mul_sum _ _ _).symm
+    _ ≤ (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) * K :=
+        mul_le_mul_of_nonneg_left (hK _ S) hV
+    _ = K * (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) := by ring
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A tent-shaped weight family on the multi-index lattice
+
+Source: `ext:interpolation`.  The level assigned to a layer triple by
+`meas_lt_of_triple_expansion_bounds` has to be a share of the output level, the
+shares summing to at most one.  The share that works is a tent centred at the
+peak of the endpoint sizes: it gives every term near the peak a share bounded
+below by a constant, so the number of terms never enters the estimate, which is
+what a uniform share `1/M` fails to do.  The bound below is uniform in the
+centre, as it must be — the peak moves with the data.
+-/
+
+/-- A one-dimensional tent in absolute-value form has bounded sums. -/
+theorem exists_sum_abs_tent_bound {η : ℝ} (hη : 0 < η) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (c : ℝ) (S : Finset ℤ),
+      ∑ k ∈ S, (2:ℝ) ^ (-(η * |(k:ℝ) - c|)) ≤ K := by
+  obtain ⟨K, hK, hb⟩ := exists_tent_sum_bound hη hη
+  refine ⟨K, hK, fun c S ↦ ?_⟩
+  refine le_trans (le_of_eq ?_) (hb c S)
+  refine Finset.sum_congr rfl fun k _ ↦ ?_
+  have h1 : |η * ((k:ℝ) - c)| = η * |(k:ℝ) - c| := by
+    rw [abs_mul, abs_of_pos hη]
+  rw [min_comm, aux_min_two_rpow_eq_abs, h1]
+
+/-- A triple sum of a separable product of reals factors. -/
+theorem sum_triple_product_factor_real {S1 S2 S3 : Finset ℤ}
+    (b1 b2 b3 : ℤ → ℝ) :
+    ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, b1 k1 * b2 k2 * b3 k3
+      = (∑ k1 ∈ S1, b1 k1) * (∑ k2 ∈ S2, b2 k2) * (∑ k3 ∈ S3, b3 k3) := by
+  have h3 : ∀ k1 k2 : ℤ, ∑ k3 ∈ S3, b1 k1 * b2 k2 * b3 k3
+      = b1 k1 * b2 k2 * ∑ k3 ∈ S3, b3 k3 :=
+    fun k1 k2 ↦ (Finset.mul_sum _ _ _).symm
+  simp_rw [h3]
+  have h2 : ∀ k1 : ℤ, ∑ k2 ∈ S2, b1 k1 * b2 k2 * (∑ k3 ∈ S3, b3 k3)
+      = b1 k1 * (∑ k2 ∈ S2, b2 k2) * (∑ k3 ∈ S3, b3 k3) := by
+    intro k1
+    rw [← Finset.sum_mul, ← Finset.mul_sum]
+  simp_rw [h2]
+  rw [← Finset.sum_mul, ← Finset.sum_mul]
+
+/-- **A tent on the three-dimensional lattice has bounded sums, uniformly in
+its centre.** -/
+theorem exists_lattice_tent_sum_bound {η : ℝ} (hη : 0 < η) :
+    ∃ K : ℝ, 0 < K ∧ ∀ (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ),
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+          ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) * (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
+            (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|))) ≤ K := by
+  obtain ⟨K₁, hK₁, hb⟩ := exists_sum_abs_tent_bound hη
+  refine ⟨K₁ ^ 3, by positivity, fun c S1 S2 S3 ↦ ?_⟩
+  rw [sum_triple_product_factor_real
+    (fun k ↦ (2:ℝ) ^ (-(η * |(k:ℝ) - c 0|)))
+    (fun k ↦ (2:ℝ) ^ (-(η * |(k:ℝ) - c 1|)))
+    (fun k ↦ (2:ℝ) ^ (-(η * |(k:ℝ) - c 2|)))]
+  have hnn : ∀ (d : ℝ) (S : Finset ℤ),
+      (0:ℝ) ≤ ∑ k ∈ S, (2:ℝ) ^ (-(η * |(k:ℝ) - d|)) :=
+    fun d S ↦ Finset.sum_nonneg fun k _ ↦ Real.rpow_nonneg (by norm_num) _
+  have hstep : (∑ k1 ∈ S1, (2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|))) *
+      (∑ k2 ∈ S2, (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|))) *
+      (∑ k3 ∈ S3, (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|))) ≤ K₁ * K₁ * K₁ := by
+    refine mul_le_mul (mul_le_mul (hb _ S1) (hb _ S2) (hnn _ S2) hK₁.le)
+      (hb _ S3) (hnn _ S3) (by positivity)
+  calc (∑ k1 ∈ S1, (2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|))) *
+      (∑ k2 ∈ S2, (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|))) *
+      (∑ k3 ∈ S3, (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|))) ≤ K₁ * K₁ * K₁ := hstep
+    _ = K₁ ^ 3 := by ring
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The normalized tent, and the budget it respects
+
+Source: `ext:interpolation`.  Rescaling the lattice tent by the reciprocal of
+its uniform bound gives a weight family whose total is at most one, which is
+exactly the hypothesis `sum_weighted_levels_le` and
+`meas_lt_of_triple_expansion_bounds` ask of a level split.  So the level assigned
+to a layer triple can be taken proportional to the tent, at any centre.
+-/
+
+/-- Pulling a constant out of a triple sum. -/
+theorem mul_sum_triple {S1 S2 S3 : Finset ℤ} (C : ℝ) (F : ℤ → ℤ → ℤ → ℝ) :
+    ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, C * F k1 k2 k3
+      = C * ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, F k1 k2 k3 := by
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun k1 _ ↦ ?_
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun k2 _ ↦ ?_
+  rw [Finset.mul_sum]
+
+/-- **A normalized tent weight family on the lattice.** -/
+theorem exists_normalized_lattice_tent {η : ℝ} (hη : 0 < η) :
+    ∃ C : ℝ, 0 < C ∧ ∀ (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ),
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+        (C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
+          (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
+          (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) ≤ 1 := by
+  obtain ⟨K, hK, hb⟩ := exists_lattice_tent_sum_bound hη
+  refine ⟨K⁻¹, by positivity, fun c S1 S2 S3 ↦ ?_⟩
+  rw [mul_sum_triple K⁻¹ (fun k1 k2 k3 ↦
+    (2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) * (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
+      (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))]
+  rw [inv_mul_le_iff₀ hK, mul_one]
+  exact hb c S1 S2 S3
+
+/-- **The tent split respects the level budget.**  Assigning each layer triple
+the share of the level given by the normalized tent leaves the shares summing to
+at most the level, which is what the expansion bound consumes. -/
+theorem sum_tent_levels_le {η : ℝ} {C : ℝ}
+    (hC : ∀ (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ),
+      ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+        (C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
+          (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
+          (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) ≤ 1)
+    (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ) (t : ℝ) (ht : 0 ≤ t) :
+    ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
+        t * (C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
+          (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
+          (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) ≤ t :=
+  sum_weighted_levels_le S1 S2 S3
+    (fun k1 k2 k3 ↦ C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
+      (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
+      (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) t ht (hC c S1 S2 S3)
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Bands aggregate in `ℓ^q`, not in `ℓ^1`
+
+Source: `ext:interpolation`.  The dyadic bands of an input are disjointly
+supported, so the `L^q` norm of a *group* of bands is the `ℓ^q` aggregate of the
+individual band norms, not their sum.  This is the joint constraint the four
+endpoint hypotheses place on a grouping: applying a vertex bound to a group of
+bands is strictly stronger than applying it to each band and adding, and the gap
+between `ℓ^q` and `ℓ^1` is exactly the slack the term-by-term route throws away.
+-/
+
+/-- At each point at most one band is active, so the `q`-th power of the sum is
+the sum of the `q`-th powers. -/
+theorem aux_rpow_enorm_sum_dyadicLevelPiece {X : Type*} (f : X → ℝ) {q : ℝ}
+    (hq : 0 < q) (E : Finset ℤ) (x : X) :
+    ‖∑ k ∈ E, dyadicLevelPiece f k x‖ₑ ^ q
+      = ∑ k ∈ E, ‖dyadicLevelPiece f k x‖ₑ ^ q := by
+  classical
+  by_cases hx : ∃ k ∈ E, x ∈ dyadicLevelSet f k
+  · obtain ⟨k₀, hk₀E, hk₀⟩ := hx
+    have hzero : ∀ k ∈ E, k ≠ k₀ → dyadicLevelPiece f k x = 0 := by
+      intro k _ hne
+      refine dyadicLevelPiece_eq_zero_of_notMem _ _ ?_
+      intro hmem
+      exact (Set.disjoint_left.mp (dyadicLevelSet_disjoint hne)) hmem hk₀
+    rw [Finset.sum_eq_single k₀ hzero (fun h ↦ absurd hk₀E h),
+      Finset.sum_eq_single k₀
+        (fun k hk hne ↦ by rw [hzero k hk hne, enorm_zero,
+          ENNReal.zero_rpow_of_pos hq])
+        (fun h ↦ absurd hk₀E h)]
+  · push Not at hx
+    have hz : ∀ k ∈ E, dyadicLevelPiece f k x = 0 :=
+      fun k hk ↦ dyadicLevelPiece_eq_zero_of_notMem _ _ (hx k hk)
+    rw [Finset.sum_congr rfl hz, Finset.sum_const_zero, enorm_zero,
+      ENNReal.zero_rpow_of_pos hq,
+      Finset.sum_congr rfl (fun k hk ↦ by
+        rw [hz k hk, enorm_zero, ENNReal.zero_rpow_of_pos hq]),
+      Finset.sum_const_zero]
+
+/-- **A group of bands aggregates in `ℓ^q`.** -/
+theorem lintegral_rpow_enorm_sum_dyadicLevelPiece {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {q : ℝ} (hq : 0 < q)
+    (E : Finset ℤ) :
+    ∫⁻ x, ‖∑ k ∈ E, dyadicLevelPiece f k x‖ₑ ^ q ∂μ
+      = ∑ k ∈ E, ∫⁻ x, ‖dyadicLevelPiece f k x‖ₑ ^ q ∂μ := by
+  rw [lintegral_congr (aux_rpow_enorm_sum_dyadicLevelPiece f hq E)]
+  refine lintegral_finsetSum E fun k _ ↦ ?_
+  exact ((measurable_dyadicLevelPiece hf k).enorm).pow_const q
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## A level-set bound packages as a weak norm
+
+Source: `ext:interpolation`.  `meas_lt_le_of_weakNorm_le` turns a weak norm into
+a level-set bound; this is the converse, which is what the level-splitting
+estimate needs, since that estimate produces a level-set bound decaying like
+`τ^{-R}` and the downstream steps are stated for the weak norm.
+-/
+
+/-- **A `τ^{-R}` level-set bound is a weak bound.** -/
+theorem weakNorm_le_of_meas_lt_le {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (v : X → ℝ) {R D : ℝ} (hR : 0 < R) (hD : 0 ≤ D)
+    (h : ∀ τ : ℝ, 0 < τ → μ {x | τ < |v x|} ≤ ENNReal.ofReal (D * τ ^ (-R))) :
+    weakNorm μ v R ≤ ENNReal.ofReal (D ^ (1 / R)) := by
+  refine weakNorm_le μ v R fun τ hτ ↦ ?_
+  have hinv : (0:ℝ) < 1 / R := by positivity
+  have hstep : μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal (D ^ (1 / R) * τ⁻¹) := by
+    refine le_trans (ENNReal.rpow_le_rpow (h τ hτ) hinv.le) (le_of_eq ?_)
+    rw [ENNReal.ofReal_rpow_of_nonneg
+      (by positivity : (0:ℝ) ≤ D * τ ^ (-R)) hinv.le]
+    congr 1
+    rw [Real.mul_rpow hD (Real.rpow_nonneg hτ.le _), ← Real.rpow_mul hτ.le]
+    congr 1
+    rw [show -R * (1 / R) = -(1:ℝ) by field_simp, Real.rpow_neg_one]
+  calc ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / R)
+      ≤ ENNReal.ofReal τ * ENNReal.ofReal (D ^ (1 / R) * τ⁻¹) :=
+        mul_le_mul' le_rfl hstep
+    _ = ENNReal.ofReal (D ^ (1 / R)) := by
+        rw [← ENNReal.ofReal_mul hτ.le]
+        congr 1
+        field_simp
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The weak norm is a quasi-norm
+
+Source: `ext:interpolation`.  The weak `L^r` norm is not subadditive, but it
+obeys a triangle inequality with a factor two: a point where the sum exceeds a
+level is a point where one of the summands exceeds half of it.  This is what any
+aggregation of the layer pieces in the weak norms has to start from, and the file
+did not have it.
+-/
+
+/-- **The weak norm obeys a quasi-triangle inequality.** -/
+theorem weakNorm_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (u v : X → ℝ) {r : ℝ} (hr : 1 ≤ r) :
+    weakNorm μ (u + v) r ≤ 2 * (weakNorm μ u r + weakNorm μ v r) := by
+  have hrpos : (0:ℝ) < r := lt_of_lt_of_le one_pos hr
+  refine weakNorm_le μ _ r fun σ hσ ↦ ?_
+  set τ : ℝ := σ / 2 with hτdef
+  have hτ : 0 < τ := by positivity
+  have hsub : {x | σ < |(u + v) x|} ⊆ {x | τ < |u x|} ∪ {x | τ < |v x|} := by
+    intro x hx
+    by_contra hcon
+    rw [Set.mem_union, not_or] at hcon
+    have h1 : |u x| ≤ τ := le_of_not_gt hcon.1
+    have h2 : |v x| ≤ τ := le_of_not_gt hcon.2
+    have h3 : |(u + v) x| ≤ σ := by
+      have : |(u + v) x| ≤ |u x| + |v x| := by
+        simpa [Pi.add_apply] using abs_add_le (u x) (v x)
+      rw [hτdef] at h1 h2
+      linarith
+    exact absurd hx (not_lt.mpr h3)
+  have hmeas : μ {x | σ < |(u + v) x|}
+      ≤ μ {x | τ < |u x|} + μ {x | τ < |v x|} :=
+    le_trans (measure_mono hsub) (measure_union_le _ _)
+  have hone : (1:ℝ) / r ≤ 1 := by
+    rw [div_le_one hrpos]; exact hr
+  have hpow : μ {x | σ < |(u + v) x|} ^ (1 / r)
+      ≤ μ {x | τ < |u x|} ^ (1 / r) + μ {x | τ < |v x|} ^ (1 / r) := by
+    refine le_trans (ENNReal.rpow_le_rpow hmeas (by positivity)) ?_
+    exact ENNReal.rpow_add_le_add_rpow _ _ (by positivity) hone
+  have hσeq : ENNReal.ofReal σ = 2 * ENNReal.ofReal τ := by
+    rw [show σ = 2 * τ by rw [hτdef]; ring,
+      ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
+    norm_num
+  calc ENNReal.ofReal σ * μ {x | σ < |(u + v) x|} ^ (1 / r)
+      ≤ (2 * ENNReal.ofReal τ) *
+          (μ {x | τ < |u x|} ^ (1 / r) + μ {x | τ < |v x|} ^ (1 / r)) := by
+        rw [← hσeq]
+        exact mul_le_mul' le_rfl hpow
+    _ = 2 * (ENNReal.ofReal τ * μ {x | τ < |u x|} ^ (1 / r) +
+          ENNReal.ofReal τ * μ {x | τ < |v x|} ^ (1 / r)) := by ring
+    _ ≤ 2 * (weakNorm μ u r + weakNorm μ v r) :=
+        mul_le_mul' le_rfl
+          (add_le_add (le_weakNorm μ u r hτ) (le_weakNorm μ v r hτ))
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The `K`-functional of the couple of weak spaces
+
+Source: `ext:interpolation`, and the prerequisite recorded in ErrorReport.md.
+The route that closes the theorem aggregates the layer pieces in the norm of a
+real interpolation space rather than by the triangle inequality, and the first
+object it needs is the `K`-functional of the couple formed by the two weak
+spaces at the straddling exponents.  This section defines it and records the two
+estimates that say it is dominated by either endpoint norm, from which the
+`J`-functional bound follows.
+-/
+
+/-- The `K`-functional of the couple of weak spaces at exponents `r₁` and `r₂`,
+at scale `t`. -/
+def weakK {X : Type*} [MeasurableSpace X] (μ : Measure X) (r₁ r₂ t : ℝ)
+    (v : X → ℝ) : ℝ≥0∞ :=
+  ⨅ w : X → ℝ, weakNorm μ (v - w) r₁ + ENNReal.ofReal t * weakNorm μ w r₂
+
+/-- The `K`-functional is below the first endpoint norm. -/
+theorem weakK_le_left {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    {r₁ r₂ : ℝ} (hr₂ : 0 < r₂) (t : ℝ) (v : X → ℝ) :
+    weakK μ r₁ r₂ t v ≤ weakNorm μ v r₁ := by
+  have hz : weakNorm μ (0 : X → ℝ) r₂ = 0 := weakNorm_zero μ hr₂
+  refine le_trans (iInf_le _ (0 : X → ℝ)) (le_of_eq ?_)
+  rw [sub_zero, hz, mul_zero, add_zero]
+
+/-- The `K`-functional is below `t` times the second endpoint norm. -/
+theorem weakK_le_right {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    {r₁ r₂ : ℝ} (hr₁ : 0 < r₁) (t : ℝ) (v : X → ℝ) :
+    weakK μ r₁ r₂ t v ≤ ENNReal.ofReal t * weakNorm μ v r₂ := by
+  have hz : weakNorm μ (0 : X → ℝ) r₁ = 0 := weakNorm_zero μ hr₁
+  refine le_trans (iInf_le _ v) (le_of_eq ?_)
+  rw [sub_self, hz, zero_add]
+
+/-- **The `K`-functional is dominated by the `J`-functional.**  At any scale `s`,
+the `K`-functional at scale `t` is at most the `J`-functional at scale `s`, and
+also at most `t/s` times it. -/
+theorem weakK_le_weakJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    {r₁ r₂ : ℝ} (hr₁ : 0 < r₁) (hr₂ : 0 < r₂) {s t : ℝ} (hs : 0 < s)
+    (ht : 0 ≤ t) (v : X → ℝ) :
+    weakK μ r₁ r₂ t v
+      ≤ min (max (weakNorm μ v r₁) (ENNReal.ofReal s * weakNorm μ v r₂))
+          (ENNReal.ofReal (t / s) *
+            max (weakNorm μ v r₁) (ENNReal.ofReal s * weakNorm μ v r₂)) := by
+  refine le_min (le_trans (weakK_le_left μ hr₂ t v) (le_max_left _ _)) ?_
+  have hts : ENNReal.ofReal t = ENNReal.ofReal (t / s) * ENNReal.ofReal s := by
+    rw [← ENNReal.ofReal_mul (by positivity)]
+    congr 1
+    field_simp
+  calc weakK μ r₁ r₂ t v ≤ ENNReal.ofReal t * weakNorm μ v r₂ :=
+        weakK_le_right μ hr₁ t v
+    _ = ENNReal.ofReal (t / s) * (ENNReal.ofReal s * weakNorm μ v r₂) := by
+        rw [hts, mul_assoc]
+    _ ≤ ENNReal.ofReal (t / s) *
+          max (weakNorm μ v r₁) (ENNReal.ofReal s * weakNorm μ v r₂) :=
+        mul_le_mul' le_rfl (le_max_right _ _)
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The `K`-functional on a sum
+
+Source: `ext:interpolation`, and the prerequisite recorded in ErrorReport.md.
+The `K`-functional of a sum is estimated by testing it against the sum of any
+two chosen decompositions.  Because the weak norms are only quasi-norms, the
+estimate carries the factor two of `weakNorm_add_le` in each slot.
+-/
+
+/-- **The `K`-functional of a sum, tested against chosen decompositions.** -/
+theorem weakK_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    {r₁ r₂ : ℝ} (hr₁ : 1 ≤ r₁) (hr₂ : 1 ≤ r₂) (t : ℝ)
+    (v₁ v₂ w₁ w₂ : X → ℝ) :
+    weakK μ r₁ r₂ t (v₁ + v₂)
+      ≤ 2 * ((weakNorm μ (v₁ - w₁) r₁ + ENNReal.ofReal t * weakNorm μ w₁ r₂)
+        + (weakNorm μ (v₂ - w₂) r₁ + ENNReal.ofReal t * weakNorm μ w₂ r₂)) := by
+  refine le_trans (iInf_le _ (w₁ + w₂)) ?_
+  have h1 : (v₁ + v₂) - (w₁ + w₂) = (v₁ - w₁) + (v₂ - w₂) := by ring
+  rw [h1]
+  have hA : weakNorm μ ((v₁ - w₁) + (v₂ - w₂)) r₁
+      ≤ 2 * (weakNorm μ (v₁ - w₁) r₁ + weakNorm μ (v₂ - w₂) r₁) :=
+    weakNorm_add_le μ _ _ hr₁
+  have hB : weakNorm μ (w₁ + w₂) r₂
+      ≤ 2 * (weakNorm μ w₁ r₂ + weakNorm μ w₂ r₂) :=
+    weakNorm_add_le μ _ _ hr₂
+  calc weakNorm μ ((v₁ - w₁) + (v₂ - w₂)) r₁
+        + ENNReal.ofReal t * weakNorm μ (w₁ + w₂) r₂
+      ≤ 2 * (weakNorm μ (v₁ - w₁) r₁ + weakNorm μ (v₂ - w₂) r₁)
+        + ENNReal.ofReal t * (2 * (weakNorm μ w₁ r₂ + weakNorm μ w₂ r₂)) :=
+        add_le_add hA (mul_le_mul' le_rfl hB)
+    _ = 2 * ((weakNorm μ (v₁ - w₁) r₁ + ENNReal.ofReal t * weakNorm μ w₁ r₂)
+        + (weakNorm μ (v₂ - w₂) r₁ + ENNReal.ofReal t * weakNorm μ w₂ r₂)) := by
+        ring
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The candidate norm on weak `L^r`
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  The `K`-functional has to be genuinely subadditive, and the weak
+norm is only a quasi-norm; the classical repair is that for `r > 1` the weak
+space is normable, by the quantity
+
+  sup over sets of finite positive measure of  μ(E)^{1/r - 1} ∫_E |v|,
+
+which is a genuine supremum of norms and so subadditive.  This section defines it
+and records that it dominates each summand of the weak norm taken over a subset
+of a level set — the elementary half of the equivalence.
+-/
+
+/-- The candidate norm on weak `L^r`: the supremum of the normalized averages
+over sets of finite positive measure. -/
+def weakNormPrime {X : Type*} [MeasurableSpace X] (μ : Measure X) (r : ℝ)
+    (v : X → ℝ) : ℝ≥0∞ :=
+  ⨆ E : {E : Set X // MeasurableSet E ∧ μ E ≠ 0 ∧ μ E ≠ ∞},
+    (μ E.1) ^ (1 / r - 1) * ∫⁻ x in E.1, ‖v x‖ₑ ∂μ
+
+/-- Each normalized average is below the candidate norm. -/
+theorem le_weakNormPrime {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r : ℝ) (v : X → ℝ) {E : Set X} (hE : MeasurableSet E) (h0 : μ E ≠ 0)
+    (htop : μ E ≠ ∞) :
+    (μ E) ^ (1 / r - 1) * ∫⁻ x in E, ‖v x‖ₑ ∂μ ≤ weakNormPrime μ r v :=
+  le_iSup (fun F : {F : Set X // MeasurableSet F ∧ μ F ≠ 0 ∧ μ F ≠ ∞} ↦
+    (μ F.1) ^ (1 / r - 1) * ∫⁻ x in F.1, ‖v x‖ₑ ∂μ) ⟨E, hE, h0, htop⟩
+
+/-- **The candidate norm dominates the weak norm's summands.**  On a subset of a
+level set of finite positive measure, the level times the `1/r`-th power of the
+measure is below the candidate norm. -/
+theorem ofReal_mul_rpow_le_weakNormPrime {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (r : ℝ) (v : X → ℝ) (τ : ℝ)
+    {E : Set X} (hE : MeasurableSet E) (h0 : μ E ≠ 0) (htop : μ E ≠ ∞)
+    (hsub : E ⊆ {x | τ < |v x|}) :
+    ENNReal.ofReal τ * (μ E) ^ (1 / r) ≤ weakNormPrime μ r v := by
+  have hlow : ENNReal.ofReal τ * μ E ≤ ∫⁻ x in E, ‖v x‖ₑ ∂μ := by
+    rw [← setLIntegral_const E (ENNReal.ofReal τ)]
+    refine setLIntegral_mono' hE fun x hx ↦ ?_
+    have hxv : τ < |v x| := hsub hx
+    rw [← ofReal_norm, Real.norm_eq_abs]
+    exact ENNReal.ofReal_le_ofReal hxv.le
+  have hpow : (μ E) ^ (1 / r - 1) * (ENNReal.ofReal τ * μ E)
+      = ENNReal.ofReal τ * (μ E) ^ (1 / r) := by
+    have hmul : (μ E) ^ (1 / r - 1) * (μ E) = (μ E) ^ (1 / r) := by
+      nth_rewrite 2 [show (μ E) = (μ E) ^ (1 : ℝ) by rw [ENNReal.rpow_one]]
+      rw [← ENNReal.rpow_add _ _ h0 htop]
+      congr 1
+      ring
+    calc (μ E) ^ (1 / r - 1) * (ENNReal.ofReal τ * μ E)
+        = ENNReal.ofReal τ * ((μ E) ^ (1 / r - 1) * (μ E)) := by ring
+      _ = ENNReal.ofReal τ * (μ E) ^ (1 / r) := by rw [hmul]
+  calc ENNReal.ofReal τ * (μ E) ^ (1 / r)
+      = (μ E) ^ (1 / r - 1) * (ENNReal.ofReal τ * μ E) := hpow.symm
+    _ ≤ (μ E) ^ (1 / r - 1) * ∫⁻ x in E, ‖v x‖ₑ ∂μ := mul_le_mul' le_rfl hlow
+    _ ≤ weakNormPrime μ r v := le_weakNormPrime μ r v hE h0 htop
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The layer cake on a set
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  The normability of weak `L^r` is proved by writing the integral
+of `|v|` over a set as the integral of the measures of its level sets met with
+that set, and then bounding those measures in two ways — by the measure of the
+set, and by the weak norm.  This section supplies the first step.
+-/
+
+/-- **The layer cake formula on a set.** -/
+theorem lintegral_enorm_restrict_eq_meas_lt {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) (E : Set X) {v : X → ℝ} (hv : Measurable v) :
+    ∫⁻ x in E, ‖v x‖ₑ ∂μ
+      = ∫⁻ t in Ioi (0 : ℝ), μ ({x | t < |v x|} ∩ E) := by
+  have habs : Measurable (fun x ↦ |v x|) := continuous_abs.measurable.comp hv
+  have hcoe : ∀ x : X, ‖v x‖ₑ = ENNReal.ofReal |v x| := by
+    intro x
+    rw [← ofReal_norm, Real.norm_eq_abs]
+  have hnn : 0 ≤ᵐ[μ.restrict E] fun x ↦ |v x| :=
+    Filter.Eventually.of_forall fun x ↦ abs_nonneg _
+  have hstep := lintegral_eq_lintegral_meas_lt (μ.restrict E) hnn
+    habs.aemeasurable
+  rw [lintegral_congr (fun x ↦ hcoe x), hstep]
+  refine lintegral_congr fun t ↦ ?_
+  exact Measure.restrict_apply (measurableSet_lt measurable_const habs)
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Splitting the level integral between the two available bounds
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  In the normability estimate the measures of the level sets are
+bounded in two ways — by the measure of the set and by the weak norm's
+`A^r t^{-r}` — and the level integral is split where the two are to be traded.
+This is that split, stated for an arbitrary splitting level so the caller may
+choose where the two bounds meet.
+-/
+
+/-- **The level integral, split between a constant and a power bound.** -/
+theorem lintegral_Ioi_le_of_two_bounds {g : ℝ → ℝ≥0∞}
+    {m : ℝ≥0∞} {A r t₀ : ℝ} (hr : 1 < r) (hA : 0 < A) (ht₀ : 0 < t₀)
+    (hm : ∀ t, 0 < t → g t ≤ m)
+    (hpow : ∀ t, 0 < t → g t ≤ ENNReal.ofReal (A ^ r * t ^ (-r))) :
+    ∫⁻ t in Ioi (0 : ℝ), g t
+      ≤ m * ENNReal.ofReal t₀
+        + ENNReal.ofReal (A ^ r * (-t₀ ^ (-r + 1) / (-r + 1))) := by
+  have hsplit : Ioi (0 : ℝ) = Ioc (0 : ℝ) t₀ ∪ Ioi t₀ :=
+    (Set.Ioc_union_Ioi_eq_Ioi ht₀.le).symm
+  have hdisj : Disjoint (Ioc (0 : ℝ) t₀) (Ioi t₀) := by
+    rw [Set.disjoint_left]
+    intro x hx hx'
+    exact absurd hx.2 (not_le.mpr hx')
+  rw [hsplit, lintegral_union measurableSet_Ioi hdisj]
+  refine add_le_add ?_ ?_
+  · calc ∫⁻ t in Ioc (0 : ℝ) t₀, g t ≤ ∫⁻ _ in Ioc (0 : ℝ) t₀, m := by
+          refine lintegral_mono_ae ?_
+          filter_upwards [ae_restrict_mem measurableSet_Ioc] with t ht
+          exact hm t ht.1
+      _ = m * ENNReal.ofReal t₀ := by
+          rw [setLIntegral_const, Real.volume_Ioc, sub_zero]
+  · calc ∫⁻ t in Ioi t₀, g t
+        ≤ ∫⁻ t in Ioi t₀, ENNReal.ofReal (A ^ r) *
+            ENNReal.ofReal (t ^ (-r)) := by
+          refine lintegral_mono_ae ?_
+          filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
+          refine le_trans (hpow t (lt_trans ht₀ ht)) (le_of_eq ?_)
+          rw [← ENNReal.ofReal_mul (by positivity)]
+      _ = ENNReal.ofReal (A ^ r) * ∫⁻ t in Ioi t₀, ENNReal.ofReal (t ^ (-r)) :=
+          lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
+      _ = ENNReal.ofReal (A ^ r) *
+            ENNReal.ofReal (-t₀ ^ (-r + 1) / (-r + 1)) := by
+          rw [lintegral_Ioi_rpow (by linarith : (-r : ℝ) < -1) ht₀]
+      _ = ENNReal.ofReal (A ^ r * (-t₀ ^ (-r + 1) / (-r + 1))) := by
+          rw [← ENNReal.ofReal_mul (by positivity)]
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The integral over a set, from the weak norm
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  Composing the layer cake on a set with the split of the level
+integral gives the estimate the normability of weak `L^r` rests on: the integral
+of `|v|` over a set is bounded by the measure of the set times any level, plus
+the tail the weak norm controls.
+-/
+
+/-- **The integral over a set, from the weak norm.** -/
+theorem lintegral_enorm_restrict_le_of_weakNorm {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) {v : X → ℝ} (hv : Measurable v) (E : Set X)
+    {r A t₀ : ℝ} (hr : 1 < r) (hA : 0 < A) (ht₀ : 0 < t₀)
+    (hw : weakNorm μ v r ≤ ENNReal.ofReal A) :
+    ∫⁻ x in E, ‖v x‖ₑ ∂μ
+      ≤ μ E * ENNReal.ofReal t₀
+        + ENNReal.ofReal (A ^ r * (-t₀ ^ (-r + 1) / (-r + 1))) := by
+  rw [lintegral_enorm_restrict_eq_meas_lt μ E hv]
+  refine lintegral_Ioi_le_of_two_bounds hr hA ht₀ (fun t _ ↦ ?_) (fun t ht ↦ ?_)
+  · exact measure_mono Set.inter_subset_right
+  · refine le_trans (measure_mono Set.inter_subset_left) ?_
+    exact meas_lt_le_of_weakNorm_le μ v (by linarith) hA.le hw ht
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The normalized average, from the weak norm
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  Putting the splitting level at the crossing of the two bounds
+turns the previous estimate into the one half of the normability equivalence:
+the normalized average of `|v|` over a set of finite positive measure is at most
+the conjugate exponent times the weak norm.
+-/
+
+/-- **The integral over a set at the optimal splitting level.** -/
+theorem lintegral_enorm_restrict_le_conj {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) {v : X → ℝ} (hv : Measurable v) {E : Set X}
+    (h0 : μ E ≠ 0) (htop : μ E ≠ ∞) {r A : ℝ} (hr : 1 < r) (hA : 0 < A)
+    (hw : weakNorm μ v r ≤ ENNReal.ofReal A) :
+    ∫⁻ x in E, ‖v x‖ₑ ∂μ
+      ≤ ENNReal.ofReal (r / (r - 1) * A * (μ E).toReal ^ (1 - 1 / r)) := by
+  have hr0 : (0:ℝ) < r := by linarith
+  have hr1 : (0:ℝ) < r - 1 := by linarith
+  set m : ℝ := (μ E).toReal with hmdef
+  have hmpos : 0 < m := ENNReal.toReal_pos h0 htop
+  set t₀ : ℝ := A * m ^ (-(1 / r)) with ht₀def
+  have ht₀ : 0 < t₀ := by positivity
+  have hstep := lintegral_enorm_restrict_le_of_weakNorm μ hv E hr hA ht₀ hw
+  refine le_trans hstep (le_of_eq ?_)
+  -- the two real terms
+  have hpow : t₀ ^ (-r + 1) = A ^ (-r + 1) * m ^ ((r - 1) / r) := by
+    rw [ht₀def, Real.mul_rpow hA.le (Real.rpow_nonneg hmpos.le _),
+      ← Real.rpow_mul hmpos.le]
+    congr 2
+    field_simp
+    ring
+  have hAmul : A ^ r * A ^ (-r + 1) = A := by
+    rw [← Real.rpow_add hA]
+    norm_num
+  have h1 : m * t₀ = A * m ^ ((r - 1) / r) := by
+    rw [ht₀def,
+      show m * (A * m ^ (-(1 / r))) = A * (m * m ^ (-(1 / r))) by ring]
+    congr 1
+    nth_rewrite 1 [show m = m ^ (1:ℝ) by rw [Real.rpow_one]]
+    rw [← Real.rpow_add hmpos]
+    congr 1
+    field_simp
+    ring
+  have h2 : A ^ r * (-t₀ ^ (-r + 1) / (-r + 1))
+      = A * m ^ ((r - 1) / r) / (r - 1) := by
+    rw [hpow]
+    have hne : (-r + 1 : ℝ) ≠ 0 := by linarith
+    have hrw : A ^ r * (-(A ^ (-r + 1) * m ^ ((r - 1) / r)) / (-r + 1))
+        = (A ^ r * A ^ (-r + 1)) * (m ^ ((r - 1) / r) * (-1 / (-r + 1))) := by
+      field_simp
+    rw [hrw, hAmul,
+      show (-1 : ℝ) / (-r + 1) = 1 / (r - 1) by
+        rw [show (-r + 1 : ℝ) = -(r - 1) by ring, neg_div_neg_eq]]
+    ring
+  have hsecond_nn : 0 ≤ A ^ r * (-t₀ ^ (-r + 1) / (-r + 1)) := by
+    rw [h2]; positivity
+  have hmE : μ E = ENNReal.ofReal m := (ENNReal.ofReal_toReal htop).symm
+  rw [hmE, ← ENNReal.ofReal_mul hmpos.le,
+    ← ENNReal.ofReal_add (by positivity) hsecond_nn]
+  congr 1
+  rw [h1, h2, show (1:ℝ) - 1 / r = (r - 1) / r by field_simp]
+  field_simp
+  ring
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## One half of the normability equivalence
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  Taking the supremum of the estimate at the optimal splitting
+level over sets of finite positive measure gives that the candidate norm is at
+most the conjugate exponent times the weak norm.
+-/
+
+/-- **The candidate norm is bounded by the conjugate exponent times the weak
+norm.** -/
+theorem weakNormPrime_le_conj_mul_weakNorm {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) {v : X → ℝ} (hv : Measurable v) {r A : ℝ} (hr : 1 < r)
+    (hA : 0 < A) (hw : weakNorm μ v r ≤ ENNReal.ofReal A) :
+    weakNormPrime μ r v ≤ ENNReal.ofReal (r / (r - 1) * A) := by
+  have hr1 : (0:ℝ) < r - 1 := by linarith
+  refine iSup_le ?_
+  rintro ⟨E, hE, h0, htop⟩
+  set m : ℝ := (μ E).toReal with hmdef
+  have hmpos : 0 < m := ENNReal.toReal_pos h0 htop
+  have hpow : (μ E) ^ (1 / r - 1) = ENNReal.ofReal (m ^ (1 / r - 1)) := by
+    rw [← ENNReal.ofReal_toReal htop, ENNReal.ofReal_rpow_of_pos hmpos]
+  have hbound := lintegral_enorm_restrict_le_conj μ hv h0 htop hr hA hw
+  calc (μ E) ^ (1 / r - 1) * ∫⁻ x in E, ‖v x‖ₑ ∂μ
+      ≤ (μ E) ^ (1 / r - 1) *
+          ENNReal.ofReal (r / (r - 1) * A * m ^ (1 - 1 / r)) :=
+        mul_le_mul' le_rfl hbound
+    _ = ENNReal.ofReal (m ^ (1 / r - 1)) *
+          ENNReal.ofReal (r / (r - 1) * A * m ^ (1 - 1 / r)) := by rw [hpow]
+    _ = ENNReal.ofReal (m ^ (1 / r - 1) *
+          (r / (r - 1) * A * m ^ (1 - 1 / r))) :=
+        (ENNReal.ofReal_mul (Real.rpow_nonneg hmpos.le _)).symm
+    _ = ENNReal.ofReal (r / (r - 1) * A) := by
+        congr 1
+        rw [show m ^ (1 / r - 1) * (r / (r - 1) * A * m ^ (1 - 1 / r))
+            = (r / (r - 1) * A) * (m ^ (1 / r - 1) * m ^ (1 - 1 / r)) by ring,
+          ← Real.rpow_add hmpos,
+          show (1 / r - 1) + (1 - 1 / r) = (0:ℝ) by ring,
+          Real.rpow_zero, mul_one]
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The other half of the normability equivalence
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  The candidate norm dominates the weak norm's summands on
+subsets of level sets; on a σ-finite measure every level set is approximated
+from inside by such subsets, so the candidate norm dominates the weak norm
+itself.
+-/
+
+/-- **The weak norm is below the candidate norm.** -/
+theorem weakNorm_le_weakNormPrime {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) [SigmaFinite μ] {v : X → ℝ} (hv : Measurable v)
+    {r : ℝ} (hr : 0 < r) :
+    weakNorm μ v r ≤ weakNormPrime μ r v := by
+  refine weakNorm_le μ v r fun τ hτ ↦ ?_
+  set K : ℝ≥0∞ := weakNormPrime μ r v with hK
+  have hτ0 : ENNReal.ofReal τ ≠ 0 := by simp [hτ]
+  have hτtop : ENNReal.ofReal τ ≠ ∞ := ENNReal.ofReal_ne_top
+  have hlevel : MeasurableSet {x | τ < |v x|} :=
+    measurableSet_lt measurable_const (continuous_abs.measurable.comp hv)
+  have key : μ {x | τ < |v x|} ≤ (K / ENNReal.ofReal τ) ^ r := by
+    refine le_of_forall_lt_imp_le_of_dense fun c hc ↦ ?_
+    obtain ⟨t, ht, hts, hct, httop⟩ := Measure.exists_subset_measure_lt_top hlevel hc
+    have h0 : μ t ≠ 0 := by
+      intro h
+      rw [h] at hct
+      simp at hct
+    have hbound :=
+      ofReal_mul_rpow_le_weakNormPrime μ r v τ ht h0 (ne_of_lt httop) hts
+    have h1 : (μ t) ^ (1 / r) ≤ K / ENNReal.ofReal τ := by
+      rw [ENNReal.le_div_iff_mul_le (Or.inl hτ0) (Or.inl hτtop), mul_comm]
+      exact hbound
+    have h2 : μ t ≤ (K / ENNReal.ofReal τ) ^ r := by
+      have hstep := ENNReal.rpow_le_rpow h1 hr.le
+      rwa [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ (ne_of_gt hr),
+        ENNReal.rpow_one] at hstep
+    exact le_trans hct.le h2
+  have hfin : (μ {x | τ < |v x|}) ^ (1 / r) ≤ K / ENNReal.ofReal τ := by
+    have hstep := ENNReal.rpow_le_rpow key (by positivity : (0:ℝ) ≤ 1 / r)
+    rwa [← ENNReal.rpow_mul, mul_one_div, div_self (ne_of_gt hr),
+      ENNReal.rpow_one] at hstep
+  calc ENNReal.ofReal τ * (μ {x | τ < |v x|}) ^ (1 / r)
+      ≤ ENNReal.ofReal τ * (K / ENNReal.ofReal τ) := mul_le_mul' le_rfl hfin
+    _ ≤ K := ENNReal.mul_div_le
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The candidate norm is subadditive
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  Unlike the weak quasi-norm, the candidate norm really is
+subadditive: each normalized average is, and a supremum of subadditive
+quantities is subadditive.  This is the property the `K`-functional needs and
+the reason for passing to the candidate norm at all.
+-/
+
+/-- **The candidate norm is subadditive.** -/
+theorem weakNormPrime_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r : ℝ) {u v : X → ℝ} (hu : Measurable u) :
+    weakNormPrime μ r (u + v)
+      ≤ weakNormPrime μ r u + weakNormPrime μ r v := by
+  refine iSup_le ?_
+  rintro ⟨E, hE, h0, htop⟩
+  have hpt : ∀ x, ‖(u + v) x‖ₑ ≤ ‖u x‖ₑ + ‖v x‖ₑ := by
+    intro x
+    simpa [Pi.add_apply] using enorm_add_le (u x) (v x)
+  have hint : ∫⁻ x in E, ‖(u + v) x‖ₑ ∂μ
+      ≤ (∫⁻ x in E, ‖u x‖ₑ ∂μ) + ∫⁻ x in E, ‖v x‖ₑ ∂μ := by
+    calc ∫⁻ x in E, ‖(u + v) x‖ₑ ∂μ
+        ≤ ∫⁻ x in E, (‖u x‖ₑ + ‖v x‖ₑ) ∂μ := lintegral_mono hpt
+      _ = (∫⁻ x in E, ‖u x‖ₑ ∂μ) + ∫⁻ x in E, ‖v x‖ₑ ∂μ :=
+          lintegral_add_left hu.enorm _
+  calc (μ E) ^ (1 / r - 1) * ∫⁻ x in E, ‖(u + v) x‖ₑ ∂μ
+      ≤ (μ E) ^ (1 / r - 1) *
+          ((∫⁻ x in E, ‖u x‖ₑ ∂μ) + ∫⁻ x in E, ‖v x‖ₑ ∂μ) :=
+        mul_le_mul' le_rfl hint
+    _ = (μ E) ^ (1 / r - 1) * (∫⁻ x in E, ‖u x‖ₑ ∂μ)
+        + (μ E) ^ (1 / r - 1) * ∫⁻ x in E, ‖v x‖ₑ ∂μ := by ring
+    _ ≤ weakNormPrime μ r u + weakNormPrime μ r v :=
+        add_le_add (le_weakNormPrime μ r u hE h0 htop)
+          (le_weakNormPrime μ r v hE h0 htop)
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The `K`-functional on the genuine norm
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  With the candidate norm in hand the `K`-functional can be built
+on a Banach couple rather than a quasi-normed one, and its estimate on a sum
+carries no constant.  That is what makes an aggregation over infinitely many
+pieces possible.
+-/
+
+/-- The candidate norm of the zero function vanishes. -/
+theorem weakNormPrime_zero {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r : ℝ) : weakNormPrime μ r (0 : X → ℝ) = 0 := by
+  refine le_antisymm (iSup_le ?_) (by simp)
+  rintro ⟨E, hE, h0, htop⟩
+  have hzero : ∫⁻ x in E, ‖(0 : X → ℝ) x‖ₑ ∂μ = 0 := by simp
+  rw [hzero, mul_zero]
+
+/-- The `K`-functional of the couple of candidate norms. -/
+def primeK {X : Type*} [MeasurableSpace X] (μ : Measure X) (r₁ r₂ t : ℝ)
+    (v : X → ℝ) : ℝ≥0∞ :=
+  ⨅ w : X → ℝ,
+    weakNormPrime μ r₁ (v - w) + ENNReal.ofReal t * weakNormPrime μ r₂ w
+
+/-- The `K`-functional is below the first endpoint norm. -/
+theorem primeK_le_left {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r₁ r₂ t : ℝ) (v : X → ℝ) :
+    primeK μ r₁ r₂ t v ≤ weakNormPrime μ r₁ v := by
+  refine le_trans (iInf_le _ (0 : X → ℝ)) (le_of_eq ?_)
+  rw [sub_zero, weakNormPrime_zero μ r₂, mul_zero, add_zero]
+
+/-- The `K`-functional is below `t` times the second endpoint norm. -/
+theorem primeK_le_right {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r₁ r₂ t : ℝ) (v : X → ℝ) :
+    primeK μ r₁ r₂ t v ≤ ENNReal.ofReal t * weakNormPrime μ r₂ v := by
+  refine le_trans (iInf_le _ v) (le_of_eq ?_)
+  rw [sub_self, weakNormPrime_zero μ r₁, zero_add]
+
+/-- **The `K`-functional of a sum, with no constant.** -/
+theorem primeK_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r₁ r₂ t : ℝ) {v₁ v₂ w₁ w₂ : X → ℝ} (hv₁ : Measurable v₁)
+    (hw₁ : Measurable w₁) :
+    primeK μ r₁ r₂ t (v₁ + v₂)
+      ≤ (weakNormPrime μ r₁ (v₁ - w₁) +
+            ENNReal.ofReal t * weakNormPrime μ r₂ w₁)
+        + (weakNormPrime μ r₁ (v₂ - w₂) +
+            ENNReal.ofReal t * weakNormPrime μ r₂ w₂) := by
+  refine le_trans (iInf_le _ (w₁ + w₂)) ?_
+  have h1 : (v₁ + v₂) - (w₁ + w₂) = (v₁ - w₁) + (v₂ - w₂) := by ring
+  rw [h1]
+  have hA : weakNormPrime μ r₁ ((v₁ - w₁) + (v₂ - w₂))
+      ≤ weakNormPrime μ r₁ (v₁ - w₁) + weakNormPrime μ r₁ (v₂ - w₂) :=
+    weakNormPrime_add_le μ r₁ (hv₁.sub hw₁)
+  have hB : weakNormPrime μ r₂ (w₁ + w₂)
+      ≤ weakNormPrime μ r₂ w₁ + weakNormPrime μ r₂ w₂ :=
+    weakNormPrime_add_le μ r₂ hw₁
+  calc weakNormPrime μ r₁ ((v₁ - w₁) + (v₂ - w₂))
+        + ENNReal.ofReal t * weakNormPrime μ r₂ (w₁ + w₂)
+      ≤ (weakNormPrime μ r₁ (v₁ - w₁) + weakNormPrime μ r₁ (v₂ - w₂))
+        + ENNReal.ofReal t *
+            (weakNormPrime μ r₂ w₁ + weakNormPrime μ r₂ w₂) :=
+        add_le_add hA (mul_le_mul' le_rfl hB)
+    _ = (weakNormPrime μ r₁ (v₁ - w₁) +
+            ENNReal.ofReal t * weakNormPrime μ r₂ w₁)
+        + (weakNormPrime μ r₁ (v₂ - w₂) +
+            ENNReal.ofReal t * weakNormPrime μ r₂ w₂) := by ring
+
+end
+end Twisted
+end Auto
+
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Aggregating finitely many pieces
+
+Source: `ext:interpolation`, and the prerequisite chain recorded in
+ErrorReport.md.  Because the candidate norm is genuinely subadditive, it is
+subadditive over a finite family with no constant, and so is the `K`-functional
+tested against a family of decompositions.  This is the shape the `J`-method
+estimate consumes.
+-/
+
+/-- **The candidate norm is subadditive over a finite family.** -/
+theorem weakNormPrime_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r : ℝ) {ι : Type*} [DecidableEq ι] (S : Finset ι) (f : ι → X → ℝ)
+    (hf : ∀ i, Measurable (f i)) :
+    weakNormPrime μ r (∑ i ∈ S, f i)
+      ≤ ∑ i ∈ S, weakNormPrime μ r (f i) := by
+  classical
+  induction S using Finset.induction with
+  | empty => simp [weakNormPrime_zero]
+  | insert i S hi ih =>
+      rw [Finset.sum_insert hi, Finset.sum_insert hi]
+      exact le_trans (weakNormPrime_add_le μ r (hf i)) (add_le_add le_rfl ih)
+
+/-- **The `K`-functional of a finite sum, tested against chosen
+decompositions.** -/
+theorem primeK_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (r₁ r₂ t : ℝ) {ι : Type*} [DecidableEq ι] (S : Finset ι)
+    (v w : ι → X → ℝ) (hv : ∀ i, Measurable (v i))
+    (hw : ∀ i, Measurable (w i)) :
+    primeK μ r₁ r₂ t (∑ i ∈ S, v i)
+      ≤ ∑ i ∈ S, (weakNormPrime μ r₁ (v i - w i)
+          + ENNReal.ofReal t * weakNormPrime μ r₂ (w i)) := by
+  refine le_trans (iInf_le _ (∑ i ∈ S, w i)) ?_
+  have hdiff : (∑ i ∈ S, v i) - (∑ i ∈ S, w i) = ∑ i ∈ S, (v i - w i) :=
+    (Finset.sum_sub_distrib v w).symm
+  rw [hdiff]
+  calc weakNormPrime μ r₁ (∑ i ∈ S, (v i - w i))
+        + ENNReal.ofReal t * weakNormPrime μ r₂ (∑ i ∈ S, w i)
+      ≤ (∑ i ∈ S, weakNormPrime μ r₁ (v i - w i))
+        + ENNReal.ofReal t * ∑ i ∈ S, weakNormPrime μ r₂ (w i) :=
+        add_le_add
+          (weakNormPrime_sum_le μ r₁ S _ (fun i ↦ (hv i).sub (hw i)))
+          (mul_le_mul' le_rfl (weakNormPrime_sum_le μ r₂ S w hw))
+    _ = ∑ i ∈ S, (weakNormPrime μ r₁ (v i - w i)
+          + ENNReal.ofReal t * weakNormPrime μ r₂ (w i)) := by
+        rw [Finset.mul_sum, ← Finset.sum_add_distrib]
 
 end
 end Twisted
