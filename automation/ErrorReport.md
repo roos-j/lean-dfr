@@ -34,3 +34,21 @@ conclusion* — here `∫⁻ .* ofReal .* ≤` together with `ae_tendsto` — ra
 for the name of the technique or the label of the source.  Technique names are
 the least reliable index into this file, since the prose describes what the
 source does, not which theorem is being invoked.
+
+## Missing prerequisite: Young's inequality for convolution
+
+Neither Mathlib nor the pinned `lean_spherical` provides any `L^p` bound for a
+convolution.  Searches for `eLpNorm_convolution`, convolution Young
+inequalities, and Minkowski's integral inequality all come back empty;
+Mathlib's `MeanInequalities` has Minkowski only for sums of two functions, not
+the integral form.
+
+This matters because the approximation step of `lem:one_fiber` needs the
+Schwartz approximants' `L^q` norms controlled uniformly, and the approximants
+are built by mollification.  The needed statement is the contraction case
+only — convolution against a nonnegative kernel of unit mass does not increase
+an `L^q` norm, `q ≥ 1` — which follows from Hoelder applied to the splitting
+`φ = φ^{1/q'} · φ^{1/q}` followed by Tonelli and translation invariance.  It is
+being formalized under these instructions as an unexpectedly needed
+prerequisite rather than treated as missing source material, since the
+manuscript legitimately treats it as background.
