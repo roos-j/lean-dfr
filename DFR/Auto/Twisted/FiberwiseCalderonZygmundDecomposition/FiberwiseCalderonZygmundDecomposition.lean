@@ -76,11 +76,7 @@ theorem lem_interval_tails
 
 /-- **`lem:one_fiber`** (One-fiber weak extension), equation `eq:one_fiber`.
 
-`‖U(f_1,f_2,f_3)‖_{R,∞} ≤ C U(u)^{100} ‖f_m‖_p ∏_{j≠m} ‖f_j‖_{P_j}`.
-
-The Lean statement carries two hypotheses the source does not: the inputs are
-pointwise bounded, and the distinguished input is integrable on each
-finite-mass fiber.  See `automation/Status.md`. -/
+`‖U(f_1,f_2,f_3)‖_{R,∞} ≤ C U(u)^{100} ‖f_m‖_p ∏_{j≠m} ‖f_j‖_{P_j}`. -/
 theorem lem_one_fiber
     (α : Anisotropy) (q : Fin 4 → ℝ)
     (hq : ∀ j : Fin 4, 0 < q j)
@@ -94,22 +90,18 @@ theorem lem_one_fiber
     (hR : 1 ≤ R) (hP₁ : 1 < P₁) (hP₂ : 1 < P₂)
     (hpq : qc.HolderConjugate p) (hqc : 1 < qc) :
     ∃ C₁ : ℝ, 0 < C₁ ∧
-      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput) (Bd : Fin 3 → ℝ)
+      ∀ (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
         (a b : ℝ) (N : Fin 3 → ℝ),
       (∀ F : Fin 3 → ℝ, (∏ j ∈ Finset.univ.erase m, F j) = F j₁ * F j₂) →
       (∀ j, 0 < N j) →
       0 < a → Measurable c → (∀ t : ℝ, |c t| ≤ 1) →
-      (∀ jj, Measurable (f jj)) → (∀ jj, 0 ≤ Bd jj) →
-      (∀ jj, ∀ y : E3, |f jj y| ≤ Bd jj) →
+      (∀ jj, Measurable (f jj)) →
       (∀ jj, MemLp (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) →
       1 ≤ p → p ≤ q m.succ →
       Integrable (fun x : E3 ↦ |f m x| ^ p) (volume : Measure E3) →
       (∫ x : E3, |f m x| ^ p) ≤ (N m) ^ p →
       (∀ jj, jj ≠ m →
         lpNorm (f jj) (ENNReal.ofReal (q jj.succ)) (volume : Measure E3) ≤ N jj) →
-      (∀ z : TransverseSpace m,
-        z ∈ coordinateSourceFiberFiniteMassSet m (f m) p → Integrable
-          (fun y : ℝ ↦ coordinateFiberInput m (f m) (y, z))) →
       eLpNorm (fun y ↦ (f j₁ y : ℂ)) (ENNReal.ofReal P₁) (volume : Measure E3)
         ≤ ENNReal.ofReal (N j₁) →
       eLpNorm (fun y ↦ (f j₂ y : ℂ)) (ENNReal.ofReal P₂) (volume : Measure E3)
@@ -119,7 +111,8 @@ theorem lem_one_fiber
         ≤ ENNReal.ofReal (∏ j : Fin 3, N j) *
             ENNReal.ofReal ((4 + 2 * 2 ^ ((q 0).conjExponent / R - 1) + 2 * 1) *
               (C₁ * sourceWeight u ^ 100)) :=
-  ModelTruncatedOperator_weakNorm_le_one_fiber_explicit (r23 := r23) α q hq hsum hqs hq1 hq0 m j₁ j₂ hR hP₁ hP₂ hpq hqc
+  ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded (r23 := r23) α q hq hsum
+    hqs hq1 hq0 m j₁ j₂ hR hP₁ hP₂ hpq hqc
 
 /-- **`lem:exponent_simplex`** (Exponent simplex).
 

@@ -2111,3 +2111,94 @@ only require local integrability on the selecting interval, which Hoelder gives 
 finite `p`-mass on a bounded interval.  Removing it would mean localizing that
 hypothesis inside the atom construction, which is a deeper refactor than the
 boundedness removal.
+
+## 2026-09-13T15:35-0700 — the scale-uniform convolution bound and the line restrictions
+
+`aux_memLp_bracketKernelAt`: the bracket profile at a fixed positive scale lies in
+every `L^q`, `q ≥ 1` (bounded by `b⁻¹` and integrable, via
+`aux_memLp_of_le_one_of_integrable`).
+
+`exists_uniform_scale_bound_ModelCoordinateConvolution`: for `a ≤ s ≤ b` with
+`0 < a`,
+`|ModelCoordinateConvolution j f (activeModelKernel i j u) s x|
+  ≤ C U(u)^{10} (b/a) ∫ |f(x - r e_j)| bracketKernelAt b 0 r dr`,
+the right side independent of `s`.  That is the dominating function the scale
+integral needs.
+
+`ae_memLp_line_of_memLp`: for an `L^P` input and almost every `x`, the restriction
+`r ↦ f(x - r e_j)` is in `L^P(ℝ)`.  Three small steps: sliding along `e_j` only
+shifts the active coordinate (`aux_coordinateSplit_sub_smul`), so the line
+restriction is a fiber of `coordinateFiberInput` read backwards
+(`aux_line_eq_coordinateFiberInput`); a full-measure transverse set pulls back to a
+full-measure ambient set through the measure-preserving split
+(`aux_ae_coordinateSplit_snd_mem`); and the fibers of an `L^P` input carry finite
+mass almost everywhere (previous tick).
+
+What remains is mechanical: Hoelder turns the line restriction and the bracket
+profile into the integrability hypothesis that
+`exists_uniform_scale_bound_ModelCoordinateConvolution` asks for, the three slot
+bounds multiply to a constant dominating function on the finite scale measure, and
+the resulting dominated convergence replaces the uniform-bound hypothesis in
+`ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all`.
+
+## 2026-09-13T16:15-0700 — Hoelder pairing and the slot-bound integrand estimate
+
+`ae_integrable_line_mul_bracketKernelAt`: for an `L^P` input with `P > 1` and almost
+every `x`, the line restriction pairs integrably with the bracket profile.  Hoelder
+against `aux_memLp_bracketKernelAt` at the conjugate exponent.
+
+`aux_integrable_line_mul_kernelDilate_of_bracket`: that pairing dominates the actual
+model kernel at every scale in `[a, b]`, which is exactly the majorant hypothesis of
+`tendsto_ModelCoordinateConvolution_of_ae_line_dominated`.
+
+`abs_modelTruncatedOperatorIntegrand_le_of_slot_bounds`: the scale integrand is
+bounded by the product of any three per-slot convolution bounds.  Stated against
+supplied bounds rather than derived ones, so the scale-uniform bound of the previous
+tick plugs straight in and the result is a constant in `t`.
+
+Remaining for the boundedness-free `lem:one_fiber`: assemble these into
+`ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all` without the uniform sup
+hypothesis, then re-run the `approxOn` argument on the weak-norm conclusion.
+
+## 2026-09-13T16:55-0700 — the sup-free convergence lemma
+
+`tendsto_ModelTruncatedOperator_of_ae_line_all_dominated` and its almost-everywhere
+form `ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all_dominated` replace the
+uniform sup hypothesis of `ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all` by
+pointwise domination `|g_n j| ≤ 2|f_j|` together with `f_j ∈ L^{P_j}`, `P_j > 1`.
+
+The majorant is assembled exactly as planned: for `t ∈ Ioc a b` the scale
+`t^{α_j}` lies in `[a^{α_j}, b^{α_j}]`, the bracket profile at `b^{α_j}` dominates the
+model kernel there, Hoelder against the line restriction bounds each slot's
+convolution by a constant in `t`, and the product of the three bounds the scale
+integrand.  Dominated convergence in `t` then runs on the finite logarithmic scale
+measure.
+
+What remains is the instantiation: run `SimpleFunc.approxOn` on all three slots,
+check the hypotheses of `ModelTruncatedOperator_weakNorm_le_one_fiber_explicit` for
+each approximant (the norms cost a factor two per slot, so the constant grows by
+`2^3`), and transfer the weak bound to the limit with `weakNorm_le_of_ae_tendsto`.
+
+## 2026-09-13T17:40-0700 — `lem:one_fiber` closed; every labelled item is now proved
+
+`exists_simpleFunc_approx_of_memLp` packages the `SimpleFunc.approxOn`
+approximants of one slot: finite-measure support, `|s_n| ≤ 2|f|`, pointwise
+convergence, `L^P` membership, and `‖s_n‖_P ≤ 2‖f‖_P`.
+
+`ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded` applies that in all three
+slots.  Each approximant satisfies every hypothesis of the bounded estimate — it is
+bounded because it is simple, its `p`-mass is dominated because `|s_n| ≤ 2|f|`, and
+its fibers are integrable because a simple function of finite-measure support has
+integrable fibers on its finite-mass set — at the cost of doubling each input norm,
+so the constant grows by `2^3`.  The weak bound then passes to the almost-everywhere
+limit through `ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all_dominated` and
+`weakNorm_le_of_ae_tendsto`.  Both the boundedness hypothesis and the
+fiber-integrability hypothesis are gone; the statement is now the manuscript's.
+
+`automation/Status.md` has no `Statement completed` entries left.  Every labelled
+definition is `Completed` and every labelled theorem is `Proof completed` or
+`External`, the two external ones being `ext:maximal` (Mathlib's
+Hardy--Littlewood theory) and `ext:interpolation` (the four-vertex Marcinkiewicz
+hypothesis the manuscript quotes without proof).  `Auto.Twisted.thm_main`,
+`Auto.Twisted.thm_cone` and `Auto.Twisted.lem_one_fiber` all audit to
+`propext, Classical.choice, Quot.sound`.

@@ -122,7 +122,7 @@ Lean file: DFR/Auto/Twisted/FiberwiseCalderonZygmundDecomposition/FiberwiseCalde
 \label{lem:fiber_kernel}: Proof completed (Lean: Auto.abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal) (2026-09-12T14:22-0700)
 \label{lem:fiber_cz}: Proof completed (Lean: Auto.lintegral_prod_rpow_fiberDyadicCountableGoodField_le) (2026-09-12T14:22-0700)
 \label{lem:interval_tails}: Proof completed (Lean: Auto.Twisted.lpNorm_finset_double_intervalTails_le_of_radius_sum, Auto.integral_finset_double_intervalTails_le_of_radius_sum) (2026-09-12T18:55-0700)
-\label{lem:one_fiber}: Statement completed (Lean: Auto.Twisted.ModelTruncatedOperator_weakNorm_le_one_fiber_explicit) (2026-09-13T06:35-0700)
+\label{lem:one_fiber}: Proof completed (Lean: Auto.Twisted.ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded) (2026-09-13T17:40-0700)
 \label{ext:interpolation}: External (Lean: Auto.Twisted.FourVertexMarcinkiewicz, Auto.Twisted.FourVertexMarcinkiewiczUniform) (2026-09-13T09:05-0700)
 \label{lem:exponent_simplex}: Proof completed (Lean: Auto.Twisted.affineIndependent_exponentSimplex_vertices) (2026-09-12T14:22-0700)
 \label{thm:extended_model}: Proof completed (Lean: Auto.Twisted.exists_abs_ModelFullForm_le_extended) (2026-09-13T13:20-0700)
@@ -134,11 +134,19 @@ norms are restored by rescaling.  The exponent conditions match the source
 (`R^{-1} = p^{-1} + Σ_{j≠m}P_j^{-1}`, `1 ≤ p ≤ P_m`, `1 ≤ R`), and the
 starting estimate is not assumed but derived from `thm:initial_model`.
 
-It is recorded as `Statement completed` rather than `Proof completed` because
-the Lean theorem carries two hypotheses the lemma does not: the inputs are
-pointwise bounded, and the distinguished input is integrable on each
-finite-mass fiber.  Removing the boundedness is the manuscript's
-Schwartz-approximation step, which is not yet formalised for this statement.
+`ModelTruncatedOperator_weakNorm_le_one_fiber_explicit` proves it for pointwise
+bounded inputs whose distinguished slot is integrable on each finite-mass fiber;
+`ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded` removes both hypotheses,
+which is the manuscript's approximation step.  Simple approximants
+(`SimpleFunc.approxOn`) are bounded, of finite-measure support, converge pointwise,
+and are dominated by twice the limit, so every side condition holds for them and
+each input norm costs a factor two; the weak bound then survives the
+almost-everywhere limit
+(`ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all_dominated`,
+`weakNorm_le_of_ae_tendsto`).  The dominated convergence there needs no uniform sup
+bound: on the compact scale range the bracket profile at the largest scale dominates
+every model kernel, and Hoelder against the input's line restriction — in `L^{P_j}`
+at almost every point — makes the majorant constant in the scale.
 
 `thm:extended_model` is the interpolation assembly, which consumes
 `ext:interpolation` as a hypothesis by design, the manuscript supplying no
