@@ -2202,3 +2202,183 @@ Hardy--Littlewood theory) and `ext:interpolation` (the four-vertex Marcinkiewicz
 hypothesis the manuscript quotes without proof).  `Auto.Twisted.thm_main`,
 `Auto.Twisted.thm_cone` and `Auto.Twisted.lem_one_fiber` all audit to
 `propext, Classical.choice, Quot.sound`.
+
+## 2026-09-13T18:30-0700 — new task: prove the two external theorems
+
+Survey first.  `ext:maximal` is not a hypothesis anywhere; it is cited as available
+Mathlib/`lean_spherical` machinery, so proving it means stating the blueprint's own
+wording and deriving it.  `ext:interpolation` is a genuine `Prop` hypothesis
+(`FourVertexMarcinkiewicz`, `FourVertexMarcinkiewiczUniform`) that `thm:main`
+depends on.
+
+Available: `lean_spherical` has the dyadic Hardy--Littlewood maximal theory
+(`Auto.HardyLittlewoodMaximal.dyadicBallMaximalRaw`, weak (1,1) and strong (p,p)),
+and this repo already wraps its one-dimensional strong bound as
+`eLpNorm_line_dyadicBallMaximal_le`.  Mathlib has Vitali/Besicovitch covering and
+`VitaliFamily.ae_tendsto_average_norm_sub`, i.e. Lebesgue differentiation.  Mathlib
+has *no* Marcinkiewicz or real interpolation in this snapshot; `lean_spherical` has
+Riesz--Thorin and Stein interpolation, both for the complex method with strong
+endpoints, so neither applies to the weak multilinear statement.
+
+First piece of `ext:maximal`: `lineMaximalRaw` is the blueprint's operator, the
+supremum over *all* positive radii.  `lineMaximalRaw_le_two_mul_dyadicBallMaximalRaw`
+compares it to the dyadic one — for `r > 0` take `n = Int.log 2 r + 1`, so
+`r < 2^n ≤ 2r`, giving a factor two — and `eLpNorm_lineMaximal_le` transfers the
+strong `(q,q)` bound.
+
+Remaining for `ext:maximal`: Lebesgue differentiation for locally integrable
+functions, the same along nested standard dyadic intervals, and the fiber versions
+(Fubini, for which `ae_memLp_line_of_memLp` and `aux_ae_coordinateSplit_snd_mem`
+are already in place).
+
+## 2026-09-13T19:20-0700 — `ext:maximal`: Lebesgue differentiation
+
+`ae_tendsto_setAverage_norm_sub` is the ball statement, for any metric measure
+space with the Besicovitch covering property: Mathlib's
+`VitaliFamily.ae_tendsto_average_norm_sub` on `Besicovitch.vitaliFamily`, composed
+with `Besicovitch.tendsto_filterAt` to convert the Vitali filter into `r → 0⁺`.
+It applies to `E3` and to the fiber line alike.
+
+`ae_tendsto_dyadic_average_norm_sub` is the dyadic statement on the line.
+`dyadicIntervalAt k x = (k, ⌊x / 2^k⌋)` is the standard dyadic interval of scale `k`
+containing `x`; it is contained in the closed ball of radius `2^k` about `x`, whose
+measure is exactly twice its own, so the dyadic average is at most twice the ball
+average and the ball limit squeezes it to zero.
+
+Remaining for `ext:maximal`: the fiber versions on `E3`, which are Fubini over the
+coordinate split — `ae_memLp_line_of_memLp` and `aux_ae_coordinateSplit_snd_mem`
+already carry that transfer.
+
+## 2026-09-13T20:05-0700 — `ext:maximal` proved
+
+The fiber statements are immediate once the one-dimensional ones are in place: a
+fiber of a function on `E_3` is a function on the line, so
+`ae_ae_tendsto_setAverage_norm_sub_fiber` and
+`ae_ae_tendsto_dyadic_average_norm_sub_fiber` are the line statements applied under
+the almost-everywhere fiber hypothesis.  The fiber maximal estimate was already in
+the repository as `coordinateDyadicBallMaximal_lintegral_bound`.
+
+Section 6's module now carries `ext:maximal` in five pieces —
+`ext_maximal_strong_type`, `ext_maximal_lebesgue_differentiation`,
+`ext_maximal_dyadic_differentiation`, `ext_maximal_fiber_strong_type`,
+`ext_maximal_fiber_differentiation` — all auditing to
+`propext, Classical.choice, Quot.sound`.  `automation/Status.md` records it as
+`Proof completed`.
+
+One external theorem remains: `ext:interpolation`.
+
+## 2026-09-13T21:05-0700 — `ext:interpolation`: the geometric core
+
+Multilinear Marcinkiewicz has to be built from scratch — Mathlib has no real
+interpolation in this snapshot, and `lean_spherical`'s Riesz--Thorin and Stein
+interpolation are the complex method with strong endpoints.  `lean_spherical` does
+have `marcinkiewicz_weak_one_top`, the sublinear weak-(1,1) plus `L^∞` case, which is
+a useful template for the distribution-function machinery but not the statement
+needed.
+
+The distinctive geometric input is that the interpolated exponent vector lies in the
+*interior* of the tetrahedron spanned by the four vertices, and that is what produces
+geometric decay when the three-parameter level sum is split across vertices.  Two
+lemmas, both verified:
+
+`eq_zero_of_forall_gapPairing_nonpos`: if a covector `w` pairs non-positively with
+every vertex measured from a strictly positive barycentre, then `w = 0`.  The
+weighted sum of the pairings is zero, so with positive weights each pairing is zero;
+the vertex differences are linearly independent and three of them live in a
+three-dimensional space, so they span, and a functional vanishing on a spanning set
+vanishes.
+
+`exists_gap_of_affineIndependent`: the quantitative form.  The maximum over the four
+vertices is continuous and positively homogeneous and, by the previous lemma,
+strictly positive off the origin, so its minimum `δ` over the (compact, nonempty)
+unit sphere is positive and `δ‖w‖ ≤ max_a ⟨w, v_a - x⟩` for every `w`.
+
+Next: the distribution-function layer of the proof — the layer-cake formula, the
+dyadic level decomposition of a simple function, and the estimate of each
+`T(f_1^{k_1}, f_2^{k_2}, f_3^{k_3})` against the four vertex bounds.
+
+## 2026-09-13T22:00-0700 — defect found in the recorded form of `ext:interpolation`
+
+Beginning the analytic layer of the interpolation proof exposed a defect in the
+definitions `FourVertexMarcinkiewicz` and `FourVertexMarcinkiewiczUniform`: they
+quantify over *every* operator `T : (Fin 3 → (X → ℝ)) → (X → ℝ)`, whereas the
+manuscript's `ext:interpolation` opens "Let `T` be a *trilinear* operator on complex
+simple functions of finite measure support".  The trilinearity hypothesis was
+dropped when the external theorem was recorded.
+
+This matters.  Marcinkiewicz interpolation is false without some linearity or
+sublinearity structure, and the standard proof uses trilinearity essentially, to
+split `T(f)` over the dyadic level decomposition of the three inputs.  As recorded,
+the hypothesis is strictly stronger than the manuscript's, so `thm:main` currently
+rests on an assumption the manuscript does not make and which may well be false.
+The fix is to add the trilinearity hypothesis to the definitions and supply it at
+the point of use.
+
+The supply side is now in place.  `ModelTruncatedOperator_replace_add_of_bounded`
+gives additivity in one slot for bounded measurable inputs — the line integrands are
+integrable because the inputs are bounded and the kernels integrable, and the scale
+integrand is integrable on `Ioc a b` because it is bounded and the logarithmic scale
+measure is finite there — and `ModelTruncatedOperator_replace_smul` gives
+homogeneity, unconditionally, from `ModelTruncatedOperator_rescale` at the vector
+`fun j ↦ if j = m then k else 1`.
+
+Next: add trilinearity to the two definitions, thread it through
+`exists_strong_bound_at_simplex_interior_uniform` and
+`exists_ModelTruncatedOperator_extended_strong_bound`, and discharge it at the model
+operator with the two lemmas above.
+
+## 2026-09-13T22:45-0700 — the trilinearity correction landed
+
+`TrilinearOnSimple μ T` now states additivity and homogeneity in each slot on simple
+functions of finite-measure support, and it is a hypothesis of both
+`FourVertexMarcinkiewicz` and `FourVertexMarcinkiewiczUniform`, as the manuscript
+states.  The change was threaded through `fourVertexMarcinkiewicz_zero`,
+`strong_bound_of_fourVertexMarcinkiewicz`, `exists_strong_bound_at_simplex_interior`,
+`fourVertexMarcinkiewicz_of_uniform` and
+`exists_strong_bound_at_simplex_interior_uniform`, and discharged at the point of use
+by `trilinearOnSimple_ModelTruncatedOperator`.
+
+`Auto.Twisted.thm_main` is unchanged in statement and still audits to
+`propext, Classical.choice, Quot.sound`; its proof now also verifies that the model
+truncated operator is trilinear, which the manuscript takes for granted.  The whole
+file compiles with no `sorry`, and all eight section modules rebuild.
+
+The external hypothesis is now the manuscript's, so proving it is proving the right
+theorem.
+
+## 2026-09-13T23:25-0700 — `ext:interpolation`: the dyadic level decomposition
+
+`dyadicLevelSet f k = {x | 2^k ≤ |f x| < 2^{k+1}}` and
+`dyadicLevelPiece f k = f · 1_{dyadicLevelSet f k}`, with measurability, pairwise
+disjointness of distinct bands, and the pointwise bound `|piece| ≤ 2^{k+1}`.
+
+For a simple function the relevant bands are indexed by
+`dyadicLevelIndices f = (f.range.filter (· ≠ 0)).image (fun v ↦ Int.log 2 |v|)`,
+a finite set, and `sum_dyadicLevelPiece` shows the pieces over that set reconstruct
+`f` pointwise: at a point where `f` vanishes every piece vanishes, and elsewhere the
+point lies in exactly the band `Int.log 2 |f x|`, which is one of the indices.
+
+The two quantitative inputs the vertex estimates need are
+`measure_dyadicLevelSet_le` — `(2^k)^q μ(band) ≤ ∫⁻ ‖f‖ₑ^q`, so bands of high index
+are small — and `eLpNorm_dyadicLevelPiece_le` —
+`‖piece‖_q ≤ 2^{k+1} μ(band)^{1/q}`, which is what turns a vertex weak bound into a
+bound in terms of band measures alone.
+
+## 2026-09-13T23:55-0700 — `ext:interpolation`: the trilinear expansion
+
+`trilinearOnSimple_update_zero` — a trilinear operator vanishes when a slot is zero
+(homogeneity at the scalar zero) — and `trilinearOnSimple_sum_slot` — one slot
+expands over any finite decomposition into simple functions, by induction on the
+`Finset` with additivity at each step and the zero case as base.  The tail of the
+induction is handled as a single simple function `∑ b ∈ s, g b`, whose
+finite-measure support comes from `simpleFunc_finMeasSupp_sum` and whose coercion is
+`simpleFunc_coe_sum`.
+
+`dyadicLevelPieceSimple f k = f.restrict (dyadicLevelSet f k)` realises a level piece
+as a simple function; its support is contained in that of `f`, so it inherits
+finite-measure support.  `trilinearOnSimple_sum_levels` then expands one slot over
+its own dyadic bands.
+
+Applying that in all three slots gives the three-parameter expansion the vertex
+bounds are applied to; that iteration, and then the summation where the interior gap
+supplies geometric decay, is what remains.

@@ -72740,6 +72740,20 @@ the one external input to `thm:main` is localized and everything downstream of
 it stays machine checked.
 -/
 
+/-- **Trilinearity on simple functions of finite-measure support.**
+
+This is the hypothesis `ext:interpolation` opens with: `T` is a trilinear
+operator on simple functions of finite measure support. -/
+def TrilinearOnSimple {X : Type*} [MeasurableSpace X] (μ : Measure X)
+    (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) : Prop :=
+  ∀ (j : Fin 3) (f : Fin 3 → SimpleFunc X ℝ) (g h : SimpleFunc X ℝ) (k : ℝ),
+    (∀ i, (f i).FinMeasSupp μ) → g.FinMeasSupp μ → h.FinMeasSupp μ →
+    T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j (⇑g + ⇑h))
+        = T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑g)
+          + T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑h) ∧
+      T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j (k • ⇑g))
+        = k • T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑g)
+
 /-- **`ext:interpolation` as a hypothesis.**  A trilinear operator on simple
 functions of finite measure support, with weak bounds at four affinely
 independent input reciprocal vectors, satisfies the strong bound at every
@@ -72750,6 +72764,8 @@ def FourVertexMarcinkiewicz
     (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) : Prop :=
   ∀ (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (A : Fin 4 → ℝ)
     (ϑ : Fin 4 → ℝ) (p : Fin 3 → ℝ) (R : ℝ),
+    -- the operator is trilinear on the class the theorem is stated for
+    TrilinearOnSimple μ T →
     -- the four endpoint exponent vectors and their output exponents
     (∀ a j, 1 < P a j) →
     (∀ a, 1 ≤ r a) →
@@ -72782,7 +72798,7 @@ as intended. -/
 theorem fourVertexMarcinkiewicz_zero
     {X : Type*} [MeasurableSpace X] (μ : Measure X) :
     FourVertexMarcinkiewicz μ (fun _ ↦ (0 : X → ℝ)) := by
-  intro P r A ϑ p R _ _ _ _ _ _ _ _ _ _ _
+  intro P r A ϑ p R _ _ _ _ _ _ _ _ _ _ _ _
   refine ⟨0, le_rfl, fun f _ ↦ ?_⟩
   simp
 
@@ -72791,6 +72807,7 @@ produces the interior constant and the strong bound. -/
 theorem strong_bound_of_fourVertexMarcinkiewicz
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
     {T : (Fin 3 → (X → ℝ)) → (X → ℝ)} (hT : FourVertexMarcinkiewicz μ T)
+    (hlin : TrilinearOnSimple μ T)
     (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (A : Fin 4 → ℝ)
     (ϑ : Fin 4 → ℝ) (p : Fin 3 → ℝ) (R : ℝ)
     (hP : ∀ a j, 1 < P a j) (hr : ∀ a, 1 ≤ r a)
@@ -72809,7 +72826,7 @@ theorem strong_bound_of_fourVertexMarcinkiewicz
       lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
         ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
             ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ :=
-  hT P r A ϑ p R hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
+  hT P r A ϑ p R hlin hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
 
 
 
@@ -81129,6 +81146,7 @@ four simplex vertices give the strong bound at the interior target. -/
 theorem exists_strong_bound_at_simplex_interior
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
     {T : (Fin 3 → (X → ℝ)) → (X → ℝ)} (hT : FourVertexMarcinkiewicz μ T)
+    (hlin : TrilinearOnSimple μ T)
     (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ)
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
@@ -81151,7 +81169,7 @@ theorem exists_strong_bound_at_simplex_interior
       lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
         ≤ C * (∏ a : Fin 4, A a ^ simplexWeight β b β₀ b₀ a) *
             ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ := by
-  refine strong_bound_of_fourVertexMarcinkiewicz hT
+  refine strong_bound_of_fourVertexMarcinkiewicz hT hlin
     (simplexVertexExponent b b₀) (simplexVertexOutput b b₀) A
     (simplexWeight β b β₀ b₀) p R
     (fun a j ↦ one_lt_simplexVertexExponent hb hb₀ hbsum a j)
@@ -93647,6 +93665,105 @@ open scoped BigOperators ENNReal Topology
 
 noncomputable section
 
+/-! ## The model truncated operator is trilinear
+
+Source: `ext:interpolation`, which is stated for a *trilinear* operator.  The
+model truncated operator is trilinear on bounded measurable inputs: each slot
+enters through its own convolution, which is linear, and the scale integral is
+linear once the integrands are integrable, which boundedness supplies.
+-/
+
+/-- **Additivity in one slot, for bounded measurable inputs.** -/
+theorem ModelTruncatedOperator_replace_add_of_bounded
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (g h : E3 → ℝ) (a b : ℝ) (x : E3)
+    (ha : 0 < a) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
+    (hf : ∀ j, Measurable (f j)) (Bf : Fin 3 → ℝ) (hBf0 : ∀ j, 0 ≤ Bf j)
+    (hfB : ∀ j, ∀ y : E3, |f j y| ≤ Bf j)
+    (hg : Measurable g) (Bg : ℝ) (hBg0 : 0 ≤ Bg) (hgB : ∀ y, |g y| ≤ Bg)
+    (hh : Measurable h) (Bh : ℝ) (hBh0 : 0 ≤ Bh) (hhB : ∀ y, |h y| ≤ Bh) :
+    ModelTruncatedOperator α u c (modelOperatorReplace f m (g + h)) a b x =
+      ModelTruncatedOperator α u c (modelOperatorReplace f m g) a b x +
+        ModelTruncatedOperator α u c (modelOperatorReplace f m h) a b x := by
+  classical
+  have hline : ∀ (w : E3 → ℝ) (Bw : ℝ), Measurable w → (∀ y, |w y| ≤ Bw) →
+      ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
+        w (x - r • Anisotropy.coordinateDirection m) *
+          kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
+    intro w Bw hw hwB t ht
+    exact integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
+      m w (activeModelKernel 2 m u) (t ^ α.weight m) x hw Bw hwB
+      (integrable_activeModelKernel 2 m u) (pow_pos (lt_trans ha ht.1) _)
+  have hrepmeas : ∀ (w : E3 → ℝ), Measurable w →
+      ∀ j, Measurable (modelOperatorReplace f m w j) := by
+    intro w hw j
+    simp only [modelOperatorReplace]
+    by_cases hj : j = m
+    · simp only [hj]; exact hw
+    · simp only [if_neg hj]; exact hf j
+  have hrepB : ∀ (w : E3 → ℝ) (Bw : ℝ), (∀ y, |w y| ≤ Bw) →
+      ∀ j, ∀ y : E3, |modelOperatorReplace f m w j y|
+        ≤ (fun i ↦ if i = m then Bw else Bf i) j := by
+    intro w Bw hwB j y
+    simp only [modelOperatorReplace]
+    by_cases hj : j = m
+    · simp only [hj]; exact hwB y
+    · simp only [if_neg hj]; exact hfB j y
+  have hrepB0 : ∀ (Bw : ℝ), 0 ≤ Bw →
+      ∀ j, 0 ≤ (fun i ↦ if i = m then Bw else Bf i) j := by
+    intro Bw hBw j
+    by_cases hj : j = m
+    · simp only [hj]; exact hBw
+    · simp only [if_neg hj]; exact hBf0 j
+  have hint : ∀ (w : E3 → ℝ) (Bw : ℝ), Measurable w → 0 ≤ Bw →
+      (∀ y, |w y| ≤ Bw) →
+      IntegrableOn (fun t : ℝ ↦
+        modelTruncatedOperatorIntegrand α u c
+          (modelOperatorReplace f m w) t x) (Set.Ioc a b)
+        ((volume : Measure ℝ).withDensity cubeScaleDensity) := by
+    intro w Bw hw hBw hwB
+    exact integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
+      α u c (modelOperatorReplace f m w) a b 1
+      (fun i ↦ if i = m then Bw else Bf i) x ha zero_le_one hcm hc
+      (hrepmeas w hw) (hrepB0 Bw hBw) (hrepB w Bw hwB)
+  exact ModelTruncatedOperator_replace_add_on_scaleInterval α u c f m g h a b x
+    (hline g Bg hg hgB) (hline h Bh hh hhB)
+    (hint g Bg hg hBg0 hgB) (hint h Bh hh hBh0 hhB)
+
+/-- **Homogeneity in one slot.** -/
+theorem ModelTruncatedOperator_replace_smul
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
+    (m : Fin 3) (k : ℝ) (g : E3 → ℝ) (a b : ℝ) (x : E3) :
+    ModelTruncatedOperator α u c (modelOperatorReplace f m (k • g)) a b x =
+      k * ModelTruncatedOperator α u c (modelOperatorReplace f m g) a b x := by
+  classical
+  set kvec : Fin 3 → ℝ := fun j ↦ if j = m then k else 1 with hkvec
+  have hfun : modelOperatorRealRescale kvec (modelOperatorReplace f m g)
+      = modelOperatorReplace f m (k • g) := by
+    funext j
+    unfold modelOperatorRealRescale modelOperatorReplace
+    by_cases hj : j = m
+    · subst hj
+      simp [hkvec]
+    · simp only [hkvec, if_neg hj, one_smul]
+  have hprod : (∏ j : Fin 3, kvec j) = k := by
+    rw [hkvec]
+    rw [Finset.prod_ite_eq' Finset.univ m (fun _ ↦ k)]
+    simp
+  rw [← hfun, ModelTruncatedOperator_rescale, hprod]
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
 /-! ## `ext:interpolation` with the constant uniform in the operator
 
 Source: `ext:interpolation`, which supplies an interpolation constant
@@ -93680,6 +93797,7 @@ def FourVertexMarcinkiewiczUniform
     ∃ C : ℝ, 0 ≤ C ∧
       ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
       ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
+      TrilinearOnSimple μ T →
       (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
         (∀ j, (f j).FinMeasSupp μ) →
         weakNorm μ (T (fun j ↦ ⇑(f j))) (r a)
@@ -93697,10 +93815,10 @@ theorem fourVertexMarcinkiewicz_of_uniform
     (hU : FourVertexMarcinkiewiczUniform μ)
     (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) :
     FourVertexMarcinkiewicz μ T := by
-  intro P r A ϑ p R hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
+  intro P r A ϑ p R hlin hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
   obtain ⟨C, hC0, hmain⟩ :=
     hU P r ϑ p R hP hr hrsum hindep hϑpos hϑsum hp hR hR1
-  exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hweak f hf).2⟩
+  exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hlin hweak f hf).2⟩
 
 /-- **The interior strong bound, with the constant uniform in the operator.**
 
@@ -93721,6 +93839,7 @@ theorem exists_strong_bound_at_simplex_interior_uniform
     (hR1 : 1 < R) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
       ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
+      TrilinearOnSimple μ T →
       (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
         (∀ j, (f j).FinMeasSupp μ) →
         weakNorm μ (T (fun j ↦ ⇑(f j))) (simplexVertexOutput b b₀ a)
@@ -93755,6 +93874,46 @@ weights `eq:weights` converts them into the strong bound at the target.  Every
 endpoint constant carries the factor `U(u)^{100}`, and since the weights sum to
 one the interpolated constant carries exactly one such factor.
 -/
+
+/-- `modelOperatorReplace` is `Function.update`.
+
+Auxiliary. -/
+theorem modelOperatorReplace_eq_update
+    (f : ModelOperatorRealInput) (m : Fin 3) (g : E3 → ℝ) :
+    modelOperatorReplace f m g = Function.update f m g := by
+  funext j
+  unfold modelOperatorReplace
+  by_cases hj : j = m
+  · subst hj; simp
+  · rw [if_neg hj, Function.update_of_ne hj]
+
+/-- **The model truncated operator is trilinear on simple inputs.**
+
+This is the hypothesis `ext:interpolation` is stated under. -/
+theorem trilinearOnSimple_ModelTruncatedOperator
+    (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (aa bb : ℝ)
+    (haa : 0 < aa) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1) :
+    TrilinearOnSimple (volume : Measure E3)
+      (fun g ↦ ModelTruncatedOperator α u c g aa bb) := by
+  classical
+  intro j f g h k _ _ _
+  choose Bf hBf0 hfB using fun i : Fin 3 ↦ aux_exists_bound_of_simpleFunc (f i)
+  obtain ⟨Bg, hBg0, hgB⟩ := aux_exists_bound_of_simpleFunc g
+  obtain ⟨Bh, hBh0, hhB⟩ := aux_exists_bound_of_simpleFunc h
+  constructor
+  · funext x
+    have hadd := ModelTruncatedOperator_replace_add_of_bounded α u c
+      (fun i ↦ (⇑(f i) : E3 → ℝ)) j (⇑g) (⇑h) aa bb x haa hcm hc
+      (fun i ↦ (f i).measurable) Bf hBf0 (fun i y ↦ hfB i y)
+      g.measurable Bg hBg0 hgB h.measurable Bh hBh0 hhB
+    rw [modelOperatorReplace_eq_update, modelOperatorReplace_eq_update,
+      modelOperatorReplace_eq_update] at hadd
+    exact hadd
+  · funext x
+    have hsmul := ModelTruncatedOperator_replace_smul α u c
+      (fun i ↦ (⇑(f i) : E3 → ℝ)) j k (⇑g) aa bb x
+    rw [modelOperatorReplace_eq_update, modelOperatorReplace_eq_update] at hsmul
+    simpa using hsmul
 
 /-- **`eq:extended_operator_bound`.**
 
@@ -93847,7 +94006,8 @@ theorem exists_ModelTruncatedOperator_extended_strong_bound
       exact hKmain m u c aa bb f' hf' haa hcm hc
   have hkey := hinterp (fun a ↦ KK a * sourceWeight u ^ 100)
     (fun a ↦ mul_nonneg (hKK0 a) hw0.le)
-    (fun g ↦ ModelTruncatedOperator α u c g aa bb) hend f hfs
+    (fun g ↦ ModelTruncatedOperator α u c g aa bb)
+    (trilinearOnSimple_ModelTruncatedOperator α u c aa bb haa hcm hc) hend f hfs
   have hprod : (∏ a : Fin 4,
         (KK a * sourceWeight u ^ 100) ^ simplexWeight β b β₀ b₀ a)
       = (∏ a : Fin 4, KK a ^ simplexWeight β b β₀ b₀ a)
@@ -96049,6 +96209,958 @@ theorem ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded
   exact ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all_dominated α u c a b G f
     ha hab hcm hc hGmeas hfmeas hGdom (P := fun jj ↦ q jj.succ) hPgt hfmem
     (fun jj ↦ Filter.Eventually.of_forall (fun y ↦ hsqtend jj y))
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open Auto.HardyLittlewoodMaximal
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `ext:maximal`: the centered maximal function on the line
+
+Source: `ext:maximal`.  The blueprint's maximal operator takes the supremum
+over all positive radii; the development's `dyadicBallMaximal` takes it over
+dyadic radii.  Every radius is within a factor two of a dyadic one, so the two
+differ by at most a factor two and the strong `L^q` bound transfers.
+-/
+
+/-- The blueprint's centered maximal function on the line,
+`Mh(x) = sup_{r>0} (2r)^{-1} ∫_{x-r}^{x+r} |h|`, with values in `ℝ≥0∞`. -/
+def lineMaximalRaw (g : FiberDyadicLine → ℂ) (x : FiberDyadicLine) : ℝ≥0∞ :=
+  ⨆ r ∈ Set.Ioi (0 : ℝ), (volume (Metric.ball x r))⁻¹ *
+    ∫⁻ y in Metric.ball x r, ENNReal.ofReal ‖g y‖
+
+/-- The real-valued form of the blueprint's maximal function. -/
+def lineMaximal (g : FiberDyadicLine → ℂ) (x : FiberDyadicLine) : ℝ :=
+  (lineMaximalRaw g x).toReal
+
+/-- **Every radius is comparable to a dyadic one.** -/
+theorem lineMaximalRaw_le_two_mul_dyadicBallMaximalRaw
+    (g : FiberDyadicLine → ℂ) (x : FiberDyadicLine) :
+    lineMaximalRaw g x ≤ 2 * dyadicBallMaximalRaw 1 g x := by
+  classical
+  refine iSup₂_le fun r hr ↦ ?_
+  have hr0 : (0 : ℝ) < r := hr
+  set n : ℤ := Int.log 2 r + 1 with hn
+  have hrn : r < (2 : ℝ) ^ n := Int.lt_zpow_succ_log_self (by norm_num) r
+  have hnr : (2 : ℝ) ^ n ≤ 2 * r := by
+    have hlog := Int.zpow_log_le_self (b := 2) (R := ℝ) (by norm_num) hr0
+    rw [hn, zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0), zpow_one]
+    push_cast at hlog ⊢
+    linarith
+  have hnpos : (0 : ℝ) < (2 : ℝ) ^ n := zpow_pos (by norm_num) n
+  -- the two balls
+  have hsub : Metric.ball x r ⊆ Metric.ball x ((2 : ℝ) ^ n) :=
+    Metric.ball_subset_ball hrn.le
+  have hvol : volume (Metric.ball x ((2 : ℝ) ^ n)) ≤ 2 * volume (Metric.ball x r) := by
+    rw [Measure.addHaar_ball volume x hnpos.le,
+      Measure.addHaar_ball volume x hr0.le]
+    have hfr : Module.finrank ℝ FiberDyadicLine = 1 := by
+      simp [FiberDyadicLine]
+    rw [hfr, pow_one, pow_one, ← mul_assoc]
+    refine mul_le_mul' ?_ le_rfl
+    rw [show (2 : ℝ≥0∞) = ENNReal.ofReal 2 by simp,
+      ← ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
+    exact ENNReal.ofReal_le_ofReal hnr
+  -- the averages
+  have hinvle : (volume (Metric.ball x r))⁻¹
+      ≤ 2 * (volume (Metric.ball x ((2 : ℝ) ^ n)))⁻¹ := by
+    have hstep : (volume (Metric.ball x r))⁻¹
+        = 2 * (2 * volume (Metric.ball x r))⁻¹ := by
+      rw [ENNReal.mul_inv (by simp) (by simp), ← mul_assoc,
+        ENNReal.mul_inv_cancel (by simp) (by simp), one_mul]
+    rw [hstep]
+    exact mul_le_mul' le_rfl (ENNReal.inv_le_inv.mpr hvol)
+  calc (volume (Metric.ball x r))⁻¹ *
+        ∫⁻ y in Metric.ball x r, ENNReal.ofReal ‖g y‖
+      ≤ (volume (Metric.ball x r))⁻¹ *
+          ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖g y‖ :=
+        mul_le_mul' le_rfl (lintegral_mono_set hsub)
+    _ ≤ (2 * (volume (Metric.ball x ((2 : ℝ) ^ n)))⁻¹) *
+          ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖g y‖ :=
+        mul_le_mul' hinvle le_rfl
+    _ = 2 * ((volume (Metric.ball x ((2 : ℝ) ^ n)))⁻¹ *
+          ∫⁻ y in Metric.ball x ((2 : ℝ) ^ n), ENNReal.ofReal ‖g y‖) := by
+        rw [mul_assoc]
+    _ ≤ 2 * dyadicBallMaximalRaw 1 g x := by
+        refine mul_le_mul' le_rfl ?_
+        exact le_iSup (fun k : ℤ ↦ (volume (Metric.ball x ((2 : ℝ) ^ k)))⁻¹ *
+          ∫⁻ y in Metric.ball x ((2 : ℝ) ^ k), ENNReal.ofReal ‖g y‖) n
+
+/-- A bounded input has a bounded dyadic maximal function.
+
+Auxiliary. -/
+theorem dyadicBallMaximalRaw_le_of_bound
+    (g : FiberDyadicLine → ℂ) {a : ℝ} (_ha : 0 ≤ a) (hga : ∀ x, ‖g x‖ ≤ a)
+    (x : FiberDyadicLine) :
+    dyadicBallMaximalRaw 1 g x ≤ ENNReal.ofReal a := by
+  refine iSup_le fun k ↦ ?_
+  have hk : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+  have hpos : volume (Metric.ball x ((2 : ℝ) ^ k)) ≠ 0 :=
+    ne_of_gt (Metric.measure_ball_pos volume x hk)
+  have htop : volume (Metric.ball x ((2 : ℝ) ^ k)) ≠ ⊤ :=
+    ne_of_lt measure_ball_lt_top
+  have hle : (∫⁻ y in Metric.ball x ((2 : ℝ) ^ k), ENNReal.ofReal ‖g y‖)
+      ≤ ENNReal.ofReal a * volume (Metric.ball x ((2 : ℝ) ^ k)) := by
+    calc (∫⁻ y in Metric.ball x ((2 : ℝ) ^ k), ENNReal.ofReal ‖g y‖)
+        ≤ ∫⁻ _ in Metric.ball x ((2 : ℝ) ^ k), ENNReal.ofReal a :=
+          lintegral_mono fun y ↦ ENNReal.ofReal_le_ofReal (hga y)
+      _ = ENNReal.ofReal a * volume (Metric.ball x ((2 : ℝ) ^ k)) := by
+          rw [lintegral_const, Measure.restrict_apply_univ]
+  calc (volume (Metric.ball x ((2 : ℝ) ^ k)))⁻¹ *
+        ∫⁻ y in Metric.ball x ((2 : ℝ) ^ k), ENNReal.ofReal ‖g y‖
+      ≤ (volume (Metric.ball x ((2 : ℝ) ^ k)))⁻¹ *
+          (ENNReal.ofReal a * volume (Metric.ball x ((2 : ℝ) ^ k))) :=
+        mul_le_mul' le_rfl hle
+    _ = ENNReal.ofReal a := by
+        rw [mul_comm (ENNReal.ofReal a), ← mul_assoc,
+          ENNReal.inv_mul_cancel hpos htop, one_mul]
+
+/-- **`ext:maximal`, the strong `(q,q)` bound.**
+
+For `1 < q < ∞` there is `C_q` with `‖Mh‖_q ≤ C_q ‖h‖_q`, where `M` is the
+centered maximal operator over all positive radii. -/
+theorem eLpNorm_lineMaximal_le
+    (g : FiberDyadicLine → ℂ) (hg : Measurable g)
+    (hgb : ∃ a : ℝ, 0 ≤ a ∧ ∀ x, ‖g x‖ ≤ a)
+    {q : ℝ} (hq : 1 < q) :
+    eLpNorm (lineMaximal g) (ENNReal.ofReal q) volume ≤
+      2 * ((ENNReal.ofReal q *
+          (2 * ENNReal.ofReal 4 * (ENNReal.ofReal (q - 1))⁻¹ *
+            (ENNReal.ofReal (2 : ℝ)) ^ (q - 1))) ^ (1 / q) *
+        eLpNorm g (ENNReal.ofReal q) volume) := by
+  classical
+  obtain ⟨a, ha, hga⟩ := hgb
+  have hfin : ∀ x, dyadicBallMaximalRaw 1 g x ≠ ⊤ := fun x ↦
+    ne_of_lt (lt_of_le_of_lt (dyadicBallMaximalRaw_le_of_bound g ha hga x)
+      ENNReal.ofReal_lt_top)
+  have hptw : ∀ x, ‖lineMaximal g x‖ ≤ ‖2 * dyadicBallMaximal 1 g x‖ := by
+    intro x
+    have h1 : lineMaximalRaw g x ≤ 2 * dyadicBallMaximalRaw 1 g x :=
+      lineMaximalRaw_le_two_mul_dyadicBallMaximalRaw g x
+    have h2 : (2 : ℝ≥0∞) * dyadicBallMaximalRaw 1 g x ≠ ⊤ :=
+      ENNReal.mul_ne_top (by simp) (hfin x)
+    have h3 : (lineMaximalRaw g x).toReal
+        ≤ (2 * dyadicBallMaximalRaw 1 g x).toReal :=
+      ENNReal.toReal_mono h2 h1
+    rw [ENNReal.toReal_mul] at h3
+    have hnn : (0 : ℝ) ≤ (lineMaximalRaw g x).toReal := ENNReal.toReal_nonneg
+    have hnn2 : (0 : ℝ) ≤ 2 * (dyadicBallMaximalRaw 1 g x).toReal := by
+      have : (0 : ℝ) ≤ (dyadicBallMaximalRaw 1 g x).toReal := ENNReal.toReal_nonneg
+      linarith
+    unfold lineMaximal dyadicBallMaximal
+    rw [Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg hnn,
+      abs_of_nonneg (by simp)]
+    exact h3
+  have hmono : eLpNorm (lineMaximal g) (ENNReal.ofReal q) volume
+      ≤ eLpNorm (fun x ↦ 2 * dyadicBallMaximal 1 g x) (ENNReal.ofReal q) volume :=
+    eLpNorm_mono hptw
+  have hsmul : eLpNorm (fun x ↦ 2 * dyadicBallMaximal 1 g x)
+      (ENNReal.ofReal q) volume
+      = 2 * eLpNorm (dyadicBallMaximal 1 g) (ENNReal.ofReal q) volume := by
+    have hfun : (fun x ↦ (2 : ℝ) * dyadicBallMaximal 1 g x)
+        = (2 : ℝ) • (dyadicBallMaximal 1 g) := by
+      funext x; simp [Pi.smul_apply, smul_eq_mul]
+    rw [hfun, eLpNorm_const_smul]
+    congr 1
+    rw [← ofReal_norm, Real.norm_eq_abs]
+    norm_num
+  rw [hsmul] at hmono
+  refine hmono.trans ?_
+  exact mul_le_mul' le_rfl (eLpNorm_line_dyadicBallMaximal_le g hg ⟨a, ha, hga⟩ hq)
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open Auto.HardyLittlewoodMaximal
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `ext:maximal`: Lebesgue differentiation
+
+Source: `ext:maximal`, "Lebesgue differentiation holds for locally integrable
+functions, also along the nested standard dyadic intervals containing a point".
+The ball statement is Mathlib's Besicovitch--Vitali differentiation theorem; the
+dyadic statement follows because a dyadic interval containing `x` sits inside
+the ball of its own length about `x`, whose measure is twice as large.
+-/
+
+/-- **Lebesgue differentiation, centred balls.** -/
+theorem ae_tendsto_setAverage_norm_sub
+    {X : Type*} [MetricSpace X] [MeasurableSpace X] [BorelSpace X]
+    [SecondCountableTopology X] [HasBesicovitchCovering X]
+    {μ : Measure X} [IsLocallyFiniteMeasure μ] [SFinite μ]
+    {E : Type*} [NormedAddCommGroup E] (h : X → E) (hloc : LocallyIntegrable h μ) :
+    ∀ᵐ x ∂μ, Filter.Tendsto
+      (fun r : ℝ ↦ ⨍ y in Metric.closedBall x r, ‖h y - h x‖ ∂μ)
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 0) := by
+  filter_upwards [VitaliFamily.ae_tendsto_average_norm_sub
+    (Besicovitch.vitaliFamily μ) hloc] with x hx
+  exact hx.comp (Besicovitch.tendsto_filterAt μ x)
+
+/-- The standard dyadic interval of scale `k` containing `x`. -/
+def dyadicIntervalAt (k : ℤ) (x : ℝ) : FiberDyadicInterval :=
+  (k, ⌊x / (2 : ℝ) ^ k⌋)
+
+theorem mem_dyadicIntervalAt (k : ℤ) (x : ℝ) :
+    x ∈ fiberDyadicInterval (dyadicIntervalAt k x) := by
+  have hk : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+  constructor
+  · have := Int.floor_le (x / (2 : ℝ) ^ k)
+    calc ((⌊x / (2 : ℝ) ^ k⌋ : ℤ) : ℝ) * (2 : ℝ) ^ k
+        ≤ (x / (2 : ℝ) ^ k) * (2 : ℝ) ^ k :=
+          mul_le_mul_of_nonneg_right this hk.le
+      _ = x := by field_simp
+  · have := Int.lt_floor_add_one (x / (2 : ℝ) ^ k)
+    calc x = (x / (2 : ℝ) ^ k) * (2 : ℝ) ^ k := by field_simp
+      _ < (((⌊x / (2 : ℝ) ^ k⌋ : ℤ) : ℝ) + 1) * (2 : ℝ) ^ k :=
+          mul_lt_mul_of_pos_right this hk
+      _ = (((⌊x / (2 : ℝ) ^ k⌋ + 1 : ℤ) : ℝ)) * (2 : ℝ) ^ k := by push_cast; ring
+
+/-- A dyadic interval containing `x` sits in the ball of its own length. -/
+theorem dyadicIntervalAt_subset_closedBall (k : ℤ) (x : ℝ) :
+    fiberDyadicInterval (dyadicIntervalAt k x) ⊆
+      Metric.closedBall x ((2 : ℝ) ^ k) := by
+  intro y hy
+  have hx := mem_dyadicIntervalAt k x
+  have h1 : ((⌊x / (2 : ℝ) ^ k⌋ : ℤ) : ℝ) * (2 : ℝ) ^ k ≤ y := hy.1
+  have h2 : y < (((⌊x / (2 : ℝ) ^ k⌋ + 1 : ℤ) : ℝ)) * (2 : ℝ) ^ k := hy.2
+  have h3 : ((⌊x / (2 : ℝ) ^ k⌋ : ℤ) : ℝ) * (2 : ℝ) ^ k ≤ x := hx.1
+  have h4 : x < (((⌊x / (2 : ℝ) ^ k⌋ + 1 : ℤ) : ℝ)) * (2 : ℝ) ^ k := hx.2
+  have hexp : (((⌊x / (2 : ℝ) ^ k⌋ + 1 : ℤ) : ℝ)) * (2 : ℝ) ^ k
+      = ((⌊x / (2 : ℝ) ^ k⌋ : ℤ) : ℝ) * (2 : ℝ) ^ k + (2 : ℝ) ^ k := by
+    push_cast; ring
+  rw [hexp] at h2 h4
+  rw [Metric.mem_closedBall, Real.dist_eq, abs_le]
+  constructor <;> linarith
+
+/-- **Lebesgue differentiation along the standard dyadic intervals.** -/
+theorem ae_tendsto_dyadic_average_norm_sub
+    {E : Type*} [NormedAddCommGroup E] (h : ℝ → E)
+    (hloc : LocallyIntegrable h (volume : Measure ℝ)) :
+    ∀ᵐ x : ℝ, Filter.Tendsto
+      (fun n : ℕ ↦ ⨍ y in fiberDyadicInterval (dyadicIntervalAt (-(n : ℤ)) x),
+        ‖h y - h x‖)
+      Filter.atTop (𝓝 0) := by
+  filter_upwards [ae_tendsto_setAverage_norm_sub (μ := (volume : Measure ℝ)) h hloc]
+    with x hx
+  -- the radii tend to zero from the right
+  have hrad : Filter.Tendsto (fun n : ℕ ↦ (2 : ℝ) ^ (-(n : ℤ)))
+      Filter.atTop (nhdsWithin 0 (Set.Ioi (0 : ℝ))) := by
+    refine tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within _ ?_ ?_
+    · have hfun : (fun n : ℕ ↦ (2 : ℝ) ^ (-(n : ℤ)))
+          = fun n : ℕ ↦ ((2 : ℝ)⁻¹) ^ n := by
+        funext n
+        simp [zpow_neg, zpow_natCast, inv_pow]
+      rw [hfun]
+      exact tendsto_pow_atTop_nhds_zero_of_lt_one (by norm_num) (by norm_num)
+    · refine Filter.Eventually.of_forall fun n ↦ ?_
+      simp
+  have hball := hx.comp hrad
+  have hlim : Filter.Tendsto
+      (fun n : ℕ ↦ 2 * ⨍ y in Metric.closedBall x ((2 : ℝ) ^ (-(n : ℤ))),
+        ‖h y - h x‖) Filter.atTop (𝓝 0) := by
+    have := hball.const_mul (2 : ℝ)
+    simpa using this
+  refine squeeze_zero (fun n ↦ ?_) (fun n ↦ ?_) hlim
+  · rw [setAverage_eq, smul_eq_mul]
+    exact mul_nonneg (inv_nonneg.mpr ENNReal.toReal_nonneg)
+      (integral_nonneg fun y ↦ norm_nonneg _)
+  · -- the dyadic average is at most twice the ball average
+    set k : ℤ := -(n : ℤ) with hk
+    set I : Set ℝ := fiberDyadicInterval (dyadicIntervalAt k x) with hI
+    set B : Set ℝ := Metric.closedBall x ((2 : ℝ) ^ k) with hB
+    have hkpos : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) k
+    have hsub : I ⊆ B := dyadicIntervalAt_subset_closedBall k x
+    have hvolI : volume I = ENNReal.ofReal ((2 : ℝ) ^ k) := by
+      rw [hI]
+      unfold fiberDyadicInterval dyadicIntervalAt
+      rw [Real.volume_Ico]
+      congr 1
+      push_cast
+      ring
+    have hvolB : volume B = ENNReal.ofReal (2 * (2 : ℝ) ^ k) := by
+      rw [hB, Real.volume_closedBall]
+    have hintB : IntegrableOn (fun y ↦ ‖h y - h x‖) B (volume : Measure ℝ) := by
+      have hb : IntegrableOn h B (volume : Measure ℝ) :=
+        hloc.integrableOn_isCompact (isCompact_closedBall x _)
+      exact (hb.sub (integrableOn_const (by rw [hvolB]; exact ENNReal.ofReal_ne_top))).norm
+    have hintI : IntegrableOn (fun y ↦ ‖h y - h x‖) I (volume : Measure ℝ) :=
+      hintB.mono_set hsub
+    have hle : (∫ y in I, ‖h y - h x‖) ≤ ∫ y in B, ‖h y - h x‖ :=
+      setIntegral_mono_set hintB
+        (Filter.Eventually.of_forall fun y ↦ norm_nonneg _)
+        (LE.le.eventuallyLE hsub)
+    rw [setAverage_eq, setAverage_eq, measureReal_def, measureReal_def,
+      hvolI, hvolB,
+      ENNReal.toReal_ofReal hkpos.le, ENNReal.toReal_ofReal (by positivity),
+      smul_eq_mul, smul_eq_mul]
+    have hinv : ((2 : ℝ) ^ k)⁻¹ = 2 * (2 * (2 : ℝ) ^ k)⁻¹ := by
+      field_simp
+    rw [hinv, mul_assoc]
+    refine mul_le_mul_of_nonneg_left ?_ (by norm_num)
+    refine mul_le_mul_of_nonneg_left hle ?_
+    positivity
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open Auto.HardyLittlewoodMaximal
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## `ext:maximal`: the fiber statements
+
+Source: `ext:maximal`, "The corresponding fiber statements hold for functions on
+`E_3` whose fibers satisfy the respective hypotheses almost everywhere.  The
+fiber statements follow by Fubini."  The fibers of a function on `E_3` are
+functions on the line, so each one-dimensional statement applies to each fiber
+that satisfies its hypothesis.
+-/
+
+/-- **Lebesgue differentiation on almost every fiber, centred balls.** -/
+theorem ae_ae_tendsto_setAverage_norm_sub_fiber
+    (j : Fin 3) (f : E3 → ℝ)
+    (hloc : ∀ᵐ z : TransverseSpace j,
+      LocallyIntegrable (fun y : ℝ ↦ coordinateFiberInput j f (y, z))
+        (volume : Measure ℝ)) :
+    ∀ᵐ z : TransverseSpace j, ∀ᵐ y : ℝ, Filter.Tendsto
+      (fun r : ℝ ↦ ⨍ w in Metric.closedBall y r,
+        ‖coordinateFiberInput j f (w, z) - coordinateFiberInput j f (y, z)‖)
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 0) := by
+  filter_upwards [hloc] with z hz
+  exact ae_tendsto_setAverage_norm_sub
+    (fun y : ℝ ↦ coordinateFiberInput j f (y, z)) hz
+
+/-- **Lebesgue differentiation on almost every fiber, standard dyadic
+intervals.** -/
+theorem ae_ae_tendsto_dyadic_average_norm_sub_fiber
+    (j : Fin 3) (f : E3 → ℝ)
+    (hloc : ∀ᵐ z : TransverseSpace j,
+      LocallyIntegrable (fun y : ℝ ↦ coordinateFiberInput j f (y, z))
+        (volume : Measure ℝ)) :
+    ∀ᵐ z : TransverseSpace j, ∀ᵐ y : ℝ, Filter.Tendsto
+      (fun n : ℕ ↦ ⨍ w in fiberDyadicInterval (dyadicIntervalAt (-(n : ℤ)) y),
+        ‖coordinateFiberInput j f (w, z) - coordinateFiberInput j f (y, z)‖)
+      Filter.atTop (𝓝 0) := by
+  filter_upwards [hloc] with z hz
+  exact ae_tendsto_dyadic_average_norm_sub
+    (fun y : ℝ ↦ coordinateFiberInput j f (y, z)) hz
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The geometry behind `ext:interpolation`
+
+Source: `ext:interpolation`.  The interpolated point is a strict convex
+combination of four affinely independent vertices, so it lies in the interior of
+their simplex.  The analytic consequence used in the interpolation is that no
+direction is non-positive against every vertex: for every nonzero `w` some
+vertex pairs strictly positively with `w`.  That is what produces geometric
+decay in the three-parameter level sum.
+-/
+
+/-- Pairing a covector with a point of `ℝ³`. -/
+def gapPairing (w u : Fin 3 → ℝ) : ℝ := ∑ j : Fin 3, w j * u j
+
+@[simp] theorem gapPairing_apply (w u : Fin 3 → ℝ) :
+    gapPairing w u = ∑ j : Fin 3, w j * u j := rfl
+
+/-- The barycentre of the four vertices with the given weights. -/
+def simplexBarycentre (v : Fin 4 → (Fin 3 → ℝ)) (ϑ : Fin 4 → ℝ) : Fin 3 → ℝ :=
+  ∑ b : Fin 4, ϑ b • v b
+
+theorem simplexBarycentre_apply (v : Fin 4 → (Fin 3 → ℝ)) (ϑ : Fin 4 → ℝ)
+    (j : Fin 3) :
+    simplexBarycentre v ϑ j = ∑ b : Fin 4, ϑ b * v b j := by
+  unfold simplexBarycentre
+  rw [Finset.sum_apply]
+  simp [Pi.smul_apply, smul_eq_mul]
+
+/-- **No direction is non-positive against every vertex.**
+
+If `w` pairs non-positively with every vertex measured from the barycentre of a
+strictly positive weighting, then `w = 0`. -/
+theorem eq_zero_of_forall_gapPairing_nonpos
+    {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
+    {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hsum : ∑ a : Fin 4, ϑ a = 1)
+    {w : Fin 3 → ℝ}
+    (hle : ∀ a : Fin 4, gapPairing w (v a - simplexBarycentre v ϑ) ≤ 0) :
+    w = 0 := by
+  classical
+  set x : Fin 3 → ℝ := simplexBarycentre v ϑ with hx
+  -- the weighted combination of the vertex offsets vanishes
+  have hcomb : (∑ a : Fin 4, ϑ a • (v a - x)) = 0 := by
+    have h1 : ∀ a : Fin 4, ϑ a • (v a - x) = ϑ a • v a - ϑ a • x :=
+      fun a ↦ smul_sub _ _ _
+    rw [Finset.sum_congr rfl fun a _ ↦ h1 a, Finset.sum_sub_distrib,
+      ← Finset.sum_smul, hsum, one_smul, hx, simplexBarycentre, sub_self]
+  have hweighted : ∑ a : Fin 4, ϑ a * gapPairing w (v a - x) = 0 := by
+    have hlin : gapPairing w (∑ a : Fin 4, ϑ a • (v a - x))
+        = ∑ a : Fin 4, ϑ a * gapPairing w (v a - x) := by
+      unfold gapPairing
+      have hstep : ∀ j : Fin 3, w j * ((∑ a : Fin 4, ϑ a • (v a - x)) j)
+          = ∑ a : Fin 4, ϑ a * (w j * (v a j - x j)) := by
+        intro j
+        rw [Finset.sum_apply, Finset.mul_sum]
+        refine Finset.sum_congr rfl fun a _ ↦ ?_
+        simp only [Pi.smul_apply, Pi.sub_apply, smul_eq_mul]
+        ring
+      rw [Finset.sum_congr rfl fun j _ ↦ hstep j, Finset.sum_comm]
+      refine Finset.sum_congr rfl fun a _ ↦ ?_
+      rw [Finset.mul_sum]
+      refine Finset.sum_congr rfl fun j _ ↦ ?_
+      simp only [Pi.sub_apply]
+    rw [← hlin, hcomb]
+    unfold gapPairing
+    simp
+  -- hence every pairing vanishes
+  have hzero : ∀ a : Fin 4, gapPairing w (v a - x) = 0 := by
+    intro a
+    have hnonpos : ∀ b ∈ (Finset.univ : Finset (Fin 4)),
+        ϑ b * gapPairing w (v b - x) ≤ 0 := fun b _ ↦
+      mul_nonpos_of_nonneg_of_nonpos (hϑ b).le (hle b)
+    have := (Finset.sum_eq_zero_iff_of_nonpos hnonpos).mp hweighted a
+      (Finset.mem_univ a)
+    rcases mul_eq_zero.mp this with h | h
+    · exact absurd h (ne_of_gt (hϑ a))
+    · exact h
+  -- the differences of vertices span, so `w` annihilates everything
+  have hdiff : ∀ a : Fin 4, gapPairing w (v a - v 0) = 0 := by
+    intro a
+    have h1 := hzero a
+    have h2 := hzero 0
+    have hsplit : gapPairing w (v a - v 0)
+        = gapPairing w (v a - x) - gapPairing w (v 0 - x) := by
+      unfold gapPairing
+      rw [← Finset.sum_sub_distrib]
+      refine Finset.sum_congr rfl fun j _ ↦ ?_
+      simp [Pi.sub_apply]
+      ring
+    rw [hsplit, h1, h2, sub_zero]
+  -- the differences span, so the functional `w` is zero
+  have hli : LinearIndependent ℝ
+      (fun i : {a : Fin 4 // a ≠ 0} ↦ v ↑i - v 0) := by
+    have h := (affineIndependent_iff_linearIndependent_vsub ℝ v 0).mp hv
+    simpa using h
+  have hcard : Fintype.card {a : Fin 4 // a ≠ 0}
+      = Module.finrank ℝ (Fin 3 → ℝ) := by
+    have hc1 : Fintype.card {a : Fin 4 // a ≠ 0} = 3 := by decide
+    have hc2 : Module.finrank ℝ (Fin 3 → ℝ) = 3 := by simp
+    rw [hc1, hc2]
+  haveI hne : Nonempty {a : Fin 4 // a ≠ 0} := ⟨⟨1, by decide⟩⟩
+  have hspan : Submodule.span ℝ
+      (Set.range (fun i : {a : Fin 4 // a ≠ 0} ↦ v ↑i - v 0)) = ⊤ :=
+    hli.span_eq_top_of_card_eq_finrank hcard
+  let φ : (Fin 3 → ℝ) →ₗ[ℝ] ℝ :=
+    { toFun := fun u ↦ ∑ j : Fin 3, w j * u j
+      map_add' := by
+        intro u u'
+        simp only [Pi.add_apply, mul_add]
+        exact Finset.sum_add_distrib
+      map_smul' := by
+        intro c u
+        simp only [RingHom.id_apply, smul_eq_mul, Pi.smul_apply, Finset.mul_sum]
+        exact Finset.sum_congr rfl fun j _ ↦ by ring }
+  have hker : Submodule.span ℝ
+      (Set.range (fun i : {a : Fin 4 // a ≠ 0} ↦ v ↑i - v 0))
+      ≤ LinearMap.ker φ := by
+    rw [Submodule.span_le]
+    rintro u ⟨i, rfl⟩
+    exact hdiff i.1
+  have htop : LinearMap.ker φ = ⊤ := by
+    rw [← top_le_iff, ← hspan]
+    exact hker
+  funext j
+  set e : Fin 3 → ℝ := Pi.single j (1 : ℝ) with he
+  have hj : φ e = 0 := by
+    have hmem : e ∈ LinearMap.ker φ := by
+      rw [htop]; exact Submodule.mem_top
+    exact hmem
+  have hval : φ e = w j := by
+    show (∑ i : Fin 3, w i * e i) = w j
+    rw [Finset.sum_eq_single j]
+    · rw [he]; simp
+    · intro b _ hb
+      rw [he, Pi.single_eq_of_ne hb, mul_zero]
+    · intro h
+      exact absurd (Finset.mem_univ j) h
+  rw [← hval, hj]
+  rfl
+
+
+/-- **The interior gap.**
+
+For a strict convex combination of four affinely independent vertices there is
+`δ > 0` such that every covector `w` pairs at least `δ‖w‖` with some vertex
+measured from the barycentre.  This is the quantitative form of the fact that
+the barycentre lies in the interior of the simplex. -/
+theorem exists_gap_of_affineIndependent
+    {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
+    {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hsum : ∑ a : Fin 4, ϑ a = 1) :
+    ∃ δ : ℝ, 0 < δ ∧ ∀ w : Fin 3 → ℝ, ∃ a : Fin 4,
+      δ * ‖w‖ ≤ gapPairing w (v a - simplexBarycentre v ϑ) := by
+  classical
+  set x : Fin 3 → ℝ := simplexBarycentre v ϑ with hx
+  set G : (Fin 3 → ℝ) → ℝ := fun w ↦
+    max (max (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)))
+        (max (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x))) with hG
+  -- the maximum is attained at one of the vertices
+  have hGmem : ∀ w : Fin 3 → ℝ, ∃ a : Fin 4, G w = gapPairing w (v a - x) := by
+    intro w
+    rcases max_choice (max (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)))
+      (max (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x))) with h | h
+    · rcases max_choice (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)) with
+        h' | h'
+      · exact ⟨0, by simp only [hG]; rw [h, h']⟩
+      · exact ⟨1, by simp only [hG]; rw [h, h']⟩
+    · rcases max_choice (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x)) with
+        h' | h'
+      · exact ⟨2, by simp only [hG]; rw [h, h']⟩
+      · exact ⟨3, by simp only [hG]; rw [h, h']⟩
+  have hGle : ∀ (w : Fin 3 → ℝ) (a : Fin 4),
+      gapPairing w (v a - x) ≤ G w := by
+    intro w a
+    simp only [hG]
+    have h0 : gapPairing w (v 0 - x) ≤
+        max (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)) := le_max_left _ _
+    have h1 : gapPairing w (v 1 - x) ≤
+        max (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)) := le_max_right _ _
+    have h2 : gapPairing w (v 2 - x) ≤
+        max (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x)) := le_max_left _ _
+    have h3 : gapPairing w (v 3 - x) ≤
+        max (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x)) := le_max_right _ _
+    have hL := le_max_left (max (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)))
+      (max (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x)))
+    have hR := le_max_right (max (gapPairing w (v 0 - x)) (gapPairing w (v 1 - x)))
+      (max (gapPairing w (v 2 - x)) (gapPairing w (v 3 - x)))
+    have ha : a = 0 ∨ a = 1 ∨ a = 2 ∨ a = 3 := by
+      have : ∀ b : Fin 4, b = 0 ∨ b = 1 ∨ b = 2 ∨ b = 3 := by decide
+      exact this a
+    rcases ha with rfl | rfl | rfl | rfl
+    · exact le_trans h0 hL
+    · exact le_trans h1 hL
+    · exact le_trans h2 hR
+    · exact le_trans h3 hR
+  -- continuity
+  have hpair : ∀ u : Fin 3 → ℝ, Continuous (fun w : Fin 3 → ℝ ↦ gapPairing w u) := by
+    intro u
+    unfold gapPairing
+    exact continuous_finsetSum _ fun j _ ↦ (continuous_apply j).mul continuous_const
+  have hGcont : Continuous G := by
+    simp only [hG]
+    exact ((hpair _).max (hpair _)).max ((hpair _).max (hpair _))
+  -- positivity on the unit sphere
+  have hGpos : ∀ w : Fin 3 → ℝ, w ≠ 0 → 0 < G w := by
+    intro w hw
+    by_contra hcon
+    rw [not_lt] at hcon
+    exact hw (eq_zero_of_forall_gapPairing_nonpos hv hϑ hsum
+      (fun a ↦ le_trans (hGle w a) hcon))
+  -- the sphere is compact and nonempty
+  have hsphere : IsCompact (Metric.sphere (0 : Fin 3 → ℝ) 1) :=
+    isCompact_sphere _ _
+  have hne : (Metric.sphere (0 : Fin 3 → ℝ) 1).Nonempty := by
+    refine ⟨fun _ ↦ (1 : ℝ), ?_⟩
+    rw [Metric.mem_sphere, dist_zero_right, pi_norm_const]
+    simp
+  obtain ⟨w₀, hw₀mem, hw₀min⟩ := hsphere.exists_isMinOn hne hGcont.continuousOn
+  have hw₀ne : w₀ ≠ 0 := by
+    intro h
+    rw [Metric.mem_sphere, dist_zero_right, h] at hw₀mem
+    simp at hw₀mem
+  refine ⟨G w₀, hGpos w₀ hw₀ne, ?_⟩
+  intro w
+  obtain ⟨a, ha⟩ := hGmem w
+  refine ⟨a, ?_⟩
+  rw [← ha]
+  by_cases hw : w = 0
+  · have hp0 : ∀ u : Fin 3 → ℝ, gapPairing (0 : Fin 3 → ℝ) u = 0 := by
+      intro u; unfold gapPairing; simp
+    rw [hw, norm_zero, mul_zero]
+    simp only [hG, hp0, max_self]
+    exact le_rfl
+  · have hnorm : (0 : ℝ) < ‖w‖ := norm_pos_iff.mpr hw
+    set u : Fin 3 → ℝ := ‖w‖⁻¹ • w with hu
+    have humem : u ∈ Metric.sphere (0 : Fin 3 → ℝ) 1 := by
+      rw [Metric.mem_sphere, dist_zero_right, hu, norm_smul]
+      simp [inv_mul_cancel₀ (ne_of_gt hnorm)]
+    have hhomog : ∀ b : Fin 4, gapPairing w (v b - x)
+        = ‖w‖ * gapPairing u (v b - x) := by
+      intro b
+      unfold gapPairing
+      rw [Finset.mul_sum]
+      refine Finset.sum_congr rfl fun j _ ↦ ?_
+      rw [hu]
+      simp only [Pi.smul_apply, smul_eq_mul]
+      field_simp
+    have hGhomog : G w = ‖w‖ * G u := by
+      simp only [hG, hhomog]
+      rw [mul_max_of_nonneg _ _ (le_of_lt hnorm),
+        mul_max_of_nonneg _ _ (le_of_lt hnorm),
+        mul_max_of_nonneg _ _ (le_of_lt hnorm)]
+    have hmin : G w₀ ≤ G u := hw₀min humem
+    calc G w₀ * ‖w‖ ≤ G u * ‖w‖ :=
+          mul_le_mul_of_nonneg_right hmin (le_of_lt hnorm)
+      _ = G w := by rw [hGhomog]; ring
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## The dyadic level decomposition
+
+Source: `ext:interpolation`.  The proof splits each input into the pieces on
+which its modulus lies in a dyadic band, so that the trilinear operator becomes
+a three-parameter sum of pieces to which the vertex bounds apply.
+-/
+
+/-- The `k`-th dyadic level set of `f`. -/
+def dyadicLevelSet {X : Type*} (f : X → ℝ) (k : ℤ) : Set X :=
+  {x | (2 : ℝ) ^ k ≤ |f x| ∧ |f x| < (2 : ℝ) ^ (k + 1)}
+
+/-- The `k`-th dyadic level piece of `f`. -/
+def dyadicLevelPiece {X : Type*} (f : X → ℝ) (k : ℤ) : X → ℝ :=
+  Set.indicator (dyadicLevelSet f k) f
+
+theorem measurableSet_dyadicLevelSet {X : Type*} [MeasurableSpace X]
+    {f : X → ℝ} (hf : Measurable f) (k : ℤ) :
+    MeasurableSet (dyadicLevelSet f k) := by
+  have habs : Measurable (fun x ↦ |f x|) := continuous_abs.measurable.comp hf
+  exact (measurableSet_le measurable_const habs).inter
+    (measurableSet_lt habs measurable_const)
+
+theorem measurable_dyadicLevelPiece {X : Type*} [MeasurableSpace X]
+    {f : X → ℝ} (hf : Measurable f) (k : ℤ) :
+    Measurable (dyadicLevelPiece f k) :=
+  hf.indicator (measurableSet_dyadicLevelSet hf k)
+
+/-- Distinct dyadic bands are disjoint. -/
+theorem dyadicLevelSet_disjoint {X : Type*} {f : X → ℝ} {k l : ℤ} (hkl : k ≠ l) :
+    Disjoint (dyadicLevelSet f k) (dyadicLevelSet f l) := by
+  rw [Set.disjoint_left]
+  intro x hxk hxl
+  rcases lt_or_gt_of_ne hkl with h | h
+  · have h1 : (2 : ℝ) ^ (k + 1) ≤ (2 : ℝ) ^ l :=
+      zpow_le_zpow_right₀ (by norm_num) (by omega)
+    exact absurd (lt_of_lt_of_le hxk.2 (le_trans h1 hxl.1)) (lt_irrefl _)
+  · have h1 : (2 : ℝ) ^ (l + 1) ≤ (2 : ℝ) ^ k :=
+      zpow_le_zpow_right₀ (by norm_num) (by omega)
+    exact absurd (lt_of_lt_of_le hxl.2 (le_trans h1 hxk.1)) (lt_irrefl _)
+
+/-- Every point at which `f` is nonzero lies in exactly one band. -/
+theorem mem_dyadicLevelSet_log {X : Type*} {f : X → ℝ} {x : X} (hx : f x ≠ 0) :
+    x ∈ dyadicLevelSet f (Int.log 2 |f x|) := by
+  have hpos : (0 : ℝ) < |f x| := abs_pos.mpr hx
+  exact ⟨Int.zpow_log_le_self (b := 2) (by norm_num) hpos,
+    Int.lt_zpow_succ_log_self (b := 2) (by norm_num) _⟩
+
+/-- A level piece is bounded by the top of its band. -/
+theorem abs_dyadicLevelPiece_le {X : Type*} (f : X → ℝ) (k : ℤ) (x : X) :
+    |dyadicLevelPiece f k x| ≤ (2 : ℝ) ^ (k + 1) := by
+  unfold dyadicLevelPiece
+  by_cases hx : x ∈ dyadicLevelSet f k
+  · rw [Set.indicator_of_mem hx]
+    exact le_of_lt hx.2
+  · rw [Set.indicator_of_notMem hx, abs_zero]
+    exact le_of_lt (zpow_pos (by norm_num) _)
+
+/-- A level piece vanishes off its band. -/
+theorem dyadicLevelPiece_eq_zero_of_notMem {X : Type*} (f : X → ℝ) (k : ℤ)
+    {x : X} (hx : x ∉ dyadicLevelSet f k) : dyadicLevelPiece f k x = 0 :=
+  Set.indicator_of_notMem hx f
+
+/-- A level piece agrees with `f` on its band. -/
+theorem dyadicLevelPiece_eq_of_mem {X : Type*} (f : X → ℝ) (k : ℤ)
+    {x : X} (hx : x ∈ dyadicLevelSet f k) : dyadicLevelPiece f k x = f x :=
+  Set.indicator_of_mem hx f
+
+/-- The bands of a simple function of finite-measure support. -/
+def dyadicLevelIndices {X : Type*} [MeasurableSpace X] (f : SimpleFunc X ℝ) :
+    Finset ℤ :=
+  (f.range.filter (fun v ↦ v ≠ 0)).image (fun v ↦ Int.log 2 |v|)
+
+/-- **The level pieces of a simple function reconstruct it.** -/
+theorem sum_dyadicLevelPiece {X : Type*} [MeasurableSpace X]
+    (f : SimpleFunc X ℝ) (x : X) :
+    (∑ k ∈ dyadicLevelIndices f, dyadicLevelPiece (⇑f : X → ℝ) k x) = f x := by
+  classical
+  by_cases hx : f x = 0
+  · rw [hx]
+    refine Finset.sum_eq_zero fun k _ ↦ ?_
+    refine dyadicLevelPiece_eq_zero_of_notMem _ _ ?_
+    intro hmem
+    have h1 : (2 : ℝ) ^ k ≤ |f x| := hmem.1
+    rw [hx, abs_zero] at h1
+    exact absurd h1 (not_le.mpr (zpow_pos (by norm_num) _))
+  · set k₀ : ℤ := Int.log 2 |f x| with hk₀
+    have hmem₀ : x ∈ dyadicLevelSet (⇑f) k₀ := mem_dyadicLevelSet_log hx
+    have hk₀mem : k₀ ∈ dyadicLevelIndices f := by
+      rw [dyadicLevelIndices, Finset.mem_image]
+      exact ⟨f x, Finset.mem_filter.mpr ⟨SimpleFunc.mem_range_self f x, hx⟩, rfl⟩
+    rw [Finset.sum_eq_single k₀]
+    · exact dyadicLevelPiece_eq_of_mem _ _ hmem₀
+    · intro k _ hk
+      refine dyadicLevelPiece_eq_zero_of_notMem _ _ ?_
+      intro hmem
+      exact (Set.disjoint_left.mp (dyadicLevelSet_disjoint hk) hmem) hmem₀
+    · intro h
+      exact absurd hk₀mem h
+
+
+/-- **The measure of a dyadic band is controlled by the `q`-th power integral.** -/
+theorem measure_dyadicLevelSet_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {q : ℝ} (hq : 0 < q)
+    (k : ℤ) :
+    (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q * μ (dyadicLevelSet f k)
+      ≤ ∫⁻ x, ‖f x‖ₑ ^ q ∂μ := by
+  have hpt : ∀ x ∈ dyadicLevelSet f k,
+      (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q ≤ ‖f x‖ₑ ^ q := by
+    intro x hx
+    refine ENNReal.rpow_le_rpow ?_ hq.le
+    rw [← ofReal_norm, Real.norm_eq_abs]
+    exact ENNReal.ofReal_le_ofReal hx.1
+  calc (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q * μ (dyadicLevelSet f k)
+      = ∫⁻ _ in dyadicLevelSet f k, (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ q ∂μ :=
+        (setLIntegral_const _ _).symm
+    _ ≤ ∫⁻ x in dyadicLevelSet f k, ‖f x‖ₑ ^ q ∂μ := by
+        refine lintegral_mono_ae ?_
+        filter_upwards [ae_restrict_mem (measurableSet_dyadicLevelSet hf k)]
+          with x hx
+        exact hpt x hx
+    _ ≤ ∫⁻ x, ‖f x‖ₑ ^ q ∂μ := setLIntegral_le_lintegral _ _
+
+/-- **A level piece has small `L^q` norm.** -/
+theorem eLpNorm_dyadicLevelPiece_le {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : X → ℝ} (hf : Measurable f) {q : ℝ} (hq : 0 < q)
+    (k : ℤ) :
+    eLpNorm (dyadicLevelPiece f k) (ENNReal.ofReal q) μ
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) * (μ (dyadicLevelSet f k)) ^ (1 / q) := by
+  have hqne : (ENNReal.ofReal q) ≠ 0 := by simp [hq]
+  have hqtop : (ENNReal.ofReal q) ≠ ∞ := by simp
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop,
+    ENNReal.toReal_ofReal hq.le]
+  have hle : (∫⁻ x, ‖dyadicLevelPiece f k x‖ₑ ^ q ∂μ)
+      ≤ (ENNReal.ofReal ((2 : ℝ) ^ (k + 1))) ^ q * μ (dyadicLevelSet f k) := by
+    have hpt : ∀ x, ‖dyadicLevelPiece f k x‖ₑ ^ q
+        ≤ (Set.indicator (dyadicLevelSet f k)
+            (fun _ ↦ (ENNReal.ofReal ((2 : ℝ) ^ (k + 1))) ^ q) x) := by
+      intro x
+      by_cases hx : x ∈ dyadicLevelSet f k
+      · rw [Set.indicator_of_mem hx]
+        refine ENNReal.rpow_le_rpow ?_ hq.le
+        rw [← ofReal_norm, Real.norm_eq_abs]
+        exact ENNReal.ofReal_le_ofReal (abs_dyadicLevelPiece_le f k x)
+      · rw [Set.indicator_of_notMem hx,
+          dyadicLevelPiece_eq_zero_of_notMem f k hx]
+        simp [ENNReal.zero_rpow_of_pos hq]
+    calc (∫⁻ x, ‖dyadicLevelPiece f k x‖ₑ ^ q ∂μ)
+        ≤ ∫⁻ x, Set.indicator (dyadicLevelSet f k)
+            (fun _ ↦ (ENNReal.ofReal ((2 : ℝ) ^ (k + 1))) ^ q) x ∂μ :=
+          lintegral_mono hpt
+      _ = (ENNReal.ofReal ((2 : ℝ) ^ (k + 1))) ^ q * μ (dyadicLevelSet f k) := by
+          rw [lintegral_indicator (measurableSet_dyadicLevelSet hf k),
+            setLIntegral_const]
+  calc (∫⁻ x, ‖dyadicLevelPiece f k x‖ₑ ^ q ∂μ) ^ (1 / q)
+      ≤ ((ENNReal.ofReal ((2 : ℝ) ^ (k + 1))) ^ q *
+          μ (dyadicLevelSet f k)) ^ (1 / q) :=
+        ENNReal.rpow_le_rpow hle (by positivity)
+    _ = ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) *
+          (μ (dyadicLevelSet f k)) ^ (1 / q) := by
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity),
+          ← ENNReal.rpow_mul, mul_one_div_cancel (ne_of_gt hq),
+          ENNReal.rpow_one]
+
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-! ## Expanding a trilinear operator over a finite decomposition
+
+Source: `ext:interpolation`.  Trilinearity turns the dyadic level decomposition
+of the inputs into a finite sum of pieces, one for each triple of bands, and it
+is those pieces the vertex bounds are applied to.
+-/
+
+/-- The coercion of a finite sum of simple functions.
+
+Auxiliary. -/
+theorem simpleFunc_coe_sum {X : Type*} [MeasurableSpace X] {ι : Type*}
+    (s : Finset ι) (g : ι → SimpleFunc X ℝ) :
+    (⇑(∑ i ∈ s, g i) : X → ℝ) = ∑ i ∈ s, (⇑(g i) : X → ℝ) := by
+  classical
+  induction s using Finset.induction with
+  | empty => simp
+  | insert i s hi ih =>
+      rw [Finset.sum_insert hi, Finset.sum_insert hi, SimpleFunc.coe_add, ih]
+
+/-- The zero simple function has finite-measure support.
+
+Auxiliary. -/
+theorem simpleFunc_finMeasSupp_zero {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) : (0 : SimpleFunc X ℝ).FinMeasSupp μ := by
+  rw [SimpleFunc.finMeasSupp_iff_support]
+  have : Function.support (⇑(0 : SimpleFunc X ℝ)) = (∅ : Set X) := by
+    ext x; simp
+  rw [this, measure_empty]
+  exact ENNReal.zero_lt_top
+
+/-- A finite sum of simple functions of finite-measure support has
+finite-measure support.
+
+Auxiliary. -/
+theorem simpleFunc_finMeasSupp_sum {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {ι : Type*} (s : Finset ι) (g : ι → SimpleFunc X ℝ)
+    (hg : ∀ i ∈ s, (g i).FinMeasSupp μ) :
+    (∑ i ∈ s, g i).FinMeasSupp μ := by
+  classical
+  induction s using Finset.induction with
+  | empty => simpa using simpleFunc_finMeasSupp_zero μ
+  | insert i s hi ih =>
+      rw [Finset.sum_insert hi]
+      exact (hg i (Finset.mem_insert_self i s)).add
+        (ih fun b hb ↦ hg b (Finset.mem_insert_of_mem hb))
+
+/-- **A trilinear operator vanishes when a slot is zero.** -/
+theorem trilinearOnSimple_update_zero {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (j : Fin 3) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ) :
+    T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j 0) = 0 := by
+  have hz := simpleFunc_finMeasSupp_zero (X := X) μ
+  have h := (hT j f 0 0 0 hf hz hz).2
+  have hzero : ((0 : ℝ) • (⇑(0 : SimpleFunc X ℝ) : X → ℝ)) = 0 := by
+    funext x; simp
+  rw [hzero] at h
+  rw [h]
+  funext x
+  simp
+
+/-- **A trilinear operator expands over a finite decomposition of one slot.** -/
+theorem trilinearOnSimple_sum_slot {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (j : Fin 3) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ)
+    {ι : Type*} [DecidableEq ι] (s : Finset ι) (g : ι → SimpleFunc X ℝ)
+    (hg : ∀ i ∈ s, (g i).FinMeasSupp μ) :
+    T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j
+        (∑ i ∈ s, (⇑(g i) : X → ℝ)))
+      = ∑ i ∈ s, T (Function.update (fun i' ↦ (⇑(f i') : X → ℝ)) j ⇑(g i)) := by
+  classical
+  induction s using Finset.induction with
+  | empty =>
+      simpa using trilinearOnSimple_update_zero hT j f hf
+  | insert i s hi ih =>
+      have hgi : (g i).FinMeasSupp μ := hg i (Finset.mem_insert_self i s)
+      have hgs : ∀ b ∈ s, (g b).FinMeasSupp μ := fun b hb ↦
+        hg b (Finset.mem_insert_of_mem hb)
+      have htail : (∑ b ∈ s, g b).FinMeasSupp μ :=
+        simpleFunc_finMeasSupp_sum s g hgs
+      have hsplit : (∑ b ∈ insert i s, (⇑(g b) : X → ℝ))
+          = (⇑(g i) : X → ℝ) + (⇑(∑ b ∈ s, g b) : X → ℝ) := by
+        rw [Finset.sum_insert hi, simpleFunc_coe_sum]
+      rw [hsplit, (hT j f (g i) (∑ b ∈ s, g b) 0 hf hgi htail).1,
+        Finset.sum_insert hi, simpleFunc_coe_sum, ih hgs]
+
+
+/-- The `k`-th dyadic level piece of a simple function, as a simple function. -/
+def dyadicLevelPieceSimple {X : Type*} [MeasurableSpace X]
+    (f : SimpleFunc X ℝ) (k : ℤ) : SimpleFunc X ℝ :=
+  f.restrict (dyadicLevelSet (⇑f) k)
+
+@[simp] theorem coe_dyadicLevelPieceSimple {X : Type*} [MeasurableSpace X]
+    (f : SimpleFunc X ℝ) (k : ℤ) :
+    (⇑(dyadicLevelPieceSimple f k) : X → ℝ) = dyadicLevelPiece (⇑f) k :=
+  SimpleFunc.coe_restrict f (measurableSet_dyadicLevelSet f.measurable k)
+
+theorem finMeasSupp_dyadicLevelPieceSimple {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {f : SimpleFunc X ℝ} (hf : f.FinMeasSupp μ) (k : ℤ) :
+    (dyadicLevelPieceSimple f k).FinMeasSupp μ := by
+  rw [SimpleFunc.finMeasSupp_iff_support] at hf ⊢
+  refine lt_of_le_of_lt (measure_mono ?_) hf
+  intro x hx
+  rw [Function.mem_support] at hx ⊢
+  intro hfx
+  apply hx
+  rw [coe_dyadicLevelPieceSimple]
+  by_cases hmem : x ∈ dyadicLevelSet (⇑f) k
+  · rw [dyadicLevelPiece_eq_of_mem _ _ hmem]; exact hfx
+  · exact dyadicLevelPiece_eq_zero_of_notMem _ _ hmem
+
+/-- **One slot expands over its dyadic bands.** -/
+theorem trilinearOnSimple_sum_levels {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (j : Fin 3) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ) (h : SimpleFunc X ℝ)
+    (hh : h.FinMeasSupp μ) :
+    T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑h)
+      = ∑ k ∈ dyadicLevelIndices h,
+          T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j
+            (dyadicLevelPiece (⇑h) k)) := by
+  classical
+  have hrew : (⇑h : X → ℝ)
+      = ∑ k ∈ dyadicLevelIndices h, (⇑(dyadicLevelPieceSimple h k) : X → ℝ) := by
+    funext x
+    rw [Finset.sum_apply]
+    simp only [coe_dyadicLevelPieceSimple]
+    exact (sum_dyadicLevelPiece h x).symm
+  have hstep : T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑h)
+      = T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j
+          (∑ k ∈ dyadicLevelIndices h,
+            (⇑(dyadicLevelPieceSimple h k) : X → ℝ))) :=
+    congrArg T (congrArg (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j) hrew)
+  rw [hstep, trilinearOnSimple_sum_slot hT j f hf (dyadicLevelIndices h)
+    (fun k ↦ dyadicLevelPieceSimple h k)
+    (fun k _ ↦ finMeasSupp_dyadicLevelPieceSimple hh k)]
+  refine Finset.sum_congr rfl fun k _ ↦ ?_
+  rw [coe_dyadicLevelPieceSimple]
+
 
 end
 end Twisted

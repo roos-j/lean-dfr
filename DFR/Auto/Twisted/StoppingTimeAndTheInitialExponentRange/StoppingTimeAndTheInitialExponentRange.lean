@@ -11,17 +11,89 @@ import Auto.Twisted.Twisted
 Section 6 of `blueprints/task_3_twisted_blueprint.tex`.
 
 The definition of this section (`def:stopping`) is already available in
-`Auto.Twisted`, and `ext:maximal` is external; this file carries the section's
-labelled theorems, stated in the blueprint's own wording.
+`Auto.Twisted`; this file carries the section's labelled theorems, stated in the
+blueprint's own wording.  `ext:maximal` is quoted by the manuscript as an
+external result but is proved here from Mathlib's covering theory and the
+Hardy--Littlewood theory of `lean_spherical`.
 -/
 
 namespace Auto
 namespace Twisted
 
-open MeasureTheory Filter
+open MeasureTheory Filter Set
+open Auto.HardyLittlewoodMaximal
 open scoped BigOperators ENNReal Topology
 
 noncomputable section
+
+/-- **`ext:maximal`**, the strong `(q,q)` bound.
+
+For `Mh(x) = sup_{r>0} (2r)^{-1} ∫_{x-r}^{x+r} |h|` and every `1 < q < ∞` there
+is `C_q` with `‖Mh‖_q ≤ C_q ‖h‖_q`. -/
+theorem ext_maximal_strong_type
+    (g : FiberDyadicLine → ℂ) (hg : Measurable g)
+    (hgb : ∃ a : ℝ, 0 ≤ a ∧ ∀ x, ‖g x‖ ≤ a)
+    {q : ℝ} (hq : 1 < q) :
+    eLpNorm (lineMaximal g) (ENNReal.ofReal q) volume ≤
+      2 * ((ENNReal.ofReal q *
+          (2 * ENNReal.ofReal 4 * (ENNReal.ofReal (q - 1))⁻¹ *
+            (ENNReal.ofReal (2 : ℝ)) ^ (q - 1))) ^ (1 / q) *
+        eLpNorm g (ENNReal.ofReal q) volume) :=
+  eLpNorm_lineMaximal_le g hg hgb hq
+
+/-- **`ext:maximal`**, Lebesgue differentiation.
+
+For a locally integrable function the averages of `‖h y - h x‖` over the balls
+about `x` tend to zero at almost every `x`. -/
+theorem ext_maximal_lebesgue_differentiation
+    {X : Type*} [MetricSpace X] [MeasurableSpace X] [BorelSpace X]
+    [SecondCountableTopology X] [HasBesicovitchCovering X]
+    {μ : Measure X} [IsLocallyFiniteMeasure μ] [SFinite μ]
+    {E : Type*} [NormedAddCommGroup E] (h : X → E) (hloc : LocallyIntegrable h μ) :
+    ∀ᵐ x ∂μ, Filter.Tendsto
+      (fun r : ℝ ↦ ⨍ y in Metric.closedBall x r, ‖h y - h x‖ ∂μ)
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 0) :=
+  ae_tendsto_setAverage_norm_sub h hloc
+
+/-- **`ext:maximal`**, Lebesgue differentiation along the nested standard
+dyadic intervals containing a point. -/
+theorem ext_maximal_dyadic_differentiation
+    {E : Type*} [NormedAddCommGroup E] (h : ℝ → E)
+    (hloc : LocallyIntegrable h (volume : Measure ℝ)) :
+    ∀ᵐ x : ℝ, Filter.Tendsto
+      (fun n : ℕ ↦ ⨍ y in fiberDyadicInterval (dyadicIntervalAt (-(n : ℤ)) x),
+        ‖h y - h x‖)
+      Filter.atTop (𝓝 0) :=
+  ae_tendsto_dyadic_average_norm_sub h hloc
+
+/-- **`ext:maximal`**, the fiber maximal estimate on `E_3`. -/
+theorem ext_maximal_fiber_strong_type
+    (i : Fin 3) (f : E3 → ℂ) (hf : Measurable f)
+    (A : ℝ) (hA : 0 ≤ A) (hbound : ∀ x, ‖f x‖ ≤ A)
+    {q : ℝ} (hq : 1 < q) :
+    (∫⁻ x, ENNReal.ofReal (coordinateDyadicBallMaximal i f x ^ q)) ≤
+      ENNReal.ofReal q *
+        (2 * ENNReal.ofReal 4 * (ENNReal.ofReal (q - 1))⁻¹ *
+          (ENNReal.ofReal (2 : ℝ)) ^ (q - 1) *
+          ∫⁻ x, (ENNReal.ofReal ‖f x‖) ^ q) :=
+  coordinateDyadicBallMaximal_lintegral_bound i f hf A hA hbound hq
+
+/-- **`ext:maximal`**, the fiber differentiation statements on `E_3`. -/
+theorem ext_maximal_fiber_differentiation
+    (j : Fin 3) (f : E3 → ℝ)
+    (hloc : ∀ᵐ z : TransverseSpace j,
+      LocallyIntegrable (fun y : ℝ ↦ coordinateFiberInput j f (y, z))
+        (volume : Measure ℝ)) :
+    (∀ᵐ z : TransverseSpace j, ∀ᵐ y : ℝ, Filter.Tendsto
+      (fun r : ℝ ↦ ⨍ w in Metric.closedBall y r,
+        ‖coordinateFiberInput j f (w, z) - coordinateFiberInput j f (y, z)‖)
+      (nhdsWithin 0 (Set.Ioi (0 : ℝ))) (𝓝 0)) ∧
+    (∀ᵐ z : TransverseSpace j, ∀ᵐ y : ℝ, Filter.Tendsto
+      (fun n : ℕ ↦ ⨍ w in fiberDyadicInterval (dyadicIntervalAt (-(n : ℤ)) y),
+        ‖coordinateFiberInput j f (w, z) - coordinateFiberInput j f (y, z)‖)
+      Filter.atTop (𝓝 0)) :=
+  ⟨ae_ae_tendsto_setAverage_norm_sub_fiber j f hloc,
+    ae_ae_tendsto_dyadic_average_norm_sub_fiber j f hloc⟩
 
 /-- **`lem:maximal_size`** (Maximal sizes), equation `eq:ancestor_size`.
 

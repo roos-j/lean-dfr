@@ -104,7 +104,18 @@ Lean file: DFR/Auto/Twisted/StoppingTimeAndTheInitialExponentRange/StoppingTimeA
 \label{def:stopping}: Completed (Lean: Auto.sourceStoppingTree, Auto.sourceStoppingMaximal) (2026-09-12T14:22-0700)
 
 ### Theorems
-\label{ext:maximal}: External (Lean: Mathlib Hardy-Littlewood maximal theory via LeanSpherical.Auto.HardyLittlewoodMaximal) (2026-09-12T14:22-0700)
+\label{ext:maximal}: Proof completed (Lean: Auto.Twisted.ext_maximal_strong_type, Auto.Twisted.ext_maximal_lebesgue_differentiation, Auto.Twisted.ext_maximal_dyadic_differentiation, Auto.Twisted.ext_maximal_fiber_strong_type, Auto.Twisted.ext_maximal_fiber_differentiation) (2026-09-13T20:05-0700)
+
+`ext:maximal` is quoted by the manuscript as an external result; it is proved here.
+The strong `(q,q)` bound is for the blueprint's own operator, the supremum over all
+positive radii: `lineMaximalRaw_le_two_mul_dyadicBallMaximalRaw` compares it with the
+dyadic-radius maximal function of `lean_spherical` at the cost of a factor two, since
+`Int.log 2 r + 1` gives a dyadic radius in `[r, 2r)`.  Lebesgue differentiation is
+Mathlib's Besicovitch--Vitali theorem read along `r → 0⁺`; the dyadic form follows
+because the standard dyadic interval of scale `k` containing `x` lies in the ball of
+radius `2^k` about `x`, of exactly twice its measure.  The fiber statements are the
+one-dimensional ones applied to each fiber, together with the repository's
+`coordinateDyadicBallMaximal_lintegral_bound` for the fiber maximal estimate.
 \label{lem:maximal_size}: Proof completed (Lean: Auto.boxLocalSize_two_le_anisotropicMaximalTwo) (2026-09-12T14:22-0700)
 \label{lem:stopping}: Proof completed (Lean: Auto.sourceStoppingTree_energyBounds_of_boundedContinuous) (2026-09-12T14:22-0700)
 \label{lem:forest_bound}: Proof completed (Lean: Auto.sourceStoppingForestWeightedSum_le_maximalLevelSum) (2026-09-12T14:22-0700)
@@ -152,7 +163,17 @@ at almost every point — makes the majorant constant in the scale.
 `ext:interpolation` as a hypothesis by design, the manuscript supplying no
 proof of it.
 
-`ext:interpolation` is now recorded in two readings.  `FourVertexMarcinkiewicz`
+`ext:interpolation` is recorded with the manuscript's trilinearity hypothesis.  An
+earlier version of `FourVertexMarcinkiewicz` and `FourVertexMarcinkiewiczUniform`
+quantified over every operator `T`, dropping the "Let `T` be a trilinear operator"
+with which the source opens; that made the recorded hypothesis strictly stronger
+than the manuscript's, and Marcinkiewicz interpolation is false without such
+structure.  `TrilinearOnSimple` supplies it, and
+`trilinearOnSimple_ModelTruncatedOperator` discharges it where the hypothesis is
+consumed, from `ModelTruncatedOperator_replace_add_of_bounded` and
+`ModelTruncatedOperator_replace_smul`.
+
+`ext:interpolation` is recorded in two readings.  `FourVertexMarcinkiewicz`
 fixes the operator and then produces the constant, so it permits the constant to
 depend on the operator.  `FourVertexMarcinkiewiczUniform` produces the constant
 from the exponent vectors and the weights alone, and then serves every choice of
