@@ -19,6 +19,7 @@ formalization of Task 3 in this repository. User's instructions given in the cha
 - Every new non-temporary Lean source file under must be added as an
   explicit import in the top level module Lean file when it is created. Temporary scratch files
   must not be imported there. Scratch files should be deleted after they are no longer needed.
+  - All work you do must be contained in the single flat namespaces `Auto`, `Twisted`.
 
  
 

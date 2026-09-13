@@ -1227,3 +1227,182 @@ replaces `abs_ModelTruncatedOperator_bad_le_majorant_outside` and
 `weak_bad_level_budget_majorant_outside`.  At that point the tail's
 `H^{-1/p}` and the atom's `H^{1/p}` meet and the bad budget is
 level-independent.
+
+## 2026-09-12T23:05-0700
+
+The bad budget is level-independent.
+
+`abs_ModelTruncatedOperator_bad_le_majorant_outside_of_mass` and
+`weak_bad_level_budget_majorant_outside_of_mass`: the bad pointwise bound and
+level budget with the atoms' mass constant `A` in place of the sup-bound
+constant `4·B`.  Then `aux_eLpNorm_tail_mul_stoppingMass_le`: with
+`A = 4·(2H)^{1/p}` the tail factor of the bad budget is at most
+`4·2^{1/p}·C_q`, with no dependence on the height -- the atom's `H^{1/p}` and
+the tail's `H^{-1/p}` cancel exactly as in the blueprint.
+
+This closes the obstruction recorded at 21:45.  All new declarations sit
+directly in `Auto.Twisted`, per the instruction received this tick.
+
+Next: the level bound at the canonical stopping data with the mass constant,
+then the three budgets at the common constant `A_u`.
+
+## 2026-09-12T23:25-0700
+
+The Calderon--Zygmund level bound now takes the atoms' mass as data, and the
+canonical stopping data supplies it.
+
+`ModelTruncatedOperator_weak_finite_of_czData_of_mass`: the general-exponent
+level bound at the fiberwise CZ data, with the bad branch's tail factor
+carrying an abstract mass constant `A` instead of the sup-bound constant.
+Generated from `ModelTruncatedOperator_weak_finite_of_czData` by substitution,
+checked before promotion.
+
+`aux_canonical_atom_mass_le`: at the canonical data -- fibers of finite
+`p`-mass, averages of `|f_m|^p` -- every selected atom has mass at most
+`4·(2H)^{1/p}·r_I`.  Membership in the selection set gives membership in the
+finite-mass fiber set for free (`hz.1.1`), which is what makes `|f_m(·,z)|^p`
+integrable there.
+
+Next: instantiate the level bound at the canonical data with
+`A = 4·(2H)^{1/p}`, then bound its three terms by `aux_eLpNorm_tail_mul_stoppingMass_le`,
+the good normalisation and the exception budget, all at `H = (lam/A_u)^R/2`.
+
+## 2026-09-12T23:45-0700
+
+`ModelTruncatedOperator_weak_finite_of_canonical_czData`: the general-exponent
+level bound at the canonical stopping data, with the tail factor carrying the
+stopping mass `4·(2H)^{1/p}`.  The abstract `Zf`, `Astop`, `A` of the
+mass-parametrised bound are instantiated at
+`coordinateSourceFiberFiniteMassSet`, `coordinateSourceFiberAverage` and the
+canonical mass; the fiber-integrability hypothesis is now indexed by the
+transverse point rather than by the ambient point, which is the form the
+canonical mass lemma consumes.
+
+One orientation caught by the checker: the level budgets state their conjugate
+pair as `q.HolderConjugate p` with `p` the Calderon--Zygmund exponent, while
+the mass lemma takes `p.HolderConjugate q`; the instantiation needs `hpq.symm`.
+
+The three terms of this bound are now each matched by a normalisation lemma:
+the exception term by `weak_exception_budget_doubled_canonical`, the good term
+by `weak_good_budget_term_eq`, and the tail factor by
+`aux_eLpNorm_tail_mul_stoppingMass_le`.  Next: apply them at
+`H = (lam/A_u)^R/2` and combine with `aux_combine_normalized_budgets`.
+
+## 2026-09-13T00:05-0700
+
+The bad term of the canonical level bound is a real constant.
+
+`aux_ofReal_lineMaximalConst`: the maximal estimate's extended constant is
+finite, so it is the extension of its real value -- the same finiteness
+argument as in `lpNorm_line_dyadicBallMaximal_le`, now stated once.
+`aux_eLpNorm_const_mul_coordinateMaximal_le_of_normalized`: at a normalised
+input the maximal factor is at most `|C|·aux_lineMaximalConst P`.
+
+`aux_canonical_bad_term_le`: the product of the three Hoelder factors of the
+canonical level bound -- the stopping-mass tail factor and the two passive
+maximal factors, all with their constants -- is at most the extension of a
+single real constant.  That constant carries `sourceWeight u ^ 30` from the
+three `w^10` factors, the power the blueprint absorbs into
+`A_u = C_1 U(u)^{100}`.  The fiber integrability and the finiteness of the
+selection sets are derived inside from the product-measure integrability of
+`|f_m|^p`, so the statement assumes only that and the mass normalisation.
+
+With this, all three terms of `ModelTruncatedOperator_weak_finite_of_canonical_czData`
+have real-constant bounds.  Next: the assembly at `H = (lam/A_u)^R/2` with
+`aux_combine_normalized_budgets`, which needs `A_u` chosen to dominate the bad
+constant's `w^30` -- the blueprint's choice of `C_1`.
+
+## 2026-09-13T00:30-0700
+
+Planning correction before assembling: the good part's strong bound exists
+only for the *countable* good field (`lintegral_rpow_ModelTruncatedOperator_countableGoodField_le`,
+`…_le_of_normalized`), as the blueprint states it, so the final assembly runs
+through `ModelTruncatedOperator_weak_countable_of_budgets` -- countable good
+and bad fields -- with the bad budget transferred from the finite families.
+The finite-level `ModelTruncatedOperator_weak_finite_of_canonical_czData`
+therefore serves as the *finite* bad-budget input, not as the assembly object.
+
+The transfer at a general exponent: `weakBound_rpow_of_ae_tendsto` (the
+endpoint proof with the `R`-th root, whose only new ingredient is
+`ENNReal.continuous_rpow_const`), `weakBound_rpow_restrict_of_ae_tendsto`, and
+`ModelTruncatedOperator_weak_countable_of_finite_restrict`, generated from the
+`R = 1` proof by substitution.  Also `aux_one_le_sourceWeight`, needed to let
+`A_u = C_1 U(u)^{100}` dominate the bad constant's `U(u)^{30}`.
+
+Next: the good budget at the canonical data -- `Kgood = 64·C·w^100·(2H)^{(P-p)/(pP)}`
+from the strong bound and the normalised good-field norm -- in the
+`A·(lam/A)^e` shape `weak_good_budget_normalization` consumes.
+
+## 2026-09-13T00:50-0700
+
+`lintegral_rpow_goodField_le_goodConstant_rpow`: at `H = (lam/A)^R/2` the
+good field's `P`-th power integral is at most `((lam/A)^{R(1/p - 1/P)})^P`,
+the general-exponent form of `lintegral_rpow_goodField_le_goodConstant`
+(which fixed `p = 1`).  Note that the endpoint lemma was never consumed --
+the conversion from its power-integral form to the `L^P` norm the strong bound
+takes did not exist; `aux_lpNorm_le_of_lintegral_rpow_le` supplies it.
+
+## 2026-09-13T01:15-0700
+
+`weak_good_budget_canonical`: the good budget at the canonical stopping data,
+at a general output exponent.  Under the normalisation `‖f_j‖_{P_j} ≤ 1`, the
+choice `64·C·U(u)^{100} ≤ A_u`, and the scaling identity
+`R·(1/p - 1/P_m)·R_0 = R_0 - R`, the good part's level quantity at `H = (lam/A_u)^R/2`
+is at most `2^{R_0/R - 1}·A_u`.  Assembled from the strong bound
+(`lintegral_rpow_ModelTruncatedOperator_countableGoodField_le`), the good
+field's norm at the chosen height, the lpNorm conversion, and
+`weak_good_budget_of_lintegral_le` with `weak_good_budget_term_eq`.
+
+The product of norms in the strong bound splits at the distinguished slot via
+`Finset.mul_prod_erase`; the two passive slots are the normalised inputs.  The
+membership `f_m ∈ L^p` is taken as its own hypothesis, as it must be on
+infinite measure.
+
+Two of the three budgets are now discharged at the canonical data with the
+common constant: exception (`weak_exception_budget_doubled_canonical`, `4·A_u`)
+and good (`2^{R_0/R-1}·A_u`).  Next: the bad budget's real constant
+(`aux_canonical_bad_term_le`, carrying `U(u)^{30}`) dominated by `A_u`, then
+the countable transfer and the assembly.
+
+## 2026-09-13T01:40-0700
+
+The bad budget is discharged at the canonical data for a finite family.
+
+`aux_sourceWeight_pow_le_pow` and `aux_canonical_bad_term_le_of_weight`: the
+bad term's constant is `D·U(u)^{30}`, and since the source weight is at least
+one, `A_u ≥ D·U(u)^{100}` dominates it.  The rearrangement of the three
+factors' constants into `D·U(u)^{30}` is a `ring` step once the factors are
+named.
+
+`weak_bad_budget_canonical_finite`: combining the level budget (with the
+stopping atom mass `4·(2H)^{1/p}`) with that domination gives
+`τ/2 · |{|U(f^b)| > τ/2} \ E|^{1/R} ≤ A_u` for a finite family.  The Hoelder
+triple is instantiated with the tail at the *third* slot, so the product needs
+one commutation (`ring` in `ℝ≥0∞`) to meet the constant lemma, which states the
+tail first.
+
+All three budgets now hold at the canonical data with the common constant
+`A_u`: exception `4·A_u`, good `2^{R_0/R-1}·A_u`, bad `A_u` (finite family).
+Next: the countable transfer for the bad budget, then
+`ModelTruncatedOperator_weakNorm_le_of_countable_stopping_data`.
+
+## 2026-09-13T02:00-0700
+
+`aux_fiberDyadicExhaustion`: the finite subfamilies of a fixed enumeration of
+`FiberDyadicInterval = ℤ × ℤ`, with monotonicity and exhaustion.  This supplies
+the `Tn`, `hmono`, `hexh` that the finite-to-countable transfer assumes; the
+index type is denumerable, so the enumeration is `Denumerable.ofNat`.
+
+## 2026-09-13T02:15-0700
+
+`weak_bad_budget_canonical_countable`: the bad budget at the canonical data for
+the countable bad field.  The finite budget is uniform in the family -- its
+constant does not mention `T` -- so the transfer applies with the enumeration's
+finite subfamilies, at level `lam/2` and outside the doubled exceptional set.
+
+That is the last of the three budgets in the form the assembly consumes.  Next:
+`ModelTruncatedOperator_weakNorm_le_of_countable_stopping_data`, whose three
+budget hypotheses are now exactly `weak_exception_budget_doubled_canonical`,
+`weak_good_budget_canonical`, and this one -- modulo the exceptional set, which
+the assembly takes as an arbitrary `Eset` and which here is the doubled
+preimage.
