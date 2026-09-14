@@ -93816,16 +93816,53 @@ def FourVertexMarcinkiewiczUniform
             ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
                 ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ
 
+/-- **`ext:interpolation` in its uniform reading, with the operator required to
+have measurable values.**
+
+This is `FourVertexMarcinkiewiczUniform` with one hypothesis added: the
+operator's values on simple triples are measurable.  The hypothesis is
+necessary, not merely convenient — the conclusion asserts `MemLp (T f) R μ`,
+which fails for an operator with non-measurable values even though the weak
+endpoint bounds, built from outer measures of level sets, can still hold.  It
+is satisfied by the operators the manuscript applies the theorem to. -/
+def FourVertexMarcinkiewiczUniformMeasurable
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) : Prop :=
+  ∀ (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (ϑ : Fin 4 → ℝ)
+    (p : Fin 3 → ℝ) (R : ℝ),
+    (∀ a j, 1 < P a j) →
+    (∀ a, 1 ≤ r a) →
+    (∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹) →
+    AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹)) →
+    (∀ a, 0 < ϑ a) → (∑ a : Fin 4, ϑ a = 1) →
+    (∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹) →
+    R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹ → 1 < R →
+    ∃ C : ℝ, 0 ≤ C ∧
+      ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
+      ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
+      TrilinearOnSimple μ T →
+      (∀ g : Fin 3 → SimpleFunc X ℝ, Measurable (T (fun j ↦ ⇑(g j)))) →
+      (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
+        (∀ j, (f j).FinMeasSupp μ) →
+        weakNorm μ (T (fun j ↦ ⇑(f j))) (r a)
+          ≤ ENNReal.ofReal (A a *
+              ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P a j)) μ)) →
+      ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
+        MemLp (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ ∧
+          lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
+            ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
+                ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ
+
 /-- The uniform reading implies the per-operator reading. -/
 theorem fourVertexMarcinkiewicz_of_uniform
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
-    (hU : FourVertexMarcinkiewiczUniform μ)
-    (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) :
+    (hU : FourVertexMarcinkiewiczUniformMeasurable μ)
+    (T : (Fin 3 → (X → ℝ)) → (X → ℝ))
+    (hTmeas : ∀ g : Fin 3 → SimpleFunc X ℝ, Measurable (T (fun j ↦ ⇑(g j)))) :
     FourVertexMarcinkiewicz μ T := by
   intro P r A ϑ p R hlin hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
   obtain ⟨C, hC0, hmain⟩ :=
     hU P r ϑ p R hP hr hrsum hindep hϑpos hϑsum hp hR hR1
-  exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hlin hweak f hf).2⟩
+  exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hlin hTmeas hweak f hf).2⟩
 
 /-- **The interior strong bound, with the constant uniform in the operator.**
 
@@ -93833,7 +93870,7 @@ The simplex form of `fourVertexMarcinkiewicz_of_uniform`: one constant serves
 every operator and every choice of endpoint constants. -/
 theorem exists_strong_bound_at_simplex_interior_uniform
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
-    (hU : FourVertexMarcinkiewiczUniform μ)
+    (hU : FourVertexMarcinkiewiczUniformMeasurable μ)
     (β b : Fin 3 → ℝ) (β₀ b₀ : ℝ)
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
@@ -93847,6 +93884,7 @@ theorem exists_strong_bound_at_simplex_interior_uniform
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
       ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
       TrilinearOnSimple μ T →
+      (∀ g : Fin 3 → SimpleFunc X ℝ, Measurable (T (fun j ↦ ⇑(g j)))) →
       (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
         (∀ j, (f j).FinMeasSupp μ) →
         weakNorm μ (T (fun j ↦ ⇑(f j))) (simplexVertexOutput b b₀ a)
@@ -93928,7 +93966,7 @@ theorem trilinearOnSimple_ModelTruncatedOperator
 with `R⁻¹ = 1 - β₀`, uniformly in `u`, `c` and the truncation. -/
 theorem exists_ModelTruncatedOperator_extended_strong_bound
     (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ A₀ : ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
     (hb₀4 : b₀ < 1 / 4)
@@ -94014,7 +94052,10 @@ theorem exists_ModelTruncatedOperator_extended_strong_bound
   have hkey := hinterp (fun a ↦ KK a * sourceWeight u ^ 100)
     (fun a ↦ mul_nonneg (hKK0 a) hw0.le)
     (fun g ↦ ModelTruncatedOperator α u c g aa bb)
-    (trilinearOnSimple_ModelTruncatedOperator α u c aa bb haa hcm hc) hend f hfs
+    (trilinearOnSimple_ModelTruncatedOperator α u c aa bb haa hcm hc)
+    (fun g ↦ measurable_ModelTruncatedOperator_of_measurable α u c
+      (fun j ↦ (⇑(g j) : E3 → ℝ)) aa bb hcm (fun j ↦ (g j).measurable))
+    hend f hfs
   have hprod : (∏ a : Fin 4,
         (KK a * sourceWeight u ^ 100) ^ simplexWeight β b β₀ b₀ a)
       = (∏ a : Fin 4, KK a ^ simplexWeight β b β₀ b₀ a)
@@ -94140,7 +94181,7 @@ interpolation theorem.
 /-- **`eq:extended_operator_bound`, with every side condition discharged.** -/
 theorem exists_ModelTruncatedOperator_extended_strong_bound_unconditional
     (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
     (hb₀4 : b₀ < 1 / 4)
@@ -94243,7 +94284,7 @@ valid because `R^{-1} + p_0^{-1} = 1`.
 uniformly in the mode, the coefficient and the truncation. -/
 theorem exists_abs_formPairing_ModelTruncatedOperator_le_extended
     (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
     (hb₀4 : b₀ < 1 / 4)
@@ -94307,7 +94348,7 @@ limit with a constant enlarged by `2^3`.
 /-- **`eq:extended_operator_bound` for bounded measurable inputs.** -/
 theorem exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable
     (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
     (hb₀4 : b₀ < 1 / 4)
@@ -94472,7 +94513,7 @@ bounded measurable active slots of finite `L^{p_j}` norm, uniformly in the
 mode, the coefficient and the truncation. -/
 theorem exists_abs_formPairing_ModelTruncatedOperator_le_extended_boundedMeasurable
     (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
     (hb₀4 : b₀ < 1 / 4)
@@ -94535,7 +94576,7 @@ operator estimate, and the scale truncations converge to the full form.
 /-- **`thm:extended_model` for the real full-scale model form.** -/
 theorem exists_abs_ModelFullForm_le_extended
     (α : Anisotropy) (b β : Fin 3 → ℝ) (b₀ β₀ : ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀)
     (hbsum : b₀ = 1 - ∑ j : Fin 3, b j)
     (hb₀4 : b₀ < 1 / 4)
@@ -95069,7 +95110,7 @@ theorem aux_two_lt_inv {c : ℝ} (hc : 0 < c) (h : c < 1 / 2) : (2 : ℝ) < c⁻
 coordinate relabeling.** -/
 theorem uniformRealModelFormBound_permuted_of_main_bounds
     (α : Anisotropy) (p : Fin 4 → ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hp0 : 4 < p 0)
     (hp1 : 1 < p 1) (hp1' : p 1 < 4)
     (hp2 : 1 < p 2) (hp2' : p 2 < 4)
@@ -95150,7 +95191,7 @@ carry it to the cone mode forms, and `thm:cone` sums the modes.
 /-- **The uniform cone mode bound at the exponents of `thm:main`.** -/
 theorem uniformConeModeFormBound_of_main_bounds
     (α : Anisotropy) (p : Fin 4 → ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hp0 : 4 < p 0)
     (hp1 : 1 < p 1) (hp1' : p 1 < 4)
     (hp2 : 1 < p 2) (hp2' : p 2 < 4)
@@ -95170,7 +95211,7 @@ There exists `C_{α,p} > 0` such that every multiplier in Definition
 `|Λ_m(f)| ≤ C_{α,p} M ∏_{j=0}^3 ‖f_j‖_{p_j}`. -/
 theorem anisotropicParaproduct_of_interpolation
     (α : Anisotropy) (p : Fin 4 → ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
+    (hU : FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3))
     (hp0 : 4 < p 0)
     (hp1 : 1 < p 1) (hp1' : p 1 < 4)
     (hp2 : 1 < p 2) (hp2' : p 2 < 4)
@@ -108994,42 +109035,6 @@ open scoped BigOperators ENNReal Topology
 
 noncomputable section
 
-/-- **`ext:interpolation` in its uniform reading, with the operator required to
-have measurable values.**
-
-This is `FourVertexMarcinkiewiczUniform` with one hypothesis added: the
-operator's values on simple triples are measurable.  The hypothesis is
-necessary, not merely convenient — the conclusion asserts `MemLp (T f) R μ`,
-which fails for an operator with non-measurable values even though the weak
-endpoint bounds, built from outer measures of level sets, can still hold.  It
-is satisfied by the operators the manuscript applies the theorem to. -/
-def FourVertexMarcinkiewiczUniformMeasurable
-    {X : Type*} [MeasurableSpace X] (μ : Measure X) : Prop :=
-  ∀ (P : Fin 4 → Fin 3 → ℝ) (r : Fin 4 → ℝ) (ϑ : Fin 4 → ℝ)
-    (p : Fin 3 → ℝ) (R : ℝ),
-    (∀ a j, 1 < P a j) →
-    (∀ a, 1 ≤ r a) →
-    (∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹) →
-    AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹)) →
-    (∀ a, 0 < ϑ a) → (∑ a : Fin 4, ϑ a = 1) →
-    (∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹) →
-    R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹ → 1 < R →
-    ∃ C : ℝ, 0 ≤ C ∧
-      ∀ (A : Fin 4 → ℝ), (∀ a, 0 ≤ A a) →
-      ∀ T : (Fin 3 → (X → ℝ)) → (X → ℝ),
-      TrilinearOnSimple μ T →
-      (∀ g : Fin 3 → SimpleFunc X ℝ, Measurable (T (fun j ↦ ⇑(g j)))) →
-      (∀ (a : Fin 4) (f : Fin 3 → SimpleFunc X ℝ),
-        (∀ j, (f j).FinMeasSupp μ) →
-        weakNorm μ (T (fun j ↦ ⇑(f j))) (r a)
-          ≤ ENNReal.ofReal (A a *
-              ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P a j)) μ)) →
-      ∀ f : Fin 3 → SimpleFunc X ℝ, (∀ j, (f j).FinMeasSupp μ) →
-        MemLp (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ ∧
-          lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ
-            ≤ C * (∏ a : Fin 4, A a ^ ϑ a) *
-                ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ
-
 /-- **`ext:interpolation` holds, in the uniform reading, on every σ-finite
 measure space.** -/
 theorem fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite
@@ -109050,6 +109055,51 @@ theorem fourVertexMarcinkiewicz_of_uniformMeasurable
   intro P r A ϑ p R hlin hP hr hrsum hindep hA hϑpos hϑsum hp hR hR1 hweak
   obtain ⟨C, hC0, hmain⟩ := hU P r ϑ p R hP hr hrsum hindep hϑpos hϑsum hp hR hR1
   exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hlin hTmeas hweak f hf).2⟩
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- **`ext:interpolation` on `E3`.**  Lebesgue measure on `E3` is σ-finite, so
+the four-vertex interpolation theorem holds there with no hypothesis. -/
+theorem fourVertexMarcinkiewiczUniformMeasurable_volume_E3 :
+    FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3) :=
+  fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite _
+
+/-- **`thm:main` (Anisotropic paraproduct), unconditionally.**
+
+Suppose `4 < p₀ < ∞`, `1 < p₁, p₂, p₃ < 4`, and `∑_{j=0}^3 p_j^{-1} = 1`.
+There exists `C_{α,p} > 0` such that every multiplier in Definition
+`def:multiplier` and every complex Schwartz tuple satisfy
+`|Λ_m(f)| ≤ C_{α,p} M ∏_{j=0}^3 ‖f_j‖_{p_j}`.
+
+This is `anisotropicParaproduct_of_interpolation` with its one hypothesis
+discharged by `fourVertexMarcinkiewiczUniformMeasurable_volume_E3`. -/
+theorem anisotropicParaproduct_unconditional
+    (α : Anisotropy) (p : Fin 4 → ℝ)
+    (hp0 : 4 < p 0)
+    (hp1 : 1 < p 1) (hp1' : p 1 < 4)
+    (hp2 : 1 < p 2) (hp2' : p 2 < 4)
+    (hp3 : 1 < p 3) (hp3' : p 3 < 4)
+    (hsum : ∑ j : Fin 4, (p j)⁻¹ = 1) :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
+      Anisotropy.IsAnisotropicMultiplier α M m →
+      ∀ F : ModelComplexSchwartzInput,
+        ‖multiplierForm m (F 0) (F 1) (F 2) (F 3)‖
+          ≤ C * M *
+              ∏ j : Fin 4,
+                lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (p j)) volume :=
+  anisotropicParaproduct_of_interpolation α p
+    fourVertexMarcinkiewiczUniformMeasurable_volume_E3
+    hp0 hp1 hp1' hp2 hp2' hp3 hp3' hsum
 
 end
 end Twisted

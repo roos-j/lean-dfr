@@ -4825,3 +4825,34 @@ means changing those hypotheses to
 `FourVertexMarcinkiewiczUniformMeasurable` and supplying, at each use, the
 measurability of the concrete operator `U^{a,b}_{u,c}` — an edit to existing
 statements, with one genuine obligation per use site.
+
+### ext:interpolation — the hypothesis is discharged downstream, and thm:main is unconditional
+
+The plumbing is done and the build is clean.  Three changes, all to statements
+already in the corpus rather than to proofs:
+
+The eleven hypotheses `hU : FourVertexMarcinkiewiczUniform ...` now read
+`FourVertexMarcinkiewiczUniformMeasurable`, and the definition was moved to sit
+beside the original so that it precedes its uses.  The one theorem that mirrors
+the predicate's shape, `exists_strong_bound_at_simplex_interior_uniform`, gains
+the same measurability arrow; everything else merely threads `hU`, so nothing
+else in those statements changed.
+
+The single place where the predicate is applied to a concrete operator is
+`exists_ModelTruncatedOperator_extended_strong_bound`, and the obligation is
+discharged outright by `measurable_ModelTruncatedOperator_of_measurable`, which
+was already in the corpus — the truncated model operator is measurable, not
+merely a.e.-measurable, for measurable inputs.  So the extra hypothesis costs
+nothing downstream.
+
+`fourVertexMarcinkiewiczUniformMeasurable_volume_E3` then discharges `hU` for
+Lebesgue measure on `E3` (σ-finiteness is found by instance search), and
+
+    anisotropicParaproduct_unconditional
+
+is `thm:main` with no hypotheses beyond the exponent conditions:
+`|Λ_m(f)| ≤ C_{α,p} M ∏_j ‖f_j‖_{p_j}`.  It was previously
+`anisotropicParaproduct_of_interpolation`, conditional on `ext:interpolation`.
+
+Final state of the task: both external theorems proved, `lake build` completes,
+zero `sorry`, axioms `[propext, Classical.choice, Quot.sound]` throughout.
