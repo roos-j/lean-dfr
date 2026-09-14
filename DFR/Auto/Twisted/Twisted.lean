@@ -104912,3 +104912,474 @@ theorem exists_lintegral_rpow_le_of_normalized
 end
 end Twisted
 end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- Scaling a simple function of finite measure support keeps it so. -/
+theorem finMeasSupp_smul {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {f : SimpleFunc X ℝ} (hf : f.FinMeasSupp μ) (c : ℝ) : (c • f).FinMeasSupp μ := by
+  rw [SimpleFunc.smul_eq_map]
+  exact hf.map (by simp)
+
+/-- **Scaling all three slots.** -/
+theorem trilinearOnSimple_smul_three {X : Type*} [MeasurableSpace X]
+    {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
+    (hT : TrilinearOnSimple μ T) (f : Fin 3 → SimpleFunc X ℝ)
+    (hf : ∀ i, (f i).FinMeasSupp μ) (c : Fin 3 → ℝ) :
+    T (fun j ↦ (⇑(c j • f j) : X → ℝ))
+      = (c 0 * c 1 * c 2) • T (fun j ↦ (⇑(f j) : X → ℝ)) := by
+  classical
+  -- scale slot 0
+  set f₀ : Fin 3 → SimpleFunc X ℝ := Function.update f 0 (c 0 • f 0) with hf₀
+  have hf₀fin : ∀ i, (f₀ i).FinMeasSupp μ := by
+    intro i
+    simp only [hf₀]
+    by_cases h : i = 0
+    · subst h; simp only [Function.update_self]; exact finMeasSupp_smul (hf 0) _
+    · rw [Function.update_of_ne h]; exact hf i
+  set f₁ : Fin 3 → SimpleFunc X ℝ := Function.update f₀ 1 (c 1 • f 1) with hf₁
+  have hf₁fin : ∀ i, (f₁ i).FinMeasSupp μ := by
+    intro i
+    simp only [hf₁]
+    by_cases h : i = 1
+    · subst h; simp only [Function.update_self]; exact finMeasSupp_smul (hf 1) _
+    · rw [Function.update_of_ne h]; exact hf₀fin i
+  have step0 : T (fun j ↦ (⇑(f₀ j) : X → ℝ)) = c 0 • T (fun j ↦ (⇑(f j) : X → ℝ)) := by
+    have h := (hT 0 f (f 0) (f 0) (c 0) hf (hf 0) (hf 0)).2
+    have e1 : (fun j ↦ (⇑(f₀ j) : X → ℝ))
+        = Function.update (fun i ↦ (⇑(f i) : X → ℝ)) 0 (c 0 • ⇑(f 0)) := by
+      funext j
+      simp only [hf₀]
+      by_cases hj : j = 0
+      · subst hj; simp [SimpleFunc.coe_smul]
+      · rw [Function.update_of_ne hj, Function.update_of_ne hj]
+    have e2 : Function.update (fun i ↦ (⇑(f i) : X → ℝ)) 0 ⇑(f 0) = fun i ↦ (⇑(f i) : X → ℝ) := by
+      funext j
+      by_cases hj : j = 0
+      · subst hj; simp
+      · rw [Function.update_of_ne hj]
+    rw [e1, h, e2]
+  have step1 : T (fun j ↦ (⇑(f₁ j) : X → ℝ)) = c 1 • T (fun j ↦ (⇑(f₀ j) : X → ℝ)) := by
+    have h := (hT 1 f₀ (f 1) (f 1) (c 1) hf₀fin (hf 1) (hf 1)).2
+    have e1 : (fun j ↦ (⇑(f₁ j) : X → ℝ))
+        = Function.update (fun i ↦ (⇑(f₀ i) : X → ℝ)) 1 (c 1 • ⇑(f 1)) := by
+      funext j
+      simp only [hf₁]
+      by_cases hj : j = 1
+      · subst hj; simp [SimpleFunc.coe_smul]
+      · rw [Function.update_of_ne hj, Function.update_of_ne hj]
+    have e2 : Function.update (fun i ↦ (⇑(f₀ i) : X → ℝ)) 1 ⇑(f 1) = fun i ↦ (⇑(f₀ i) : X → ℝ) := by
+      funext j
+      by_cases hj : j = 1
+      · subst hj
+        simp only [Function.update_self, hf₀]
+        rw [Function.update_of_ne (by decide : (1 : Fin 3) ≠ 0)]
+      · rw [Function.update_of_ne hj]
+    rw [e1, h, e2]
+  have step2 : T (fun j ↦ (⇑(c j • f j) : X → ℝ)) = c 2 • T (fun j ↦ (⇑(f₁ j) : X → ℝ)) := by
+    have h := (hT 2 f₁ (f 2) (f 2) (c 2) hf₁fin (hf 2) (hf 2)).2
+    have e1 : (fun j ↦ (⇑(c j • f j) : X → ℝ))
+        = Function.update (fun i ↦ (⇑(f₁ i) : X → ℝ)) 2 (c 2 • ⇑(f 2)) := by
+      funext j
+      fin_cases j
+      · simp [hf₁, hf₀, SimpleFunc.coe_smul]
+      · simp [hf₁, hf₀, SimpleFunc.coe_smul]
+      · simp [SimpleFunc.coe_smul]
+    have e2 : Function.update (fun i ↦ (⇑(f₁ i) : X → ℝ)) 2 ⇑(f 2) = fun i ↦ (⇑(f₁ i) : X → ℝ) := by
+      funext j
+      fin_cases j
+      · simp [hf₁, hf₀]
+      · simp [hf₁, hf₀]
+      · simp [hf₁, hf₀]
+    rw [e1, h, e2]
+  rw [step2, step1, step0, smul_smul, smul_smul]
+  congr 1
+  ring
+
+/-- A measurable function with vanishing weak norm has vanishing `lpNorm`. -/
+theorem lpNorm_eq_zero_of_weakNorm_le_zero {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {v : X → ℝ} (hv : Measurable v) {r : ℝ} (hr : 0 < r) (h : weakNorm μ v r ≤ 0)
+    (q : ℝ≥0∞) : lpNorm v q μ = 0 := by
+  have hae := ae_eq_zero_of_weakNorm_eq_zero hr (le_antisymm h bot_le)
+  rw [← toReal_eLpNorm hv.aestronglyMeasurable, eLpNorm_congr_ae hae, eLpNorm_zero']
+  simp
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+/-- **`ext:interpolation`, proved.**  A trilinear operator on simple functions of
+finite measure support on a σ-finite measure space, with measurable outputs
+and weak bounds at four affinely independent input reciprocal vectors,
+satisfies the strong bound at every interior point of the simplex, with a
+constant depending only on the exponent data. -/
+theorem fourVertexMarcinkiewicz_of_measurable {X : Type*} [MeasurableSpace X]
+    (μ : Measure X) [SigmaFinite μ] (T : (Fin 3 → (X → ℝ)) → (X → ℝ))
+    (hTmeas : ∀ g : Fin 3 → SimpleFunc X ℝ, Measurable (T (fun j ↦ ⇑(g j)))) :
+    FourVertexMarcinkiewicz μ T := by
+  intro P r A ϑ p R hT hP hr hrsum hindep hA hϑ hϑsum hp hR hR1 hweak
+  classical
+  have hr0 : ∀ a, 0 < r a := fun a ↦ lt_of_lt_of_le zero_lt_one (hr a)
+  have hRpos : (0:ℝ) < R := lt_trans zero_lt_one hR1
+  have hP0 : ∀ a j, 0 < P a j := fun a j ↦ lt_trans zero_lt_one (hP a j)
+  have hpinv_pos : ∀ j, 0 < (p j)⁻¹ := by
+    intro j
+    rw [hp j]
+    exact Finset.sum_pos (fun a _ ↦ mul_pos (hϑ a) (inv_pos.2 (hP0 a j))) Finset.univ_nonempty
+  have hppos : ∀ j, 0 < p j := fun j ↦ inv_pos.1 (hpinv_pos j)
+  have hDnn : 0 ≤ ∏ a : Fin 4, A a ^ ϑ a :=
+    Finset.prod_nonneg fun a _ ↦ Real.rpow_nonneg (hA a) _
+  -- the degenerate case: some endpoint constant vanishes
+  by_cases hApos : ∀ a, 0 < A a
+  swap
+  · refine ⟨0, le_rfl, fun f hf ↦ ?_⟩
+    push Not at hApos
+    obtain ⟨a, ha⟩ := hApos
+    have hAa : A a = 0 := le_antisymm ha (hA a)
+    have hb := hweak a f hf
+    rw [hAa, zero_mul, ENNReal.ofReal_zero] at hb
+    rw [lpNorm_eq_zero_of_weakNorm_le_zero (hTmeas f) (hr0 a) hb]
+    simp
+  -- the main case
+  obtain ⟨C, hC, hmain⟩ := exists_lintegral_rpow_le_of_normalized hT hTmeas hP hr hrsum hindep
+    hApos hϑ hϑsum hp hR hR1 hweak
+  have hDpos : 0 < ∏ a : Fin 4, A a ^ ϑ a :=
+    Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hApos a) _
+  refine ⟨C ^ (1 / R) / ∏ a : Fin 4, A a ^ ϑ a, by positivity, fun f hf ↦ ?_⟩
+  set n : Fin 3 → ℝ := fun j ↦ lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ with hn
+  have hnnn : ∀ j, 0 ≤ n j := fun j ↦ lpNorm_nonneg
+  have hRHS : 0 ≤ C ^ (1 / R) / (∏ a : Fin 4, A a ^ ϑ a) * (∏ a : Fin 4, A a ^ ϑ a) *
+      ∏ j : Fin 3, n j :=
+    mul_nonneg (mul_nonneg (div_nonneg (Real.rpow_nonneg hC _) hDnn) hDnn)
+      (Finset.prod_nonneg fun j _ ↦ hnnn j)
+  by_cases hzero : ∃ j, n j = 0
+  · -- a vanishing input: the output vanishes a.e.
+    obtain ⟨j₀, hj₀⟩ := hzero
+    have hmem : MemLp (⇑(f j₀)) (ENNReal.ofReal (p j₀)) μ :=
+      (SimpleFunc.memLp_iff_finMeasSupp (by simp [hppos j₀]) ENNReal.ofReal_ne_top).2 (hf j₀)
+    have hae : (⇑(f j₀) : X → ℝ) =ᵐ[μ] 0 :=
+      (lpNorm_eq_zero hmem (by simp [hppos j₀])).1 hj₀
+    have hzero' : lpNorm (⇑(f j₀)) (ENNReal.ofReal (P 0 j₀)) μ = 0 := by
+      rw [← toReal_eLpNorm (f j₀).aestronglyMeasurable, eLpNorm_congr_ae hae, eLpNorm_zero]
+      simp
+    have hprod : ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P 0 j)) μ = 0 :=
+      Finset.prod_eq_zero (Finset.mem_univ j₀) hzero'
+    have hb := hweak 0 f hf
+    rw [hprod, mul_zero, ENNReal.ofReal_zero] at hb
+    rw [lpNorm_eq_zero_of_weakNorm_le_zero (hTmeas f) (hr0 0) hb]
+    exact hRHS
+  · push Not at hzero
+    have hnpos : ∀ j, 0 < n j := fun j ↦ lt_of_le_of_ne (hnnn j) (Ne.symm (hzero j))
+    -- normalise
+    set g : Fin 3 → SimpleFunc X ℝ := fun j ↦ (n j)⁻¹ • f j with hg
+    have hgfin : ∀ j, (g j).FinMeasSupp μ := fun j ↦ finMeasSupp_smul (hf j) _
+    have hgnorm : ∀ j, lpNorm (⇑(g j)) (ENNReal.ofReal (p j)) μ ≤ 1 := by
+      intro j
+      simp only [hg, SimpleFunc.coe_smul]
+      rw [lpNorm_const_smul, coe_nnnorm, Real.norm_eq_abs, abs_of_pos (inv_pos.2 (hnpos j))]
+      exact le_of_eq (inv_mul_cancel₀ (hnpos j).ne')
+    have hint := hmain g hgfin hgnorm
+    have hTg : lpNorm (T (fun j ↦ ⇑(g j))) (ENNReal.ofReal R) μ ≤ C ^ (1 / R) :=
+      lpNorm_le_of_lintegral_rpow_le hRpos hC hint
+    -- undo the normalisation by trilinearity
+    have hscale : T (fun j ↦ (⇑(f j) : X → ℝ))
+        = (n 0 * n 1 * n 2) • T (fun j ↦ (⇑(g j) : X → ℝ)) := by
+      have h := trilinearOnSimple_smul_three hT g hgfin n
+      have hfg : (fun j ↦ (⇑(n j • g j) : X → ℝ)) = fun j ↦ (⇑(f j) : X → ℝ) := by
+        funext j
+        simp only [hg, smul_smul, mul_inv_cancel₀ (hnpos j).ne', one_smul]
+      rw [hfg] at h
+      exact h
+    rw [hscale, lpNorm_const_smul, coe_nnnorm, Real.norm_eq_abs,
+      abs_of_pos (mul_pos (mul_pos (hnpos 0) (hnpos 1)) (hnpos 2))]
+    have hprod3 : ∏ j : Fin 3, n j = n 0 * n 1 * n 2 := Fin.prod_univ_three _
+    calc n 0 * n 1 * n 2 * lpNorm (T (fun j ↦ ⇑(g j))) (ENNReal.ofReal R) μ
+        ≤ n 0 * n 1 * n 2 * C ^ (1 / R) :=
+          mul_le_mul_of_nonneg_left hTg (mul_pos (mul_pos (hnpos 0) (hnpos 1)) (hnpos 2)).le
+      _ = C ^ (1 / R) / (∏ a : Fin 4, A a ^ ϑ a) * (∏ a : Fin 4, A a ^ ϑ a) *
+          ∏ j : Fin 3, n j := by
+          rw [hprod3, div_mul_cancel₀ _ hDpos.ne']
+          ring
+
+end
+end Twisted
+end Auto
+
+namespace Auto
+namespace Twisted
+
+open MeasureTheory Filter Set
+open scoped BigOperators ENNReal Topology
+
+noncomputable section
+
+theorem exists_weakNorm_expansion_term_gain_le_uniform
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {P : Fin 4 → Fin 3 → ℝ} {r A ϑ : Fin 4 → ℝ} {p : Fin 3 → ℝ} {R : ℝ}
+    (hP : ∀ a j, 0 < P a j) (hA : ∀ a, 0 < A a) (hr : ∀ a, 0 < r a)
+    (hϑ : ∀ a, 0 < ϑ a) (hϑsum : ∑ a : Fin 4, ϑ a = 1) (hR : 0 < R)
+    (hRdef : R⁻¹ = ∑ a : Fin 4, ϑ a * (r a)⁻¹)
+    (hrsum : ∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹)
+    (hp : ∀ j, (p j)⁻¹ = ∑ a : Fin 4, ϑ a * (P a j)⁻¹)
+    (hindep : AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹))) :
+    ∃ δ : ℝ, 0 < δ ∧
+      ∀ (T : (Fin 3 → (X → ℝ)) → (X → ℝ)),
+      (∀ (a : Fin 4) (g : Fin 3 → SimpleFunc X ℝ),
+        (∀ j, (g j).FinMeasSupp μ) →
+        weakNorm μ (T (fun j ↦ ⇑(g j))) (r a)
+          ≤ ENNReal.ofReal (A a *
+              ∏ j : Fin 3, lpNorm (⇑(g j)) (ENNReal.ofReal (P a j)) μ)) →
+      ∀ (f : Fin 3 → SimpleFunc X ℝ), (∀ j, (f j).FinMeasSupp μ) →
+      ∀ k : Fin 3 → ℤ,
+      (∀ j, 0 < (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal) →
+      weakNorm μ (T (fun j ↦ dyadicLevelPiece (⇑(f j)) (k j))) R
+        ≤ ENNReal.ofReal ((∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A *
+            Real.exp (-(δ * ‖layerLogDeviation
+              (fun j ↦ (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal)‖)) *
+            ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) *
+              (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal ^ (1 / p j))) := by
+  classical
+  set v : Fin 4 → (Fin 3 → ℝ) := fun a ↦ fun j ↦ (P a j)⁻¹ with hv_def
+  obtain ⟨δ, hδ, hgain⟩ := exists_face_gain hindep hϑ hϑsum
+  refine ⟨δ, hδ, fun T hweak f hf k hm ↦ ?_⟩
+  set m : Fin 3 → ℝ := fun j ↦ (μ (dyadicLevelSet (⇑(f j)) (k j))).toReal with hm_def
+  set w : Fin 3 → ℝ := layerLogDeviation m with hw_def
+  have hw0 : ∑ j : Fin 3, w j = 0 := layerLogDeviation_sum m
+  have hnw0 : ∑ j : Fin 3, (-w) j = 0 := by
+    simp only [Pi.neg_apply]
+    rw [Finset.sum_neg_distrib, hw0, neg_zero]
+  obtain ⟨ϑ', hϑ'pos, hϑ'sum, hϑ'face, hϑ'gain⟩ := hgain (-w) hnw0
+  -- the perturbed input exponents
+  set p' : Fin 3 → ℝ := fun j ↦ (∑ a : Fin 4, ϑ' a * (P a j)⁻¹)⁻¹ with hp'_def
+  have hp' : ∀ j, (p' j)⁻¹ = ∑ a : Fin 4, ϑ' a * (P a j)⁻¹ := by
+    intro j
+    simp only [hp'_def, inv_inv]
+  have hRdef' : R⁻¹ = ∑ a : Fin 4, ϑ' a * (r a)⁻¹ := by
+    have h1 : ∀ a : Fin 4, (r a)⁻¹ = ∑ j : Fin 3, v a j := fun a ↦ hrsum a
+    rw [Finset.sum_congr rfl fun a _ ↦ by rw [h1 a], hRdef,
+      Finset.sum_congr rfl fun a _ ↦ by rw [h1 a]]
+    exact hϑ'face.symm
+  have hbase := weakNorm_expansion_term_interior_le (T := T) hP (fun a ↦ (hA a).le)
+    hr hϑ'pos hϑ'sum hR hRdef' hp' hweak f hf k
+  refine le_trans hbase (ENNReal.ofReal_le_ofReal ?_)
+  -- compare the two bounds factor by factor
+  have hclose : ∀ a, |ϑ' a - ϑ a| ≤ 1 := by
+    intro a
+    have h1 : ϑ' a ≤ 1 := by
+      have := Finset.single_le_sum (fun b _ ↦ (hϑ'pos b).le) (Finset.mem_univ a)
+      rw [hϑ'sum] at this
+      exact this
+    have h2 : ϑ a ≤ 1 := by
+      have := Finset.single_le_sum (fun b _ ↦ (hϑ b).le) (Finset.mem_univ a)
+      rw [hϑsum] at this
+      exact this
+    rw [abs_le]
+    constructor <;> linarith [hϑ'pos a, hϑ a]
+  have hAle := prod_rpow_le_of_weights_close hA hclose
+  -- the measure factors
+  have hmexp : ∏ j : Fin 3, m j ^ (1 / p' j)
+      ≤ Real.exp (-(δ * ‖w‖)) * ∏ j : Fin 3, m j ^ (1 / p j) := by
+    rw [prod_rpow_eq_exp hm, prod_rpow_eq_exp hm, ← Real.exp_add]
+    refine Real.exp_le_exp.2 ?_
+    -- the exponent difference is the pairing with the deviation
+    have hx : ∀ j, 1 / p j = simplexBarycentre v ϑ j := by
+      intro j
+      rw [one_div, hp j, simplexBarycentre_apply]
+    have hy : ∀ j, 1 / p' j = ∑ a : Fin 4, ϑ' a * v a j := by
+      intro j
+      rw [one_div, hp' j]
+    have hD : ∀ j : Fin 3, 1 / p' j - 1 / p j
+        = ∑ a : Fin 4, ϑ' a * (v a j - simplexBarycentre v ϑ j) := by
+      intro j
+      rw [hy j, hx j, Finset.sum_congr rfl fun a _ ↦ mul_sub (ϑ' a) _ _,
+        Finset.sum_sub_distrib, ← Finset.sum_mul, hϑ'sum, one_mul]
+    -- the sum of the exponent differences vanishes by the face constraint
+    have hDsum : ∑ j : Fin 3, (1 / p' j - 1 / p j) = 0 := by
+      rw [Finset.sum_congr rfl fun j _ ↦ hD j, Finset.sum_comm]
+      have hpt : ∀ a : Fin 4, ∑ j : Fin 3, ϑ' a * (v a j - simplexBarycentre v ϑ j)
+          = ϑ' a * (∑ j : Fin 3, v a j) - ϑ' a * (∑ j : Fin 3, simplexBarycentre v ϑ j) := by
+        intro a
+        rw [← Finset.mul_sum, Finset.sum_sub_distrib, mul_sub]
+      rw [Finset.sum_congr rfl fun a _ ↦ hpt a, Finset.sum_sub_distrib, ← Finset.sum_mul,
+        hϑ'sum, one_mul, hϑ'face]
+      have hbary : ∑ j : Fin 3, simplexBarycentre v ϑ j
+          = ∑ a : Fin 4, ϑ a * (∑ j : Fin 3, v a j) := by
+        rw [Finset.sum_congr rfl fun j _ ↦ simplexBarycentre_apply v ϑ j, Finset.sum_comm]
+        exact Finset.sum_congr rfl fun a _ ↦ (Finset.mul_sum _ _ _).symm
+      rw [hbary, sub_self]
+    have hc : ∀ j : Fin 3, Real.log (m j) = w j + (∑ i : Fin 3, Real.log (m i)) / 3 := by
+      intro j
+      simp only [hw_def, layerLogDeviation]
+      ring
+    have hdiff : ∑ j : Fin 3, (1 / p' j) * Real.log (m j)
+        - ∑ j : Fin 3, (1 / p j) * Real.log (m j)
+        = ∑ a : Fin 4, ϑ' a * gapPairing w (v a - simplexBarycentre v ϑ) := by
+      rw [← Finset.sum_sub_distrib]
+      have hpt : ∀ j : Fin 3, (1 / p' j) * Real.log (m j) - (1 / p j) * Real.log (m j)
+          = (1 / p' j - 1 / p j) * w j
+            + (1 / p' j - 1 / p j) * ((∑ i : Fin 3, Real.log (m i)) / 3) := by
+        intro j
+        rw [hc j]
+        ring
+      rw [Finset.sum_congr rfl fun j _ ↦ hpt j, Finset.sum_add_distrib, ← Finset.sum_mul,
+        hDsum, zero_mul, add_zero, Finset.sum_congr rfl fun j _ ↦ by rw [hD j]]
+      simp only [Finset.sum_mul, gapPairing]
+      rw [Finset.sum_comm]
+      refine Finset.sum_congr rfl fun a _ ↦ ?_
+      rw [Finset.mul_sum]
+      refine Finset.sum_congr rfl fun j _ ↦ ?_
+      simp only [Pi.sub_apply]
+      ring
+    have hneg : ∑ a : Fin 4, ϑ' a * gapPairing (-w) (v a - simplexBarycentre v ϑ)
+        = -∑ a : Fin 4, ϑ' a * gapPairing w (v a - simplexBarycentre v ϑ) := by
+      rw [← Finset.sum_neg_distrib]
+      refine Finset.sum_congr rfl fun a _ ↦ ?_
+      unfold gapPairing
+      simp only [Pi.neg_apply, neg_mul, Finset.sum_neg_distrib, mul_neg]
+    rw [hneg, norm_neg] at hϑ'gain
+    linarith [hdiff, hϑ'gain]
+  -- assemble
+  have hprod' : ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p' j))
+      = (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j) :=
+    Finset.prod_mul_distrib
+  have hprod : ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p j))
+      = (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j) :=
+    Finset.prod_mul_distrib
+  have h2nn : 0 ≤ ∏ j : Fin 3, (2 : ℝ) ^ (k j + 1) :=
+    Finset.prod_nonneg fun j _ ↦ (zpow_pos (by norm_num) _).le
+  have hAnn : 0 ≤ ∏ a : Fin 4, A a ^ ϑ a :=
+    Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le
+  have hCnn : 0 ≤ C_weights_shift A := by
+    unfold C_weights_shift
+    exact Finset.prod_nonneg fun a _ ↦ le_trans (hA a).le (le_max_left _ _)
+  have hA'nn : 0 ≤ ∏ a : Fin 4, A a ^ ϑ' a :=
+    Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le
+  have hm'nn : 0 ≤ ∏ j : Fin 3, m j ^ (1 / p' j) :=
+    Finset.prod_nonneg fun j _ ↦ (Real.rpow_pos_of_pos (hm j) _).le
+  show (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p' j))
+    ≤ (∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A * Real.exp (-(δ * ‖w‖)) *
+        ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p j))
+  rw [hprod', hprod]
+  calc (∏ a : Fin 4, A a ^ ϑ' a) *
+        ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
+      ≤ ((∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A) *
+        ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) *
+          (Real.exp (-(δ * ‖w‖)) * ∏ j : Fin 3, m j ^ (1 / p j))) := by
+        refine mul_le_mul hAle (mul_le_mul_of_nonneg_left hmexp h2nn)
+          (mul_nonneg h2nn hm'nn) (mul_nonneg hAnn hCnn)
+    _ = (∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A * Real.exp (-(δ * ‖w‖)) *
+        ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by
+        ring
+
+
+theorem exists_layer_weak_bound_gain_form_uniform
+    {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {P : Fin 4 → Fin 3 → ℝ} {r A ϑ' : Fin 4 → ℝ} {p p' : Fin 3 → ℝ} {R' s : ℝ}
+    (hP : ∀ a j, 0 < P a j) (hA : ∀ a, 0 < A a) (hr : ∀ a, 0 < r a)
+    (hϑ' : ∀ a, 0 < ϑ' a) (hϑ'sum : ∑ a : Fin 4, ϑ' a = 1) (hR' : 0 < R')
+    (hR'def : R'⁻¹ = ∑ a : Fin 4, ϑ' a * (r a)⁻¹)
+    (hrsum : ∀ a, (r a)⁻¹ = ∑ j : Fin 3, (P a j)⁻¹)
+    (hp' : ∀ j, (p' j)⁻¹ = ∑ a : Fin 4, ϑ' a * (P a j)⁻¹)
+    (hshift : ∀ j, 1 / p' j = 1 / p j + s)
+    (hindep : AffineIndependent ℝ (fun a : Fin 4 ↦ (fun j : Fin 3 ↦ (P a j)⁻¹))) :
+    ∃ δ' : ℝ, 0 < δ' ∧ ∀ δ'' : ℝ, 0 < δ'' → δ'' ≤ δ' →
+      ∀ (T : (Fin 3 → (X → ℝ)) → (X → ℝ)),
+      (∀ (a : Fin 4) (g : Fin 3 → SimpleFunc X ℝ),
+        (∀ j, (g j).FinMeasSupp μ) →
+        weakNorm μ (T (fun j ↦ ⇑(g j))) (r a)
+          ≤ ENNReal.ofReal (A a *
+              ∏ j : Fin 3, lpNorm (⇑(g j)) (ENNReal.ofReal (P a j)) μ)) →
+      ∀ (f : Fin 3 → SimpleFunc X ℝ), (∀ j, (f j).FinMeasSupp μ) →
+      ∀ k : ℤ × ℤ × ℤ,
+      0 < layerMeasure μ (⇑(f 0)) k.1 → 0 < layerMeasure μ (⇑(f 1)) k.2.1 →
+      0 < layerMeasure μ (⇑(f 2)) k.2.2 →
+      weakNorm μ (layerTerm T (fun j ↦ ⇑(f j)) k) R'
+        ≤ ENNReal.ofReal ((8 * (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A) *
+            layerSize (layerMeasure μ (⇑(f 0))) (layerMeasure μ (⇑(f 1)))
+              (layerMeasure μ (⇑(f 2))) (p 0) (p 1) (p 2) δ'' k *
+            layerProd (layerMeasure μ (⇑(f 0))) (layerMeasure μ (⇑(f 1)))
+              (layerMeasure μ (⇑(f 2))) k ^ s) := by
+  obtain ⟨δ', hδ', hgain⟩ := exists_weakNorm_expansion_term_gain_le_uniform (μ := μ) (p := p')
+    hP hA hr hϑ' hϑ'sum hR' hR'def hrsum hp' hindep
+  refine ⟨δ', hδ', fun δ'' hδ'' hle T hweak f hf k h0 h1 hk2 ↦ ?_⟩
+  set kf : Fin 3 → ℤ := ![k.1, k.2.1, k.2.2] with hkf
+  set m₀ : ℤ → ℝ := layerMeasure μ (⇑(f 0)) with hm₀
+  set m₁ : ℤ → ℝ := layerMeasure μ (⇑(f 1)) with hm₁
+  set m₂ : ℤ → ℝ := layerMeasure μ (⇑(f 2)) with hm₂
+  have hmvec : (fun j ↦ (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal)
+      = ![m₀ k.1, m₁ k.2.1, m₂ k.2.2] := by
+    funext j
+    fin_cases j <;> simp [hkf, hm₀, hm₁, hm₂, layerMeasure]
+  have hmpos : ∀ j, 0 < (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal := by
+    intro j
+    have := congrFun hmvec j
+    rw [this]
+    fin_cases j <;> simpa using ‹_›
+  have hb := hgain T hweak f hf kf hmpos
+  have hterm : layerTerm T (fun j ↦ ⇑(f j)) k = T (fun j ↦ dyadicLevelPiece (⇑(f j)) (kf j)) := rfl
+  rw [hterm]
+  refine le_trans hb (ENNReal.ofReal_le_ofReal ?_)
+  rw [hmvec]
+  -- the exponent shift and the factor eight
+  have h2 : (0:ℝ) < 2 := by norm_num
+  have hm0 : 0 < m₀ k.1 := h0
+  have hm1 : 0 < m₁ k.2.1 := h1
+  have hm2 : 0 < m₂ k.2.2 := hk2
+  have hprod : ∏ j : Fin 3, ((2:ℝ) ^ (kf j + 1) *
+      (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal ^ (1 / p' j))
+      = 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
+        (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
+    have hm0' : 0 < (μ (dyadicLevelSet (⇑(f 0)) k.1)).toReal := h0
+    have hm1' : 0 < (μ (dyadicLevelSet (⇑(f 1)) k.2.1)).toReal := h1
+    have hm2' : 0 < (μ (dyadicLevelSet (⇑(f 2)) k.2.2)).toReal := hk2
+    rw [Fin.prod_univ_three]
+    simp only [hkf, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+      Matrix.cons_val_two, Matrix.tail_cons, hm₀, hm₁, hm₂, layerMeasure]
+    rw [hshift 0, hshift 1, hshift 2, Real.rpow_add hm0', Real.rpow_add hm1',
+      Real.rpow_add hm2', zpow_add_one₀ h2.ne', zpow_add_one₀ h2.ne', zpow_add_one₀ h2.ne',
+      Real.mul_rpow (mul_pos hm0' hm1').le hm2'.le, Real.mul_rpow hm0'.le hm1'.le]
+    ring
+  have hgain_le : Real.exp (-(δ' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖))
+      ≤ Real.exp (-(δ'' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) := by
+    refine Real.exp_le_exp.2 ?_
+    have := norm_nonneg (layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2])
+    nlinarith
+  have hnn1 : 0 ≤ (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A := by
+    refine mul_nonneg (Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le) ?_
+    unfold C_weights_shift
+    exact Finset.prod_nonneg fun a _ ↦ le_trans (hA a).le (le_max_left _ _)
+  have hnn2 : 0 ≤ 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+      ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
+    positivity
+  rw [hprod]
+  simp only [layerSize, layerProd]
+  calc (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A *
+        Real.exp (-(δ' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) *
+        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
+      ≤ (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A *
+        Real.exp (-(δ'' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) *
+        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
+        mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hgain_le hnn1) hnn2
+    _ = _ := by ring
+
+
+end
+end Twisted
+end Auto

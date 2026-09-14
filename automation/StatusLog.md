@@ -4591,3 +4591,27 @@ heights so the fibre assembly's positivity hypothesis holds; budgets from
 `ae_eq_sum_layerTerm_positive`; and `lintegral_rpow_sum_le_of_layer_weak_bounds`
 finishes.  Remaining: the wrapper to the recorded statement — `A_a = 0`
 (then `T f = 0` a.e.), normalisation by trilinearity, and `lpNorm ≤ C^{1/R}`.
+
+### ext:interpolation — the per-operator statement is proved
+
+`finMeasSupp_smul`, `trilinearOnSimple_smul_three`,
+`lpNorm_eq_zero_of_weakNorm_le_zero`, and `fourVertexMarcinkiewicz_of_measurable`
+promoted; verified, `[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+The last of these proves `FourVertexMarcinkiewicz μ T` — the recorded
+per-operator form of `ext:interpolation`, verbatim — for every σ-finite `μ` and
+every `T` with measurable outputs on simple triples.  The wrapper handles the
+degenerate case `A_a = 0` (the output vanishes a.e., so `lpNorm = 0`), inputs
+with `lpNorm = 0` (likewise), and otherwise normalises the inputs to unit norm,
+applies `exists_lintegral_rpow_le_of_normalized`, and undoes the scaling by
+`trilinearOnSimple_smul_three`.
+
+Status.md now records the item as partially proved.  What is still open is the
+uniform form `FourVertexMarcinkiewiczUniform`, which `thm:main` consumes:
+(a) uniformity in `T` — a quantifier reordering in
+`exists_weakNorm_expansion_term_gain_le` and
+`exists_layer_weak_bound_gain_form`, whose `δ` depends only on the exponent
+data; (b) `MemLp (T f) R` — from measurability and the bound; (c) uniformity
+in `A` — the substantive item, see ErrorReport for the plan: fold `log A` into
+the deviation as a shift `ℓ_A` of the log-measures, run blocks and fibres on
+`m_j e^{(ℓ_A)_j}`, and let the reciprocal constants at the two interpolation
+points cancel in the geometric mean.  Order of work: (a), (b), then (c).

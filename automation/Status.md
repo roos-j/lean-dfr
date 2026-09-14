@@ -134,7 +134,7 @@ Lean file: DFR/Auto/Twisted/FiberwiseCalderonZygmundDecomposition/FiberwiseCalde
 \label{lem:fiber_cz}: Proof completed (Lean: Auto.lintegral_prod_rpow_fiberDyadicCountableGoodField_le) (2026-09-12T14:22-0700)
 \label{lem:interval_tails}: Proof completed (Lean: Auto.Twisted.lpNorm_finset_double_intervalTails_le_of_radius_sum, Auto.integral_finset_double_intervalTails_le_of_radius_sum) (2026-09-12T18:55-0700)
 \label{lem:one_fiber}: Proof completed (Lean: Auto.Twisted.ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded) (2026-09-13T17:40-0700)
-\label{ext:interpolation}: External (Lean: Auto.Twisted.FourVertexMarcinkiewicz, Auto.Twisted.FourVertexMarcinkiewiczUniform) (2026-09-13T09:05-0700)
+\label{ext:interpolation}: Partially proved (Lean: Auto.Twisted.fourVertexMarcinkiewicz_of_measurable proves Auto.Twisted.FourVertexMarcinkiewicz for σ-finite μ and operators with measurable outputs; Auto.Twisted.FourVertexMarcinkiewiczUniform still open — constant not yet uniform in the endpoint constants A, see ErrorReport) (2026-09-13T09:05-0700)
 \label{lem:exponent_simplex}: Proof completed (Lean: Auto.Twisted.affineIndependent_exponentSimplex_vertices) (2026-09-12T14:22-0700)
 \label{thm:extended_model}: Proof completed (Lean: Auto.Twisted.exists_abs_ModelFullForm_le_extended) (2026-09-13T13:20-0700)
 

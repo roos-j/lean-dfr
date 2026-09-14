@@ -218,3 +218,37 @@ Every upper bound on `primeK` proved so far exhibits an explicit measurable
 decomposition (`0`, `v`, `w₁ + w₂`, `∑ w i`, and the truncations in
 `primeK_sum_le_primeJ`), so each one carries over to `primeKm` unchanged apart
 from packaging the witness with its measurability proof.
+
+### `ext:interpolation`: the per-operator statement is proved; two hypotheses were needed, and uniformity in the endpoint constants is still open
+
+`fourVertexMarcinkiewicz_of_measurable` proves the recorded per-operator
+statement `FourVertexMarcinkiewicz μ T` under two hypotheses the recorded
+statement does not carry:
+
+1. `[SigmaFinite μ]`.  Needed by `weakNorm_le_weakNormPrime`, the comparison
+   between the weak quasi-norm and the genuine norm on which the real
+   interpolation argument rests.  Lebesgue measure on `E3`, the only measure
+   the downstream theorems use, is σ-finite.
+
+2. Measurability of the outputs: `∀ g : Fin 3 → SimpleFunc X ℝ,
+   Measurable (T (fun j ↦ ⇑(g j)))`.  The argument decomposes `T f` into
+   layer terms `T(layer k)` and needs their weak norms to add, which requires
+   them to be measurable.  The source states the bound for an operator on
+   simple functions and does not say its values are measurable; for a
+   non-measurable output `lpNorm` is zero by convention and the conclusion is
+   empty, so the hypothesis is the natural reading rather than a restriction.
+
+The uniform reading `FourVertexMarcinkiewiczUniform μ` — one constant for all
+operators and all endpoint constants `A`, and membership of `T f` in `L^R` —
+is what `thm:main` consumes, and it is not yet discharged.  Uniformity in the
+operator is a reordering of quantifiers (the constants produced along the
+proof depend only on the exponent data), and membership in `L^R` follows from
+the bound once the output is measurable.  Uniformity in `A` is the genuine
+remaining content: the present proof moves the interpolation weights within a
+face of the simplex to gain geometric decay, and pays for that move with the
+factor `∏_a max(A_a, A_a⁻¹)`.  The remedy, recorded in StatusLog, is to fold
+`log A_a` into the deviation vector — the vector `(log A_a - ∑ ϑ_b log A_b)_a`
+lies in the image of `ℓ ↦ (⟨v_a - x, ℓ⟩)_a`, so it is a shift `ℓ_A` of the
+log-measures — and to run the blocks and fibres on the shifted measures
+`m_j e^{(ℓ_A)_j}`; the constants this introduces are reciprocal at the two
+interpolation points and cancel in the geometric mean.
