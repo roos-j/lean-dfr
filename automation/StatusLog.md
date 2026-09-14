@@ -4615,3 +4615,213 @@ in `A` — the substantive item, see ErrorReport for the plan: fold `log A` into
 the deviation as a shift `ℓ_A` of the log-measures, run blocks and fibres on
 `m_j e^{(ℓ_A)_j}`, and let the reciprocal constants at the two interpolation
 points cancel in the geometric mean.  Order of work: (a), (b), then (c).
+
+### ext:interpolation — uniformity in the operator
+
+`exists_weakNorm_expansion_term_gain_le_uniform`,
+`exists_layer_weak_bound_gain_form_uniform`, and
+`exists_lintegral_rpow_le_of_normalized_uniform` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  These are the
+promoted proofs with the operator quantified after the constant: the gain
+`δ` comes from `exists_face_gain` and depends only on the exponent data, so
+for fixed endpoint constants `A` a single `C` now serves every trilinear `T`
+with measurable outputs and the four weak bounds.  Item (a) of the uniform
+form is done.  Next: (b) `MemLp` of the output, then (c) uniformity in `A`.
+
+### ext:interpolation — towards uniformity in the endpoint constants
+
+`discrete_core_le_pair`, `memLp_of_lintegral_rpow_le`, `exists_face_gain_shift`,
+`exp_shift_le_block_decay` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+The obstruction to uniformity in `A` is the factor `C_weights_shift A`, paid
+when the interpolation weights move off `ϑ`.  The remedy is not to bound that
+factor but to fold it into the *centre* of the decay, which the summation
+lemmas already handle uniformly (`exists_sum_abs_tent_bound` takes an
+arbitrary centre, and so does `card_filter_floor_eq_le`).
+
+`exists_face_gain_shift` does this at the source.  For any vector `ã` of
+endpoint logarithms it produces `δ > 0` and centres `c₁, c₂` — depending on
+the vertices, the weights and `ã` — such that for every position `ℓ` some face
+weight `ϑ'` satisfies
+
+    ∑_a ϑ'_a (ã_a + ⟨ℓ, v_a - x⟩) ≤ ∑_a ϑ_a ã_a - δ(|ℓ₀-ℓ₁-c₁| + |ℓ₁-ℓ₂-c₂|).
+
+The centres are `c_i = -∑_a (e_i)_a ã_a`, the pairing of `ã` with the two
+tangent directions; no constant depending on `A` appears.  The statement is
+also simpler than the norm-based `exists_face_gain` it replaces: the gain is
+expressed directly in the two coordinate differences the block machinery
+consumes, so `layerLogDeviation` and its norm drop out of the chain.
+
+`exp_shift_le_block_decay` is the matching block comparison:
+`exp(-δ|log m₀ - log m₁ - c|) ≤ 2^δ · 2^(-δ|n₀ - n₁ - c/log 2|)` with
+`n_j = blockIndex m_j`, replacing `exp_gain_le_block_decay`.
+`discrete_core_le_pair` is the discrete core with two independent decay
+weights, needed because the two centres differ.  `memLp_of_lintegral_rpow_le`
+discharges item (b) of the uniform form.
+
+Next: re-derive the layer bound, `layerSize`, the fibre profile and the
+assembly with the two centres carried through, then the uniform wrapper.
+
+### ext:interpolation — canonical decay centres
+
+`exists_face_gain_shift_of` and `exists_weakNorm_expansion_term_gain_shift_of`
+promoted; verified, `[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+A subtlety surfaced while planning the assembly.  The two interpolation points
+`ϑ₁, ϑ₂` each need a per-layer bound, and the fibre index is the log-ratio of
+the two bounds; for that ratio to be a function of the layer measures alone,
+the two bounds must carry the *same* decay factor, hence the same centres.
+The centres produced by `exists_face_gain_shift` are
+`c_i = -∑_a (e_i)_a log A_a`, which depend only on the vertex data and `A` —
+not on the base weight — but the lemma obtains `e₁, e₂` internally, so two
+applications yield formally unrelated centres.
+
+The fix is to take the tangent directions as inputs.  `exists_face_gain_shift_of`
+and `exists_weakNorm_expansion_term_gain_shift_of` are the same results with
+`e₁, e₂` (and their defining properties `∑ e_i = 0`,
+`∑_a (e_i)_a v_a = (1,-1,0)`, `(0,1,-1)`) as hypotheses, so the caller obtains
+them once from `exists_zero_sum_combination` and passes them to both
+applications, getting literally the same centres.  Only `δ` differs between
+the two, and the minimum of the two serves both.
+
+Next: `layerSizeC` with the two centres, the assembly-form layer bound, and
+the centred fibre profile.
+
+### ext:interpolation — the centred fibre profile
+
+`layerSizeC` and `fibre_profile_le_centred` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  `layerSizeC` is the
+layer size with the two-centre gain
+`exp(-δ|log m₀ - log m₁ - c₁|) · exp(-δ|log m₁ - log m₂ - c₂|)`, and
+`fibre_profile_le_centred` is the fibre profile bound for it, with a constant
+depending only on `δ, ε, p, R` — not on the centres, because
+`exists_sum_abs_tent_bound` is centre-uniform and
+`discrete_core_le_pair` accepts the two different decays.  This is the step
+where uniformity in `A` is actually secured: all dependence on the endpoint
+constants sits in `c₁, c₂`, which the bound does not see.
+
+### ext:interpolation — the centred chain reaches the assembly
+
+`layerSizeC_pos`, `lintegral_rpow_sum_le_of_layer_weak_bounds_centred` and
+`exists_layer_weak_bound_gain_shift_form` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  The centred chain is
+now complete from the face gain to the fibre assembly: per-layer bound with
+canonical centres, layer size with the two-centre gain, fibre profile whose
+constant does not see the centres, and the assembly theorem taking the centres
+as parameters.  All that remains is to re-run the normalised main theorem and
+the wrapper on the centred chain, with `e₁, e₂` obtained once and shared
+between the two interpolation points, and then to assemble
+`FourVertexMarcinkiewiczUniform`.
+
+### ext:interpolation — the endpoint constants leave the interpolation constant
+
+`fibre_profile_le_centred_uniform` and
+`lintegral_rpow_sum_le_of_layer_weak_bounds_uniform` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+Two quantifier moves finish the uniformity argument at the assembly level.
+The fibre offset `c₀` moves inside the universal quantifier (the profile
+constant never mentioned it).  The endpoint scales `D₁, D₂` do the same, and
+the conclusion becomes
+
+    ∫ |∑_k u k|^R dμ ≤ C · (D₁ D₂)^(R/2)
+
+with `C` depending only on the exponents, `ε` and the gain.  Two places had to
+change for that: the artificial values given to the tail fibres — those outside
+the range of the fibre index, which only have to be positive and summable — are
+now scaled by `κ = (D₁D₂)^(1/2)`, so that the whole profile bound is
+homogeneous of degree one in `κ`; and the balancing constant `c₃` is split as
+`c₃' · κ` with `c₃'` free of `D`.  Then `BwR = κ^R · B₀` exactly.
+
+This is what makes the final constant uniform in `A`: at the call site
+`D₁ D₂ = 64 ∏_a A_a^(ϑ₁+ϑ₂) = 64 (∏_a A_a^(ϑ_a))²`, so `(D₁D₂)^(R/2)` is
+`8^R (∏_a A_a^(ϑ_a))^R` — the bound the blueprint asks for, with no other
+dependence on the endpoint constants.
+
+### ext:interpolation — the gain chain becomes uniform in the endpoint constants
+
+`exists_face_gain_shift_unif`, `exists_weakNorm_expansion_term_gain_shift_unif`
+and `exists_layer_weak_bound_gain_shift_unif` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  These are the three
+gain lemmas with the endpoint data quantified after the gain: the gain `δ` is
+`minWeight ϑ / (max(maxAbs e₁, maxAbs e₂) + 1) / 2`, which mentions only the
+vertices and the weights, so `ã` (and hence `A`) can be moved inside the
+universal quantifier.  The one real edit was in the face lemma, where the
+perturbation identity had to be generalised over `ã` as well, since it is
+proved before `ã` is introduced.
+
+With this the whole chain — face gain, layer bound, layer bound in assembly
+form, fibre profile, fibre assembly — has its constants free of `A`.  What
+remains is to re-run the normalised theorem and the wrapper on it and to
+assemble `FourVertexMarcinkiewiczUniform`.
+
+### ext:interpolation — the normalised bound is fully uniform
+
+`fibre_profile_le_full_uniform`, `lintegral_rpow_sum_le_of_layer_weak_bounds_full`
+and `exists_lintegral_rpow_le_of_normalized_full` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+The first two move the decay centres inside the universal quantifier, the last
+is the normalised theorem on the fully uniform chain.  Its statement: for the
+exponent data alone there is `C` such that for *every* positive endpoint vector
+`A`, every trilinear `T` with measurable outputs satisfying the four weak
+bounds, and every triple of simple functions of unit norm,
+
+    ∫ |T f|^R dμ ≤ C · (∏_a A_a^(ϑ_a))^R.
+
+The `A`-dependence collapses exactly: the two interpolation points give
+`D₁ D₂ = 64 ∏_a A_a^(ϑ₁+ϑ₂) = 64 (∏_a A_a^(ϑ_a))²` because `ϑ₁ + ϑ₂ = 2ϑ`, so
+`(D₁D₂)^(R/2) = 8^R (∏_a A_a^(ϑ_a))^R`, and the centres `d₁, d₂` — the only
+other place `A` enters — are invisible to the constant.
+
+Next: the wrapper, and `FourVertexMarcinkiewiczUniform`.
+
+### ext:interpolation — the uniform reading is proved
+
+`exists_fourVertex_uniform_bound_of_measurable` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  It is the body of
+`FourVertexMarcinkiewiczUniform μ` with a measurability hypothesis on the
+operator: for σ-finite `μ` and exponent data satisfying the blueprint's
+conditions there is one constant `C₀^(1/R)` such that every vector of
+endpoint constants `A ≥ 0`, every trilinear `T` with measurable values on
+simple triples and the four weak bounds, and every triple of simple functions
+of finite measure support satisfy
+
+    MemLp (T f) R μ  and  ‖T f‖_R ≤ C · ∏_a A_a^(ϑ_a) · ∏_j ‖f_j‖_{p_j}.
+
+The proof is the per-operator wrapper on the fully uniform chain: degenerate
+`A_a = 0` and degenerate inputs give an a.e.-zero output, and otherwise the
+inputs are normalised, `exists_lintegral_rpow_le_of_normalized_full` gives
+`∫|T g|^R ≤ C₀ (∏ A^ϑ)^R`, `memLp_of_lintegral_rpow_le` gives membership,
+`lpNorm_le_of_lintegral_rpow_le` gives the norm bound, and
+`trilinearOnSimple_smul_three` undoes the normalisation.
+
+Status.md and ErrorReport.md record the two hypotheses — σ-finiteness and
+measurability — and why the second cannot be dropped: the `MemLp` conjunct is
+false for an operator with non-measurable output, so the recorded statement
+needs it.  Both hold for the intended application.
+
+### ext:interpolation — closed
+
+`FourVertexMarcinkiewiczUniformMeasurable`,
+`fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite` and
+`fourVertexMarcinkiewicz_of_uniformMeasurable` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`, and `lake build`
+completes.  The first packages the uniform reading as a named predicate, the
+second proves it outright for every σ-finite measure — no hypothesis remains
+beyond σ-finiteness and the operator's measurability — and the third recovers
+the per-operator form.
+
+Both external theorems of the task are now formalized: `ext:maximal` earlier,
+and `ext:interpolation` here.  The corpus has no `sorry` and no axioms beyond
+`propext`, `Classical.choice`, `Quot.sound`.
+
+The one thing not done, and it is plumbing rather than mathematics: the
+downstream theorems take `hU : FourVertexMarcinkiewiczUniform volume` as a
+hypothesis, and that predicate is the one shown in ErrorReport to be false
+without a measurability hypothesis.  Connecting them to the proved theorem
+means changing those hypotheses to
+`FourVertexMarcinkiewiczUniformMeasurable` and supplying, at each use, the
+measurability of the concrete operator `U^{a,b}_{u,c}` — an edit to existing
+statements, with one genuine obligation per use site.

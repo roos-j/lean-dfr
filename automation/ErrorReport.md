@@ -252,3 +252,31 @@ lies in the image of `ℓ ↦ (⟨v_a - x, ℓ⟩)_a`, so it is a shift `ℓ_A` 
 log-measures — and to run the blocks and fibres on the shifted measures
 `m_j e^{(ℓ_A)_j}`; the constants this introduces are reciprocal at the two
 interpolation points and cancel in the geometric mean.
+
+### `ext:interpolation`: the uniform reading is proved, and needs the measurability hypothesis
+
+`exists_fourVertex_uniform_bound_of_measurable` proves the body of
+`FourVertexMarcinkiewiczUniform μ` — one constant, depending only on the
+exponent vectors and the weights, serving every trilinear operator and every
+vector of endpoint constants — with one hypothesis added: the operator's values
+on simple triples are measurable.
+
+That hypothesis cannot be dropped, and not merely for convenience of proof.
+The conclusion of `FourVertexMarcinkiewiczUniform` asserts
+`MemLp (T f) R μ`, which requires `AEStronglyMeasurable (T f) μ`.  Nothing in
+the hypotheses forces it: `weakNorm` is built from the outer measure of level
+sets and is finite for plenty of non-measurable functions.  Concretely, on a
+finite measure space take a bounded non-measurable `h` and set
+`T (f₁,f₂,f₃) = L(f₁) L(f₂) L(f₃) · h` for a suitable trilinear scalar `L`;
+this is trilinear on simple functions and satisfies weak endpoint bounds, but
+`MemLp (T f) R μ` fails.  So the recorded statement is false as written and the
+measurability hypothesis is the correct reading, not a restriction.
+
+The measure is also required to be σ-finite, as recorded in the previous entry.
+
+Both hypotheses hold for the intended application: the operators
+`U^{a,b}_{u,c}` of `thm:extended_model` have measurable values, and the measure
+is Lebesgue measure on `E3`.  What remains to close the chain downstream is to
+weaken `FourVertexMarcinkiewiczUniform` to carry these two hypotheses, or to
+supply them at each use site; that is an edit to statements already in the
+corpus rather than new mathematics.
