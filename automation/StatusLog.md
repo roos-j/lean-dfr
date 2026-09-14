@@ -3280,3 +3280,1314 @@ subadditivity); link two complete (subadditivity of `K`, in the form
 applications use).  Remaining: the `J`-method estimate, which aggregates the
 pieces in `ℓ^s` against `2^{-νθ} J(2^ν, v_ν)`, and the identification of the
 interpolation space of the couple with `L^R`.
+
+## 2026-09-14T18:50-0700 — aggregating finitely many pieces
+
+`weakNormPrime_sum_le` lifts subadditivity to a finite family by induction, with
+no constant, and `primeK_sum_le` lifts it to the `K`-functional:
+
+  primeK (∑_{i ∈ S} v i) ≤ ∑_{i ∈ S} (‖v i - w i‖' + t ‖w i‖'),
+
+for any family of decompositions `w`.  The proof tests the infimum at
+`∑_{i ∈ S} w i`, splits the difference with `Finset.sum_sub_distrib`, and applies
+the finite subadditivity in each slot.
+
+This is the shape the `J`-method estimate consumes, and it is the first point in
+the whole development where finitely many pieces can be aggregated without a
+constant per piece.  Under the weak quasi-norm the same statement would carry
+`2^{|S|}`.
+
+Remaining on the chain: the `J`-method estimate proper, which chooses the
+decompositions so that each summand becomes `min(1, t/2^ν) J(2^ν, v_ν)` and then
+sums the level parameter in `ℓ^s` by Hardy's inequality; and the identification
+of the interpolation space with `L^R`.
+
+## 2026-09-14T19:20-0700 — the J-functional bound on a finite sum
+
+`primeJ` is the `J`-functional of the couple of candidate norms, and
+`primeK_sum_le_primeJ` is the estimate the method turns on:
+
+  primeK t (∑_{i ∈ S} v i) ≤ ∑_{i ∈ S} min( J(σ i, v i), (t / σ i) · J(σ i, v i) ).
+
+The decompositions are chosen piece by piece and are the two trivial ones: for a
+piece whose own scale `σ i` is below the level `t`, keep it in the first space
+(`w i = 0`); for a piece whose scale is above, move it entirely to the second
+(`w i = v i`).  In the first case the summand is `‖v i‖'_{r₁}`, which is below
+`J`, and `t/σ i ≥ 1` makes the second entry of the minimum the larger; in the
+second case the summand is `t ‖v i‖'_{r₂}`, which is `(t/σ i)` times
+`σ i ‖v i‖'_{r₂}` and so below `(t/σ i) J`, while `t ≤ σ i` puts it below `J` as
+well.  Both cases close by `le_min`.
+
+This is the `J`-method estimate for a finite family.  What is left of the third
+link is the passage to infinitely many pieces and the integration of the level
+parameter, where the `ℓ^s` aggregation appears through Hardy's inequality; then
+the fourth link, the identification of the interpolation space with `L^R`.
+
+## 2026-09-14T19:50-0700 — the profile integral of the J-method
+
+`lintegral_min_one_rpow_div` evaluates the level integral the `J`-method weights
+each piece by, after the piece's own scale has been scaled out:
+
+  ∫_{u > 0} (u^{-θ} min(1,u))^s du/u = 1/(s(1-θ)) + 1/(θ s).
+
+The split is at `u = 1`, where the minimum changes branch.  Below it the
+integrand is `u^{s(1-θ)-1}`, integrable at the origin exactly because `θ < 1`;
+above it the integrand is `u^{-θ s - 1}`, integrable at infinity exactly because
+`θ > 0`.  The two pieces are `lintegral_Ioc_zero_rpow` and `lintegral_Ioi_rpow`,
+already in the file, and their values are the two terms.
+
+Both conditions are the interior position of the target exponent: `θ` is the
+interpolation parameter, and `0 < θ < 1` says the target lies strictly between
+the two endpoints.  This is the same fact as
+`exists_straddling_output_exponents`, arriving now as the convergence of an
+integral rather than as a statement about the simplex.
+
+## 2026-09-14T20:20-0700 — the discrete profile, and a change of route
+
+`exists_discrete_profile_bound` bounds the `J`-method profile taken along the
+powers of two:
+
+  ∑_{k ∈ S} (2^{-θk} min(1, 2^k))^s ≤ K(θ, s),  uniformly over finite S,
+
+for `0 < θ < 1` and `s > 0`.  `aux_discrete_profile_eq_min` identifies the
+summand with `min(2^{-θsk}, 2^{(1-θ)sk})`, a two-sided geometric minimum with
+rates `θs` and `(1-θ)s`, both positive precisely because the target lies
+strictly between the endpoints; `exists_tent_sum_bound` at centre zero then
+supplies the bound.
+
+This is a deliberate change of route.  The continuous form needs the level
+integral against `dt/t` and a change of variables for that multiplicative
+measure, which Mathlib supports only through the scaling behaviour of Lebesgue
+measure and would have to be assembled by hand on `Ioi 0`.  Taking the level
+along `2^n` instead makes the profile a sum, and the sum is exactly the object
+`exists_tent_sum_bound` was built for two ticks into this chain — so the whole
+interpolation argument can stay discrete, reusing the tent machinery rather than
+duplicating it in integral form.
+
+`lintegral_min_one_rpow_div` from the previous tick remains the continuous
+statement of the same fact and is kept; it records the two integrability
+conditions in the form the literature states them.
+
+## 2026-09-14T20:50-0700 — Minkowski over a finite family
+
+`Lp_finset_sum_le` iterates Mathlib's two-summand Minkowski inequality
+(`ENNReal.Lp_add_le`) to a finite family:
+
+  (∑_i (∑_{k ∈ T} F k i)^p)^{1/p} ≤ ∑_{k ∈ T} (∑_i (F k i)^p)^{1/p},  p ≥ 1.
+
+The induction is on `T`; the empty case is `0^p = 0` twice, and the step splits
+the inner sum and applies the two-summand form followed by the hypothesis.
+
+This is the last generic tool the `J`-method convolution estimate needs.  That
+estimate bounds the level profile of a sum by a convolution of the profile
+sequence with the sequence of `J`-values, and `Lp_finset_sum_le` is what turns a
+convolution bound into an `ℓ^s` bound: each shift of the profile contributes its
+own `ℓ^s` norm, and the shifts are weighted by a sequence whose `ℓ^1` norm is the
+constant `exists_discrete_profile_bound` supplies.  That is the `ℓ¹ ∗ ℓ^s ⊆ ℓ^s`
+step the ErrorReport entry named.
+
+## 2026-09-14T21:20-0700 — Young's inequality for sequences
+
+`Lp_convolution_le` is the `ℓ¹ ∗ ℓ^s ⊆ ℓ^s` estimate the ErrorReport entry named
+as the mechanism that turns the divergent `ℓ¹` sum of the layer bounds into a
+convergent `ℓ^s` one:
+
+  (∑_{n ∈ S} (∑_{k ∈ K} a k · b (n-k))^s)^{1/s} ≤ A · B,
+
+whenever every finite sum of `a` is at most `A` and every finite `ℓ^s` norm of
+`b` is at most `B`, for `s ≥ 1`.
+
+The proof applies `Lp_finset_sum_le` over the *shift* index `k`, which leaves
+`(∑_n (a k · b(n-k))^s)^{1/s} = a k · (∑_n b(n-k)^s)^{1/s}` in each term; the
+inner sum is the `ℓ^s` norm of `b` over a translate of `S`, bounded by `B`
+uniformly because `hB` is stated for every finite set and translation is an
+injection; and the `a k` then sum to `A`.
+
+Summing over the shift is the whole point.  Applying Minkowski over the *piece*
+index instead would leave `∑_i b i`, an `ℓ¹` sum — exactly the divergent
+quantity the witness example produces.  Summing over the shift keeps `b` in
+`ℓ^s` and spends only the `ℓ¹` norm of the profile, which
+`exists_discrete_profile_bound` bounds by a constant depending on the exponents
+alone.
+
+## 2026-09-14T21:50-0700 — the profile term is a convolution term
+
+`aux_profile_term_eq` is the identity that makes the level profile of a sum a
+convolution.  Writing the level as `2^n` and a piece's scale as `2^i`, the
+`J`-method term weighted by `2^{-θn}` factors as
+
+  2^{-θn} · min(J, (2^n/2^i) J)
+    = [2^{-θ(n-i)} min(1, 2^{n-i})] · [2^{-θi} J],
+
+a factor depending only on the difference of the indices times a factor
+depending only on the piece.  `aux_min_mul_right` supplies the elementary step
+`min J (c J) = (min 1 c) J`, and the rest is the additivity of the exponent.
+
+With this the pieces fit together: `primeK_sum_le_primeJ` bounds the
+`K`-functional of a sum by the sum of the `J`-method terms,
+`aux_profile_term_eq` turns each into a convolution term with profile
+`a k = 2^{-θk} min(1, 2^k)` and data `b i = 2^{-θi} J_i`,
+`exists_discrete_profile_bound` bounds the `ℓ¹` norm of the profile by a
+constant of the exponents alone, and `Lp_convolution_le` converts that into the
+`ℓ^s` bound.  The remaining work on this link is the bookkeeping that composes
+them.
+
+## 2026-09-14T22:20-0700 — the weighted level profile of a sum
+
+`aux_profile_level_le` combines the two previous results: the `J`-method bound
+on the `K`-functional of a sum, and the convolution identity for a single term.
+The weighted level profile of a sum is then a sum of convolution terms,
+
+  2^{-θn} · primeK(2^n, ∑_{i ∈ T} v i)
+    ≤ ∑_{i ∈ T} [2^{-θ(n-i)} min(1, 2^{n-i})] · [2^{-θi} J(2^i, v i)],
+
+one for each piece, with the first bracket depending only on the difference of
+the indices.  The proof is `primeK_sum_le_primeJ` at `t = 2^n` and scales
+`σ i = 2^i`, distributed over the sum by `Finset.mul_sum`, then
+`aux_profile_term_eq` on each term.
+
+What remains to close this link is the reindexing that turns the sum over pieces
+into a sum over shifts, so that `Lp_convolution_le` applies: for each level `n`
+the map `i ↦ n - i` is injective, and taking the shift index in the fixed finite
+set of all differences `n - i` bounds the reindexed sum uniformly in `n`.
+
+## 2026-09-14T22:50-0700 — from a sum over pieces to a sum over shifts
+
+`sum_shift_le_of_subset` is the reindexing the convolution estimate needs: at a
+fixed level `n` the map `i ↦ n - i` is injective, so a sum over pieces is a sum
+over the shifts it produces, and enlarging the shift index set to any finite set
+containing them only increases the sum.
+
+`aux_profile_level_conv_le` applies it to the weighted level profile, giving
+
+  2^{-θn} · primeK(2^n, ∑_{i ∈ T} v i)
+    ≤ ∑_{k ∈ K} a k · b (n - k),
+
+with `a k = 2^{-θk} min(1, 2^k)` the profile and
+`b i = 2^{-θi} J(2^i, v i)` the data, for any fixed `K` containing every
+difference `n - i`.  The only friction was the cast `((n - k : ℤ) : ℝ)`, which
+has to be pushed to `(n:ℝ) - (k:ℝ)` on both sides of the reindexing.
+
+This is the shape `Lp_convolution_le` consumes, and with it the third link needs
+only the choice of a single `K` serving every level in a given finite set of
+levels — the image of `S ×ˢ T` under subtraction — and then one application of
+the convolution estimate.
+
+## 2026-09-14T23:20-0700 — the J-method estimate, and the third link closed
+
+`primeJ_method` is the third link of the chain:
+
+  (∑_{n ∈ S} (2^{-θn} primeK(2^n, ∑_{i ∈ T} v i))^s)^{1/s} ≤ A · B,
+
+whenever every finite sum of the profile `2^{-θk} min(1, 2^k)` is at most `A`
+and every finite `ℓ^s` norm of the data `2^{-θi} J(2^i, v i)` is at most `B`,
+for `s ≥ 1`.
+
+The assembly is: `aux_profile_level_conv_le` at each level, with the shift index
+set taken once and for all as the image of `S ×ˢ T` under subtraction so that it
+serves every level in `S`; monotonicity of the `s`-th power and of the sum; and
+one application of `Lp_convolution_le`.  The only care needed is the cast
+`((n - k : ℤ) : ℝ)`, which has to be beta-reduced before it can be rewritten.
+
+So the chain now stands: link one (normability of weak `L^r`) complete, link two
+(subadditivity of the `K`-functional in the genuine norm) complete, link three
+(the `J`-method estimate) complete.  What remains is link four, the
+identification of the interpolation quantity with the `L^R` norm — the step that
+says the `ℓ^s` aggregation of the level profile really is the strong norm, and
+the only one of the four that is specific to the couple rather than formal.
+
+## 2026-09-14T23:50-0700 — a lower bound for the K-functional
+
+`le_weakK` is the first piece of the fourth link — the `K`-functional bounded
+from below by the data it is meant to control:
+
+  λ · min( (μ{2λ < |v|}/2)^{1/r₁}, t (μ{2λ < |v|}/2)^{1/r₂} ) ≤ weakK t v.
+
+The argument is a covering: a point where `|v|` exceeds `2λ` is a point where one
+of the two parts of any decomposition exceeds `λ`, so the level set at `2λ` is
+covered by the two level sets at `λ`, and whichever part carries at least half of
+it pays for that half in its own weak norm through `le_weakNorm`.  The minimum
+records which part paid, and taking the infimum over decompositions gives the
+`K`-functional.
+
+Two points of technique.  The "at least half" step avoids strict inequalities in
+`ℝ≥0∞`, which are awkward at infinity: instead of arguing that both parts cannot
+be below half, it takes the larger of the two, bounds `m` by twice it, and
+divides.  And the statement is for `weakK` rather than `primeK` precisely because
+no measurability is needed — the infimum ranges over all functions, `le_weakNorm`
+holds for all of them, and the covering is outer-measure subadditivity.
+
+What remains of this link is the balance: choosing the level `t` for each `λ` so
+that the two entries of the minimum agree, which is where the exponent identity
+`1/R = (1-θ)/r₁ + θ/r₂` enters and turns the bound into the weak-`R` quantity
+`λ μ{2λ<|v|}^{1/R}`.
+
+## 2026-09-15T00:20-0700 — balancing the minimum
+
+`aux_balance_exponent` is the arithmetic heart of the balance:
+
+  (u^{1/r₁ - 1/r₂})^{-θ} · u^{1/r₁} = u^{1/R},   when 1/R = (1-θ)/r₁ + θ/r₂,
+
+and `weakR_le_weighted_weakK` uses it.  At the level `t = u^{1/r₁ - 1/r₂}` the
+two entries of the minimum in `le_weakK` agree, so the minimum is either of them,
+and weighting by `t^{-θ}` converts `λ u^{1/r₁}` into `λ u^{1/R}`:
+
+  λ u^{1/R} ≤ t^{-θ} · weakK t v,   where u is the half-level-set measure.
+
+So the weighted `K`-functional at the balanced level dominates the weak-`R`
+quantity at that level.  This is the sense in which the interpolation quantity
+controls the strong norm: each level of the distribution function of `v` is
+caught by one term of the level profile, at the level where the two endpoint
+exponents trade off.
+
+Two `ring` failures cost a little time here, both from the same cause — after
+`congr 1` on an equality of `ENNReal.ofReal`s one is left with an equality of
+`rpow`s, not of exponents, and a second `congr 1` is needed before `ring` can
+act.  Rewriting the exponent identity with an explicit `show ... by ring` inside
+the `rw` chain avoids the issue entirely and is what the file now does.
+
+## 2026-09-15T00:50-0700 — how the K-functional varies with the level
+
+`weakK_mono` and `weakK_le_ratio_mul` are the two standard monotonicity facts:
+the `K`-functional increases with the level, and it increases by at most the
+ratio of the levels,
+
+  weakK t' v ≤ (t'/t) · (‖v-w‖ + t ‖w‖)   for any decomposition, when t ≤ t'.
+
+Both are one-line consequences of the definition — the first because each
+summand increases, the second because scaling the whole summand by `t'/t ≥ 1`
+covers the increase in the second term and only enlarges the first.  The second
+is stated in the tested form, against a chosen decomposition, which is what the
+file consistently uses to avoid manipulating the infimum.
+
+They are needed because the balanced level produced by
+`weakR_le_weighted_weakK` is an arbitrary positive real while the level profile
+runs along the powers of two.  Together they say that replacing the balanced
+level by the nearest power of two costs a factor of at most two in the
+`K`-functional and at most `2^θ` in the weight, so the profile at that power of
+two still dominates the weak-`R` quantity, up to a constant depending on `θ`
+alone.
+
+### ext:interpolation — link four, step one: the balanced level meets the dyadic profile
+
+Three results promoted this tick, all verified against the full corpus with
+`[propext, Classical.choice, Quot.sound]`, build clean, zero `sorry`.
+
+`weighted_weakK_le_dyadic` says that for `2^n ≤ t < 2^(n+1)` and `θ > 0`,
+
+    t^(-θ) · K(t, v) ≤ 2 · 2^(-θn) · K(2^n, v).
+
+Two separate monotonicities are at work and they point in opposite directions,
+which is why the statement needs the bracket rather than just one inequality.
+The weight `t^(-θ)` is decreasing, so `t ≥ 2^n` gives `t^(-θ) ≤ (2^n)^(-θ)`
+for free.  The `K`-functional is increasing in the level, so `t < 2^(n+1)`
+costs something; `weakK_le_ratio_mul` converts that into the factor
+`t/2^n < 2`, and the constant is pulled out through the infimum with
+`ENNReal.mul_iInf_of_ne` (`Mathlib/Data/ENNReal/Inv.lean:859`), which applies
+because `ofReal 2` is neither `0` nor `∞`.
+
+`aux_exists_dyadic_bracket` supplies the bracket itself: every positive real
+lies in `[2^n, 2^(n+1))` for `n = Int.log 2 t`.  Mathlib states this with
+`zpow`, so the bridge to the real-exponent `rpow` used throughout this corpus
+is `Real.rpow_intCast` on both sides.
+
+`weakR_le_dyadic_weakK` composes the two with `weakR_le_weighted_weakK` from
+the previous tick.  The composite says: for every level `lam > 0`, writing
+`u` for the real number with `μ{2·lam < |v|}/2 = ofReal u`, there exists an
+integer `n` with
+
+    lam · u^(1/R) ≤ 2 · 2^(-θn) · K(2^n, v).
+
+This is the first of the four sub-steps of link four.  The balanced level
+`u^(1/r₁-1/r₂)` produced by the exponent balance is an arbitrary positive
+real; it has now been replaced by a power of two, at the cost of a factor two
+that does not depend on `v`, `lam`, or `u`.  The weak-`R` quantity at every
+single level is therefore dominated by a single term of the dyadic weighted
+`K`-profile — the same profile that `primeJ_method` estimates.
+
+Remaining in link four: pass from single levels to the layer-cake integral
+(`∫|v|^R` against the `ℓ^R` sum of the profile, via
+`lintegral_rpow_abs_eq_meas_lt`), relate `weakK` to `primeK`, and assemble.
+
+### ext:interpolation — link four, step two: the geometric grid replaces the partition
+
+Two further results promoted this tick, verified against the full corpus,
+axioms `[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+The second sub-step of link four is to pass from the single-level bound to the
+layer-cake integral.  The textbook route partitions the level axis into the
+sets where the distribution function lies between consecutive powers of a
+fixed ratio, then integrates over each piece.  That route needs the pieces to
+be measurable and pairwise disjoint and needs their union to be the whole
+half-line except for two degenerate sets, all of which is unpleasant to set up.
+
+A pointwise substitute avoids the partition entirely.  `aux_le_base_grid_tsum`
+says that for any ratio `c > 1` and any `D : ℝ≥0∞`,
+
+    D ≤ c · ∑' n : ℤ, [c^n ≤ D] · c^n,
+
+where the bracket is the indicator of the condition.  Only the single largest
+qualifying grid point is used, so no geometric series is needed: if
+`c^N ≤ D < c^(N+1)` then `D ≤ c · c^N` and that one term already sits under the
+sum.  The two degenerate values are handled separately — `D = 0` is trivial,
+and `D = ∞` makes every grid point qualify, so the sum dominates `c^m` for
+every `m` and is therefore infinite by Archimedes
+(`pow_unbounded_of_one_lt`).
+
+Applied to the distribution function `D(t) = μ{t < |v|}` this turns the layer
+cake `∫|v|^R = ∫_{t>0} μ{t<|v|} · R t^(R-1) dt` into a sum over the grid of
+integrals of `R t^(R-1)` over the sets `{t > 0 : c^n ≤ μ{t<|v|}}`, and each of
+those sets is contained in an interval `(0, Λ_n]` supplied by the single-level
+bound proved in the previous ticks.  Each integral is then elementary and the
+whole layer cake is bounded by `c · ∑_n c^n Λ_n^R`, with no partition, no
+measurability side conditions on the pieces, and no rearrangement.
+
+`aux_exists_base_bracket` is the supporting fact that every positive real lies
+in `[c^n, c^(n+1))` for some integer `n`, proved through
+`⌊log d / log c⌋` and `Real.rpow_le_rpow_left_iff`.  It generalises the
+base-two bracket proved earlier in this link, which came from `Int.log` and is
+restricted to natural bases; here the ratio `c` is `2^(1/(1/r₁ - 1/r₂))` and is
+not an integer.
+
+Next: assemble the layer-cake bound itself, with the grid sets fed by the
+single-level estimate `weakR_le_dyadic_weakK`.
+
+### ext:interpolation — link four, step two completed: the layer cake over the grid
+
+Two results promoted, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+`lintegral_rpow_le_grid_sum` is the layer-cake estimate itself.  Given a ratio
+`c > 1` and a sequence `Λ : ℤ → ℝ` such that every level `t > 0` at which the
+distribution function `μ{t < |v|}` still reaches `c^n` satisfies `t ≤ Λ n`, it
+concludes
+
+    ∫ |v|^R dμ ≤ c · ∑' n : ℤ, c^n · (Λ n)^R.
+
+The proof is short because the grid lemma from earlier in this tick removes
+the need for a partition.  Start from
+`lintegral_rpow_abs_eq_meas_lt`, which writes the integral as
+`∫_{t>0} μ{t<|v|} · R t^(R-1) dt`.  Bound the distribution function
+pointwise by `c · ∑_n [c^n ≤ μ{t<|v|}] · c^n`, and observe that the `n`-th
+indicator is supported in `Ioc 0 (Λ n)` precisely by the hypothesis.  The
+level integral then splits by `lintegral_tsum` into
+`∑_n c^n ∫_{Ioc 0 (Λ n)} R t^(R-1) dt`, and each of those is `c^n (Λ n)^R` by
+`lintegral_Ioc_zero_rpow`.  A degenerate `Λ n ≤ 0` makes the interval empty and
+contributes nothing.
+
+`lintegral_rpow_le_grid_tsum` is the same statement with `Λ` valued in
+`ℝ≥0∞`, which is the shape the assembly needs because the sequence that will
+be substituted is built from the `K`-functional and so is extended-valued.  If
+some `Λ n` is infinite the right-hand side is infinite and the bound is
+vacuous; otherwise the real-valued version applies to `(Λ n).toReal`.
+
+That completes the second of the four sub-steps of link four.  What remains:
+substitute `Λ n = 2^(-θ n) · K(2^n, v) · (c^n)^(-1/R)` with ratio
+`c = 2^(1/(1/r₁ - 1/r₂))`, checking that the exponent arithmetic collapses to
+`1/R = (1-θ)/r₁ + θ/r₂`; then relate `weakK` to `primeK`, which is the
+functional that `primeJ_method` estimates; then assemble.
+
+### ext:interpolation — link four, step three: `L^R` is dominated by the dyadic K-profile
+
+Four results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  This closes the third
+of the four sub-steps of link four, and it is the substantial one.
+
+`le_weakK_of_lower` is the lower bound for the `K`-functional in the form the
+grid needs.  The earlier `le_weakK` is stated with a `min` of the two
+endpoint contributions; here, when the level `tl` is at least the balanced
+value `u^(1/r₁ - 1/r₂)` and the distribution function is at least `u`, the
+`min` is the first branch and the bound reads simply
+`lam · u^(1/r₁) ≤ K(tl, v)`.
+
+`aux_grid_power` records the base change `(2^(1/κ))^n = 2^(n/κ)`.
+
+`grid_level_bound` is the hypothesis of the layer-cake lemma, instantiated.
+With `κ = 1/r₁ - 1/r₂ > 0` and grid ratio `c = 2^(1/κ)`, the `n`-th grid point
+`c^n` corresponds to the dyadic level `2^n`, since `(c^n)^κ = 2^n`.  The factor
+of two between the layer-cake level `t` and the level `lam = t/2` appearing in
+`le_weakK` costs `2^(1 + 1/r₁)`, and the statement is
+
+    t ≤ 2^(1+1/r₁) · (c^n)^(-1/r₁) · K(2^n, v)
+
+whenever `μ{t < |v|} ≥ c^n`.  Choosing `lam = t/2` halves the available mass,
+so the value fed to `le_weakK_of_lower` is `u = c^n/2` rather than `c^n`; that
+only lowers `u^κ` below `2^n`, which is the direction the hypothesis wants, so
+no further adjustment is needed.
+
+`lintegral_rpow_le_dyadic_weakK` is the composite:
+
+    ∫ |v|^R dμ ≤ 2^(1/κ) · 2^((1+1/r₁)R) · ∑' n : ℤ, (2^(-θn) · K(2^n, v))^R
+
+whenever `0 < R` and `1/R = (1-θ)/r₁ + θ/r₂`.  The whole content is one
+exponent identity.  Writing `a = n/κ` so that `c^n = 2^a`, the `n`-th term of
+the grid sum carries the base-two exponent
+`a + (1 + 1/r₁ - a/r₁)R`, and the claim is that this equals
+`(1 + 1/r₁)R - θnR`, i.e. that `a(1 - R/r₁) = -θnR`.  Since `a = n/κ` this is
+`1 - R/r₁ = -θRκ`, which rearranges to `1 = R((1-θ)/r₁ + θ/r₂)` — exactly the
+defining relation for `R`.  So the grid ratio, the weight `2^(-θn)` and the
+exponent `R` are forced to fit together, and they do.
+
+This is the statement that was missing from Mathlib and from `lean_spherical`:
+the interpolation quantity built from the `K`-functional dominates the genuine
+`L^R` norm.  Combined with `primeJ_method`, which bounds that quantity for a
+sum of pieces by the `ℓ^R` norm of their `J`-functionals, the real
+interpolation machinery is now present in the corpus in the form the
+four-vertex Marcinkiewicz statement needs.
+
+Remaining in link four: relate `weakK` to `primeK` — `primeJ_method` is stated
+for the latter, which is built from the genuine norm `weakNormPrime` rather
+than the quasi-norm `weakNorm`, and the two are comparable by
+`weakNorm_le_weakNormPrime` and `weakNormPrime_le_conj_mul_weakNorm` — and then
+assemble the four-vertex statement itself.
+
+### ext:interpolation — a defect found in my own definition, and the repair
+
+Six results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+While trying to join the two halves of the interpolation argument I found that
+the join cannot be made through `primeK` as defined, and the reason is a real
+defect rather than a missing lemma.  `weakNormPrime` integrates over measurable
+sets, and for a non-measurable integrand Mathlib's `∫⁻` is the lower integral,
+which vanishes whenever the integrand has no non-trivial measurable minorant.
+Splitting a measurable `v` along a Bernstein set therefore makes both halves
+have candidate norm zero, so the unrestricted infimum defining `primeK` is
+identically zero on Lebesgue measure.  The full argument is recorded in
+ErrorReport.md.  Nothing already proved is wrong — the affected statements are
+upper bounds, hence still true — but they are vacuous, and in particular
+`weakK ≤ primeK` is false, which is precisely the inequality the chain needs.
+
+The repair is to take the infimum over measurable decompositions only.
+`primeKm` is that functional, and `primeK_le_primeKm` records that restricting
+can only raise it.  `primeKm_le_left`, `primeKm_le_right`, `primeKm_add_le` and
+`primeKm_sum_le` are the ported upper bounds; each existing proof exhibited an
+explicit measurable witness (`0`, `v`, `w₁ + w₂`, `∑ w i`), so the ports differ
+only in packaging the witness with its measurability proof, plus the extra
+hypotheses that makes necessary.
+
+`weakK_le_primeKm` is the bridge that was the point of the exercise: for
+measurable `v` on a σ-finite measure,
+
+    weakK μ r₁ r₂ t v ≤ primeKm μ r₁ r₂ t v,
+
+by applying `weakNorm_le_weakNormPrime` to each of the two measurable pieces of
+the decomposition.  `weakK` needs no restriction of its own: it is built from
+`μ {τ < |f|}`, which is an outer measure on a non-measurable set and therefore
+large rather than small.
+
+Next: port `primeK_sum_le_primeJ` and then `primeJ_method` to `primeKm`, after
+which the two halves meet.
+
+### ext:interpolation — link four closed: the two halves meet
+
+Five results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+`primeKm_sum_le_primeJ`, `aux_profile_level_le_meas`,
+`aux_profile_level_conv_le_meas` and `primeJm_method` are the ports of the
+`J`-method chain to the restricted `K`-functional.  All four went through
+without a single change to the proof scripts: every one of them reaches
+`primeK` only through `primeK_sum_le`, whose witness is the explicit truncation
+`w i = if σ i ≤ t then 0 else v i`, and that is measurable whenever the `v i`
+are.  So the defect found last tick cost nothing beyond the renaming.
+
+`lintegral_rpow_le_J_profile` is the join, and it is the statement the whole
+link was for.  For a σ-finite measure, measurable pieces `v i` indexed by `ℤ`,
+`1 ≤ R`, `0 < 1/r₁ - 1/r₂` and `1/R = (1-θ)/r₁ + θ/r₂`, if
+
+  * `A` bounds every partial sum of the kernel `2^(-θk) · min(1, 2^k)`, and
+  * `B` bounds every partial `ℓ^R` norm of the weighted `J`-functionals
+    `2^(-θi) · J(2^i, v i)`,
+
+then
+
+    ∫ |∑ᵢ vᵢ|^R dμ ≤ 2^(1/κ) · 2^((1+1/r₁)R) · (A·B)^R.
+
+Three pieces meet here.  The layer-cake half supplies
+`∫|v|^R ≤ C · ∑ₙ (2^(-θn) K(2ⁿ,v))^R` with the quasi-norm functional `weakK`;
+`weakK_le_primeKm` converts that functional into the one the `J`-method speaks
+about; and `primeJm_method` bounds every partial sum of the resulting profile
+by `(A·B)^R`, which passes to the infinite sum because in `ℝ≥0∞` a `tsum` is
+the supremum of its partial sums.  The only arithmetic step is undoing the
+`1/R` power that `primeJm_method` carries on its left-hand side.
+
+Real interpolation — absent from Mathlib and from `lean_spherical`, which
+supplies only the complex method — is therefore now present in the corpus in
+the form the four-vertex Marcinkiewicz statement needs: weak endpoint
+information in, a genuine `L^R` bound out.
+
+What remains for `ext:interpolation` is the four-vertex statement itself:
+choosing the decomposition `v i` from the operator's level sets, verifying the
+two hypotheses `A` and `B` from the four weak bounds, and threading the three
+input slots through `TrilinearOnSimple`.
+
+### ext:interpolation — the two hypotheses of the interpolation theorem
+
+Four results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+`lintegral_rpow_le_J_profile` carries two hypotheses, `A` for the kernel and
+`B` for the data.  This tick discharges the first outright and prepares the
+second.
+
+`exists_kernel_sum_bound` says that for `0 < θ < 1` there is a finite `A` with
+`∑_{k ∈ K} 2^(-θk) · min(1, 2^k) ≤ A` for every finite `K ⊆ ℤ`.  This is the
+tent sum from earlier in the task at exponent one: the kernel decays like
+`2^((1-θ)k)` on the left and like `2^(-θk)` on the right, and both exponents
+are strictly positive exactly when `θ` is strictly between zero and one.  The
+existing `exists_discrete_profile_bound` supplies it once the `^s` is
+specialised to `s = 1`.
+
+`exists_lintegral_rpow_le_J_profile` folds that constant into the statement, so
+what is left is a single clean implication: any bound `B` on the weighted
+`ℓ^R` norms of the `J`-functionals of a measurable decomposition yields
+
+    ∫ |∑ᵢ vᵢ|^R dμ ≤ C · B^R
+
+with `C` depending only on `r₁`, `θ` and `R`.
+
+`primeJ_le_of_weak_bounds` prepares the other hypothesis.  The `J`-functional
+is built from the candidate norm `weakNormPrime`, but what the four vertices
+supply is weak quasi-norm information.  If `weakNorm v r₁ ≤ Γ₁` and
+`weakNorm v r₂ ≤ Γ₂` with both exponents above one, then
+
+    J(s, v) ≤ max(r₁/(r₁-1), r₂/(r₂-1)) · max(Γ₁, s·Γ₂),
+
+the constant being the one from `weakNormPrime_le_conj_mul_weakNorm`, which is
+where the restriction `r > 1` — and hence `R > 1` in the blueprint — comes
+from.  The right-hand side is exactly the weak-quasi-norm `J`-functional, so
+from here on the data hypothesis can be checked entirely in terms of weak
+bounds on the pieces, which is what the four vertices give.
+
+### ext:interpolation — the real interpolation theorem in usable form
+
+Two results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+`primeJ_profile_le_of_weak_bounds` converts the data hypothesis of the
+interpolation theorem into weak-bound form.  If the pieces `v i` satisfy
+`weakNorm (v i) r₁ ≤ Γ₁ i` and `weakNorm (v i) r₂ ≤ Γ₂ i`, and the real
+sequence `2^(-θi) · max(Γ₁ i, 2^i · Γ₂ i)` has `ℓ^R` norm at most `Bw`, then
+the weighted `ℓ^R` norm of the `J`-functionals is at most
+`C_primeJ_le_of_weak_bounds r₁ r₂ · Bw`.  Both the passage from the candidate
+norm to the quasi-norm and the extraction of the constant from the sum happen
+here, so the constant appears exactly once.
+
+`exists_lintegral_rpow_le_of_weak_pieces` is the composite, and it is the
+interpolation theorem in the shape the four-vertex argument will consume:
+
+  given `1 < r₁`, `1 < r₂` with `1/r₁ > 1/r₂`, `0 < θ < 1`, `1 ≤ R` and
+  `1/R = (1-θ)/r₁ + θ/r₂`, there is a constant `C` depending only on those
+  numbers such that for every measurable decomposition `v : ℤ → X → ℝ` with
+  weak endpoint bounds `Γ₁`, `Γ₂` on the pieces and every `Bw` dominating the
+  `ℓ^R` norm of `2^(-θi) · max(Γ₁ i, 2^i Γ₂ i)`,
+
+      ∫ |∑_{i ∈ T} v i|^R dμ ≤ C · Bw^R
+
+  for every finite `T`.
+
+Nothing about the operator enters; this is a statement about decompositions of
+a single function.  What the four-vertex argument has to supply is the
+decomposition itself and the two families of weak bounds on its pieces, which
+is where the level sets of the three inputs and the four vertex estimates come
+in.
+
+### ext:interpolation — surveying the four-vertex side, and one result
+
+One result promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+With the real interpolation machinery finished, this tick was mostly spent
+matching it against what the four-vertex statement needs, so the plan below is
+recorded as much as the lemma is.
+
+What the corpus already has on the four-vertex side:
+`weakNorm_expansion_term_interior_le` gives, for a single layer multi-index
+`k`, the weak-`R` bound on `T` applied to the three layer pieces, with the
+sharp constant `∏ A_a^ϑ_a` and the target measures `m_j^{1/p_j}`;
+`meas_lt_operator_expansion` expands the operator over the layer lattice and
+distributes a level among the terms; `exists_normalized_lattice_tent` and
+`sum_tent_levels_le` supply a summable share of the level for each layer
+triple; `exists_vertex_geometric_decay` says that for every direction some
+vertex bound beats the barycentric one by `2^(-δ‖w‖)`.
+
+What the interpolation machine consumes is different in shape: a decomposition
+indexed by `ℤ`, with weak bounds at two exponents straddling `R` on each piece,
+and control of the `ℓ^R` norm of `2^(-θi) · max(Γ₁ i, 2^i Γ₂ i)`.  The natural
+grouping sends a layer multi-index `k` to `i(k) = ⌊log₂(Γ₁(k)/Γ₂(k))⌋`, which
+is where the two endpoint bounds balance.  Worth recording: in that ratio the
+heights `2^(k_j)` cancel — they carry the same power at both endpoints — so
+`i(k)` is a function of the layer measures alone.  The piece `v i` is then the
+sum of the layer terms in one fibre, and a weak bound on it needs the weak
+norms of the terms to add.
+
+`weakNorm_sum_le_of_weak_bounds` is that addition.  The weak quasi-norm is not
+subadditive, but above exponent one it is equivalent to the genuine norm
+`weakNormPrime`, which is; so a finite family of weak bounds `Γ i` yields
+
+    weakNorm (∑_{i ∈ S} v i) r ≤ (r/(r-1)) · ∑_{i ∈ S} Γ i,
+
+with the constant independent of the number of summands.  That is what makes
+the fibre sums usable, and it is another place where the blueprint's `r > 1` is
+doing real work.
+
+This does not by itself settle the `ℓ^R` bound on the fibre profile, which is
+the remaining mathematical content: the fibres have to be thin enough that the
+within-fibre `ℓ¹` sums do not destroy the `ℓ^R` gain.  That is where the
+geometric decay from `exists_vertex_geometric_decay` has to enter.
+
+### ext:interpolation — the interpolation pair inside the simplex
+
+Two results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  A design question was
+settled first, and the answer determines the shape of the rest of the argument.
+
+The interpolation theorem needs two exponents straddling `R`.  The obvious
+candidates are two of the four vertex exponents `r a`, and
+`exists_straddling_output_exponents` already produces such a pair.  But that
+choice is wrong: interpolating between two vertices reaches only points of the
+segment joining them, so the input exponents that come out are those of the
+segment, not the target's.  The target is interior to the tetrahedron and in
+general lies on no such segment.
+
+The right pair is not two vertices but two *interior* points, placed
+symmetrically about the target.  Write `ϑ` for the target weights and let
+`ϑ₁ = ϑ + εe`, `ϑ₂ = ϑ - εe` where `e` is the difference of two coordinate
+indicators and `ε` is half the smallest weight.  Both stay in the open simplex,
+their midpoint is `ϑ`, and therefore *both* the input reciprocals and the
+output reciprocal interpolate correctly:
+
+    (1-θ)/p₁ⱼ + θ/p₂ⱼ = 1/pⱼ    and    (1-θ)/ρ₁ + θ/ρ₂ = 1/R
+
+at `θ = 1/2`, because all of these are linear in the weights.  The endpoint
+constants multiply to `∏ A_a^(ϑ_a)` for the same reason.  So the geometric mean
+of the two interior bounds is exactly the target bound, constant included, and
+nothing has to be re-derived at the target point itself.
+
+The one thing that must be checked is that the two output exponents differ,
+since otherwise the interpolation is vacuous.  That is where affine
+independence enters, through `aux_exists_ne_coordSum`: the four vertices span
+an affine three-space, so the linear functional `∑ⱼ` cannot be constant on
+them, hence two vertices have different `1/r`, and choosing `e` as the
+difference of those two indicators makes `∑_c ϑ₁_c/r_c - ∑_c ϑ₂_c/r_c
+= 2ε(1/r_a - 1/r_b) ≠ 0`.
+
+`exists_straddling_weights` is the construction and
+`exists_straddling_weight_pair` packages it with the blueprint's hypotheses.
+
+With this, the two families of weak bounds that the interpolation machine
+consumes are both instances of `weakNorm_expansion_term_interior_le`, at the
+two perturbed weight vectors, and their geometric mean is the target bound.
+What is still missing is the `ℓ^R` estimate on the resulting profile, and the
+survey of the last tick shows why it cannot be avoided: with the layer bounds
+alone, and no gain, the profile is an `ℓ^R` norm of a product of sequences that
+sits in `ℓ^{p_j}` with `p_j > R`, which does not converge.  The gain has to
+come from the duality gap between the best straddling pair and the barycentric
+mean, which is exactly what `exists_vertex_geometric_decay` quantifies.
+
+### ext:interpolation — the face of weight vectors that keep `R` fixed, and the full architecture
+
+Five results promoted this tick (`pairWeight` and three facts about it, plus
+`mixWeight_spec`), verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  The architecture of
+the remaining argument is now clear enough to record in full.
+
+**Where the gain lives.**  `weakNorm_expansion_term_interior_le` holds for
+*every* weight vector `ϑ'` with positive entries summing to one; the output
+exponent it produces is `R' = (∑_a ϑ'_a/r_a)⁻¹` and the input exponents are
+`1/p'_j = ∑_a ϑ'_a/P_{a,j}`.  So for a fixed `R` the usable weight vectors form
+the face
+
+    F = {ϑ' ≥ 0 : ∑_a ϑ'_a = 1, ∑_a ϑ'_a/r_a = 1/R},
+
+a two-dimensional polygon containing the target `ϑ` in its relative interior.
+Each `ϑ' ∈ F` gives a valid weak-`R` bound on the layer term, with constant
+`∏_a A_a^(ϑ'_a)` and measures `m_j^(1/p'_j)`.  The best of them is what the
+layer-cake actually yields — a fact from LP duality: with `Γ_a` the four
+endpoint sizes, the achievable weak-`R` bound is
+`min over ϑ' ∈ F of ∏_a Γ_a^(ϑ'_a)`, and taking `ϑ' = ϑ` shows this is at most
+the barycentric value.  The *gap* between the two is the gain, and it is
+`2^(-⟨ℓ, x - y'⟩)` where `ℓ_j = log m_j`, `x = ∑ ϑ_a v_a`, `y' = ∑ ϑ'_a v_a`.
+
+**How big the gain is.**  As `ϑ'` runs over `F`, `y'` runs over a
+two-dimensional polytope around `x` inside the plane `∑_j y_j = 1/R`.  So the
+gain is bounded below by `δ‖ℓ_⊥‖` where `ℓ_⊥` is the component of `ℓ`
+orthogonal to `(1,1,1)`, and `δ > 0` comes from `x` being interior — the same
+compactness argument as `exists_gap_of_affineIndependent`, run on the face
+instead of the whole simplex.  There is deliberately *no* gain in the
+`(1,1,1)` direction: that is the degenerate direction identified earlier in
+this task, where all three layer measures move together.
+
+**Where the missing direction comes from.**  The `J`-method index supplies it.
+Grouping layer multi-indices by `i(k) = ⌊log₂(Γ⁽¹⁾(k)/Γ⁽²⁾(k))⌋` separates
+them along the direction `x₁ - x₂`, and that direction has a nonzero
+`(1,1,1)`-component precisely because `∑_j (x_m)_j = 1/ρ_m` and the two output
+exponents were arranged to differ.  So the two mechanisms are complementary:
+the face gain controls the two directions orthogonal to the diagonal, the
+interpolation index controls the diagonal, and together they control all three.
+
+**This tick's results.**  The extreme points of `F` are the weight vectors
+supported on a straddling pair of vertices.  `pairWeight r R a b` is that
+vector, and `pairWeight_nonneg`, `pairWeight_sum`, `pairWeight_output` verify
+that it is nonnegative, sums to one, and reproduces `1/R`, under
+`1/r_b < 1/R < 1/r_a`.  Its entries at the other two vertices are zero, which
+the layer bound does not permit, so `mixWeight_spec` records that mixing any
+face weight with the target weight — `(1-η)σ + ηϑ` — stays on the face and
+becomes strictly positive, at the cost of a factor `(1-η)` in the gain.
+
+### ext:interpolation — the face gain, qualitative half
+
+Nine results promoted across this tick (`minWeight`, `minWeight_le`,
+`minWeight_pos`, `maxAbs`, `le_maxAbs`, `maxAbs_nonneg`,
+`face_functional_zero_of_nonpos`, `exists_zero_sum_combination`,
+`eq_zero_of_forall_face_nonpos`), all verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+The face gain has a qualitative half and a quantitative half.  The
+quantitative half is a compactness argument identical in shape to
+`exists_gap_of_affineIndependent`; what that argument needs as input is the
+qualitative statement that a covector with *no* gain is zero.  This tick proves
+that statement.
+
+`face_functional_zero_of_nonpos` is the algebraic core, and it is a fact about
+four real numbers and nothing else.  If a linear functional `∑ ϑ'_a g_a` is
+nonpositive on the whole face `{ϑ' ≥ 0, ∑ ϑ' = 1, ∑ ϑ'_a s_a = S}` and vanishes
+at a point `ϑ` of the face with all coordinates positive, then it vanishes in
+every direction `e` tangent to the face (`∑ e = 0`, `∑ e_a s_a = 0`).  The
+proof is one line of geometry: `ϑ ± εe` stays on the face for small `ε`, so
+`±ε ∑ e_a g_a ≤ 0`.  The `ε` is `minWeight ϑ / (maxAbs e + 1)`.
+
+`exists_zero_sum_combination` supplies the tangent directions.  For affinely
+independent `v`, every `z ∈ ℝ³` is `∑ e_a • v_a` with `∑ e_a = 0`: the
+differences `v_{i+1} - v_0` are three linearly independent vectors in `ℝ³`,
+hence span, and the coefficient of `v_0` is set to balance the sum.  The
+reindexing from the subtype `{a // a ≠ 0}` to `Fin 3` is done through
+`Fin.succ`, which lets `Fin.sum_univ_succ` and `Fin.cons` do the bookkeeping.
+
+`eq_zero_of_forall_face_nonpos` composes them.  Take `w` with `∑ w_j = 0` that
+pairs nonpositively with every face point measured from the barycentre.  Write
+`w` itself as `∑ e_a • v_a` with `∑ e_a = 0`; then `∑ e_a s_a = ∑_j w_j = 0`
+automatically, since `s_a = ∑_j v_{a,j}`, so `e` is tangent to the face and the
+core lemma gives `∑ e_a ⟨w, v_a - x⟩ = 0`.  But that sum is
+`⟨w, ∑ e_a v_a⟩ - (∑ e_a)⟨w, x⟩ = ⟨w, w⟩`, so `w = 0`.
+
+The hypothesis `∑ w_j = 0` is exactly the diagonal exclusion.  Without it the
+statement is false — `w = (1,1,1)` pairs to zero with every face point, since
+the face lies in a plane `∑ y_j = 1/R` — and that is the degenerate direction
+that the interpolation index, not the face gain, has to control.
+
+Next: the quantitative half — the minimum of the face maximum over the unit
+sphere of the plane `∑ w_j = 0` is positive, by compactness — giving
+`δ > 0` with gain at least `δ‖w‖` for every `w` in that plane.
+
+### ext:interpolation — the face gain, quantitative half, with an explicit constant
+
+One result promoted this tick, `exists_face_gain`, verified against the full
+corpus, `[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+The plan had been to run the same compactness argument as
+`exists_gap_of_affineIndependent` on the unit sphere of the plane
+`∑ w_j = 0`.  It turned out not to be needed.  The face is two-dimensional,
+and `exists_zero_sum_combination` realises any two tangent directions of it
+explicitly; taking `z₁ = (1,-1,0)` and `z₂ = (0,1,-1)` gives zero-sum
+coefficient vectors `e₁`, `e₂` with `∑ eᵢ_a v_a = zᵢ`.  Both are automatically
+tangent to the face, since `∑_a e_a s_a = ∑_j z_j = 0`.  The test weights are
+then the four points `ϑ ± ε e₁`, `ϑ ± ε e₂`, with
+`ε = minWeight ϑ / (max(maxAbs e₁, maxAbs e₂) + 1)` keeping all entries
+strictly positive.
+
+For `w` with `∑ w_j = 0` the pairing at `ϑ ± ε eᵢ` is `±ε ⟨w, zᵢ⟩`, i.e.
+`±ε (w₀ - w₁)` or `±ε (w₁ - w₂)`.  Writing `A = w₀ - w₁`, `B = w₁ - w₂`, the
+zero-sum condition gives `3w₀ = 2A + B`, `3w₁ = -A + B`, `3w₂ = -A - 2B`, so
+`‖w‖ ≤ max(|A|, |B|)` in the sup norm, and choosing the sign and direction that
+attains the max yields
+
+    δ‖w‖ ≤ ∑_a ϑ'_a ⟨w, v_a - x⟩    with δ = ε.
+
+The statement returns the witness `ϑ'` together with its three properties —
+strictly positive, summing to one, same output exponent as `ϑ` — which is
+exactly the form `weakNorm_expansion_term_interior_le` consumes.  So the gain
+is now available as a *choice of weight vector per layer*: for each layer
+multi-index, with `ℓ_j = log m_j` and `w` its zero-sum part, some face weight
+improves the barycentric bound by a factor `2^(-δ‖w‖)`.
+
+The qualitative lemma `eq_zero_of_forall_face_nonpos` of the previous tick is
+thereby superseded for the purposes of the argument, though it remains as the
+conceptual statement.  The constant `δ` here is explicit in the geometry of the
+vertices, which will matter when the final constant `C` is assembled.
+
+Next: apply the gain to a layer term.  For a multi-index `k`, take
+`ℓ_j = log₂ m_j(k_j)`, split off the diagonal part, choose `ϑ'` by
+`exists_face_gain` for the zero-sum part, and compare the resulting bound from
+`weakNorm_expansion_term_interior_le` at `ϑ'` with the barycentric one.
+
+### ext:interpolation — the face gain applied to a layer term
+
+Eight results promoted this tick (`aux_rpow_le_max_of_abs_le_one`,
+`C_weights_shift`, `prod_rpow_le_of_weights_close`, `prod_rpow_eq_exp`,
+`layerLogDeviation`, `layerLogDeviation_sum`, and the main
+`exists_weakNorm_expansion_term_gain_le`), verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`, no linter warnings.
+
+`exists_weakNorm_expansion_term_gain_le` is the per-layer bound with the gain
+built in.  Under the blueprint's hypotheses (with `0 < A a`), there is
+`δ > 0` — the one from `exists_face_gain`, depending only on the exponent
+vectors and the weights — such that for every layer multi-index `k` with all
+three layer measures `m_j` positive,
+
+    ‖T(layer k)‖_{R,∞} ≤ (∏ A_a^{ϑ_a}) · C_weights_shift A · exp(-δ‖w‖)
+                            · ∏_j 2^{k_j+1} m_j^{1/p_j},
+
+where `w = layerLogDeviation m` is the zero-sum part of `(log m_j)_j`.  Compared
+with the barycentric bound `weakNorm_expansion_term_interior_le`, the only new
+factors are the constant `C_weights_shift A = ∏_a max(A_a, A_a⁻¹)` and the gain
+`exp(-δ‖w‖)`.
+
+The proof runs as planned.  Feed `-w` to `exists_face_gain` to get a face
+weight `ϑ'`; define `p'` by `1/p'_j = ∑ ϑ'_a/P_{a,j}`; check that `ϑ'` still
+produces the output exponent `R` (`hRdef'`, from the face constraint and
+`hrsum`); apply the barycentric bound at `ϑ'`.  Then compare factor by factor.
+The endpoint constants move by `∏ A_a^{ϑ'_a - ϑ_a} ≤ C_weights_shift A`, since
+`|ϑ'_a - ϑ_a| ≤ 1`.  The measure factors are compared through
+`∏ m_j^{y_j} = exp(∑ y_j log m_j)`: the exponent difference is
+`∑_j (1/p'_j - 1/p_j) log m_j`, and splitting `log m_j = w_j + c` the constant
+part drops out because `∑_j (1/p'_j - 1/p_j) = 0` — that is the face constraint
+again — leaving `∑_a ϑ'_a ⟨w, v_a - x⟩ ≤ -δ‖w‖`.
+
+Two small facts worth keeping in view.  The constant `C_weights_shift` makes
+the final `C` depend on `A`, which the blueprint permits (`C` is quantified
+after the endpoint data); when some `A_a = 0` the statement here does not
+apply, and that case will have to be handled at the end by noting that the
+corresponding weak bound forces `T f = 0` a.e.  And the gain is in the natural
+exponential rather than base two, because `Real.logb` is not in the imported
+corpus; nothing downstream cares.
+
+Next: the assembly over multi-indices.  The pieces are now: the gain per layer
+(this tick), the fibre grouping by the interpolation index, weak-norm
+subadditivity for the fibre sums (`weakNorm_sum_le_of_weak_bounds`), and the
+interpolation theorem (`exists_lintegral_rpow_le_of_weak_pieces`).  What
+connects them is the `ℓ^R` estimate on the fibre profile, which has to use the
+gain to control the two non-diagonal directions and the fibre index for the
+diagonal one.
+
+### ext:interpolation — the complete plan for the remaining assembly, and its first lemma
+
+One result promoted this tick, `sum_rpow_mul_three_le`, verified against the
+full corpus, `[propext, Classical.choice, Quot.sound]`, zero `sorry`.  Most of
+the tick went into working out, on paper, how the `ℓ^R` estimate on the fibre
+profile is proved.  It closes, and the argument is recorded here in full so it
+can be followed tick by tick.
+
+**Two corrections to earlier design decisions.**
+
+(1) The perturbation direction.  `exists_straddling_weights` perturbs the
+weights along `δ_a - δ_b`.  The right direction is the one whose image in
+exponent space is the diagonal `(1,1,1)`: take `e` from
+`exists_zero_sum_combination` with `∑ e_a v_a = (1,1,1)` and set
+`ϑ^{1,2} = ϑ ± εe`.  Then `1/p¹_j - 1/p²_j = 2ε` is the same for every `j`,
+the two output exponents differ (since `∑_a e_a s_a = ∑_j 1 = 3 ≠ 0`), and the
+ratio of the two interior bounds on a layer term is `(D₁/D₂)·(∏_j m_j)^{2ε}`,
+a function of the *product* of the three layer measures alone.  So the fibre
+index `i(k) = ⌊log₂(Γ¹(k)/Γ²(k))⌋` is a function of `∑_j log m_j(k_j)` — the
+diagonal coordinate — and nothing else.  The transverse coordinates are
+exactly what the face gain controls.  `exists_straddling_weights` stays in the
+corpus but will not be used.
+
+(2) The gain must be taken at both interior points `ϑ¹`, `ϑ²`, not at `ϑ`;
+`exists_weakNorm_expansion_term_gain_le` applies to each.  Taking the smaller
+of the two `δ`'s for both keeps the ratio `Γ¹/Γ²` free of the gain factor.
+
+**The reduction to a discrete inequality.**  Write `n_j = ⌊log₂ m_j(k_j)⌋` and
+`N = ∑_j n_j`.  On the fibre of `k`, `N` is determined up to a bounded number
+of values, and conversely — bounded overlap both ways.  The gain factor is
+`exp(-δ‖w‖) ≤ C · 2^{-δ' max_j |n_j - N/3|}`.  Within a block of fixed
+`(n₁,n₂,n₃)`, the heights `k_j` with `⌊log₂ m_j(k_j)⌋ = n_j` are distinct
+integers, so `∑ 2^{k_j} ≤ 2 · max 2^{k_j} ≤ 2 (∑ 2^{k_j p_j})^{1/p_j}`, and
+with `b_j(n) := ∑_{k : ⌊log₂ m_j(k)⌋ = n} 2^{k p_j} m_j(k)` (so
+`∑_n b_j(n) ≤ ‖f_j‖_{p_j}^{p_j}`) the block contributes at most
+`2^{1+1/p_j} b_j(n_j)^{1/p_j}` per slot.  Setting `B_j(n) = b_j(n)^{1/p_j}`,
+so that `∑_n B_j(n)^{p_j} ≤ 1` after normalisation, the fibre profile is
+bounded by
+
+    ∑_N ( ∑_{n₁+n₂+n₃=N} B₁(n₁) B₂(n₂) B₃(n₃) · 2^{-δ' max_j |n_j - N/3|} )^R.
+
+**The discrete core.**  On the slice `∑ n_j = N` the deviations `n_j - N/3`
+sum to zero, so `max_j |n_j - N/3| ≥ (|n₁-n₂| + |n₂-n₃|)/4`, and the decay is
+dominated by `e(n₁-n₂) · e(n₂-n₃)` with `e(t) = 2^{-δ't/4}`, a summable
+sequence.  Parametrise the slice by `(s,t) = (n₁-n₂, n₂-n₃)`: for fixed
+`(s,t)`, as `N` varies the point `n₁ = (N+2s+t)/3` runs over `ℤ` (on one
+residue class), so
+
+    ∑_N F_{s,t}(N)^R = ∑_{n} (B₁(n) B₂(n-s) B₃(n-s-t))^R
+                     ≤ ∏_j (∑_n B_j(n)^{p_j})^{R/p_j} ≤ 1
+
+by the three-function Hölder inequality — which is exactly where
+`∑_j R/p_j = 1`, i.e. `1/R = ∑_j 1/p_j`, is used.  Then the `ℓ^R` triangle
+inequality over the `(s,t)` family (`Lp_finset_sum_le`, `R ≥ 1`) gives
+
+    ( ∑_N (∑_{s,t} e(s) e(t) F_{s,t}(N))^R )^{1/R} ≤ ∑_{s,t} e(s) e(t) ≤ E².
+
+So the fibre profile is bounded by a constant depending only on `δ'` and `R`.
+
+**Sanity check against the earlier counterexample.**  Three equal inputs with
+`M` bands of measure `2^{-pk}/M`: the fibres are the values of `∑_j k_j`, about
+`3M` of them, each fibre sum is `M^{-1/R} · O(1)`, and
+`∑_i (M^{-1/R})^R · 3M = O(1)` — the `M^{1-1/R}` loss of the `ℓ¹` route is gone.
+
+**This tick's lemma.**  `sum_rpow_mul_three_le` is the three-function Hölder
+inequality on a finite set, in the form
+`∑ (fgh)^R ≤ (∑ f^{p₁})^{R/p₁} (∑ g^{p₂})^{R/p₂} (∑ h^{p₃})^{R/p₃}` under
+`1/p₁ + 1/p₂ + 1/p₃ = 1/R`, obtained by applying Mathlib's
+`Real.Lr_rpow_le_Lp_mul_Lq_of_nonneg` twice through the intermediate exponent
+`q = (1/p₂ + 1/p₃)⁻¹`.
+
+**Remaining steps, in order.**  (i) The discrete core as stated above.  (ii) The
+block estimate for distinct powers of two.  (iii) The bounded-overlap
+bookkeeping between fibres and `N`.  (iv) The diagonal perturbation pair.
+(v) Assembly: gains at `ϑ¹`, `ϑ²`, fibre sums via
+`weakNorm_sum_le_of_weak_bounds`, then `exists_lintegral_rpow_le_of_weak_pieces`.
+(vi) Normalisation by trilinearity, the degenerate cases (`A_a = 0`, an empty
+layer), and the translation from `lintegral` to `lpNorm`.
+
+### ext:interpolation — the discrete core, preparatory lemmas
+
+Four results promoted this tick, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`, no warnings:
+`real_Lp_finset_sum_le`, `sum_rpow_of_card_le_one`, `sum_shift_le_of_forall`,
+`sum_rpow_shifted_three_le`.
+
+These are the four ingredients of the discrete core from the plan recorded
+last tick, each a self-contained real-analysis fact.
+
+`real_Lp_finset_sum_le` is Minkowski's inequality for a finite family of
+nonnegative real sequences on a finite set — the real-valued twin of the
+`ℝ≥0∞` version `Lp_finset_sum_le` already in the corpus — by induction on the
+family from Mathlib's two-function `Real.Lp_add_le_of_nonneg`.  It is the
+`ℓ^R` triangle inequality over the `(s,t)` family of shifts.
+
+`sum_rpow_of_card_le_one` says that on a set with at most one element a sum
+commutes with a positive power.  Each fibre of the slice map
+`n ↦ (∑ n_j, n₁ - n₂, n₂ - n₃)` is such a set, which is what lets the inner
+sums over fibres be turned into sums of `R`-th powers without loss.
+
+`sum_shift_le_of_forall` records that an `ℓ^p` bound holding on every finite
+set is invariant under shifting the index, and `sum_rpow_shifted_three_le`
+combines it with `sum_rpow_mul_three_le`: three sequences of `ℓ^{p_j}` norm at
+most one, evaluated at three shifts of a common index, have
+`∑ (B₁(m+a) B₂(m+b) B₃(m+c))^R ≤ 1` whenever `∑ 1/p_j = 1/R`.  This is the
+estimate on a single `(s,t)`-line of the slice; the shifts `a, b, c` will be
+`s + t`, `t`, `0` when the line is parametrised by `n₃`.
+
+Next: the discrete core itself — decompose each slice sum by the two
+differences, apply Minkowski over the differences, bound each line by the
+shifted Hölder estimate, and sum the decay weights.
+
+### ext:interpolation — the discrete core is proved
+
+Three results promoted this tick (`tripleSum`, `tripleDiff`,
+`triple_eq_of_sum_diff`, and the main `discrete_core_le`), verified against
+the full corpus, `[propext, Classical.choice, Quot.sound]`, zero `sorry`.
+
+`discrete_core_le` is the `ℓ^R` estimate on the fibre profile, stated over a
+finite set `Λ ⊆ ℤ³` of multi-indices.  With three sequences `B_j ≥ 0` of
+`ℓ^{p_j}` norm at most one, a decay `e ≥ 0` with `∑ e ≤ E` on every finite set,
+`R ≥ 1` and `∑_j 1/p_j = 1/R`,
+
+    ( ∑_{N} ( ∑_{n ∈ Λ, n₁+n₂+n₃ = N} B₁(n₁)B₂(n₂)B₃(n₃) · e(n₁-n₂) e(n₂-n₃) )^R )^{1/R} ≤ E².
+
+The proof follows the recorded plan exactly.  Each slice sum is decomposed by
+the pair of differences `d = (n₁-n₂, n₂-n₃)` through
+`Finset.sum_fiberwise_of_maps_to`; the decay factor is constant on each fibre
+and comes out.  Minkowski over the finite set of pairs
+(`real_Lp_finset_sum_le`) reduces the claim to one line at a time.  On a line,
+each slice meets it in at most one point — `triple_eq_of_sum_diff`: a triple is
+determined by its sum and its two differences — so the `R`-th power passes
+inside the fibre sum (`sum_rpow_of_card_le_one`), the fibrewise decomposition
+is undone, and the line is reparametrised by its third coordinate, giving
+`∑_m (B₁(m + s + t) B₂(m + t) B₃(m))^R ≤ 1` by `sum_rpow_shifted_three_le`.
+Finally the decay weights `e(s)e(t)` over the set of pairs are dominated by the
+product of two one-dimensional sums, each at most `E`.
+
+The statement is over `ℤ × ℤ × ℤ` rather than `Fin 3 → ℤ`, because the
+differences are most naturally written with projections; the layer machinery
+uses `Fin 3 → ℤ` and a conversion will be needed at the point of use.
+
+This was the step whose mathematics had been in doubt for much of the task —
+whether the per-layer bounds could be summed to the strong norm at all.  With
+it proved, the remaining steps are bookkeeping of known shape: the block
+estimate for distinct powers of two, the bounded overlap between fibres and
+slices, the diagonal perturbation pair, and the assembly.
+
+### ext:interpolation — the block estimate
+
+Two results promoted this tick, `sum_zpow_two_le_two_mul_max` and
+`block_estimate`, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`, no warnings.
+
+`sum_zpow_two_le_two_mul_max`: a finite set of distinct integer powers of two
+sums to at most twice the largest.  Writing each term as `2^M (1/2)^(M-k)` and
+using injectivity of `k ↦ M - k` on the set, the sum is dominated by the
+finite geometric series `∑_{i<N} (1/2)^i = 2(1 - 2^{-N}) ≤ 2`.  (A first
+attempt through `tsum_geometric_two` foundered on the name of the
+finite-sum-below-tsum lemma in this Mathlib; the finite geometric sum is more
+elementary anyway.)
+
+`block_estimate` is the estimate for one slot and one dyadic range of the
+layer measure.  For heights `k ∈ K` whose measures all satisfy
+`2^n ≤ m(k) < 2^(n+1)`,
+
+    ∑_{k∈K} 2^k m(k)^{1/p} ≤ 2^(1+1/p) · ( ∑_{k∈K} (2^k)^p m(k) )^{1/p}.
+
+The right-hand side is the `1/p`-th power of the block's share of the `L^p`
+budget `∑_k (2^k)^p m(k) ≤ ‖f‖_p^p`.  The proof is the three-line argument
+from the plan: bound each `m(k)^{1/p}` by the top of the range, bound the sum
+of the `2^k` by twice the largest, and read off the largest from the budget
+through its own term `(2^M)^p · 2^n ≤ (2^M)^p m(M)`.
+
+With this, the sequences `B_j(n) := (share of the budget in range n)^{1/p_j}`
+satisfy `∑_n B_j(n)^{p_j} ≤ ‖f_j‖_{p_j}^{p_j}`, and the fibre profile is
+dominated, block by block, by the quantity the discrete core controls.
+
+Next: the bounded-overlap bookkeeping between the interpolation fibres
+(defined through `∏_j m_j`) and the slices `∑_j n_j = N`, and the diagonal
+perturbation pair.
+
+### ext:interpolation — the diagonal pair and the fibre/slice overlap
+
+Two results promoted this tick, `exists_diagonal_weight_pair` and
+`card_filter_floor_eq_le`, verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`, no warnings.
+
+`exists_diagonal_weight_pair` is the corrected straddling pair.  From
+`exists_zero_sum_combination` applied to `(1,1,1)` one gets zero-sum
+coefficients `e` with `∑ e_a v_a = (1,1,1)`; with
+`ε = minWeight ϑ / (maxAbs e + 1)` the vectors `ϑ ± εe` are strictly positive,
+sum to one, have midpoint `ϑ`, and satisfy
+
+    ∑_a ϑ₁_a v_{a,j} = ∑_a ϑ_a v_{a,j} + ε,    ∑_a ϑ₂_a v_{a,j} = ∑_a ϑ_a v_{a,j} - ε
+
+for every `j`.  In exponent language: `1/p¹_j = 1/p_j + ε` and
+`1/p²_j = 1/p_j - ε` uniformly in `j`, hence `1/ρ₁ = 1/R + 3ε` and
+`1/ρ₂ = 1/R - 3ε`.  The ratio of the two interior bounds on a layer term is
+then `(D₁/D₂) · (∏_j m_j)^{2ε}`, a function of the product of the layer
+measures alone, as the plan requires.
+
+`card_filter_floor_eq_le` is the overlap count.  The interpolation index of a
+slice `N` will be `i(N) = ⌊2ε N + c₀⌋`, and since `2ε` need not be an integer
+several slices share an index; the lemma bounds their number by
+`1/(2ε) + 1`, by trapping the `N` in the interval
+`[⌈(i - c₀)/2ε⌉, ⌊(i + 1 - c₀)/2ε⌋]` and counting with `Int.card_Icc`.  That
+count is what turns the slice-wise `ℓ^R` bound of `discrete_core_le` into a
+fibre-wise one, through `Real.rpow_sum_le_const_mul_sum_rpow` at exponent `R`.
+
+An alternative was considered and set aside: re-deriving the `J`-method with a
+general geometric base `2^{2ε}` would make every slice its own fibre and remove
+the merging, but it means porting `primeJm_method` and its supporting chain;
+the bounded merge is far cheaper.
+
+Next: the assembly proper.  All named ingredients now exist; what remains is
+to define the pieces `v_i`, verify the two weak bounds on each from the gain
+lemma at `ϑ¹`, `ϑ²` and `weakNorm_sum_le_of_weak_bounds`, and feed the
+`ℓ^R` profile bound — block estimate, discrete core, overlap count — into
+`exists_lintegral_rpow_le_of_weak_pieces`.
+
+### ext:interpolation — the gain dominates the block decay
+
+Five results promoted this tick (`blockIndex`, `zpow_blockIndex_le`,
+`lt_zpow_blockIndex_succ`, `log_sub_blockIndex_mem`, and the main
+`exp_gain_le_block_decay`), verified against the full corpus,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`, no warnings.
+
+`blockIndex m = Int.log 2 m` is the dyadic block of a positive layer measure,
+with `2^n ≤ m < 2^(n+1)` from Mathlib's `Int.zpow_log_le_self` and
+`Int.lt_zpow_succ_log_self`; `log_sub_blockIndex_mem` takes logarithms:
+`log m - n log 2 ∈ [0, log 2)`.
+
+`exp_gain_le_block_decay` connects the continuous gain from
+`exists_weakNorm_expansion_term_gain_le` to the discrete decay that
+`discrete_core_le` consumes.  For `m_j > 0` with blocks `n_j` and `N = ∑ n_j`,
+
+    exp(-δ‖w‖) ≤ 2^δ · 2^(-(δ/4)|n₀-n₁|) · 2^(-(δ/4)|n₁-n₂|),
+
+where `w = layerLogDeviation m`.  The proof: each `w_j` is within `log 2` of
+`(n_j - N/3) log 2`, so the sup norm of `w` is at least
+`log 2 · max_j |n_j - N/3| - log 2`; the block deviations `n_j - N/3` sum to
+zero, so the max is at least a quarter of `|n₀-n₁| + |n₁-n₂|`; then exponentiate.
+The `2^δ` is the price of the `log 2` slack and depends only on `δ`.
+
+The right-hand side is exactly `2^δ · e(n₀-n₁) · e(n₁-n₂)` with
+`e(t) = 2^(-(δ/4)|t|)`, whose finite sums are bounded uniformly by
+`exists_sum_abs_tent_bound` — so the constant `E` of the discrete core is now
+available with `c = 0`.
+
+Next: the fibre profile lemma itself, a purely discrete statement over a
+product set of heights: block decomposition of each fibre sum via the product
+structure, the block estimate per slot, this decay bound, the discrete core,
+and the overlap count.
+
+### ext:interpolation — block budgets, and a check on the length of the route
+
+Five results promoted this tick (`blockSet`, `blockBudget`, `blockBudget_nonneg`,
+`blockSet_sum_le`, `sum_blockBudget_rpow_le`, `sum_product_three`), verified
+against the full corpus, `[propext, Classical.choice, Quot.sound]`, zero
+`sorry`.
+
+`blockSet K m n` is the set of heights whose layer measure lies in dyadic block
+`n`; `blockBudget K m p n` is the `1/p`-th power of that block's share of the
+budget `∑_k (2^k)^p m(k)`.  `blockSet_sum_le` is the block estimate in these
+terms, and `sum_blockBudget_rpow_le` says that when the total budget is at
+most one, `∑_{n∈S} blockBudget^p ≤ 1` for every finite `S` — the blocks are
+disjoint pieces of `K`, collected by `Finset.sum_fiberwise_of_maps_to`.  These
+are exactly the sequences `B_j` the discrete core takes as input.
+`sum_product_three` factorises a sum over a triple product of a product of
+one-variable functions, which is how a block's contribution splits into three
+block estimates.
+
+**On the length of the route.**  The user asked, mid-tick, for the shortest
+argument and whether the work is taking detours.  The honest assessment: the
+`ℓ¹` route — strong-bound each layer term by two straddling weak bounds, then
+the triangle inequality in `L^R` — is the only shorter candidate, and it is
+wrong: on three equal inputs with `M` bands it gives `M^{1-1/R}`, recorded
+earlier in this task.  The restricted-weak-type route of the textbooks needs
+an open set of exponents in four dimensions, which the Hölder-surface
+hypotheses (`1/r_a = ∑_j 1/P_{a,j}`) do not provide; the degenerate diagonal
+direction is real.  So the `ℓ^R` structure through real interpolation is
+necessary, and both heavy parts of it — the interpolation theorem and the
+discrete core — are proved.  What remains is a fixed list:
+
+  1. `fibre_profile_le`: for `Λ = K₀ ×ˢ (K₁ ×ˢ K₂)`, positive `m_j` with unit
+     budgets, and fibres `idx(k) = ⌊ε · N(k) + c₀⌋` with `N(k) = ∑_j blockIndex(m_j(k_j))`,
+     `∑_i (∑_{k∈Λ, idx k = i} ∏_j 2^{k_j} m_j(k_j)^{1/p_j} · exp(-δ‖w(k)‖))^R ≤ C(δ,ε,p,R)`.
+     Proof: fibres are unions of blocks; per block, `sum_product_three` +
+     `blockSet_sum_le` + `exp_gain_le_block_decay`; then
+     `Real.rpow_sum_le_const_mul_sum_rpow` with `card_filter_floor_eq_le`,
+     and `discrete_core_le` with `sum_blockBudget_rpow_le`.
+  2. The balancing: on fibre `i`, `√(Γ¹/Γ²) ≤ 2^{i/2} · 2^{3ε+1/2}` and
+     `√(Γ²/Γ¹) ≤ 2^{-i/2} · 2^{1/2}`, so `2^{-i/2} max(Γ¹(i), 2^i Γ²(i))` is at
+     most a constant times the fibre sum of `G`.
+  3. Weak bounds on the fibre sums, from
+     `exists_weakNorm_expansion_term_gain_le` at `ϑ¹`, `ϑ²` and
+     `weakNorm_sum_le_of_weak_bounds`.
+  4. Glue: `trilinearOnSimple_expand_three_multiIndex` for `T f = ∑_k T(layer k)`;
+     null layers are `0` a.e. (a vertex bound with a zero factor); `A_a = 0`
+     gives `T f = 0` a.e.; normalisation `‖f_j‖_{p_j} = 1` by trilinearity;
+     the budget `∑_k (2^k)^p m(k) ≤ ‖f‖_p^p`; and `lintegral ↔ lpNorm`.
+
+From here the work is top-down: the final statement is written first and only
+the lemmas it demands are proved.
+
+### ext:interpolation — the fibre profile lemma
+
+`layerSize`, `blockVec`, `fibre_profile_le` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  For
+`Λ = K₀ ×ˢ (K₁ ×ˢ K₂)`, positive layer measures with unit budgets,
+`∑ 1/p_j = 1/R`, `R ≥ 1`, and fibres `⌊ε N(k) + c₀⌋` with
+`N(k) = ∑_j blockIndex(m_j(k_j))`, there is `C = C(δ, ε, p, R)` with
+`∑_i (∑_{k ∈ Λ, fibre i} layerSize k)^R ≤ C` for every finite set of fibres.
+Proof as planned: fibres are unions of blocks (`sum_fiberwise_of_maps_to`),
+each block factorises (`sum_product_three`) and is bounded by
+`blockSet_sum_le` and `exp_gain_le_block_decay`, the slices are merged with
+`Real.rpow_sum_le_const_mul_sum_rpow_of_nonneg` and `card_filter_floor_eq_le`,
+and `discrete_core_le` with `sum_blockBudget_rpow_le` finishes.  Item 1 of the
+remaining list is done; next is item 2, the balancing step.
+
+### ext:interpolation — the balancing step
+
+`balance_le` and `fibre_window` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  `balance_le`: two
+bounds `x = D₁ G Q^ε`, `y = D₂ G Q^(-ε)` whose base-two log-ratio `L` lies in
+`[i, i+1+η)` satisfy `2^(-i/2) x ≤ 2^((1+η)/2) √(D₁D₂) G` and
+`2^(i/2) y ≤ √(D₁D₂) G`.  `fibre_window`: for a layer with measures
+`m₀ m₁ m₂ > 0`, blocks `n_j`, `N = ∑ n_j` and fibre index `⌊2εN + c₀⌋`, the
+log-ratio `c₀ + 2ε log₂(m₀m₁m₂)` lies in the window with `η = 6ε`.  Item 2 of
+the remaining list is done; next are item 3 (weak bounds on fibre sums) and
+the top-level assembly.
+
+### ext:interpolation — assembly preparations
+
+`exists_diagonal_weight_pair_le`, `lpNorm_le_of_lintegral_rpow_le`,
+`sum_zpow_rpow_mul_toReal_le` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  The first shrinks the
+diagonal shift below any prescribed `ε₀` (needed so that both perturbed output
+exponents stay above one); the second converts the layer-cake bound
+`∫ |g|^R ≤ C` into `lpNorm g R μ ≤ C^{1/R}` (trivial when `g` is not
+a.e.-strongly measurable, since `lpNorm` is then `0`); the third is the layer
+budget `∑_k (2^k)^p μ(level k) ≤ ‖f‖_p^p` in real form.
+
+Two decisions for the assembly: the final theorem assumes `[SigmaFinite μ]`
+(needed by `weakNorm_le_weakNormPrime`; the downstream use is Lebesgue measure
+on `E3`, which is σ-finite), and it is first proved for inputs normalised to
+`lpNorm ≤ 1`, the general case following by trilinearity — normalising the
+measures instead is not available because the gain is not invariant under
+rescaling a single slot.  Next: the assembly theorem itself.
+
+### ext:interpolation — the fibre assembly (item 3 done)
+
+`fibre_profile_le_uniform`, `layerProd`, `layerSize_pos`, `layerProd_pos`, and
+the main `lintegral_rpow_sum_le_of_layer_weak_bounds` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  The uniform variant
+of the fibre profile lemma pulls its constant in front of the data (the proof
+was already data-free in the constant).  The main theorem is the
+operator-free assembly: for exponents `p_j, R` with `∑ 1/p_j = 1/R`, `R > 1`,
+straddling `ρ₁, ρ₂` with `1/ρ₁ = 1/R + 3ε`, `1/ρ₂ = 1/R - 3ε`, both above one,
+and constants `D₁, D₂, δ`, there is `C` such that for every product set of
+heights with positive layer measures and unit budgets, and every family of
+measurable layer terms `u k` with
+
+    ‖u k‖_{ρ₁,∞} ≤ D₁ · layerSize k · (m₀m₁m₂)^ε,
+    ‖u k‖_{ρ₂,∞} ≤ D₂ · layerSize k · (m₀m₁m₂)^(-ε),
+
+one has `∫ |∑_k u k|^R dμ ≤ C`.  Proof: pieces `v_i` are fibre sums with
+fibre index `⌊2ε N(k) + c₀⌋`, `c₀ = log₂(D₁/D₂)`; weak bounds on the pieces
+from `weakNorm_sum_le_of_weak_bounds` (tail pieces get explicit summable
+bounds); `balance_le` with `fibre_window` turns the `J`-method profile into
+the fibre profile; `fibre_profile_le_uniform` bounds it; and
+`exists_lintegral_rpow_le_of_weak_pieces` finishes.  Remaining: the operator
+part — the two gain bounds at `ϑ₁, ϑ₂` in exactly this form, the expansion
+`T f = ∑_k T(layer k)`, null layers and `A_a = 0`, normalisation, `lpNorm`.
+
+### ext:interpolation — the per-layer bounds in assembly form
+
+`layerMeasure`, `layerTerm`, `exists_layer_weak_bound_gain_form` promoted;
+verified, `[propext, Classical.choice, Quot.sound]`, zero `sorry`.  At an
+interior weight `ϑ'` whose input reciprocals are `1/p_j + s`, the layer term
+`T(layer k)` has weak norm at the output exponent bounded by
+`8 · ∏ A_a^{ϑ'_a} · C_weights_shift A · layerSize k · (m₀m₁m₂)^s`, for every
+gain parameter `δ'' ≤ δ'` — exactly the hypothesis shape of
+`lintegral_rpow_sum_le_of_layer_weak_bounds`, with `s = ±ε` at `ϑ¹, ϑ²`.  The
+proof is `exists_weakNorm_expansion_term_gain_le` plus the exponent algebra
+`∏ 2^{k_j+1} m_j^{1/p_j+s} = 8 ∏ 2^{k_j} m_j^{1/p_j} · (∏ m_j)^s`.  Next: the
+normalised main theorem.
+
+### ext:interpolation — null layers and the a.e. expansion
+
+`ae_eq_zero_of_weakNorm_eq_zero`, `lpNorm_dyadicLevelPiece_eq_zero`,
+`layerTerm_ae_zero_of_null`, `positiveLayerIndices`, `ae_sum_eq_zero`,
+`ae_eq_sum_layerTerm_positive` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  A layer whose level
+set is null has a null layer piece, so any vertex bound forces the layer term
+to vanish a.e.; hence `T f =ᵐ ∑_{k ∈ Λ} T(layer k)` with `Λ` the product of the
+positive-measure heights — the set the fibre assembly works on.  Remaining:
+the normalised main theorem (diagonal pair, two gain-form bounds, fibre
+assembly, `lpNorm`), then the trilinearity wrapper and degenerate cases.  Note
+for the wrapper: the fibre assembly needs the layer terms measurable, which the
+recorded hypothesis does not supply; the main theorem will carry a
+measurability hypothesis on `T` and this will be recorded.
+
+### ext:interpolation — the normalised main theorem
+
+`exists_lintegral_rpow_le_of_normalized` promoted; verified,
+`[propext, Classical.choice, Quot.sound]`, zero `sorry`.  Under the blueprint
+hypotheses with `0 < A a`, `[SigmaFinite μ]`, and measurable outputs
+`T (simple triple)`, there is `C` such that every triple of simple functions
+of finite measure support with `lpNorm ≤ 1` satisfies
+`∫ |T f|^R dμ ≤ C`.  The proof: the diagonal pair with shift
+`ε ≤ min((1-1/R)/6, 1/(6R))` gives `ρ₁, ρ₂ > 1` with `1/ρ₁ = 1/R + 3ε`,
+`1/ρ₂ = 1/R - 3ε`; the two gain-form layer bounds at `ϑ ± εe` with the common
+gain `min δ₁ δ₂`; the layer measures are cut off to `1` outside the positive
+heights so the fibre assembly's positivity hypothesis holds; budgets from
+`sum_zpow_rpow_mul_toReal_le` and `lpNorm ≤ 1`; `T f =ᵐ ∑_Λ T(layer)` from
+`ae_eq_sum_layerTerm_positive`; and `lintegral_rpow_sum_le_of_layer_weak_bounds`
+finishes.  Remaining: the wrapper to the recorded statement — `A_a = 0`
+(then `T f = 0` a.e.), normalisation by trilinearity, and `lpNorm ≤ C^{1/R}`.

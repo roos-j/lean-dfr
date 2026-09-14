@@ -174,3 +174,47 @@ So the chain is: normability of weak `L^r` for `r > 1`, then subadditivity of th
 Mathlib.  `weakK_add_le`, added alongside this note, is the honest two-term form
 that the quasi-norm supports: it estimates the `K`-functional of a sum against
 any two chosen decompositions, carrying the factor two in each slot.
+
+### Correction to my own earlier work: the `K`-functional must be taken over measurable decompositions
+
+Not a blueprint error — a defect in a definition introduced earlier in this
+task and caught while trying to chain the two halves of the real interpolation
+argument together.
+
+The candidate norm `weakNormPrime μ r v` is a supremum over measurable sets `E`
+of `(μ E)^(1/r - 1) · ∫⁻ x in E, ‖v x‖ₑ`.  For a non-measurable `v` the inner
+integral is Mathlib's lower Lebesgue integral, that is, the supremum of the
+integrals of measurable simple functions below `‖v‖ₑ`.  That quantity can be
+zero even when `v` is large everywhere.
+
+Take `X = ℝ` with Lebesgue measure and let `N` be a set such that neither `N`
+nor its complement contains a measurable set of positive measure (a Bernstein
+set).  For any measurable `v` put `w = 1_N · v`.  Then `v - w = 1_{Nᶜ} · v`, and
+every measurable simple function below `‖1_{Nᶜ} v‖ₑ` vanishes almost
+everywhere, so `weakNormPrime μ r₁ (v - w) = 0`; symmetrically
+`weakNormPrime μ r₂ w = 0`.  The infimum
+
+    primeK μ r₁ r₂ t v = ⨅ w : X → ℝ, ‖v - w‖' + t ‖w‖'
+
+is therefore identically zero on that space, for every `v`.
+
+The consequence is that `primeK_le_left`, `primeK_le_right`, `primeK_add_le`,
+`primeK_sum_le`, `primeK_sum_le_primeJ` and `primeJ_method` are all true but
+say nothing: they are upper bounds on a quantity that can be zero.  Nothing in
+the corpus is wrong, and no proof needs repair, but the chain that was being
+built — `‖v‖_R ≲ dyadic K-profile` on one side and `K-profile ≲ J-profile` on
+the other — cannot be closed through `primeK`, because the first half produces
+`weakK`, and `weakK ≤ primeK` is false exactly because of the above.
+
+The fix is to restrict the infimum to measurable decompositions.  `primeKm` is
+defined with `w` ranging over `{w : X → ℝ // Measurable w}`, and
+`primeK ≤ primeKm` always.  The bridge `weakK ≤ primeKm` then holds for
+measurable `v` on a σ-finite measure, by `weakNorm_le_weakNormPrime` applied to
+each of the two measurable pieces.  `weakK` itself needs no such restriction:
+it is built from `μ {τ < |f|}`, which for a non-measurable set is the outer
+measure and so is large, not small.
+
+Every upper bound on `primeK` proved so far exhibits an explicit measurable
+decomposition (`0`, `v`, `w₁ + w₂`, `∑ w i`, and the truncations in
+`primeK_sum_le_primeJ`), so each one carries over to `primeKm` unchanged apart
+from packaging the witness with its measurability proof.
