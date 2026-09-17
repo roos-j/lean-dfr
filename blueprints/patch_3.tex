@@ -1,0 +1,302 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{xcolor,hyperref,fancyhdr}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue,pdftitle={Lean 4 blueprint: the Fejer-to-cube gap}}
+\pagestyle{fancy}\fancyhf{}\lhead{Targeted Lean 4 blueprint}\rhead{\texttt{lem:fejer-vdc}}\cfoot{\thepage}
+\setlength{\headheight}{14pt}
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newcommand{\E}{\mathbb E}
+\newcommand{\CC}{\mathcal C}
+\newcommand{\dd}{\,\mathrm d}
+\newcommand{\idname}[1]{\nolinkurl{#1}}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}[lemma]{Proposition}
+\theoremstyle{definition}\newtheorem{definition}[lemma]{Definition}
+\title{The selected-factor Cauchy--Schwarz-to-cube gap\\\large Targeted replacement blueprint for original lines 2183 and 2193}
+\author{}\date{}
+\begin{document}\begin{center}{\Large\bfseries The selected-factor Cauchy--Schwarz-to-cube gap}\\[5pt]{\normalsize Targeted replacement blueprint for original lines 2183 and 2193}\end{center}\vspace{-0.5em}
+
+\section*{Spot 1: line 2183---replace the unrestricted assertion}
+\noindent\textbf{Blocked assertion.} Repeated van der Corput and Cauchy--Schwarz are said to bound every polynomial average generated from $t,t^2,t^3$ by a finite power of the local uniformity norm of any selected input, with a boundary error.
+
+\noindent\textbf{Necessary scope correction.} Keep the scalar inequality and its proved implementation \idname{fejer_vdc'} unchanged. Replace only its last assertion by the terminal-configuration theorem below. It has a checkable affine input, constructs the cube, and proves the needed common-scale comparison. Being linear is not, on its own, the required hypothesis.
+
+The supplied paper\footnote{D.~Kosz, M.~Mirek, S.~Peluse, R.~Wan, and J.~Wright, \emph{The Multilinear Circle Method and a Question of Bergelson}, supplied arXiv:2411.09478v4 PDF. Proposed Lean declarations in this document are mathematical interfaces, not compiler-checked code.} distinguishes PET-to-box control (Proposition 4.41 and Lemma 4.43, pp.~47--48) from box-to-uniformity control (the real-case argument after Theorem 4.45, p.~48). Lemma 4.43 controls the highest-degree input; the paper explicitly omits its PET coefficient-tracking details, referring to another work. Consequently, the proof below supplies the missing \emph{analytic terminal step}; it does not assert that the current proof of \idname{lem:pet-reduction} already constructs its input for every $j$.
+
+\subsection*{The affine input that must be supplied}
+Fix $j\in\{1,2,3\}$, an interval $I$ of length $N>0$, an integer $m\geq1$, and $0<H\leq N/4$. Write
+\[
+ \kappa_H(h)=H^{-1}(1-|h|/H)_+,
+ \qquad \E_H F=\int_{\R}F(h)\kappa_H(h)\dd h.
+\]
+Let $g_0,\ldots,g_m:\R^3\to\C$ be measurable and $1$-bounded, with
+\[
+ \int |g_i|^2\leq V\qquad(0\leq i\leq m),\qquad V>0.
+\]
+Require in addition that the selected function $g_m=f$ be supported in a rectangular box of volume $V=BS$, whose $j$-th side has length $S>0$ and whose transverse projection has area $B>0$. In the intended application all the functions are supported in translates of a fixed box of volume $V$, which implies the displayed $L^2$ bounds.
+
+The actual quantity to estimate must be exactly
+\begin{equation}\label{eq:input}
+ A_0=\frac1V\int_{\R^3}\E_{t\in I}
+       \prod_{i=0}^m g_i(x+a_i t e_j)\dd x,
+ \qquad a_i\in\R,\quad a_m\ne a_i\ (i<m).
+\end{equation}
+The average in $t$ has normalization $1/N$. The protected input is always index $m$. Equal slopes among nuisance factors may first be grouped into one product. The protected slope must contain exactly one translated or conjugated copy of the selected input, not that copy multiplied by another factor.
+
+More generally, affine polynomial vectors $Q_i(t)=u_i+(w+a_i e_j)t$ give \eqref{eq:input}: absorb $u_i$ into $g_i$, and remove the common $wt$ by translation in $x$. All factors, including a constant factor left by PET, must be included. Translating or conjugating the selected input does not change its integrated uniformity power.
+
+Set
+\begin{equation}\label{eq:constants}
+ L_i=|a_m-a_i|H>0,\quad
+ L=2\max\{S,L_0,\ldots,L_{m-1}\},\quad
+ R=\left(1+\frac LS\right)\prod_{i<m}\frac{2L}{L_i},\quad
+ c_r=2^{\,2^r-1}.
+\end{equation}
+Here and below \idname{locUnifPow} denotes the user's existing quantity, with spatial normalization $N^{-6}$, not a new definition.
+
+\begin{proposition}[Replacement for the last assertion]\label{prop:replacement}
+Under the hypotheses above,
+\begin{equation}\label{eq:main}
+ |A_0|^{2^{m+1}}
+ \leq c_{m+1}\left(
+ R\frac{N^6}{V}\,
+ \operatorname{locUnifPow}(f;j,L,m+1)
+ +m^2\frac HN\right).
+\end{equation}
+In particular, the coefficient is explicit and depends on the slope gaps through $R$. No uniform bound independent of vanishing slope gaps is asserted.
+\end{proposition}
+
+This is a literal finite-power estimate by the existing, single-scale, one-coordinate uniformity power, with an explicit boundary error. If $S\asymp N^j$, $V\asymp N^6$, and the input producer supplies
+$L_i\in[c\delta^C N^j,C\delta^{-C}N^j]$, then $L$ has the required physical scale and $R$ is bounded by a fixed negative power of $\delta$. Those scale estimates belong to the producer, not to the word ``linear.''
+
+\section*{Spot 2: line 2193---the explicit proof}
+\noindent\textbf{Blocked proof.} The four-sentence proof says that Cauchy--Schwarz removes the unselected factors and that an induction gives the cube, without defining either the removed block or the induction invariant.
+
+\subsection*{1. Define the blocks and the entire state}
+Use cube parity $\CC^{|\omega|}$, where $\CC$ is complex conjugation. For $r\in\{0,\ldots,m\}$, $i\geq r$, and $\mathbf h=(h_0,\ldots,h_{r-1})$, define
+\begin{equation}\label{eq:block}
+ G_{i,r}(x;\mathbf h)
+ =\prod_{\omega\in\{0,1\}^r}\CC^{|\omega|}
+    g_i\!\left(x+\sum_{\nu<r}
+        \omega_\nu(a_i-a_\nu)h_\nu e_j\right).
+\end{equation}
+Equivalently, use the following recursion as the implementation:
+\begin{align}
+ G_{i,0}(x)&=g_i(x),\label{eq:blockzero}\\
+ G_{i,r+1}(x;\mathbf h,h_r)
+ &=G_{i,r}(x;\mathbf h)\,
+   \overline{G_{i,r}(x+(a_i-a_r)h_r e_j;\mathbf h)}.
+ \label{eq:blocksucc}
+\end{align}
+The state is
+\begin{equation}\label{eq:state}
+ A_r(\mathbf h)=\frac1V\int_{\R^3}\E_{t\in I}
+       \prod_{i=r}^m G_{i,r}(x+a_i t e_j;\mathbf h)\dd x.
+\end{equation}
+Every $G_{i,r}$ is $1$-bounded. Its zero vertex is $g_i(x)$, so
+\[
+ |G_{i,r}(x;\mathbf h)|\leq |g_i(x)|,
+ \qquad \int |G_{i,r}|^2\leq V.
+\]
+At every nonterminal stage there are at least two blocks, so their product is integrable with integral at most $V$ by Cauchy--Schwarz. At the terminal stage, $G_{m,m}$ is supported in the selected box and has modulus at most one. In particular, $|A_r|\leq1$ at every stage.
+
+The removal order is \emph{exactly} $0,1,\ldots,m-1$. At stage $r$, the removed block is $G_{r,r}$, consisting of the $2^r$ descendants of nuisance input $g_r$. No block carrying the protected input $g_m$ is removed.
+
+\paragraph{Lean nodes.}
+Prove \idname{headBlock_succ}, \idname{headBlock_cube}, \idname{headBlock_norm_le}, and \idname{linearStage_norm_le_one}. Names here are proposed project declarations, not claims about existing Mathlib names. Prove \eqref{eq:block} from \eqref{eq:blocksucc} by the equivalence
+$\{0,1\}^{r+1}\simeq\{0,1\}^r\times\{0,1\}$: the new bit $0$ keeps the old term, while bit $1$ translates it and toggles conjugation parity. Do not deduplicate equal factors: the indexing is a finite product with multiplicity.
+
+\subsection*{2. Prove the integrated removal inequality}
+For each $r<m$, prove, with all old $\mathbf h$ fixed,
+\begin{equation}\label{eq:onestep}
+ |A_r(\mathbf h)|^2
+ \leq 2\operatorname{Re}\E_H A_{r+1}(\mathbf h,h_r)
+      +2\frac HN.
+\end{equation}
+This is the integrated Cauchy--Schwarz helper corresponding to the signed-correlation estimate in the paper's Lemma 4.39. It is \emph{not} obtained by deleting the absolute value in \idname{fejer_vdc'}.
+
+Translate $x\mapsto x-a_rte_j$ in \eqref{eq:state}, so that
+\[
+ A_r=\frac1V\int G_{r,r}(x;\mathbf h)\,
+                  \E_{t\in I}F_t(x)\dd x,
+ \qquad
+ F_t(x)=\prod_{i=r+1}^m
+ G_{i,r}(x+(a_i-a_r)te_j;\mathbf h).
+\]
+Now $G_{r,r}$, and only that block, is independent of $t$. Cauchy--Schwarz in $x$ gives
+\begin{equation}\label{eq:remove}
+ |A_r|^2\leq\frac1V\int\left|\E_{t\in I}F_t(x)\right|^2\dd x,
+ \qquad \int|F_t|^2\leq V.
+\end{equation}
+There is no attempt to bound a complex product by the same product with a factor deleted.
+
+Put $W_t(x)=\mathbf1_I(t)F_t(x)$ and
+\[
+ S_u(x)=\frac1H\int_0^H W_{u+s}(x)\dd s.
+\]
+The $u$-support is contained in the interval $I-[0,H]$, of length $N+H$, and
+$\int_\R S_u(x)\dd u=\int_I F_t(x)\dd t$. Cauchy--Schwarz in $u$, then integration in $x$, yields
+\begin{equation}\label{eq:window}
+ \frac1V\int\left|\E_{t\in I}F_t(x)\right|^2\dd x
+ \leq\frac{N+H}{N^2V}\int_\R\int_{\R^3}|S_u(x)|^2\dd x\dd u.
+\end{equation}
+Expand this square before applying any triangle inequality. The difference of the two independent shifts in $[0,H]$ has density $\kappa_H$. Thus the right side is
+\[
+ \left(1+\frac HN\right)\operatorname{Re}\E_H
+ \frac1{VN}\int_{I\cap(I-h)}\int_{\R^3}
+          F_t(x)\overline{F_{t+h}(x)}\dd x\dd t.
+\]
+The entire averaged cut-off correlation is nonnegative, since it is an integral of squares. The factor $1+H/N$ is at most $2$. Replacing $I\cap(I-h)$ by $I$ costs at most $H/N$ before that factor: the removed interval has length at most $|h|\leq H$, and
+\[
+ \int|F_t(x)\overline{F_{t+h}(x)}|\dd x\leq V
+\]
+by Cauchy--Schwarz. Therefore \eqref{eq:remove}--\eqref{eq:window} give
+\[
+ |A_r|^2\leq2\operatorname{Re}\E_H
+ \frac1V\int\E_{t\in I}F_t(x)\overline{F_{t+h}(x)}\dd x
+ +2H/N.
+\]
+By \eqref{eq:blocksucc}, the expanded product is
+$\prod_{i>r}G_{i,r+1}(x+(a_i-a_r)te_j;\mathbf h,h)$. Undo the common $a_rt e_j$ translation in $x$ to obtain exactly $A_{r+1}$. This proves \eqref{eq:onestep}.
+
+\paragraph{Lean node.}
+\idname{cs_remove_slope_block}. All the integrations in this proof can be implemented with scalar Cauchy--Schwarz and Fubini; a new theorem about Hilbert-valued van der Corput is not necessary. Joint measurability and absolute integrability are obligations of this node. Borel representatives and the finite-support application avoid completed-measure composition issues; translation invariance and Fubini then transfer the result to almost-everywhere representatives.
+
+\subsection*{3. The endpoint is an explicit mixed-scale cube}
+At $r=m$, there is only the protected block. Translate $x$ by $-a_mt e_j$ to get
+\begin{equation}\label{eq:terminal}
+ A_m(\mathbf h)=\frac1V\int_{\R^3}
+    \prod_{\omega\in\{0,1\}^m}\CC^{|\omega|}
+       f\!\left(x+\sum_{\nu<m}\omega_\nu
+                     (a_m-a_\nu)h_\nu e_j\right)\dd x.
+\end{equation}
+No nuisance factor, $t$-dependent polynomial, boundary indicator, or extra amplitude is left. This equality, rather than a statement that ``the final Cauchy--Schwarz produces a cube,'' is the terminal invariant.
+
+Under $z_i=(a_m-a_i)h_i$, the pushforward of $\kappa_H(h_i)\dd h_i$ is exactly $\kappa_{L_i}(z_i)\dd z_i$, including when $a_m-a_i<0$. Hence define
+\begin{equation}\label{eq:box}
+ Q_m=\operatorname{Re}\E_H^{\otimes m}A_m
+ =\frac1V\operatorname{Re}\int_{\R^3}\int_{\R^m}
+      \prod_{\omega\in\{0,1\}^m}\CC^{|\omega|}
+        f(x+(\omega\cdot\mathbf z)e_j)
+      \prod_{i<m}\kappa_{L_i}(z_i)\dd\mathbf z\dd x.
+\end{equation}
+This is a mixed-scale Gowers box power. It is not yet \idname{locUnifPow} unless all the radii coincide. For fixed first $m-1$ differences, the last Fej\'er integral is the squared $L^2$ norm of a uniform translate-average of their cube product. Consequently $0\leq Q_m\leq1$.
+
+\paragraph{Conjugation convention.}
+The displayed cube uses $\CC^{|\omega|}$. With the manuscript's derivative $\Delta_hf(x)=f(x+he_j)\overline{f(x)}$, its $r$-fold derivative is the global conjugate of this cube when $r$ is odd, and agrees when $r$ is even. Real parts and the integrated Fej\'er powers agree. Use the convention already fixed in \idname{cfgHeadInt_cube}; no change to \idname{locUnifPow} is needed.
+
+\subsection*{4. Track the error without a qualitative ``geometric'' claim}
+Let $\eta=H/N$ and
+\[
+ M_r=\E_H^{\otimes r}|A_r|\quad(0\leq r<m).
+\]
+Jensen and \eqref{eq:onestep} give
+\begin{align*}
+ M_r^2&\leq2M_{r+1}+2\eta &&(r<m-1),\\
+ M_{m-1}^2&\leq2Q_m+2\eta.&
+\end{align*}
+The last line retains the real part of the signed correlation. Replacing it by an average of absolute cube correlations would lose the required endpoint.
+
+For $0\leq x\leq1$ put $\phi(x)=x^2/2$. For $x,y\in[0,1]$,
+$|\phi(x)-\phi(y)|\leq|x-y|$. Induction gives
+\[
+ \phi^{\circ r}(M_0)\leq M_r+r\eta\quad(r<m),\qquad
+ \phi^{\circ m}(M_0)\leq Q_m+m\eta.
+\]
+For an elementary Lean proof of the induction, split according as
+$\phi^{\circ r}(M_0)\leq M_r$ or not and use
+$\phi(x)-\phi(y)=(x-y)(x+y)/2$. Since
+$\phi^{\circ m}(x)=x^{2^m}/c_m$, this proves
+\begin{equation}\label{eq:boxbound}
+ |A_0|^{2^m}\leq c_m\left(Q_m+m\frac HN\right).
+\end{equation}
+
+\paragraph{Lean node.}
+\idname{linearStages_le_mixedCube}. Its induction is on the number $r$ of removed slope blocks, not on an unspecified number of polynomial differences. A prior PET prefix may have a different length and different exponent losses.
+
+\subsection*{5. Prove the single-scale comparison}
+It is invalid to dominate the kernels in \eqref{eq:box} pointwise against a complex cube integrand. First add one more difference which makes the inner expression nonnegative.
+
+For $\mathbf z\in\R^m$, let
+\[
+ u_{\mathbf z}(x)=\prod_{\omega\in\{0,1\}^m}\CC^{|\omega|}
+                         f(x+(\omega\cdot\mathbf z)e_j),\qquad
+ T_Lu(x)=\frac1L\int_0^L u(x+ve_j)\dd v.
+\]
+The zero vertex shows that $u_{\mathbf z}$ is supported in the selected box. Thus $T_Lu_{\mathbf z}$ is supported in a set of volume at most $B(S+L)$, and its full integral equals that of $u_{\mathbf z}$. Cauchy--Schwarz gives
+\begin{equation}\label{eq:supportcs}
+ \left|\frac1V\int u_{\mathbf z}\right|^2
+ \leq\left(1+\frac LS\right)P(\mathbf z),\qquad
+ P(\mathbf z)=\frac1V\int|T_Lu_{\mathbf z}(x)|^2\dd x\geq0.
+\end{equation}
+Expanding the square identifies
+\[
+ P(\mathbf z)=\frac1V\int\int\kappa_L(v)
+       u_{\mathbf z}(x)\overline{u_{\mathbf z}(x+ve_j)}\dd v\dd x.
+\]
+This appends exactly one cube coordinate. Since $L_i\leq L/2$, one has
+\begin{equation}\label{eq:kappadom}
+ \kappa_{L_i}(z)\leq\frac{2L}{L_i}\kappa_L(z)\quad(z\in\R).
+\end{equation}
+Now use Jensen, \eqref{eq:supportcs}, and \eqref{eq:kappadom} against the \emph{nonnegative} function $P$, obtaining
+\begin{align}
+ Q_m^2
+ &\leq\left(1+\frac LS\right)
+       \int P(\mathbf z)\prod_{i<m}\kappa_{L_i}(z_i)\dd\mathbf z\notag\\
+ &\leq R\int P(\mathbf z)\prod_{i<m}\kappa_L(z_i)\dd\mathbf z\notag\\
+ &=R\frac{N^6}{V}\operatorname{locUnifPow}(f;j,L,m+1).
+ \label{eq:uniformize}
+\end{align}
+In the last equality every increment is independently distributed by the same kernel $\kappa_L$, and every vertex function is $f$.
+
+Finally square \eqref{eq:boxbound}, use $(a+b)^2\leq2a^2+2b^2$, $\eta^2\leq\eta$, and $2c_m^2=c_{m+1}$. Together with \eqref{eq:uniformize}, this gives \eqref{eq:main} and proves Proposition~\ref{prop:replacement}.
+
+\paragraph{Lean nodes.}
+\mbox{}\par
+\noindent\idname{uniformTranslateAverage_normSq_eq_fejer};\par
+\noindent\idname{cubeIntegral_sq_le_nextDifference};\par
+\noindent\idname{fejerKernel_le_larger};\par
+\noindent\idname{mixedCube_sq_le_locUnifPow};\par
+\noindent\idname{linearHead_le_locUnifPow}.\par
+Use the positivity identity before applying an integral monotonicity lemma. Do not use an integral monotonicity lemma directly on the complex cube.
+
+\subsection*{6. Supply the actual input to \texttt{cfgHeadInt\_cube}}
+The final configuration in \eqref{eq:uniformize} has order $s=m+1$. For each $\omega:\operatorname{Fin}(s)\to\{0,1\}$, its data are exactly
+\[
+ \begin{array}{ll}
+ \text{function label:}&\text{the selected input }f,\\[2pt]
+ \text{translation:}&\displaystyle
+       x\longmapsto x+\Bigl(\sum_{\ell<s}\omega_\ell z_\ell\Bigr)e_j,\\[4pt]
+ \text{conjugation flag:}&\displaystyle\sum_{\ell<s}\omega_\ell\pmod2,\\[4pt]
+ \text{increment measure:}&\displaystyle\prod_{\ell<s}\kappa_L(z_\ell)\dd z_\ell,\\[4pt]
+ \text{spatial normalization:}&N^{-6}.
+ \end{array}
+\]
+The multiplier is $1$ and there is no residual polynomial parameter. Prove equality of the generated configuration with this data by \idname{headBlock_cube} and the last application of \eqref{eq:blocksucc}; then apply the existing \idname{cfgHeadInt_cube}. The factor $N^6/V$ remains outside that application. The exact Lean binder order and record fields cannot be specified from the supplied materials: only the names, not the declarations, were supplied.
+
+\section*{Required change to the affected sentence in \texttt{lem:pet-reduction}}
+Replace ``A final Cauchy--Schwarz produces the cube defining $\mathcal U^{s_*}$'' by:
+
+\begin{quote}
+Produce explicit affine terminal data of the form \eqref{eq:input}, including all nuisance factors and with the selected input alone in its slope class. Apply \idname{linearHead_le_locUnifPow}. Its block recursion constructs the mixed cube and its support-based comparison constructs the common-scale cube. Identify the latter by \idname{cfgHeadInt_cube}. The uniformity order contributed by this step is $m+1$, where $m$ is the number of nuisance slope blocks; it is not automatically the total number of earlier PET applications.
+\end{quote}
+
+The input producer must prove polynomial identities for the affine maps, identify the protected function, prove nonzero slope gaps and their quantitative bounds, and retain the relevant averaged lower bound after its own error losses. These are structural and quantitative inputs to the theorem, not an assumed cube identity or an assumed uniformity estimate.
+
+For clarity, a labeled PET update has two children per surviving atom:
+\[
+ (i,\epsilon,Q)\longmapsto
+ (i,\epsilon,Q(t)-P(t)),\qquad
+ (i,\epsilon+1,Q(t+h)-P(t)),
+\]
+where conjugation flags are modulo two. Constant children are collected into the next spatial factor, with multiplicity; they are not set equal to one. The paper's Proposition 4.41 supplies this update, but a terminating polynomial weight does not by itself prove the affine-head conditions used here.
+
+\paragraph{Source boundary.}
+The original \idname{lem:pet-reduction} asserts control for \emph{every} selected $j$. The paper's immediate PET-to-box result, Lemma 4.43, and its Theorem 4.45 concern the \emph{highest-degree} input. Its treatment of general selected inputs uses additional arguments, including the reduction in Section 4.3.1 (pp.~45--46). The supplied files therefore do not justify declaring the every-$j$ assertion proved merely by adding this terminal lemma. A full replacement of that stronger assertion still needs the appropriate input-producing argument. No such argument is hidden in \idname{cfgHeadInt_cube} or in the hypotheses of an unnamed ``Gowers--Cauchy--Schwarz'' step.
+
+\end{document}
