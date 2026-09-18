@@ -26,7 +26,7 @@ Lean file: DFR/Auto/Twisted/ConventionsAndMainStatement/ConventionsAndMainStatem
 ### Theorems
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_integrable) (2026-09-12T14:22-0700)
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_eq_frequencyForm) (2026-09-12T14:22-0700)
-\label{thm:main}: Proof completed (Lean: Auto.Twisted.thm_main, Auto.Twisted.anisotropicParaproduct_of_interpolation) (2026-09-13T13:20-0700)
+\label{thm:main}: Proof completed (Lean: Auto.Twisted.thm_main, Auto.Twisted.anisotropicParaproduct_unconditional, Auto.Twisted.anisotropicParaproduct_of_interpolation). Now unconditional: ext:interpolation is proved, so thm_main carries no hypothesis beyond the exponent conditions. (2026-09-18T09:30-0700)
 
 `thm:main` is proved from `ext:interpolation` alone, which is the manuscript's
 own single external input.  The chain is:

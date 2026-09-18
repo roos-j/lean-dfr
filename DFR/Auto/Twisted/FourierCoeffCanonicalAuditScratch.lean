@@ -1,8 +1,0 @@
-import Auto.Twisted.Twisted
-
-namespace Auto.Twisted
-
-#print axioms mFourierCoeff_unitTorusLocalizedSymbol_eq_nestedRaw
-#print axioms exists_mFourierCoeff_unitTorusLocalizedSymbol_first_fourth_decay
-
-end Auto.Twisted

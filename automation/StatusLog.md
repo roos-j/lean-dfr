@@ -4856,3 +4856,31 @@ is `thm:main` with no hypotheses beyond the exponent conditions:
 
 Final state of the task: both external theorems proved, `lake build` completes,
 zero `sorry`, axioms `[propext, Classical.choice, Quot.sound]` throughout.
+
+### Cleanup: scratch and candidate files removed
+
+All working files were removed from `DFR/Auto/Twisted/`: 458 `.lean` files —
+every `*Scratch`, `*Candidate`, `*AxiomAudit`, `*Probe` and `ModelMeasQuery`
+file — together with 84 orphaned `.olean` artifacts whose source was gone.
+Nothing kept imports any of them: `Twisted.lean` imports only Mathlib and
+`lean_spherical`, and each of the eight section modules imports only
+`Auto.Twisted.Twisted`; the removed files imported one another and nothing
+else.  The folder now holds `Twisted.lean`, its `.olean`, and the eight
+section directories.
+
+Removing them surfaced one real breakage.  `lake build` does not cover
+`Auto.*`, so the earlier switch of the `hU` hypotheses to
+`FourVertexMarcinkiewiczUniformMeasurable` had left
+`ConventionsAndMainStatement.thm_main` — the blueprint's labelled main
+theorem — still quoting the old predicate.  Since `ext:interpolation` is now
+proved, the fix is the right one anyway: `thm_main` drops the hypothesis
+entirely and is proved by `anisotropicParaproduct_unconditional`.  Its
+docstring and the Status.md entry were updated to match.
+
+Verified after the cleanup: `lake build` completes (3343 jobs); `Twisted.lean`,
+all eight section modules and the top-level `Auto.Twisted` elaborate with no
+errors under `lake env lean`; and through `import Auto.Twisted`,
+`thm_main`, `anisotropicParaproduct_unconditional`,
+`fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite`,
+`fourVertexMarcinkiewicz_of_measurable` and `ext_maximal_strong_type` each
+depend only on `[propext, Classical.choice, Quot.sound]`.  Zero `sorry`.

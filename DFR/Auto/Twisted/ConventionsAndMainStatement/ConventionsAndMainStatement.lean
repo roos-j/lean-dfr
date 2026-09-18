@@ -57,11 +57,11 @@ There exists `C_{α,p} > 0` such that every multiplier in Definition
 `def:multiplier` and every complex Schwartz tuple satisfy
 `|Λ_m(f)| ≤ C_{α,p} M ∏_{j=0}^3 ‖f_j‖_{p_j}`.
 
-The single hypothesis `hU` is the external interpolation theorem
-`ext:interpolation`, which the blueprint quotes and does not prove. -/
+The external interpolation theorem `ext:interpolation` that the blueprint
+quotes is proved in this development, so the statement carries no hypothesis
+beyond the exponent conditions. -/
 theorem thm_main
     (α : Anisotropy) (p : Fin 4 → ℝ)
-    (hU : FourVertexMarcinkiewiczUniform (volume : Measure E3))
     (hp0 : 4 < p 0)
     (hp1 : 1 < p 1) (hp1' : p 1 < 4)
     (hp2 : 1 < p 2) (hp2' : p 2 < 4)
@@ -74,8 +74,7 @@ theorem thm_main
           ≤ C * M *
               ∏ j : Fin 4,
                 lpNorm ((F j : E3 → ℂ)) (ENNReal.ofReal (p j)) volume :=
-  anisotropicParaproduct_of_interpolation α p hU hp0 hp1 hp1' hp2 hp2' hp3 hp3'
-    hsum
+  anisotropicParaproduct_unconditional α p hp0 hp1 hp1' hp2 hp2' hp3 hp3' hsum
 
 end
 

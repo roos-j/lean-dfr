@@ -34542,7 +34542,7 @@ theorem conePsiPhysicalRealL1_pos : 0 < conePsiPhysicalRealL1 := by
   have hnonzero : ∃ x : ℝ, conePsiPhysicalReal x ≠ 0 := by
     classical
     by_contra h
-    push_neg at h
+    push Not at h
     have hzero : conePsiPhysical = 0 := by
       ext x
       rw [← conePsiPhysical_eq_ofReal x, h x]
@@ -51569,7 +51569,7 @@ theorem radius_pos_of_ne_zero (α : Anisotropy) {x : E3} (hx : x ≠ 0) :
     0 < α.radius x := by
   obtain ⟨i, hi⟩ : ∃ i : Fin 3, x i ≠ 0 := by
     by_contra h
-    push_neg at h
+    push Not at h
     apply hx
     ext j
     exact h j
@@ -53148,7 +53148,7 @@ theorem localizedCutoff_hasCompactSupport (i : Fin 3) :
     simpa only [Metric.mem_closedBall, dist_zero_right, not_le] using hη
   have hlarge : ∃ j : Fin 3, 3 < |η j| := by
     by_contra h
-    push_neg at h
+    push Not at h
     have hsum : |η 0| + |η 1| + |η 2| ≤ 9 := by
       nlinarith [h 0, h 1, h 2]
     linarith [norm_le_sum_abs η]
@@ -53360,7 +53360,7 @@ theorem radius_ge_one_sixth_of_norm_ge_half
     1 / 6 ≤ α.radius η := by
   obtain ⟨i, hi⟩ : ∃ i : Fin 3, 1 / 6 ≤ |η i| := by
     by_contra h
-    push_neg at h
+    push Not at h
     have hsum : |η 0| + |η 1| + |η 2| < 1 / 2 := by
       nlinarith [h 0, h 1, h 2]
     linarith [norm_le_sum_abs η]
@@ -62817,7 +62817,7 @@ theorem hasSum_thirdModeFrequencySymbols_eq_thirdConeTerm_global
   · obtain ⟨j, hj⟩ : ∃ j : Fin 3,
         (α.dilate t ξ) j ∉ Set.Ico (-4 : ℝ) 4 := by
       by_contra h
-      push_neg at h
+      push Not at h
       exact hcube h
     have hjlarge : 2 ≤ |(α.dilate t ξ) j| := by
       by_cases hneg : (α.dilate t ξ) j < -4
@@ -67438,7 +67438,7 @@ theorem fiberDyadicProperAncestor_scale_lt
     exact this
   have hscale : I.1 ≤ J.1 := by
     by_contra hcon
-    push_neg at hcon
+    push Not at hcon
     have : fiberDyadicIntervalLength J < fiberDyadicIntervalLength I := by
       simpa [fiberDyadicIntervalLength] using
         (zpow_lt_zpow_right₀ (by norm_num : (1:ℝ) < 2) hcon)
@@ -67483,7 +67483,7 @@ theorem fiberDyadicAverage_le_of_forall_not_mem_selected
     (k : ℤ) :
     fiberDyadicIntervalAverage F (fiberDyadicIndexAt k y) z ≤ H := by
   by_contra hcon
-  push_neg at hcon
+  push Not at hcon
   set A : FiberDyadicInterval → Z → ℝ := fiberDyadicIntervalAverage F with hA
   set m : ℤ → ℝ := fun j ↦ A (fiberDyadicIndexAt j y) z with hm
   -- large scales have small averages
@@ -67538,7 +67538,7 @@ theorem fiberDyadicAverage_le_of_forall_not_mem_selected
     intro j hj
     by_cases hjN : j ≤ N
     · by_contra hcon2
-      push_neg at hcon2
+      push Not at hcon2
       have : j ∈ S := by
         rw [hS, Finset.mem_filter]
         exact ⟨Finset.mem_range.2 (by omega), hcon2⟩
@@ -67724,7 +67724,7 @@ theorem ae_abs_fiberDyadicCountableGoodField_le
     · exact fiberDyadicIntervalAverage_nonneg_of_nonneg Fp I z hFp_nonneg
     · exact (fiberDyadicSelection_average_lt_and_le_two_of_nonneg Zf Fp H I z
         hFp_int hFp_nonneg hI.2).2
-  · push_neg at hex
+  · push Not at hex
     have hnotsel : ∀ J : FiberDyadicInterval,
         z ∈ fiberDyadicSelectionSet Zf A H J → y ∉ fiberDyadicInterval J := by
       intro J hsel hyJ
@@ -69345,7 +69345,7 @@ theorem abs_integral_modelScaleInterval_le_scaleTail
         apply setIntegral_mono_set htail
         · filter_upwards [ae_restrict_mem measurableSet_Ioi] with t ht
           exact hnonneg t ht
-        · exact HasSubset.Subset.eventuallyLE hsub
+        · exact LE.le.eventuallyLE hsub
 
 
 end
@@ -69706,10 +69706,10 @@ theorem integral_scaleTail_coordinateFiberBadField_le_selectedFiberScaleTail
             kernelDilate K (t ^ alpha) (q - y) := by
           exact integral_congr_ae (Filter.Eventually.of_forall hpt)
       _ = ∑ I ∈ T, h I t :=
-          integral_finset_sum T (fun I hI ↦ hkernel t ht I hI)
+          integral_finsetSum T (fun I hI ↦ hkernel t ht I hI)
   -- the finite sum majorant
   have hmajor : IntegrableOn (fun t : ℝ ↦ ∑ I ∈ T, |h I t| * t⁻¹)
-      (Set.Ioi (0 : ℝ)) := integrable_finset_sum T (fun I hI ↦ htail I hI)
+      (Set.Ioi (0 : ℝ)) := integrable_finsetSum T (fun I hI ↦ htail I hI)
   have hbound : ∀ t ∈ Set.Ioi (0 : ℝ),
       |ModelCoordinateConvolution m (coordinateFiberBadField m f T S) K
         (t ^ alpha) x| * t⁻¹ ≤ ∑ I ∈ T, |h I t| * t⁻¹ := by
@@ -69734,7 +69734,7 @@ theorem integral_scaleTail_coordinateFiberBadField_le_selectedFiberScaleTail
       ≤ ∫ t in Set.Ioi (0 : ℝ), ∑ I ∈ T, |h I t| * t⁻¹ :=
         setIntegral_mono_on hLHS hmajor measurableSet_Ioi hbound
     _ = ∑ I ∈ T, ∫ t in Set.Ioi (0 : ℝ), |h I t| * t⁻¹ :=
-        integral_finset_sum T (fun I hI ↦ htail I hI)
+        integral_finsetSum T (fun I hI ↦ htail I hI)
     _ = selectedFiberScaleTail F Zf Astop H T i j u alpha
           (coordinateSplit m x) := rfl
 
@@ -69824,7 +69824,7 @@ theorem abs_ModelTruncatedOperator_bad_le_passive_mul_selectedFiberScaleTail
           (y, (coordinateSplit m x).2) *
           kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m)
             ((coordinateSplit m x).1 - y)| * t⁻¹) (Set.Ioi (0 : ℝ)) :=
-      integrable_finset_sum T (fun I hI ↦ htail I hI)
+      integrable_finsetSum T (fun I hI ↦ htail I hI)
     refine Integrable.mono' hmajor ?_ ?_
     · apply Measurable.aestronglyMeasurable
       fun_prop
@@ -69847,7 +69847,7 @@ theorem abs_ModelTruncatedOperator_bad_le_passive_mul_selectedFiberScaleTail
             (fiberCZBadField (coordinateFiberInput m (f m)) T S)
             (activeModelKernel 2 m u) (t ^ α.weight m) x
         rw [hsplit]
-        rw [← integral_finset_sum T (fun I hI ↦ hkernel t htpos I hI)]
+        rw [← integral_finsetSum T (fun I hI ↦ hkernel t htpos I hI)]
         apply integral_congr_ae
         filter_upwards with y
         rw [fiberCZBadField_apply_eq_finset_sum, Finset.sum_mul]
@@ -70021,7 +70021,7 @@ theorem weakOne_weighted_tail_budget
       exact le_trans hxlt.le (le_abs_self _)
     calc ENNReal.ofReal (lam / 2) ≤ ENNReal.ofReal ‖g1 x * g2 x * g3 x‖ :=
           ENNReal.ofReal_le_ofReal hle
-      _ = ‖g1 x * g2 x * g3 x‖ₑ := ofReal_norm_eq_enorm _
+      _ = ‖g1 x * g2 x * g3 x‖ₑ := ofReal_norm _
   calc ENNReal.ofReal (lam / 2) *
         volume ({x | lam / 2 < g1 x * g2 x * g3 x} ∩ Eᶜ)
       ≤ ENNReal.ofReal (lam / 2) *
@@ -70548,26 +70548,26 @@ theorem eLpNorm_coordinateDyadicBallMaximal_le
       ∫⁻ x : E3, ENNReal.ofReal (coordinateDyadicBallMaximal i f x ^ p) := by
     apply lintegral_congr
     intro x
-    rw [← ofReal_norm_eq_enorm, Real.norm_of_nonneg (hMnonneg x),
+    rw [← ofReal_norm, Real.norm_of_nonneg (hMnonneg x),
       ← ENNReal.ofReal_rpow_of_nonneg (hMnonneg x) hp0.le]
   have hflint : (∫⁻ x : E3, ‖f x‖ₑ ^ p) =
       ∫⁻ x : E3, (ENNReal.ofReal ‖f x‖) ^ p := by
     apply lintegral_congr
     intro x
-    rw [← ofReal_norm_eq_enorm]
+    rw [← ofReal_norm]
   have hstep : (∫⁻ x : E3, ‖coordinateDyadicBallMaximal i f x‖ₑ ^ p) ≤
       K * ∫⁻ x : E3, ‖f x‖ₑ ^ p := by
     rw [hMlint, hflint, hK, mul_assoc]
     exact hbase
   calc eLpNorm (coordinateDyadicBallMaximal i f) (ENNReal.ofReal p) volume
       = (∫⁻ x : E3, ‖coordinateDyadicBallMaximal i f x‖ₑ ^ p) ^ (1 / p) := by
-        rw [eLpNorm_eq_lintegral_rpow_enorm hpne hptop, hptoReal]
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop, hptoReal]
     _ ≤ (K * ∫⁻ x : E3, ‖f x‖ₑ ^ p) ^ (1 / p) :=
         ENNReal.rpow_le_rpow hstep (by positivity)
     _ = K ^ (1 / p) * (∫⁻ x : E3, ‖f x‖ₑ ^ p) ^ (1 / p) :=
         ENNReal.mul_rpow_of_nonneg _ _ (by positivity)
     _ = K ^ (1 / p) * eLpNorm f (ENNReal.ofReal p) volume := by
-        rw [eLpNorm_eq_lintegral_rpow_enorm hpne hptop, hptoReal]
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop, hptoReal]
 
 
 end
@@ -70742,7 +70742,7 @@ theorem fiberCZBadField_eq_countableBadField_of_mem
     show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
     refine Finset.sum_eq_single I₀ (fun I _ hI ↦ hvanish I hI) (fun hnot ↦ ?_)
     exact absurd (hT I₀ hI₀) hnot
-  · push_neg at hex
+  · push Not at hex
     have hnotex : yz ∉ fiberDyadicExceptionalSet Zf A H := by
       intro hmem
       rcases Set.mem_iUnion.mp hmem with ⟨I, hI⟩
@@ -70784,7 +70784,7 @@ theorem tendsto_fiberCZBadField_countableBadField
         exact (Set.disjoint_left.mp hdisj) hI₀ hI
       subst hIeq
       exact hmono hn hn₀
-    · push_neg at hex
+    · push Not at hex
       filter_upwards with n
       exact fiberCZBadField_eq_countableBadField_of_mem F Zf A H (Tn n) yz
         (fun I hI ↦ absurd hI (hex I))
@@ -71058,7 +71058,7 @@ theorem abs_fiberCZBadField_selected_le_of_bound
         (fiberDyadicSelectionSet Zf A H) I₀ B hB hbound yz
     · rw [if_neg hmem, abs_zero]
       positivity
-  · push_neg at hex
+  · push Not at hex
     have hzero : fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz = 0 := by
       show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
       apply Finset.sum_eq_zero
@@ -75113,11 +75113,11 @@ theorem norm_iteratedFDeriv_thirdModeFrequencySymbol_coordinate_le
         = C * (t * α.radius ξ) ^ d := by rw [mul_pow]; ring
       _ ≤ C * 6 ^ d := mul_le_mul_of_nonneg_left hpow hC
   · -- off the closed box every derivative vanishes
-    push_neg at hbox
+    push Not at hbox
     obtain ⟨j, hj⟩ := hbox
     rw [iteratedFDeriv_thirdModeFrequencySymbol_eq_zero_of_two_lt
       α ν t ξ j hj k]
-    simp only [ContinuousMultilinearMap.zero_apply, norm_zero]
+    simp only [zero_apply, norm_zero]
     positivity
 
 
@@ -75699,7 +75699,7 @@ theorem norm_iteratedFDeriv_thirdConeFrequencySymbol_coordinate_le
     rw [not_le] at hj
     rw [iteratedFDeriv_thirdConeFrequencySymbol_eq_zero_of_two_lt
       α m t ξ j hj k]
-    simp only [ContinuousMultilinearMap.zero_apply, norm_zero]
+    simp only [zero_apply, norm_zero]
     positivity
 
 
