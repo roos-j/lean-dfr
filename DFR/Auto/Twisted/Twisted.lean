@@ -2244,7 +2244,7 @@ theorem gaussianDerivAt_eq_logarithmic_deriv {s a x : ℝ} (hs : s ≠ 0) :
 
 /-- Differentiating the center parameter of a Gaussian produces the
 derivative Gaussian with the source sign and scale factor. -/
-theorem hasDerivAt_gaussianAt_center {s a x : ℝ} (hs : s ≠ 0) :
+theorem hasDerivAt_gaussianAt_center {s a x : ℝ} (_hs : s ≠ 0) :
     HasDerivAt (fun p : ℝ ↦ gaussianAt s p x)
       (-s⁻¹ * gaussianDerivAt s a x) a := by
   change HasDerivAt (fun p : ℝ ↦ s⁻¹ * gaussian ((x - p) / s))
@@ -2535,7 +2535,7 @@ theorem hasDerivAt_scalarE_center {mu sig : ℝ} {n : ℕ} {t p u0 u1 : ℝ}
   have hd := hg0.mul hg1
   have he := hw.const_mul (mu / (2 * Real.pi)) |>.sub (hd.const_mul sig)
   convert! he using 1
-  simp [scalarE, scalarW, scalarD, scalarP]
+  simp [scalarW, scalarD, scalarP]
   ring
 
 /-- Pointwise one-dimensional divergence identity underlying the source
@@ -2563,7 +2563,7 @@ regularity required by the ordinary fundamental theorem made explicit. -/
 theorem scalar_oneDim_telescoping
     {mu sig t a b u0 u1 : ℝ} {n : ℕ}
     (hmu : mu ≠ 0) (ht : t ≠ 0)
-    (hDdot : IntervalIntegrable
+    (_hDdot : IntervalIntegrable
       (fun p : ℝ => deriv (fun q : ℝ => scalarD mu sig n q p u0 u1) t)
       volume a b)
     (hP : IntervalIntegrable (fun p : ℝ => scalarP mu sig n t p u0 u1)
@@ -2855,7 +2855,7 @@ theorem bracketKernelAt_le_of_scale_center
     nlinarith [hscaleLower]
   have hdist : |y - c| ≤ |y - p| + |p - c| := by
     calc
-      |y - c| = |(y - p) + (p - c)| := by congr 1 <;> ring
+      |y - c| = |(y - p) + (p - c)| := by congr 1 ; ring
       _ ≤ |y - p| + |p - c| := abs_add_le _ _
   have hpc : |p - c| / L ≤ 1 / 2 := by
     apply (div_le_iff₀ hL).mpr
@@ -5004,7 +5004,6 @@ theorem boxMass_root_eq_sum_boxMass_leaves {α : Anisotropy} (T : FiniteConvexTr
     rw [volume_boxSet_eq_boxMass]
     exact ENNReal.ofReal_ne_top)]
   congr with l
-  congr 1
   exact volume_boxSet_toReal α l
 
 /-! ### Oriented grid faces
@@ -5229,7 +5228,6 @@ theorem boxFaceCoordinate_neighbor_opposite (α : Anisotropy) (q : AnisoBox α)
       boxFaceCoordinate α (boxNeighbor α q i ε) i ε.opposite := by
   cases ε <;> simp [boxFaceCoordinate, FaceOrientation.opposite,
     FaceOrientation.sign, boxNeighbor, boxSide]
-  all_goals ring
 
 /-- In the non-coalescing case of the parent-neighbor dichotomy, the common
 normal coordinate is already a face coordinate of the parent. -/
@@ -5881,7 +5879,7 @@ theorem mem_orientedFacesOfBox_iff {α : Anisotropy} (q : AnisoBox α)
   · intro h
     change S ∈ Finset.univ.image (fun ε ↦ OrientedFace.mk q ε) at h
     rcases Finset.mem_image.mp h with ⟨ε, hε, hEq⟩
-    simpa [← hEq]
+    simp [← hEq]
   · intro hS
     refine Finset.mem_image.mpr ⟨S.orientation, Finset.mem_univ _, ?_⟩
     cases S
@@ -6247,7 +6245,7 @@ theorem cubeVertexReplace_commute {i q : Fin 3} (hiq : i ≠ q)
     simp [cubeVertexReplace, hiq]
   · by_cases hrq : r = q
     · subst r
-      simp [cubeVertexReplace, hri, hiq]
+      simp [cubeVertexReplace, hri]
     · simp [cubeVertexReplace, hri, hrq]
 
 /-- Copy a cube input along one coordinate bit, the source operator
@@ -6447,7 +6445,7 @@ theorem cubeVertexSplit_apply (j : CubeVertex) (x : E6) :
     cubeVertexSplit j x =
       (cubeProjection j x, cubeProjection (cubeComplement j) x) := by
   ext i <;>
-    simp [cubeVertexSplit, cubeProjection, cubeComplement, cubeVertexIndexEquiv,
+    simp [cubeVertexSplit, cubeProjection, cubeVertexIndexEquiv,
       LinearIsometryEquiv.piLpCongrLeft_apply, PiLp.sumPiLpEquivProdLpPiLp,
       WithLp.ofLp_toLp]
 
@@ -6473,7 +6471,7 @@ theorem integral_cube_opposite_pair_pow_four
         (∏ b : Bool, bracketKernelAt (t ^ α.weight i) (p i) (x (i, b))) =
           bracketKernelAt (t ^ α.weight i) (p i) (x (i, j i)) *
             bracketKernelAt (t ^ α.weight i) (p i) (x (i, !(j i))) := by
-      cases h : j i <;> simp [h, mul_comm]
+      cases h : j i <;> simp [mul_comm]
     simp_rw [hEach]
     rw [Finset.prod_mul_distrib]
   calc
@@ -6571,8 +6569,8 @@ theorem integral_mul_le_sqrt_integral_sq
   have hg : MemLp g 2 μ := (memLp_two_iff_integrable_sq hgmeas).mpr hgsq
   simpa [Real.sqrt_eq_rpow] using
     (integral_mul_le_Lp_mul_Lq_of_nonneg hpq hfnonneg hgnonneg
-      (by convert hf using 1 <;> norm_num)
-      (by convert hg using 1 <;> norm_num))
+      (by convert hf using 1 ; norm_num)
+      (by convert hg using 1 ; norm_num))
 
 /-! ### Measurability of the local comparison measures
 
@@ -6591,7 +6589,7 @@ theorem continuous_bracketKernel : Continuous bracketKernel := by
   · left
     positivity
 
-theorem continuous_bracketKernelAt {s : ℝ} (hs : s ≠ 0) (a : ℝ) :
+theorem continuous_bracketKernelAt {s : ℝ} (_hs : s ≠ 0) (a : ℝ) :
     Continuous (bracketKernelAt s a) := by
   unfold bracketKernelAt kernelAt kernelDilate
   change Continuous fun x : ℝ ↦ s⁻¹ * bracketKernel ((x - a) / s)
@@ -6739,8 +6737,8 @@ theorem integral_mul_mul_mul_le_two_cs
       (fun x ↦ b x ^ 2) (ha.pow 2) (hb.pow 2)
       (hanonneg.mono fun x hx ↦ sq_nonneg (a x))
       (hbnonneg.mono fun x hx ↦ sq_nonneg (b x))
-      (by convert ha4 using 1 <;> ext x <;> ring)
-      (by convert hb4 using 1 <;> ext x <;> ring)
+      (by convert ha4 using 1 ; ext x ; ring)
+      (by convert hb4 using 1 ; ext x ; ring)
     convert h using 1 <;> ring
   have hcd : ∫ x, (c x * d x) ^ 2 ∂μ ≤
       √(∫ x, c x ^ 4 ∂μ) * √(∫ x, d x ^ 4 ∂μ) := by
@@ -6748,8 +6746,8 @@ theorem integral_mul_mul_mul_le_two_cs
       (fun x ↦ d x ^ 2) (hc.pow 2) (hd.pow 2)
       (hcnonneg.mono fun x hx ↦ sq_nonneg (c x))
       (hdnonneg.mono fun x hx ↦ sq_nonneg (d x))
-      (by convert hc4 using 1 <;> ext x <;> ring)
-      (by convert hd4 using 1 <;> ext x <;> ring)
+      (by convert hc4 using 1 ; ext x ; ring)
+      (by convert hd4 using 1 ; ext x ; ring)
     convert h using 1 <;> ring
   have hfirst := integral_mul_le_sqrt_integral_sq μ
     (fun x ↦ a x * b x) (fun x ↦ c x * d x)
@@ -6886,7 +6884,7 @@ theorem boxNeighbor_ne_self (α : Anisotropy) (q : AnisoBox α) (i : Fin 3)
     (ε : FaceOrientation) : boxNeighbor α q i ε ≠ q := by
   intro h
   have hi := congrFun (congrArg AnisoBox.index h) i
-  cases ε <;> simp [boxNeighbor, FaceOrientation.sign] at hi <;> omega
+  cases ε <;> simp [boxNeighbor, FaceOrientation.sign] at hi
 
 theorem boxFaceSet_neighbor_opposite (α : Anisotropy) (q : AnisoBox α)
     (i : Fin 3) (ε : FaceOrientation) :
@@ -6912,7 +6910,7 @@ theorem boxFaceSet_subset_ancestor_of_ancestor_neighbor
       boxNeighbor α (boxAncestor α n q) i ε) :
     boxFaceSet α q i ε ⊆ boxFaceSet α (boxAncestor α n q) i ε := by
   induction n generalizing q with
-  | zero => simpa [boxAncestor]
+  | zero => simp [boxAncestor]
   | succ n ih =>
     simp only [boxAncestor_succ] at h ⊢
     rcases boxAncestor_neighbor_eq_or_neighbor α n q i ε with heq | hnb
@@ -7469,7 +7467,7 @@ theorem integral_cubeVertexFactor_pow_two
         (∏ b : Bool, bracketKernelAt (t ^ α.weight i) (p i) (x (i, b))) =
           bracketKernelAt (t ^ α.weight i) (p i) (x (i, j i)) *
             bracketKernelAt (t ^ α.weight i) (p i) (x (i, !(j i))) := by
-      cases h : j i <;> simp [h, mul_comm]
+      cases h : j i <;> simp [mul_comm]
     simp_rw [hEach]
     rw [Finset.prod_mul_distrib]
   calc
@@ -7684,7 +7682,7 @@ theorem card_boundaryDigits_mul_radix (α : Anisotropy) (i : Fin 3)
       unfold anisoRadix Anisotropy.homogeneousDimension
       rw [Finset.prod_pow_eq_pow_sum]
 
-theorem boundaryFaceChild_injective (α : Anisotropy) (i : Fin 3)
+theorem boundaryFaceChild_injective (α : Anisotropy) (_i : Fin 3)
     (S : OrientedFace α) :
     Function.Injective (fun v : AnisoDigit α =>
       (⟨boxChild α S.box v, S.orientation⟩ : OrientedFace α)) := by
@@ -7928,7 +7926,7 @@ theorem mem_facePackingFrontierCover_iff {α : Anisotropy}
           ∃ L ∈ treeLeaves T,
             S ∈ boundaryFrontier α i (boxNeighbor α L i ε) ε.opposite n := by
   classical
-  simp [facePackingFrontierCover, Nat.lt_succ_iff]
+  simp [facePackingFrontierCover]
 
 theorem boundaryLower_div (R n : ℤ) (hR : 0 < R) :
     (R * n + 0 - 1) / R = n - 1 := by
@@ -8131,7 +8129,7 @@ theorem test_mem_boundaryFrontier_of_ancestor
     have hS : S = ⟨q, ε⟩ := by
       cases S
       simp_all
-    simpa [boundaryFrontier, hS]
+    simp [boundaryFrontier, hS]
   | succ n ih =>
     have hparentneighbor :
         boxParent α (boxNeighbor α S.box i ε) =
@@ -8942,7 +8940,7 @@ by the local-integrability development. -/
 theorem cubeCoordinate_oneDim_telescoping
     (α : Anisotropy) (i : Fin 3) {lam t a b : ℝ} (r : ℝ) (p : E3) (x : E6)
     (hlam : 1 ≤ lam) (ht : 0 < t)
-    (hDdot : IntervalIntegrable
+    (_hDdot : IntervalIntegrable
       (fun q : ℝ => deriv (fun s : ℝ =>
         cubeCoordinateD α i lam r s (cubeCenterReplace p i q) x) t)
       volume a b)
@@ -11841,7 +11839,7 @@ theorem scale_weight_integral_le_boxSide
 box-mass estimate. -/
 theorem abs_integral_boxSet_le_const_mul_boxMass
     (α : Anisotropy) (q : AnisoBox α) (f : E3 → ℝ)
-    (hf : IntegrableOn f (boxSet α q)) (D : ℝ) (hD : 0 ≤ D)
+    (hf : IntegrableOn f (boxSet α q)) (D : ℝ) (_hD : 0 ≤ D)
     (hbound : ∀ p ∈ boxSet α q, |f p| ≤ D) :
     |∫ p : E3 in boxSet α q, f p| ≤ D * boxMass α q := by
   have hconst : IntegrableOn (fun _ : E3 ↦ D) (boxSet α q) :=
@@ -13914,7 +13912,7 @@ theorem localCubeForm_singleton_eq_spatial_outer
       (volume.prod ((volume.restrict (boxSet α Q)).prod ν)) := by
     change Integrable (fun xz : E6 × (E3 × ℝ) ↦ g xz.2 xz.1)
       (volume.prod ((volume.restrict (boxSet α Q)).prod ν))
-    convert h'.swap using 1 <;> rfl
+    convert h'.swap using 1 ; rfl
   have hsections : ∀ᵐ x : E6 ∂volume,
       Integrable (fun z : E3 × ℝ ↦ g z x)
         ((volume.restrict (boxSet α Q)).prod ν) :=
@@ -13980,7 +13978,7 @@ theorem integral_triple_swap
       (μX.prod (μT.prod μY)) := by
     change Integrable (fun xty : X × (T × Y) ↦ G xty.2 xty.1)
       (μX.prod (μT.prod μY))
-    convert hG.swap using 1 <;> rfl
+    convert hG.swap using 1 ; rfl
   have hxsections : ∀ᵐ x : X ∂μX,
       Integrable (fun ty : T × Y ↦ G ty x) (μT.prod μY) :=
     (integrable_prod_iff hswap.aestronglyMeasurable).mp hswap |>.1
@@ -14341,7 +14339,7 @@ theorem integrable_spatial_interiorScale_of_localTriple
       (volume.prod ((volume.restrict (boxSet α Q)).prod ν)) := by
     change Integrable (fun xz : E6 × (E3 × ℝ) ↦ g xz.2 xz.1)
       (volume.prod ((volume.restrict (boxSet α Q)).prod ν))
-    convert h'.swap using 1 <;> rfl
+    convert h'.swap using 1 ; rfl
   have hsections : ∀ᵐ x : E6 ∂volume,
       Integrable (fun z : E3 × ℝ ↦ g z x)
         ((volume.restrict (boxSet α Q)).prod ν) :=
@@ -14408,7 +14406,7 @@ theorem ae_integrable_interiorScale_of_unweightedTriple
       (volume.prod ((volume.restrict (boxSet α Q)).prod ν)) := by
     change Integrable (fun xz : E6 × (E3 × ℝ) ↦ g xz.2 xz.1)
       (volume.prod ((volume.restrict (boxSet α Q)).prod ν))
-    convert h'.swap using 1 <;> rfl
+    convert h'.swap using 1 ; rfl
   have hsections : ∀ᵐ x : E6 ∂volume,
       Integrable (fun z : E3 × ℝ ↦ g z x)
         ((volume.restrict (boxSet α Q)).prod ν) :=
@@ -14416,7 +14414,7 @@ theorem ae_integrable_interiorScale_of_unweightedTriple
   filter_upwards [hsections] with x hx
   have hswap' : Integrable (fun tp : ℝ × E3 ↦ g (tp.2, tp.1) x)
       (ν.prod (volume.restrict (boxSet α Q))) := by
-    convert hx.swap using 1 <;> rfl
+    convert hx.swap using 1 ; rfl
   have hscale : Integrable (fun t : ℝ ↦
       ∫ p : E3 in boxSet α Q, localCubeKernel α i lam r t p x) ν := by
     simpa only [g] using hswap'.integral_prod_left
@@ -14506,7 +14504,7 @@ theorem integrable_spatial_faceScale_of_faceTriple
       (volume.prod
         ((volume.restrict (Set.Ioc (boxLength Q / 2) (boxLength Q))).prod
           (volume.restrict (transverseRectangle α Q i))))
-    convert h'.swap using 1 <;> rfl
+    convert h'.swap using 1 ; rfl
   have hsections : ∀ᵐ x : E6 ∂volume,
       Integrable (fun ty : ℝ × TransverseSpace i ↦ g ty.1 ty.2 x)
         ((volume.restrict (Set.Ioc (boxLength Q / 2) (boxLength Q))).prod
@@ -14598,7 +14596,7 @@ theorem ae_integrable_faceScale_of_unweightedTriple
       (volume.prod
         ((volume.restrict (Set.Ioc (boxLength Q / 2) (boxLength Q))).prod
           (volume.restrict (transverseRectangle α Q i))))
-    convert h'.swap using 1 <;> rfl
+    convert h'.swap using 1 ; rfl
   have hsections : ∀ᵐ x : E6 ∂volume,
       Integrable (fun ty : ℝ × TransverseSpace i ↦ g ty.1 ty.2 x)
         ((volume.restrict (Set.Ioc (boxLength Q / 2) (boxLength Q))).prod
@@ -15931,7 +15929,7 @@ theorem boxLocalSize_four_smul_of_nonneg
       (anisotropicBracketKernel_nonneg α (boxLength_pos q).le (boxCenter α q) y)
   rw [Real.mul_rpow (pow_nonneg hc _) hpower]
   have hcroot : (c ^ 4) ^ ((4 : ℝ)⁻¹) = c := by
-    convert Real.pow_rpow_inv_natCast hc (by norm_num : (4 : ℕ) ≠ 0) using 1 <;>
+    convert Real.pow_rpow_inv_natCast hc (by norm_num : (4 : ℕ) ≠ 0) using 1 ;
       norm_num
   rw [hcroot]
 
@@ -15975,7 +15973,7 @@ theorem boxLocalSize_four_smul
   rw [Real.mul_rpow (pow_nonneg (abs_nonneg c) _) hpower]
   have hcroot : (|c| ^ 4) ^ ((4 : ℝ)⁻¹) = |c| := by
     convert Real.pow_rpow_inv_natCast (abs_nonneg c) (by norm_num : (4 : ℕ) ≠ 0)
-      using 1 <;> norm_num
+      using 1 ; norm_num
   rw [hcroot]
 
 /-- The collection fourth local size is absolutely homogeneous. -/
@@ -16186,7 +16184,7 @@ theorem localCubeForm_eq_zero_of_component_eq_zero
   have hprod (x : E6) : cubeSignedInputProduct F x = 0 := by
     unfold cubeSignedInputProduct
     apply Finset.prod_eq_zero (Finset.mem_univ j)
-    simpa [hj]
+    simp [hj]
   unfold localCubeForm
   simp_rw [hprod]
   simp
@@ -17024,7 +17022,7 @@ theorem cubeCenterActivePassiveSplit_apply (i : Fin 3)
           (coordinateSplit i (cubeProjection (fun _ ↦ true) x)).2)),
         (x (i, false), x (i, true))) := by
   simp only [cubeCenterActivePassiveSplit, MeasurableEquiv.trans_apply,
-    MeasurableEquiv.prodCongr, cubeActivePassiveSplit_apply]
+    MeasurableEquiv.prodCongr]
   exact centerActivePassiveShuffle_apply (E3 × ℝ) (ℝ × ℝ)
     (TransverseSpace i × TransverseSpace i) z
     (x (i, false), x (i, true))
@@ -18400,7 +18398,7 @@ theorem boxLocalSize_two_sq_eq_boxLocalPower
     exact mul_nonneg (Real.rpow_nonneg (abs_nonneg (f y)) _)
       (anisotropicBracketKernel_nonneg α (boxLength_pos q).le (boxCenter α q) y)
   unfold boxLocalSize
-  convert Real.rpow_inv_natCast_pow hpower (by norm_num : (2 : ℕ) ≠ 0) using 1 <;>
+  convert Real.rpow_inv_natCast_pow hpower (by norm_num : (2 : ℕ) ≠ 0) using 1 ;
     norm_num
 
 /-- Therefore the edge second moment at a tree box is the square of its
@@ -19740,7 +19738,7 @@ input bounds. -/
 theorem integrable_modelFirstFiber_integrand
     (α : Anisotropy) (f : ModelRealInput) (p : E3) {t : ℝ} (z : ModelE5)
     (hfcont : ∀ j, Continuous (f j))
-    (B0 B1 B2 : ℝ) (hB0 : 0 ≤ B0) (hB1 : 0 ≤ B1) (hB2 : 0 ≤ B2)
+    (B0 B1 B2 : ℝ) (hB0 : 0 ≤ B0) (hB1 : 0 ≤ B1) (_hB2 : 0 ≤ B2)
     (hf0 : ∀ y, |f 0 y| ≤ B0) (hf1 : ∀ y, |f 1 y| ≤ B1)
     (hf2 : ∀ y, |f 2 y| ≤ B2)
     (ht : 0 < t) :
@@ -19783,7 +19781,7 @@ uniform continuous input bound. -/
 theorem integrable_modelSecondFiber_integrand
     (α : Anisotropy) (f : E3 → ℝ) (p : E3) {t : ℝ} (z : ModelE5)
     (hfcont : Continuous f)
-    (B : ℝ) (hB : 0 ≤ B) (hf : ∀ y, |f y| ≤ B)
+    (B : ℝ) (_hB : 0 ≤ B) (hf : ∀ y, |f y| ≤ B)
     (ht : 0 < t) :
     Integrable (fun v : ℝ ↦
       f (modelPoint (z 0) (z 1) v) *
@@ -19943,7 +19941,7 @@ theorem modelEnergyDensity_eq_prod_factor
     (α : Anisotropy) (u p : E3) (t : ℝ) (z : ModelE5) :
     modelEnergyDensity α u p t z =
       ∏ i : Fin 5, modelEnergyDensityFactor α u p t i (z i) := by
-  simp only [Fin.prod_univ_succ, Finset.prod_empty]
+  simp only [Fin.prod_univ_succ]
   simp [modelEnergyDensity, modelEnergyDensityFactor]
   ring
 
@@ -20037,7 +20035,7 @@ theorem integral_modelEnergyDensity
     · exact h3
     · exact h4
   simp_rw [hfac]
-  simp only [Fin.prod_univ_succ, Finset.prod_empty, mul_one]
+  simp only [Fin.prod_univ_succ]
   norm_num
   ring
 
@@ -20189,27 +20187,27 @@ theorem cubeActiveInputSlice_modelFirst_false
   have h00_10 : j00 ≠ j10 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j00, j10] using h'
+    simp [j00, j10] at h'
   have h00_01 : j00 ≠ j01 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 1) h
-    simpa [j00, j01] using h'
+    simp [j00, j01] at h'
   have h00_11 : j00 ≠ j11 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j00, j11] using h'
+    simp [j00, j11] at h'
   have h10_01 : j10 ≠ j01 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j10, j01] using h'
+    simp [j10, j01] at h'
   have h10_11 : j10 ≠ j11 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 1) h
-    simpa [j10, j11] using h'
+    simp [j10, j11] at h'
   have h01_11 : j01 ≠ j11 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j01, j11] using h'
+    simp [j01, j11] at h'
   have hj00 : j00 ∉ ({j10, j01, j11} : Finset {j : CubeVertex // j 2 = false}) := by
     simp only [Finset.mem_insert, Finset.mem_singleton]
     exact fun h ↦ h.elim h00_10 (fun h ↦ h.elim h00_01 h00_11)
@@ -22168,7 +22166,7 @@ without choosing square roots of the implicit constants. -/
 theorem abs_le_of_square_energy_bounds
     {L E₁ E₂ A B C₁ C₂ : ℝ}
     (hcs : |L| ^ 2 ≤ E₁ * E₂)
-    (hE₁ : 0 ≤ E₁) (hE₂ : 0 ≤ E₂)
+    (_hE₁ : 0 ≤ E₁) (hE₂ : 0 ≤ E₂)
     (hA : 0 ≤ A) (hB : 0 ≤ B)
     (hC₁ : 0 ≤ C₁) (hC₂ : 0 ≤ C₂)
     (hbound₁ : E₁ ≤ C₁ * A ^ 2)
@@ -24577,7 +24575,7 @@ theorem integral_translationWeight_negTwentyNine :
         (tendsto_atTop_add_const_right _ 1 tendsto_id) |>.div_const _
     convert integral_Ioi_of_hasDerivAt_of_tendsto' hd
       (integrableOn_add_rpow_Ioi_of_lt (by norm_num : (-29 : ℝ) < -1)
-        (by norm_num : -(1 : ℝ) < 0)) ht using 1 <;> norm_num
+        (by norm_num : -(1 : ℝ) < 0)) ht using 1 ; norm_num
   rw [hhalf]
   norm_num
 
@@ -25032,7 +25030,7 @@ theorem sum_zpow_levelSet_toReal_le_integral
     rw [hrewrite]
     have hlayer := sum_zpow_filter_le_layerCake a c (f x)
       ha hc (hfnonneg x) N
-    convert hlayer using 1 <;> field_simp [hc.ne'] <;> ring
+    convert hlayer using 1 ; field_simp [hc.ne']
   have hrightint : Integrable (fun x : E3 ↦
       ((1 - a⁻¹)⁻¹ * c⁻¹) * f x) :=
     hfint.const_mul _
@@ -27550,7 +27548,7 @@ theorem integral_modelFirstFiber_sq_density_le_cubePassive :
                 (z 0) (z 1) (z 2) (z 3) * lam ^ (-47 : ℝ)) := by
     intro z
     have h := hpoint α u p t f z ht
-    convert h using 1 <;> ring
+    convert h using 1 ; ring
   calc
     ∫ z : ModelE5,
         (modelFirstFiber α f p t z) ^ 2 * modelEnergyDensity α u p t z ≤
@@ -27665,27 +27663,27 @@ theorem cubeActiveInputSlice_edge_false
   have h00_10 : j00 ≠ j10 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j00, j10] using h'
+    simp [j00, j10] at h'
   have h00_01 : j00 ≠ j01 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 1) h
-    simpa [j00, j01] using h'
+    simp [j00, j01] at h'
   have h00_11 : j00 ≠ j11 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j00, j11] using h'
+    simp [j00, j11] at h'
   have h10_01 : j10 ≠ j01 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j10, j01] using h'
+    simp [j10, j01] at h'
   have h10_11 : j10 ≠ j11 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 1) h
-    simpa [j10, j11] using h'
+    simp [j10, j11] at h'
   have h01_11 : j01 ≠ j11 := by
     intro h
     have h' := congrArg (fun q : {j : CubeVertex // j 2 = false} ↦ q.1 0) h
-    simpa [j01, j11] using h'
+    simp [j01, j11] at h'
   have hj00 : j00 ∉ ({j10, j01, j11} : Finset {j : CubeVertex // j 2 = false}) := by
     simp only [Finset.mem_insert, Finset.mem_singleton]
     exact fun h ↦ h.elim h00_10 (fun h ↦ h.elim h00_01 h00_11)
@@ -27973,7 +27971,7 @@ theorem integral_modelSecondFiber_sq_density_le_cubePassive :
                 (z 0) (z 1) (z 2) (z 3) * lam ^ (-47 : ℝ)) := by
     intro z
     have h := hpoint α u p t f z ht
-    convert h using 1 <;> ring
+    convert h using 1 ; ring
   calc
     ∫ z : ModelE5,
         (modelSecondFiber α f p t z) ^ 2 * modelEnergyDensity α u p t z ≤
@@ -28066,7 +28064,7 @@ variables and in the source scale) are discharged from the two displayed
 joint integrability assumptions. -/
 theorem modelEnergyOne_le_cubeComparison_of_fubini :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (α : Anisotropy) (S : BoxCollection α)
-      (u : E3) (f : ModelRealInput) (b : Bool),
+      (u : E3) (f : ModelRealInput) (_b : Bool),
       Integrable (fun q : (E3 × ℝ) × ModelE5 ↦
         (modelFirstFiber α f q.1.1 q.1.2 q.2) ^ 2 *
           modelEnergyDensity α u q.1.1 q.1.2 q.2)
@@ -28192,7 +28190,7 @@ parameter remains explicit, yielding precisely the edge-cube comparison
 weighted by `R(r)^{-50}`. -/
 theorem modelEnergyTwo_le_cubeComparison_of_fubini :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (α : Anisotropy) (S : BoxCollection α)
-      (u : E3) (f : E3 → ℝ) (b : Bool),
+      (u : E3) (f : E3 → ℝ) (_b : Bool),
       Integrable (fun q : (E3 × ℝ) × ModelE5 ↦
         (modelSecondFiber α f q.1.1 q.1.2 q.2) ^ 2 *
           modelEnergyDensity α u q.1.1 q.1.2 q.2)
@@ -29131,7 +29129,7 @@ bounded continuity and the one remaining joint superposition integrability
 hypothesis. -/
 theorem modelEnergyOne_le_cubeComparison_of_boundedContinuous :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (α : Anisotropy) (S : BoxCollection α)
-      (u : E3) (f : ModelRealInput) (b : Bool),
+      (u : E3) (f : ModelRealInput) (_b : Bool),
       (∀ j, Continuous (f j)) →
       (∀ j, ∃ B : ℝ, 0 ≤ B ∧ ∀ y, |f j y| ≤ B) →
       Integrable (modelFirstSuperpositionJoint α u f)
@@ -29159,7 +29157,7 @@ bounded continuity and the one remaining joint superposition integrability
 hypothesis. -/
 theorem modelEnergyTwo_le_cubeComparison_of_boundedContinuous :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (α : Anisotropy) (S : BoxCollection α)
-      (u : E3) (f : E3 → ℝ) (b : Bool),
+      (u : E3) (f : E3 → ℝ) (_b : Bool),
       Continuous f →
       (∃ B : ℝ, 0 ≤ B ∧ ∀ y, |f y| ≤ B) →
       Integrable (modelSecondSuperpositionJoint α f)
@@ -29597,7 +29595,7 @@ integrability needed for the Fubini comparison. -/
 theorem modelEnergyTwo_tree_bound_of_boundedContinuous
     (α : Anisotropy) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (T : FiniteConvexTree α)
-      (u : E3) (f : E3 → ℝ) (b : Bool),
+      (u : E3) (f : E3 → ℝ) (_b : Bool),
       Continuous f →
       (∃ B : ℝ, 0 ≤ B ∧ ∀ y, |f y| ≤ B) →
       Integrable (modelSecondSuperpositionJoint α f)
@@ -30263,7 +30261,7 @@ theorem summable_standardMode_norm_inv :
     intro z hz
     rw [Set.mem_singleton_iff]
     by_contra hzero
-    simpa [Function.mem_support, hzero] using hz
+    simp [Function.mem_support, hzero] at hz
   refine (hdelta.add hbase).congr ?_
   intro z
   by_cases hz : z = 0
@@ -31599,7 +31597,7 @@ theorem neg_mul_deriv_conePhi_nat_scale
       (n : ℝ) * conePsi (t ^ n * ξ) * gaussianDeriv (t ^ n * ξ) ^ 2 := by
   have hpow : HasDerivAt (fun s : ℝ ↦ s ^ n * ξ)
       ((n : ℝ) * t ^ (n - 1) * ξ) t := by
-    convert (hasDerivAt_pow n t).mul_const ξ using 1 <;> ring
+    convert (hasDerivAt_pow n t).mul_const ξ using 1
   have hcomp := (hasDerivAt_conePhi (t ^ n * ξ)).comp t hpow
   have hderiv : deriv (fun s : ℝ ↦ conePhi (s ^ n * ξ)) t =
       (-coneWeight (t ^ n * ξ)) * ((n : ℝ) * t ^ (n - 1) * ξ) :=
@@ -31610,7 +31608,7 @@ theorem neg_mul_deriv_conePhi_nat_scale
     calc
       t * t ^ (n - 1) = t ^ (n - 1) * t := by ring
       _ = t ^ ((n - 1) + 1) := (pow_succ t (n - 1)).symm
-      _ = t ^ n := by congr 1 <;> omega
+      _ = t ^ n := by congr 1 ; omega
   rw [coneWeight_eq_source_integrand htn]
   field_simp
   calc
@@ -31835,7 +31833,7 @@ theorem calderon_interval_nat_scale
   have hFderiv (s : ℝ) : HasDerivAt F (F' s) s := by
     have hpow : HasDerivAt (fun y : ℝ ↦ y ^ n * ξ)
         ((n : ℝ) * s ^ (n - 1) * ξ) s := by
-      convert (hasDerivAt_pow n s).mul_const ξ using 1 <;> ring
+      convert (hasDerivAt_pow n s).mul_const ξ using 1
     have hprim := (hasDerivAt_conePrimitive (s ^ n * ξ)).comp s hpow
     have h := (hasDerivAt_const s cPsi).sub hprim
     simpa only [F, F', Pi.sub_apply, Pi.zero_apply, zero_sub, neg_mul] using h
@@ -31856,7 +31854,7 @@ theorem calderon_interval_nat_scale
       calc
         t * t ^ (n - 1) = t ^ (n - 1) * t := by ring
         _ = t ^ ((n - 1) + 1) := (pow_succ t (n - 1)).symm
-        _ = t ^ n := by congr 1 <;> omega
+        _ = t ^ n := by congr 1 ; omega
     rw [coneWeight_eq_source_integrand htn]
     field_simp
     rw [← hpow']
@@ -31880,7 +31878,7 @@ theorem hasDerivAt_conePhi_nat_scale
       ((-coneWeight (s ^ n * ξ)) * ((n : ℝ) * s ^ (n - 1) * ξ)) s := by
   have hpow : HasDerivAt (fun y : ℝ ↦ y ^ n * ξ)
       ((n : ℝ) * s ^ (n - 1) * ξ) s := by
-    convert (hasDerivAt_pow n s).mul_const ξ using 1 <;> ring
+    convert (hasDerivAt_pow n s).mul_const ξ using 1
   exact (hasDerivAt_conePhi (s ^ n * ξ)).comp s hpow
 
 /-- The product of the three anisotropically scaled low-frequency cutoffs. -/
@@ -32743,7 +32741,7 @@ theorem summable_threeCoordinateModes_of_sourceWeight_decay
 summable order-10 lattice tail required in the final cone summation. -/
 theorem summable_threeCoordinateModeProducts_of_decay
     (a b : Fin 3 → standardModeLattice → ℂ) (C D : ℝ)
-    (hC : 0 ≤ C) (hD : 0 ≤ D)
+    (hC : 0 ≤ C) (_hD : 0 ≤ D)
     (ha : ∀ i z, ‖a i z‖ ≤
       C * (sourceWeight (z : E3))⁻¹ ^ (110 : ℕ))
     (hb : ∀ i z, ‖b i z‖ ≤
@@ -32781,7 +32779,7 @@ theorem summable_threeCoordinateModeProducts_of_decay
     _ ≤ ∑ _i : Fin 3, C * D * g z := by
       exact Finset.sum_le_sum fun i hi ↦ hterm i
     _ = (3 * C * D) * g z := by
-      simp [Fin.sum_univ_succ]
+      simp
       ring
 
 /-- The preceding absolutely convergent mode sum has the explicit final
@@ -32836,7 +32834,7 @@ theorem norm_tsum_threeCoordinateModeProducts_le_of_decay
         exact Finset.sum_le_sum fun i hi ↦ hterm i
       _ = (3 * C * D) *
           (sourceWeight (z : E3))⁻¹ ^ (10 : ℕ) := by
-        simp [Fin.sum_univ_succ]
+        simp
         ring
   calc
     ‖∑' z, ∑ i : Fin 3, a i z * b i z‖ = ‖∑' z, F z‖ := by rfl
@@ -33929,7 +33927,7 @@ theorem modelPassiveKernel_eq
       modelFirstPassiveGaussianWeight α lam p t
         (z 0) (z 1) (z 2) (z 3) * g (z 4) := by
   simp only [modelPassiveKernel, Fin.prod_univ_succ,
-    Finset.prod_empty]
+    ]
   simp [modelPassiveFactor, modelFirstPassiveGaussianWeight]
   ring
 
@@ -33978,7 +33976,7 @@ theorem integrable_modelPassiveKernel
 one-dimensional factor. -/
 theorem integral_modelPassiveKernel
     (α : Anisotropy) (lam : ℝ) (p : E3) (t : ℝ) (g : ℝ → ℝ)
-    (hg : Integrable g) (hlam : 0 < lam) (ht : 0 < t) :
+    (_hg : Integrable g) (hlam : 0 < lam) (ht : 0 < t) :
     ∫ z : ModelE5, modelPassiveKernel α lam p t g z =
       ∫ r : ℝ, g r := by
   have hs0 : 0 < lam * t ^ α.weight 0 :=
@@ -33999,7 +33997,7 @@ theorem integral_modelPassiveKernel
     exact integral_gaussianAt hs1 _
   have h4 : ∫ x : ℝ, modelPassiveFactor α lam p t g 4 x =
       ∫ r : ℝ, g r := by
-    simpa only [modelPassiveFactor]
+    simp only [modelPassiveFactor]
   rw [← (PiLp.volume_preserving_toLp (Fin 5)).integral_comp
     (MeasurableEquiv.toLp 2 _).measurableEmbedding]
   have hfactor : (modelPassiveKernel α lam p t g ∘ WithLp.toLp 2) =
@@ -34026,7 +34024,7 @@ theorem integral_modelPassiveKernel
     · exact h3
     · exact h4
   simp_rw [hfac]
-  simp only [Fin.prod_univ_succ, Finset.prod_empty, mul_one]
+  simp only [Fin.prod_univ_succ]
   norm_num
 
 /-- Positivity of the passive product follows from positivity of its final
@@ -34303,7 +34301,6 @@ theorem integrable_modelPassiveKernel_collection_sourceScale
     hmp.integrable_comp_of_integrable hH
   refine hback.congr ?_
   filter_upwards [] with q
-  change H (e q) = _
   rw [outerLambdaShuffleRight_apply]
 
 /-- Bounded continuous data make the full first-energy Gaussian
@@ -34858,8 +34855,6 @@ theorem integrable_modelSecondCubeComparison_of_boundedContinuous
     refine htransport.congr ?_
     filter_upwards [] with q
     rcases q with ⟨⟨lam, r⟩, ⟨pt, y⟩⟩
-    change modelSecondSuperpositionJoint α f
-        (e.symm ((lam, r), (pt, y))) = G ((lam, r), (pt, y))
     rw [show e = modelSecondSuperpositionShuffle by rfl,
       modelSecondSuperpositionShuffle_symm_apply]
     dsimp only [G, modelSecondSuperpositionJoint,
@@ -41593,7 +41588,7 @@ noncomputable def scaledIteratedCoordinateDyadicBallMaximal
 
 private theorem norm_complex_ofReal_eq_of_nonneg {K : ℝ} (hK : 0 ≤ K) :
     ‖(K : ℂ)‖ = K := by
-  simpa only [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hK]
+  simp only [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hK]
 
 /-- Bounded measurable inputs retain every finite `L^p` norm under the
 shell-scaled three-coordinate dyadic majorant. -/
@@ -42553,7 +42548,7 @@ theorem modelFiberPassiveActiveReorder_measurePreserving
       ((volume : Measure ModelE5).prod ρ)
       ((κ.prod (volume : Measure ℝ)).prod ρ) := by
     convert modelFirstPassiveCoordinates_measurePreserving.prod
-      (MeasurePreserving.id ρ) using 1 <;> rfl
+      (MeasurePreserving.id ρ) using 1 ; rfl
   let h₂b : MeasurePreserving
       (MeasurableEquiv.prodAssoc :
         ((TransverseSpace 2 × TransverseSpace 2) × ℝ) × (ℝ × ℝ) ≃ᵐ
@@ -43556,14 +43551,14 @@ chosen.  This is the uniformity needed by the two-index exhaustion. -/
 theorem exists_uniform_activeStoppingForest_constant
     (α : Anisotropy) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (S : BoxCollection α)
-      (hS : IsConvexCollection α S) (u : E3) (c : ℝ → ℝ)
+      (_hS : IsConvexCollection α S) (u : E3) (c : ℝ → ℝ)
       (F : InitialModelSchwartzInput) (q σ : Fin 4 → ℝ)
-      (hq : ∀ j, 0 < q j)
+      (_hq : ∀ j, 0 < q j)
       (hpos : ∀ r ∈ S, ∀ j,
         0 < stoppingData α S (sourceStoppingExponent j)
           (InitialModelRealInput F j) r)
-      (hcmeas : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1)
-      (hfinite : ∀ (j : Fin 4) (m : ℤ),
+      (_hcmeas : Measurable c) (_hc : ∀ t : ℝ, |c t| ≤ 1)
+      (_hfinite : ∀ (j : Fin 4) (m : ℤ),
         volume (sourceStoppingMaximalLevelSetAt α
           (InitialModelRealInput F) j m) ≠ ∞),
       |expandedModelLocalForm α S u c (InitialModelRealInput F)| ≤
@@ -44907,7 +44902,7 @@ theorem scaledIteratedCoordinateDyadicBallMaximal_lintegral_bound
   let g₁ : E3 → ℂ := (K : ℂ) • f₁
   let f₂ : E3 → ℂ := coordinateDyadicBallMaximalComplex 2 g₁
   have hnormK : ‖(K : ℂ)‖ = K := by
-    simpa only [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hK]
+    simp only [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hK]
   have hf₀ : Measurable f₀ := by
     dsimp only [f₀]
     exact coordinateDyadicBallMaximalComplex_measurable 0 f hf
@@ -51480,7 +51475,7 @@ theorem dilateLinear_coordinateDirection
   split_ifs with h
   · subst k
     simp
-  · simp [h]
+  · simp
 
 /-- Away from the origin, anisotropic diagonal precomposition transports an
 ordered coordinate derivative by applying the same diagonal map to every
@@ -51952,7 +51947,7 @@ theorem hasDerivAt_convolution_right_of_bound
     dsimp only [F, F']
     convert! (hasDerivAt_const y (f t)).mul
       ((hderiv (y - t)).comp y
-        ((hasDerivAt_id y).sub (hasDerivAt_const y t))) using 1 <;> ring
+        ((hasDerivAt_id y).sub (hasDerivAt_const y t))) using 1 ; ring
   have h := hasDerivAt_integral_of_dominated_loc_of_deriv_le
     (μ := volume) (F := F) (F' := F')
     (bound := fun t : ℝ ↦ ‖f t‖ * B) (s := Set.univ) (x₀ := x)
@@ -52096,7 +52091,7 @@ theorem ModelLowKernelDeriv_translate_bracket_majorant :
 /-- Differentiating a mass-normalized kernel dilation contributes precisely
 one additional inverse scale. -/
 theorem hasDerivAt_kernelDilate_of_hasDerivAt
-    (k k' : ℝ → ℝ) (s y : ℝ) (hs : s ≠ 0)
+    (k k' : ℝ → ℝ) (s y : ℝ) (_hs : s ≠ 0)
     (hderiv : HasDerivAt k (k' (y / s)) (y / s)) :
     HasDerivAt (kernelDilate k s)
       (s⁻¹ * kernelDilate k' s y) y := by
@@ -52194,10 +52189,10 @@ theorem hasDerivAt_gaussianDeriv_second (x : ℝ) :
   have hlinear : HasDerivAt (fun y : ℝ ↦ -2 * Real.pi * y)
       (-2 * Real.pi) x := by
     convert! (hasDerivAt_const x (-2 * Real.pi)).mul
-      (hasDerivAt_id x) using 1 <;> ring
+      (hasDerivAt_id x) using 1 ; ring
   have h := hlinear.mul (hasDerivAt_gaussian x)
   unfold gaussianDeriv gaussianSecondDeriv
-  convert! h using 1 <;> simp only [gaussianDeriv] <;> ring
+  convert! h using 1 ; simp only [gaussianDeriv] ; ring
 
 /-- The second Gaussian derivative is continuous. -/
 theorem continuous_gaussianSecondDeriv :
@@ -52662,7 +52657,7 @@ theorem bracketKernelAt_le_two_pow_ten_of_half_distance
     have hdiv : 1 / (1 + |z / s|) ^ 10 ≤
         (2 : ℝ) ^ 10 / (1 + |w / s|) ^ 10 :=
       (div_le_div_iff₀ hzpos hwpos).mpr (by simpa only [one_mul] using hpow)
-    convert hdiv using 1 <;> ring
+    convert hdiv using 1 ; ring
   unfold bracketKernelAt kernelAt kernelDilate
   simp only [sub_zero, smul_eq_mul, bracketKernel_eq_inv_pow]
   calc
@@ -52906,7 +52901,7 @@ theorem localConePsiNeg_eq_one {x : ℝ}
   rw [localConePsiNeg_apply]
   apply ContDiffBump.one_of_mem_closedBall
   rw [Metric.mem_closedBall, Real.dist_eq]
-  convert hx using 1 <;> ring
+  convert hx using 1 ; ring
 
 theorem localConePsiPos_eq_zero {x : ℝ}
     (hx : 1 ≤ |x - 3 / 2|) : localConePsiPos x = 0 := by
@@ -52920,7 +52915,7 @@ theorem localConePsiNeg_eq_zero {x : ℝ}
   rw [localConePsiNeg_apply]
   apply ContDiffBump.zero_of_le_dist
   rw [Real.dist_eq]
-  convert hx using 1 <;> ring
+  convert hx using 1 ; ring
 
 theorem localConePsi_nonneg (x : ℝ) : 0 ≤ localConePsi x :=
   add_nonneg (localConePsiPos_nonneg x) (localConePsiNeg_nonneg x)
@@ -53239,7 +53234,7 @@ theorem localizedSymbol_contDiff
       rw [hzeroDilate] at hrecover
       exact hrecover.symm
     have hopen : IsOpen ({0}ᶜ : Set E3) := by
-      simpa using (isOpen_compl_singleton : IsOpen ({0}ᶜ : Set E3))
+      simp
     have hcompOn : ContDiffOn ℝ 110 (m ∘ L) (L ⁻¹' ({0}ᶜ : Set E3)) :=
       hm.2.2.2.1.comp_continuousLinearMap L
     have hcompAt : ContDiffAt ℝ 110 (m ∘ L) η :=
@@ -53431,7 +53426,7 @@ theorem iteratedFDeriv_localizedSymbol_eq_zero_of_norm_lt_half
       simpa only [Metric.mem_ball, dist_eq_norm] using hz
     have hnorm : ‖z‖ < 1 / 2 := by
       calc
-        ‖z‖ = ‖(z - η) + η‖ := by congr 1 <;> abel
+        ‖z‖ = ‖(z - η) + η‖ := by congr 1 ; abel
         _ ≤ ‖z - η‖ + ‖η‖ := norm_add_le (z - η) η
         _ < 1 / 2 := by linarith
     exact localizedSymbol_eq_zero_of_norm_lt_half α m i t z hnorm
@@ -58875,7 +58870,6 @@ theorem scratch_norm_fourierCoeffOn_raw_first_scaled_le_of_fourth_bound
       iteratedDeriv r f (1 / 2 : ℝ) = iteratedDeriv r f (-(1 / 2 : ℝ)) := by
     rcases scratch_iteratedDeriv_raw_first_scaled_unitBoundary
       α M m hm i ht y z r hr with ⟨hleft, hright⟩
-    change iteratedDeriv r f (1 / 2 : ℝ) = iteratedDeriv r f (-(1 / 2 : ℝ))
     rw [hleft, hright]
   have hmain := scratch_norm_fourierCoeffOn_le_of_four_deriv_bound
     (a := -(1 / 2 : ℝ)) (b := 1 / 2) (C := C)
@@ -58905,7 +58899,7 @@ theorem scratch_norm_fourierCoeffOn_raw_first_scaled_le_of_fourth_bound
     (by simpa [f] using hbound)
   change ‖fourierCoeffOn (by norm_num : -(1 / 2 : ℝ) < 1 / 2) f n‖ ≤
     (2 * Real.pi * |(n : ℝ)|)⁻¹ ^ 4 * C
-  convert hmain using 1 <;> norm_num
+  convert hmain using 1 ; norm_num
 
 noncomputable def scratch_nestedRawUnitFourierCoeff
     (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ)
@@ -59120,8 +59114,6 @@ theorem scratch_integral_fin3_unitIocCube_eq_iterated_120
     simpa only [IntegrableOn, hμ] using hFcomp
   calc
     ∫ u in fubini_unitIocCube, F u = ∫ u in fubini_unitIocCube, F (e u) := by
-      change ∫ u, F u ∂volume.restrict fubini_unitIocCube =
-        ∫ u, F (e u) ∂volume.restrict fubini_unitIocCube
       rw [hμ]
       symm
       exact hmp.integral_comp' F
@@ -59307,7 +59299,7 @@ theorem scratch_iteratedDeriv_raw_first_scaled_eq_iteratedFDeriv
     congr 1
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   rw [hslice, iteratedDeriv_eq_iteratedFDeriv]
   rw [ContinuousLinearMap.iteratedFDeriv_comp_right L hshift r (by norm_num)]
   rw [ContinuousMultilinearMap.compContinuousLinearMap_apply]
@@ -59315,7 +59307,7 @@ theorem scratch_iteratedDeriv_raw_first_scaled_eq_iteratedFDeriv
   have hpoint : L r + b = frequencyAssemble3 (8 * r) (8 * y) (8 * z) := by
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   have hdir : (fun _ : Fin 4 ↦ L (1 : ℝ)) =
       (fun _ : Fin 4 ↦ (8 : ℝ) • Anisotropy.coordinateDirection 0) := by
     funext j
@@ -59339,8 +59331,7 @@ theorem scratch_exists_raw_first_scaled_fourth_deriv_bound
       (frequencyAssemble3 (8 * x) (8 * y) (8 * z))
   let v : Fin 4 → E3 := fun _ ↦ Anisotropy.coordinateDirection 0
   have hvnorm : ‖Anisotropy.coordinateDirection 0‖ = 1 := by
-    simpa [Anisotropy.coordinateDirection] using
-      (EuclideanSpace.basisFun (Fin 3) ℝ).norm_eq_one 0
+    simp [Anisotropy.coordinateDirection]
   have hbase : ‖F v‖ ≤ D * M := by
     calc
       ‖F v‖ ≤ ‖F‖ * ∏ j, ‖v j‖ := F.le_opNorm v
@@ -60016,7 +60007,7 @@ theorem fiberDyadicSelectedLengthDensity_le_inv_mul_fiberIntegral
       intro I hI
       by_cases hIselected : z ∈ fiberDyadicSelectionSet Zf
           (fiberDyadicIntervalAverage F) H I <;>
-        simp [Set.indicator_apply, hIselected]
+        simp [hIselected]
     rw [hdensity]
     exact hmain
   · have hdensity : fiberDyadicSelectedLengthDensity T Zf
@@ -60222,7 +60213,7 @@ theorem scratch_iteratedDeriv_raw_first_scaled_eq_iteratedFDeriv_at_order
     congr 1
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   rw [hslice, iteratedDeriv_eq_iteratedFDeriv]
   rw [ContinuousLinearMap.iteratedFDeriv_comp_right L hshift r
     (by exact_mod_cast hk)]
@@ -60231,7 +60222,7 @@ theorem scratch_iteratedDeriv_raw_first_scaled_eq_iteratedFDeriv_at_order
   have hpoint : L r + b = frequencyAssemble3 (8 * r) (8 * y) (8 * z) := by
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   have hdir : (fun _ : Fin k ↦ L (1 : ℝ)) =
       (fun _ : Fin k ↦ (8 : ℝ) • Anisotropy.coordinateDirection 0) := by
     funext j
@@ -60258,8 +60249,7 @@ theorem scratch_exists_raw_first_scaled_110_deriv_bound
       (frequencyAssemble3 (8 * x) (8 * y) (8 * z))
   let v : Fin 110 → E3 := fun _ ↦ Anisotropy.coordinateDirection 0
   have hvnorm : ‖Anisotropy.coordinateDirection 0‖ = 1 := by
-    simpa [Anisotropy.coordinateDirection] using
-      (EuclideanSpace.basisFun (Fin 3) ℝ).norm_eq_one 0
+    simp [Anisotropy.coordinateDirection]
   have hbase : ‖F v‖ ≤ D * M := by
     calc
       ‖F v‖ ≤ ‖F‖ * ∏ j, ‖v j‖ := F.le_opNorm v
@@ -60300,19 +60290,18 @@ theorem scratch_norm_fourierCoeffOn_raw_first_scaled_le_of_110_bound
       iteratedDeriv r f (1 / 2 : ℝ) = iteratedDeriv r f (-(1 / 2 : ℝ)) := by
     rcases scratch_iteratedDeriv_raw_first_scaled_unitBoundary
       α M m hm i ht y z r (le_of_lt hr) with ⟨hleft, hright⟩
-    change iteratedDeriv r f (1 / 2 : ℝ) = iteratedDeriv r f (-(1 / 2 : ℝ))
     rw [hleft, hright]
   have hmain := scratch_norm_fourierCoeffOn_le_of_iteratedDeriv_bound
     (a := -(1 / 2 : ℝ)) (b := 1 / 2) (C := C)
     (by norm_num) hn 110 hf hboundary hbound
-  convert hmain using 1 <;> norm_num
+  convert hmain using 1 ; norm_num
 
 /-- The two passive raw integrations preserve a uniform bound for the inner
 first-coordinate Fourier coefficient, since each integration interval has
 length one and the characters have norm one. -/
 theorem scratch_norm_nestedRawUnitFourierCoeff_le_of_first_bound
     (α : Anisotropy) (m : E3 → ℂ) (i : Fin 3) (t : ℝ)
-    (ν : Fin 3 → ℤ) (B : ℝ) (hB : 0 ≤ B)
+    (ν : Fin 3 → ℤ) (B : ℝ) (_hB : 0 ≤ B)
     (hcoeff : ∀ y z : ℝ,
       ‖fourierCoeffOn (by norm_num : -(1 / 2 : ℝ) < 1 / 2)
         (fun x : ℝ ↦ localizedSymbolRaw α m i t
@@ -60543,7 +60532,7 @@ theorem scratch_iteratedDeriv_raw_last_scaled_eq_iteratedFDeriv_at_order
     congr 1
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   rw [hslice, iteratedDeriv_eq_iteratedFDeriv]
   rw [ContinuousLinearMap.iteratedFDeriv_comp_right L hshift z
     (by exact_mod_cast hk)]
@@ -60552,7 +60541,7 @@ theorem scratch_iteratedDeriv_raw_last_scaled_eq_iteratedFDeriv_at_order
   have hpoint : L z + b = frequencyAssemble3 (8 * x) (8 * y) (8 * z) := by
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   have hdir : (fun _ : Fin k ↦ L (1 : ℝ)) =
       (fun _ : Fin k ↦ (8 : ℝ) • Anisotropy.coordinateDirection 2) := by
     funext j
@@ -60578,8 +60567,7 @@ theorem scratch_exists_raw_last_scaled_110_deriv_bound
       (frequencyAssemble3 (8 * x) (8 * y) (8 * z))
   let v : Fin 110 → E3 := fun _ ↦ Anisotropy.coordinateDirection 2
   have hvnorm : ‖Anisotropy.coordinateDirection 2‖ = 1 := by
-    simpa [Anisotropy.coordinateDirection] using
-      (EuclideanSpace.basisFun (Fin 3) ℝ).norm_eq_one 2
+    simp [Anisotropy.coordinateDirection]
   have hbase : ‖F v‖ ≤ D * M := by
     calc
       ‖F v‖ ≤ ‖F‖ * ∏ j, ‖v j‖ := F.le_opNorm v
@@ -60623,7 +60611,7 @@ theorem scratch_norm_fourierCoeffOn_raw_last_scaled_le_of_110_bound
   have hmain := scratch_norm_fourierCoeffOn_le_of_iteratedDeriv_bound
     (a := -(1 / 2 : ℝ)) (b := 1 / 2) (C := C)
     (by norm_num) hn 110 hf hboundary hbound
-  convert hmain using 1 <;> norm_num
+  convert hmain using 1 ; norm_num
 
 /-- The passive integrations preserve the last-coordinate inner bound. -/
 theorem scratch_norm_nestedRawUnitFourierCoeff_last_le_of_last_bound
@@ -60745,8 +60733,6 @@ theorem scratch_integral_fin3_unitIocCube_eq_iterated_021
     simpa only [IntegrableOn, hμ] using hFcomp
   calc
     ∫ u in fubini_unitIocCube, F u = ∫ u in fubini_unitIocCube, F (e u) := by
-      change ∫ u, F u ∂volume.restrict fubini_unitIocCube =
-        ∫ u, F (e u) ∂volume.restrict fubini_unitIocCube
       rw [hμ]
       symm
       exact hmp.integral_comp' F
@@ -60910,7 +60896,7 @@ theorem scratch_iteratedDeriv_raw_middle_scaled_eq_iteratedFDeriv_at_order
     congr 1
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   rw [hslice, iteratedDeriv_eq_iteratedFDeriv]
   rw [ContinuousLinearMap.iteratedFDeriv_comp_right L hshift y
     (by exact_mod_cast hk)]
@@ -60919,7 +60905,7 @@ theorem scratch_iteratedDeriv_raw_middle_scaled_eq_iteratedFDeriv_at_order
   have hpoint : L y + b = frequencyAssemble3 (8 * x) (8 * y) (8 * z) := by
     ext j
     fin_cases j <;>
-      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] <;> ring
+      simp [L, b, frequencyAssemble3_apply, coordinateDirection_apply] ; ring
   have hdir : (fun _ : Fin k ↦ L (1 : ℝ)) =
       (fun _ : Fin k ↦ (8 : ℝ) • Anisotropy.coordinateDirection 1) := by
     funext j
@@ -60945,8 +60931,7 @@ theorem scratch_exists_raw_middle_scaled_110_deriv_bound
       (frequencyAssemble3 (8 * x) (8 * y) (8 * z))
   let v : Fin 110 → E3 := fun _ ↦ Anisotropy.coordinateDirection 1
   have hvnorm : ‖Anisotropy.coordinateDirection 1‖ = 1 := by
-    simpa [Anisotropy.coordinateDirection] using
-      (EuclideanSpace.basisFun (Fin 3) ℝ).norm_eq_one 1
+    simp [Anisotropy.coordinateDirection]
   have hbase : ‖F v‖ ≤ D * M := by
     calc
       ‖F v‖ ≤ ‖F‖ * ∏ j, ‖v j‖ := F.le_opNorm v
@@ -60990,7 +60975,7 @@ theorem scratch_norm_fourierCoeffOn_raw_middle_scaled_le_of_110_bound
   have hmain := scratch_norm_fourierCoeffOn_le_of_iteratedDeriv_bound
     (a := -(1 / 2 : ℝ)) (b := 1 / 2) (C := C)
     (by norm_num) hn 110 hf hboundary hbound
-  convert hmain using 1 <;> norm_num
+  convert hmain using 1 ; norm_num
 
 /-- The two passive integrations preserve a uniform middle-coordinate bound. -/
 theorem scratch_norm_nestedRawUnitFourierCoeff_middle_le_of_middle_bound
@@ -62791,7 +62776,7 @@ theorem hasSum_thirdModeFrequencySymbols_eq_thirdConeTerm
           ((conePhi (α.dilate t ξ 0) : ℂ) *
             (conePhi (α.dilate t ξ 1) : ℂ)) := by
     convert hcone using 1 <;>
-      simp [Fin.prod_univ_succ] <;>
+      simp [Fin.prod_univ_succ] ;
       ring
   rw [hrewrite] at hsum
   exact hsum
@@ -62997,7 +62982,7 @@ theorem exists_bound_thirdModeFrequencySymbol :
   simp only [norm_mul, norm_pow, hchar, mul_one]
   calc
     _ ≤ (1 * cPsi) * ((1 * cPsi) * (D ^ 2 * 2)) := by
-      convert hall using 1 <;> ring
+      convert hall using 1 ; ring
     _ = 2 * cPsi ^ 2 * D ^ 2 := by ring
 
 /-- Conditional frequency-side Fubini bridge for one localized third cone.
@@ -68575,7 +68560,7 @@ theorem exists_realSchwartz_line_bracket_bound
     have h2 : (1 : ℝ) + |x k| ≤ 1 + ‖y‖ := by linarith
     calc ((1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ))
         ≤ (1 + ‖y‖) ^ (10 : ℕ) * (1 + ‖y‖) ^ (10 : ℕ) := by
-          gcongr <;> positivity
+          gcongr
       _ = (1 + ‖y‖) ^ (20 : ℕ) := by ring
   have hposprod : (0 : ℝ) <
       (1 + |x j|) ^ (10 : ℕ) * (1 + |x k|) ^ (10 : ℕ) := by positivity
@@ -69113,7 +69098,7 @@ into the weak-one good budget consumed by `fiberCZ_weakOne_assembly`. -/
 theorem weakOne_good_budget_of_lintegral_le
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (g : X → ℝ)
     (hg : Measurable g) {R0 lam K : ℝ}
-    (hR0 : 0 < R0) (hlam : 0 < lam) (hK : 0 ≤ K)
+    (hR0 : 0 < R0) (hlam : 0 < lam) (_hK : 0 ≤ K)
     (hbound : ∫⁻ x, ENNReal.ofReal (|g x| ^ R0) ∂μ ≤
       ENNReal.ofReal (K ^ R0)) :
     ENNReal.ofReal (lam / 2) * μ {x | lam / 2 < |g x|} ≤
@@ -69159,7 +69144,7 @@ theorem weakOne_good_budget_of_lintegral_le
 `H = λ/A` and the exponent identity `δ·R_0 = R_0 - 1` of `lem:one_fiber`, the
 Chebyshev budget collapses to `2^{R_0-1}·A`, independent of the level `λ`. -/
 theorem weakOne_good_budget_normalization
-    {R0 lam A delta : ℝ} (hR0 : 0 < R0) (hlam : 0 < lam) (hA : 0 < A)
+    {R0 lam A delta : ℝ} (_hR0 : 0 < R0) (hlam : 0 < lam) (hA : 0 < A)
     (hdelta : delta * R0 = R0 - 1) :
     (lam / 2) / (lam / 2) ^ R0 * (A * (lam / A) ^ delta) ^ R0 =
       2 ^ (R0 - 1) * A := by
@@ -70457,7 +70442,7 @@ the tail budget is independent of the level.
 /-- **The stopping height cancels out of the tail budget.**  This is the
 source's reason the bad contribution is `C A_u`, independent of `τ`. -/
 theorem weakOne_tail_budget_normalization
-    {p H C1 C2 : ℝ} (hp : 0 < p) (hH : 0 < H) :
+    {p H C1 C2 : ℝ} (_hp : 0 < p) (hH : 0 < H) :
     (C1 * H ^ (1 / p)) * (C2 * H ^ (-(1 / p))) = C1 * C2 := by
   have hcancel : H ^ (1 / p) * H ^ (-(1 / p)) = 1 := by
     rw [← Real.rpow_add hH, add_neg_cancel, Real.rpow_zero]
@@ -70813,7 +70798,7 @@ bad sums to the countable bad field inside the operator.
 uniformly bounded inputs give convergent coordinate convolutions. -/
 theorem tendsto_ModelCoordinateConvolution_of_tendsto
     (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
-    (hg : ∀ n, Measurable (g n)) (B : ℝ) (hB : 0 ≤ B)
+    (hg : ∀ n, Measurable (g n)) (B : ℝ) (_hB : 0 ≤ B)
     (hgB : ∀ n, ∀ y : E3, |g n y| ≤ B)
     (hk : Integrable k) (hs : 0 < s)
     (htend : ∀ y : E3,
@@ -103578,7 +103563,7 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
           ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod (by positivity)
       _ = Cg * P n := by
-          simp only [hCg, hP]
+          simp only [hP]
           ring
   -- Step B: a fibre is a union of blocks, grouped by slice
   set S : ℤ → ℝ := fun N ↦ ∑ n ∈ Λ' with tripleSum n = N, P n with hS
@@ -104051,7 +104036,7 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
           ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod (by positivity)
       _ = Cg * P n := by
-          simp only [hCg, hP]
+          simp only [hP]
           ring
   -- Step B: a fibre is a union of blocks, grouped by slice
   set S : ℤ → ℝ := fun N ↦ ∑ n ∈ Λ' with tripleSum n = N, P n with hS
@@ -104621,7 +104606,7 @@ theorem lpNorm_dyadicLevelPiece_eq_zero {X : Type*} [MeasurableSpace X] {μ : Me
     refine (ae_iff.2 ?_)
     refine measure_mono_null ?_ h
     intro x hx
-    simp only [dyadicLevelPiece, ne_eq, Set.mem_setOf_eq] at hx
+    simp only [dyadicLevelPiece, Set.mem_setOf_eq] at hx
     by_contra hmem
     exact hx (Set.indicator_of_notMem hmem f)
   have hmeas : AEStronglyMeasurable (dyadicLevelPiece (⇑f) k) μ := by
@@ -106134,7 +106119,7 @@ noncomputable section
 /-- **The face gain with explicit tangent directions**, so that the two decay
 centres are canonical and shared between different base weights. -/
 theorem exists_face_gain_shift_of
-    {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
+    {v : Fin 4 → (Fin 3 → ℝ)} (_hv : AffineIndependent ℝ v)
     {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hsum : ∑ a : Fin 4, ϑ a = 1)
     (ã : Fin 4 → ℝ) {e₁ e₂ : Fin 4 → ℝ}
     (he₁0 : ∑ a : Fin 4, e₁ a = 0) (he₁z : (∑ a : Fin 4, e₁ a • v a) = ![1, -1, 0])
@@ -106575,7 +106560,7 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
             (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
               (mul_nonneg (he₁nn _) (he₂nn _)))
       _ = Cg * P n := by
-          simp only [hCg, hP]
+          simp only [hP]
           ring
   -- Step B: a fibre is a union of blocks, grouped by slice
   set S : ℤ → ℝ := fun N ↦ ∑ n ∈ Λ' with tripleSum n = N, P n with hS
@@ -106694,7 +106679,7 @@ open scoped BigOperators ENNReal Topology
 noncomputable section
 
 theorem layerSizeC_pos {m₀ m₁ m₂ : ℤ → ℝ} (hm₀ : ∀ k, 0 < m₀ k) (hm₁ : ∀ k, 0 < m₁ k)
-    (hm₂ : ∀ k, 0 < m₂ k) (p₀ p₁ p₂ δ : ℝ) (c₁ c₂ : ℝ) (k : ℤ × ℤ × ℤ) :
+    (hm₂ : ∀ k, 0 < m₂ k) (p₀ p₁ p₂ δ : ℝ) (_c₁ _c₂ : ℝ) (k : ℤ × ℤ × ℤ) :
     0 < layerSizeC m₀ m₁ m₂ p₀ p₁ p₂ δ d₁ d₂ k := by
   unfold layerSizeC
   have := hm₀ k.1; have := hm₁ k.2.1; have := hm₂ k.2.2
@@ -107256,7 +107241,7 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
             (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
               (mul_nonneg (he₁nn _) (he₂nn _)))
       _ = Cg * P n := by
-          simp only [hCg, hP]
+          simp only [hP]
           ring
   -- Step B: a fibre is a union of blocks, grouped by slice
   set S : ℤ → ℝ := fun N ↦ ∑ n ∈ Λ' with tripleSum n = N, P n with hS
@@ -107704,7 +107689,7 @@ open scoped BigOperators ENNReal Topology
 noncomputable section
 
 theorem exists_face_gain_shift_unif
-    {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
+    {v : Fin 4 → (Fin 3 → ℝ)} (_hv : AffineIndependent ℝ v)
     {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hsum : ∑ a : Fin 4, ϑ a = 1)
     {e₁ e₂ : Fin 4 → ℝ}
     (he₁0 : ∑ a : Fin 4, e₁ a = 0) (he₁z : (∑ a : Fin 4, e₁ a • v a) = ![1, -1, 0])
@@ -108236,7 +108221,7 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
             (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
               (mul_nonneg (he₁nn _) (he₂nn _)))
       _ = Cg * P n := by
-          simp only [hCg, hP]
+          simp only [hP]
           ring
   -- Step B: a fibre is a union of blocks, grouped by slice
   set S : ℤ → ℝ := fun N ↦ ∑ n ∈ Λ' with tripleSum n = N, P n with hS
@@ -108967,7 +108952,7 @@ theorem exists_fourVertex_uniform_bound_of_measurable
           ≤ C₀ ^ (1 / R) * (∏ a : Fin 4, A a ^ ϑ a) * ∏ j : Fin 3, n j := by
     intro hae
     have hzeroLp : MemLp (fun _ : X ↦ (0:ℝ)) (ENNReal.ofReal R) μ := by
-      simpa using (MemLp.zero (p := ENNReal.ofReal R) (μ := μ) (E := ℝ))
+      simp
     refine ⟨(memLp_congr_ae hae).2 hzeroLp, ?_⟩
     have hnorm0 : lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ = 0 := by
       rw [← toReal_eLpNorm (hTmeas f).aestronglyMeasurable, eLpNorm_congr_ae hae,

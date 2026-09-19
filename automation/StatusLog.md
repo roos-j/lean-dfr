@@ -4884,3 +4884,43 @@ errors under `lake env lean`; and through `import Auto.Twisted`,
 `fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite`,
 `fourVertexMarcinkiewicz_of_measurable` and `ext_maximal_strong_type` each
 depend only on `[propext, Classical.choice, Quot.sound]`.  Zero `sorry`.
+
+### Cleanup: compiler warnings removed
+
+`DFR/Auto/Twisted/Twisted.lean` now compiles with zero warnings and zero
+errors, as do all eight section modules and the top-level `Auto.Twisted`.
+208 warnings were removed, in six mechanical passes, each re-verified before
+the next:
+
+  * 26 deprecated names renamed (`push_neg` → `push Not`,
+    `HasSubset.Subset.eventuallyLE` → `LE.le.eventuallyLE`,
+    `integral_finset_sum` / `integrable_finset_sum` → the camelCase forms,
+    `ofReal_norm_eq_enorm` → `ofReal_norm`,
+    `eLpNorm_eq_lintegral_rpow_enorm` → `…_toReal`,
+    `ContinuousMultilinearMap.zero_apply` → `zero_apply`);
+  * 50 uses of `tac1 <;> tac2` where the first tactic leaves one goal,
+    rewritten as `tac1; tac2`;
+  * 23 unused `simp` arguments dropped (three lists became empty and lost
+    their brackets);
+  * 26 `simpa` calls simplified — to `simp` where the `using` term was
+    unnecessary, and to `simp … at h` where the hypothesis, not the goal, was
+    what closed it;
+  * 21 no-op or unreachable tactics deleted (`congr 1`, `all_goals ring`,
+    trailing `<;> ring`, `<;> omega`, `<;> positivity`, and six `change`
+    tactics that changed nothing);
+  * 31 unused binders prefixed with `_`.
+
+Nothing mathematical changed.  The only edits to declaration signatures are
+the 29 underscore prefixes, checked mechanically to differ from the originals
+by underscores alone, so every type is untouched; everything else is inside
+proofs.  No blueprint statement was modified — the section modules that carry
+the blueprint wording are byte-identical, and they still elaborate against the
+rebuilt `Twisted.olean`.
+
+Verified afterwards: `lake build` completes (3343 jobs) with no warning from
+this repository — the remaining build warnings all come from the pinned
+`lean_spherical` dependency, which is not ours to edit; zero `sorry`; and
+`thm_main`, `anisotropicParaproduct_unconditional`,
+`fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite`,
+`fourVertexMarcinkiewicz_of_measurable` and `ext_maximal_strong_type` each
+still depend only on `[propext, Classical.choice, Quot.sound]`.
