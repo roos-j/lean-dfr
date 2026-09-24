@@ -392,8 +392,8 @@ proved (full statement, family u_i included, `Auto.sq_norm_pow_le_integral_cubeP
 proved (`Auto.sum_le_of_oscillation_ge`; the patch writes delta^{O(1)} and delta^{-O(1)}, and the Lean statement carries the explicit bound Lo^{-1} (C_D/eps)^D k (1 + Lo^{-1} Hi)^k with every constant named, which is that statement made quantitative) | 2 | `patch:triangular`, distinct degrees give a triangular frequency bound | **`Auto.sum_Ico_le_of_triangular`**, **`Auto.sum_range_le_of_triangular`**, **`Auto.coeff_bound_of_oscillation_ge`**, `Auto.budLo_inv`, **`Auto.coeff_sum_smul_eq`**, **`Auto.triangular_step`**, `Auto.eval_eq_const_add_sum_Icc`, **`Auto.norm_integral_expPhase_const_add`**, **`Auto.sum_triangular_le`**, **`Auto.sum_le_of_oscillation_ge`**
 proved (all three conclusions of the lemma: `Auto.petUpdate_protected_of_invariant` for normality, the structural singleton head plus `Auto.petNewHeadFactor_origin` for the head block, and `Auto.petUpdate_invariant_head` with `Auto.petUpdate_invariant_diff` / `Auto.petUpdate_invariant_diff_highDeg` for the invariant; the l1-norm addendum in the unnumbered paragraph following the lemma is NOT formalized) | 3 | **`patch:pet-update`**, a labelled update preserves the protected head | **`Auto.natDegree_taylor_sub_self_le`**, **`Auto.coeff_taylor_sub_self`**, **`Auto.taylor_sub_pivot_sub`**, **`Auto.linear_in_fresh_ne_zero`**, **`Auto.isHomogeneous_add_X_mul`**, **`Auto.add_X_mul_ne_zero`**, **`Auto.petLead_add_fresh`**, **`Auto.natDegree_petChild_unshifted_le`**, **`Auto.coeff_petChild_unshifted`**, **`Auto.petChild_shifted`**, **`Auto.leadingCoeff_taylor`**, **`Auto.petSubConst`**, `Auto.petSubConst_coeff_zero`, **`Auto.petSubConst_coeff`**, `Auto.natDegree_petSubConst_le`, **`Auto.natDegree_petSubConst`**, **`Auto.leadingCoeff_petSubConst`**, **`Auto.petSubConst_sub_coeff`**, `Auto.pi_const_mul_single`, `Auto.pi_single_add'`, **`Auto.leadVec_ne_zero`**, `Auto.ne_of_sub_coeff_ne_zero`, **`Auto.coeff_petChild_unshifted_vec`**, **`Auto.petHead_ne_child`**, **`Auto.PetFactor`**, `Auto.PetFactor.starFac`, `Auto.PetFactor.shiftFac`, `Auto.PetFactor.origin_shiftFac`, `Auto.PetFactor.origin_starFac`, **`Auto.NormalPETState`**, **`Auto.ProtectedLeadingInvariant`**, **`Auto.ProtectedLeadingInvariant.subConst`**, **`Auto.petChildren`**, **`Auto.petNormalizeItem`**, `Auto.map_origin_starFac`, `Auto.length_petNormalizeItem`, `Auto.origin_petNormalizeItem`, `Auto.petNormalizeItem_coeff_zero`, **`Auto.petNewHead_ne_child`**, **`Auto.petAllItems`**, **`Auto.petRawChildren`**, **`Auto.petNormalized`**, **`Auto.petNewSpatial`**, **`Auto.petNewHead`**, `Auto.petNewHead_block_length`, `Auto.petNewHead_block_origin`, `Auto.petNewHead_coeff_zero`, `Auto.petNormalized_coeff_zero`, **`Auto.petGroup`**, `Auto.petGroup_keys`, **`Auto.petGroup_nodup`**, **`Auto.petSubConst_ne_of_natDegree_pos`**, **`Auto.petNewHead_ne_shiftedChild`**, `Auto.petGroup_fst_mem`, **`Auto.petGroup_property`**, **`Auto.petAssemble`**, **`Auto.petNewHeadFactor`**, `Auto.petNewHeadFactor_origin`, **`Auto.petNonConstChildren`**, `Auto.petNonConstChildren_ne_zero`, `Auto.petNonConstChildren_coeff_zero`, **`Auto.petUpdate_protected`**, **`Auto.petNormalized_tail_eq`**, **`Auto.mem_petNonConstChildren`**, **`Auto.PetLeadData`**, `Auto.petLeadData_zero`, **`Auto.petNewHead_ne_child_highDeg`**, **`Auto.petNewHead_ne_child_full`**, `Auto.petSubConst_zero`, **`Auto.petNewHead_ne_zero`**, **`Auto.petNewHead_ne_all`**, **`Auto.petUpdate_protected_of_invariant`**, `Auto.natDegree_petSubConst_sub_le`, **`Auto.petUpdate_invariant_diff`**, **`Auto.petUpdate_invariant_head`**, **`Auto.petUpdate_invariant_diff_highDeg`**
 proved (`Auto.csLoss`; the constant `c_T = 2^(2^T - 1)` is written `2^(2^T)/2` so that no natural subtraction appears) | 3 | `patch:cs-loss`, explicit accumulation of the removal losses | **`Auto.csPhi`**, `Auto.csPhi_nonneg`, `Auto.csPhi_le_one`, `Auto.csPhi_mono`, **`Auto.csPhi_lipschitz`**, `Auto.csPhi_iter_nonneg`, `Auto.csPhi_iter_le_one`, **`Auto.csPhi_iter_eq`**, **`Auto.csLoss`**
-partial (the estimate itself is proved, `Auto.multiAff_sublevel_le`, for the explicit multilinear form `Auto.multiAff`; what is owed is the bridge -- that every nonzero multilinear integer polynomial of total degree at most two IS of that form) | 3 | `patch:multiaffine-sublevel`, the sublevel estimate actually needed | **`Auto.volume_abs_affine`**, **`Auto.integral_fejer_indicator_abs_affine_le`**, `Auto.measurableSet_abs_affine`, **`Auto.fejerMeasure`**, `Auto.fejerMeasure_apply`, `Auto.isProbabilityMeasure_fejerMeasure`, **`Auto.fejerMeasure_le_volume`**, **`Auto.fejerMeasure_abs_affine_le`**, `Auto.two_mul_div_sqrt`, **`Auto.measure_pi_fin_last`**, **`Auto.fejerPi_snoc_sublevel_le`**, **`Auto.fejerPi_linear_sublevel_le`**, **`Auto.measure_pi_fin_succAbove`**, **`Auto.fejerPi_succAbove_sublevel_le`**, **`Auto.multiAff`**, **`Auto.multiAffLead`**, **`Auto.multiAff_split`**, **`Auto.fejerPi_linear_sublevel_le'`**, `Auto.measurable_multiAff`, `Auto.measurable_multiAffLead`, `Auto.one_le_abs_intCast`, **`Auto.multiAff_eq_const`**, **`Auto.multiAff_sublevel_le_of_b_zero`**, **`Auto.multiAff_sublevel_le_of_quad`**, **`Auto.multiAff_sublevel_le`**, **`Auto.multilinear_support_cases`**, **`Auto.monTerm`**, `Auto.monTerm_zero`, `Auto.monTerm_single`, `Auto.monTerm_add`, **`Auto.monTerm_pair`**
-partial (the radius half of the lemma is fully proved, `Auto.locUnifPowMixed_re_le_scaled`, on top of the mixed-radius quantity `Auto.locUnifPowMixed` and its cube-successor identity `Auto.locUnifPowMixed_succ_eq`; the zero-vertex half is proved as `Auto.sq_norm_avg_le_enlarged` and the patch`s `P(z)` is identified as the smoothed square by `Auto.re_innerFejer_eq_sq`; what is owed is the single step joining them -- averaging the zero-vertex bound over the cube against the mixed weight, which needs the support hypothesis on the enlarged box) | 3 | `patch:uniformize`, mixed radii to one radius, positivity before comparison | **`Auto.fejer_le_scaled`**, **`Auto.fejerCube_le_scaled`**, **`Auto.fejerCubeMixed`**, `Auto.fejerCubeMixed_const`, `Auto.fejerCubeMixed_nonneg`, **`Auto.fejerCubeMixed_le_scaled`**, `Auto.continuous_fejerCubeMixed`, `Auto.integrable_fejerCubeMixed`, `Auto.integral_fejerCubeMixed`, **`Auto.fejerCubeMixed_cons`**, **`Auto.locUnifPowMixed`**, `Auto.locUnifPowMixed_const`, `Auto.pos_fin_cons`, `Auto.integrable_locUnifMixed_integrand`, **`Auto.locUnifPowMixed_swap`**, `Auto.integrable_split_integrand_mixed`, **`Auto.locUnifPowMixed_succ_eq`**, `Auto.integrable_fejerCubeMixed_innerFejer`, **`Auto.locUnifPowMixed_re_nonneg`**, **`Auto.integral_fejerCubeMixed_le_scaled`**, **`Auto.sq_norm_avg_le_enlarged`**, `Auto.re_locUnifPowMixed_eq`, `Auto.re_locUnifPow_succ_eq`, **`Auto.locUnifPowMixed_re_le_scaled`**, **`Auto.innerFejer_eq_sq`**, **`Auto.re_innerFejer_eq_sq`**
+proved | 3 | `patch:multiaffine-sublevel`, the sublevel estimate actually needed | **`Auto.volume_abs_affine`**, **`Auto.integral_fejer_indicator_abs_affine_le`**, `Auto.measurableSet_abs_affine`, **`Auto.fejerMeasure`**, `Auto.fejerMeasure_apply`, `Auto.isProbabilityMeasure_fejerMeasure`, **`Auto.fejerMeasure_le_volume`**, **`Auto.fejerMeasure_abs_affine_le`**, `Auto.two_mul_div_sqrt`, **`Auto.measure_pi_fin_last`**, **`Auto.fejerPi_snoc_sublevel_le`**, **`Auto.fejerPi_linear_sublevel_le`**, **`Auto.measure_pi_fin_succAbove`**, **`Auto.fejerPi_succAbove_sublevel_le`**, **`Auto.multiAff`**, **`Auto.multiAffLead`**, **`Auto.multiAff_split`**, **`Auto.fejerPi_linear_sublevel_le'`**, `Auto.measurable_multiAff`, `Auto.measurable_multiAffLead`, `Auto.one_le_abs_intCast`, **`Auto.multiAff_eq_const`**, **`Auto.multiAff_sublevel_le_of_b_zero`**, **`Auto.multiAff_sublevel_le_of_quad`**, **`Auto.multiAff_sublevel_le`**, **`Auto.multilinear_support_cases`**, **`Auto.monTerm`**, `Auto.monTerm_zero`, `Auto.monTerm_single`, `Auto.monTerm_add`, **`Auto.monTerm_pair`**, **`Auto.aeval_eq_sum_monTerm`**, `Auto.support_single_add_single`, **`Auto.pair_exponent_inj`**, `Auto.affSupp`, `Auto.card_support_single`, `Auto.card_support_pair`, `Auto.singles_ne_pairs`, `Auto.zero_ne_single`, `Auto.zero_ne_pair`, **`Auto.sum_affSupp`**, `Auto.support_subset_affSupp`, **`Auto.aeval_eq_multiAff`** (the bridge, discharging the debt recorded 2026-09-17T15:25)
+proved | 3 | `patch:uniformize`, mixed radii to one radius, positivity before comparison | **`Auto.fejer_le_scaled`**, **`Auto.fejerCube_le_scaled`**, **`Auto.fejerCubeMixed`**, `Auto.fejerCubeMixed_const`, `Auto.fejerCubeMixed_nonneg`, **`Auto.fejerCubeMixed_le_scaled`**, `Auto.continuous_fejerCubeMixed`, `Auto.integrable_fejerCubeMixed`, `Auto.integral_fejerCubeMixed`, **`Auto.fejerCubeMixed_cons`**, **`Auto.locUnifPowMixed`**, `Auto.locUnifPowMixed_const`, `Auto.pos_fin_cons`, `Auto.integrable_locUnifMixed_integrand`, **`Auto.locUnifPowMixed_swap`**, `Auto.integrable_split_integrand_mixed`, **`Auto.locUnifPowMixed_succ_eq`**, `Auto.integrable_fejerCubeMixed_innerFejer`, **`Auto.locUnifPowMixed_re_nonneg`**, **`Auto.integral_fejerCubeMixed_le_scaled`**, **`Auto.sq_norm_avg_le_enlarged`**, `Auto.re_locUnifPowMixed_eq`, `Auto.re_locUnifPow_succ_eq`, **`Auto.locUnifPowMixed_re_le_scaled`**, **`Auto.innerFejer_eq_sq`**, **`Auto.re_innerFejer_eq_sq`**, `Auto.norm_locUnifPowMixed_fdiff_le`, `Auto.measurable_locUnifPowMixed_fdiff_c`, `Auto.measurable_locUnifPowMixed_fdiff`, `Auto.integrable_fejer_locUnifPowMixed_fdiff`, **`Auto.re_locUnifPowMixed_succ_split`**, `Auto.eq_cons_cons`, `Auto.swap_comp_eq_cons_cons`, `Auto.cons_cons_swap_apply`, **`Auto.locUnifPowMixed_swap_cons`**, **`Auto.sq_re_locUnifPowMixed_le`**, **`Auto.sq_re_locUnifPowMixed_le_scaled`**
 open | 3 | **`patch:highest-control`** (Proposition, line 739), highest-active-input control with measurable polynomial phases | --
 open | 4 | `patch:u2-fourier-selection` (Lemma, line 785), one-dimensional `U^2` inverse estimate and measurable frequencies | --
 open | 4 | `patch:dual-difference`, dual-difference interchange, explicit cylinder proof | --
@@ -7449,3 +7449,2666 @@ not about the analysis, and the analysis is now done.
 
 File is 32154 lines.  `lake env lean` on the owned file reports no error and no warning, and
 `#print axioms` on each new theorem shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T10:37:19-04:00 - row 396 `patch:uniformize` proved
+
+The one step the previous entry left open -- "averaging the zero-vertex bound
+`Auto.sq_norm_avg_le_enlarged` over the cube against the mixed weight" -- is done, and with it the
+whole lemma.  Row 396 moves from `partial` to `proved`.
+
+**The mixed-radius ports.**  The induction needs the shifted mixed cube average to behave in the
+split shift exactly as the single-radius one does, so the four lemmas behind
+`Auto.re_locUnifPow_succ_split` were ported: `Auto.norm_locUnifPowMixed_fdiff_le` (the uniform
+bound, the mixed cube being again a probability density by `Auto.integral_fejerCubeMixed`),
+`Auto.measurable_locUnifPowMixed_fdiff_c` and its real part `Auto.measurable_locUnifPowMixed_fdiff`,
+`Auto.integrable_fejer_locUnifPowMixed_fdiff`, and then
+**`Auto.re_locUnifPowMixed_succ_split`** itself.
+
+**The zero-vertex half.**  `Auto.sq_re_locUnifPowMixed_le`:
+
+    (locUnifPowMixed N Lv j f).re ^ 2 <= 16 C^3 * (locUnifPowMixed N (Fin.cons L Lv) j f).re
+
+for `f` one-bounded and supported in `petBox C N`, with `L <= 2 (C N^expo j)`.  This is the patch's
+first display -- "the zero vertex supports `u_z` on the original box, so
+`|V^{-1} int u_z|^2 <= (1 + L/S) P(z)`" -- averaged over the cube against the mixed weight, which
+is its "after Jensen".  The proof is the mixed-radius port of `Auto.sq_re_locUnifPow_le`: induction
+on the number of mixed coordinates, base case the support Cauchy-Schwarz
+`Auto.sq_re_locUnifPow_zero_le`, step splitting at the first mixed coordinate, applying the
+induction hypothesis to the differenced function (again `Nice`, one-bounded and supported in the
+same box, the zero vertex being undisplaced) and closing with `Auto.sq_integral_fejer_le`.
+
+**The swap.**  The split consumes coordinates of `Lv` at the front, while
+`Auto.locUnifPowMixed_re_le_scaled` consumes the appended common radius `L` at the front too, so
+the step ends on `Fin.cons (Lv 0) (Fin.cons L (Fin.tail Lv))` and owes one adjacent transposition.
+**`Auto.locUnifPowMixed_swap_cons`** supplies it: the substitution exchanging the first two shift
+coordinates is measure preserving (`MeasureTheory.volume_preserving_arrowCongr'`), it carries one
+radius vector to the other (`Auto.cons_cons_swap_apply`, with `Auto.eq_cons_cons` and
+`Auto.swap_comp_eq_cons_cons` reading a vector of length `s + 1 + 1` as its first two entries and
+the rest), and it leaves the iterated difference alone by `Auto.fdiffIter_swap_cons` -- the germ
+recorded for this purpose in the entry of 2026-09-17T18:05.  It needs no positivity and no
+boundedness: it is a change of variables, not an estimate.
+
+**The lemma.**  **`Auto.sq_re_locUnifPowMixed_le_scaled`** composes the two halves into
+`patch:uniformize` as stated:
+
+    (Q^j_{Lv,V}(f))^2 <= 16 C^3 * ((prod_l 2L/Lv l) * (locUnifPow N L j (s+1) f).re),
+
+the hypothesis `Lv l <= L/2` being the patch's `L >= 2 max_i L_i`.
+
+Note on Lean bookkeeping, recorded because it cost two elaborations: two applications of `Fin.cons`
+produce the length `s + 1 + 1`, which is the same number as `s + 2` but not the same term, and
+`rw` matches syntactically.  The swap lemma is therefore written in the `s + 1 + 1` form
+throughout, and the one place where the file's own `Auto.fdiffIter_swap_cons` (stated at `s + 2`)
+has to be applied goes through `show ... from`, which is checked up to defeq.  Likewise
+`MeasurePreserving.integral_comp'` is given its integrand explicitly: recovering it from the
+expected type is a higher-order unification Lean does not solve.
+
+File is 32646 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on each new theorem -- `Auto.norm_locUnifPowMixed_fdiff_le`,
+`Auto.measurable_locUnifPowMixed_fdiff_c`, `Auto.measurable_locUnifPowMixed_fdiff`,
+`Auto.integrable_fejer_locUnifPowMixed_fdiff`, `Auto.re_locUnifPowMixed_succ_split`,
+`Auto.eq_cons_cons`, `Auto.swap_comp_eq_cons_cons`, `Auto.cons_cons_swap_apply`,
+`Auto.locUnifPowMixed_swap_cons`, `Auto.sq_re_locUnifPowMixed_le`,
+`Auto.sq_re_locUnifPowMixed_le_scaled` -- shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next unfinished ledger row is 397, `patch:highest-control` (Proposition, line 739 of
+`blueprints/patch_3_updated.tex`), highest-active-input control with measurable polynomial phases.
+
+`lake build` at 2026-09-17T10:45-04:00: exit 0, "Build completed successfully (3343 jobs)".  The
+one style-linter note and the `info` display in that output come from the pre-existing `DFR`
+library, not from `DFR/Auto/`, which is excluded from `lakefile.toml` by the verification policy
+and is checked separately with `lake env lean`.
+
+## 2026-09-17T10:52:16-04:00 - row 395 `patch:multiaffine-sublevel` proved: the bridge discharged
+
+The debt recorded under 2026-09-17T15:25 -- "a bridge with no blueprint content: that
+`MvPolynomial.aeval u p` equals `Auto.multiAff` of `p`'s coefficients when `p` is multilinear of
+total degree at most two" -- is paid.  Row 395 moves from `partial` to `proved`.
+
+**`Auto.aeval_eq_multiAff`.**  For `p : MvPolynomial (Fin n) ℤ` with `p.degreeOf i <= 1` for every
+`i` and `p.totalDegree <= 2`,
+
+    MvPolynomial.aeval u p
+      = multiAff (p.coeff 0) (fun k => p.coeff (single k 1))
+          (fun k l => if k < l then p.coeff (single k 1 + single l 1) else 0) u.
+
+The quadratic matrix is upper triangular.  That is legitimate, and is the point worth recording:
+`Auto.multiAff` sums over *all* ordered pairs `(k, l)` including `k = l`, and a multilinear
+polynomial never uses the diagonal, so putting the whole coefficient of the unordered pair on the
+ordered representative `k < l` and zero elsewhere reproduces it exactly.  No generality is lost --
+`Auto.multiAff_sublevel_le` is quantified over arbitrary `b`.
+
+**How it goes.**  `Auto.aeval_eq_sum_monTerm` rewrites `aeval` as `sum over p.support of
+coeff d p * monTerm d u` (`MvPolynomial.eval₂_eq` gives the product over `d.support`; extending to
+`Finset.univ` is free because the missing exponents are zero).  `Auto.affSupp` names the three
+families `Auto.multilinear_support_cases` allows -- the constant, the `n` singles, the ordered
+distinct pairs -- and `Auto.support_subset_affSupp` puts `p.support` inside it, normalizing an
+unordered distinct pair to the ordered one by `add_comm`.  `Finset.sum_subset` then moves the sum
+onto `affSupp`, the added terms vanishing because their coefficients do.
+**`Auto.sum_affSupp`** enumerates it: the three families are pairwise disjoint, which is read off
+the cardinality of the support (zero, one, two -- `Auto.card_support_single`,
+`Auto.card_support_pair`, and the three inequalities `Auto.zero_ne_single`, `Auto.zero_ne_pair`,
+`Auto.singles_ne_pairs`), and the two parametrizations are injective, by
+`Finsupp.single_left_injective` and by **`Auto.pair_exponent_inj`** -- which reads the pair back off
+the support, `Auto.support_single_add_single` computing it as `{a, b}`.  The quadratic sum is then
+matched by `Finset.sum_filter` together with `Finset.univ_product_univ` and `Finset.sum_product`.
+
+Method note, worth keeping: the whole bridge was developed and checked in a small standalone file
+importing only Mathlib, which elaborates in seconds, and transplanted once it was clean.  The owned
+file takes about eight minutes per check, so the twelve declarations would otherwise have cost
+several of them; as it was they compiled against the real file on the first attempt.  The probe
+also caught two deprecated `Finsupp` names (`support_single_ne_zero`) that would have produced
+warnings, which the verification policy treats as failures.
+
+File is 32837 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on `Auto.aeval_eq_sum_monTerm`, `Auto.pair_exponent_inj`, `Auto.sum_affSupp`,
+`Auto.support_subset_affSupp` and `Auto.aeval_eq_multiAff` shows only `propext`,
+`Classical.choice`, `Quot.sound`.
+
+Next unfinished ledger row is 397, `patch:highest-control` (Proposition, line 739 of
+`blueprints/patch_3_updated.tex`).  With rows 395 and 396 closed, every ingredient its proof cites
+-- the four phase steps, the normal-state update, the pivot recursion, the loss lemma, the sublevel
+exclusion and `patch:uniformize` -- is now proved.
+
+## 2026-09-17T11:01:23-04:00 - row 397 opened: the survey, and the tail inputs to the removal step
+
+Row 397 `patch:highest-control` is started.  It stays `open`: nothing of the proposition itself is
+proved yet.  This entry records the survey and the first brick, both of which change the picture of
+how much the row actually owes.
+
+**Survey.**  The patch names twelve Lean nodes for this proposition (line 764 of
+`blueprints/patch_3_updated.tex`).  Checked one by one against the file:
+
+- present under the patch's own names: `NormalPETState`, `ProtectedLeadingInvariant`,
+  `petUpdate_protected` (row 392, `patch:pet-update`);
+- present under the file's names: `multiaffine_sublevel` is `Auto.multiAff_sublevel_le` with the
+  bridge `Auto.aeval_eq_multiAff` (row 395, closed today); `mixedCube_uniformize` is
+  `Auto.sq_re_locUnifPowMixed_le_scaled` (row 396, closed today); `csChain_power_bound` is
+  `Auto.csLoss` (row 393, `patch:cs-loss`);
+- **`affineBlock_cube` is already proved**, as `Auto.headBlock_cube` -- the cube invariant
+  `patch:affine-cube-invariant` -- together with `Auto.slopeProd`, `Auto.slopeState`,
+  `Auto.slopeProd_translate`, `Auto.slopeProd_terminal` and the `L^2` block bounds.  This is the
+  patch-3 terminal-step work parked on 2026-09-15T17:33 when the user moved to rows 372-374.  It
+  survived the supersession of `patch_3.tex` by `patch_3_updated.tex` intact, as that entry
+  predicted: `patch:affine-block` and `patch:affine-cube-invariant` are unchanged in the new
+  document (its lines 583-594).  The one lemma removed at the park, `integral_windowAvg`, was
+  recovered on 2026-09-16T06:10 as part of row 388.
+- still missing: `petPivot_type_decreases`, `petIteration_bound`, `petStep_signed`,
+  `phaseStrip_four`, and the proposition `highestActive_uniformity`; and, in the removal chain,
+  `cs_remove_slope_block`, which the 2026-09-15T16:11 entry already flagged as "next".
+
+So the removal chain owes exactly one node, `cs_remove_slope_block`, the integrated removal
+inequality `|A_r|^2 <= 2 Re E_{u ~ kappa_H} A_{r+1} + 2H/N` of the patch's step 2.  Its tool is
+`patch:signed-vdc`, `Auto.sq_norm_signed_vdc`, which was not available when the work was parked and
+is now proved (row 388).
+
+**The brick.**  `Auto.sq_norm_signed_vdc` takes the removed block as its `g` and the surviving
+tail as its `F`, and asks of `F` joint measurability, a uniform bound, and an `L^2` bound in the
+point uniform in the parameter.  Those are supplied:
+**`Auto.continuous_slopeTail_uncurry`** and `Auto.measurable_slopeTail_uncurry` (joint continuity
+in the point and the parameter, hence joint measurability -- the displacement
+`(x,t) |-> x + (a_i - a_r) t e_j` is continuous and `Auto.continuous_headBlock` is already there);
+`Auto.norm_slopeTail_le_one`; and **`Auto.integrable_sq_slopeTail`** with
+**`Auto.integral_sq_slopeTail_le`**, the patch's "a product block is dominated by any one of its
+factors, so all required `L^2` and `L^1` bounds remain at most `V`".  The domination is by the
+*protected* factor, which is legitimate precisely because the index `m` survives every removal
+(`Auto.norm_slopeTail_le_input`, already in the file); the zero vertex then dominates that block by
+its own input, and the displacement costs nothing, by `Auto.integrable_sq_translate` and
+`Auto.integral_sq_translate` -- translation invariance of the volume on `E3`.
+
+File is 32923 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+(The first check of this brick carried one deprecation warning, `continuous_finset_prod`; the
+current name is `continuous_finsetProd`, which the file already uses elsewhere.  Fixed and
+re-checked, since the verification policy treats a warning as a failure.)
+
+Next on row 397: `cs_remove_slope_block` itself -- feeding the above, together with the removed
+block's own `L^2` bounds and the window lemmas, to `Auto.sq_norm_signed_vdc`.
+
+## 2026-09-17T11:18:30-04:00 - row 397: the state normalized for the removal step
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.slopeState_translate`** is the integrated
+form of the patch's "at step `r` translate by `-a_r t e_m` and remove *exactly* `G_{r,r}`":
+
+    slopeState = V^{-1} int_x G_{r,r}(x) * (N^{-1} int_t (surviving tail)(x,t)).
+
+`Auto.slopeProd_translate` already had this at a point.  The step that was missing is that the
+translation depends on the parameter, so it cannot be performed under the outer point integral:
+the order is swapped, the translation applied at each fixed parameter, and the order swapped back.
+Both swaps are carried as explicit integrability hypotheses, in the house style of
+`Auto.sq_norm_signed_vdc`.  The translation itself is `integral_sub_right_eq_self` -- translation
+invariance of the volume on `E3` -- and the parameter interval is turned into `Set.Ioc` by
+`intervalIntegral.integral_of_le`, which is the form the Fubini swap wants.
+
+With this the removed block sits outside the parameter integral, which is exactly the shape
+`Auto.sq_norm_signed_vdc` consumes: its `g` is `G_{r,r}`, its `F` the surviving tail, whose joint
+measurability, uniform bound and `L^2` bound were supplied in the preceding entry.
+
+Two failed elaborations preceded the clean one; both causes are mechanical and worth recording,
+since between them they now account for four failed checks in this file:
+
+1. `refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)` leaves the goal as an
+   unreduced application `(fun x => ...) x = (fun x => ...) x`, and `rw` matches syntactically, so
+   it cannot see an interval integral inside.  The fix is to prove the pointwise identity as a
+   standalone `∀ x, ...` first and hand that to `integral_congr_ae`.
+2. `integral_const_mul` reads `int a, r * f a = r * int a, f a`.  Pulling a constant *out* of an
+   integral is therefore the *forward* direction, not `←`.  Worse, on the right-hand side here the
+   inner integrand `G_{r,r}(x) * prod ...` itself matches `?r * ?f t`, so an unanchored rewrite can
+   land on the wrong integral; each constant-pulling step is now a separate `have` proved by
+   `integral_const_mul _ _`, which fixes both the direction and the target.
+
+File is 32996 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.slopeState_translate` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: `cs_remove_slope_block` itself -- feeding `Auto.slopeState_translate` and the tail
+lemmas to `Auto.sq_norm_signed_vdc`, which still needs the removed block's own `L^2` bounds and the
+window-side integrability hypotheses discharged.
+
+## 2026-09-17T11:27:15-04:00 - row 397: the tail's correlation is the next stage
+
+Row 397 `patch:highest-control` stays `open`.  This is the patch's "Equation
+\eqref{patch:affine-block} identifies the resulting correlation with `A_{r+1}`", at a point.
+
+`Auto.sq_norm_signed_vdc` produces the autocorrelation of the surviving tail in the parameter,
+`tail(x, t + u) * conj (tail(x, t))`.  **`Auto.headBlock_pair_eq_conj_succ`** turns one factor of
+it into a block one level deeper carrying `u` as the new shift, and
+**`Auto.slopeTail_pair_eq_conj`** does the whole product at once.  The shift bookkeeping is the
+only content: `x + (a_i - a_r)(t + u) e_j` is `(x + (a_i - a_r) t e_j) + (a_i - a_r) u e_j`, so the
+point at which the deeper block is evaluated is the stage-`r` displaced point, and the appended
+shift is the parameter gap.
+
+**A convention point, kept explicit rather than absorbed.**  `Auto.headBlock` conjugates the
+*shifted* copy, while the autocorrelation conjugates the *unshifted* one, so the two differ by a
+conjugation of the entire product -- the identity carries `conj` on the outside:
+
+    tail(x, t+u) * conj (tail(x, t)) = conj (prod_i G_{i,r+1}(x + (a_i - a_r) t e_j)).
+
+This is the convention bridge the patch records for `def:local-uniformity` ("the displayed parity
+cube is globally conjugated when `s` is odd; its integrated Fejer power is real, so the two
+conventions give the same quantity").  The removal step takes a real part and `Re (conj z) = Re z`,
+so it is harmless; it is left visible in the statement rather than absorbed, because a convention
+slip here would not show up anywhere downstream.
+
+Lean note: `Fin.snoc_castSucc` and `Fin.snoc_last` take the appended value *before* the vector.
+The first attempt supplied them in the other order; both are `simp` lemmas, so the argument order
+is now not depended on at all.
+
+File is 33046 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: `cs_remove_slope_block`, which now has all three of its algebraic ingredients --
+`Auto.slopeState_translate` to put the state in the tool's shape, the tail lemmas of the
+11:01 entry for its `F`-side hypotheses, and `Auto.slopeTail_pair_eq_conj` to read the resulting
+correlation as stage `r + 1`.  What remains for it is the removed block's own `L^2` bounds and the
+window-side integrability hypotheses of `Auto.sq_norm_signed_vdc`.
+
+## 2026-09-17T11:39:55-04:00 - row 397: the `L^1` bounds for the removal step
+
+Row 397 `patch:highest-control` stays `open`.  Three more of `Auto.sq_norm_signed_vdc`'s
+hypotheses are discharged: **`Auto.integrable_norm_headBlock`** (a block is integrable, being
+dominated by its input), **`Auto.integrable_norm_slopeTail`** (the surviving tail is integrable at
+each parameter, dominated by the protected input, translated), and
+**`Auto.integrable_cross_slopeTail`** (the tail correlates integrably with itself at any two
+parameters).
+
+The cross term is worth a note, because the obvious route is more expensive than the one taken.
+`Auto.sq_norm_signed_vdc` asks for `Integrable (fun x => ‖F x s‖ * ‖F x s'‖)` at two independent
+parameters, which invites putting both copies in `L^2` and invoking a product estimate.  That is
+not needed: one copy is dominated by the protected input (`Auto.norm_slopeTail_le_input`) and the
+other is simply one-bounded (`Auto.norm_slopeTail_le_one`), so the product is dominated by a single
+integrable function.  This is the patch's "a product block is dominated by any one of its factors"
+in its cheapest form, and it is available precisely because the protected index survives every
+removal.
+
+File is 33109 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the three new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Remaining for `cs_remove_slope_block`, all of it `Auto.sq_norm_signed_vdc`'s hypothesis list rather
+than new mathematics: the windowed-average bounds `hΦ2` and `hgΦ`, the indicator-form `hLi`, the
+Fejer-side `hRi`/`hRc`, and the two Fubini hypotheses `hswapH`/`hswapT`.  `hΦ2` is the only one
+that is not a domination: it needs Cauchy-Schwarz in the parameter followed by a swap, since the
+windowed average must be squared before it is integrated in the point.
+
+## 2026-09-17T11:57:48-04:00 - row 397: the windowed average of the tail
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.measurable_slopeTailAvg`** (the windowed
+average is measurable in the point, a parametric integral of a jointly continuous integrand by
+`MeasureTheory.StronglyMeasurable.integral_prod_right'`, which needs no integrability),
+**`Auto.norm_slopeTailAvg_le`** and `Auto.norm_slopeTailAvg_normalized_le` (the window has length
+`N` and the tail is one-bounded, so the normalized average is one-bounded), and
+**`Auto.integrable_headBlock_mul_slopeTailAvg`**, which is the hypothesis `hgΦ` of
+`Auto.sq_norm_signed_vdc`: the normalized average contributes at most `1`, so the pairing is
+dominated by the removed block's own input.
+
+**`hΦ2` will be carried, not discharged, and this is deliberate.**  The remaining windowed
+hypothesis asks for the *square* of the normalized average to be integrable in the point.  The
+domination used everywhere else in this section does not reach it: the tail is dominated by the
+protected input translated by `(a_m - a_r) t`, and that translation moves with the parameter, so
+there is no single fixed dominating function.  It needs Cauchy-Schwarz in the parameter followed by
+a swap.  `Auto.sq_norm_signed_vdc` already takes it as an explicit hypothesis, and the file's house
+style is to thread such hypotheses to the caller, which will have concrete compactly supported
+inputs and can settle it there.  `cs_remove_slope_block` will therefore carry `hΦ2`, `hLi`,
+`hRi`, `hRc`, `hswapH` and `hswapT`; this is recorded so that the carried hypotheses are visible
+rather than discovered later.
+
+Two errors preceded the clean check, one of them a real defect in the statement rather than the
+proof, and worth recording as a hazard of this file:
+
+1. `(hgL1 : Integrable (g r))` was written *before* the binder `(m r : ℕ)`.  With autobound
+   implicits the `r` in the hypothesis became a fresh implicit `r✝`, distinct from the `r` used
+   throughout the rest of the statement.  Lean accepted the signature; the mismatch surfaced only
+   as an unprovable `‖g r x‖ ≤ ‖g r✝ x‖` at the end of the proof.  The failure mode is quiet --
+   the theorem typechecks and is simply not the intended one -- so hypothesis order relative to
+   its binders needs checking whenever a name is reused.
+2. `norm_setIntegral_le_of_norm_le_const` now produces `volume.real s`, not `(volume s).toReal`;
+   `MeasureTheory.measureReal_def` bridges them.  This is the same `measureReal` drift recorded
+   at the patch-3 park of 2026-09-15T17:33.
+
+File is 33187 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T12:27:00-04:00 - row 397: the removal step's correlation identified as the next state
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.corrLine_slopeTail_eq`**:
+
+    corrLine volume (surviving tail) t u = conj (int_x slopeProd ... (r+1) (Fin.snoc h u) x t).
+
+`Auto.sq_norm_signed_vdc` leaves its right-hand side as a Fejer average of `Auto.corrLine`, the
+correlation of the tail in the parameter; this reads that correlation as the stage-`r+1` product
+integrated in the point, which is what the patch calls `A_{r+1}`.  The mathematical content is
+`Auto.slopeTail_pair_eq_conj` from the 11:27 entry; what this adds is the two bookkeeping moves.
+
+The second of them is a small confirmation that the two halves of the chain line up.  The
+stage-`r+1` product carries the shifts `a_i t`, while the correlation produces the slope *gaps*
+`(a_i - a_r) t`.  They differ by translating the point by `a_r t e_j` -- exactly the translation
+`Auto.slopeState_translate` performs at the start of the step, here undone.  The removal step
+therefore returns to the same normalization it began in, as the patch's recursion requires.
+
+### Working rule for this file: never follow `integral_congr_ae` with `rw`
+
+`refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)` leaves the goal as an
+unreduced application `(fun x => ...) x = (fun x => ...) x`.  `rw` matches syntactically and cannot
+see through it, so any subsequent rewrite fails -- with a message that names the pattern rather
+than the cause, which makes it look like a missing lemma.  This has now cost five elaborations of
+this file (bricks 2, 6 twice, 10 twice).  The rule from here on: prove the pointwise identity as a
+standalone `have hpt : ∀ x, ... := ...` and pass it to `integral_congr_ae`; never rewrite under the
+`refine`.
+
+A second process rule, from the same brick: edit a brick by rewriting it whole, not by splicing it
+at a line number.  One such splice here cut off the one-line proof term of a `have`, and the
+resulting parse failure ("unknown identifier `rw`") pointed nowhere near the actual damage.
+
+File is 33237 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.corrLine_slopeTail_eq` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: `cs_remove_slope_block` itself.  Every piece it needs now exists --
+`Auto.slopeState_translate` for the shape, the `F`-side and `L^1` lemmas for the dischargeable
+hypotheses, `Auto.corrLine_slopeTail_eq` for the right-hand side -- and the remaining work is to
+apply `Auto.sq_norm_signed_vdc` with `hΦ2`, `hLi`, `hRi`, `hRc`, `hswapH`, `hswapT` carried, plus
+the scalar bridge `(c : ℂ) * z = (c : ℝ) • z` (`Complex.real_smul`), which is where `slopeState`'s
+complex multiplication meets the tool's real scalar action.
+
+## 2026-09-17T12:35:07-04:00 - row 397: `cs_remove_slope_block` proved
+
+Row 397 `patch:highest-control` stays `open`, but the node flagged as "next" since
+2026-09-15T16:11 is done.  **`Auto.cs_remove_slope_block`** is the patch's step 2:
+
+    ‖slopeState j a g V N c m r h‖^2
+      <= 2 * (V⁻¹ * N⁻¹ * (int_u fejer H u • int_t conj (int_x slopeProd ... (r+1) (snoc h u) x t)).re)
+         + 2 * H / N,
+
+which is `|A_r|^2 <= 2 Re E_{u ~ kappa_H} A_{r+1} + 2H/N` with the stage-`r+1` state written out.
+The proof applies `Auto.sq_norm_signed_vdc` after `Auto.slopeState_translate` puts the state in its
+shape, and rewrites the result with `Auto.corrLine_slopeTail_eq`.
+
+**What is discharged and what is carried.**  Ten of the tool's hypotheses are discharged from the
+lemmas of the preceding entries: joint measurability and the uniform bound of the tail, its `L^2`
+integrability and `V`-bound at each parameter, the cross term, the removed block's `L^2`
+integrability and `V`-bound, and the pairing `hgΦ`.  Six are carried: `hΦ2`, `hLi`, `hRi`, `hRc`,
+`hswapH`, `hswapT`, together with the two swaps `Auto.slopeState_translate` needs.  The reason is
+recorded at 11:57: the tail is dominated by the protected input translated by `(a_m - a_r) t`, and
+that translation moves with the parameter, so no fixed dominating function exists and these need
+Cauchy-Schwarz in the parameter or a Fubini swap.  The caller, with concrete compactly supported
+inputs, settles them.  This is the same house style `Auto.sq_norm_signed_vdc` itself uses; nothing
+is assumed that the patch proves.
+
+Two details that had to line up and did.  The `V`-bounds for the two sides come from *different*
+inputs -- the removed block from `g r`, the tail from the protected `g m` -- and are reconciled by
+requiring `int ‖g i‖^2 <= V` for every `i`, which is the patch's budgeted support box.  And
+`Auto.sq_norm_signed_vdc` states its `hgΦ` over `int t in c..(c+N)` while
+`Auto.integrable_headBlock_mul_slopeTailAvg` was proved over `Set.Ioc c (c+N)`;
+`intervalIntegral.integral_of_le` bridges them.
+
+One failed elaboration, and it was the rule recorded in the entry immediately above being broken in
+the very next brick: the scalar bridge used `refine integral_congr_ae (... fun x => ?_)` followed by
+`rw`.  Restated as a standalone `∀ x` and as `houterEq : ∀ z, (V⁻¹ : ℝ) • z = (V : ℂ)⁻¹ * z`, it
+goes through.  Note also that the outer and inner scalars must be bridged separately: an unanchored
+`rw [Complex.real_smul]` would take whichever `•` it met first, and the inner one carries `N`, not
+`V`.
+
+File is 33340 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.cs_remove_slope_block` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: the remaining blueprint nodes `petPivot_type_decreases`, `petIteration_bound`,
+`petStep_signed` and `phaseStrip_four`, and then the proposition `highestActive_uniformity` itself.
+The removal chain is now complete from `Auto.slopeState` through one step; iterating it is
+`Auto.csLoss` (row 393), already proved.
+
+## 2026-09-17T12:42:32-04:00 - row 397: the pivot decreases the type
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petType`** is the patch's type vector
+`(w_D, ..., w_1)` for `D = 3` -- the counts of distinct leading coefficients by degree, ordered
+lexicographically from the top down, reusing the triple `ℕ ×ₗ ℕ ×ₗ ℕ` the file already carries for
+`Auto.petWeight`.  **`Auto.petType_lt_of_pivot`** is the decrease: above the selected degree `l`
+the counts are unchanged, at `l` one class is lost, and below `l` they are unconstrained, so the
+type drops.  **`Auto.petType_terminates`** is the consequence that no run is infinite.
+
+**What this does not cover, stated so the gap is not mistaken for coverage.**  The blueprint node
+`petPivot_type_decreases` bundles three claims and this brick proves one of them:
+
+- the pivot *selection* rules (the three cases on `l < d`, `l = d` with `w_d > 1`, `l = d` with
+  `w_d = 1`) are not proved; `Auto.petType_lt_of_pivot` takes the selected degree `l` and the two
+  resulting facts about the type as hypotheses, which is what those rules deliver;
+- the length half of the same sentence -- "the new length is at most `2L`" -- is about the state,
+  not the type, and is not proved;
+- `petIteration_bound` is *not* implied by `Auto.petType_terminates`.  The patch defines `B(w, L)`
+  by well-founded recursion and says explicitly that this "proves uniform complexity, not merely
+  termination of each individual execution".  A uniform bound on the number of steps is strictly
+  stronger than the absence of an infinite run, and it remains open.
+
+Both exclusions are in the declarations' own docstrings as well as here.
+
+File is 33390 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: the pivot selection rules and the length bound, then `petIteration_bound`,
+`petStep_signed` and `phaseStrip_four`, and finally the proposition
+`highestActive_uniformity` itself.
+
+## 2026-09-17T12:56:35-04:00 - row 397: four differences annihilate a cubic
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.pdiff`** is the finite difference operator
+`Q |-> taylor u Q - Q`, **`Auto.pdiffIter`** its iteration, and **`Auto.pdiffIter_eq_zero`** the
+statement that `e + 1` differences annihilate a polynomial of degree at most `e`; the case the
+patch uses is **`Auto.pdiffIter_four_eq_zero`**, "at `r = 4` the phase is identically one, by the
+fourth finite-difference identity for cubics".  The degree drop is `Auto.natDegree_taylor_sub_self_le`,
+already in the file from `patch:pet-update`; what is added is the constant case that lemma does not
+cover (its hypothesis is a positive degree), the iteration, and the vanishing.
+
+**Not yet proved, and the docstring says so:** the blueprint writes the identity as the alternating
+sum `sum_{omega in {0,1}^4} (-1)^{|omega|} p(t + omega . h)`.  That is the *evaluation* of the
+iterated difference and needs its own induction through `Auto.consBoolEquiv`, splitting the vertex
+on its first bit against `Auto.numFalse_cons` and `Auto.cubeShift_cons`.  Only the single-step
+evaluation `Auto.eval_pdiff` is here.  `phaseStrip_four` is therefore partially covered: the
+polynomial core is proved, the cube-sum form is not.
+
+**On the ordering of this brick.**  The harder open node is `petIteration_bound`, and it is not
+being skipped: it needs a well-founded recursion defining the patch's `B(w, L)` with the *doubling*
+length budget, and the budget is essential rather than decorative.  The lexicographic order on the
+type triple has no finite height -- from `(0, 1, 0)` one may descend to `(0, 0, k)` for any `k` --
+so no bound depending on the type alone can exist, which is exactly why the patch threads `L` and
+doubles it.  That is a dedicated development, not an increment.  `phaseStrip_four` is an
+independent sibling within the same row rather than anything downstream of `petIteration_bound`, so
+taking it first is not bypassing a prerequisite.
+
+File is 33453 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: the alternating-sum form of `phaseStrip_four`, then `petStep_signed`, then
+`petIteration_bound` (with the pivot selection rules and the `2L` length bound), and finally
+`highestActive_uniformity`.
+
+## 2026-09-17T13:09:52-04:00 - row 397: `phaseStrip_four` completed
+
+Row 397 `patch:highest-control` stays `open`, but the node `phaseStrip_four` is now fully covered.
+**`Auto.eval_pdiffIter`** evaluates the iterated difference as the signed cube sum, splitting the
+vertex on its first bit through `Auto.consBoolEquiv` against `Auto.numFalse_cons` and
+`Auto.cubeShift_cons`; **`Auto.cube_alternating_sum_cubic`** is the blueprint's own form,
+
+    sum_{omega in {0,1}^4} (-1)^{numFalse omega} * Q.eval (t + cubeShift u omega) = 0
+
+for `Q` of degree at most three -- "at `r = 4` the phase is identically one".  The gap left open at
+12:56 is closed; the partial coverage recorded there no longer applies.
+
+**One deliberate deviation from the blueprint's notation, recorded as a convention and not a
+discrepancy.**  The blueprint writes the sign as `(-1)^{|omega|}`, i.e. `Auto.numTrue`; the Lean
+statement uses `Auto.numFalse`.  The two differ by the global factor `(-1)^r`, so the vanishing is
+the same assertion either way, and `numFalse` is what the difference operator
+`Delta_u Q = Q(. + u) - Q` produces directly -- the unshifted vertex carries the minus sign.  Using
+`numTrue` would force the exponent `r - |omega|` and a natural subtraction to be guarded through
+the whole induction.  Both counters and their `cons` lemmas were already in the file.
+
+File is 33505 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Row 397's remaining nodes: `petStep_signed`, `petIteration_bound` (with the pivot selection rules
+and the `2L` length bound), and the proposition `highestActive_uniformity` itself.
+
+## 2026-09-17T13:24:41-04:00 - row 397: the analytic update generalized to polynomial shifts
+
+Row 397 `patch:highest-control` stays `open`.  Work starts on `petStep_signed`, the analytic update
+of the PET recursion, which differs from the affine endpoint only in carrying arbitrary polynomial
+shifts `Q_i(t)` where the endpoint carries `a_i t`.
+
+**`Auto.shiftProd`** is the product of the current blocks at general shifts and
+**`Auto.shiftProd_translate`** the patch's "translate `x` by `-Q_p(t)`", after which the pivot block
+carries no parameter and factors out.  The point worth recording is that this needed no new
+mathematics: `Auto.slopeProd_translate` never used linearity of the shift, only that the pivot's
+displacement cancels against itself, so the identical algebra proves the general case.
+`Auto.shiftProd_terminal`, `Auto.norm_shiftProd_le` and `Auto.norm_shiftTail_le_input` are the
+corresponding bounds, the last again resting on the protected index surviving every removal.
+
+**`Auto.slopeProd_eq_shiftProd` is `rfl`.**  This was stated deliberately as a check rather than a
+convenience: if the affine product were merely *provably* equal to the general one after massaging,
+that would indicate the generalization had drifted into a lookalike object.  Being definitionally
+equal, the affine endpoint is literally the special case `Q i t = a i * t`, and the general
+development can be built on without a second, parallel set of facts.
+
+What `petStep_signed` still owes, beyond this translation: the children of a factor are
+`(conj g_i, Q_i(t+u) - Q_p(t))` and `(g_i, Q_i(t) - Q_p(t))`, which is *not* the cube structure of
+the affine endpoint -- there the two children differ by a shift of the same block, here by a shift
+of the polynomial.  So `Auto.headBlock_pair_eq_conj_succ` does not generalize directly, and the
+correlation produced by `Auto.sq_norm_signed_vdc` has to be matched against a symbolic child family
+rather than a deeper cube.  That is the next piece, and it is the real content of the node.
+
+File is 33578 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T13:39:54-04:00 - row 397: the children of a factor under the analytic update
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.shiftChild`** is the pair of children the
+analytic update attaches to a factor, and **`Auto.shiftProd_corr_translate`** is the patch's
+identification: the correlation of the product, translated by `-Q_p(t)`, is the product of the
+children.  `Auto.norm_shiftChild_le`, `Auto.norm_shiftChild_le_input` and
+`Auto.shiftChild_pivot` are the accompanying bounds and the pivot's own child family, the patch's
+"apply the first calculation with `i = p` to the new head itself".
+
+**The order of the two operations is load-bearing, and is easy to get backwards.**  The patch forms
+the correlation from the *untranslated* product and applies the translation by `-Q_p(t)` inside it.
+That is why both children carry `Q_p(t)`:
+
+    (Q_i(t+u) - Q_p(t))  and  (Q_i(t) - Q_p(t)).
+
+Translating first and correlating afterwards would instead give `Q_i(t+u) - Q_p(t+u)` in the
+shifted child -- a different child family and a different recursion.  The Lean statement follows
+the patch's order, and the section docstring records why, since nothing downstream would reveal the
+substitution.
+
+Note also what does *not* transfer from the affine endpoint: there the two children differ by a
+shift of the same block, which is what made the step a cube and let
+`Auto.headBlock_pair_eq_conj_succ` advance the cube one level.  Here they differ by a shift of the
+*polynomial*, so the update is not a cube step and that lemma has no analogue.  This is the
+structural difference between `petStep_signed` and `cs_remove_slope_block`.
+
+File is 33640 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+What `petStep_signed` still owes: assembling these with `Auto.sq_norm_signed_vdc` into the
+inequality `|A|^2 <= 2 Re E_u A' + 2H/N` itself, in the manner of
+`Auto.cs_remove_slope_block` -- the `F`-side hypotheses will need the general-shift analogues of
+the tail lemmas, which are joint continuity in `(x, t)` and therefore require a continuity
+hypothesis on the shift functions `Q` that the affine case got for free.
+
+## 2026-09-17T13:54:19-04:00 - row 397: the tail lemmas at general shifts
+
+Row 397 `patch:highest-control` stays `open`.  The general-shift counterparts of the affine tail
+lemmas are proved: **`Auto.continuous_shiftTail_uncurry`**, `Auto.measurable_shiftTail_uncurry`,
+`Auto.norm_shiftTail_le_one`, **`Auto.integrable_sq_shiftTail`**,
+**`Auto.integral_sq_shiftTail_le`**, `Auto.integrable_norm_shiftTail` and
+**`Auto.integrable_cross_shiftTail`**.  These are what `Auto.sq_norm_signed_vdc` asks of its `F`
+when the shifts are arbitrary polynomials rather than `a_i t`.
+
+**One hypothesis is genuinely new**, as anticipated in the entry above: the shift functions must be
+continuous.  For `a_i t` that was free; for a general `Q_i` it has to be assumed, and it is exactly
+what makes the tail jointly continuous in the point and the parameter, hence jointly measurable.
+Nothing else changed: the `L^2` bound is still domination by the protected input followed by
+translation invariance, and the cross term still uses the cheap route -- one copy dominated, the
+other one-bounded -- rather than putting both copies in `L^2`.
+
+`Auto.integrable_sq_translate` and `Auto.integral_sq_translate`, proved for the affine case, are
+reused unchanged: they were stated for an arbitrary translation vector, so the general shift gaps
+fall under them as they stand.
+
+File is 33741 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+What `petStep_signed` still owes: the assembly itself.  Its shape will follow
+`Auto.cs_remove_slope_block` -- the state in the tool's form, ten hypotheses discharged from the
+lemmas above, six carried -- with `Auto.shiftProd_corr_translate` in place of
+`Auto.corrLine_slopeTail_eq` on the right-hand side.  The one structural difference remains that
+the children are a symbolic family rather than a deeper cube, so the right-hand side will be a
+product of `Auto.shiftChild` rather than a stage-`r+1` cube state.
+
+## 2026-09-17T14:09:57-04:00 - row 397: the state of the analytic update and its correlation
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.shiftState`** is the patch's
+
+    A = V^{-1} int g_0(x) E_{t in [0,N]} prod_{i=1}^L g_i(x + Q_i(t)) dx,
+
+and **`Auto.corrLine_shiftProd_eq`** identifies the correlation `Auto.sq_norm_signed_vdc` produces
+with the integrated child family of `Auto.shiftChild`.  `Auto.norm_shiftChildProd_le` bounds that
+family.
+
+**A correction to the plan recorded at 13:54.**  That entry said `petStep_signed` would follow
+`Auto.cs_remove_slope_block`'s shape, including a state translation in the manner of
+`Auto.slopeState_translate`.  Rechecking the blueprint before writing showed this is wrong.  The
+block `patch:signed-vdc` removes in the PET step is `g_0`, the *spatial* block -- "apply
+`patch:signed-vdc` with `g = g_0` and the remaining product as `F`" (line 556) -- and not the
+pivot.  `g_0` carries no parameter, so the state is already in the tool's shape and nothing
+precedes the application; there is no `shiftState_translate` and none is needed.  The affine
+endpoint needed `Auto.slopeState_translate` only because there the removed block *was* the pivot,
+which does carry the parameter until it is translated away.
+
+This also supplies the reason for something recorded at 13:39 without one: the children carry
+`Q_p(t)` rather than `Q_p(t+u)` precisely because the correlation is formed first, from the
+untranslated product, and normalized afterwards.  The two facts are the same fact.
+
+File is 33787 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+What `petStep_signed` still owes: the application of `Auto.sq_norm_signed_vdc` itself, with `g_0`
+as its `g` and `Auto.shiftProd` as its `F`.  The `F`-side hypotheses are the lemmas of the 13:54
+entry; the `g`-side ones are about `g_0` alone and are hypotheses of the statement, since `g_0` is
+an arbitrary spatial block rather than a block built by the recursion.
+
+## 2026-09-17T14:27:32-04:00 - row 397: the shifted product as the tool's `F`
+
+Row 397 `patch:highest-control` stays `open`.  The hypotheses `Auto.sq_norm_signed_vdc` needs of
+its `F` are proved for `Auto.shiftProd` itself: **`Auto.continuous_shiftProd_uncurry`**,
+`Auto.measurable_shiftProd_uncurry`, **`Auto.norm_shiftProd_le_input`**,
+**`Auto.integrable_sq_shiftProd`**, **`Auto.integral_sq_shiftProd_le`** and
+**`Auto.integrable_cross_shiftProd`**.
+
+**On the tail lemmas of the 13:54 entry.**  Those were stated for the *translated* tail, on the
+assumption -- corrected at 14:09 -- that the assembly would feed that to the tool.  It feeds
+`Auto.shiftProd`, so they are not the ones the assembly uses.  They are not redundant either, and
+**`Auto.shiftTail_eq_shiftProd`** establishes rather than asserts why: the translated tail is
+`Auto.shiftProd` at the shift family `Q' i t = Q i t - Q r t`, definitionally, so the earlier
+lemmas are the instance of these generic ones at `Q'`.  Had that `rfl` failed, the earlier brick
+would genuinely have been wasted work and this entry would have said so.
+
+### Addendum to the working rule of 12:27: the same cause, a second tactic
+
+`continuous_finsetProd` needs a literal `∏` in the goal.  `Auto.shiftProd` is a `def`, so the goal
+`Continuous (uncurry fun x t => shiftProd ...)` is opaque to it and unification leaves
+`ContinuousMul ?m` stuck -- an error naming a typeclass rather than the real problem.  A `show` at
+the unfolded product fixes it.  The earlier tail lemmas only worked because their statements spelled
+the product out.
+
+This is the same failure as the `integral_congr_ae` rule: a tactic matching *syntactically* against
+a goal that is definitionally, but not syntactically, the right shape.  The general rule for this
+file: before a tactic that matches on the shape of the goal, put the goal in that shape with `show`
+-- do not rely on a `def` unfolding or on a beta-redex reducing.
+
+File is 33872 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+`petStep_signed` now needs only its assembly: `Auto.sq_norm_signed_vdc` with `g_0` as `g` and
+`Auto.shiftProd` as `F`, the `F`-side hypotheses from this entry, the `g_0`-side ones as hypotheses
+of the statement, and `Auto.corrLine_shiftProd_eq` on the right-hand side.
+
+## 2026-09-17T14:42:23-04:00 - row 397: the windowed average of the shifted product
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.measurable_shiftProdAvg`**,
+**`Auto.norm_shiftProdAvg_le`**, `Auto.norm_shiftProdAvg_normalized_le` and
+**`Auto.integrable_g0_mul_shiftProdAvg`** are the windowed-average facts for the general shifted
+product; the last is the hypothesis `hgΦ` of `Auto.sq_norm_signed_vdc` for the spatial block.
+
+These are stated directly over the interval integral `int t in c..(c+N)` rather than over
+`Set.Ioc`, converting inside each proof.  The affine versions were stated over `Set.Ioc` and had to
+be bridged at the call site in `Auto.cs_remove_slope_block` with a `simpa`; stating them in the form
+the tool consumes removes that step from the assembly.
+
+**A design consequence of the generalization, recorded because it will recur.**  The `shiftProd`
+lemmas take `j`, `Q` and `G` implicitly, where their affine counterparts took `j` and `a`
+explicitly.  That reads better at most call sites, but it means a term such as
+`norm_shiftProd_le hG m r x t` no longer determines those arguments by itself, so a Mathlib lemma
+that must infer an *integrand* from such a term gets stuck -- here
+`norm_setIntegral_le_of_norm_le_const`, which reported "don't know how to synthesize implicit
+argument `f`".  Supplying `(f := ...)` resolves it.  If this recurs more than once more, the right
+fix is to make those arguments explicit rather than to keep patching call sites.
+
+File is 33933 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+`petStep_signed` now needs only the application of `Auto.sq_norm_signed_vdc` itself, every
+hypothesis of which is either proved above or carried in the manner settled at 12:35.
+
+## 2026-09-17T14:54:42-04:00 - row 397: `petStep_signed` proved
+
+Row 397 `patch:highest-control` stays `open`, but the blueprint node `petStep_signed` is done.
+**`Auto.petStep_signed`** is `patch:pet-analytic-step`,
+
+    |A|^2 <= 2 Re E_{u ~ kappa_H} A' + 2H/N,
+
+for arbitrary polynomial shifts, with `A = Auto.shiftState` and the right-hand side the integrated
+child family of `Auto.shiftChild`.
+
+Nine of `Auto.sq_norm_signed_vdc`'s hypotheses are discharged from the lemmas of the preceding
+entries and six are carried, on the same terms and for the same reason as in
+`Auto.cs_remove_slope_block` (12:35).  Unlike the affine endpoint there is no state translation,
+because the removed block `g_0` carries no parameter -- the point corrected at 14:09.
+
+It compiled on the first attempt, which is worth noting only because the affine analogue took two:
+the difference is that the rules accumulated at 12:27 and 14:27 were applied from the start --
+pointwise identities as standalone `have`s rather than rewrites under `integral_congr_ae`, and the
+outer and inner scalar bridges kept separate so neither rewrite can land on the other's `•`.
+
+### Blueprint-node survey for row 397, restated
+
+Of the twelve nodes the patch names at line 764:
+
+- proved, under the file's own names: `NormalPETState`, `ProtectedLeadingInvariant`,
+  `petUpdate_protected` (row 392); `csChain_power_bound` = `Auto.csLoss` (row 393);
+  `multiaffine_sublevel` = `Auto.multiAff_sublevel_le` with `Auto.aeval_eq_multiAff` (row 395);
+  `mixedCube_uniformize` = `Auto.sq_re_locUnifPowMixed_le_scaled` (row 396);
+  `affineBlock_cube` = `Auto.headBlock_cube`; `phaseStrip_four` = `Auto.pdiffIter_four_eq_zero`
+  with `Auto.cube_alternating_sum_cubic`; and now `petStep_signed` = `Auto.petStep_signed`.
+- partially proved: `petPivot_type_decreases` -- the type decrease and termination are
+  `Auto.petType_lt_of_pivot` and `Auto.petType_terminates`, but the pivot selection rules and the
+  `2L` length bound are not (12:42).
+- open: `petIteration_bound`, and the proposition `highestActive_uniformity` itself.
+
+File is 34006 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.petStep_signed` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T15:12:34-04:00 - row 397: `petIteration_bound` proved
+
+Row 397 `patch:highest-control` stays `open`, but the node `petIteration_bound` -- the hard one,
+flagged as such since 12:42 -- is done.  **`Auto.petTypeStep`** is one admissible move on the type
+with length budget `L`, **`Auto.PetRunBounded`** says that `R` bounds every run from a given type
+and budget, and **`Auto.petRun_bounded`** is the patch's
+
+    "This proves uniform complexity, not merely termination of each individual execution."
+
+That sentence is why `Auto.petType_terminates` (12:42) was not enough, and the entry there said so:
+the absence of an infinite run is strictly weaker than a bound on run length.
+
+**Why the argument has the shape it does.**  Neither ingredient can be dropped.  The lexicographic
+order on the type has no finite height -- from `(0, 1, 0)` one may descend to `(0, 0, k)` for any
+`k` -- so no bound depending on the type alone exists.  A bound depending on the budget alone does
+not exist either.  And a direct estimate is circular: the number of steps at a level is bounded by
+the count there, the counts below are bounded by `2L`, and `L` has doubled once per step, so the
+estimate refers to the total length already being bounded.  The patch's resolution, followed here,
+is that the recursion runs on the *type*, which does decrease, with the budget carried along; the
+budget's role is only to make the candidate successor sets finite.  The bound is obtained as an
+existence statement by three nested strong inductions on the components, with a finite supremum at
+each level, rather than by defining `B(w, L)` explicitly.
+
+**Method.**  The whole development was built in a standalone probe importing only Mathlib, which
+elaborates in seconds, and transplanted once clean; it then compiled against the owned file on the
+first attempt.  The three failures in the probe were all one class: terms definitionally equal but
+not syntactically so, which `omega` and `rw` treat as distinct atoms -- `W (0 + 1)` against `W 1`,
+and `(a, b, c).1` against `a`.  This is the same family as the working rule of 12:27 and its
+addendum of 14:27, now seen in the arithmetic tactics as well.
+
+**One record-keeping note.**  The docstring first written for `Auto.petRun_bounded` used "admit" as
+an English verb, which the completion gate's own scan for `sorry`/`admit` flags.  It is reworded to
+"have".  The only remaining occurrence of either token in the file is the prose sentence at line
+1795, as it has been throughout.  This reword is a comment-only change made after the check above;
+the next compile confirms it.
+
+File is 34142 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.petRun_bounded` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Row 397 now owes: the pivot selection rules and the `2L` length bound left partial at 12:42, and
+the proposition `highestActive_uniformity` itself.
+
+## 2026-09-17T15:27:36-04:00 - row 397: the length half of `petPivot_type_decreases`
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petUpdate_length_le`** is the second half of
+"the type strictly decreases and the new length is at most `2L`": after one update the surviving
+nonconstant, grouped family has at most `2L` members.  The bound is exact at the raw stage --
+`Auto.length_flatMap_petChildren` and `Auto.length_petRawChildren`, the update forming precisely two
+children per factor -- and the two later stages only shrink, dropping the constant children being a
+`filter` (`Auto.length_petNonConstChildren_le`) and grouping identical polynomials a `dedup`
+(`Auto.length_petGroup_le`).
+
+The reword of the `Auto.petRun_bounded` docstring noted at 15:12 is confirmed by this compile: the
+token scan over the owned file now finds one occurrence of `sorry`/`admit`, the prose sentence at
+line 1795, and none of `admit`.
+
+**What remains of `petPivot_type_decreases`, and why it is a different kind of obligation.**  Only
+the pivot *selection* rules are left -- the three-case choice of index `p`:
+
+    l < d           : deg Q_p = l;
+    l = d, w_d > 1  : lc Q_p ≠ lc Q_1;
+    l = d, w_d = 1  : p = 1.
+
+Everything else in this row has been either analysis or abstract combinatorics.  These rules are
+stated in terms of the degrees and leading-coefficient classes of the *actual polynomial state*, so
+proving that the selected pivot yields `w'_q = w_q` above `l` and `w'_l = w_l - 1` means reasoning
+about class counts on `Auto.NormalPETState` itself, not about the abstract triple that
+`Auto.petType_lt_of_pivot` consumes.  It needs a counting function on the state -- the analogue of
+the existing `Auto.petClasses`, which was built for the superseded `lem:pet-reduction` and counts
+classes of a `Finset` of translation vectors rather than of a normal PET state -- and the lemmas
+relating it to `Auto.petGroup`.  That is its own development and is the next item.
+
+File is 34206 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Row 397 then owes only the proposition `highestActive_uniformity` itself.
+
+## 2026-09-17T15:39:23-04:00 - row 397: the type of a normal state
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petStateClasses`** is the patch's `w_q`,
+the number of distinct leading coefficients among the degree-`q` polynomials of a
+`Auto.NormalPETState`, **`Auto.petStateType`** the triple `(w_3, w_2, w_1)`, and
+`Auto.PetStateTerminal` the stopping condition "every degree is at most one".  This is a new
+counter: the existing `Auto.petClasses` counts classes of a `Finset` of translation vectors and
+belongs to the superseded `lem:pet-reduction`.
+
+**`Auto.petStateClasses_le_length`** and `Auto.petStateType_le_length` are the point of the brick:
+every component of the type is at most the number of items.  This is what ties the two halves of
+the recursion's analysis together.  `Auto.petRun_bounded` (15:12) treats the type and the length
+budget as abstract naturals and needs the candidate successor sets to be finite; on the concrete
+state that is legitimate exactly because a count of *distinct* leading coefficients among a sublist
+cannot exceed the list's length.  Without this the abstract bound would not be known to apply to
+any actual run.
+
+**Scope, stated so this is not mistaken for the node.**  This is the counting apparatus, not the
+pivot selection rules.  What remains is to show that a pivot chosen by the patch's three cases
+yields `w'_q = w_q` above the selected degree `l` and `w'_l = w_l - 1`, and that requires tracking
+the degrees and leading coefficients of the children through `Auto.petChildren` and
+`Auto.petNormalizeItem` -- the building blocks are in the file
+(`Auto.natDegree_taylor_sub_self_le`, `Auto.coeff_taylor_sub_self`, `Auto.taylor_sub_pivot_sub`,
+`Auto.leadingCoeff_taylor`, the `Auto.petSubConst` group, all from row 392) but the counting
+argument on top of them is not.  That is the real work left in `petPivot_type_decreases`.
+
+File is 34263 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T15:57:49-04:00 - row 397: the budget half of the pivot display
+
+Row 397 `patch:highest-control` stays `open`.  The third part of the patch's display for the
+selected degree `l`,
+
+    w'_q = w_q (q > l),    w'_l = w_l - 1,    0 <= w'_q <= 2L (q < l),
+
+is proved: **`Auto.length_petAllItems_update_le`** (after one update from a state with `L` items the
+new state has at most `2L`) and **`Auto.petStateClasses_update_le`** (hence every component of the
+new type is at most `2L`), with `Auto.length_petAllItems_pos`,
+`Auto.length_petNonConstChildren_succ_le` and `Auto.length_petAllItems_petAssemble` supporting them.
+
+It is proved in a slightly stronger form than the display states -- at *every* degree, not only
+below `l` -- because that is the form `Auto.petTypeStep` consumes for its lower components.
+
+The accounting comes out at exactly `2L` rather than `2L + 1`: the raw update produces exactly `2L`
+children (`Auto.length_petRawChildren`), the new head occupies one slot, and
+`Auto.petNonConstChildren` drops the head with `.tail` before the constant children are filtered and
+the rest grouped.  So the new head plus at most `2L - 1` survivors is at most `2L`.
+
+**What is still owed on `petPivot_type_decreases`.**  The first two parts of the display, which are
+the genuine content of the selection rules: that a pivot chosen by the three cases leaves the counts
+above `l` unchanged and drops the count at `l` by one.  Those require the degrees and leading
+coefficients of the children tracked through `Auto.petChildren` and `Auto.petNormalizeItem`, on top
+of the row 392 building blocks.  Nothing proved so far assumes them.
+
+File is 34350 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T16:10:03-04:00 - row 397: the degree and leading coefficient of a child
+
+Row 397 `patch:highest-control` stays `open`.  The polynomial facts underlying the pivot selection
+rules are proved, and they make the mechanism explicit.
+
+Above the pivot's degree nothing moves: `Auto.natDegree_taylor_sub_of_lt` and
+**`Auto.leadingCoeff_taylor_sub_of_lt`** for the shifted child, `Auto.natDegree_sub_of_lt` and
+`Auto.leadingCoeff_sub_of_lt` for the unshifted one.  The Taylor shift preserves both degree and
+leading coefficient (`Polynomial.natDegree_taylor`, `Auto.leadingCoeff_taylor`), and subtracting
+something of strictly smaller degree changes neither, so the classes at those degrees are carried
+across the update unchanged.
+
+At the pivot's own degree the leading coefficients subtract:
+**`Auto.natDegree_leadingCoeff_sub_of_eq`** says the child stays at that degree exactly when the
+difference of leading coefficients is nonzero, and that the difference is then its leading
+coefficient.  This is the patch's "for the selected degree `l`, the new leading classes are the
+nonzero differences with the pivot leading coefficient".  The pivot's own children leave that
+degree: the unshifted one is zero (`Auto.petChild_pivot_unshifted`) and the shifted one drops by
+`Auto.natDegree_taylor_sub_self_le`, which is why the count at `l` falls by exactly one.
+
+**What is left is a different kind of argument.**  Turning these pointwise facts into
+`w'_q = w_q` above `l` and `w'_l = w_l - 1` means relating the `dedup` lengths of the mapped
+leading-coefficient lists across the update -- a `List`/`Finset` counting argument, not a polynomial
+one.  The polynomial side is now complete; nothing in it is assumed.
+
+File is 34422 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T16:24:58-04:00 - row 397: counting the leading-coefficient classes
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.dedup_length_eq_of_mem_iff`** (lists with
+the same members have the same number of distinct elements) and
+**`Auto.dedup_length_sub_one_of_toFinset_eq`** (removing one value and translating by it drops the
+count by one) are the two counting tools the pivot display's first two parts need, and they match
+exactly the two shapes the update produces:
+
+- above the selected degree the children carry their parents' leading coefficients
+  (`Auto.leadingCoeff_taylor_sub_of_lt`, `Auto.leadingCoeff_sub_of_lt`), so the two lists have the
+  same members and the counts agree -- the first tool;
+- at the selected degree the survivors' coefficients are the nonzero differences with the pivot's
+  (`Auto.natDegree_leadingCoeff_sub_of_eq`), so the new value set is the old one with the pivot's
+  class erased and the remainder translated, an injective image of an erasure -- the second tool.
+
+**The one gap left in `petPivot_type_decreases`.**  What is not yet proved is the identification of
+the new state's degree-`q` leading-coefficient list: that its `toFinset` really is the old one when
+`q > l`, and the erased-and-translated one when `q = l`.  Both counting tools take that
+identification as their hypothesis.  Establishing it means pushing the pointwise degree and
+leading-coefficient facts through `Auto.petChildren`, `Auto.petNormalizeItem` and `Auto.petGroup` to
+the level of the whole list -- `petNormalizeItem` in particular subtracts a constant term, which
+does not disturb a positive-degree leading coefficient but has to be carried through the membership
+argument.  That is the last piece of the node; the polynomial side and the counting side are both
+complete and neither assumes it.
+
+File is 34455 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T16:39:39-04:00 - row 397: a normalized child's degree and leading coefficient
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.natDegree_leadingCoeff_petChild_of_lt`** and
+**`Auto.natDegree_leadingCoeff_petChild_of_eq`** carry the facts of the 16:10 entry through
+`Auto.petNormalizeItem`, which subtracts each child's constant term in `t`.  That subtraction does
+not disturb a positive-degree leading coefficient (`Auto.natDegree_petSubConst`,
+`Auto.leadingCoeff_petSubConst`, row 392), and the positivity side condition comes free in both
+cases: above the pivot's degree because `Q.natDegree > Qp.natDegree >= 0`, and at the pivot's degree
+from `1 <= l`.  `Auto.petChild_pivot_unshifted_normalized` records that the pivot's own unshifted
+child normalizes to zero, so it leaves every degree.
+
+This is the per-item form of the identification the counting tools of 16:24 take as hypothesis.
+
+**The gap is now purely structural.**  What remains is to lift these per-item facts to the whole
+list -- through `Auto.petChildren`'s `flatMap`, the constant-child `filter` in
+`Auto.petNonConstChildren`, and `Auto.petGroup`'s `dedup` -- to obtain the two `toFinset`
+equalities.  No further polynomial or counting input is needed; every ingredient of
+`petPivot_type_decreases` is now proved except that lifting.
+
+File is 34508 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T16:54:48-04:00 - row 397: grouping is invisible to the type
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petListClasses`** is the class count of a
+bare item list, with `Auto.petStateClasses_eq_petListClasses` the bridge (`rfl`), and
+**`Auto.petListClasses_congr`** the observation that makes the whole lifting cheap: the count
+depends on the item list only through the *set* of polynomials it carries, so every structural step
+reduces to a membership statement.  `Auto.mem_map_filter_iff_of_mem_iff` is the generic form of
+that reduction.
+
+**`Auto.petListClasses_petGroup`**: grouping leaves the type alone.  `Auto.petGroup` replaces the
+list by its distinct keys (`Auto.petGroup_keys`), which changes multiplicities but not the set of
+polynomials, so it is invisible to the count.  This removes `petGroup` from the remaining gap.
+
+Between the per-item facts of 16:39 and the two `toFinset` equalities there now remain only
+`Auto.petChildren`'s `flatMap` -- each item contributing its two children -- and the constant-child
+`filter` in `Auto.petNonConstChildren`, together with the new head, which `Auto.petAllItems` puts in
+front of the grouped list and which is itself a child.
+
+File is 34564 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T17:09:56-04:00 - row 397: the polynomials the update produces
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.mem_petRawChildren_fst_iff`** and
+**`Auto.mem_petNormalized_fst_iff`** characterize exactly which polynomials the update carries: the
+two children of each parent, and after `Auto.petNormalizeItem` their constant-subtracted forms.
+`Auto.mem_flatMap_pair_iff` is the generic two-element `flatMap` membership behind both, and
+`Auto.map_fst_petRawChildren` the interchange that exposes it.
+
+With `Auto.petListClasses_congr` (16:54) this is everything the count needs to know about the
+`flatMap`, since the count sees only the set of polynomials.
+
+Both proofs close by `exact` against the generic lemma, relying on `Auto.petChildren` and
+`Auto.petNormalizeItem` unfolding definitionally.  That is the situation the working rule of 12:27
+warns about, but the rule is about tactics that match *syntactically*; `exact` checks up to defeq,
+so it goes through where a `rw` would not.
+
+**What is left of `petPivot_type_decreases`.**  The constant-child `filter` in
+`Auto.petNonConstChildren`, the `.tail` that drops the new head, and the head itself, which
+`Auto.petAllItems` puts back in front -- so the new state's polynomial set is the normalized
+children's, minus the zero ones, with the head restored.  Then the two `toFinset` equalities follow
+by combining that set description with the per-item degree and leading-coefficient facts of 16:39.
+
+File is 34611 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T17:24:58-04:00 - row 397: the survivors, and the assembled state's count
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.mem_petNonConstChildren_fst_iff`** describes
+the surviving children's polynomials -- the normalized ones after the head, minus the zero ones --
+and **`Auto.petStateClasses_petAssemble`** reduces the assembled state's count to that of the head
+consed onto the *ungrouped* survivors, the grouping being invisible by `Auto.mem_petGroup_fst_iff`.
+`Auto.mem_map_fst_filter_ne_zero_iff` is the generic filter step behind the first.
+
+**The structural chain is now complete.**  From the old state's polynomials to the new state's
+count, every link is proved: the children are the two per parent
+(`Auto.mem_petRawChildren_fst_iff`), normalization preserves their degrees and leading coefficients
+(16:39) and is visible on the polynomials (`Auto.mem_petNormalized_fst_iff`), the head is dropped
+and the constants filtered (this entry), grouping does not matter (16:54), and the head is restored
+in front (this entry).
+
+**What is left is the assembly**, and one part of it deserves naming now rather than being
+discovered later: the pivot's own two children have to be handled separately from the others.  They
+are the ones that leave the selected degree -- the unshifted one is zero, so the `filter` removes
+it, and the shifted one drops below `l` by `Auto.natDegree_taylor_sub_self_le` -- and that is
+exactly why the count at `l` falls by one rather than staying put.  Every other item contributes two
+children with the parent's leading coefficient (above `l`) or with the difference against the
+pivot's (at `l`).
+
+File is 34668 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T17:39:15-04:00 - row 397: comparing states by leading-coefficient data
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petListClasses_congr_lc`** and
+`Auto.petStateClasses_congr_lc` compare two item lists at a degree by the leading coefficients
+*realized* there, rather than by their polynomials; `Auto.mem_lcList_iff` is the membership
+characterization behind them.
+
+This fills a real gap in the tooling built so far.  `Auto.petListClasses_congr` (16:54) compares
+lists that carry the same polynomials, and the update does not preserve polynomials -- the children
+are different from their parents.  What the per-item facts of 16:39 deliver is the *degree and
+leading coefficient* of each child, so the comparison has to be made on that data.  Had the
+assembly been attempted with the earlier tool it would have stalled at exactly this point.
+
+File is 34717 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Every tool the assembly needs is now in place: the structural chain (17:24), the per-item degree and
+leading-coefficient facts (16:39), the two counting tools (16:24), and this comparison.  The
+assembly itself -- exhibiting for each degree which coefficients are realized on each side, with the
+pivot's own children treated separately as noted at 17:24 -- is the remaining step of
+`petPivot_type_decreases`.
+
+## 2026-09-17T17:54:32-04:00 - row 397: above the pivot's degree, a child lands there iff its parent does
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petChild_high_data`** is the per-parent case
+analysis behind `w'_q = w_q` for `q > l`: at a degree above the pivot's, the children realize
+exactly the parents' leading coefficients.
+
+**The minimality of `l` is doing real work here**, and is worth recording as a hypothesis the node
+genuinely needs rather than an incidental one.  Because `l` is the *minimum* degree present, every
+parent has degree at least `l`, which leaves exactly two cases: a parent at the pivot's degree has
+both children falling to at most `l`, hence below `q`; a parent above the pivot has the pivot of
+strictly smaller degree, so the children keep its degree and leading coefficient
+(`Auto.natDegree_leadingCoeff_petChild_of_lt`).  Without minimality there would be a third case, a
+parent *below* the pivot, where the subtraction is dominated by the pivot and the conclusion fails.
+The patch's rule "let `l` be the minimum degree present" is therefore not a convenience.
+
+File is 34762 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.petChild_high_data` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: the same analysis at `q = l`, where the pivot's own children leave the degree and the others
+contribute the differences of leading coefficients -- the per-parent form of `w'_l = w_l - 1`.
+
+## 2026-09-17T18:09:39-04:00 - row 397: at the pivot's degree, the leading coefficients subtract
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petChild_at_pivot_data`** is the per-parent
+case analysis behind `w'_l = w_l - 1`: both children of a parent at the pivot's degree carry the
+difference of leading coefficients, and stay at that degree exactly when the difference is nonzero.
+**`Auto.petChild_pivot_leaves_degree`** is the special case `Q = Qp`, where the difference vanishes
+-- the pivot is the one parent that loses its class, and loses it exactly once.
+
+**A detail in the vanishing case that needed care, recorded because the obvious argument is wrong.**
+That the difference drops *strictly* below `l` does not follow from its degree-`l` coefficient
+vanishing, because `natDegree 0 = 0` and a zero polynomial would otherwise satisfy
+`natDegree = l` vacuously in the bookkeeping.  `Auto.natDegree_sub_lt_of_leadingCoeff_eq` goes
+through `Polynomial.leadingCoeff_eq_zero` instead: if the degree stayed at `l` the leading
+coefficient would be zero, forcing the polynomial to be zero and its degree to be `0`, which
+contradicts `1 <= l`.  That is where the hypothesis `1 <= l` is actually used, rather than being
+carried for convenience -- and the patch's stopping rule, that the recursion halts when every degree
+is at most one, is what supplies it.
+
+File is 34840 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Both halves of the per-parent analysis are now proved, `q > l` at 17:54 and `q = l` here.  What
+remains of `petPivot_type_decreases` is lifting them across the item list with the comparison tool
+of 17:39 and the two counting tools of 16:24.
+
+## 2026-09-17T18:24:18-04:00 - row 397: the classes above the pivot's degree are preserved
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.lc_realized_high`** lifts
+`Auto.petChild_high_data` across the item list: at a degree above the pivot's, a leading
+coefficient is realized by some normalized child exactly when it is realized by some parent.
+Forward because a child at that degree forces its parent there with the same coefficient, backward
+because the unshifted child of such a parent is itself at that degree carrying it.
+
+This is the first of the two statements the counting tools take as hypothesis.  Combined with
+`Auto.petListClasses_congr_lc` it gives `w'_q = w_q` for `q > l` at the level of the normalized
+children; what still separates that from the state is the head/filter bookkeeping of 17:24.
+
+The backward direction uses the *unshifted* child as its witness.  Either would do -- above the
+pivot's degree both carry the parent's coefficient -- but naming one keeps the witness concrete and
+avoids a case split that would serve no purpose.
+
+File is 34877 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.lc_realized_high` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: the same lifting at `q = l`, where the realized set is the parents' classes with the pivot's
+removed and the rest translated -- the hypothesis of `Auto.dedup_length_sub_one_of_toFinset_eq`.
+
+## 2026-09-17T18:39:06-04:00 - row 397: at the pivot's degree the children realize the nonzero differences
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.lc_realized_at_pivot`** is the companion of
+`Auto.lc_realized_high` at `q = l`: a leading coefficient is realized there by some normalized child
+exactly when it is a *nonzero* difference `lc Q - lc Q_p` for a parent `Q` of degree `l`.
+
+The forward direction splits three ways, and the middle case is the one that matters.  A parent
+above the pivot's degree has both children there too, so neither lands at `l`.  A parent at the
+pivot's degree whose difference vanishes has both children below `l`.  Otherwise the difference is
+the child's leading coefficient.  The pivot is exactly the middle case -- it is the unique parent
+whose difference with itself vanishes -- which is the structural reason precisely one class is lost
+rather than none or several.
+
+Both realization statements are now proved.  The two counting tools of 16:24 apply to them
+directly: `Auto.dedup_length_eq_of_mem_iff` above the pivot's degree and
+`Auto.dedup_length_sub_one_of_toFinset_eq` at it.  What still separates this from
+`petPivot_type_decreases` is the head/filter bookkeeping of 17:24 -- the normalized children are not
+the assembled state's items until the head is split off, the constants filtered and the head
+restored.
+
+File is 34933 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.lc_realized_at_pivot` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T18:58:51-04:00 - row 397: the assembled items are the nonzero normalized children
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petNormalized_cons`** identifies
+`Auto.petNewHead` as the *first* normalized child -- the shifted child of the head item -- and
+**`Auto.mem_cons_petNonConstChildren_fst_iff`** closes the head/filter bookkeeping: splitting that
+head off, filtering the constants from the remainder and putting it back in front recovers exactly
+the nonzero normalized children.  `Auto.mem_cons_filter_ne_zero_iff` is the generic step.
+
+**A side condition that is real rather than an artefact.**  The head is retained whether or not it
+is constant, while the others are filtered, so the equality needs the head to be nonzero.  In the
+update it is -- `Auto.NormalPETState` requires `headPoly_ne_zero` -- but the hypothesis is carried
+explicitly rather than assumed.
+
+Three errors preceded the clean check, and the middle one was a modelling mistake rather than API
+friction: I declared the head factor as a single `Auto.PetFactor` where the state's items carry a
+*list* of factors.  A block is a list, and the head block being a singleton is a property the normal
+state maintains (`Auto.petNewHead_block_length`), not something the type enforces; writing it as a
+bare factor would have quietly assumed that invariant instead of using it.  The other two were
+`List.mem_cons_self` no longer taking explicit arguments, and a rewrite that had to be applied on
+both sides of the goal rather than under `conv_lhs`.
+
+File is 34980 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Every ingredient of `petPivot_type_decreases` is now proved: the two realization statements (18:24,
+18:39), the two counting tools (16:24), the comparison (17:39), and the head/filter bookkeeping
+here.  What remains is to state the conclusion and chain them.
+
+## 2026-09-17T19:09:26-04:00 - row 397: `w'_q = w_q` above the selected degree
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petStateClasses_update_high`** is the first
+half of the pivot display's conclusion: above the selected degree the update leaves the class count
+alone.  It is pure chaining -- assembled count to head-plus-survivors
+(`Auto.petStateClasses_petAssemble`), survivors to nonzero normalized children
+(`Auto.mem_cons_petNonConstChildren_fst_iff`), those to the parents' classes
+(`Auto.lc_realized_high`) -- through the comparison `Auto.petListClasses_congr_lc`.
+
+**A note for the second half.**  The nonzero condition that the middle step carries is free here: a
+polynomial of degree `q > l >= 0` cannot be zero, since `natDegree 0 = 0`.  At `q = l` it will not
+be free, because the surviving children at that degree are exactly those whose difference of
+leading coefficients does not vanish -- there the condition carries the content rather than being
+discharged by a degree count, and it is what makes the count drop by one instead of staying put.
+
+File is 35024 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.petStateClasses_update_high` shows only `propext`, `Classical.choice`,
+`Quot.sound`.
+
+Next: `w'_l = w_l - 1`, the second half, chaining `Auto.lc_realized_at_pivot` with
+`Auto.dedup_length_sub_one_of_toFinset_eq`.
+
+## 2026-09-17T19:31:35-04:00 - row 397: `w'_l = w_l - 1`, and `petPivot_type_decreases` complete
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.petStateClasses_update_at_pivot`** is the
+second half of the pivot display's conclusion: at the selected degree the class count drops by
+exactly one.  The surviving children realize exactly the nonzero differences with the pivot's
+leading coefficient (`Auto.lc_realized_at_pivot`), so the new value set is the old one with the
+pivot's class erased and the remainder translated, and
+`Auto.dedup_length_sub_one_of_toFinset_eq` turns that into the drop.
+
+`hQpmem` -- that the pivot is one of the items -- is the hypothesis with no analogue above the
+selected degree.  Without it there is no class to lose and the statement is simply false.
+
+**A correction to the note recorded at 19:09.**  That entry predicted the nonzero condition would
+"carry the content" at `q = l` rather than being free.  That was wrong, and writing the proof showed
+why: the condition in question is `P ≠ 0` on the *child*, and it is free at `q = l` for the same
+reason as above, a polynomial of degree `l >= 1` being nonzero.  What carries the content is the
+*difference* of leading coefficients being nonzero, which lives inside
+`Auto.lc_realized_at_pivot` and not in the filter.  Two different nonzero conditions were being
+conflated.  The `1 <= l` hypothesis is what makes the child one free, and the patch's stopping rule
+supplies it.
+
+**With this, `petPivot_type_decreases` is complete.**  Its three parts are
+`Auto.petStateClasses_update_high` (19:09), `Auto.petStateClasses_update_at_pivot` (here), and the
+budget bound `Auto.petStateClasses_update_le` (15:57); the abstract descent they feed is
+`Auto.petType_lt_of_pivot` (12:42).  The node was recorded as partial at 12:42 and that record is
+now superseded.
+
+Two failed elaborations preceded the clean one, both mechanical: an implicit argument of
+`Auto.dedup_length_sub_one_of_toFinset_eq` that only becomes determined once a subgoal is
+discharged, so `refine` could not infer it (supplied as `a := Qp.leadingCoeff`, which is the class
+the pivot removes); and two rewrites written as though the goal still carried `toFinset` after a
+`simp only` had already unfolded it to plain list membership.
+
+File is 35091 lines; the token scan finds one occurrence of `sorry`/`admit`, the prose sentence at
+line 1795.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.petStateClasses_update_at_pivot` shows only `propext`, `Classical.choice`,
+`Quot.sound`.
+
+Row 397 now owes only the proposition `highestActive_uniformity` itself.
+
+## 2026-09-17T19:39:57-04:00 - row 397: admissible polynomial shifts
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.AdmissiblePoly`** is the patch's
+admissibility for a polynomial shift, transcribed from the scale convention at lines 206-213 of
+`blueprints/patch_3_updated.tex`: degree `d`, leading coefficient between `Auto.budLo` and
+`Auto.budHi`, and each lower coefficient bounded by the upper budget times the matching power of
+`N`.  `Auto.AdmissiblePoly.leadingCoeff_ne_zero`, `Auto.AdmissiblePoly.ne_zero` and
+`Auto.AdmissiblePoly.natDegree_pos` are the consequences the recursion needs of its shifts, all
+resting on the lower budget being positive.
+
+**Checked rather than assumed**: the file already has an `Auto.Admissible`, but it is the
+admissibility of a *trilinear operator* from the Marcinkiewicz development and has nothing to do
+with polynomial shifts.  Reusing it would have been wrong in a way that is hard to notice, so the
+new notion carries its own name.
+
+**On the remaining item.**  This is the first piece of the *statement* of
+`highestActive_uniformity` rather than of its proof.  The proposition is the culmination of the row:
+its proof is the assembly of every node above it -- the four phase steps, the PET update and
+invariant, the pivot recursion, `patch:affine-terminal`, the loss lemma, the sublevel exclusion and
+`patch:uniformize` -- and its statement needs the budget encoding, the budgeted support box and the
+directional uniformity norm tied together with the quantifier order the blueprint demands, namely
+the order and all budgets chosen before, and so independent of, the inputs and the measurable phase
+coefficients.  The vocabulary is being built first; the assembly follows.
+
+File is 35148 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T19:54:56-04:00 - row 397: the correlation the proposition bounds below
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseProd`** is the product of the shifted
+inputs against the measurable polynomial phase, and **`Auto.phaseCorr`** the correlation the
+proposition assumes a power lower bound for.  The phase is `Auto.expPhase` from
+`DFR/Auto/SmoothingIneq3D/VanDerCorput.lean`, with the blueprint's `e(u) = exp(2 pi i u)` written
+as `expPhase (fun s => 2 * pi * p_x(s))`.
+
+Two modelling choices, recorded because they are decisions rather than transcription:
+
+- Each input carries its **own** coordinate direction `e_i`, so the assignment is a parameter
+  `j : ℕ → Fin 3`.  This differs from `Auto.shiftProd`, whose factors all lie along one direction
+  because the reduction has already put them there.  The blueprint's instance sends input `i` to
+  the `i`-th coordinate; keeping it general costs nothing and matches the blueprint's allowance for
+  degree lists shorter than `(1,2,3)`.
+- The phase is unimodular (`Auto.norm_expPhase`), so it disturbs no bound.
+  **`Auto.norm_phaseProd_le`** and **`Auto.norm_phaseProd_le_single`** record that the phased
+  product is still one-bounded and still dominated by any single factor, which is what lets the
+  domination arguments of the unphased development carry over unchanged rather than needing
+  phase-specific versions.
+
+File is 35195 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+The statement's vocabulary is now nearly complete: `Auto.AdmissiblePoly` for the shifts,
+`Auto.petBox (budHi c δ) N` for the budgeted support box -- `Auto.expo i = i + 1` already gives the
+sides `N^{d_i}` for the full degree list -- `Auto.budLo`/`Auto.budHi` for the power bounds,
+`Auto.phaseCorr` for the hypothesis and `Auto.locUnifPow` for the conclusion.
+
+## 2026-09-17T20:10:42-04:00 - row 397: after four steps the phase is identically one
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phase_cube_eq_one`** is the patch's "at
+`r = 4` the phase is identically one", in the form the four phase steps consume: the parity cube of
+`Auto.expPhase` over the four-dimensional cube of shifts is `1` for a phase polynomial of degree at
+most three.  **`Auto.conjPar_expPhase`** is the step that makes it work -- a conjugation of a phase
+is the phase of the negated argument -- so the cube collapses to the exponential of the *signed sum*
+of the arguments, and `Auto.cube_alternating_sum_cubic` (13:09) says that sum vanishes.
+
+**The `numFalse` convention chosen at 13:09 pays off here**, which is worth recording since it was
+a deviation from the blueprint's notation.  The cube product is indexed by parity and `Auto.conjPar`
+conjugates on odd parity; writing the alternating sum with `Auto.numFalse` makes the sign in
+`Auto.conjPar_expPhase` line up with the sign in `Auto.cube_alternating_sum_cubic` directly.  With
+`numTrue` there would have been a global `(-1)^r` to carry through the exponential, where it is
+least convenient.
+
+File is 35243 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T20:24:33-04:00 - row 397: the degree-one branch, and a full-build re-check
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseProd_one`**,
+**`Auto.phaseProd_one_translate`** and **`Auto.phaseProd_zero_phase`** are the elementary facts
+behind the patch's degenerate branch: with one active input the product is that input, and
+translating the point by its affine shift cancels the shift.
+
+**A precision about what "removes `t`" means.**  The blueprint says translating `x` by `P_1(t)`
+removes `t`.  That is true of the *input factor*, but the `t`-dependence does not vanish outright --
+it survives in the phase, whose argument is evaluated at the translated point.
+`Auto.phaseProd_one_translate` states exactly that and no more.  The `t`-dependence is genuinely
+gone only once the four steps have run and `Auto.phase_cube_eq_one` (20:10) has removed the phase,
+which is why the branch is taken at that stage; `Auto.phaseProd_zero_phase` records the shape it is
+in by then.
+
+### Full-project build re-checked
+
+`lake build` at 2026-09-17T20:24-04:00: exit 0, "Build completed successfully (3343 jobs)".  The
+previous recorded build was at 10:45 today, about 1100 lines of new material ago.  `DFR/Auto/` is
+excluded from `lakefile.toml` by the verification policy, so work in the owned file cannot break the
+configured targets, but a stale build result should not be carried in the records on that argument
+alone.
+
+File is 35289 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-17T20:39:21-04:00 - row 397: the phase drops out of the fourfold cube
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseProd_cube_eq`** is the consequence of
+`Auto.phase_cube_eq_one` that the four phase steps use: the parity cube of the phased product equals
+the parity cube of the bare shifted inputs.  `Auto.conjPar` is multiplicative
+(`Auto.conjPar_mul`), so the cube splits, and the phase's own factor is one.
+
+**What "at `r = 4` the phase is identically one" actually means, stated because the literal reading
+is false.**  The phase is not one pointwise.  What is true, and what the argument uses, is that it
+contributes nothing to the *fourfold cube*.  A formalization asserting the pointwise reading would
+not be awkward but unprovable, so the Lean statement is the cube one.
+
+This is the bridge from the phased setting back to the unphased one: after the four steps the
+parameter-dependent part is a cube of bare shifted inputs, which is the object the rest of the
+development -- `Auto.shiftProd`, `Auto.petStep_signed`, the affine endpoint -- already handles.
+
+File is 35318 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.phaseProd_cube_eq` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T09:59:12-04:00 - row 397: the phased product as the tool's `F`
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.norm_phaseProd_le_protected`**,
+**`Auto.integrable_sq_phaseProd`**, **`Auto.integral_sq_phaseProd_le`** and
+**`Auto.integrable_cross_phaseProd`** are what `Auto.sq_norm_signed_vdc` asks of its `F` for the
+*first* phase step, where `F` is `Auto.phaseProd` and the removed block is the original spatial
+factor `f_0`.
+
+**Joint measurability is a hypothesis, not derived from continuity, and that is deliberate.**  The
+blueprint assumes only *measurable* polynomial phases -- the proposition is titled "also with
+measurable polynomial phases" and states that the budgets are independent of "the measurable phase
+coefficients".  Deriving measurability from a continuity assumption on the phase would strengthen
+the proposition's hypothesis and so weaken the result, which the completion gate forbids.  The
+domination arguments are unaffected: the phase is unimodular, so the product is still bounded by the
+protected input `f_m`, translated.
+
+One failed elaboration, and it is a direct consequence of that decision: `Measurable.pow` takes a
+measurable *exponent function* where `Continuous.pow` takes a numeral, so the phrasing carried over
+from the `Auto.shiftProd` lemmas (which go through continuity) needed `Measurable.pow_const`
+instead.  The error message -- "numerals are data in Lean, but the expected type is a proposition"
+-- names the symptom rather than this cause.
+
+File is 35398 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T10:06:22-04:00 - row 397: the windowed average of the phased product
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.measurable_phaseProdAvg`**,
+`Auto.norm_phaseProdAvg_le`, `Auto.norm_phaseProdAvg_normalized_le` and
+**`Auto.integrable_f0_mul_phaseProdAvg`** complete the `Auto.sq_norm_signed_vdc` inputs for the
+first phase step; `hgΦ` is discharged rather than carried, as in both earlier assemblies.
+
+**The measurability promotion is what makes the faithful hypothesis usable.**
+`StronglyMeasurable.integral_prod_right'` needs *strong* measurability, and the phase hypothesis
+gives only plain measurability.  For a complex-valued function on a second-countable space the two
+coincide, so `Measurable.stronglyMeasurable` bridges them at no cost -- the weaker, faithful
+assumption on the phase is kept and the parametric-integral measurability is still obtained.
+
+**A mismatch to handle at the application.**  `Auto.phaseCorr` is defined over the window `0..N`
+while `Auto.sq_norm_signed_vdc` works with `c..(c+N)`, and `0 + N = N` is a theorem for reals rather
+than definitional, so instantiating at `c = 0` will need a `zero_add` rewrite rather than going
+through directly.  Recorded now so it is not mistaken for a real obstruction when it appears.
+
+File is 35473 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T10:13:16-04:00 - row 397: the first phase step
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseStep_signed`** is the blueprint's
+"the initial step removes the original spatial factor": `Auto.sq_norm_signed_vdc` applied with
+`g = f_0` and `F = Auto.phaseProd`.  Nine hypotheses are discharged from the two preceding entries
+and six carried, on the same terms as before.
+
+This is the third application of the tool in this row, and the pattern has stabilized: the
+discharged/carried split is identical in all three.  What distinguishes the instances is only which
+block plays `g` -- the pivot for the affine endpoint (`Auto.cs_remove_slope_block`, 12:35 on
+2026-09-17), the spatial block for the general PET step (`Auto.petStep_signed`, 14:54), and the
+original spatial factor `f_0` here.  The `0 + N` window bookkeeping anticipated at 10:06 was the
+only friction and cost nothing.
+
+File is 35536 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.phaseStep_signed` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next on row 397: iterating the step to four, where `Auto.phaseProd_cube_eq` (20:39 on 2026-09-17)
+turns the resulting fourfold cube into one of bare shifted inputs, and the phase leaves the
+argument.
+
+## 2026-09-18T10:46:46-04:00 - row 397: the `r`-step phased cube
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseProdIter`** is the parity cube of
+`Auto.phaseProd` after `r` steps -- the blueprint's parameter-dependent part -- with
+`Auto.phaseProdIter_zero`, `Auto.norm_phaseProdIter_le_one`, and **`Auto.phaseProdIter_four_eq`**
+restating `Auto.phaseProd_cube_eq` on it: at four steps the phase is gone and the iterate is the
+parity cube of the bare shifted inputs.
+
+**`Auto.csLoss` fits without adaptation.**  It takes a sequence with `M_r^2 / 2 <= M_{r+1} + δ` and
+concludes `M_0^(2^T) <= c_T (Q + T δ)`; the recursion `Auto.phaseStep_signed` produces is
+`|A_r|^2 <= 2 Re E A_{r+1} + 2H/N`, which is that inequality at `δ = H/N`.  Worth recording because
+`Auto.csLoss` was proved for row 393, a different stage of the argument, and could easily have been
+shaped so as not to transfer.
+
+### A new failure mode, and the habit that prevents it
+
+The first check failed because the brick re-proved `Auto.norm_conjPar`, which the file already had
+at line 9251 -- identical statement, identical proof, 26000 lines earlier.  This is not API drift or
+a tactic subtlety but plain duplication, and the file is large enough that it will recur.
+
+Rule: grep for the name before adding any small general-purpose lemma, not only before adding the
+substantive ones.  Name-collision checks have been routine here for the main declarations (the
+brick-4 survey, the `Auto.Admissible` check at 19:39 on 2026-09-17) but not for incidental helpers,
+which is exactly where duplication is likeliest.
+
+File is 35583 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T10:54:08-04:00 - row 397: the zero-shift vertex supports the cube
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.cubeShift_const_false`**,
+`Auto.numFalse_const_false`, `Auto.phaseProdIter_zero_vertex` and
+**`Auto.phaseProdIter_eq_zero_of_zero_vertex`** formalize the blueprint's "the zero-shift vertex
+supports the integrand there for `t` in `[0, N]`": the vertex with every bit false carries no shift,
+so its factor is the undifferenced phased product at `t`, and a product vanishes as soon as one
+factor does.
+
+This is what confines the cube to the enlarged box, and so what lets the later phase steps use the
+box's indicator as the block they remove.  It is the structural difference between the first step,
+which removes the genuine spatial factor `f_0` (`Auto.phaseStep_signed`, 10:13), and steps two
+through four, which remove an indicator.
+
+The duplication rule adopted at 10:46 was applied: all five candidate names were checked against the
+file first.  None existed; `Auto.conjPar_zero` did, and the file's is used rather than a restatement.
+
+File is 35625 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T11:07:25-04:00 - row 397: an admissible shift is power-controlled on the window
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.AdmissiblePoly.abs_eval_le`** is the
+coefficient half of the blueprint's "polynomial coefficient bounds and `4H <= N/8` give a single
+power-controlled volume for this box": on `0 <= t <= N` an admissible shift of degree `d` is at
+most `(d + 1) u_c(delta) N^d`.
+
+The bound is uniform across coefficients, which is what keeps it clean: a lower coefficient
+contributes at most `u_c(delta) N^(d-r) * N^r = u_c(delta) N^d` and the leading one at most
+`u_c(delta) N^d` directly, so there are `d + 1` terms bounded by the same quantity.  That the powers
+combine is the admissibility convention's scaling doing its work -- had the coefficient bounds not
+carried the matching power of `N`, the terms would not align and the bound would degrade with `r`.
+
+Lean note, the third instance of one shape in this file: `Polynomial.eval_eq_sum_range` takes the
+evaluation point explicitly, and without it the ring is undetermined, reported as "Semiring ?m is
+stuck".  The earlier two were `norm_setIntegral_le_of_norm_le_const` needing `f` (11:39 on
+2026-09-17) and `Auto.dedup_length_sub_one_of_toFinset_eq` needing `a` (19:31).  The pattern: when
+a Mathlib lemma is applied by `exact`/`refine` and its type mentions a structure that only an
+explicit argument pins down, supply that argument rather than reading the typeclass error
+literally.
+
+File is 35675 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.AdmissiblePoly.abs_eval_le` shows only `propext`, `Classical.choice`,
+`Quot.sound`.
+
+## 2026-09-18T11:17:34-04:00 - row 397: the enlarged spatial box
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.mem_petBox_of_sub_mem`**: if the protected
+input is supported in a budgeted box and the shift is bounded by `K`, then the point lies in
+`Auto.petBox (C + K) N`.  `Auto.basisVec_apply` is the coordinate formula it needs.
+
+**The enlargement stays in the same family, deliberately.**  At scale `N >= 1` every side
+`C N^{d_i}` grows to at most `(C + K) N^{d_i}`, so the enlarged box is again a `Auto.petBox` and no
+new notion is introduced.  That keeps the blueprint's "a single power-controlled volume for this
+box" inside the budget calculus -- `C + K` is a budget when `K` is -- and leaves every downstream
+lemma about `petBox` applicable unchanged.  Geometrically only the shifted coordinate moves, so a
+box enlarged in that coordinate alone would be sharper; the bound taken here is lossy in the other
+two, which is harmless in a budgeted argument and much cheaper in reuse.
+
+Lean note: the failed check rewrote `Set.mem_Icc` a second time, an earlier line having already
+unfolded it.  The same slip occurred in the row 395 assembly with `toFinset` (19:31 on 2026-09-17).
+It is the mirror of the `show`-before-matching rule of 12:27: there the goal was not unfolded
+enough for a syntactic tactic, here it was unfolded twice.  Both come from composing a proof against
+the shape imagined rather than the shape the previous line actually left.
+
+File is 35710 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.mem_petBox_of_sub_mem` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T11:26:56-04:00 - row 397: the cube lives in the enlarged box
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseProdIter_eq_zero_of_notMem`** combines
+the zero-shift vertex with the enlarged box: wherever the cube is nonzero, the protected input's
+undifferenced argument is in the budgeted box, so the point is in the enlarged one.
+**`Auto.phaseProdIter_eq_zero_of_notMem_admissible`** supplies the enlargement from admissibility,
+giving the box `Auto.petBox (C + (d+1) u_c(delta) N^d) N` with no free parameter.
+
+**Why the box is "a *single* enlarged spatial box", as the blueprint says.**  The enlargement
+depends only on the shift's admissibility budget, not on how many differences have been taken, so
+it is the same box at every one of the four steps.  Had it grown from step to step the iteration
+would lose control of the volume, and the "single power-controlled volume" the blueprint relies on
+would not exist.
+
+This is the support statement the later phase steps consume: it is what makes the indicator of that
+box an admissible block to remove, rather than something needing a fresh estimate at each step.
+
+File is 35751 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T11:44:07-04:00 - row 397: bounded functions supported in a budgeted box
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.integrable_of_bdd_support_box`**, its real
+twin `Auto.integrable_of_bdd_support_box_real`, and
+**`Auto.integral_sq_le_volume_of_bdd_support`** are the `E3` counterparts of
+`Auto.integrable_of_bdd_support`, which is stated for the parameter line.  A one-bounded function
+supported in `Auto.petBox` has `L^2` mass at most the box's volume, which `Auto.volume_petBox`
+computes as `8 C^3 N^6`.
+
+These let the later phase steps treat the enlarged box's indicator as the removed block: its `L^2`
+mass is the box volume, so the `V` of `Auto.sq_norm_signed_vdc` can be taken to be that, and it is
+power-controlled because `C` is a budget.
+
+**A duplication accepted deliberately.**  The real twin repeats the complex proof line for line.
+The first attempt instead routed the real quantity `‖W x‖^2` through `ℂ` to reuse the complex lemma,
+and that cast detour was the step that failed -- it left `(↑‖W x‖ ^ 2).re = ‖W x‖ ^ 2` unsolved and
+would stay fragile to changes in Mathlib's cast simp set.  A version generic over an arbitrary
+normed codomain would avoid both, but needs measurability typeclasses on the codomain that are not
+worth introducing for two uses.  Honest duplication was preferred to a brittle cast.
+
+File is 35841 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T11:51:17-04:00 - record-keeping correction: convention points moved to ErrorReport
+
+No proof work this tick.  Three findings about `blueprints/patch_3_updated.tex` had been recorded
+only here, where the skill directs convention differences and departures from the source's literal
+text to `automation/ErrorReport.md`.  They are now entered there:
+
+- "at `r = 4` the phase is identically one", whose literal reading is false (the true statement is
+  about the fourfold cube) -- Status 20:10 and 20:39 on 2026-09-17;
+- "translating `x` by its affine `P_1(t)` removes `t`", true of the input factor only -- Status
+  20:24 on 2026-09-17;
+- the `numTrue`/`numFalse` sign convention in the alternating cube sum -- Status 13:09 on
+  2026-09-17.
+
+None is a mathematical error in the blueprint; each is a place where following the literal wording
+would give a statement that is false or weaker than intended, and the ErrorReport entry says so.
+The modelling choices of the same period -- per-input coordinate directions, measurability rather
+than continuity of the phase, the enlarged box staying in the `Auto.petBox` family -- are *not*
+discrepancies and are left in this log, with a pointer from the ErrorReport entry.
+
+The owned file is unchanged at 35841 lines and was last checked clean at 11:44.
+
+## 2026-09-18T12:13:50-04:00 - row 397: the enlarged box's indicator as a removed block
+
+Row 397 `patch:highest-control` stays `open`.  `Auto.indicator_box_eq_zero`,
+`Auto.norm_indicator_box_le_one`, `Auto.measurable_indicator_box`,
+**`Auto.integrable_indicator_box`**, `Auto.integrable_sq_indicator_box` and
+**`Auto.integral_sq_indicator_box`** are the `g`-side hypotheses of `Auto.sq_norm_signed_vdc` for
+the block the later phase steps remove.
+
+**Why the blueprint can say the indicator is "removed by the same Cauchy-Schwarz step".**  The tool
+asks of its `g` only that the `L^2` mass be at most `V`; for an indicator that is an *identity*
+rather than an estimate -- `Auto.integral_sq_indicator_box` gives exactly the box's volume -- so `V`
+can simply be taken to be that volume, which `Auto.volume_petBox` makes power-controlled.  No
+separate argument is needed for these steps.
+
+**The warning check earned its keep this time.**  `Auto.integral_sq_indicator_box` was written with
+hypotheses `0 <= C` and `0 <= N` that its proof never used; the unused-variable warning flagged a
+statement over-specified relative to its proof.  Dropping them makes the lemma strictly more general
+and removes two obligations from every call site.  This is the first instance in this row where the
+no-warnings policy improved a statement rather than only tidying syntax.
+
+File is 35903 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on the new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T12:30:40-04:00 - row 397: the state of the phase iteration
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseState`** is the object the four steps
+iterate -- a removed block against the window average of the `r`-step phased cube, normalized by
+`V`, as a function of the accumulated shifts.  **`Auto.phaseState_zero`** identifies it at `r = 0`
+with the normalized `Auto.phaseCorr`, so the iteration starts from the proposition's own hypothesis
+rather than from something merely similar; `Auto.norm_phaseState_le` is the crude bound by the
+block's `L^1` mass.
+
+Three elaborations were needed and none was a new kind of problem:
+
+1. `refine intervalIntegral.integral_congr fun t _ => ?_` left the integrand metavariables
+   undetermined; a standalone `have` of the pointwise identity fixes it.  This is the
+   `integral_congr_ae`-then-tactic pattern of the 12:27 rule on 2026-09-17, which I have now
+   repeated more often than any other single mistake in this row.
+2. `Real.volume_Ioc` on a window starting at `0` gives `ENNReal.ofReal (N - 0)`, needing `sub_zero`
+   -- the same endpoint-arithmetic gap as the `0 + N` mismatch noted at 10:06.
+3. Adding that `sub_zero` then made the rewrite chain close the goal, so the trailing `ring` became
+   an extra tactic.  The block had been copied from a brick whose window was `c..(c+N)`, where
+   `ring` was needed for `c + N - c = N`.
+
+The third is worth a rule of its own: **when reusing a proof block in a new context, re-check which
+of its steps are still necessary, not only which still typecheck.**  It is the same root as the
+duplicate-rewrite slips of 19:31 and 11:17 -- carrying a proof shape from elsewhere without
+re-reading the goal it now faces.
+
+File is 35979 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T12:39:03-04:00 - row 397: the state after four steps carries no phase
+
+Row 397 `patch:highest-control` stays `open`.  **`Auto.phaseState_four_eq`** composes
+`Auto.phaseProdIter_four_eq` with the state: after the four phase steps the state is the removed
+block against the window average of the parity cube of the *bare* shifted inputs.
+
+This is the junction between the two halves of the proposition's proof.  Everything to its left is
+about the phase; everything to its right -- the PET recursion, the affine endpoint, the sublevel
+exclusion, `patch:uniformize` -- is about an object of exactly this kind, and is already proved.
+
+Clean on the first attempt, from writing both pointwise identities as standalone `have`s rather
+than reaching for `refine ... fun x => ?_` and then rewriting.  That is the rule of 12:27 on
+2026-09-17 applied in advance instead of after a failure; the preceding three bricks each cost an
+extra elaboration for want of it.
+
+File is 36014 lines.  `lake env lean` on the owned file reports no error and no warning, and
+`#print axioms Auto.phaseState_four_eq` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-18T13:06:39-04:00 - row 397: the correlation step doubles the cube
+
+Row 397 `patch:highest-control` stays `open`.  Three theorems, the hinge that turns
+`Auto.sq_norm_signed_vdc` from a single step into a recursion:
+
+- **`Auto.phaseProdIter_succ`** -- the `(r+1)`-cube splits, along its first coordinate, into the
+  shifted `r`-cube times the conjugate of the unshifted one.  The parity bookkeeping is what makes
+  this work: `numFalse (Fin.cons true sigma) = numFalse sigma` while
+  `numFalse (Fin.cons false sigma) = numFalse sigma + 1`, and `conjPar (n+1) = conj . conjPar n`,
+  so the `false` half assembles into exactly the conjugated factor -- with no residual sign.
+- **`Auto.phaseProdIter_cons`** -- the same in the form the step actually produces, with the new
+  shift `u` prepended: `Fin.cons u h`.
+- **`Auto.corrLine_phaseProdIter`** -- `corrLine volume (phaseProdIter r ... h) t u` is the spatial
+  integral of `phaseProdIter (r+1) ... (Fin.cons u h) t`.
+
+The third is the one that matters.  `Auto.sq_norm_signed_vdc` concludes with a `corrLine` of the
+same `F` it was given; until now that conclusion could only be read as a statement about a new,
+unnamed object.  It is now a statement about the *next level of the same construction*, which is
+what allows the step to be iterated four times and the result to be fed to `Auto.csLoss`.
+
+Two notes on method.
+
+1. The cube-splitting content is independent of `phaseProd`: it is a fact about
+   `prod over omega of conjPar (numFalse omega) (F (t + cubeShift h omega))` for an arbitrary
+   `F : R -> C`.  I proved it first in a standalone Mathlib-only probe with that abstract `F`, in
+   seconds rather than the ~8 minutes the owned file costs, and the proof transferred to the owned
+   file unchanged.  **Where a lemma's content does not mention the project's definitions, probe it
+   with those definitions abstracted away.**
+2. `Auto.fdiffIter_eq_cubeProd` (line 9282) already performed this exact splitting for the Fejer
+   difference.  Its proof skeleton -- `consBoolEquiv`, `Fintype.prod_prod_type`,
+   `Fintype.prod_bool`, `Finset.prod_mul_distrib`, then the four `numFalse`/`cubeShift`
+   reductions -- carried over verbatim.  Grepping for an existing occurrence of the *shape* of a
+   proof, not only of its statement, saved the whole derivation.
+
+I also avoided one guess rather than paying for it.  Whether `Fin.cons u h 0` and
+`fun i => Fin.cons u h i.succ` reduce far enough for `rw`'s trailing `rfl` to close the `cons` form
+was genuinely unclear; rather than spend an 8-minute elaboration finding out, I added the `cons`
+form to the abstract probe and settled it there.  In `corrLine_phaseProdIter` the pointwise identity
+is again a standalone `have`, and the final step is `exact` rather than `rw`, so the beta-redexes
+that `corrLine`'s unfolding leaves behind are absorbed by defeq instead of blocking a rewrite.
+
+File is 36076 lines.  `lake env lean` on the owned file reports no error and no new warning -- its
+output is byte-identical to the recorded Mathlib baseline in `base_check.txt` -- and `#print axioms`
+on all three new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: **`phaseStepIter_signed`**, the level-`r` instance of `Auto.sq_norm_signed_vdc` with the
+removed block `g` kept abstract (so that the enlarged box's indicator can be supplied for it).  Its
+`F`-side hypotheses are all reachable from results already proved --
+`Auto.norm_phaseProdIter_le_one` for the bound, `Auto.phaseProdIter_eq_zero_of_notMem` for the
+support, and then `Auto.integrable_of_bdd_support_box`, `Auto.integrable_of_bdd_support_box_real`
+and `Auto.integral_sq_le_volume_of_bdd_support` for integrability and the `L^2` budget -- and its
+`g`-side hypotheses are `Auto.integrable_sq_indicator_box` and `Auto.integral_sq_indicator_box`.
+
+## 2026-09-18T14:23:11-04:00 - row 397: the van der Corput step becomes iterable
+
+Row 397 `patch:highest-control` stays `open`.  Seven theorems, all clean: the analytic hypotheses
+of `Auto.sq_norm_signed_vdc` transferred to the iterate, and then the step itself at level `r`.
+
+- **`Auto.measurable_conjPar`** -- parity conjugation is measurable.
+- **`Auto.norm_phaseProdIter_le_zero_vertex`** -- the iterate is dominated *pointwise* by its
+  zero-shift vertex `omega = (fun _ => false)`, which contributes the factor
+  `phaseProd m f P p j x t` with no shift and no conjugation.
+- **`Auto.measurable_uncurry_phaseProdIter`**, **`Auto.integrable_sq_phaseProdIter`**,
+  **`Auto.integrable_cross_phaseProdIter`**, **`Auto.integral_sq_phaseProdIter_le`** -- the four
+  facts `Auto.sq_norm_signed_vdc` asks of its `F`, each obtained from the corresponding `phaseProd`
+  result by that domination.
+- **`Auto.phaseStepIter_signed`** -- the step at level `r`, with the removed factor `g` left
+  abstract so the enlarged box's indicator can be supplied for it, and with its conclusion already
+  expressed in the level-`(r+1)` iterate via `Auto.corrLine_phaseProdIter`.
+
+The domination is the point.  `phaseProdIter` is a product of `2^r` factors, every one of them
+one-bounded; so the whole iterate is bounded by any single factor, and the zero-shift vertex is the
+one whose factor is exactly the `phaseProd` for which the four facts are already proved.  No new
+analysis was needed for the iterate at all -- only `Auto.norm_finsetProd_le_single`, which was
+already in the file at line 25068.
+
+**An elaboration cost worth recording.**  `Auto.measurable_uncurry_phaseProdIter` first failed with
+`(deterministic) timeout at whnf` -- not a wrong proof, a proof the elaborator could not check.  I
+bisected it in a faithful standalone probe (a copy of `E3`, `basisVec`, `expPhase`, `conjPar`,
+`numFalse`, `cubeShift`, `phaseProd`, `phaseProdIter` and nothing else), where each attempt costs
+seconds rather than the owned file's ~8 minutes, and found:
+
+- with an *abstract* block `Q : E3 -> R -> C` in place of `phaseProd` the same proof is instant, so
+  the cost is not the cube, the `show`, or `Finset.measurable_prod`;
+- the `show` is cheap on its own;
+- the single expensive step is `hFm.comp (...)` when it is asked to produce the *applied* form
+  `Measurable fun q => phaseProd ... q.1 (q.2 + c)` directly.  Unifying `Function.comp` against
+  that applied form sends the unifier into `phaseProd`, and thence into `expPhase`,
+  `Complex.exp` and `EuclideanSpace.single`; it does not terminate within even 1000000 heartbeats.
+- Introducing the composition with its *own* `∘`-shaped type and coercing afterwards, in a second
+  `have`, is instant.  Both `have`s state their type in full; nothing is left to inference.
+
+The rule: **when `Measurable.comp` (or any composition lemma) must land on a goal whose head is a
+heavy definition, give the composition its own `∘`-typed `have` first and coerce in a separate
+step.**  The same shape failed twice in one sitting before I probed it; guessing at a fix costs
+8 minutes an attempt, and reproducing the failure abstractly cost two.  It is the same lesson as
+12:39 on the pointwise-`have` rule: **reproduce a failure where it is cheap before fixing it.**
+
+Also, my first fix attempt -- deleting `classical` on the suspicion of a `Fintype`/`DecidableEq`
+instance diamond -- was wrong, and I only learned that by paying for a full compile.  The probe
+would have told me in seconds.  I should have built it before the first fix, not after the second.
+
+`Auto.phaseStepIter_signed` then compiled on the first attempt.
+
+File is 36248 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all seven new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: iterating this step.  The obstacle is *not* the step but the shape of what it produces: the
+bound at level `r` is against a Fejer *average over the new shift* `u` of the level-`(r+1)` object,
+whereas `Auto.csLoss` consumes a plain sequence `M : N -> R` with `csPhi (M r) <= M (r+1) + delta`.
+So the next piece is the bridge between the two: either `M r` is defined as the full average over
+`Fin r -> R` of the shifts, or a good `u` is selected at each level.  I need to re-read how the
+patch normalizes its averages before choosing, since the choice fixes the statement of
+`highestActive_uniformity`, the last of the proposition's twelve nodes.
+
+## 2026-09-18T14:24:48-04:00 - row 397: the route from the step to `csLoss`, settled
+
+Row 397 stays `open`.  No new Lean this entry -- this records the reading that fixes the shape of
+the remaining assembly, so the next brick does not have to rediscover it.
+
+Re-reading `blueprints/patch_3_updated.tex` lines 657-680: "the loss lemma gives an **averaged** raw
+terminal cube at least `kappa`", and then "there are old shifts outside this union with raw cube at
+least `kappa/2`".  So the patch does *not* select a good shift at each level.  It runs the whole
+Cauchy--Schwarz chain on quantities that are already averaged over all the shifts introduced so far,
+and selects shifts only once, at the very end, against the sublevel exclusion.  That settles the
+question left open at 14:23: `M r` is the full Fejer average over `Fin r -> R`, not a chosen `u`.
+
+The bridge is then exactly Jensen, and it is already proved: **`Auto.sq_integral_fejer_le`**
+(line 11262) gives `(∫ h, fejer H h * g h)^2 <= ∫ h, fejer H h * g h^2` for bounded measurable `g`.
+Averaging the conclusion of `Auto.phaseStepIter_signed` over the level-`r` shifts and applying this
+to the outer average turns the fixed-shift bound into
+`M r ^ 2 / 2 <= M (r+1) + H/N`, which is `Auto.csLoss`'s hypothesis verbatim at `delta = H/N`.
+
+The supporting normalization facts are all present: `Auto.integral_fejer` (line 9155) gives
+`∫ h, fejer H h = 1`, so the Fejer weight is a probability density and the averages are genuine
+convex means; `Auto.fejer_nonneg` (9121) and `Auto.prod_fejer_nonneg` (9324) give nonnegativity for
+one shift and for a product over `Fin s`.
+
+So the remaining work on row 397 is, in order:
+
+1. a definition of the level-`r` average -- the Fejer mean over `Fin r -> R` of the real part of
+   the level-`r` state -- together with its `0 <= M r <= 1` bounds, which come from
+   `Auto.norm_phaseProdIter_le_one` and `Auto.integral_fejer`;
+2. the averaged recursion, from `Auto.phaseStepIter_signed` and `Auto.sq_integral_fejer_le`;
+3. `Auto.csLoss` at `T = 4`, giving the averaged raw terminal cube;
+4. the sublevel exclusion (`Auto.multiAff_sublevel_le`) to choose the terminal shifts, then
+   `Auto.sq_re_locUnifPowMixed_le_scaled` (`patch:uniformize`) to convert mixed radii to one
+   radius -- both already proved;
+5. `highestActive_uniformity` itself, the last of the twelve nodes.
+
+Steps 3, 4 and part of 1 are assembly over results already in the file.  Step 2 is the one piece of
+genuine new analysis left in the chain, and it is a single Jensen application.
+
+## 2026-09-18T14:34:04-04:00 - row 397: reinstating the block, and the level-`r` mean
+
+Row 397 `patch:highest-control` stays `open`.  Three theorems and one definition, the first two
+items of the plan recorded at 14:24.
+
+- **`Auto.integral_phaseProdIter_eq_indicator`** -- reinstating the removed block.  The step
+  *removes* its block `g`, so iterating it requires putting one back; the patch's answer is the
+  indicator of a fixed enlarged spatial box, and this is the identity that licenses it.  The
+  iterate already vanishes off that box (`Auto.phaseProdIter_eq_zero_of_notMem`), so inserting the
+  indicator changes nothing, and the indicator is exactly the block the next step removes.
+- **`Auto.phaseMean`** -- the level-`r` mean: the magnitude of the level-`r` state averaged over all
+  `r` shifts so far against the product Fejer density `∏ l, fejer H (h l)`, following the file's
+  established averaging idiom from `Auto.locUnifPow` (line 9319).
+- **`Auto.phaseMean_nonneg`**, **`Auto.phaseMean_zero`** -- nonnegativity, and the base of the
+  chain: at level zero there are no shifts and the mean is the state itself, so `M 0` is the very
+  quantity the proposition's hypothesis bounds below.
+
+One useful find while surveying: **`Auto.measurePreserving_piFinSucc`** (line 5655) already gives
+`Fin (n+1) -> R` as measure-preservingly `R × (Fin n -> R)`, peeling the first coordinate.  That is
+precisely the factorization the recursion needs to split the level-`(r+1)` average into the new
+shift `u` and the old ones, and it matches the `Fin.cons` orientation of
+`Auto.phaseProdIter_cons`.  It was proved long ago for the six tower parameters; nothing new is
+needed for it.
+
+`Auto.phaseMean_zero` cost one extra elaboration, for two small reasons, both mine:
+`Finset.prod_empty` does not fire on `∏ l : Fin 0, ...`, whose index set is `Finset.univ`, not `∅`
+-- `simp` handles it, via `Finset.univ_eq_empty`; and `∫ h : Fin 0 -> R, c` needs the total mass of
+the empty-index product measure, `Measure.pi_of_empty` giving a Dirac and hence `1`.  I had assumed
+`simp` would find both.
+
+File is 36327 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all three new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next, step 2 of the 14:24 plan -- the averaged recursion.  It is not a single rewrite, and is the
+one remaining piece of genuine analysis in the chain; decomposed, it is:
+
+1. push `Re` through the `u`-average and bound it by the norm (`Complex.re_le_norm`);
+2. swap the `t`- and `x`-integrals in the step's right-hand side (Fubini, with a joint
+   integrability hypothesis carried);
+3. reinstate the indicator inside the `x`-integral, by `Auto.integral_phaseProdIter_eq_indicator`;
+4. move `V⁻¹` and `N⁻¹` inside as scalars, so the right-hand side is literally `phaseMean`'s
+   integrand at level `r+1` and shift `Fin.cons u h`;
+5. average over the old shifts, apply Jensen (`Auto.sq_integral_fejer_le`), and split the
+   level-`(r+1)` shift measure with `Auto.measurePreserving_piFinSucc`.
+
+Steps 1, 3 and 4 are bookkeeping over results now in hand; 2 and 5 carry the real content.
+
+## 2026-09-18T14:37:59-04:00 - row 397: the block goes back around the window average
+
+Row 397 `patch:highest-control` stays `open`.  Two theorems, step 3 of the 14:24 decomposition, both
+clean on the first attempt.
+
+- **`Auto.integral_window_phaseProdIter_eq_zero`** -- off the enlarged box the whole *window
+  average* vanishes, not merely the integrand at one parameter.
+- **`Auto.integral_window_eq_indicator`** -- hence the indicator can be reinstated *around* the
+  window average, which is the form the recursion needs once the `t`- and `x`-integrals have been
+  swapped.
+
+One point of care in the statement.  `Auto.integral_phaseProdIter_eq_indicator` (14:34) reinstates
+the block at a single parameter `t`, and takes the shift bound `|(P m).eval t| <= K` at that `t`.
+Reinstating it around the window average needs the bound at *every* parameter of the window, so
+these two theorems hypothesize `∀ t ∈ Set.uIcc 0 (0 + N), |(P m).eval t| <= K` instead.  That is a
+genuinely stronger hypothesis, not a restatement; it is the form the admissible-shift bound
+`Auto.phaseProdIter_eq_zero_of_notMem_admissible` already supplies on the window, so nothing is
+lost, but the two reinstatement lemmas are not interchangeable and both are kept.
+
+File is 36361 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Remaining on the 14:24 decomposition: step 1 (push `Re` through the `u`-average, bound by the norm),
+step 2 (the Fubini swap of the `t`- and `x`-integrals, carried as a hypothesis), step 4 (move `V⁻¹`
+and `N⁻¹` inside as scalars), and step 5 (Jensen plus the `Fin.cons` split of the shift measure).
+Steps 1 and 4 are bookkeeping; 2 and 5 carry the content.
+
+## 2026-09-18T14:52:49-04:00 - row 397: steps 1, 4 and the shift-measure split
+
+Row 397 `patch:highest-control` stays `open`.  Five theorems, all clean on the first attempt.
+
+Steps 1 and 4 of the 14:24 decomposition:
+
+- **`Auto.re_le_norm_smul_smul`** -- `a * b * W.re <= ‖a • (b • W)‖` for nonnegative real scalars.
+- **`Auto.step_rhs_le_phaseMean_integrand`** -- the step's right-hand side at a fixed shift, in the
+  shape of `Auto.phaseMean`'s integrand: the `x`-integral comes outside the window average (the
+  Fubini swap carried as the hypothesis `hfub`, which is step 2 deferred to the use site), the block
+  is reinstated by `Auto.integral_window_eq_indicator`, the two real scalars move inside, and the
+  real part is bounded by the norm.
+
+And the hard half of step 5:
+
+- **`Auto.integral_cons_split`** and **`Auto.integral_cons_split_real`** -- an integral over
+  `Fin (r+1) -> R` is the iterated integral over the new shift and the old ones, in exactly the
+  `Fin.cons` orientation `Auto.phaseProdIter_cons` produces.
+- **`Auto.prod_fejer_cons`** -- the product Fejer weight splits along the newest coordinate.
+
+The split was the piece I expected to cost the most, and it did not, because the map was already in
+the file: `Auto.measurePreserving_piFinSucc` (line 5655), proved long ago for the six tower
+parameters.  What was new is only that **its inverse is `Fin.cons`** -- the symm of
+`MeasurableEquiv.piFinSuccAbove _ 0` reduces to `Fin.consEquiv`, which is `Fin.cons` on the nose.
+I checked that in a two-line standalone probe before writing anything, rather than assuming the
+orientation; had it been `Fin.snoc`, every cube lemma proved since 13:06 would have faced the
+`Fin (s+2)` versus `Fin (s+1+1)` mismatch recorded on 2026-09-17.
+
+Two notes against myself.
+
+1. `integral_cons_split_real` is a verbatim duplicate of `integral_cons_split` with `C` replaced by
+   `R`.  I chose duplication over routing the real case through the complex one, on the precedent of
+   the cast detour that failed earlier in this task; but this is duplication of a *proof*, not just
+   a statement, and if a third scalar type is ever needed the right move is to generalize over the
+   Banach space rather than write it a third time.
+2. `hfub` is carried as a hypothesis rather than proved.  That is legitimate -- it is discharged
+   where the integrability is known -- but it means step 2 is *deferred*, not done, and the eventual
+   user of `step_rhs_le_phaseMean_integrand` must supply a genuine Fubini argument.  I am recording
+   that so a later reading of this entry does not mistake the step for complete.
+
+File is 36436 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all five new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Remaining for the recursion: assemble the above into `phaseMean r ^ 2 / 2 <= phaseMean (r+1) + H/N`
+-- average the fixed-shift bound over the old shifts, apply Jensen (`Auto.sq_integral_fejer_le`),
+and recombine with `Auto.integral_cons_split_real` and `Auto.prod_fejer_cons`.  Then
+`Auto.csLoss` at `T = 4`.
+
+## 2026-09-21T11:40:35-05:00 - row 397: Jensen against the product Fejer weight
+
+Work resumed after the pause of 2026-09-18T16:58:10-04:00, on a new 15-minute cron job `127486d5`.
+The working tree was exactly as left: 36436 lines, four modified files, ledger through 14:52 on
+09-18, and nothing half-installed -- the probe interrupted by the pause had never been installed.
+
+Note on offsets: the system clock now reports `-05:00` where entries through 2026-09-18 reported
+`-04:00`.  Each entry records the offset the system reported when it was written; earlier entries
+stand as they are.
+
+Row 397 `patch:highest-control` stays `open`.  Three theorems, all clean on the first attempt.
+
+- **`Auto.sq_integral_weight_le`** -- weighted Cauchy--Schwarz against an arbitrary probability
+  density on an arbitrary measure space: the square of a weighted mean is at most the weighted mean
+  of the square.  Proved by expanding `∫ w (g - lam)^2 >= 0` at `lam = ∫ w g`.
+- **`Auto.integrable_prod_fejer`**, **`Auto.integral_prod_fejer`** -- the product Fejer weight on
+  `Fin r -> R` is integrable and has total mass one.
+
+**The lesson of this entry is that I nearly built something Mathlib already had.**  The plan
+recorded at 14:52 called for proving the total mass by induction on `r`, splitting with
+`Auto.integral_cons_split_real` at each stage and carrying an integrability hypothesis through.  I
+had already written the skeleton of that induction when a search for the *shape* of the statement --
+a product over a Pi type, not the word "Fejer" -- turned up `Mathlib/MeasureTheory/Integral/Pi.lean`,
+which contains `MeasureTheory.Integrable.fintype_prod` and
+`MeasureTheory.integral_fintype_prod_volume_eq_pow` verbatim.  Both lemmas above are now one line
+each.  `Auto.integral_cons_split` and `Auto.integral_cons_split_real`, proved at 14:52 for this
+purpose, are *not* needed for the total mass after all; they remain useful for splitting the
+*integrand* along the new shift, which the recursion still does, so they are kept.
+
+Three failed guesses on the way, all cheap because they were made in a standalone probe rather than
+in the owned file: `IsProbabilityMeasure (volume : Measure (Fin 0 -> R))` is not an instance;
+`MeasureTheory.Integrable.prod_mul` does not exist under that name; and
+`MeasurePreserving.integrable_comp_emb` takes the measurable embedding as its second argument, its
+`f` being the *map*, not the integrand.  None of these cost an 8-minute elaboration.
+
+The generic form of `sq_integral_weight_le` is deliberate.  `Auto.sq_integral_fejer_le` (line 11262)
+is the same inequality for a single Fejer variable, and redoing its argument for the product weight
+would have been a third copy of one calculation.  Stating it for an arbitrary density instead means
+the product weight qualifies by supplying the two facts above, and any later weight qualifies the
+same way.
+
+File is 36488 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all three new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: the recursion itself.  Every ingredient is now in the file --
+`Auto.phaseStepIter_signed` for the fixed-shift bound, `Auto.step_rhs_le_phaseMean_integrand` to put
+its right-hand side in the mean's shape, `Auto.sq_integral_weight_le` with
+`Auto.integrable_prod_fejer` and `Auto.integral_prod_fejer` for Jensen, and
+`Auto.integral_cons_split_real` with `Auto.prod_fejer_cons` to recombine the level-`(r+1)` average.
+What remains is to chain them, carrying the integrability side conditions.
+
+## 2026-09-21T11:59:11-05:00 - row 397: the Cauchy-Schwarz recursion is proved
+
+Row 397 `patch:highest-control` stays `open`.  Five theorems and one definition; every one clean on
+the first attempt.  This closes the averaged recursion -- the piece flagged at 14:24 on 09-18 as
+"the one remaining piece of genuine analysis in the chain".
+
+- **`Auto.sq_weighted_mean_le_of_pointwise`** -- the abstract averaging step: if `A^2 <= 2S + delta`
+  holds pointwise, then `(∫ w A)^2 <= 2 ∫ w S + delta` for any probability density `w`.  Jensen
+  supplies the passage from the square of the mean to the mean of the square.
+- **`Auto.sq_phaseMean_le_of_pointwise`** -- the same with the product Fejer weight supplied.
+- **`Auto.integral_prod_fejer_mul_inner_eq`** -- recombination: the mean over the old shifts of the
+  Fejer average over the new one is the mean over all `r+1` shifts at once.
+- **`Auto.phaseAmp`** and **`Auto.phaseMean_eq_integral_amp`** -- the level-`r` amplitude at a fixed
+  shift, of which the mean is the Fejer average.
+- **`Auto.phaseMean_step`** -- **the recursion**: `M r ^ 2 <= 2 * M (r+1) + 2H/N`, with the block at
+  level `r+1` the enlarged box's indicator.  Divided by two this is exactly `Auto.csLoss`'s
+  hypothesis at `delta = H/N`.
+
+**What is and is not done.**  `phaseMean_step` carries six hypotheses: three integrability
+conditions, the Fubini swap between the old-shift and new-shift integrals, the pointwise bound
+`hptwise`, and the joint integrability the cons-split needs.  `hptwise` is precisely what
+`Auto.phaseStepIter_signed` followed by `Auto.step_rhs_le_phaseMean_integrand` yields, but **I have
+not yet chained those two into it** -- that composition, and the discharge of the integrability
+side conditions, is still outstanding.  So the recursion is proved *as a recursion*; it is not yet
+fed by the step.  I am stating that plainly because an entry that said only "the recursion is
+proved" would invite a later reading that the chain is closed, and it is not.
+
+Two deliberate choices.
+
+1. `sq_weighted_mean_le_of_pointwise` is stated for an arbitrary density on an arbitrary measure
+   space, as `Auto.sq_integral_weight_le` was at 11:40.  The product Fejer weight then qualifies by
+   supplying three facts about itself, and the specialization
+   `Auto.sq_phaseMean_le_of_pointwise` is four lines.
+2. `Auto.phaseAmp` was introduced only for readability: `phaseMean_step`'s six hypotheses written
+   against the unfolded norm expression would each have run to six lines.  It is definitionally the
+   same term, so the lemmas proved before it still apply without restatement.
+
+One elaboration hazard avoided rather than discovered.  Both `Auto.integral_cons_split_real` and
+`Auto.integral_prod_fejer_mul_inner_eq` take their integrand as an implicit higher-order parameter
+applied to `Fin.cons ...`, which is not a Miller pattern, so inference would have had to guess.  I
+passed `G` and `B` explicitly at both call sites, and chose `B` to be the *partial application*
+`phaseAmp (r+1) ... V N` rather than a lambda, so that `B (Fin.cons u h)` carries no beta-redex for
+`rw` to trip over.  That is the same beta-redex failure recorded repeatedly on 09-17, headed off in
+advance.
+
+File is 36637 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all five new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: chain `Auto.phaseStepIter_signed` and `Auto.step_rhs_le_phaseMean_integrand` into `hptwise`,
+then `Auto.csLoss` at `T = 4`, then the terminal steps -- the sublevel exclusion
+(`Auto.multiAff_sublevel_le`) to choose the shifts and `Auto.sq_re_locUnifPowMixed_le_scaled`
+(`patch:uniformize`) to pass from mixed radii to one radius, both already proved -- and finally
+`highestActive_uniformity`.
+
+## 2026-09-21T12:16:52-05:00 - row 397: the step feeds the recursion, and the chain runs
+
+Row 397 `patch:highest-control` stays `open`.  Four theorems.  This closes the gap flagged at 11:59
+-- the recursion is now *fed by the step*, not merely stated.
+
+- **`Auto.integral_weight_re_le_of_bound`** -- a weighted average of real parts, bounded termwise:
+  `Complex.re` is pushed through the average, the two scalars are pulled in, and the comparison is
+  made pointwise.  Stated for an arbitrary nonnegative weight.
+- **`Auto.phaseAmp_sq_le_of_step`** -- **the composition**: the conclusion of
+  `Auto.phaseStepIter_signed` at a fixed shift, rewritten into exactly the pointwise hypothesis
+  `Auto.phaseMean_step` consumes.  `Auto.step_rhs_le_phaseMean_integrand` supplies the termwise
+  bound, at level `r+1` and shift `Fin.cons u h`.
+- **`Auto.phaseMean_le_one`** -- the mean is at most one when the amplitude is, the Fejer weight
+  being a probability density.  This is `csLoss`'s `hM1`.
+- **`Auto.csLoss_four`** -- `Auto.csLoss` at `T = 4` and `delta = H/N`, stated in the form the
+  recursion produces: from `M r ^ 2 <= 2 M (r+1) + 2H/N` for `r < 4` and `M 4 <= Q`, it gives
+  `M 0 ^ 16 <= 2^16/2 * (Q + 4 (H/N))`.
+
+Rather than restate the fourteen hypotheses of `Auto.phaseStepIter_signed`,
+`phaseAmp_sq_le_of_step` takes *its conclusion* as the hypothesis `hstep`.  That keeps the
+composition honest -- nothing is assumed that the step does not already give -- without duplicating
+its hypothesis list a second time.
+
+One failure, mine, and instructive about a tactic rather than about mathematics.  I wrote
+`rw [csPhi, h2] at *` to normalize `2 * H / N` into `2 * (H / N)` before `linarith`.  `at *`
+rewrote `h2` into the triviality `2 * (H/N) = 2 * (H/N)` and left the hypothesis `h` -- the one that
+actually needed it -- untouched, so `linarith` saw `2 * H / N` and `H / N` as unrelated and failed.
+Rewriting `at h` specifically fixed it.  **`rw ... at *` is not a stronger `rw ... at h`; it can
+consume the very equation it is meant to apply.**  I also replaced a `by positivity` discharging
+`0 <= H / N` with `div_nonneg hH.le hN.le`: positivity on a quotient of two *variables* is relying
+on it finding the hypotheses, which is not something to depend on.
+
+File is 36733 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all four new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+The chain from the correlation to `M 0 ^ 16 <= ...` is now complete as a sequence of implications.
+What is not yet done: assembling it for a *concrete* sequence `M r := phaseMean r ...` -- which
+needs the block to vary with `r` (`f 0` at level zero, the box indicator after) -- and discharging
+the integrability side conditions the individual links carry.  Then the terminal steps: the sublevel
+exclusion (`Auto.multiAff_sublevel_le`) to choose the shifts, `Auto.sq_re_locUnifPowMixed_le_scaled`
+(`patch:uniformize`) for mixed radii to one radius, and finally `highestActive_uniformity`.
+
+## 2026-09-21T12:25:40-05:00 - row 397: the chain assembled as a concrete sequence
+
+Row 397 `patch:highest-control` stays `open`.  Eight theorems and two definitions, all clean on the
+first attempt.
+
+- **`Auto.phaseBlock`**, **`Auto.phaseMeanSeq`**, with `Auto.phaseBlock_zero`,
+  `Auto.phaseBlock_succ`, `Auto.phaseMeanSeq_zero`, `Auto.phaseMeanSeq_succ`,
+  `Auto.phaseMeanSeq_nonneg` -- the chain as a sequence `N -> R`, which is what `Auto.csLoss`
+  consumes.  The block has to vary with the level: `f 0` at level zero, the enlarged box's
+  indicator afterwards, because the step *removes* its block and the indicator is what is put back.
+  Carrying it as `phaseBlock f C K N r` is what lets the levels form one sequence.
+- **`Auto.phaseMean_chain`** -- the chain run: from the recursion at each of the four levels, the
+  sequence bounds, and a terminal bound `Q` on the level-four mean, the level-zero mean obeys
+  `M 0 ^ 16 <= 2^16/2 * (Q + 4 (H/N))`.
+- **`Auto.phaseMeanSeq_rec_of_step`** -- the chain's recursion at one level, from
+  `Auto.phaseMean_step` with that level's own block supplied.
+- **`Auto.phaseAmp_four_eq`** -- **at level four the phase is gone from the amplitude**.  By
+  `Auto.phaseProdIter_four_eq`: the fourth finite difference of a cubic phase vanishes, leaving the
+  raw parity cube of the shifted inputs, which is the object `patch:uniformize` consumes.
+
+The last of these is the junction on the far side of the chain, as `Auto.phaseState_four_eq` was on
+2026-09-18 for the state.  Everything to its left is the Cauchy--Schwarz chain; everything to its
+right is about a raw cube, and those results -- `Auto.multiAff_sublevel_le`,
+`Auto.sq_re_locUnifPowMixed_le_scaled` -- were proved in rows 395 and 396.
+
+**What remains on row 397**, stated precisely so this entry is not mistaken for completion:
+
+1. the terminal bound `Q` -- identifying the level-four mean with the directional uniformity norm,
+   through `Auto.phaseAmp_four_eq` and `Auto.sq_re_locUnifPowMixed_le_scaled`;
+2. the sublevel exclusion `Auto.multiAff_sublevel_le`, to choose terminal shifts off the bad set;
+3. the integrability side conditions carried as hypotheses by `Auto.phaseMean_step`,
+   `Auto.phaseAmp_sq_le_of_step`, `Auto.phaseMean_le_one` and `Auto.step_rhs_le_phaseMean_integrand`
+   -- including the Fubini swaps, which are still *deferred*, as recorded at 14:52 on 09-18;
+4. `highestActive_uniformity` itself, the last of the proposition's twelve nodes.
+
+Items 1 and 2 are mathematics; item 3 is a body of measure-theoretic bookkeeping whose size I have
+not yet measured, and I should not assume it is small merely because each condition is routine.
+
+File is 36853 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all eight new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-21T12:47:15-05:00 - row 397: amplitude bounds, and item 3 measured
+
+Row 397 `patch:highest-control` stays `open`.  Four theorems.
+
+- **`Auto.phaseAmp_le`** -- the amplitude is at most the block's `L^1` mass over the volume.  The
+  real-scalar twin of `Auto.norm_phaseState_le` (line 35939), which is stated for the complex-scalar
+  `Auto.phaseState` over the window `0..N`; the amplitude uses real `smul` and the window
+  `0..(0+N)`, so the two are not interchangeable and the proof is adapted rather than reused.
+- **`Auto.phaseAmp_le_one`** -- hence at most one when the block's `L^1` mass is at most `V`.  For
+  the enlarged box's indicator with `V` the box's volume this holds with equality, which is why that
+  is the `V` the later steps use.  This discharges the `hamp` hypothesis of
+  `Auto.phaseMean_le_one`.
+- **`Auto.measurable_cubeShift`**, **`Auto.measurable_phaseProdIter_shift`** -- the iterate is
+  measurable in point, shift and parameter *jointly*.
+
+**Item 3 of the 12:25 list, measured.**  At 12:25 I wrote that I had not measured the size of the
+outstanding integrability bookkeeping and should not assume it small.  Having now looked:
+
+- The hypotheses carried by `Auto.phaseMean_step` (`hwA`, `hwA2`, `hwS`, `hswap`, `hint`),
+  `Auto.phaseMean_le_one` (`hint`) and `Auto.phaseAmp_sq_le_of_step` (`hcre`, `hmono1`, `hmono2`)
+  are *all* integrability or Fubini statements about functions of the shift.
+- Every one of them needs the same missing ingredient first: that `h ↦ phaseAmp r ... h` is
+  measurable.  The amplitude is a norm of an integral over `x` of a function depending on `h`, so
+  this is a parameter-dependent-integral measurability argument, and it needs the iterate measurable
+  in the shift -- which is what the two theorems above supply.
+- Once that is in place each condition follows from boundedness (`Auto.phaseAmp_le_one`) against the
+  integrable Fejer weight, and the Fubini swaps from joint integrability on the product.
+- The file already contains this pattern several times over for the `locUnifPow` development --
+  `StronglyMeasurable` on `ℝ × (Fin s → ℝ)` at lines 19962, 20069, 24704 and 25323 -- so the work is
+  of a kind already done here, not new territory.
+
+So item 3 is a real body of work, but bounded and with a clear critical path: measurability of the
+amplitude in the shift, then each condition in turn.  It is not the open-ended obligation I was
+unwilling to estimate at 12:25.
+
+File is 36949 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all four new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: `StronglyMeasurable fun h : Fin r -> R => phaseAmp r m f P p j g V N h`, then the integrability
+conditions that depend on it, then items 1, 2 and 4 of the 12:25 list.
+
+## 2026-09-21T13:09:27-05:00 - row 397: the critical path of item 3 is cleared
+
+Row 397 `patch:highest-control` stays `open`.  Five theorems, all clean on the first attempt.
+
+- **`Auto.stronglyMeasurable_windowAvg`** -- the window average of the iterate is strongly
+  measurable in point and shift jointly, by integrating the parameter out of
+  `Auto.measurable_phaseProdIter_shift` with
+  `MeasureTheory.StronglyMeasurable.integral_prod_right'`.
+- **`Auto.stronglyMeasurable_phaseAmp`** -- **the amplitude is strongly measurable in the shift**.
+  This was named at 12:47 as the ingredient every one of the chain's integrability hypotheses needs.
+- **`Auto.phaseAmp_nonneg`**, **`Auto.integrable_prod_fejer_mul_phaseAmp`**,
+  **`Auto.integrable_prod_fejer_mul_phaseAmp_sq`** -- the weighted amplitude and its square are
+  integrable, being one-bounded measurable functions against the integrable Fejer weight.
+
+The route for the two measurability results is the one the `locUnifPow` development already uses at
+`Auto.stronglyMeasurable_innerFejer` (line 20067): joint strong measurability on the product, then
+`integral_prod_right'` to integrate one factor out.  I read that proof before writing rather than
+reconstructing the API from memory, and probed the whole path abstractly -- with the iterate
+replaced by an arbitrary jointly measurable `Q` -- before touching the owned file.  Two `const_smul`
+scalars had to be supplied explicitly, since with them left as `_` the `ContinuousConstSMul`
+instance problem is stuck on metavariables; that cost two probe runs of about a minute each rather
+than two elaborations of the owned file.
+
+**Progress against the item-3 list of 12:47.**  Discharged: `hwA` and `hwA2` of
+`Auto.phaseMean_step`, and `hint` of `Auto.phaseMean_le_one`.  Still outstanding: `hwS`, `hswap` and
+`hint` of `Auto.phaseMean_step`, and `hcre`, `hmono1`, `hmono2` of
+`Auto.phaseAmp_sq_le_of_step`, together with the Fubini swap `hfub` of
+`Auto.step_rhs_le_phaseMean_integrand`.  All six now have their missing ingredient in hand; the two
+Fubini statements additionally need joint integrability on a product, which is a further step, not a
+corollary of measurability.
+
+File is 37046 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all five new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-21T13:25:59-05:00 - row 397: the conditions over the new shift
+
+Row 397 `patch:highest-control` stays `open`.  Seven theorems, all clean on the first attempt.
+
+- **`Auto.measurable_cons_left`**, **`Auto.measurable_cons_pair`** -- prepending a shift is
+  measurable, in the new shift alone and in the pair.
+- **`Auto.integrable_fejer_mul_phaseAmp_cons`** -- discharges `hmono2` of
+  `Auto.phaseAmp_sq_le_of_step`.
+- **`Auto.stronglyMeasurable_innerAvg`**, **`Auto.innerAvg_nonneg`**, **`Auto.innerAvg_le_one`** --
+  the inner Fejer average over the new shift is strongly measurable in the old ones, and lies in
+  `[0,1]`.
+- **`Auto.integrable_prod_fejer_mul_innerAvg`** -- discharges `hwS` of `Auto.phaseMean_step`.
+
+**Accounting against the item-3 list.**  At 13:09 seven conditions were outstanding.  Two are now
+discharged (`hwS`, `hmono2`).  Five remain: `hswap` and `hint` of `Auto.phaseMean_step`, `hcre` and
+`hmono1` of `Auto.phaseAmp_sq_le_of_step`, and `hfub` of
+`Auto.step_rhs_le_phaseMean_integrand`.  Of those five, three (`hcre`, `hmono1`, `hint`) are
+ordinary integrability statements that the results now in hand should reach by the same domination
+argument; the two Fubini statements (`hswap`, `hfub`) need joint integrability on a product and
+remain the part I am least able to size from here.
+
+A small recurring lesson, now seen twice in one sitting: **`simpa using h` matches syntactically
+after simplification and will reject a term that is only defeq to the goal** -- `measurable_id`
+against `fun c => c`, and `f ∘ Prod.fst` against `fun c => c.1 k`.  Replacing it with
+`simp only [...]` followed by `exact` fixes both, because `exact` checks up to defeq.  Worth
+preferring the explicit two-step form wherever the closing term is a composition or an eta-variant.
+
+File is 37158 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all seven new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-21T13:46:00-05:00 - row 397: the product integrability and the shift-Fubini swap
+
+Row 397 `patch:highest-control` stays `open`.  Four theorems.
+
+- **`Auto.measurable_cons_pair'`** -- the `(new, old)` orientation of `Auto.measurable_cons_pair`.
+- **`Auto.integrable_cons_prod_fejer_mul_phaseAmp`** -- discharges `hint` of
+  `Auto.phaseMean_step`, the joint integrability `Auto.integral_cons_split_real` needs.  The weight
+  is split by `Auto.prod_fejer_cons` *first*, after which it is a product of a function of the new
+  shift and one of the old shifts and `MeasureTheory.Integrable.mul_prod` applies directly; trying
+  to establish measurability of the unsplit `∏ over Fin (r+1)` in the pair would have been the
+  harder route for no gain.
+- **`Auto.integrable_uncurry_swap`**, **`Auto.phaseMean_swap`** -- **the Fubini swap between the old
+  and new shift averages**, discharging `hswap` of `Auto.phaseMean_step`.  This was one of the two
+  conditions I said at 13:25 I was least able to size; it turned out to be one domination against
+  `(∏ fejer) ⊗ fejer` plus `MeasureTheory.integral_integral_swap`.
+
+One failure, the beta-redex trap in a form I had not met before.  `Integrable.mono'` on a function
+written as `Function.uncurry f` leaves the pointwise goal as
+`‖Function.uncurry f q‖ ≤ ...`, *unreduced*; `rw [Real.norm_eq_abs, abs_of_nonneg ...]` then cannot
+match, because the pattern is stated in the applied form.  A `show` with the beta-reduced statement
+fixes it.  Note that the `AEStronglyMeasurable` obligation in the same proof went through
+untouched, because it was closed with `exact`, which sees through the redex -- the same asymmetry
+between `rw` and `exact` recorded on 09-17 and again at 13:25 today.  **Where a goal is stated
+through `Function.uncurry`, reduce it with `show` before rewriting.**
+
+**Accounting.**  Of the seven conditions outstanding at 13:09, four are now discharged (`hwS`,
+`hmono2`, `hint`, `hswap`).  Three remain: `hcre` and `hmono1` of `Auto.phaseAmp_sq_le_of_step`, and
+`hfub` of `Auto.step_rhs_le_phaseMean_integrand`.  These three differ in kind from the four just
+closed: each involves the integral over `x` of the iterate across *all* of `E3`, which is finite
+only because the iterate is supported in the enlarged box.  So they need
+`Auto.phaseProdIter_eq_zero_of_notMem` and the box-volume results, not the Fejer-weight domination
+that settled the others.
+
+File is 37264 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all four new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-21T14:05:39-05:00 - row 397: the box-support bounds for the point integral
+
+Row 397 `patch:highest-control` stays `open`.  Three theorems.
+
+- **`Auto.integral_norm_le_volume_of_bdd_support`** -- the `L^1` twin of
+  `Auto.integral_sq_le_volume_of_bdd_support`: a one-bounded function supported in the box has
+  `L^1` mass at most the box's volume.
+- **`Auto.integrable_phaseProdIter_x`** -- the iterate is integrable in the point.
+- **`Auto.norm_integral_phaseProdIter_x_le`** -- its integral over the point is bounded by the
+  enlarged box's volume, *uniformly in the parameter and the shift*.  That uniformity is the point:
+  the three remaining conditions all need a constant bound on the inner `x`-integral, not merely
+  its finiteness.
+
+**The `Measurable.comp` blowup recurred, and I did not head it off.**  Both of the last two failed
+first with `(deterministic) timeout at isDefEq`, from handing
+`(measurable_uncurry_phaseProdIter ...).comp (measurable_id.prodMk measurable_const)` straight to
+`integrable_of_bdd_support_box`, where the expected `Measurable W` has `W` still to be inferred.
+The rule for this was recorded on 2026-09-18 at 14:23 -- give the composition its own `∘`-typed
+`have` and coerce in a second step -- and applying it fixed both at once.  What is worth recording
+is that I *had* the rule and still did not apply it in advance: the earlier occurrences were in
+proofs whose statement mentioned `Function.uncurry`, so I had filed it as being about that, when the
+actual trigger is an expected type whose function argument is an unsolved metavariable.  The
+distinction matters, because `Auto.integrable_sq_phaseProdIter` (11:59 on 09-18) uses the very same
+`.comp` expression without trouble -- there it is passed through `.norm.pow_const 2` into an
+`AEStronglyMeasurable` argument, which fixes the function before the composition is checked.
+**Restated: hand `Measurable.comp` to an argument position only when the function it must match is
+already determined; otherwise name it first.**
+
+File is 37341 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all three new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Still outstanding, unchanged in number: `hcre` and `hmono1` of `Auto.phaseAmp_sq_le_of_step`, and
+`hfub` of `Auto.step_rhs_le_phaseMean_integrand`.  All three now have their constant bound in hand;
+`hfub` additionally needs joint integrability in `(x,t)` over the window, for which
+`Auto.integrable_phaseProdIter_x` is the `x`-side and `Auto.measurable_uncurry_phaseProdIter` the
+joint measurability.
+
+## 2026-09-21T14:23:46-05:00 - row 397: the window-space Fubini swap, and the end of the deferrals
+
+Row 397 `patch:highest-control` stays `open`.  Two theorems.
+
+- **`Auto.integrable_uncurry_phaseProdIter_window`** -- joint integrability of the iterate over the
+  window and the space.  The window has finite length and the iterate is one-bounded and supported
+  in the enlarged box at *every* parameter of the window, so it is dominated on the product by the
+  box's indicator.
+- **`Auto.phaseProdIter_window_swap`** -- **the Fubini swap of the window and the space**,
+  discharging `hfub` of `Auto.step_rhs_le_phaseMean_integrand`.
+
+This closes the deferral first recorded at 14:52 on 2026-09-18, where `hfub` was carried as a
+hypothesis with the note that it was "*deferred*, not done".  Both Fubini conditions of the chain
+are now proved.
+
+Two things made this shorter than expected.  `MeasureTheory.intervalIntegral_integral_swap` already
+states Fubini with one interval integral, so no conversion between `∫ t in a..b` and a restricted
+measure was needed at the top level -- I searched Mathlib for it before building that conversion by
+hand.  And the awkward part, that the support hypothesis holds only *on* the window while the
+domination is needed almost everywhere for the product measure, is handled by rewriting the product
+of a restricted measure as a restriction of the product (`MeasureTheory.Measure.prod_restrict`) and
+then `ae_restrict_iff'`.
+
+Both of this section's failures were ones I have now recorded before: a missing
+`IsFiniteMeasure` instance for a restricted measure, and `rw` failing against
+`‖Function.uncurry F q‖` until a `show` reduces it.  Both were found in the abstract probe, where
+the integrand was an arbitrary bounded function supported in an arbitrary finite-measure set, so
+neither cost an elaboration of the owned file.  The probe also drew an unused-variable warning on
+the window hypothesis `hN`, which the final lemma therefore does not take -- the same
+over-specification catch as `Auto.integral_sq_indicator_box` on 09-17.
+
+File is 37415 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+**Two conditions remain** of the nine on the item-3 list: `hcre` and `hmono1` of
+`Auto.phaseAmp_sq_le_of_step`.  Both are integrability in the new shift `u` of the window-space
+double integral, for which `Auto.norm_integral_phaseProdIter_x_le` (14:05) supplies the constant
+bound and `Auto.stronglyMeasurable_windowAvg` the measurability; neither needs a new idea.
+
+## 2026-09-21T14:46:49-05:00 - row 397: item 3 is complete
+
+Row 397 `patch:highest-control` stays `open`.  Four theorems.
+
+- **`Auto.stronglyMeasurable_windowSpace`** -- the window-space double integral is strongly
+  measurable in the new shift.  Measurability is read off the *swapped* order, where the inner
+  integral is `Auto.stronglyMeasurable_windowAvg`, and `Auto.phaseProdIter_window_swap` transports
+  it back to the order the step's conclusion uses.
+- **`Auto.norm_windowSpace_le`** -- it is bounded by the window length times the enlarged box's
+  volume.
+- **`Auto.integrable_fejer_smul_windowSpace`** -- discharges `hcre`.
+- **`Auto.integrable_scaled_fejer_mul_re_windowSpace`** -- discharges `hmono1`.
+
+**All nine integrability and Fubini conditions listed at 12:47 are now proved.**  Item 3 of the
+12:25 list is complete.  For the record, the nine and where each is discharged:
+
+| condition | of | discharged by |
+| --- | --- | --- |
+| `hwA` | `phaseMean_step` | `Auto.integrable_prod_fejer_mul_phaseAmp` |
+| `hwA2` | `phaseMean_step` | `Auto.integrable_prod_fejer_mul_phaseAmp_sq` |
+| `hwS` | `phaseMean_step` | `Auto.integrable_prod_fejer_mul_innerAvg` |
+| `hswap` | `phaseMean_step` | `Auto.phaseMean_swap` |
+| `hint` | `phaseMean_step` | `Auto.integrable_cons_prod_fejer_mul_phaseAmp` |
+| `hint` | `phaseMean_le_one` | `Auto.integrable_prod_fejer_mul_phaseAmp` |
+| `hcre` | `phaseAmp_sq_le_of_step` | `Auto.integrable_fejer_smul_windowSpace` |
+| `hmono1` | `phaseAmp_sq_le_of_step` | `Auto.integrable_scaled_fejer_mul_re_windowSpace` |
+| `hmono2` | `phaseAmp_sq_le_of_step` | `Auto.integrable_fejer_mul_phaseAmp_cons` |
+
+and `hfub` of `step_rhs_le_phaseMean_integrand` by `Auto.phaseProdIter_window_swap`.
+
+Two failures in the last brick, both about dot-notation and normalization rather than mathematics.
+`StronglyMeasurable` is a `def` unfolding to an existential, so `hZ.re` resolves to `Exists.re` and
+fails; `Complex.continuous_re.comp_stronglyMeasurable hZ`, named with its `∘` type first, is the
+route.  And `rw [abs_mul, abs_mul]` split `|V⁻¹ * N⁻¹|` further than intended, since `rw` rewrites
+everywhere including the right-hand side; a `calc` whose first step is closed by
+`simp [abs_mul, abs_of_nonneg _]` normalizes both sides together and is not sensitive to how the
+splitting associates.
+
+File is 37534 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all four new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Remaining on row 397, from the 12:25 list: item 1, the terminal bound `Q` -- identifying the
+level-four mean with the directional uniformity norm through `Auto.phaseAmp_four_eq` and
+`Auto.sq_re_locUnifPowMixed_le_scaled`; item 2, the sublevel exclusion
+`Auto.multiAff_sublevel_le` to choose terminal shifts off the bad set; and item 4,
+`highestActive_uniformity` itself.
+
+## 2026-09-21T14:56:26-05:00 - row 397: the affine development meets the uniformity norms
+
+Row 397 `patch:highest-control` stays `open`.  Five theorems, on item 1 of the 12:25 list.
+
+- **`Auto.slopeShift_eq_cubeShift`** -- the affine shift is the ordinary cube shift of the
+  gap-scaled vector.
+- **`Auto.numTrue_add_numFalse`** -- the two parity counts sum to the cube's dimension.
+- **`Auto.conjPar_numTrue_eq_numFalse`** -- hence **in even dimension the two conjugation
+  conventions agree**.
+- **`Auto.headBlock_cube_eq_cubeProd`**, **`Auto.headBlock_eq_fdiffIter`** -- **the affine block is
+  an iterated Fejer difference**, with increments the slope gaps times the shifts.
+
+This is the bridge between the two halves of the development.  The affine side --
+`Auto.headBlock` and row 394 -- writes its cubes with `Auto.numTrue` and `Auto.slopeShift`; the
+local uniformity norms of `Auto.locUnifPow` are built from `Auto.fdiffIter`, which uses
+`Auto.numFalse` and `Auto.cubeShift`.  Until now nothing connected them, and the terminal bound `Q`
+needs exactly that connection: `patch:affine-terminal` produces an affine cube, while
+`patch:uniformize` consumes a uniformity norm.  `headBlock_eq_fdiffIter` is the patch's sentence
+"translation/conjugation invariance identifies its integrated power with that of `f`".
+
+The parity point is worth stating plainly because it is the reason the identification is possible at
+all: the two counts sum to `r`, so they have the same parity exactly when `r` is even, and the
+proposition runs *four* steps.  Had the chain run an odd number of steps the two conventions would
+differ by a global sign and the identification would carry that sign.
+
+This also discharges a note left open in `automation/ErrorReport.md`: entry 3 at line 1578 recorded
+the `numTrue`/`numFalse` deviation as "notational only", differing by `(-1)^r`.  That is now a
+theorem rather than a judgement, for the even case the proposition uses; an addendum recording this
+has been appended to `ErrorReport.md` at the same timestamp.
+
+File is 37589 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all five new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Remaining on row 397: the rest of item 1 -- composing `Auto.phaseAmp_four_eq` with this bridge and
+`Auto.sq_re_locUnifPowMixed_le_scaled` to produce the terminal bound `Q`; item 2, the sublevel
+exclusion; and item 4, `highestActive_uniformity`.
+
+## 2026-09-21T15:05:23-05:00 - row 397: `patch:affine-terminal` is proved
+
+Row 397 `patch:highest-control` stays `open`.  Two theorems.
+
+- **`Auto.integral_headBlock_translate`** -- translating the point leaves the block's integral
+  unchanged, Lebesgue measure on `E3` being translation invariant.  This is the patch's "translate
+  away `a_s t e_m`".
+- **`Auto.slopeState_terminal`** -- **the affine terminal identity, the patch's
+  `patch:affine-terminal`**: at the last stage the surviving product is a single block
+  (`Auto.slopeProd_terminal`), translating the point removes the parameter, and the parameter
+  average collapses, leaving `V⁻¹ ∫ headBlock ...`.
+
+`patch:affine-terminal` is one of the five ingredients the proposition's own proof names, alongside
+the pivot recursion, the loss lemma, the sublevel exclusion and `patch:uniformize`.  Of those five,
+the loss lemma (`Auto.csLoss`, row 393), the sublevel exclusion (`Auto.multiAff_sublevel_le`, row
+395) and `patch:uniformize` (`Auto.sq_re_locUnifPowMixed_le_scaled`, row 396) were already proved,
+and the pivot recursion is row 394's `Auto.petUpdate_protected` and its companions.  So all five
+named ingredients now exist.
+
+Composed with `Auto.headBlock_eq_fdiffIter` (14:56), the terminal state is
+`V⁻¹ ∫ fdiffIter (basisVec j) m (gap-scaled shifts) (g m) x` -- an integral of exactly the object
+`Auto.locUnifPow` is built from.  That is the shape the terminal bound `Q` needs.
+
+The Fubini swap between the point and the parameter is carried as the hypothesis `hswap` rather than
+proved here, because at this stage the integrand is a general `Auto.slopeProd` with no support
+hypothesis attached; the corresponding swap for the phase chain is
+`Auto.phaseProdIter_window_swap` (14:23), which *is* proved, using the box support.  I am recording
+that asymmetry rather than leaving it to be discovered: the affine branch will need its own support
+hypothesis before `hswap` can be discharged.
+
+One slip, arithmetic rather than mathematical: two `← mul_assoc` rewrites left
+`V⁻¹ * N⁻¹ * N * K` needing one re-association before `inv_mul_cancel₀` could fire, which the
+explicit `mul_assoc (V:ℂ)⁻¹ (N:ℂ)⁻¹ (N:ℂ)` supplies.  Chained associativity rewrites are worth
+stating with their arguments when the target shape matters.
+
+File is 37627 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-21T15:13:49-05:00 - row 397: the Fejer kernel's scaling law
+
+Row 397 `patch:highest-control` stays `open`.  Three theorems.
+
+- **`Auto.fejer_scale`** -- dilating both the radius and the point by `c > 0` divides the kernel by
+  `c`: `fejer (c H) (c h) = c⁻¹ fejer H h`.
+- **`Auto.mul_fejer_scale`** -- the form the change of variables uses, in which the Jacobian factor
+  is absorbed exactly.
+- **`Auto.prod_fejer_scale`** -- the coordinatewise product form, with the full Jacobian
+  `∏ c l`.
+
+These are what will let the *gap-scaled* shifts of the affine terminal cube be read as a
+*mixed-radii* uniformity norm.  The affine cube carries increments `(a i - a nu) * h nu` while
+`Auto.locUnifPowMixed` integrates `Auto.fdiffIter` against `∏ fejer (Lv l) (h l)` in the shift
+itself; substituting `z = c h` converts one into the other, and the scaling law is exactly what
+makes the substitution cost nothing.  This is the patch's sentence at line 678: "changing the new
+affine increments by `z_i = a p_i(h) u_i` therefore produces Fejer radii `L_i = |a p_i(h)| H`",
+which is now an identity in the file rather than a remark in the source.
+
+**Next, and I searched before choosing a route.**  The change of variables itself -- the identity
+
+    ∫ h : Fin s -> R, F (fun nu => c nu * h nu) * ∏ fejer H (h nu)
+      = ∫ z : Fin s -> R, F z * ∏ fejer (c nu * H) (z nu)
+
+-- needs the coordinatewise scaling map's effect on `volume` over `Fin s -> R`.  I looked for a
+Mathlib lemma at the Pi level (`volume_pi_smul`, a `Measure.pi` scaling law, a linear-map/Haar
+determinant route) and did not find one, unlike the earlier search that turned up
+`integral_fintype_prod_volume_eq_pow` and saved an induction.  What does exist is the
+one-dimensional `MeasureTheory.integral_comp_mul_left`, so the route is an induction on `s`, peeling
+one coordinate at a time with `Auto.integral_cons_split_real` (14:52 on 09-18) and applying the
+one-dimensional change of variables to the peeled coordinate.  That is a real brick with
+integrability bookkeeping at each stage, and I am recording the route now so the next iteration does
+not re-search.
+
+File is 37658 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all three new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+## 2026-09-21T15:28:24-05:00 - row 397: the missing product-measure scaling law
+
+Row 397 `patch:highest-control` stays `open`.  One theorem.
+
+- **`Auto.pi_smul_eq`** -- scaling each factor of a product measure scales the product by the
+  product of the scalars: `Measure.pi (fun i => k i • mu i) = (∏ i, k i) • Measure.pi mu`.
+
+This is the piece the 15:13 entry identified as absent from Mathlib, and the search there was
+accurate rather than merely unlucky: Mathlib *does* have `MeasureTheory.Measure.pi_map_pi`, which
+pushes a product measure forward along a product of maps, and `Real.map_volume_mul_left`, which
+scales one-dimensional Lebesgue measure; what it lacks is exactly the step that combines them into a
+single Jacobian.  With `pi_smul_eq` the coordinatewise dilation `z = c h` on `Fin s -> R` is
+available without the induction the 15:13 entry planned, so that plan is superseded -- the induction
+over `Auto.integral_cons_split_real` is no longer needed for this purpose.
+
+The proof is four lines: `Measure.pi_eq` reduces to boxes, where both sides are
+`(∏ k i) * ∏ mu i (s i)`.  The only wrinkle is that `Measure.pi_eq` demands sigma-finiteness of the
+*scaled* factors, which is not automatic when a scalar may be infinite, so the statement carries
+`[∀ i, SigmaFinite (k i • mu i)]`.  At the use site the scalars are `ENNReal.ofReal |c i⁻¹|`, which
+are finite, so the instance is available.
+
+I should note this is a general measure-theory fact with no reference to this project, and the
+skill's reusable-prerequisite exception exists for such things.  It does not qualify: it is four
+lines, not a result whose explanation would take a lecture, and it has no accepted name.  It stays
+in the owned file.
+
+File is 37673 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms Auto.pi_smul_eq` shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: the change of variables itself, now by `Auto.pi_smul_eq` together with
+`MeasureTheory.Measure.pi_map_pi` and `Real.map_volume_mul_left`, then composing with
+`Auto.prod_fejer_scale` to read the affine terminal cube as a mixed-radii uniformity norm.
+
+## 2026-09-21T15:45:00-05:00 - row 397: the change of variables, at the measure level
+
+Row 397 `patch:highest-control` stays `open`.  Two theorems.
+
+- **`Auto.sigmaFinite_smul`** -- a finite multiple of a sigma-finite measure is sigma-finite.
+  Mathlib has no instance for this, and it is required by *both*
+  `MeasureTheory.Measure.pi_map_pi` and `Auto.pi_smul_eq`, which is why the first assembly attempt
+  failed three times over with the same unsynthesizable instance.
+- **`Auto.map_diag_scale`** -- **the coordinatewise dilation of `Fin s -> R` scales Lebesgue measure
+  by the inverse Jacobian**: `Measure.map (fun h i => c i * h i) volume = (∏ ofReal (c i)⁻¹) •
+  volume`.  This is the change of variables `z = c h` that carries the affine terminal cube's
+  gap-scaled shifts into the shift variable of a mixed-radii uniformity norm.
+
+The route is the one recorded at 15:28 and it held: `volume_pi`, then
+`MeasureTheory.Measure.pi_map_pi` to push the product measure along the product of scalings, then
+`Real.map_volume_mul_left` on each factor, then `Auto.pi_smul_eq` to collect the scalars.  No
+induction was needed.
+
+One slip, and it is one I have recorded before: the rewrite chain ended with a second `volume_pi`
+that was no longer necessary, because the *first* `volume_pi` had already rewritten both sides of
+the goal.  `rw` failed with "did not find an occurrence", and the goal it printed was literally the
+two sides being alpha-equivalent.  This is the same shape as the stray `ring` of 2026-09-17: **when
+a rewrite chain is assembled step by step, re-check which of its steps are still needed once the
+later ones are in place**, rather than appending the step that the earlier draft required.
+
+File is 37706 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: the integral form of the change of variables -- `MeasureTheory.integral_map` against
+`Auto.map_diag_scale`, giving
+`∫ h, F (fun i => c i * h i) = (∏ (c i)⁻¹) • ∫ z, F z` -- and then composing with
+`Auto.prod_fejer_scale` to read the affine terminal cube as `Auto.locUnifPowMixed` at radii
+`|a m - a nu| * H`, which is what `Auto.sq_re_locUnifPowMixed_le_scaled` consumes.
+
+## 2026-09-21T16:03:53-05:00 - row 397: the gap-scaled cube is a mixed-radii average
+
+Row 397 `patch:highest-control` stays `open`.  Two theorems, both clean on the first attempt.
+
+- **`Auto.integral_comp_diag_scale`** -- the change of variables `z = c h` in integral form, from
+  `Auto.map_diag_scale` and `MeasureTheory.integral_map`.
+- **`Auto.integral_prod_fejer_mul_comp_diag`** -- **averaging a cube whose increments are the scaled
+  shifts `c l * h l` against a single-radius Fejer weight is the same as averaging the plain cube
+  against Fejer weights at the scaled radii `c l * H`**.
+
+The second is the one worth stating carefully, because the identity **carries no constant**.  The
+Jacobian `∏ (c l)⁻¹` of the substitution cancels exactly against the factor `∏ c l` that
+`Auto.prod_fejer_scale` produces when the single-radius weight is rewritten at the scaled radii.
+That is not a coincidence of bookkeeping: it is the reason the patch can assert "changing the new
+affine increments by `z_i = a p_i(h) u_i` produces Fejer radii `L_i = |a p_i(h)| H`" without
+tracking a normalization, and it is now an identity in the file rather than an unstated step.
+
+Together with `Auto.headBlock_eq_fdiffIter` (14:56), this is the last structural piece between the
+affine terminal cube and `Auto.locUnifPowMixed`: the terminal cube's increments are the slope gaps
+times the shifts, `headBlock_eq_fdiffIter` turns it into an `Auto.fdiffIter`, and this theorem turns
+its Fejer average into one at the gap-scaled radii -- which is exactly the shape
+`Auto.sq_re_locUnifPowMixed_le_scaled` (`patch:uniformize`, row 396) consumes.
+
+Method note: the assembly was probed with its two ingredients supplied as *hypotheses* rather than
+by copying their proofs into the probe.  `integral_comp_diag_scale` depends on `map_diag_scale`,
+which depends on `pi_smul_eq` and `sigmaFinite_smul`; reproducing that chain in a probe would have
+cost more than it saved.  Taking the ingredients as hypotheses tested exactly the step in doubt --
+the cast and cancellation arithmetic -- in about a minute.
+
+File is 37764 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Next: composing these into the terminal bound `Q` -- the level-four mean expressed as a
+`locUnifPowMixed`, then `Auto.sq_re_locUnifPowMixed_le_scaled` to pass to a single radius.
+
+## 2026-09-21T16:15:40-05:00 - row 397: the identity in the uniformity norm's own orientation
+
+Row 397 `patch:highest-control` stays `open`.  Three theorems, all clean on the first attempt.
+
+- **`Auto.integral_fdiffIter_fejer_comp_diag`** -- the mixed-radii identity of 16:03, reordered so
+  that the cube comes first and the Fejer weight is distributed over the product, which is the
+  orientation `Auto.locUnifPowMixed` uses.
+- **`Auto.integral_x_fdiffIter_fejer_comp_diag`** -- the same integrated over the point.
+- **`Auto.locUnifPowMixed_eq_integral`** -- `Auto.locUnifPowMixed` spelled out, so it can be
+  rewritten at an explicit radius vector.
+
+The reordering is not cosmetic and is worth a line: `Auto.integral_prod_fejer_mul_comp_diag` was
+proved with the *scalar* weight in front, because that is the form in which the constant
+`∏ c l` can be pulled out of the integral; `Auto.locUnifPowMixed` writes the cube first with the
+weight as a product of complex casts.  Bridging the two is `push_cast; ring` pointwise, and the two
+statements are kept separate rather than one being restated, so that each is used in the form its
+own consumer expects.
+
+Method: the intermediate step was introduced as a `have` with its type written out in full, so that
+the beta-redex `G (fun i => c i * h i)` -- which arises because
+`integral_prod_fejer_mul_comp_diag` takes its integrand as a higher-order parameter -- is absorbed
+by the defeq check rather than blocking `rw`.  That is the standing rule of 2026-09-17, applied in
+advance.
+
+File is 37825 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on all three new theorems shows only `propext`, `Classical.choice`,
+`Quot.sound`.
+
+Next: composing `Auto.locUnifPowMixed_eq_integral` with
+`Auto.integral_x_fdiffIter_fejer_comp_diag` to give `locUnifPowMixed N (fun l => c l * H) j f` in
+terms of the gap-scaled cube -- and there the same beta-redex caution applies, since instantiating
+the radius vector to `fun l => c l * H` puts a redex inside the Fejer argument.  Then
+`Auto.sq_re_locUnifPowMixed_le_scaled` to pass to a single radius, which is the terminal bound `Q`.
+
+## 2026-09-21T16:26:39-05:00 - row 397: the terminal bound
+
+Row 397 `patch:highest-control` stays `open`.  Two theorems, both clean on the first attempt.
+
+- **`Auto.locUnifPowMixed_comp_diag`** -- the mixed-radii uniformity norm at the gap-scaled radii
+  *is* the single-radius average of the gap-scaled cube.  The beta-redex warned about in the 16:15
+  entry did arise -- instantiating the radius vector to `fun l => c l * H` puts a redex inside the
+  Fejer argument -- and was absorbed by stating the unfolded form as a `rfl`-proved `have`, as
+  planned there rather than after a failure.
+- **`Auto.sq_re_gapScaled_le_locUnifPow`** -- **the terminal bound**: the square of that average's
+  real part is at most
+  `16 C^3 * ((∏ l, 2L/(c l H)) * (locUnifPow N L j (s+1) f).re)`, a *single-radius* directional
+  uniformity norm of `f` at order `s + 1`.  That is the form in which the proposition's conclusion
+  is stated.
+
+So item 1 of the 12:25 list on 09-18 -- the terminal bound `Q` -- is now proved as a chain of
+identities and one estimate, from the affine terminal cube through
+`Auto.headBlock_eq_fdiffIter`, the change of variables, and `patch:uniformize`.
+
+File is 37870 lines.  `lake env lean` on the owned file reports no error and no new warning, and
+`#print axioms` on both new theorems shows only `propext`, `Classical.choice`, `Quot.sound`.
+
+Remaining on row 397: item 2, the sublevel exclusion `Auto.multiAff_sublevel_le` used to choose
+terminal shifts off the bad set; and item 4, `highestActive_uniformity` itself, which assembles the
+chain, the terminal bound and the exclusion into the proposition.
+
+## 2026-09-24T13:38:49-04:00 - row 397: the sublevel exclusion, attempted and not proved
+
+Row 397 `patch:highest-control` stays `open`.  **No theorem added this entry.**  Recording a failure
+rather than a result.
+
+Item 2 of the 12:25 list on 09-18 is the sublevel exclusion: the patch's step at line 668 of
+`blueprints/patch_3_updated.tex`, "since the raw cube is between zero and one, there are old shifts
+outside this union with raw cube at least `kappa/2`".  Distilled, that is a pigeonhole:
+
+    if `0 <= F <= 1` has mean at least `kappa` and the bad set `B` has measure at most `kappa/4`,
+    then some point outside `B` has `F >= kappa/2`,
+
+proved by splitting `∫ F = ∫_B F + ∫_{Bᶜ} F <= mu(B) + kappa/2 < kappa`.  The mathematics is three
+lines.  Two attempts to formalize it both **hung**: the first consumed over twenty minutes and
+1.6 GB before I stopped it, the second was killed by a 400-second hard timeout.  Neither produced a
+diagnostic -- no error, no heartbeat message, just no termination.
+
+What I changed between attempts, and what it rules out: the first used
+`integrableOn_const.mpr (Or.inr (measure_lt_top _ _))` with placeholders and a nested
+`simpa using ENNReal.toReal_le_of_le_ofReal ... (by simpa using measure_le_one ...)`; the second
+replaced both with `(integrable_const _).integrableOn` and an explicit
+`measureReal_mono`/`measureReal_univ_eq_one` route, and spelled every bound out in a `calc`.  That
+it still hangs means the cause is *not* those two convolutions, which is the only thing I have
+established so far.
+
+Next time this is picked up, the thing to do is bisect the proof rather than rewrite it: replace the
+body with `sorry` and reintroduce the `have`s one at a time, each under
+`set_option maxHeartbeats 40000`, so that whichever step diverges reports a heartbeat exhaustion
+instead of running unbounded.  A `timeout` on the whole file, as used here, tells you only that
+something hung; a heartbeat limit tells you where.  I should have reached for that on the second
+attempt instead of rewriting.
+
+No file change.  `Auto.sq_re_gapScaled_le_locUnifPow` and everything before it are unaffected; the
+owned file is unchanged at 37870 lines.

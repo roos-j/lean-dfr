@@ -1549,3 +1549,67 @@ to definitional equality, so it both beta-reduces and, where the ambient lemma p
 trick used for the same reason: giving an intermediate `have hre : Integrable fun h => (...).re :=
 hcI.re` an explicit type annotation forces `Complex.re` rather than `RCLike.re` in the subsequent
 goal.
+
+## 2026-09-18T11:51:17-04:00 - three wording and convention points in `blueprints/patch_3_updated.tex`
+
+Recorded here rather than only in `automation/Status.md`, correcting a gap in this session's
+record-keeping: the skill directs *convention differences* and departures from the source's literal
+text to this file, and these three had been noted only in the status log.
+
+**None of them is a mathematical error in the blueprint.**  Each is a place where the source's
+literal wording differs from the statement that is provable, and where a formalization following the
+wording exactly would be either false or weaker than intended.
+
+### 1. "At `r = 4` the phase is identically one" (subsubsection on polynomial phases)
+
+Read literally this is false: the phase `e(p_x(t))` is not the constant `1`.  What is true, and what
+the argument uses, is that it contributes nothing to the *fourfold parity cube* -- the alternating
+sum of a cubic over the four-dimensional cube vanishes, so the product of the conjugation-signed
+phases is one.  Formalized as `Auto.phase_cube_eq_one` and, in the form the steps consume,
+`Auto.phaseProd_cube_eq`.  A formalization asserting the pointwise reading would be unprovable.
+
+### 2. "Translating `x` by its affine `P_1(t)` removes `t`" (degenerate degree-one branch)
+
+True of the *input factor* only.  After the translation the `t`-dependence survives in the phase,
+whose argument is evaluated at the translated point.  `Auto.phaseProd_one_translate` states exactly
+that.  The dependence is genuinely gone only once the four steps have run and the phase has been
+removed, which is where the branch is taken; `Auto.phaseProd_zero_phase` records the shape it is in
+by then.
+
+### 3. Sign convention in the alternating cube sum
+
+The blueprint writes the sum as `sum_omega (-1)^{|omega|} p(t + omega . h)`, i.e. with
+`Auto.numTrue`.  The Lean statements use `Auto.numFalse`.  The two differ by the global factor
+`(-1)^r`, so the vanishing is the same assertion; `numFalse` is chosen because the difference
+operator `Delta_u Q = Q(. + u) - Q` puts the minus sign on the *unshifted* vertex, and because
+`Auto.conjPar` conjugates on odd parity.  With `numTrue` the exponent would be `r - |omega|`, a
+natural subtraction to guard through the whole induction, and a global `(-1)^r` to carry through the
+exponential in `Auto.conjPar_expPhase`.  Deviation is notational only.
+
+### Not a discrepancy, recorded for completeness
+
+The modelling choices of the same period -- each input carrying its own coordinate direction
+(`j : ℕ → Fin 3`), measurability rather than continuity of the phase, and the enlarged box being
+taken in the `Auto.petBox` family -- are recorded in `automation/Status.md` at 19:54 and 10:06.
+They follow the source rather than departing from it; the measurability one in particular is the
+source's own hypothesis, and assuming continuity there would have weakened the proposition.
+
+## 2026-09-21T14:56:26-05:00 - the two cube conventions, now formally bridged
+
+Addendum to "3. Sign convention in the alternating cube sum" (line 1578), which recorded that the
+blueprint's `(-1)^{|omega|}` labelling (`Auto.numTrue`) and the Lean statements' `Auto.numFalse`
+differ by the global factor `(-1)^r`, and judged the deviation notational.
+
+That judgement is now *proved* rather than asserted, in the form the proposition needs:
+**`Auto.conjPar_numTrue_eq_numFalse`** shows the two conjugation conventions agree whenever the cube
+dimension `r` is even, which is exactly the case `(-1)^r = 1` of the factor recorded there.  Since
+`patch:highest-control` runs four steps, both conventions apply to the same object at the point
+where the affine development meets the local uniformity norms, and
+**`Auto.headBlock_eq_fdiffIter`** identifies the affine block with the iterated Fejer difference
+outright, the increments being the slope gaps times the shifts.
+
+The supporting facts are `Auto.numTrue_add_numFalse` (the counts sum to the dimension) and
+`Auto.slopeShift_eq_cubeShift` (the affine shift is the ordinary cube shift of the gap-scaled
+vector).  No change to any statement of the blueprint or to any Lean statement was required; this
+addendum records that the notational deviation is now discharged by a theorem, so a later reader
+need not re-derive it.

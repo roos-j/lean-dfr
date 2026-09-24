@@ -594,3 +594,125 @@ ten-minute foreground limit.  The two are now done in a single elaboration:
 
 Step 4 costs no compile.  The guard in step 4 is what keeps a probe from being committed to the
 owned file.
+
+## Commit and push authorized, 2026-09-17T10:04:00-04:00
+
+The user directed: "commit and push".  Raw prompt: see `automation/raw.md` under the same
+timestamp.
+
+Operative effect: a one-time authorization to commit the working tree and push it to
+`origin/task-2`.  Commit `71ae66a` recorded the Task 2 work folder
+(`DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`, `VanDerCorput.lean`), the reusable prerequisites
+`DFR/Auto/HirschmanLemma.lean` and `DFR/Auto/SteinInterpolation.lean`, the patch blueprints and the
+automation records, and was pushed to `origin/task-2`.  This authorization does not extend to
+amending, rebasing, resetting or merging, and does not standingly authorize later commits.
+
+Note on the commit subject: this session's harness attribution reminder specified a
+`Co-Authored-By: Claude Opus 5 (1M context)` trailer and no `[claude]` subject prefix, which is
+what the commit carries.  The skill's `[claude] ...` subject convention was not applied; future
+commits should follow whichever of the two the user's then-current instructions specify.
+
+## Resume with a recurring job, 2026-09-17T10:06:45-04:00
+
+The user directed: "Keep autoformalize with cron job every 15 minutes".  Raw prompt: see
+`automation/raw.md` under the same timestamp.
+
+Operative effect: continue Task 2 proof work with a recurring fifteen-minute job restored.  Job
+`64a1e18c` runs on the schedule `3,18,33,48 * * * *` -- the project's established fifteen-minute
+cadence, offset off the `:00` and `:30` marks -- carrying the standing continuation instruction
+text.  It is session-only and auto-expires after seven days.  Proof work continues immediately
+without waiting for the first firing.
+
+Scope is unchanged: Task 2 from `blueprints/task_2_smoothingineq3d_blueprint_updated.tex` with
+`blueprints/patch_1.tex`, `blueprints/patch_2.tex` and `blueprints/patch_3_updated.tex`
+(`patch_3.tex` superseded), owned files `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`,
+`DFR/Auto/SmoothingIneq3D/VanDerCorput.lean` and the reusable prerequisites
+`DFR/Auto/HirschmanLemma.lean` and `DFR/Auto/SteinInterpolation.lean`.  The next unfinished ledger
+row is `patch:uniformize` (`automation/Status.md` line 396), whose one remaining step is averaging
+the zero-vertex bound `Auto.sq_norm_avg_le_enlarged` over the cube against the mixed weight.
+
+### Timestamp discrepancy noted at this resumption
+
+`automation/raw.md` carries two entries dated `2026-09-17T16:45:00-04:00` and
+`2026-09-17T18:10:00-04:00`, both of which are ahead of the local system clock at this resumption
+(`2026-09-17T10:06:45-04:00`, read with `date`).  They are cron-firing records from an earlier
+session whose timestamps were not read from the local clock.  They are left in place as logged;
+entries from this session onward use the local system time.
+
+## 2026-09-18T16:58:10-04:00 - pause autoformalization
+
+Stop autoformalization for the moment.  (Raw prompt logged in `automation/raw.md` at the same
+timestamp.)
+
+Acted on immediately: no further proof work was started, and the recurring cron job `64a1e18c`
+(`/autoformalize` every 15 minutes, session-only) was cancelled, since leaving it scheduled would
+have resumed the work within fifteen minutes and so contradicted this instruction.  "For the
+moment" is read as a pause, not as abandonment of Task 2: nothing in the ledger was closed,
+reverted, or marked complete on account of it.
+
+To resume, re-issue the recurring job with `/loop 15m /autoformalize`, or simply ask for the work
+to continue.  The next step is recorded at the end of the 2026-09-18T14:52:49-04:00 entry in
+`automation/Status.md`.
+
+## 2026-09-21T11:02:55-05:00 - resume autoformalization on a 15-minute cron
+
+Resume Task 2 autoformalization, driven by a recurring job every 15 minutes.  (Raw prompt logged in
+`automation/raw.md` at the same timestamp.)  This lifts the pause of 2026-09-18T16:58:10-04:00; the
+standing Task 2 instructions recorded before that pause are unchanged and remain in force.
+
+Recurring job `127486d5` created (`4,19,34,49 * * * *`, session-only, auto-expires after 7 days).
+It replaces the cancelled `64a1e18c` and carries the same continuation prompt.
+
+Note on timestamps: the system clock now reports a `-05:00` UTC offset, where entries through
+2026-09-18 recorded `-04:00`.  Per the standing rule, each entry records the offset the system
+reports at the time of writing; earlier entries are not retroactively altered.
+
+## 2026-09-21T16:26:39-05:00 - pause autoformalization again
+
+Stop the autoformalization cron job for now.  (Raw prompt logged in `automation/raw.md` at the same
+timestamp.)
+
+Acted on immediately: the recurring job `127486d5` was cancelled, since leaving it scheduled would
+have resumed the work within fifteen minutes.  As with the pause of 2026-09-18T16:58:10-04:00,
+"for now" is read as a pause: nothing in the ledger was closed, reverted, or marked complete on
+account of it, and the standing Task 2 instructions remain in force for whenever work resumes.
+
+The iteration in progress when the message arrived had already compiled cleanly, so the working tree
+is consistent: `Auto.sq_re_gapScaled_le_locUnifPow` is installed and verified, and no partial or
+unverified code was left in the owned file.
+
+To resume, re-issue the recurring job (for example `/loop 15m /autoformalize`) or simply ask for the
+work to continue.  The next step is recorded at the end of the 2026-09-21T16:26:39-05:00 entry in
+`automation/Status.md`.
+
+## 2026-09-24T13:08:19-04:00 - resume autoformalization on a cron job
+
+Resume Task 2 autoformalization, driven by a recurring job.  (Raw prompt logged in
+`automation/raw.md` at the same timestamp.)  This lifts the pause of 2026-09-21T16:26:39-05:00; the
+standing Task 2 instructions are unchanged and remain in force.
+
+No interval was named, so the fifteen-minute cadence of the two previous jobs (`64a1e18c`,
+`127486d5`) is kept.  Recurring job `b7997b97` created (`6,21,36,51 * * * *`, session-only,
+auto-expires after 7 days).
+
+Note on offsets: the system clock reports `-04:00` again, where the 2026-09-21 entries recorded
+`-05:00`.  Each entry records the offset the system reported when it was written; earlier entries
+stand as they are.
+
+## Commit and push authorized, 2026-09-24T13:38:49-04:00
+
+The user directed: "Commit and push".  Raw prompt: see `automation/raw.md` under the same
+timestamp.
+
+Operative effect: a one-time authorization to commit the working tree and push it to
+`origin/task-2`.  As with the authorization of 2026-09-17T10:04:00-04:00, this does not extend to
+amending, rebasing, resetting or merging, and does not standingly authorize later commits.
+
+Subject convention: following the 2026-09-17 precedent recorded above and the current harness
+attribution reminder -- no `[claude]` prefix, and a
+`Co-Authored-By: Claude Opus 5 (1M context)` trailer.
+
+The scratch probe `probe88.lean` was deleted from the repository root before staging, so no probe
+is committed.  Everything committed is verified: the owned file compiles under `lake env lean` with
+no error and no new warning, and every declaration audits to `propext`, `Classical.choice`,
+`Quot.sound`.

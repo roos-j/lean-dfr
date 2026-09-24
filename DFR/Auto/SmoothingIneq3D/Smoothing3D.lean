@@ -32253,4 +32253,5618 @@ theorem locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {L
           * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a
   rw [← integral_const_mul]
 
+
+open MeasureTheory in
+/-- **The uniform bound in the shift, at mixed radii.**  Port of
+`Auto.norm_locUnifPow_fdiff_le`: the mixed Fejer cube is again a probability density
+(`Auto.integral_fejerCubeMixed`), so the shifted cube average is bounded by the normalized `L^1`
+norm of `f`, uniformly in the shift. -/
+theorem norm_locUnifPowMixed_fdiff_le {N : ℝ} {s : ℕ} {H : Fin s → ℝ} (hH : ∀ l, 0 < H l)
+    (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) (a : ℝ) :
+    ‖locUnifPowMixed N H j (fdiff (basisVec j) a f)‖
+      ≤ |((N : ℝ) ^ (6 : ℕ))⁻¹| * ∫ x : E3, ‖f x‖ := by
+  classical
+  set L : ℝ := ∫ x : E3, ‖f x‖ with hL
+  have hL0 : 0 ≤ L := integral_nonneg fun _ => norm_nonneg _
+  have hpair : ∀ h' : Fin s → ℝ,
+      ‖pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a‖ ≤ L := by
+    intro h'
+    refine le_trans (norm_pairAvg_le _ (nice_fdiffIter _ s h' hf)
+      (norm_fdiffIter_le _ s h' hf1) a) ?_
+    rw [one_mul, hL]
+    exact integral_mono_of_nonneg (Filter.Eventually.of_forall fun x => norm_nonneg _)
+      hf.integrable.norm
+      (Filter.Eventually.of_forall fun x => norm_fdiffIter_le_self _ s h' hf1 x)
+  have hint : ‖∫ h' : Fin s → ℝ, ((fejerCubeMixed H h' : ℝ) : ℂ)
+      * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a‖ ≤ L := by
+    refine le_trans (norm_integral_le_integral_norm _) ?_
+    have hmono : (∫ h' : Fin s → ℝ, ‖((fejerCubeMixed H h' : ℝ) : ℂ)
+        * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a‖)
+        ≤ ∫ h' : Fin s → ℝ, fejerCubeMixed H h' * L := by
+      refine integral_mono_of_nonneg (Filter.Eventually.of_forall fun h' => norm_nonneg _)
+        ((integrable_fejerCubeMixed hH).mul_const L)
+        (Filter.Eventually.of_forall fun h' => ?_)
+      show ‖((fejerCubeMixed H h' : ℝ) : ℂ)
+          * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a‖ ≤ fejerCubeMixed H h' * L
+      rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (fejerCubeMixed_nonneg hH h')]
+      exact mul_le_mul_of_nonneg_left (hpair h') (fejerCubeMixed_nonneg hH h')
+    refine le_trans hmono (le_of_eq ?_)
+    rw [integral_mul_const, integral_fejerCubeMixed hH, one_mul]
+  rw [locUnifPowMixed_fdiff_eq hH j hf hf1 a, norm_mul]
+  refine mul_le_mul_of_nonneg_left hint ?_ |>.trans (le_of_eq ?_)
+  · exact norm_nonneg _
+  · congr 1
+    rw [← Complex.ofReal_pow, ← Complex.ofReal_inv, Complex.norm_real, Real.norm_eq_abs]
+
+open MeasureTheory in
+/-- Mixed-radius port of `Auto.measurable_locUnifPow_fdiff_c`: the shifted cube average is
+measurable in the shift, as a parametric integral over the cube. -/
+theorem measurable_locUnifPowMixed_fdiff_c {N : ℝ} {s : ℕ} {H : Fin s → ℝ} (hH : ∀ l, 0 < H l)
+    (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
+    Measurable fun a : ℝ => locUnifPowMixed N H j (fdiff (basisVec j) a f) := by
+  have hcongr : (fun a : ℝ => locUnifPowMixed N H j (fdiff (basisVec j) a f))
+      = fun a : ℝ => ((N ^ (6 : ℕ))⁻¹ : ℂ) * ∫ h' : Fin s → ℝ, ((fejerCubeMixed H h' : ℝ) : ℂ)
+          * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a := by
+    funext a
+    rw [locUnifPowMixed_fdiff_eq hH j hf hf1 a]
+  rw [hcongr]
+  refine measurable_const.mul ?_
+  have hjoint : StronglyMeasurable fun p : ℝ × (Fin s → ℝ) =>
+      ((fejerCubeMixed H p.2 : ℝ) : ℂ)
+        * pairAvg (basisVec j) (fdiffIter (basisVec j) s p.2 f) p.1 := by
+    refine StronglyMeasurable.mul ?_ (stronglyMeasurable_pairAvg_cube _ s hf.1)
+    exact (Complex.continuous_ofReal.comp
+      ((continuous_fejerCubeMixed H).comp continuous_snd)).stronglyMeasurable
+  exact (hjoint.integral_prod_right' (ν := (volume : Measure (Fin s → ℝ)))).measurable
+
+open MeasureTheory in
+/-- The real part of the mixed shifted cube average is measurable in the shift. -/
+theorem measurable_locUnifPowMixed_fdiff {N : ℝ} {s : ℕ} {H : Fin s → ℝ} (hH : ∀ l, 0 < H l)
+    (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
+    Measurable fun a : ℝ => (locUnifPowMixed N H j (fdiff (basisVec j) a f)).re :=
+  Complex.measurable_re.comp (measurable_locUnifPowMixed_fdiff_c hH j hf hf1)
+
+open MeasureTheory in
+/-- Mixed-radius port of `Auto.integrable_fejer_locUnifPow_fdiff`.  The split coordinate carries
+the radius `L`, the remaining cube the mixed radii `Lv`; the integrand is bounded by the Fejer
+kernel times the uniform bound `Auto.norm_locUnifPowMixed_fdiff_le`. -/
+theorem integrable_fejer_locUnifPowMixed_fdiff {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L)
+    {Lv : Fin s → ℝ} (hLv : ∀ l, 0 < Lv l) (j : Fin 3)
+    {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
+    Integrable fun a : ℝ =>
+      ((fejer L a : ℝ) : ℂ) * locUnifPowMixed N Lv j (fdiff (basisVec j) a f) := by
+  set M : ℝ := |((N : ℝ) ^ (6 : ℕ))⁻¹| * ∫ x : E3, ‖f x‖ with hM
+  have hM0 : 0 ≤ M := by
+    rw [hM]
+    exact mul_nonneg (abs_nonneg _) (integral_nonneg fun _ => norm_nonneg _)
+  refine Integrable.mono' ((integrable_fejer hL).mul_const M) ?_
+    (Filter.Eventually.of_forall fun a => ?_)
+  · exact ((Complex.continuous_ofReal.comp continuous_fejer).measurable.mul
+      (measurable_locUnifPowMixed_fdiff_c hLv j hf hf1)).aestronglyMeasurable
+  · rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+      abs_of_nonneg (fejer_nonneg hL a)]
+    exact mul_le_mul_of_nonneg_left (norm_locUnifPowMixed_fdiff_le hLv j hf hf1 a)
+      (fejer_nonneg hL a)
+
+open MeasureTheory in
+/-- **The real part of the mixed splitting.**  Real parts pass through the Fejer average, so the
+cube at radius vector `Fin.cons L Lv` is the `L`-Fejer average, over the split shift, of the real
+cube at `Lv` of the differenced function.  This is the form the zero-vertex induction of
+`patch:uniformize` iterates. -/
+theorem re_locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {Lv : Fin s → ℝ}
+    (hLv : ∀ l, 0 < Lv l) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
+    (locUnifPowMixed N (Fin.cons L Lv) j f).re
+      = ∫ a : ℝ, fejer L a * (locUnifPowMixed N Lv j (fdiff (basisVec j) a f)).re := by
+  rw [locUnifPowMixed_succ_split hL hLv j hf hf1]
+  rw [← Complex.reCLM_apply, ← ContinuousLinearMap.integral_comp_comm _
+    (integrable_fejer_locUnifPowMixed_fdiff hL hLv j hf hf1)]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
+  show (((fejer L a : ℝ) : ℂ) * locUnifPowMixed N Lv j (fdiff (basisVec j) a f)).re
+      = fejer L a * (locUnifPowMixed N Lv j (fdiff (basisVec j) a f)).re
+  rw [Complex.re_ofReal_mul]
+
+/-! ### The cube is symmetric in its first two coordinates
+
+`patch:uniformize` appends the coordinate carrying the common radius `L` at the *front*
+(`Auto.locUnifPowMixed_succ_eq`, consumed by `Auto.locUnifPowMixed_re_le_scaled`), while the
+zero-vertex induction below consumes the coordinates of `Lv` at the front as well.  The two meet
+after one adjacent transposition, which is what this section supplies.  Its germ is
+`Auto.fdiffIter_swap_cons`; the cube integral itself is unchanged because the substitution
+exchanging two shift coordinates is measure preserving. -/
+
+/-- Reading a vector of length `s + 2` as its first two entries followed by the rest. -/
+theorem eq_cons_cons {α : Type*} {s : ℕ} (hh : Fin (s + 2) → α) :
+    hh = Fin.cons (hh 0) (Fin.cons (hh 1) (fun i : Fin s => hh i.succ.succ)) := by
+  funext m
+  induction m using Fin.cases with
+  | zero => rw [Fin.cons_zero]
+  | succ i =>
+      rw [Fin.cons_succ]
+      induction i using Fin.cases with
+      | zero => rw [Fin.cons_zero, Fin.succ_zero_eq_one]
+      | succ k => rw [Fin.cons_succ]
+
+/-- Precomposing with the transposition of `0` and `1` exchanges the first two entries. -/
+theorem swap_comp_eq_cons_cons {α : Type*} {s : ℕ} (hh : Fin (s + 2) → α) :
+    (fun l => hh (Equiv.swap (0 : Fin (s + 2)) 1 l))
+      = Fin.cons (hh 1) (Fin.cons (hh 0) (fun i : Fin s => hh i.succ.succ)) := by
+  funext m
+  induction m using Fin.cases with
+  | zero => rw [Equiv.swap_apply_left, Fin.cons_zero]
+  | succ i =>
+      rw [Fin.cons_succ]
+      induction i using Fin.cases with
+      | zero => rw [Fin.succ_zero_eq_one, Equiv.swap_apply_right, Fin.cons_zero]
+      | succ k =>
+          have h0 : (k.succ.succ : Fin (s + 2)) ≠ 0 := Fin.succ_ne_zero _
+          have h1 : (k.succ.succ : Fin (s + 2)) ≠ 1 := by
+            rw [← Fin.succ_zero_eq_one]
+            exact fun hc => Fin.succ_ne_zero _ (Fin.succ_injective _ hc)
+          rw [Equiv.swap_apply_of_ne_of_ne h0 h1, Fin.cons_succ]
+
+/-- The transposition carries the radius vector with its first two entries exchanged back to the
+original one. -/
+theorem cons_cons_swap_apply {α : Type*} {s : ℕ} (a b : α) (h : Fin s → α) (m : Fin (s + 2)) :
+    (Fin.cons b (Fin.cons a h) : Fin (s + 2) → α) (Equiv.swap 0 1 m)
+      = (Fin.cons a (Fin.cons b h) : Fin (s + 2) → α) m := by
+  induction m using Fin.cases with
+  | zero =>
+      rw [Equiv.swap_apply_left, ← Fin.succ_zero_eq_one, Fin.cons_succ, Fin.cons_zero,
+        Fin.cons_zero]
+  | succ i =>
+      induction i using Fin.cases with
+      | zero =>
+          rw [Fin.succ_zero_eq_one, Equiv.swap_apply_right, Fin.cons_zero,
+            ← Fin.succ_zero_eq_one, Fin.cons_succ, Fin.cons_zero]
+      | succ k =>
+          have h0 : (k.succ.succ : Fin (s + 2)) ≠ 0 := Fin.succ_ne_zero _
+          have h1 : (k.succ.succ : Fin (s + 2)) ≠ 1 := by
+            rw [← Fin.succ_zero_eq_one]
+            exact fun hc => Fin.succ_ne_zero _ (Fin.succ_injective _ hc)
+          rw [Equiv.swap_apply_of_ne_of_ne h0 h1, Fin.cons_succ, Fin.cons_succ,
+            Fin.cons_succ, Fin.cons_succ]
+
+open MeasureTheory in
+/-- **Swapping the first two radii leaves the mixed cube average unchanged.**
+
+The substitution exchanging the first two shift coordinates is measure preserving
+(`MeasureTheory.volume_preserving_arrowCongr'`); it carries the radius vector
+`Fin.cons b (Fin.cons a h)` to `Fin.cons a (Fin.cons b h)`, and it leaves the iterated Fejer
+difference alone by `Auto.fdiffIter_swap_cons`.  No positivity or boundedness is needed: this is a
+change of variables, not an estimate.
+
+The cube length is written `s + 1 + 1` throughout, which is the form `Fin.cons` twice actually
+produces; `s + 2` is the same number but not the same term, and `rw` matches syntactically. -/
+theorem locUnifPowMixed_swap_cons {N : ℝ} {s : ℕ} (a b : ℝ) (h : Fin s → ℝ) (j : Fin 3)
+    (f : E3 → ℂ) :
+    locUnifPowMixed N (Fin.cons a (Fin.cons b h)) j f
+      = locUnifPowMixed N (Fin.cons b (Fin.cons a h)) j f := by
+  classical
+  rw [locUnifPowMixed, locUnifPowMixed]
+  congr 1
+  refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+  show (∫ hh : Fin (s + 1 + 1) → ℝ, fdiffIter (basisVec j) (s + 1 + 1) hh f x
+        * ∏ l : Fin (s + 1 + 1),
+            ((fejer ((Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ))
+      = ∫ hh : Fin (s + 1 + 1) → ℝ, fdiffIter (basisVec j) (s + 1 + 1) hh f x
+          * ∏ l : Fin (s + 1 + 1),
+              ((fejer ((Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ)
+  have hmp : MeasurePreserving
+      (MeasurableEquiv.arrowCongr' (Equiv.swap (0 : Fin (s + 1 + 1)) 1) (MeasurableEquiv.refl ℝ))
+      (volume : Measure (Fin (s + 1 + 1) → ℝ)) volume :=
+    volume_preserving_arrowCongr' (Equiv.swap (0 : Fin (s + 1 + 1)) 1) (MeasurableEquiv.refl ℝ)
+      (MeasurePreserving.id _)
+  have hcov : (∫ hh : Fin (s + 1 + 1) → ℝ,
+        fdiffIter (basisVec j) (s + 1 + 1)
+            (fun l => hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)) f x
+          * ∏ l : Fin (s + 1 + 1),
+              ((fejer ((Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l)
+                (hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)) : ℝ) : ℂ))
+      = ∫ hh : Fin (s + 1 + 1) → ℝ, fdiffIter (basisVec j) (s + 1 + 1) hh f x
+          * ∏ l : Fin (s + 1 + 1),
+              ((fejer ((Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ) :=
+    hmp.integral_comp' (fun hh : Fin (s + 1 + 1) → ℝ =>
+      fdiffIter (basisVec j) (s + 1 + 1) hh f x
+        * ∏ l : Fin (s + 1 + 1),
+            ((fejer ((Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ))
+  rw [← hcov]
+  refine integral_congr_ae (Filter.Eventually.of_forall fun hh => ?_)
+  have e1 : (fun l => hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l))
+      = Fin.cons (hh 1) (Fin.cons (hh 0) (fun i : Fin s => hh i.succ.succ)) :=
+    swap_comp_eq_cons_cons hh
+  have e2 : hh = Fin.cons (hh 0) (Fin.cons (hh 1) (fun i : Fin s => hh i.succ.succ)) :=
+    eq_cons_cons hh
+  have hdiff : fdiffIter (basisVec j) (s + 1 + 1)
+        (fun l => hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)) f x
+      = fdiffIter (basisVec j) (s + 1 + 1) hh f x := by
+    rw [e1]
+    rw [show fdiffIter (basisVec j) (s + 1 + 1)
+          (Fin.cons (hh 1) (Fin.cons (hh 0) (fun i : Fin s => hh i.succ.succ))) f x
+        = fdiffIter (basisVec j) (s + 1 + 1)
+            (Fin.cons (hh 0) (Fin.cons (hh 1) (fun i : Fin s => hh i.succ.succ))) f x from
+      fdiffIter_swap_cons (basisVec j) s (hh 1) (hh 0)
+        (fun i : Fin s => hh i.succ.succ) f x]
+    exact congrArg (fun w => fdiffIter (basisVec j) (s + 1 + 1) w f x) e2.symm
+  have hprod : (∏ l : Fin (s + 1 + 1),
+        ((fejer ((Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l)
+          (hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)) : ℝ) : ℂ))
+      = ∏ l : Fin (s + 1 + 1),
+          ((fejer ((Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ) := by
+    rw [← Equiv.prod_comp (Equiv.swap (0 : Fin (s + 1 + 1)) 1)
+      (fun l => ((fejer ((Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) l)
+        (hh l) : ℝ) : ℂ))]
+    refine Finset.prod_congr rfl fun l _ => ?_
+    have hidx : (Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l
+        = (Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) (Equiv.swap 0 1 l) := by
+      have hsw := cons_cons_swap_apply a b h (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)
+      rwa [Equiv.swap_apply_self] at hsw
+    rw [hidx]
+  show fdiffIter (basisVec j) (s + 1 + 1) hh f x
+      * ∏ l : Fin (s + 1 + 1),
+          ((fejer ((Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ)
+    = fdiffIter (basisVec j) (s + 1 + 1)
+        (fun l => hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)) f x
+      * ∏ l : Fin (s + 1 + 1),
+          ((fejer ((Fin.cons b (Fin.cons a h) : Fin (s + 1 + 1) → ℝ) l)
+            (hh (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)) : ℝ) : ℂ)
+  rw [hdiff, hprod]
+open MeasureTheory in
+/-- **The zero-vertex half of `patch:uniformize`.**
+
+    (Q^j_{Lv,V}(f))^2 <= (1 + L/S) Q^j_{cons L Lv,V}(f),
+
+in the file's normalization, where `(1 + L/S) |B_N| / N^6 <= 16 C^3`.  This is the mixed-radius
+port of `Auto.sq_re_locUnifPow_le`, and it is the patch's first display -- "the zero vertex
+supports `u_z` on the original box, so `|V^{-1} int u_z|^2 <= (1 + L/S) P(z)`" -- averaged over the
+cube against the mixed weight, which is the patch's "after Jensen".
+
+Induction on the number of mixed coordinates.  The base case is the support Cauchy-Schwarz
+`Auto.sq_re_locUnifPow_zero_le`.  The step splits at the first mixed coordinate
+(`Auto.re_locUnifPowMixed_succ_split`), applies the induction hypothesis to the differenced
+function -- again `Auto.Nice`, one-bounded and supported in the same box, the zero vertex being
+undisplaced -- and closes with Jensen for the Fejer density (`Auto.sq_integral_fejer_le`).  The
+appended coordinate carrying the common radius `L` is then moved back past the split one by
+`Auto.locUnifPowMixed_swap_cons`. -/
+theorem sq_re_locUnifPowMixed_le {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN : 0 < N) (j : Fin 3)
+    (hLS : L ≤ 2 * (C * N ^ expo j)) :
+    ∀ (s : ℕ) (Lv : Fin s → ℝ), (∀ l, 0 < Lv l) →
+      ∀ {f : E3 → ℂ}, Nice f → (∀ y, ‖f y‖ ≤ 1) → (∀ y, y ∉ petBox C N → f y = 0) →
+        (locUnifPowMixed N Lv j f).re ^ 2
+          ≤ 16 * C ^ 3 * (locUnifPowMixed N (Fin.cons L Lv) j f).re := by
+  intro s
+  induction s with
+  | zero =>
+      intro Lv _ f hf hf1 hsupp
+      have h0 : locUnifPowMixed N Lv j f = locUnifPow N L j 0 f := by
+        rw [Subsingleton.elim Lv (fun _ : Fin 0 => L), locUnifPowMixed_const]
+      have hone : (Fin.cons L Lv : Fin 1 → ℝ) = (fun _ : Fin 1 => L) := by
+        funext m
+        induction m using Fin.cases with
+        | zero => rw [Fin.cons_zero]
+        | succ i => exact i.elim0
+      have h1 : locUnifPowMixed N (Fin.cons L Lv) j f = locUnifPow N L j 1 f := by
+        rw [hone, locUnifPowMixed_const]
+      rw [h0, h1]
+      exact sq_re_locUnifPow_zero_le hL hC hN j hLS hf hf1 hsupp
+  | succ s ih =>
+      intro Lv hLv f hf hf1 hsupp
+      have hLv0 : 0 < Lv 0 := hLv 0
+      have htail : ∀ l, 0 < Fin.tail Lv l := fun l => hLv l.succ
+      have hconsL : ∀ l, 0 < (Fin.cons L (Fin.tail Lv) : Fin (s + 1) → ℝ) l :=
+        pos_fin_cons hL htail
+      have hwm : Measurable fun a : ℝ =>
+          (locUnifPowMixed N (Fin.tail Lv) j (fdiff (basisVec j) a f)).re :=
+        measurable_locUnifPowMixed_fdiff htail j hf hf1
+      have hum : Measurable fun a : ℝ =>
+          (locUnifPowMixed N (Fin.cons L (Fin.tail Lv)) j (fdiff (basisVec j) a f)).re :=
+        measurable_locUnifPowMixed_fdiff hconsL j hf hf1
+      have hMw : ∀ a : ℝ, |(locUnifPowMixed N (Fin.tail Lv) j (fdiff (basisVec j) a f)).re|
+          ≤ |((N : ℝ) ^ (6 : ℕ))⁻¹| * ∫ x : E3, ‖f x‖ := fun a =>
+        le_trans (Complex.abs_re_le_norm _) (norm_locUnifPowMixed_fdiff_le htail j hf hf1 a)
+      have hMu : ∀ a : ℝ,
+          |(locUnifPowMixed N (Fin.cons L (Fin.tail Lv)) j (fdiff (basisVec j) a f)).re|
+            ≤ |((N : ℝ) ^ (6 : ℕ))⁻¹| * ∫ x : E3, ‖f x‖ := fun a =>
+        le_trans (Complex.abs_re_le_norm _)
+          (norm_locUnifPowMixed_fdiff_le hconsL j hf hf1 a)
+      have hptw : ∀ a : ℝ,
+          (locUnifPowMixed N (Fin.tail Lv) j (fdiff (basisVec j) a f)).re ^ 2
+            ≤ 16 * C ^ 3
+              * (locUnifPowMixed N (Fin.cons L (Fin.tail Lv)) j
+                  (fdiff (basisVec j) a f)).re := by
+        intro a
+        refine ih (Fin.tail Lv) htail (nice_fdiff _ a hf) (fun y => norm_fdiff_le _ a hf1 y) ?_
+        intro y hy
+        rw [fdiff, hsupp y hy, map_zero, mul_zero]
+      have hsplitL : (locUnifPowMixed N Lv j f).re
+          = ∫ a : ℝ, fejer (Lv 0) a
+              * (locUnifPowMixed N (Fin.tail Lv) j (fdiff (basisVec j) a f)).re := by
+        conv_lhs => rw [← Fin.cons_self_tail Lv]
+        exact re_locUnifPowMixed_succ_split hLv0 htail j hf hf1
+      have hsplitR : (locUnifPowMixed N
+            (Fin.cons (Lv 0) (Fin.cons L (Fin.tail Lv))) j f).re
+          = ∫ a : ℝ, fejer (Lv 0) a
+              * (locUnifPowMixed N (Fin.cons L (Fin.tail Lv)) j
+                  (fdiff (basisVec j) a f)).re :=
+        re_locUnifPowMixed_succ_split hLv0 hconsL j hf hf1
+      have hgoal : (locUnifPowMixed N (Fin.cons (Lv 0) (Fin.cons L (Fin.tail Lv))) j f).re
+          = (locUnifPowMixed N (Fin.cons L Lv) j f).re := by
+        rw [locUnifPowMixed_swap_cons (Lv 0) L (Fin.tail Lv) j f, Fin.cons_self_tail]
+      calc (locUnifPowMixed N Lv j f).re ^ 2
+          = (∫ a : ℝ, fejer (Lv 0) a
+              * (locUnifPowMixed N (Fin.tail Lv) j (fdiff (basisVec j) a f)).re) ^ 2 := by
+            rw [hsplitL]
+        _ ≤ ∫ a : ℝ, fejer (Lv 0) a
+              * (locUnifPowMixed N (Fin.tail Lv) j (fdiff (basisVec j) a f)).re ^ 2 :=
+            sq_integral_fejer_le hLv0 hwm hMw
+        _ ≤ ∫ a : ℝ, fejer (Lv 0) a
+              * (16 * C ^ 3 * (locUnifPowMixed N (Fin.cons L (Fin.tail Lv)) j
+                  (fdiff (basisVec j) a f)).re) := by
+            refine integral_mono ?_ ?_ fun a =>
+              mul_le_mul_of_nonneg_left (hptw a) (fejer_nonneg hLv0 a)
+            · refine integrable_fejer_mul hLv0 (hwm.pow_const 2)
+                (M := (|((N : ℝ) ^ (6 : ℕ))⁻¹| * ∫ x : E3, ‖f x‖) ^ 2) fun t => ?_
+              rw [abs_pow]
+              exact pow_le_pow_left₀ (abs_nonneg _) (hMw t) 2
+            · refine integrable_fejer_mul hLv0 (measurable_const.mul hum)
+                (M := 16 * C ^ 3 * (|((N : ℝ) ^ (6 : ℕ))⁻¹| * ∫ x : E3, ‖f x‖)) fun t => ?_
+              rw [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ 16 * C ^ 3)]
+              exact mul_le_mul_of_nonneg_left (hMu t) (by positivity)
+        _ = 16 * C ^ 3 * ∫ a : ℝ, fejer (Lv 0) a
+              * (locUnifPowMixed N (Fin.cons L (Fin.tail Lv)) j
+                  (fdiff (basisVec j) a f)).re := by
+            rw [← integral_const_mul]
+            exact integral_congr_ae (Filter.Eventually.of_forall fun a => by ring)
+        _ = 16 * C ^ 3 * (locUnifPowMixed N (Fin.cons L Lv) j f).re := by
+            rw [← hsplitR, hgoal]
+
+open MeasureTheory in
+/-- **`patch:uniformize` of `blueprints/patch_3_updated.tex`** (Mixed radii to one radius, with
+positivity before comparison), in the file's normalization:
+
+    (Q^j_{Lv,V}(f))^2 <= (1 + L/S) prod_i (2L/L_i) Q^j_{s+1,L,V}(f),
+
+where the patch's `(1 + L/S)` enters through `(1 + L/S) |B_N| / N^6 <= 16 C^3`, the constant the
+file carries for the enlarged box.
+
+The two halves are proved separately and composed here.  `Auto.sq_re_locUnifPowMixed_le` is the
+patch's first display -- the zero vertex supports `u_z` on the original box -- averaged over the
+cube against the mixed Fejer weight, which is its "after Jensen".
+`Auto.locUnifPowMixed_re_le_scaled` is the density comparison `kappa_{L_i} <= (2L/L_i) kappa_L`,
+applied only to the nonnegative `P(z) = (Auto.innerFejer L ...).re`, which is the lemma's
+"positivity before comparison"; `Auto.re_innerFejer_eq_sq` identifies that `P` with the patch's
+`V^{-1} ||T_{L,j} u_z||_2^2`.  The hypothesis `L_i <= L/2` is the patch's `L >= 2 max_i L_i`. -/
+theorem sq_re_locUnifPowMixed_le_scaled {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN : 0 < N)
+    (j : Fin 3) (hLS : L ≤ 2 * (C * N ^ expo j)) {s : ℕ} {Lv : Fin s → ℝ}
+    (hLv : ∀ l, 0 < Lv l) (hhalf : ∀ l, Lv l ≤ L / 2) {f : E3 → ℂ} (hf : Nice f)
+    (hf1 : ∀ y, ‖f y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f y = 0) :
+    (locUnifPowMixed N Lv j f).re ^ 2
+      ≤ 16 * C ^ 3 * ((∏ l : Fin s, 2 * L / Lv l) * (locUnifPow N L j (s + 1) f).re) := by
+  refine (sq_re_locUnifPowMixed_le hL hC hN j hLS s Lv hLv hf hf1 hsupp).trans ?_
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  exact locUnifPowMixed_re_le_scaled hL hLv hhalf j hf hf1
+
+/-! ### The bridge of `patch:multiaffine-sublevel`
+
+`Auto.multiAff_sublevel_le` is the estimate the patch asks for, but it is stated for the explicit
+form `Auto.multiAff`.  What the patch applies it to is an arbitrary nonzero multilinear integer
+polynomial of total degree at most two, so the two have to be identified.  That identification was
+recorded as an explicit debt in the Status entry of 2026-09-17T15:25 and is discharged here.  It is
+pure `Finset` reindexing: both sides are sums of `coeff d p * Auto.monTerm d u`, the left over
+`p.support` and the right over the three families `Auto.multilinear_support_cases` allows.  The
+quadratic matrix is taken upper triangular, which is legitimate because `Auto.multiAff` sums over
+all ordered pairs and a multilinear polynomial never uses the diagonal. -/
+
+/-- `aeval` written as a sum of coefficients against monomials over the full index set. -/
+theorem aeval_eq_sum_monTerm {n : ℕ} (p : MvPolynomial (Fin n) ℤ) (u : Fin n → ℝ) :
+    MvPolynomial.aeval u p = ∑ d ∈ p.support, ((p.coeff d : ℤ) : ℝ) * monTerm d u := by
+  classical
+  rw [MvPolynomial.aeval_def, MvPolynomial.eval₂_eq]
+  refine Finset.sum_congr rfl fun d _ => ?_
+  have hprod : (∏ i ∈ d.support, u i ^ d i) = monTerm d u := by
+    rw [monTerm]
+    refine Finset.prod_subset (Finset.subset_univ _) ?_
+    intro i _ hi
+    rw [Finsupp.notMem_support_iff.mp hi, pow_zero]
+  rw [hprod]
+  simp
+
+/-- The support of a two-variable multilinear exponent vector. -/
+theorem support_single_add_single {n : ℕ} {a b : Fin n} (hab : a ≠ b) :
+    (Finsupp.single a 1 + Finsupp.single b 1 : Fin n →₀ ℕ).support = {a, b} := by
+  classical
+  have hdisj : Disjoint (Finsupp.single a (1 : ℕ)).support (Finsupp.single b (1 : ℕ)).support :=
+    (Finsupp.support_single_disjoint (one_ne_zero : (1 : ℕ) ≠ 0)
+      (one_ne_zero : (1 : ℕ) ≠ 0)).mpr hab
+  rw [Finsupp.support_add_eq hdisj, Finsupp.support_single _ (one_ne_zero : (1 : ℕ) ≠ 0),
+    Finsupp.support_single _ (one_ne_zero : (1 : ℕ) ≠ 0)]
+  simp
+theorem pair_exponent_inj {n : ℕ} {a b c d : Fin n} (hab : a < b) (hcd : c < d)
+    (h : (Finsupp.single a 1 + Finsupp.single b 1 : Fin n →₀ ℕ)
+       = Finsupp.single c 1 + Finsupp.single d 1) : a = c ∧ b = d := by
+  classical
+  have hsupp : ({a, b} : Finset (Fin n)) = {c, d} := by
+    rw [← support_single_add_single (ne_of_lt hab), ← support_single_add_single (ne_of_lt hcd), h]
+  have hamem : a ∈ ({c, d} : Finset (Fin n)) := by rw [← hsupp]; simp
+  have hbmem : b ∈ ({c, d} : Finset (Fin n)) := by rw [← hsupp]; simp
+  have hcmem : c ∈ ({a, b} : Finset (Fin n)) := by rw [hsupp]; simp
+  have hac : a = c := by
+    rcases Finset.mem_insert.mp hamem with hac | had
+    · exact hac
+    · have hda : a = d := Finset.mem_singleton.mp had
+      exfalso
+      rcases Finset.mem_insert.mp hcmem with hca | hcb
+      · omega
+      · have hcb' : c = b := Finset.mem_singleton.mp hcb
+        omega
+  refine ⟨hac, ?_⟩
+  rcases Finset.mem_insert.mp hbmem with hbc | hbd
+  · exfalso; omega
+  · exact Finset.mem_singleton.mp hbd
+
+/-- The exponent vectors a multilinear polynomial of total degree at most two can use. -/
+noncomputable def affSupp (n : ℕ) : Finset (Fin n →₀ ℕ) :=
+  insert (0 : Fin n →₀ ℕ)
+    ((Finset.univ.image fun k : Fin n => Finsupp.single k 1) ∪
+      ((Finset.univ.filter fun kl : Fin n × Fin n => kl.1 < kl.2).image
+        fun kl => Finsupp.single kl.1 1 + Finsupp.single kl.2 1))
+
+theorem card_support_single {n : ℕ} (k : Fin n) :
+    (Finsupp.single k 1 : Fin n →₀ ℕ).support.card = 1 := by
+  classical
+  rw [Finsupp.support_single _ (one_ne_zero : (1 : ℕ) ≠ 0)]
+  simp
+
+theorem card_support_pair {n : ℕ} {a b : Fin n} (hab : a ≠ b) :
+    (Finsupp.single a 1 + Finsupp.single b 1 : Fin n →₀ ℕ).support.card = 2 := by
+  classical
+  rw [support_single_add_single hab]
+  rw [Finset.card_insert_of_notMem (by simpa using hab), Finset.card_singleton]
+
+theorem singles_ne_pairs {n : ℕ} {k a b : Fin n} (hab : a ≠ b) :
+    (Finsupp.single k 1 : Fin n →₀ ℕ) ≠ Finsupp.single a 1 + Finsupp.single b 1 := by
+  intro hc
+  have h1 := card_support_single k
+  rw [hc, card_support_pair hab] at h1
+  omega
+
+theorem zero_ne_single {n : ℕ} (k : Fin n) :
+    (0 : Fin n →₀ ℕ) ≠ Finsupp.single k 1 := by
+  intro hc
+  have h1 := card_support_single k
+  rw [← hc] at h1
+  simp at h1
+
+theorem zero_ne_pair {n : ℕ} {a b : Fin n} (hab : a ≠ b) :
+    (0 : Fin n →₀ ℕ) ≠ Finsupp.single a 1 + Finsupp.single b 1 := by
+  intro hc
+  have h1 := card_support_pair hab
+  rw [← hc] at h1
+  simp at h1
+
+theorem sum_affSupp {n : ℕ} (F : (Fin n →₀ ℕ) → ℝ) :
+    ∑ d ∈ affSupp n, F d
+      = F 0 + (∑ k : Fin n, F (Finsupp.single k 1))
+        + ∑ kl ∈ Finset.univ.filter (fun kl : Fin n × Fin n => kl.1 < kl.2),
+            F (Finsupp.single kl.1 1 + Finsupp.single kl.2 1) := by
+  classical
+  set A : Finset (Fin n →₀ ℕ) := Finset.univ.image fun k : Fin n => Finsupp.single k 1 with hA
+  set P : Finset (Fin n × Fin n) := Finset.univ.filter fun kl : Fin n × Fin n => kl.1 < kl.2
+    with hP
+  set B : Finset (Fin n →₀ ℕ) :=
+    P.image fun kl => Finsupp.single kl.1 1 + Finsupp.single kl.2 1 with hB
+  have hmemP : ∀ kl ∈ P, kl.1 ≠ kl.2 := by
+    intro kl hkl
+    have : kl.1 < kl.2 := by simpa [hP] using hkl
+    exact ne_of_lt this
+  have h0A : (0 : Fin n →₀ ℕ) ∉ A := by
+    rw [hA]
+    intro hc
+    obtain ⟨k, _, hk⟩ := Finset.mem_image.mp hc
+    exact zero_ne_single k hk.symm
+  have h0B : (0 : Fin n →₀ ℕ) ∉ B := by
+    rw [hB]
+    intro hc
+    obtain ⟨kl, hkl, hk⟩ := Finset.mem_image.mp hc
+    exact zero_ne_pair (hmemP kl hkl) hk.symm
+  have hdisj : Disjoint A B := by
+    rw [Finset.disjoint_left]
+    intro d hdA hdB
+    obtain ⟨k, _, hk⟩ := Finset.mem_image.mp hdA
+    obtain ⟨kl, hkl, hkl'⟩ := Finset.mem_image.mp hdB
+    exact singles_ne_pairs (hmemP kl hkl) (hk.trans hkl'.symm)
+  have hinsert : affSupp n = insert (0 : Fin n →₀ ℕ) (A ∪ B) := rfl
+  rw [hinsert, Finset.sum_insert (by simp [Finset.mem_union, h0A, h0B]),
+    Finset.sum_union hdisj]
+  have hsumA : (∑ d ∈ A, F d) = ∑ k : Fin n, F (Finsupp.single k 1) := by
+    rw [hA, Finset.sum_image]
+    intro x _ y _ hxy
+    exact Finsupp.single_left_injective (one_ne_zero : (1 : ℕ) ≠ 0) hxy
+  have hsumB : (∑ d ∈ B, F d)
+      = ∑ kl ∈ P, F (Finsupp.single kl.1 1 + Finsupp.single kl.2 1) := by
+    rw [hB, Finset.sum_image]
+    intro x hx y hy hxy
+    have hx' : x.1 < x.2 := by simpa [hP] using hx
+    have hy' : y.1 < y.2 := by simpa [hP] using hy
+    obtain ⟨h1, h2⟩ := pair_exponent_inj hx' hy' hxy
+    exact Prod.ext h1 h2
+  rw [hsumA, hsumB, add_assoc]
+
+theorem support_subset_affSupp {n : ℕ} {p : MvPolynomial (Fin n) ℤ}
+    (hml : ∀ i, p.degreeOf i ≤ 1) (hdeg : p.totalDegree ≤ 2) :
+    p.support ⊆ affSupp n := by
+  classical
+  intro d hd
+  rcases multilinear_support_cases hml hdeg hd with h0 | ⟨k, hk⟩ | ⟨k, l, hkl, hd'⟩
+  · rw [h0]; exact Finset.mem_insert_self _ _
+  · refine Finset.mem_insert_of_mem (Finset.mem_union_left _ ?_)
+    exact Finset.mem_image.mpr ⟨k, Finset.mem_univ k, hk.symm⟩
+  · refine Finset.mem_insert_of_mem (Finset.mem_union_right _ ?_)
+    rcases lt_or_gt_of_ne hkl with hlt | hgt
+    · exact Finset.mem_image.mpr ⟨(k, l), by simp [hlt], hd'.symm⟩
+    · refine Finset.mem_image.mpr ⟨(l, k), by simp [hgt], ?_⟩
+      rw [hd', add_comm]
+
+theorem aeval_eq_multiAff {n : ℕ} {p : MvPolynomial (Fin n) ℤ}
+    (hml : ∀ i, p.degreeOf i ≤ 1) (hdeg : p.totalDegree ≤ 2) (u : Fin n → ℝ) :
+    MvPolynomial.aeval u p
+      = multiAff (p.coeff 0) (fun k => p.coeff (Finsupp.single k 1))
+          (fun k l => if k < l then p.coeff (Finsupp.single k 1 + Finsupp.single l 1) else 0)
+          u := by
+  classical
+  rw [aeval_eq_sum_monTerm]
+  rw [Finset.sum_subset (support_subset_affSupp hml hdeg)
+    (by
+      intro d _ hd
+      rw [MvPolynomial.notMem_support_iff.mp hd]
+      simp)]
+  rw [sum_affSupp (fun d => ((p.coeff d : ℤ) : ℝ) * monTerm d u), multiAff]
+  have hRHS : (∑ k : Fin n, ∑ l : Fin n,
+        ((if k < l then p.coeff (Finsupp.single k 1 + Finsupp.single l 1) else 0 : ℤ) : ℝ)
+          * (u k * u l))
+      = ∑ kl ∈ Finset.univ.filter (fun kl : Fin n × Fin n => kl.1 < kl.2),
+          ((p.coeff (Finsupp.single kl.1 1 + Finsupp.single kl.2 1) : ℤ) : ℝ)
+            * monTerm (Finsupp.single kl.1 1 + Finsupp.single kl.2 1) u := by
+    rw [Finset.sum_filter, ← Finset.univ_product_univ, Finset.sum_product]
+    refine Finset.sum_congr rfl fun k _ => Finset.sum_congr rfl fun l _ => ?_
+    by_cases h : k < l <;> simp [h, monTerm_pair]
+  rw [hRHS]
+  congr 1
+  congr 1
+  · simp
+  · exact Finset.sum_congr rfl fun k _ => by rw [monTerm_single]
+
+
+/-! ### Patch 3: the surviving tail as an input to `patch:signed-vdc`
+
+The removal step of the affine endpoint feeds `Auto.sq_norm_signed_vdc` with `g` the block being
+removed and `F` the product of the blocks that survive, each displaced by its slope *gap* against
+`a r` (`Auto.slopeProd_translate`).  That tool asks for joint measurability of `F`, a uniform
+bound, and an `L^2` bound in the point uniform in the parameter.  Those are collected here.  The
+`L^2` bound is the patch's "a product block is dominated by any one of its factors, so all required
+`L^2` and `L^1` bounds remain at most `V`": the protected index `m` survives every removal, so the
+tail is dominated by the protected block, which the zero vertex dominates by its own input. -/
+
+open MeasureTheory in
+/-- The surviving tail is jointly continuous in the point and the parameter. -/
+theorem continuous_slopeTail_uncurry (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hgc : ∀ i, Continuous (g i)) (m r : ℕ) (h : Fin r → ℝ) :
+    Continuous (Function.uncurry fun (x : E3) (t : ℝ) =>
+      ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)) := by
+  refine continuous_finsetProd _ fun i _ => ?_
+  refine (continuous_headBlock j a (hgc i) i r h).comp ?_
+  exact continuous_fst.add ((continuous_const.mul continuous_snd).smul continuous_const)
+
+open MeasureTheory in
+/-- Hence it is jointly measurable, which is the form `Auto.sq_norm_signed_vdc` asks for. -/
+theorem measurable_slopeTail_uncurry (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hgc : ∀ i, Continuous (g i)) (m r : ℕ) (h : Fin r → ℝ) :
+    Measurable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)) :=
+  (continuous_slopeTail_uncurry j a hgc m r h).measurable
+
+/-- The surviving tail is one-bounded, every factor being a block of a one-bounded input. -/
+theorem norm_slopeTail_le_one (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hg : ∀ i y, ‖g i y‖ ≤ 1) (m r : ℕ) (h : Fin r → ℝ) (x : E3) (t : ℝ) :
+    ‖∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ≤ 1 := by
+  rw [norm_prod]
+  exact Finset.prod_le_one (fun i _ => norm_nonneg _)
+    fun i _ => headBlock_norm_le j a i (hg i) r h _
+
+open MeasureTheory in
+/-- The square of the protected input, displaced, is integrable: the displacement is a
+translation, and the volume of `E3` is translation invariant. -/
+theorem integrable_sq_translate {G : E3 → ℂ} (hG2 : Integrable fun x : E3 => ‖G x‖ ^ 2)
+    (v : E3) : Integrable fun x : E3 => ‖G (x + v)‖ ^ 2 :=
+  hG2.comp_add_right v
+
+open MeasureTheory in
+/-- and has the same integral. -/
+theorem integral_sq_translate (G : E3 → ℂ) (v : E3) :
+    (∫ x : E3, ‖G (x + v)‖ ^ 2) = ∫ x : E3, ‖G x‖ ^ 2 :=
+  integral_add_right_eq_self (μ := (volume : Measure E3)) (fun x => ‖G x‖ ^ 2) v
+
+open MeasureTheory in
+/-- **The `L^2` bound on the surviving tail, uniform in the parameter.**  At a nonterminal stage
+the protected block survives, the tail is dominated by it, and the zero vertex dominates it by the
+protected input; the displacement costs nothing by translation invariance. -/
+theorem integrable_sq_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
+    (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1)
+    (hg2 : Integrable fun x : E3 => ‖g m x‖ ^ 2) (h : Fin r → ℝ) (t : ℝ) :
+    Integrable fun x : E3 => ‖∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ^ 2 := by
+  refine Integrable.mono' (integrable_sq_translate hg2 (((a m - a r) * t) • basisVec j))
+    (((continuous_slopeTail_uncurry j a hgc m r h).comp
+      (continuous_id.prodMk continuous_const)).norm.pow 2).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  exact pow_le_pow_left₀ (norm_nonneg _) (norm_slopeTail_le_input j a g hrm hg h x t) 2
+
+open MeasureTheory in
+/-- and the bound itself: the tail's `L^2` mass is at most the protected input's, which is the
+patch's `V`. -/
+theorem integral_sq_slopeTail_le (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
+    (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1)
+    (hg2 : Integrable fun x : E3 => ‖g m x‖ ^ 2) (h : Fin r → ℝ) (t : ℝ) :
+    (∫ x : E3, ‖∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ^ 2)
+      ≤ ∫ x : E3, ‖g m x‖ ^ 2 := by
+  have hmono : (∫ x : E3, ‖∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ^ 2)
+      ≤ ∫ x : E3, ‖g m (x + ((a m - a r) * t) • basisVec j)‖ ^ 2 := by
+    refine integral_mono (integrable_sq_slopeTail j a hrm hgc hg hg2 h t)
+      (integrable_sq_translate hg2 _) fun x => ?_
+    exact pow_le_pow_left₀ (norm_nonneg _) (norm_slopeTail_le_input j a g hrm hg h x t) 2
+  rw [integral_sq_translate (g m) (((a m - a r) * t) • basisVec j)] at hmono
+  exact hmono
+
+/-! ### Patch 3: normalizing the state for the removal step
+
+"At step `r` translate by `-a_r t e_m` and remove *exactly* `G_{r,r}` by `patch:signed-vdc`.  It is
+independent of `t` after that translation."  `Auto.slopeProd_translate` is that translation at a
+point; what the removal step consumes is its integrated form, in which the removed block has left
+the parameter integral altogether:
+
+    slopeState = V^{-1} int_x G_{r,r}(x) * (N^{-1} int_t (surviving tail)(x,t)).
+
+The translation depends on `t`, so it cannot be performed under the outer point integral directly:
+the order is swapped, the translation is applied at each fixed parameter, and the order is swapped
+back.  Both swaps are explicit hypotheses, in the house style of `Auto.sq_norm_signed_vdc`. -/
+
+open MeasureTheory in
+theorem slopeState_translate (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) {m r : ℕ} (hrm : r ≤ m)
+    {V N c : ℝ} (hN : 0 ≤ N) (h : Fin r → ℝ)
+    (hswap1 : Integrable (Function.uncurry fun (x : E3) (t : ℝ) => slopeProd j a g m r h x t)
+      ((volume : Measure E3).prod (volume.restrict (Set.Ioc c (c + N)))))
+    (hswap2 : Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
+        headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      ((volume : Measure E3).prod (volume.restrict (Set.Ioc c (c + N))))) :
+    slopeState j a g V N c m r h
+      = (V⁻¹ : ℂ) * ∫ x : E3, headBlock j a (g r) r r h x
+          * ((N⁻¹ : ℂ) * ∫ t in c..(c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+              headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)) := by
+  classical
+  have hle : c ≤ c + N := by linarith
+  have hconst : ∀ x : E3, (∫ t in Set.Ioc c (c + N),
+        headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      = headBlock j a (g r) r r h x * ∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j) :=
+    fun x => integral_const_mul _ _
+  have hptR : ∀ x : E3, headBlock j a (g r) r r h x
+        * ((N⁻¹ : ℂ) * ∫ t in c..(c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+            headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      = (N⁻¹ : ℂ) * ∫ t in Set.Ioc c (c + N),
+          headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+            headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j) := by
+    intro x
+    rw [hconst x, intervalIntegral.integral_of_le hle]
+    ring
+  have hptL : ∀ x : E3, ((N⁻¹ : ℂ) * ∫ t in c..(c + N), slopeProd j a g m r h x t)
+      = (N⁻¹ : ℂ) * ∫ t in Set.Ioc c (c + N), slopeProd j a g m r h x t := by
+    intro x
+    rw [intervalIntegral.integral_of_le hle]
+  have hpt : ∀ t : ℝ, (∫ x : E3, slopeProd j a g m r h x t)
+      = ∫ x : E3, headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j) := by
+    intro t
+    rw [← integral_sub_right_eq_self (fun x : E3 => slopeProd j a g m r h x t)
+      ((a r * t) • basisVec j)]
+    exact integral_congr_ae
+      (Filter.Eventually.of_forall fun x => slopeProd_translate j a g hrm h x t)
+  have hpullL : (∫ x : E3, (N⁻¹ : ℂ) * ∫ t in Set.Ioc c (c + N), slopeProd j a g m r h x t)
+      = (N⁻¹ : ℂ) * ∫ x : E3, ∫ t in Set.Ioc c (c + N), slopeProd j a g m r h x t :=
+    integral_const_mul _ _
+  have hpullR : (∫ x : E3, (N⁻¹ : ℂ) * ∫ t in Set.Ioc c (c + N),
+        headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      = (N⁻¹ : ℂ) * ∫ x : E3, ∫ t in Set.Ioc c (c + N),
+        headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j) :=
+    integral_const_mul _ _
+  rw [slopeState]
+  congr 1
+  rw [integral_congr_ae (Filter.Eventually.of_forall hptL),
+    integral_congr_ae (Filter.Eventually.of_forall hptR), hpullL, hpullR]
+  congr 1
+  rw [integral_integral_swap hswap1, integral_integral_swap hswap2]
+  exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+
+/-! ### Patch 3: the correlation of the tail is the next stage
+
+"Equation \eqref{patch:affine-block} identifies the resulting correlation with `A_{r+1}`."  This is
+that identification, at a point.  `Auto.sq_norm_signed_vdc` produces the autocorrelation of the
+surviving tail in the parameter, `tail(x, t + u) * conj (tail(x, t))`; the block recursion turns
+each factor of it into a block one level deeper, carrying the new shift `u`.
+
+The conjugation lands on the whole product rather than inside it.  That is the convention bridge
+the patch records for `def:local-uniformity` ("the displayed parity cube is globally conjugated
+when `s` is odd; its integrated Fejer power is real, so the two conventions give the same
+quantity"): the removal step takes a real part, and `Re (conj z) = Re z`, so the outer conjugation
+is harmless.  It is kept explicit here rather than absorbed, so that no step silently changes the
+convention. -/
+
+/-- **One factor.**  Correlating a block with itself at parameter gap `u` is the conjugate of the
+block one level deeper, with `u` appended as the new shift. -/
+theorem headBlock_pair_eq_conj_succ (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i r : ℕ)
+    (h : Fin r → ℝ) (u : ℝ) (z : E3) :
+    headBlock j a g i r h (z + ((a i - a r) * u) • basisVec j)
+        * (starRingEnd ℂ) (headBlock j a g i r h z)
+      = (starRingEnd ℂ) (headBlock j a g i (r + 1) (Fin.snoc h u) z) := by
+  rw [headBlock_succ]
+  have hcast : (fun ν : Fin r => (Fin.snoc h u : Fin (r + 1) → ℝ) ν.castSucc) = h := by
+    funext ν
+    simp
+  have hlast : (Fin.snoc h u : Fin (r + 1) → ℝ) (Fin.last r) = u := by simp
+  rw [hcast, hlast, map_mul, Complex.conj_conj]
+  ring
+
+/-- **The whole tail.**  Every surviving block advances one level at once, the new shift `u` being
+appended to all of them. -/
+theorem slopeTail_pair_eq_conj (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) (m r : ℕ)
+    (h : Fin r → ℝ) (u : ℝ) (x : E3) (t : ℝ) :
+    (∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * (t + u)) • basisVec j))
+      * (starRingEnd ℂ) (∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      = (starRingEnd ℂ) (∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i (r + 1) (Fin.snoc h u)
+            (x + ((a i - a r) * t) • basisVec j)) := by
+  classical
+  rw [map_prod, map_prod, ← Finset.prod_mul_distrib]
+  refine Finset.prod_congr rfl fun i _ => ?_
+  have hshift : x + ((a i - a r) * (t + u)) • basisVec j
+      = (x + ((a i - a r) * t) • basisVec j) + ((a i - a r) * u) • basisVec j := by
+    rw [mul_add, add_smul]
+    abel
+  rw [hshift]
+  exact headBlock_pair_eq_conj_succ j a (g i) i r h u (x + ((a i - a r) * t) • basisVec j)
+
+/-! ### Patch 3: the `L^1` bounds the removal step needs
+
+Besides the `L^2` bounds of the preceding section, `Auto.sq_norm_signed_vdc` asks for two `L^1`
+facts about the point: that the removed block times the windowed tail is integrable, and that the
+tail correlates integrably with itself at any two parameters.  Both are the patch's "a product
+block is dominated by any one of its factors" used in its cheaper form: one factor is dominated by
+its input, the other is simply one-bounded, so the product is dominated by a single integrable
+input and no Cauchy-Schwarz is needed. -/
+
+open MeasureTheory in
+/-- A block is integrable, being dominated by its input. -/
+theorem integrable_norm_headBlock (j : Fin 3) (a : ℕ → ℝ) {g : E3 → ℂ} (i : ℕ)
+    (hgc : Continuous g) (hg1 : ∀ y, ‖g y‖ ≤ 1) (hgL1 : Integrable g) (r : ℕ) (h : Fin r → ℝ) :
+    Integrable fun x : E3 => ‖headBlock j a g i r h x‖ := by
+  refine Integrable.mono' hgL1.norm
+    ((continuous_headBlock j a hgc i r h).norm).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
+  exact headBlock_le_self j a i hg1 r h x
+
+open MeasureTheory in
+/-- The surviving tail is integrable at each parameter, being dominated by the protected input. -/
+theorem integrable_norm_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
+    (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1) (hgL1 : Integrable (g m))
+    (h : Fin r → ℝ) (t : ℝ) :
+    Integrable fun x : E3 => ‖∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ := by
+  refine Integrable.mono' (hgL1.norm.comp_add_right (((a m - a r) * t) • basisVec j))
+    (((continuous_slopeTail_uncurry j a hgc m r h).comp
+      (continuous_id.prodMk continuous_const)).norm).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
+  exact norm_slopeTail_le_input j a g hrm hg h x t
+
+open MeasureTheory in
+/-- **The cross term.**  At any two parameters the tail correlates integrably with itself: one
+copy is dominated by the protected input, the other is one-bounded. -/
+theorem integrable_cross_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
+    (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1) (hgL1 : Integrable (g m))
+    (h : Fin r → ℝ) (s s' : ℝ) :
+    Integrable fun x : E3 => ‖∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)‖
+        * ‖∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s') • basisVec j)‖ := by
+  refine Integrable.mono' (hgL1.norm.comp_add_right (((a m - a r) * s) • basisVec j))
+    (((((continuous_slopeTail_uncurry j a hgc m r h).comp
+        (continuous_id.prodMk continuous_const)).norm).mul
+      (((continuous_slopeTail_uncurry j a hgc m r h).comp
+        (continuous_id.prodMk continuous_const)).norm)).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  calc ‖∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)‖
+        * ‖∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s') • basisVec j)‖
+      ≤ ‖∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)‖ * 1 :=
+        mul_le_mul_of_nonneg_left (norm_slopeTail_le_one j a hg m r h x s') (norm_nonneg _)
+    _ = ‖∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)‖ := mul_one _
+    _ ≤ ‖g m (x + ((a m - a r) * s) • basisVec j)‖ :=
+        norm_slopeTail_le_input j a g hrm hg h x s
+
+/-! ### Patch 3: the windowed average of the surviving tail
+
+`Auto.sq_norm_signed_vdc` pairs the removed block against the tail's average over the parameter
+window.  That average is measurable in the point (a parametric integral of a jointly continuous
+integrand, by `MeasureTheory.StronglyMeasurable.integral_prod_right'`, which needs no
+integrability), and it is one-bounded once normalized, the tail being one-bounded and the window
+having length `N`.  Its pairing with the removed block is then integrable by domination: the
+normalized average contributes at most `1`, so the product is dominated by the removed block's own
+input. -/
+
+open MeasureTheory in
+/-- The windowed average of the surviving tail is measurable in the point. -/
+theorem measurable_slopeTailAvg (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hgc : ∀ i, Continuous (g i)) (m r : ℕ) (h : Fin r → ℝ) (c N : ℝ) :
+    Measurable fun x : E3 => ∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+      headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j) := by
+  have hjoint : StronglyMeasurable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)) :=
+    (continuous_slopeTail_uncurry j a hgc m r h).stronglyMeasurable
+  exact (hjoint.integral_prod_right'
+    (ν := (volume.restrict (Set.Ioc c (c + N))))).measurable
+
+open MeasureTheory in
+/-- The windowed integral of the tail is at most the window length. -/
+theorem norm_slopeTailAvg_le (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hg : ∀ i y, ‖g i y‖ ≤ 1) (m r : ℕ) (h : Fin r → ℝ) {c N : ℝ} (hN : 0 ≤ N) (x : E3) :
+    ‖∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ≤ N := by
+  have hfin : (volume : Measure ℝ) (Set.Ioc c (c + N)) < ⊤ := by
+    rw [Real.volume_Ioc]
+    exact ENNReal.ofReal_lt_top
+  have hvol : (volume : Measure ℝ).real (Set.Ioc c (c + N)) = N := by
+    rw [MeasureTheory.measureReal_def, Real.volume_Ioc, ENNReal.toReal_ofReal (by linarith)]
+    ring
+  have hbd := norm_setIntegral_le_of_norm_le_const (C := 1) hfin
+    (fun t _ => norm_slopeTail_le_one j a hg m r h x t)
+  rw [hvol, one_mul] at hbd
+  exact hbd
+
+open MeasureTheory in
+/-- Hence the normalized windowed average is one-bounded. -/
+theorem norm_slopeTailAvg_normalized_le (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hg : ∀ i y, ‖g i y‖ ≤ 1) (m r : ℕ) (h : Fin r → ℝ) {c N : ℝ} (hN : 0 < N) (x : E3) :
+    ‖(N⁻¹ : ℝ) • ∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ≤ 1 := by
+  rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (by positivity : (0 : ℝ) ≤ N⁻¹)]
+  have hbd := norm_slopeTailAvg_le j a hg m r h hN.le x (c := c)
+  calc N⁻¹ * ‖∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖
+      ≤ N⁻¹ * N := mul_le_mul_of_nonneg_left hbd (by positivity)
+    _ = 1 := inv_mul_cancel₀ hN.ne'
+
+open MeasureTheory in
+/-- **The pairing hypothesis `hgΦ` of `Auto.sq_norm_signed_vdc`.**  The removed block against the
+normalized windowed average of the tail is integrable, the average contributing at most `1` and
+the block being dominated by its own input. -/
+theorem integrable_headBlock_mul_slopeTailAvg (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
+    (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1)
+    (m r : ℕ) (hgL1 : Integrable (g r)) (h : Fin r → ℝ) {c N : ℝ} (hN : 0 < N) :
+    Integrable fun x : E3 => ‖headBlock j a (g r) r r h x‖
+      * ‖(N⁻¹ : ℝ) • ∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ := by
+  refine Integrable.mono' hgL1.norm
+    (((continuous_headBlock j a (hgc r) r r h).norm.aestronglyMeasurable).mul
+      (((measurable_slopeTailAvg j a hgc m r h c N).const_smul
+        (N⁻¹ : ℝ)).norm).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  calc ‖headBlock j a (g r) r r h x‖
+        * ‖(N⁻¹ : ℝ) • ∫ t in Set.Ioc c (c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+            headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖
+      ≤ ‖headBlock j a (g r) r r h x‖ * 1 :=
+        mul_le_mul_of_nonneg_left
+          (norm_slopeTailAvg_normalized_le j a hg m r h hN x) (norm_nonneg _)
+    _ = ‖headBlock j a (g r) r r h x‖ := mul_one _
+    _ ≤ ‖g r x‖ := headBlock_le_self j a r (hg r) r h x
+
+/-! ### Patch 3: the correlation produced by the removal step is the next state
+
+`Auto.sq_norm_signed_vdc` leaves its right-hand side as a Fejer average of `Auto.corrLine`, the
+correlation of the surviving tail in the parameter.  Composed with
+`Auto.slopeTail_pair_eq_conj` this is the stage-`r+1` product integrated in the point, which is
+what the patch means by `A_{r+1}`.
+
+Two bookkeeping moves finish the identification.  The conjugation of the whole product comes out of
+the integral (`integral_conj`) -- the convention bridge again, harmless under the real part the
+removal step takes.  And the stage-`r+1` product carries the shifts `a_i t`, whereas the
+correlation produces the *gaps* `(a_i - a_r) t`; the two differ by translating the point by
+`a_r t e_j`, which is the same translation `Auto.slopeState_translate` performed, undone. -/
+
+open MeasureTheory in
+theorem corrLine_slopeTail_eq (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) (m r : ℕ)
+    (h : Fin r → ℝ) (t u : ℝ) :
+    corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)) t u
+      = (starRingEnd ℂ) (∫ x : E3, slopeProd j a g m (r + 1) (Fin.snoc h u) x t) := by
+  classical
+  have hptw : ∀ x : E3,
+      (∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * (t + u)) • basisVec j))
+        * (starRingEnd ℂ) (∏ i ∈ Finset.Icc (r + 1) m,
+            headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      = (starRingEnd ℂ) (∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i (r + 1) (Fin.snoc h u)
+            (x + ((a i - a r) * t) • basisVec j)) :=
+    fun x => slopeTail_pair_eq_conj j a g m r h u x t
+  have hptr : ∀ x : E3, (∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i (r + 1) (Fin.snoc h u)
+          (x + ((a r * t) • basisVec j) + ((a i - a r) * t) • basisVec j))
+      = slopeProd j a g m (r + 1) (Fin.snoc h u) x t := by
+    intro x
+    rw [slopeProd]
+    refine Finset.prod_congr rfl fun i _ => ?_
+    congr 1
+    rw [sub_mul, sub_smul]
+    abel
+  have htr : (∫ x : E3, ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i (r + 1) (Fin.snoc h u) (x + ((a i - a r) * t) • basisVec j))
+      = ∫ x : E3, slopeProd j a g m (r + 1) (Fin.snoc h u) x t := by
+    rw [← integral_add_right_eq_self (μ := (volume : Measure E3))
+      (fun x : E3 => ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i (r + 1) (Fin.snoc h u) (x + ((a i - a r) * t) • basisVec j))
+      ((a r * t) • basisVec j)]
+    exact integral_congr_ae (Filter.Eventually.of_forall hptr)
+  rw [corrLine, integral_congr_ae (Filter.Eventually.of_forall hptw), integral_conj, htr]
+
+/-! ### Patch 3: `cs_remove_slope_block`, the integrated removal inequality
+
+The patch's step 2, in full:
+
+    |A_r|^2 <= 2 Re E_{u ~ kappa_H} A_{r+1} + 2H/N.
+
+`Auto.slopeState_translate` puts the state in the shape `Auto.sq_norm_signed_vdc` consumes,
+`Auto.corrLine_slopeTail_eq` reads its right-hand side as the stage-`r+1` state, and the
+hypotheses about the surviving tail are discharged by the lemmas of the preceding sections.
+
+Six of the tool's hypotheses are *carried* rather than discharged: `hΦ2`, `hLi`, `hRi`, `hRc`,
+`hswapH`, `hswapT`.  They are the ones that need Cauchy-Schwarz in the parameter or a Fubini swap,
+for which no fixed dominating function exists -- the tail is dominated by the protected input
+translated by `(a_m - a_r) t`, and that translation moves with the parameter.  The caller, which
+has concrete compactly supported inputs, is where they are settled; carrying them here is the same
+house style `Auto.sq_norm_signed_vdc` itself uses. -/
+
+open MeasureTheory in
+theorem cs_remove_slope_block (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
+    {V N c H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4) (hV : 0 < V)
+    (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1)
+    (hgL1 : ∀ i, Integrable (g i)) (hgL2 : ∀ i, Integrable fun x : E3 => ‖g i x‖ ^ 2)
+    (hgV : ∀ i, (∫ x : E3, ‖g i x‖ ^ 2) ≤ V) (h : Fin r → ℝ)
+    (hswap1 : Integrable (Function.uncurry fun (x : E3) (t : ℝ) => slopeProd j a g m r h x t)
+      ((volume : Measure E3).prod (volume.restrict (Set.Ioc c (c + N)))))
+    (hswap2 : Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
+        headBlock j a (g r) r r h x * ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      ((volume : Measure E3).prod (volume.restrict (Set.Ioc c (c + N)))))
+    (hΦ2 : Integrable fun x : E3 => ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N),
+      ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ^ 2)
+    (hLi : Integrable fun x : E3 => ‖∫ u : ℝ, (Set.Ioc c (c + N)).indicator
+      (fun s => ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)) u‖ ^ 2)
+    (hRi : Integrable fun x : E3 => (∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc c (c + N)).indicator (fun s => ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j))) u).re)
+    (hRc : Integrable fun x : E3 => ∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc c (c + N)).indicator (fun s => ∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j))) u)
+    (hswapH : Integrable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      fejer H u • autocorr ((Set.Ioc c (c + N)).indicator
+        (fun s => ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j))) u)
+      ((volume : Measure E3).prod volume))
+    (hswapT : ∀ u : ℝ, Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      (∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * (t + u)) • basisVec j))
+      * (starRingEnd ℂ) (∏ i ∈ Finset.Icc (r + 1) m,
+        headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)))
+      ((volume : Measure E3).prod (volume.restrict (capSet c N u)))) :
+    ‖slopeState j a g V N c m r h‖ ^ 2
+      ≤ 2 * (V⁻¹ * N⁻¹ * (∫ u : ℝ, fejer H u • ∫ t in c..(c + N),
+          (starRingEnd ℂ) (∫ x : E3, slopeProd j a g m (r + 1) (Fin.snoc h u) x t)).re)
+        + 2 * H / N := by
+  classical
+  have hle : c ≤ c + N := by linarith
+  have hkey := sq_norm_signed_vdc (μ := (volume : Measure E3)) hN hH hHN hV
+    (g := fun x : E3 => headBlock j a (g r) r r h x)
+    (F := fun (x : E3) (s : ℝ) => ∏ i ∈ Finset.Icc (r + 1) m,
+      headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j))
+    (measurable_slopeTail_uncurry j a hgc m r h) zero_le_one
+    (fun x t => norm_slopeTail_le_one j a hg m r h x t)
+    (fun s => integrable_sq_slopeTail j a hrm hgc hg (hgL2 m) h s)
+    (integrable_cross_slopeTail j a hrm hgc hg (hgL1 m) h)
+    (fun s => le_trans (integral_sq_slopeTail_le j a hrm hgc hg (hgL2 m) h s) (hgV m))
+    (integrable_sq_headBlock j a r (hgc r) (hg r) (hgL2 r) r h)
+    (le_trans (integral_sq_headBlock_le j a r (hgc r) (hg r) (hgL2 r) r h) (hgV r))
+    hΦ2
+    (by
+      have hbase := integrable_headBlock_mul_slopeTailAvg j a hgc hg m r (hgL1 r) h hN (c := c)
+      simpa [intervalIntegral.integral_of_le hle] using hbase)
+    hLi hRi hRc hswapH hswapT
+  have hcorr : ∀ u : ℝ, (∫ t in c..(c + N), corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => ∏ i ∈ Finset.Icc (r + 1) m,
+          headBlock j a (g i) i r h (x + ((a i - a r) * s) • basisVec j)) t u)
+      = ∫ t in c..(c + N),
+        (starRingEnd ℂ) (∫ x : E3, slopeProd j a g m (r + 1) (Fin.snoc h u) x t) := by
+    intro u
+    refine intervalIntegral.integral_congr fun t _ => ?_
+    exact corrLine_slopeTail_eq j a g m r h t u
+  have houterEq : ∀ z : ℂ, (V⁻¹ : ℝ) • z = ((V : ℂ))⁻¹ * z := by
+    intro z
+    rw [Complex.real_smul, Complex.ofReal_inv]
+  have hpt : ∀ x : E3, headBlock j a (g r) r r h x
+        * (((N : ℂ))⁻¹ * ∫ t in c..(c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+            headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j))
+      = headBlock j a (g r) r r h x
+        * ((N⁻¹ : ℝ) • ∫ t in c..(c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+            headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)) := by
+    intro x
+    rw [Complex.real_smul, Complex.ofReal_inv]
+  have hstate : slopeState j a g V N c m r h
+      = (V⁻¹ : ℝ) • ∫ x : E3, headBlock j a (g r) r r h x
+          * ((N⁻¹ : ℝ) • ∫ t in c..(c + N), ∏ i ∈ Finset.Icc (r + 1) m,
+              headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)) := by
+    rw [slopeState_translate j a g hrm.le hN.le h hswap1 hswap2,
+      integral_congr_ae (Filter.Eventually.of_forall hpt), houterEq]
+  rw [hstate]
+  refine hkey.trans (le_of_eq ?_)
+  rw [integral_congr_ae (Filter.Eventually.of_forall fun u => by rw [hcorr u])]
+
+/-! ### Patch 3: the pivot decreases the type
+
+"Let `w_q` count distinct leading coefficients of degree-`q` polynomials in the normal state.
+Order `(w_D, ..., w_1)` lexicographically. ...  Thus `w'_q = w_q (q > l)`, `w'_l = w_l - 1`,
+`0 <= w'_q <= 2L (q < l)`.  The type strictly decreases and the new length is at most `2L`."
+
+This section proves the type-decrease half, which is the part that makes the recursion well
+founded.  It is a statement about the type vector alone: above the selected degree `l` the counts
+are unchanged, at `l` the count drops, and below `l` they are unconstrained.  The degrees in play
+are `{1, 2, 3}`, so the type is the lexicographic triple the file already uses for
+`Auto.petWeight`.
+
+The *length* half of the patch's sentence -- that the new length is at most `2L` -- is about the
+state, not the type, and is not proved here.  Nor is the pivot selection itself; this lemma takes
+the selected degree `l` and the two facts about the resulting type as hypotheses, which is exactly
+what the pivot rules deliver. -/
+
+/-- The type of a normal state: the counts of distinct leading coefficients by degree, ordered
+lexicographically from the top degree down.  This is the patch's `(w_D, ..., w_1)` for `D = 3`. -/
+def petType (w : ℕ → ℕ) : ℕ ×ₗ ℕ ×ₗ ℕ := toLex (w 3, toLex (w 2, w 1))
+
+/-- **The type strictly decreases at the pivot.**  Above the selected degree the counts are
+unchanged and at it one class is lost, so the lexicographic type drops whatever happens below. -/
+theorem petType_lt_of_pivot {w w' : ℕ → ℕ} {l : ℕ} (hl : 1 ≤ l) (hl3 : l ≤ 3)
+    (habove : ∀ q, l < q → q ≤ 3 → w' q = w q) (hat : w' l < w l) :
+    petType w' < petType w := by
+  rw [petType, petType, Prod.Lex.toLex_lt_toLex]
+  interval_cases l
+  · have h3 : w' 3 = w 3 := habove 3 (by norm_num) (by norm_num)
+    have h2 : w' 2 = w 2 := habove 2 (by norm_num) (by norm_num)
+    refine Or.inr ⟨h3, ?_⟩
+    rw [Prod.Lex.toLex_lt_toLex]
+    exact Or.inr ⟨h2, hat⟩
+  · have h3 : w' 3 = w 3 := habove 3 (by norm_num) (by norm_num)
+    refine Or.inr ⟨h3, ?_⟩
+    rw [Prod.Lex.toLex_lt_toLex]
+    exact Or.inl hat
+  · exact Or.inl hat
+
+/-- **Every run of the pivot recursion stops.**  There is no infinite sequence of types each
+strictly below the last, the lexicographic order on the triple being well founded.  This is
+termination; the patch's uniform bound `B(w, L)` on the number of steps is a separate statement and
+is not proved here. -/
+theorem petType_terminates (W : ℕ → ℕ → ℕ)
+    (hdec : ∀ n, petType (W (n + 1)) < petType (W n)) : False := by
+  obtain ⟨v, hv, hmin⟩ := (wellFounded_lt (α := ℕ ×ₗ ℕ ×ₗ ℕ)).has_min
+    (Set.range fun n => petType (W n)) ⟨_, ⟨0, rfl⟩⟩
+  obtain ⟨n, rfl⟩ := hv
+  exact hmin _ ⟨n + 1, rfl⟩ (hdec n)
+
+/-! ### Patch 3: four differences annihilate a cubic
+
+"At `r = 4` the phase is identically one, by the fourth finite-difference identity for cubics."
+This is that identity.  The difference operator is `Q |-> taylor u Q - Q`, whose degree drop is
+already in the file as `Auto.natDegree_taylor_sub_self_le` (proved for `patch:pet-update`); what is
+added here is the constant case it does not cover, the iteration, and the vanishing.
+
+The blueprint states the identity as the alternating sum
+`sum_{omega in {0,1}^4} (-1)^{|omega|} p(t + omega . h)`.  That form is the evaluation of the
+iterated difference at `t` and is *not* proved here; this brick proves the polynomial identity, of
+which it is a consequence, and the single-step evaluation `Auto.eval_pdiff` that the bridge will
+iterate. -/
+
+/-- The finite difference operator on polynomials, `Delta_u Q = Q(. + u) - Q`. -/
+noncomputable def pdiff (u : ℝ) (Q : Polynomial ℝ) : Polynomial ℝ := Polynomial.taylor u Q - Q
+
+theorem eval_pdiff (u : ℝ) (Q : Polynomial ℝ) (t : ℝ) :
+    (pdiff u Q).eval t = Q.eval (t + u) - Q.eval t := by
+  rw [pdiff, Polynomial.eval_sub, Polynomial.taylor_eval]
+
+/-- A constant is annihilated by one difference.  This is the case
+`Auto.natDegree_taylor_sub_self_le` does not cover, its hypothesis being a positive degree. -/
+theorem pdiff_of_natDegree_zero (u : ℝ) {Q : Polynomial ℝ} (hQ : Q.natDegree = 0) :
+    pdiff u Q = 0 := by
+  rw [pdiff]
+  conv_lhs => rw [Polynomial.eq_C_of_natDegree_eq_zero hQ]
+  rw [Polynomial.taylor_C, Polynomial.eq_C_of_natDegree_eq_zero hQ, sub_self]
+
+/-- One difference lowers the degree bound by one. -/
+theorem natDegree_pdiff_le (u : ℝ) {Q : Polynomial ℝ} {e : ℕ} (hQ : Q.natDegree ≤ e + 1) :
+    (pdiff u Q).natDegree ≤ e := by
+  rcases Nat.eq_zero_or_pos Q.natDegree with h0 | hpos
+  · rw [pdiff_of_natDegree_zero u h0]
+    simp
+  · obtain ⟨k, hk⟩ : ∃ k, Q.natDegree = k + 1 := ⟨Q.natDegree - 1, by omega⟩
+    have hkle : k ≤ e := by omega
+    exact le_trans (natDegree_taylor_sub_self_le Q u hk) hkle
+
+/-- The iterated difference, taking the first shift first. -/
+noncomputable def pdiffIter : ∀ (r : ℕ), (Fin r → ℝ) → Polynomial ℝ → Polynomial ℝ
+  | 0, _, Q => Q
+  | (r + 1), u, Q => pdiffIter r (fun i => u i.succ) (pdiff (u 0) Q)
+
+theorem pdiffIter_zero (u : Fin 0 → ℝ) (Q : Polynomial ℝ) : pdiffIter 0 u Q = Q := rfl
+
+theorem pdiffIter_succ (r : ℕ) (u : Fin (r + 1) → ℝ) (Q : Polynomial ℝ) :
+    pdiffIter (r + 1) u Q = pdiffIter r (fun i => u i.succ) (pdiff (u 0) Q) := rfl
+
+/-- **`e + 1` differences annihilate a polynomial of degree at most `e`.** -/
+theorem pdiffIter_eq_zero : ∀ (e : ℕ) (u : Fin (e + 1) → ℝ) (Q : Polynomial ℝ),
+    Q.natDegree ≤ e → pdiffIter (e + 1) u Q = 0
+  | 0, u, Q, hQ => by
+      rw [pdiffIter_succ, pdiffIter_zero]
+      exact pdiff_of_natDegree_zero (u 0) (Nat.le_zero.mp hQ)
+  | (e + 1), u, Q, hQ => by
+      rw [pdiffIter_succ]
+      exact pdiffIter_eq_zero e _ _ (natDegree_pdiff_le (u 0) hQ)
+
+/-- **The fourth finite-difference identity for cubics**, the polynomial form of the patch's
+"at `r = 4` the phase is identically one". -/
+theorem pdiffIter_four_eq_zero (u : Fin 4 → ℝ) {Q : Polynomial ℝ} (hQ : Q.natDegree ≤ 3) :
+    pdiffIter 4 u Q = 0 := pdiffIter_eq_zero 3 u Q hQ
+
+/-! ### Patch 3: the iterated difference as the alternating cube sum
+
+The blueprint writes the phase identity as `sum_{omega in {0,1}^r} (-1)^{|omega|} p(t + omega . h)`.
+That is the evaluation of `Auto.pdiffIter`, and this is the bridge: the vertex is split on its
+first bit by `Auto.consBoolEquiv`, the bit `true` contributing the shifted term and `false` the
+unshifted one with a sign.  The sign is written with `Auto.numFalse` rather than `Auto.numTrue`,
+which is the same alternation up to the global factor `(-1)^r` and avoids a natural subtraction. -/
+
+theorem eval_pdiffIter : ∀ (r : ℕ) (u : Fin r → ℝ) (Q : Polynomial ℝ) (t : ℝ),
+    (pdiffIter r u Q).eval t
+      = ∑ ω : Fin r → Bool, (-1 : ℝ) ^ numFalse ω * Q.eval (t + cubeShift u ω)
+  | 0, u, Q, t => by
+      rw [pdiffIter_zero,
+        show (∑ ω : Fin 0 → Bool, (-1 : ℝ) ^ numFalse ω * Q.eval (t + cubeShift u ω))
+            = (-1 : ℝ) ^ numFalse (default : Fin 0 → Bool)
+              * Q.eval (t + cubeShift u (default : Fin 0 → Bool)) from Fintype.sum_unique _]
+      simp [numFalse, cubeShift]
+  | (r + 1), u, Q, t => by
+      rw [pdiffIter_succ, eval_pdiffIter r (fun i => u i.succ) (pdiff (u 0) Q) t,
+        ← (consBoolEquiv r).sum_comp
+          (fun ω => (-1 : ℝ) ^ numFalse ω * Q.eval (t + cubeShift u ω)),
+        Fintype.sum_prod_type, Fintype.sum_bool, ← Finset.sum_add_distrib]
+      refine Finset.sum_congr rfl fun σ _ => ?_
+      have hcsT : cubeShift u (Fin.cons true σ)
+          = u 0 + cubeShift (fun i => u i.succ) σ := by
+        rw [cubeShift_cons]; simp
+      have hcsF : cubeShift u (Fin.cons false σ)
+          = cubeShift (fun i => u i.succ) σ := by
+        rw [cubeShift_cons]; simp
+      have hnfT : numFalse (Fin.cons true σ) = numFalse σ := by
+        rw [numFalse_cons]; simp
+      have hnfF : numFalse (Fin.cons false σ) = 1 + numFalse σ := by
+        rw [numFalse_cons]; simp
+      have harg : t + cubeShift (fun i => u i.succ) σ + u 0
+          = t + (u 0 + cubeShift (fun i => u i.succ) σ) := by ring
+      show (-1 : ℝ) ^ numFalse σ * (pdiff (u 0) Q).eval (t + cubeShift (fun i => u i.succ) σ)
+          = (-1 : ℝ) ^ numFalse ((consBoolEquiv r) (true, σ))
+              * Q.eval (t + cubeShift u ((consBoolEquiv r) (true, σ)))
+            + (-1 : ℝ) ^ numFalse ((consBoolEquiv r) (false, σ))
+              * Q.eval (t + cubeShift u ((consBoolEquiv r) (false, σ)))
+      simp only [consBoolEquiv, Equiv.coe_fn_mk]
+      rw [eval_pdiff, hcsT, hcsF, hnfT, hnfF, harg, pow_add, pow_one]
+      ring
+
+/-- **The alternating-sum form of the patch's phase identity.**  For a cubic, the signed sum over
+the four-dimensional cube vanishes identically, which is "at `r = 4` the phase is identically
+one". -/
+theorem cube_alternating_sum_cubic (u : Fin 4 → ℝ) {Q : Polynomial ℝ} (hQ : Q.natDegree ≤ 3)
+    (t : ℝ) :
+    (∑ ω : Fin 4 → Bool, (-1 : ℝ) ^ numFalse ω * Q.eval (t + cubeShift u ω)) = 0 := by
+  rw [← eval_pdiffIter 4 u Q t, pdiffIter_four_eq_zero u hQ, Polynomial.eval_zero]
+
+/-! ### Patch 3: the analytic update at general polynomial shifts
+
+The affine endpoint works with the shifts `a_i t`; the PET recursion that precedes it works with
+arbitrary polynomial shifts `Q_i(t)`, and its analytic update is the patch's
+
+    "Apply patch:signed-vdc with g = g_0 and the remaining product as F.  Then translate `x` by
+     `-Q_p(t)` in the correlation on its right side."
+
+The translation is the same algebra as `Auto.slopeProd_translate` -- it never used linearity of the
+shift, only that the displacement of the pivot cancels -- so it is proved here once for an
+arbitrary family of shift functions.  `Auto.slopeProd_eq_shiftProd` records that the affine product
+is the special case, which is a check that the generalization is the same object and not a
+lookalike. -/
+
+/-- The product of the current blocks, each displaced by its own shift.  The general-shift
+counterpart of `Auto.slopeProd`. -/
+noncomputable def shiftProd (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m r : ℕ)
+    (x : E3) (t : ℝ) : ℂ :=
+  ∏ i ∈ Finset.Icc r m, G i (x + (Q i t) • basisVec j)
+
+/-- The affine product of the endpoint is the general one at the shifts `a_i t`. -/
+theorem slopeProd_eq_shiftProd (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) (m r : ℕ)
+    (h : Fin r → ℝ) (x : E3) (t : ℝ) :
+    slopeProd j a g m r h x t
+      = shiftProd j (fun i s => a i * s) (fun i => headBlock j a (g i) i r h) m r x t := rfl
+
+/-- **Isolating the pivot block at general shifts.**  After translating the point by `-Q_p(t)` the
+pivot block carries no parameter and factors out, every other block being displaced by its shift
+*gap* against the pivot.  This is what lets Cauchy-Schwarz in the point remove it. -/
+theorem shiftProd_translate (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) {m r : ℕ} (hrm : r ≤ m)
+    (x : E3) (t : ℝ) :
+    shiftProd j Q G m r (x - (Q r t) • basisVec j) t
+      = G r x * ∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j) := by
+  classical
+  have hpt : ∀ i : ℕ, x - (Q r t) • basisVec j + (Q i t) • basisVec j
+      = x + (Q i t - Q r t) • basisVec j := by
+    intro i
+    rw [sub_smul]
+    abel
+  have hnotmem : r ∉ Finset.Icc (r + 1) m := by
+    simp only [Finset.mem_Icc, not_and, not_le]
+    intro hcon
+    omega
+  rw [shiftProd, Icc_eq_insert_succ hrm, Finset.prod_insert hnotmem]
+  congr 1
+  · rw [hpt r]
+    simp
+  · exact Finset.prod_congr rfl fun i _ => by rw [hpt i]
+
+/-- At the terminal stage only the protected block remains. -/
+theorem shiftProd_terminal (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m : ℕ)
+    (x : E3) (t : ℝ) :
+    shiftProd j Q G m m x t = G m (x + (Q m t) • basisVec j) := by
+  rw [shiftProd, Finset.Icc_self, Finset.prod_singleton]
+
+/-- Every surviving product is one-bounded. -/
+theorem norm_shiftProd_le {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) (x : E3) (t : ℝ) :
+    ‖shiftProd j Q G m r x t‖ ≤ 1 := by
+  rw [shiftProd, norm_prod]
+  exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hG i _
+
+/-- The surviving tail at a nonterminal stage is dominated by the protected block, which survives
+every removal. -/
+theorem norm_shiftTail_le_input {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ} {m r : ℕ}
+    (hrm : r < m) (hG : ∀ i y, ‖G i y‖ ≤ 1) (x : E3) (t : ℝ) :
+    ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j)‖
+      ≤ ‖G m (x + (Q m t - Q r t) • basisVec j)‖ := by
+  classical
+  refine norm_finsetProd_le_single (Finset.mem_Icc.mpr ⟨by omega, le_refl m⟩) ?_
+  intro i _
+  exact hG i _
+
+/-! ### Patch 3: the children of a factor under the analytic update
+
+"Apply `patch:signed-vdc` with `g = g_0` and the remaining product as `F`.  Then translate `x` by
+`-Q_p(t)` in the correlation on its right side.  The two children of a factor `(g_i, Q_i)` are
+exactly `(conj g_i, Q_i(t+u) - Q_p(t))`, `(g_i, Q_i(t) - Q_p(t))`."
+
+The order matters and is followed here: the correlation is formed from the *untranslated* product,
+and the translation by `-Q_p(t)` is applied inside it.  That is why both children carry `Q_p(t)`
+and not `Q_p(t+u)` -- translating first and correlating afterwards would leave `Q_p(t+u)` in the
+shifted child and would not be the patch's recursion.
+
+Unlike the affine endpoint, the two children differ by a shift of the *polynomial*, not of the same
+block, so this is not a cube step and `Auto.headBlock_pair_eq_conj_succ` does not apply. -/
+
+/-- The pair of children attached to the factor `i` by one analytic update. -/
+noncomputable def shiftChild (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (r : ℕ) (u : ℝ)
+    (i : ℕ) (x : E3) (t : ℝ) : ℂ :=
+  G i (x + (Q i (t + u) - Q r t) • basisVec j)
+    * (starRingEnd ℂ) (G i (x + (Q i t - Q r t) • basisVec j))
+
+/-- **The correlation, translated, is the product of the children.**  This is the patch's
+identification of the two children of each factor. -/
+theorem shiftProd_corr_translate (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m r : ℕ)
+    (x : E3) (t u : ℝ) :
+    shiftProd j Q G m r (x - (Q r t) • basisVec j) (t + u)
+        * (starRingEnd ℂ) (shiftProd j Q G m r (x - (Q r t) • basisVec j) t)
+      = ∏ i ∈ Finset.Icc r m, shiftChild j Q G r u i x t := by
+  classical
+  have hpt : ∀ (i : ℕ) (s : ℝ), x - (Q r t) • basisVec j + (Q i s) • basisVec j
+      = x + (Q i s - Q r t) • basisVec j := by
+    intro i s
+    rw [sub_smul]
+    abel
+  rw [shiftProd, shiftProd, map_prod, ← Finset.prod_mul_distrib]
+  refine Finset.prod_congr rfl fun i _ => ?_
+  rw [hpt i (t + u), hpt i t, shiftChild]
+
+/-- Every child is one-bounded. -/
+theorem norm_shiftChild_le {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (r : ℕ) (u : ℝ) (i : ℕ) (x : E3) (t : ℝ) :
+    ‖shiftChild j Q G r u i x t‖ ≤ 1 := by
+  rw [shiftChild, norm_mul, RCLike.norm_conj]
+  exact mul_le_one₀ (hG i _) (norm_nonneg _) (hG i _)
+
+/-- The zero vertex of a child is undisplaced in the shifted copy, so the child is dominated by
+the unshifted value of its own input. -/
+theorem norm_shiftChild_le_input {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (r : ℕ) (u : ℝ) (i : ℕ) (x : E3) (t : ℝ) :
+    ‖shiftChild j Q G r u i x t‖ ≤ ‖G i (x + (Q i t - Q r t) • basisVec j)‖ := by
+  rw [shiftChild, norm_mul, RCLike.norm_conj]
+  exact mul_le_of_le_one_left (norm_nonneg _) (hG i _)
+
+/-- The child family of the pivot itself is included, which is the patch's "apply the first
+calculation with `i = p` to the new head itself". -/
+theorem shiftChild_pivot (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (r : ℕ) (u : ℝ)
+    (x : E3) (t : ℝ) :
+    shiftChild j Q G r u r x t
+      = G r (x + (Q r (t + u) - Q r t) • basisVec j) * (starRingEnd ℂ) (G r x) := by
+  rw [shiftChild]
+  congr 2
+  rw [sub_self, zero_smul, add_zero]
+
+/-! ### Patch 3: the surviving tail at general shifts
+
+The general-shift counterparts of the tail lemmas proved for the affine endpoint.  These are what
+`Auto.sq_norm_signed_vdc` asks of its `F` when the shifts are arbitrary polynomials.
+
+One hypothesis appears here that the affine case did not need: the shift functions must be
+continuous.  For `a_i t` that was automatic; for a general `Q_i` it has to be assumed, and it is
+what makes the tail jointly continuous in the point and the parameter, hence jointly measurable.
+Everything else is as before, and rests on the protected index surviving every removal. -/
+
+open MeasureTheory in
+/-- The surviving tail is jointly continuous, provided the shifts are. -/
+theorem continuous_shiftTail_uncurry (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} (hGc : ∀ i, Continuous (G i)) (m r : ℕ) :
+    Continuous (Function.uncurry fun (x : E3) (t : ℝ) =>
+      ∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j)) := by
+  refine continuous_finsetProd _ fun i _ => ?_
+  refine (hGc i).comp ?_
+  exact continuous_fst.add
+    ((((hQc i).comp continuous_snd).sub ((hQc r).comp continuous_snd)).smul continuous_const)
+
+open MeasureTheory in
+theorem measurable_shiftTail_uncurry (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} (hGc : ∀ i, Continuous (G i)) (m r : ℕ) :
+    Measurable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      ∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j)) :=
+  (continuous_shiftTail_uncurry j hQc hGc m r).measurable
+
+/-- The surviving tail is one-bounded. -/
+theorem norm_shiftTail_le_one {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) (x : E3) (t : ℝ) :
+    ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j)‖ ≤ 1 := by
+  rw [norm_prod]
+  exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hG i _
+
+open MeasureTheory in
+/-- The tail's `L^2` mass in the point, at each parameter. -/
+theorem integrable_sq_shiftTail (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hG2 : Integrable fun x : E3 => ‖G m x‖ ^ 2) (t : ℝ) :
+    Integrable fun x : E3 => ‖∏ i ∈ Finset.Icc (r + 1) m,
+        G i (x + (Q i t - Q r t) • basisVec j)‖ ^ 2 := by
+  refine Integrable.mono' (integrable_sq_translate hG2 ((Q m t - Q r t) • basisVec j))
+    (((continuous_shiftTail_uncurry j hQc hGc m r).comp
+      (continuous_id.prodMk continuous_const)).norm.pow 2).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  exact pow_le_pow_left₀ (norm_nonneg _) (norm_shiftTail_le_input hrm hG x t) 2
+
+open MeasureTheory in
+theorem integral_sq_shiftTail_le (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hG2 : Integrable fun x : E3 => ‖G m x‖ ^ 2) (t : ℝ) :
+    (∫ x : E3, ‖∏ i ∈ Finset.Icc (r + 1) m,
+        G i (x + (Q i t - Q r t) • basisVec j)‖ ^ 2) ≤ ∫ x : E3, ‖G m x‖ ^ 2 := by
+  have hmono : (∫ x : E3, ‖∏ i ∈ Finset.Icc (r + 1) m,
+        G i (x + (Q i t - Q r t) • basisVec j)‖ ^ 2)
+      ≤ ∫ x : E3, ‖G m (x + (Q m t - Q r t) • basisVec j)‖ ^ 2 := by
+    refine integral_mono (integrable_sq_shiftTail j hQc hrm hGc hG hG2 t)
+      (integrable_sq_translate hG2 _) fun x => ?_
+    exact pow_le_pow_left₀ (norm_nonneg _) (norm_shiftTail_le_input hrm hG x t) 2
+  rw [integral_sq_translate (G m) ((Q m t - Q r t) • basisVec j)] at hmono
+  exact hmono
+
+open MeasureTheory in
+/-- The tail is integrable at each parameter. -/
+theorem integrable_norm_shiftTail (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hGL1 : Integrable (G m)) (t : ℝ) :
+    Integrable fun x : E3 => ‖∏ i ∈ Finset.Icc (r + 1) m,
+        G i (x + (Q i t - Q r t) • basisVec j)‖ := by
+  refine Integrable.mono' (hGL1.norm.comp_add_right ((Q m t - Q r t) • basisVec j))
+    (((continuous_shiftTail_uncurry j hQc hGc m r).comp
+      (continuous_id.prodMk continuous_const)).norm).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
+  exact norm_shiftTail_le_input hrm hG x t
+
+open MeasureTheory in
+/-- The cross term, by the same cheap domination as the affine case: one copy is dominated by the
+protected input, the other is one-bounded. -/
+theorem integrable_cross_shiftTail (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hGL1 : Integrable (G m)) (s s' : ℝ) :
+    Integrable fun x : E3 => ‖∏ i ∈ Finset.Icc (r + 1) m,
+          G i (x + (Q i s - Q r s) • basisVec j)‖
+        * ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i s' - Q r s') • basisVec j)‖ := by
+  refine Integrable.mono' (hGL1.norm.comp_add_right ((Q m s - Q r s) • basisVec j))
+    (((((continuous_shiftTail_uncurry j hQc hGc m r).comp
+        (continuous_id.prodMk continuous_const)).norm).mul
+      (((continuous_shiftTail_uncurry j hQc hGc m r).comp
+        (continuous_id.prodMk continuous_const)).norm)).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  calc ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i s - Q r s) • basisVec j)‖
+        * ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i s' - Q r s') • basisVec j)‖
+      ≤ ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i s - Q r s) • basisVec j)‖ * 1 :=
+        mul_le_mul_of_nonneg_left (norm_shiftTail_le_one hG m r x s') (norm_nonneg _)
+    _ = ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i s - Q r s) • basisVec j)‖ := mul_one _
+    _ ≤ ‖G m (x + (Q m s - Q r s) • basisVec j)‖ := norm_shiftTail_le_input hrm hG x s
+
+/-! ### Patch 3: the state of the analytic update, and its correlation
+
+    A = V^{-1} int g_0(x) E_{t in [0,N]} prod_{i=1}^L g_i(x + Q_i(t)) dx.
+
+The block removed by `patch:signed-vdc` here is `g_0`, the *spatial* block, not the pivot: the
+patch says "apply `patch:signed-vdc` with `g = g_0` and the remaining product as `F`".  This
+differs from the affine endpoint, where the removed block was the pivot and the state had to be
+translated first (`Auto.slopeState_translate`) to free it of the parameter.  Here `g_0` carries no
+parameter to begin with, so the state is already in the tool's shape and no translation precedes
+the application.  The translation by `-Q_p(t)` happens afterwards, inside the correlation, which is
+what puts `Q_p(t)` rather than `Q_p(t+u)` into both children. -/
+
+open MeasureTheory in
+/-- The state of the analytic update: a spatial block against the windowed average of the shifted
+product. -/
+noncomputable def shiftState (j : Fin 3) (Q : ℕ → ℝ → ℝ) (g0 : E3 → ℂ) (G : ℕ → E3 → ℂ)
+    (V N c : ℝ) (m r : ℕ) : ℂ :=
+  (V⁻¹ : ℂ) * ∫ x : E3, g0 x * ((N⁻¹ : ℂ) * ∫ t in c..(c + N), shiftProd j Q G m r x t)
+
+open MeasureTheory in
+/-- **The correlation of the shifted product is the integrated child family.**  Translating the
+point by `-Q_p(t)` inside the correlation turns it into the product of the children
+(`Auto.shiftProd_corr_translate`), and the translation costs nothing by invariance of the volume
+on `E3`. -/
+theorem corrLine_shiftProd_eq (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m r : ℕ) (t u : ℝ) :
+    corrLine (volume : Measure E3) (fun (x : E3) (s : ℝ) => shiftProd j Q G m r x s) t u
+      = ∫ x : E3, ∏ i ∈ Finset.Icc r m, shiftChild j Q G r u i x t := by
+  classical
+  have hcl : corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => shiftProd j Q G m r x s) t u
+      = ∫ x : E3, shiftProd j Q G m r x (t + u)
+          * (starRingEnd ℂ) (shiftProd j Q G m r x t) := rfl
+  rw [hcl, ← integral_sub_right_eq_self
+    (fun x : E3 => shiftProd j Q G m r x (t + u)
+      * (starRingEnd ℂ) (shiftProd j Q G m r x t)) ((Q r t) • basisVec j)]
+  exact integral_congr_ae (Filter.Eventually.of_forall fun x =>
+    shiftProd_corr_translate j Q G m r x t u)
+
+/-- The child product is one-bounded, so the correlation is controlled by the spatial volume. -/
+theorem norm_shiftChildProd_le {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) (u : ℝ) (x : E3) (t : ℝ) :
+    ‖∏ i ∈ Finset.Icc r m, shiftChild j Q G r u i x t‖ ≤ 1 := by
+  rw [norm_prod]
+  exact Finset.prod_le_one (fun i _ => norm_nonneg _)
+    fun i _ => norm_shiftChild_le hG r u i x t
+
+/-! ### Patch 3: the shifted product as the tool's `F`
+
+The analytic update feeds `Auto.shiftProd` itself to `Auto.sq_norm_signed_vdc`, not the translated
+tail, so the hypotheses are needed for `Auto.shiftProd` over `Finset.Icc r m` at the shifts
+`Q i t`.  They are proved here once, for an arbitrary shift family.
+
+`Auto.shiftTail_eq_shiftProd` records that the translated tail of the preceding section is the
+same object at the shift family `Q' i t = Q i t - Q r t`, so the lemmas of that section are the
+instance of these at `Q'` rather than a parallel development. -/
+
+/-- The translated tail is the shifted product at the gap shifts. -/
+theorem shiftTail_eq_shiftProd (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m r : ℕ)
+    (x : E3) (t : ℝ) :
+    (∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j))
+      = shiftProd j (fun i s => Q i s - Q r s) G m (r + 1) x t := rfl
+
+open MeasureTheory in
+theorem continuous_shiftProd_uncurry (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} (hGc : ∀ i, Continuous (G i)) (m r : ℕ) :
+    Continuous (Function.uncurry fun (x : E3) (t : ℝ) => shiftProd j Q G m r x t) := by
+  show Continuous (Function.uncurry fun (x : E3) (t : ℝ) =>
+    ∏ i ∈ Finset.Icc r m, G i (x + (Q i t) • basisVec j))
+  refine continuous_finsetProd _ fun i _ => ?_
+  refine (hGc i).comp ?_
+  exact continuous_fst.add (((hQc i).comp continuous_snd).smul continuous_const)
+
+open MeasureTheory in
+theorem measurable_shiftProd_uncurry (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} (hGc : ∀ i, Continuous (G i)) (m r : ℕ) :
+    Measurable (Function.uncurry fun (x : E3) (t : ℝ) => shiftProd j Q G m r x t) :=
+  (continuous_shiftProd_uncurry j hQc hGc m r).measurable
+
+/-- The product is dominated by the protected factor, which is present at every stage. -/
+theorem norm_shiftProd_le_input {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ} {m r : ℕ}
+    (hrm : r ≤ m) (hG : ∀ i y, ‖G i y‖ ≤ 1) (x : E3) (t : ℝ) :
+    ‖shiftProd j Q G m r x t‖ ≤ ‖G m (x + (Q m t) • basisVec j)‖ := by
+  classical
+  rw [shiftProd]
+  refine norm_finsetProd_le_single (Finset.mem_Icc.mpr ⟨hrm, le_refl m⟩) ?_
+  intro i _
+  exact hG i _
+
+open MeasureTheory in
+theorem integrable_sq_shiftProd (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r ≤ m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hG2 : Integrable fun x : E3 => ‖G m x‖ ^ 2) (t : ℝ) :
+    Integrable fun x : E3 => ‖shiftProd j Q G m r x t‖ ^ 2 := by
+  refine Integrable.mono' (integrable_sq_translate hG2 ((Q m t) • basisVec j))
+    (((continuous_shiftProd_uncurry j hQc hGc m r).comp
+      (continuous_id.prodMk continuous_const)).norm.pow 2).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  exact pow_le_pow_left₀ (norm_nonneg _) (norm_shiftProd_le_input hrm hG x t) 2
+
+open MeasureTheory in
+theorem integral_sq_shiftProd_le (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r ≤ m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hG2 : Integrable fun x : E3 => ‖G m x‖ ^ 2) (t : ℝ) :
+    (∫ x : E3, ‖shiftProd j Q G m r x t‖ ^ 2) ≤ ∫ x : E3, ‖G m x‖ ^ 2 := by
+  have hmono : (∫ x : E3, ‖shiftProd j Q G m r x t‖ ^ 2)
+      ≤ ∫ x : E3, ‖G m (x + (Q m t) • basisVec j)‖ ^ 2 := by
+    refine integral_mono (integrable_sq_shiftProd j hQc hrm hGc hG hG2 t)
+      (integrable_sq_translate hG2 _) fun x => ?_
+    exact pow_le_pow_left₀ (norm_nonneg _) (norm_shiftProd_le_input hrm hG x t) 2
+  rw [integral_sq_translate (G m) ((Q m t) • basisVec j)] at hmono
+  exact hmono
+
+open MeasureTheory in
+theorem integrable_cross_shiftProd (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r ≤ m) (hGc : ∀ i, Continuous (G i))
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (hGL1 : Integrable (G m)) (s s' : ℝ) :
+    Integrable fun x : E3 => ‖shiftProd j Q G m r x s‖ * ‖shiftProd j Q G m r x s'‖ := by
+  refine Integrable.mono' (hGL1.norm.comp_add_right ((Q m s) • basisVec j))
+    (((((continuous_shiftProd_uncurry j hQc hGc m r).comp
+        (continuous_id.prodMk continuous_const)).norm).mul
+      (((continuous_shiftProd_uncurry j hQc hGc m r).comp
+        (continuous_id.prodMk continuous_const)).norm)).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  calc ‖shiftProd j Q G m r x s‖ * ‖shiftProd j Q G m r x s'‖
+      ≤ ‖shiftProd j Q G m r x s‖ * 1 :=
+        mul_le_mul_of_nonneg_left (norm_shiftProd_le hG m r x s') (norm_nonneg _)
+    _ = ‖shiftProd j Q G m r x s‖ := mul_one _
+    _ ≤ ‖G m (x + (Q m s) • basisVec j)‖ := norm_shiftProd_le_input hrm hG x s
+
+/-! ### Patch 3: the windowed average of the shifted product -/
+
+open MeasureTheory in
+theorem measurable_shiftProdAvg (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {G : ℕ → E3 → ℂ} (hGc : ∀ i, Continuous (G i)) (m r : ℕ) {c N : ℝ} (hN : 0 ≤ N) :
+    Measurable fun x : E3 => ∫ t in c..(c + N), shiftProd j Q G m r x t := by
+  have hle : c ≤ c + N := by linarith
+  have hfun : (fun x : E3 => ∫ t in c..(c + N), shiftProd j Q G m r x t)
+      = fun x : E3 => ∫ t in Set.Ioc c (c + N), shiftProd j Q G m r x t := by
+    funext x
+    rw [intervalIntegral.integral_of_le hle]
+  rw [hfun]
+  exact ((continuous_shiftProd_uncurry j hQc hGc m r).stronglyMeasurable.integral_prod_right'
+    (ν := volume.restrict (Set.Ioc c (c + N)))).measurable
+
+open MeasureTheory in
+theorem norm_shiftProdAvg_le (j : Fin 3) {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) {c N : ℝ} (hN : 0 ≤ N) (x : E3) :
+    ‖∫ t in c..(c + N), shiftProd j Q G m r x t‖ ≤ N := by
+  have hle : c ≤ c + N := by linarith
+  rw [intervalIntegral.integral_of_le hle]
+  have hfin : (volume : Measure ℝ) (Set.Ioc c (c + N)) < ⊤ := by
+    rw [Real.volume_Ioc]
+    exact ENNReal.ofReal_lt_top
+  have hvol : (volume : Measure ℝ).real (Set.Ioc c (c + N)) = N := by
+    rw [MeasureTheory.measureReal_def, Real.volume_Ioc, ENNReal.toReal_ofReal (by linarith)]
+    ring
+  have hbd := norm_setIntegral_le_of_norm_le_const (C := 1)
+    (f := fun t : ℝ => shiftProd j Q G m r x t) hfin
+    (fun t _ => norm_shiftProd_le hG m r x t)
+  rw [hvol, one_mul] at hbd
+  exact hbd
+
+open MeasureTheory in
+theorem norm_shiftProdAvg_normalized_le (j : Fin 3) {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 → ℂ}
+    (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) {c N : ℝ} (hN : 0 < N) (x : E3) :
+    ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), shiftProd j Q G m r x t‖ ≤ 1 := by
+  rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (by positivity : (0 : ℝ) ≤ N⁻¹)]
+  calc N⁻¹ * ‖∫ t in c..(c + N), shiftProd j Q G m r x t‖
+      ≤ N⁻¹ * N := mul_le_mul_of_nonneg_left
+        (norm_shiftProdAvg_le j hG m r hN.le x) (by positivity)
+    _ = 1 := inv_mul_cancel₀ hN.ne'
+
+open MeasureTheory in
+/-- The hypothesis `hgΦ` of `Auto.sq_norm_signed_vdc` for the spatial block. -/
+theorem integrable_g0_mul_shiftProdAvg (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {g0 : E3 → ℂ} {G : ℕ → E3 → ℂ} (hg0c : Continuous g0) (hg0L1 : Integrable g0)
+    (hGc : ∀ i, Continuous (G i)) (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) {c N : ℝ} (hN : 0 < N) :
+    Integrable fun x : E3 => ‖g0 x‖
+      * ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), shiftProd j Q G m r x t‖ := by
+  refine Integrable.mono' hg0L1.norm
+    ((hg0c.norm.aestronglyMeasurable).mul
+      (((measurable_shiftProdAvg j hQc hGc m r hN.le).const_smul
+        (N⁻¹ : ℝ)).norm).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  calc ‖g0 x‖ * ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), shiftProd j Q G m r x t‖
+      ≤ ‖g0 x‖ * 1 := mul_le_mul_of_nonneg_left
+        (norm_shiftProdAvg_normalized_le j hG m r hN x) (norm_nonneg _)
+    _ = ‖g0 x‖ := mul_one _
+
+/-! ### Patch 3: `petStep_signed`, the analytic update
+
+    |A|^2 <= 2 Re E_{u ~ kappa_H} A' + 2H/N,
+
+the patch's `patch:pet-analytic-step`, for arbitrary polynomial shifts.  `Auto.sq_norm_signed_vdc`
+applies directly -- the removed block `g_0` carries no parameter, so unlike the affine endpoint no
+translation precedes it -- and `Auto.corrLine_shiftProd_eq` reads its right-hand side as the
+integrated child family.
+
+The carried hypotheses are the same six as in `Auto.cs_remove_slope_block`, for the same reason
+recorded there: they need Cauchy-Schwarz in the parameter or a Fubini swap, for which no fixed
+dominating function exists. -/
+
+open MeasureTheory in
+theorem petStep_signed (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
+    {g0 : E3 → ℂ} {G : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r ≤ m)
+    {V N c H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4) (hV : 0 < V)
+    (hg0c : Continuous g0) (hg0L1 : Integrable g0)
+    (hg02 : Integrable fun x : E3 => ‖g0 x‖ ^ 2) (hg0V : (∫ x : E3, ‖g0 x‖ ^ 2) ≤ V)
+    (hGc : ∀ i, Continuous (G i)) (hG : ∀ i y, ‖G i y‖ ≤ 1)
+    (hGL1 : Integrable (G m)) (hGL2 : Integrable fun x : E3 => ‖G m x‖ ^ 2)
+    (hGV : (∫ x : E3, ‖G m x‖ ^ 2) ≤ V)
+    (hΦ2 : Integrable fun x : E3 =>
+      ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), shiftProd j Q G m r x t‖ ^ 2)
+    (hLi : Integrable fun x : E3 => ‖∫ u : ℝ, (Set.Ioc c (c + N)).indicator
+      (fun s => shiftProd j Q G m r x s) u‖ ^ 2)
+    (hRi : Integrable fun x : E3 => (∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc c (c + N)).indicator (fun s => shiftProd j Q G m r x s)) u).re)
+    (hRc : Integrable fun x : E3 => ∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc c (c + N)).indicator (fun s => shiftProd j Q G m r x s)) u)
+    (hswapH : Integrable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      fejer H u • autocorr ((Set.Ioc c (c + N)).indicator
+        (fun s => shiftProd j Q G m r x s)) u) ((volume : Measure E3).prod volume))
+    (hswapT : ∀ u : ℝ, Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      shiftProd j Q G m r x (t + u) * (starRingEnd ℂ) (shiftProd j Q G m r x t))
+      ((volume : Measure E3).prod (volume.restrict (capSet c N u)))) :
+    ‖shiftState j Q g0 G V N c m r‖ ^ 2
+      ≤ 2 * (V⁻¹ * N⁻¹ * (∫ u : ℝ, fejer H u • ∫ t in c..(c + N),
+          ∫ x : E3, ∏ i ∈ Finset.Icc r m, shiftChild j Q G r u i x t).re)
+        + 2 * H / N := by
+  classical
+  have hkey := sq_norm_signed_vdc (μ := (volume : Measure E3)) hN hH hHN hV
+    (g := g0) (F := fun (x : E3) (s : ℝ) => shiftProd j Q G m r x s)
+    (measurable_shiftProd_uncurry j hQc hGc m r) zero_le_one
+    (fun x t => norm_shiftProd_le hG m r x t)
+    (fun s => integrable_sq_shiftProd j hQc hrm hGc hG hGL2 s)
+    (integrable_cross_shiftProd j hQc hrm hGc hG hGL1)
+    (fun s => le_trans (integral_sq_shiftProd_le j hQc hrm hGc hG hGL2 s) hGV)
+    hg02 hg0V hΦ2
+    (integrable_g0_mul_shiftProdAvg j hQc hg0c hg0L1 hGc hG m r hN)
+    hLi hRi hRc hswapH hswapT
+  have houterEq : ∀ z : ℂ, (V⁻¹ : ℝ) • z = ((V : ℂ))⁻¹ * z := by
+    intro z
+    rw [Complex.real_smul, Complex.ofReal_inv]
+  have hpt : ∀ x : E3, g0 x * (((N : ℂ))⁻¹ * ∫ t in c..(c + N), shiftProd j Q G m r x t)
+      = g0 x * ((N⁻¹ : ℝ) • ∫ t in c..(c + N), shiftProd j Q G m r x t) := by
+    intro x
+    rw [Complex.real_smul, Complex.ofReal_inv]
+  have hstate : shiftState j Q g0 G V N c m r
+      = (V⁻¹ : ℝ) • ∫ x : E3, g0 x
+          * ((N⁻¹ : ℝ) • ∫ t in c..(c + N), shiftProd j Q G m r x t) := by
+    rw [shiftState, integral_congr_ae (Filter.Eventually.of_forall hpt), houterEq]
+  have hsm : ∀ u : ℝ, fejer H u • (∫ t in c..(c + N), corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => shiftProd j Q G m r x s) t u)
+      = fejer H u • ∫ t in c..(c + N),
+          ∫ x : E3, ∏ i ∈ Finset.Icc r m, shiftChild j Q G r u i x t := by
+    intro u
+    congr 1
+    exact intervalIntegral.integral_congr fun t _ => corrLine_shiftProd_eq j Q G m r t u
+  rw [hstate]
+  refine hkey.trans (le_of_eq ?_)
+  rw [integral_congr_ae (Filter.Eventually.of_forall hsm)]
+
+/-! ### Patch 3: `petIteration_bound`, a uniform bound on the number of steps
+
+"For an actual uniform iteration bound define `B(w, L)` by well-founded recursion on the type, with
+its value a function of the length budget `L` ...  Each `w' < w`, so this is a well-founded
+definition.  The usual induction proves that it bounds the execution on every family of length at
+most `L` and type `w`. ...  This proves uniform complexity, not merely termination of each
+individual execution."
+
+That last sentence is the point of this section, and is why `Auto.petType_terminates` was not
+enough: the absence of an infinite run is strictly weaker than a bound on run length.
+
+**Why the budget cannot be dropped.**  The lexicographic order on the type has no finite height --
+from `(0, 1, 0)` one may descend to `(0, 0, k)` for any `k` -- so no bound depending on the type
+alone exists, and the doubling budget `L` is what makes the lower components finite at each stage.
+A bound depending on the budget alone does not exist either, and a direct estimate is circular: the
+number of steps at a level is bounded by the count there, the counts below are bounded by `2L`, and
+`L` has doubled once per step, so the bound refers to the total length being bounded.  The patch's
+resolution, followed here, is that the recursion is on the *type*, which does decrease, with the
+budget merely carried along.
+
+The bound is obtained as an existence statement rather than by defining `B` explicitly: three
+nested strong inductions on the components, with a finite supremum at each level over the
+candidates the step admits.  That the candidate sets are finite is exactly what the budget buys. -/
+
+/-- One admissible move of the pivot recursion on the type, with length budget `L`.  The three
+disjuncts are the patch's three cases for the selected degree `l`: above `l` the counts are
+unchanged, at `l` one class is lost, below `l` they are at most `2L`. -/
+def petTypeStep (L : ℕ) (w w' : ℕ × ℕ × ℕ) : Prop :=
+  (w'.1 < w.1 ∧ w'.2.1 ≤ 2 * L ∧ w'.2.2 ≤ 2 * L)
+  ∨ (w'.1 = w.1 ∧ w'.2.1 < w.2.1 ∧ w'.2.2 ≤ 2 * L)
+  ∨ (w'.1 = w.1 ∧ w'.2.1 = w.2.1 ∧ w'.2.2 < w.2.2)
+
+/-- `R` bounds the length of every run of the pivot recursion from type `(a, b, c)` with initial
+budget `L`, the budget doubling at each step. -/
+def PetRunBounded (a b c L R : ℕ) : Prop :=
+  ∀ (W : ℕ → ℕ × ℕ × ℕ) (Lb : ℕ → ℕ) (n : ℕ),
+    W 0 = (a, b, c) → Lb 0 = L → (∀ k, Lb (k + 1) = 2 * Lb k) →
+    (∀ k, k < n → petTypeStep (Lb k) (W k) (W (k + 1))) → n ≤ R
+
+/-- **`petIteration_bound`**: every type and budget have a bound on the length of every run. -/
+theorem petRun_bounded : ∀ (a b c L : ℕ), ∃ R : ℕ, PetRunBounded a b c L R := by
+  intro a
+  induction a using Nat.strong_induction_on with
+  | _ a iha =>
+    intro b
+    induction b using Nat.strong_induction_on with
+    | _ b ihb =>
+      intro c
+      induction c using Nat.strong_induction_on with
+      | _ c ihc =>
+        intro L
+        -- the three candidate sets, and a bound for each
+        classical
+        set S3 : Finset (ℕ × ℕ × ℕ) :=
+          (Finset.range a) ×ˢ (Finset.range (2 * L + 1)) ×ˢ (Finset.range (2 * L + 1)) with hS3
+        set S2 : Finset (ℕ × ℕ) :=
+          (Finset.range b) ×ˢ (Finset.range (2 * L + 1)) with hS2
+        set S1 : Finset ℕ := Finset.range c with hS1
+        have h3 : ∀ p ∈ S3, ∃ R, PetRunBounded p.1 p.2.1 p.2.2 (2 * L) R := by
+          intro p hp
+          have : p.1 < a := by
+            have := (Finset.mem_product.mp hp).1
+            simpa [hS3] using this
+          exact iha p.1 this p.2.1 p.2.2 (2 * L)
+        have h2 : ∀ p ∈ S2, ∃ R, PetRunBounded a p.1 p.2 (2 * L) R := by
+          intro p hp
+          have : p.1 < b := by
+            have := (Finset.mem_product.mp hp).1
+            simpa [hS2] using this
+          exact ihb p.1 this p.2 (2 * L)
+        have h1 : ∀ q ∈ S1, ∃ R, PetRunBounded a b q (2 * L) R := by
+          intro q hq
+          have : q < c := by simpa [hS1] using hq
+          exact ihc q this (2 * L)
+        refine ⟨1 + ((S3.attach.sup fun p => Classical.choose (h3 p.1 p.2))
+          ⊔ (S2.attach.sup fun p => Classical.choose (h2 p.1 p.2))
+          ⊔ (S1.attach.sup fun q => Classical.choose (h1 q.1 q.2))), ?_⟩
+        intro W Lb n hW0 hL0 hLb hstep
+        rcases Nat.eq_zero_or_pos n with hn | hn
+        · omega
+        obtain ⟨n', rfl⟩ : ∃ n', n = n' + 1 := ⟨n - 1, by omega⟩
+        have hfirst := hstep 0 (by omega)
+        rw [hW0, hL0] at hfirst
+        simp only [zero_add] at hfirst
+        have hLb'0 : Lb 1 = 2 * L := by rw [hLb 0, hL0]
+        have hstep' : ∀ k, k < n' → petTypeStep (Lb (k + 1)) (W (k + 1)) (W (k + 1 + 1)) :=
+          fun k hk => hstep (k + 1) (by omega)
+        have hLb'step : ∀ k, Lb (k + 1 + 1) = 2 * Lb (k + 1) := fun k => hLb (k + 1)
+        rcases hfirst with ⟨p1, p2, p3⟩ | ⟨p1, p2, p3⟩ | ⟨p1, p2, p3⟩
+        · have hmem : W 1 ∈ S3 := by
+            rw [hS3]
+            exact Finset.mem_product.mpr ⟨Finset.mem_range.mpr p1,
+              Finset.mem_product.mpr ⟨Finset.mem_range.mpr (by omega),
+                Finset.mem_range.mpr (by omega)⟩⟩
+          have hb := Classical.choose_spec (h3 (W 1) hmem)
+          have hle : n' ≤ Classical.choose (h3 (W 1) hmem) :=
+            hb (fun k => W (k + 1)) (fun k => Lb (k + 1)) n' rfl hLb'0 hLb'step hstep'
+          have hsup : Classical.choose (h3 (W 1) hmem)
+              ≤ S3.attach.sup fun p => Classical.choose (h3 p.1 p.2) :=
+            Finset.le_sup (f := fun p : {x // x ∈ S3} => Classical.choose (h3 p.1 p.2))
+              (Finset.mem_attach _ ⟨W 1, hmem⟩)
+          omega
+        · have hmem : ((W 1).2.1, (W 1).2.2) ∈ S2 := by
+            rw [hS2]
+            have hp2 : (W 1).2.1 < b := p2
+            exact Finset.mem_product.mpr ⟨Finset.mem_range.mpr hp2,
+              Finset.mem_range.mpr (by omega)⟩
+          have hb := Classical.choose_spec (h2 _ hmem)
+          have hW1 : W 1 = (a, (W 1).2.1, (W 1).2.2) := by
+            have e1 : (W 1).1 = a := p1
+            rw [← e1]
+          have hle : n' ≤ Classical.choose (h2 _ hmem) :=
+            hb (fun k => W (k + 1)) (fun k => Lb (k + 1)) n' hW1 hLb'0 hLb'step hstep'
+          have hsup : Classical.choose (h2 _ hmem)
+              ≤ S2.attach.sup fun p => Classical.choose (h2 p.1 p.2) :=
+            Finset.le_sup (f := fun p : {x // x ∈ S2} => Classical.choose (h2 p.1 p.2))
+              (Finset.mem_attach _ ⟨((W 1).2.1, (W 1).2.2), hmem⟩)
+          omega
+        · have hmem : (W 1).2.2 ∈ S1 := by
+            rw [hS1]
+            have hp3 : (W 1).2.2 < c := p3
+            exact Finset.mem_range.mpr hp3
+          have hb := Classical.choose_spec (h1 _ hmem)
+          have hW1 : W 1 = (a, b, (W 1).2.2) := by
+            have e1 : (W 1).1 = a := p1
+            have e2 : (W 1).2.1 = b := p2
+            rw [← e1, ← e2]
+          have hle : n' ≤ Classical.choose (h1 _ hmem) :=
+            hb (fun k => W (k + 1)) (fun k => Lb (k + 1)) n' hW1 hLb'0 hLb'step hstep'
+          have hsup : Classical.choose (h1 _ hmem)
+              ≤ S1.attach.sup fun q => Classical.choose (h1 q.1 q.2) :=
+            Finset.le_sup (f := fun q : {x // x ∈ S1} => Classical.choose (h1 q.1 q.2))
+              (Finset.mem_attach _ ⟨(W 1).2.2, hmem⟩)
+          omega
+
+
+/-! ### Patch 3: the length half of `petPivot_type_decreases`
+
+"The type strictly decreases and the new length is at most `2L`."  The type half is
+`Auto.petType_lt_of_pivot`; this is the length half.  It is exact at the raw stage -- the update
+forms precisely two children per factor -- and the two later stages only shrink: dropping the
+constant children is a `filter`, and grouping identical polynomials is a `dedup`. -/
+
+/-- The update forms exactly two children per item. -/
+theorem length_flatMap_petChildren {r n : ℕ} {ι : Type*}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ))
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))) :
+    (l.flatMap (petChildren u Qp)).length = 2 * l.length := by
+  induction l with
+  | nil => rfl
+  | cons hd tl ih =>
+      rw [List.flatMap_cons, List.length_append, ih, List.length_cons]
+      show 2 + 2 * tl.length = 2 * (tl.length + 1)
+      ring
+
+theorem length_petRawChildren {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    (petRawChildren u Qp S).length = 2 * (petAllItems S).length :=
+  length_flatMap_petChildren u Qp (petAllItems S)
+
+theorem length_petNormalized {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    (petNormalized u Qp S).length = 2 * (petAllItems S).length := by
+  rw [petNormalized, List.length_map, length_petRawChildren]
+
+/-- Grouping identical polynomials can only shorten the list. -/
+theorem length_petGroup_le {r n : ℕ} {ι : Type*}
+    [DecidableEq (Polynomial (Fin n → MvPolynomial (Fin r) ℝ))]
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))) :
+    (petGroup l).length ≤ l.length := by
+  rw [petGroup, List.length_map]
+  calc (l.map Prod.fst).dedup.length ≤ (l.map Prod.fst).length :=
+        List.Sublist.length_le (List.dedup_sublist _)
+    _ = l.length := List.length_map _
+
+/-- Dropping the head and the constant children can only shorten the list. -/
+theorem length_petNonConstChildren_le {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    (petNonConstChildren u Qp S).length ≤ 2 * (petAllItems S).length := by
+  have htail : (petNormalized u Qp S).tail.length ≤ (petNormalized u Qp S).length := by
+    rw [List.length_tail]
+    omega
+  calc (petNonConstChildren u Qp S).length
+      ≤ (petNormalized u Qp S).tail.length := List.length_filter_le _ _
+    _ ≤ (petNormalized u Qp S).length := htail
+    _ = 2 * (petAllItems S).length := length_petNormalized u Qp S
+
+open scoped Classical in
+/-- **The length half of the patch's sentence**: after one update the surviving nonconstant,
+grouped family has at most `2L` members, where `L` is the number of items before the update. -/
+theorem petUpdate_length_le {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    (petGroup (petNonConstChildren u Qp S)).length ≤ 2 * (petAllItems S).length :=
+  le_trans (length_petGroup_le _) (length_petNonConstChildren_le u Qp S)
+
+/-! ### Patch 3: the type of a normal state
+
+"Let `w_q` count distinct leading coefficients of degree-`q` polynomials in the normal state."
+This is that count, on `Auto.NormalPETState` itself.  It is not the existing `Auto.petClasses`,
+which counts classes of a `Finset` of translation vectors and was built for the superseded
+`lem:pet-reduction`.
+
+The bound proved here is what ties the two halves of the recursion's analysis together.
+`Auto.petRun_bounded` takes the type and the length budget as abstract naturals and needs the
+candidate successor sets to be finite; `Auto.petStateClasses_le_length` is the fact that makes that
+legitimate on the concrete state -- every component of the type is at most the number of items,
+because a count of *distinct* leading coefficients among a sublist cannot exceed the list's
+length. -/
+
+open scoped Classical in
+/-- The number of distinct leading coefficients among the degree-`q` polynomials of the state. -/
+noncomputable def petStateClasses {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
+    (S : NormalPETState r n ι f) : ℕ :=
+  ((((petAllItems S).map Prod.fst).filter fun Q => decide (Q.natDegree = q)).map
+    Polynomial.leadingCoeff).dedup.length
+
+open scoped Classical in
+/-- The state's type, the patch's `(w_3, w_2, w_1)`. -/
+noncomputable def petStateType {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETState r n ι f) :
+    ℕ × ℕ × ℕ :=
+  (petStateClasses 3 S, petStateClasses 2 S, petStateClasses 1 S)
+
+open scoped Classical in
+/-- **Every component of the type is at most the number of items.**  A count of distinct leading
+coefficients among a sublist cannot exceed the length of the list. -/
+theorem petStateClasses_le_length {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
+    (S : NormalPETState r n ι f) :
+    petStateClasses q S ≤ (petAllItems S).length := by
+  rw [petStateClasses]
+  calc ((((petAllItems S).map Prod.fst).filter fun Q => decide (Q.natDegree = q)).map
+        Polynomial.leadingCoeff).dedup.length
+      ≤ ((((petAllItems S).map Prod.fst).filter fun Q => decide (Q.natDegree = q)).map
+          Polynomial.leadingCoeff).length :=
+        List.Sublist.length_le (List.dedup_sublist _)
+    _ = (((petAllItems S).map Prod.fst).filter fun Q => decide (Q.natDegree = q)).length :=
+        List.length_map _
+    _ ≤ ((petAllItems S).map Prod.fst).length := List.length_filter_le _ _
+    _ = (petAllItems S).length := List.length_map _
+
+open scoped Classical in
+/-- The same for each component of the type. -/
+theorem petStateType_le_length {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETState r n ι f) :
+    (petStateType S).1 ≤ (petAllItems S).length
+      ∧ (petStateType S).2.1 ≤ (petAllItems S).length
+      ∧ (petStateType S).2.2 ≤ (petAllItems S).length :=
+  ⟨petStateClasses_le_length 3 S, petStateClasses_le_length 2 S, petStateClasses_le_length 1 S⟩
+
+open scoped Classical in
+/-- The stopping condition of the patch: "stop when every degree is at most one". -/
+def PetStateTerminal {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETState r n ι f) : Prop :=
+  petStateClasses 3 S ≤ 1 ∧ petStateClasses 2 S ≤ 1 ∧ petStateClasses 1 S ≤ 1
+
+/-! ### Patch 3: the budget half of the pivot display
+
+The patch's display for the selected degree `l` has three parts:
+
+    w'_q = w_q (q > l),    w'_l = w_l - 1,    0 <= w'_q <= 2L (q < l).
+
+The third is proved here, and in the stronger form that it holds at *every* degree, not only below
+`l`: after one update every component of the new type is at most `2L`.  That is what
+`Auto.petTypeStep` requires of its lower components, so it is the part of the display the
+termination analysis actually consumes.
+
+The first two parts are the genuine content of the selection rules and are not proved here; they
+need the degrees and leading coefficients of the children tracked through the update. -/
+
+theorem length_petAllItems_pos {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETState r n ι f) :
+    1 ≤ (petAllItems S).length := by
+  rw [petAllItems, List.length_cons]
+  omega
+
+open scoped Classical in
+/-- The new head takes one slot, so the surviving list has room for `2L - 1` more. -/
+theorem length_petNonConstChildren_succ_le {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    (petNonConstChildren u Qp S).length + 1 ≤ 2 * (petAllItems S).length := by
+  have hlen := length_petNormalized u Qp S
+  have hpos := length_petAllItems_pos S
+  have hfil : (petNonConstChildren u Qp S).length ≤ (petNormalized u Qp S).tail.length :=
+    List.length_filter_le _ _
+  rw [List.length_tail, hlen] at hfil
+  omega
+
+open scoped Classical in
+/-- The assembled state has the new head plus the grouped survivors. -/
+theorem length_petAllItems_petAssemble {r n : ℕ} {ι : Type*} {f : ι}
+    (spat : List (PetFactor r n ι))
+    (hdPoly : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (hdFac : PetFactor r n ι)
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι)))
+    (horigin : hdFac.origin = f) (hd0 : hdPoly ≠ 0) (hdv : hdPoly.coeff 0 = 0)
+    (hl0 : ∀ it ∈ l, it.1 ≠ 0) (hlv : ∀ it ∈ l, it.1.coeff 0 = 0)
+    (hlh : ∀ it ∈ l, it.1 ≠ hdPoly)
+    (hlm : ∀ it ∈ l, it.1.natDegree ≤ hdPoly.natDegree) :
+    (petAllItems (petAssemble (f := f) spat hdPoly hdFac l horigin hd0 hdv hl0 hlv hlh hlm)).length
+      = (petGroup l).length + 1 := by
+  rw [petAllItems, List.length_cons]
+  rfl
+
+open scoped Classical in
+/-- **The budget half of the display.**  After one update from a state with `L` items, the new
+state has at most `2L` items. -/
+theorem length_petAllItems_update_le {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    (spat : List (PetFactor r n ι))
+    (hdPoly : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (hdFac : PetFactor r n ι)
+    (horigin : hdFac.origin = f) (hd0 : hdPoly ≠ 0) (hdv : hdPoly.coeff 0 = 0)
+    (hl0 : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ 0)
+    (hlv : ∀ it ∈ petNonConstChildren u Qp S, it.1.coeff 0 = 0)
+    (hlh : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ hdPoly)
+    (hlm : ∀ it ∈ petNonConstChildren u Qp S, it.1.natDegree ≤ hdPoly.natDegree) :
+    (petAllItems (petAssemble (f := f) spat hdPoly hdFac (petNonConstChildren u Qp S)
+        horigin hd0 hdv hl0 hlv hlh hlm)).length
+      ≤ 2 * (petAllItems S).length := by
+  rw [length_petAllItems_petAssemble]
+  have hgrp := length_petGroup_le (petNonConstChildren u Qp S)
+  have hsucc := length_petNonConstChildren_succ_le u Qp S
+  omega
+
+open scoped Classical in
+/-- Hence every component of the new type is at most `2L`, which is what `Auto.petTypeStep` asks
+of the components below the selected degree. -/
+theorem petStateClasses_update_le {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    (spat : List (PetFactor r n ι))
+    (hdPoly : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (hdFac : PetFactor r n ι)
+    (horigin : hdFac.origin = f) (hd0 : hdPoly ≠ 0) (hdv : hdPoly.coeff 0 = 0)
+    (hl0 : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ 0)
+    (hlv : ∀ it ∈ petNonConstChildren u Qp S, it.1.coeff 0 = 0)
+    (hlh : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ hdPoly)
+    (hlm : ∀ it ∈ petNonConstChildren u Qp S, it.1.natDegree ≤ hdPoly.natDegree) :
+    petStateClasses q (petAssemble (f := f) spat hdPoly hdFac (petNonConstChildren u Qp S)
+        horigin hd0 hdv hl0 hlv hlh hlm)
+      ≤ 2 * (petAllItems S).length :=
+  le_trans (petStateClasses_le_length q _)
+    (length_petAllItems_update_le u Qp S spat hdPoly hdFac horigin hd0 hdv hl0 hlv hlh hlm)
+
+/-! ### Patch 3: how a child's degree and leading coefficient are determined
+
+The content of the pivot selection rules is the behaviour of
+
+    Q_i(t + u) - Q_p(t)   and   Q_i(t) - Q_p(t)
+
+in degree and leading coefficient.  Above the pivot's degree nothing happens: the shift does not
+move either (`Polynomial.natDegree_taylor`, `Auto.leadingCoeff_taylor`) and subtracting something of
+strictly smaller degree does not either.  At the pivot's degree the leading coefficients subtract,
+which is the patch's "the new leading classes are the nonzero differences with the pivot leading
+coefficient"; and the pivot's own children leave that degree, the unshifted one being zero and the
+shifted one dropping by `Auto.natDegree_taylor_sub_self_le`.
+
+These are the polynomial facts.  The counting statement built on them -- that `w'_q = w_q` above the
+selected degree and `w'_l = w_l - 1` at it -- is not proved here. -/
+
+section PetChildDegree
+
+variable {R : Type*} [CommRing R]
+
+/-- Above the pivot's degree, the shifted child keeps its degree. -/
+theorem natDegree_taylor_sub_of_lt (Q Qp : Polynomial R) (u : R)
+    (h : Qp.natDegree < Q.natDegree) :
+    ((Polynomial.taylor u) Q - Qp).natDegree = Q.natDegree := by
+  have hlt : Qp.natDegree < ((Polynomial.taylor u) Q).natDegree := by
+    rwa [Polynomial.natDegree_taylor]
+  rw [Polynomial.natDegree_sub_eq_left_of_natDegree_lt hlt, Polynomial.natDegree_taylor]
+
+/-- and its leading coefficient. -/
+theorem leadingCoeff_taylor_sub_of_lt (Q Qp : Polynomial R) (u : R)
+    (h : Qp.natDegree < Q.natDegree) :
+    ((Polynomial.taylor u) Q - Qp).leadingCoeff = Q.leadingCoeff := by
+  have hlt : Qp.natDegree < ((Polynomial.taylor u) Q).natDegree := by
+    rwa [Polynomial.natDegree_taylor]
+  rw [Polynomial.leadingCoeff_sub_of_degree_lt (Polynomial.degree_lt_degree hlt),
+    leadingCoeff_taylor]
+
+/-- The unshifted child, likewise. -/
+theorem natDegree_sub_of_lt (Q Qp : Polynomial R) (h : Qp.natDegree < Q.natDegree) :
+    (Q - Qp).natDegree = Q.natDegree :=
+  Polynomial.natDegree_sub_eq_left_of_natDegree_lt h
+
+theorem leadingCoeff_sub_of_lt (Q Qp : Polynomial R) (h : Qp.natDegree < Q.natDegree) :
+    (Q - Qp).leadingCoeff = Q.leadingCoeff :=
+  Polynomial.leadingCoeff_sub_of_degree_lt (Polynomial.degree_lt_degree h)
+
+/-- **At the pivot's own degree the leading coefficients subtract.**  This is the patch's "the new
+leading classes are the nonzero differences with the pivot leading coefficient": the child stays at
+that degree exactly when the difference of leading coefficients is nonzero, and then that difference
+is its leading coefficient. -/
+theorem natDegree_leadingCoeff_sub_of_eq (A B : Polynomial R) {l : ℕ}
+    (hA : A.natDegree = l) (hB : B.natDegree = l)
+    (hne : A.leadingCoeff - B.leadingCoeff ≠ 0) :
+    (A - B).natDegree = l ∧ (A - B).leadingCoeff = A.leadingCoeff - B.leadingCoeff := by
+  have hcoeff : (A - B).coeff l = A.leadingCoeff - B.leadingCoeff := by
+    rw [Polynomial.coeff_sub, Polynomial.leadingCoeff, Polynomial.leadingCoeff, hA, hB]
+  have hle : (A - B).natDegree ≤ l := by
+    refine le_trans (Polynomial.natDegree_sub_le _ _) ?_
+    rw [hA, hB]
+    exact le_of_eq (max_self l)
+  have hdeg : (A - B).natDegree = l := by
+    refine le_antisymm hle (Polynomial.le_natDegree_of_ne_zero ?_)
+    rw [hcoeff]
+    exact hne
+  refine ⟨hdeg, ?_⟩
+  rw [Polynomial.leadingCoeff, hdeg, hcoeff]
+
+/-- The pivot's unshifted child is zero, so it leaves the pivot's degree. -/
+theorem petChild_pivot_unshifted (Qp : Polynomial R) : Qp - Qp = 0 := sub_self Qp
+
+end PetChildDegree
+
+/-! ### Patch 3: counting the leading-coefficient classes across an update
+
+The pivot display's first two parts are counting statements about `Auto.petStateClasses`, which is a
+`dedup` length.  Two tools serve them, and they are the two shapes the update produces.
+
+Above the selected degree the children have the same leading coefficients as their parents
+(`Auto.leadingCoeff_taylor_sub_of_lt`, `Auto.leadingCoeff_sub_of_lt`), so the two lists have the
+same members and the counts agree.  At the selected degree the surviving children's leading
+coefficients are the nonzero differences with the pivot's
+(`Auto.natDegree_leadingCoeff_sub_of_eq`), so the new list's value set is the old one with the
+pivot's class removed and the rest translated -- an injective image of an erasure, whose count is
+one less. -/
+
+/-- Lists with the same members have the same number of distinct elements. -/
+theorem dedup_length_eq_of_mem_iff {α : Type*} [DecidableEq α] {l₁ l₂ : List α}
+    (h : ∀ x, x ∈ l₁ ↔ x ∈ l₂) : l₁.dedup.length = l₂.dedup.length := by
+  rw [← List.card_toFinset, ← List.card_toFinset]
+  congr 1
+  ext x
+  simp only [List.mem_toFinset]
+  exact h x
+
+/-- Removing one value and translating by it drops the count of distinct elements by one. -/
+theorem dedup_length_sub_one_of_toFinset_eq {α : Type*} [DecidableEq α] [AddGroup α]
+    {l₁ l₂ : List α} {a : α} (ha : a ∈ l₁)
+    (h : l₂.toFinset = (l₁.toFinset.erase a).image (fun c => c - a)) :
+    l₂.dedup.length = l₁.dedup.length - 1 := by
+  have hinj : Function.Injective (fun c : α => c - a) := fun x y hxy => by
+    simpa using hxy
+  rw [← List.card_toFinset, ← List.card_toFinset, h,
+    Finset.card_image_of_injective _ hinj,
+    Finset.card_erase_of_mem (List.mem_toFinset.mpr ha)]
+
+/-! ### Patch 3: a normalized child's degree and leading coefficient
+
+`Auto.petNormalizeItem` subtracts each child's constant term in `t`.  That does not disturb a
+positive-degree leading coefficient (`Auto.natDegree_petSubConst`,
+`Auto.leadingCoeff_petSubConst`, both from row 392), so the facts of the preceding section survive
+normalization.  This is the per-item form of the identification the counting tools need. -/
+
+section PetChildNormalized
+
+variable {R : Type*} [CommRing R]
+
+/-- Above the pivot's degree, both normalized children keep the parent's degree and leading
+coefficient. -/
+theorem natDegree_leadingCoeff_petChild_of_lt (Q Qp : Polynomial R) (u : R)
+    (h : Qp.natDegree < Q.natDegree) :
+    (petSubConst ((Polynomial.taylor u) Q - Qp)).natDegree = Q.natDegree
+      ∧ (petSubConst ((Polynomial.taylor u) Q - Qp)).leadingCoeff = Q.leadingCoeff
+      ∧ (petSubConst (Q - Qp)).natDegree = Q.natDegree
+      ∧ (petSubConst (Q - Qp)).leadingCoeff = Q.leadingCoeff := by
+  have hposS : 1 ≤ ((Polynomial.taylor u) Q - Qp).natDegree := by
+    rw [natDegree_taylor_sub_of_lt Q Qp u h]
+    omega
+  have hposU : 1 ≤ (Q - Qp).natDegree := by
+    rw [natDegree_sub_of_lt Q Qp h]
+    omega
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · rw [natDegree_petSubConst hposS, natDegree_taylor_sub_of_lt Q Qp u h]
+  · rw [leadingCoeff_petSubConst hposS, leadingCoeff_taylor_sub_of_lt Q Qp u h]
+  · rw [natDegree_petSubConst hposU, natDegree_sub_of_lt Q Qp h]
+  · rw [leadingCoeff_petSubConst hposU, leadingCoeff_sub_of_lt Q Qp h]
+
+/-- At the pivot's degree, a surviving normalized child stays there and its leading coefficient is
+the difference with the pivot's. -/
+theorem natDegree_leadingCoeff_petChild_of_eq (Q Qp : Polynomial R) {l : ℕ} (hl : 1 ≤ l)
+    (hQ : Q.natDegree = l) (hQp : Qp.natDegree = l)
+    (hne : Q.leadingCoeff - Qp.leadingCoeff ≠ 0) :
+    (petSubConst (Q - Qp)).natDegree = l
+      ∧ (petSubConst (Q - Qp)).leadingCoeff = Q.leadingCoeff - Qp.leadingCoeff := by
+  obtain ⟨hd, hlc⟩ := natDegree_leadingCoeff_sub_of_eq Q Qp hQ hQp hne
+  have hpos : 1 ≤ (Q - Qp).natDegree := by
+    rw [hd]
+    exact hl
+  exact ⟨by rw [natDegree_petSubConst hpos, hd], by rw [leadingCoeff_petSubConst hpos, hlc]⟩
+
+/-- The pivot's own unshifted child normalizes to zero, so it leaves every degree. -/
+theorem petChild_pivot_unshifted_normalized (Qp : Polynomial R) :
+    petSubConst (Qp - Qp) = 0 := by
+  rw [petChild_pivot_unshifted]
+  show (0 : Polynomial R) - Polynomial.C ((0 : Polynomial R).coeff 0) = 0
+  simp
+
+end PetChildNormalized
+
+/-! ### Patch 3: grouping is invisible to the type
+
+The first structural step of the lifting.  The class count depends on the item list only through
+the *set* of polynomials it carries, so any two item lists with the same polynomials have the same
+count at every degree.  `Auto.petGroup` replaces the list by its distinct keys
+(`Auto.petGroup_keys`), which changes multiplicities but not that set, so grouping leaves the type
+alone.
+
+This removes `Auto.petGroup` from the remaining gap: only `Auto.petChildren`'s `flatMap` and the
+constant-child `filter` are left between the per-item facts and the `toFinset` equalities. -/
+
+open scoped Classical in
+/-- The class count of an item list, of which `Auto.petStateClasses` is the instance at a state's
+items. -/
+noncomputable def petListClasses {r n : ℕ} {ι : Type*} (q : ℕ)
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))) : ℕ :=
+  (((l.map Prod.fst).filter fun Q => decide (Q.natDegree = q)).map
+    Polynomial.leadingCoeff).dedup.length
+
+open scoped Classical in
+theorem petStateClasses_eq_petListClasses {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
+    (S : NormalPETState r n ι f) : petStateClasses q S = petListClasses q (petAllItems S) := rfl
+
+/-- Filtering and mapping preserve "same members". -/
+theorem mem_map_filter_iff_of_mem_iff {α β : Type*} (f : α → β) (p : α → Bool)
+    {l₁ l₂ : List α} (h : ∀ x, x ∈ l₁ ↔ x ∈ l₂) (y : β) :
+    y ∈ (l₁.filter p).map f ↔ y ∈ (l₂.filter p).map f := by
+  simp only [List.mem_map, List.mem_filter]
+  constructor
+  · rintro ⟨x, ⟨hx, hp⟩, rfl⟩
+    exact ⟨x, ⟨(h x).mp hx, hp⟩, rfl⟩
+  · rintro ⟨x, ⟨hx, hp⟩, rfl⟩
+    exact ⟨x, ⟨(h x).mpr hx, hp⟩, rfl⟩
+
+open scoped Classical in
+/-- **The class count depends only on the set of polynomials.** -/
+theorem petListClasses_congr {r n : ℕ} {ι : Type*} (q : ℕ)
+    {l₁ l₂ : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))}
+    (h : ∀ Q, Q ∈ l₁.map Prod.fst ↔ Q ∈ l₂.map Prod.fst) :
+    petListClasses q l₁ = petListClasses q l₂ :=
+  dedup_length_eq_of_mem_iff (fun y => mem_map_filter_iff_of_mem_iff _ _ h y)
+
+open scoped Classical in
+theorem mem_petGroup_fst_iff {r n : ℕ} {ι : Type*}
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι)))
+    (Q : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) :
+    Q ∈ (petGroup l).map Prod.fst ↔ Q ∈ l.map Prod.fst := by
+  rw [petGroup_keys, List.mem_dedup]
+
+open scoped Classical in
+/-- **Grouping leaves the type alone.** -/
+theorem petListClasses_petGroup {r n : ℕ} {ι : Type*} (q : ℕ)
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))) :
+    petListClasses q (petGroup l) = petListClasses q l :=
+  petListClasses_congr q (mem_petGroup_fst_iff l)
+
+/-! ### Patch 3: the polynomials the update produces
+
+The second structural step.  `Auto.petChildren` contributes exactly two polynomials per item, so the
+set of polynomials carried by the children is the set of the two children of each parent -- and
+after `Auto.petNormalizeItem`, of their constant-subtracted forms.  With
+`Auto.petListClasses_congr` this is all the count needs to know about the `flatMap`. -/
+
+/-- Membership in a two-element `flatMap`. -/
+theorem mem_flatMap_pair_iff {α β : Type*} (g h : α → β) (l : List α) (y : β) :
+    y ∈ l.flatMap (fun a => [g a, h a]) ↔ ∃ a ∈ l, y = g a ∨ y = h a := by
+  simp only [List.mem_flatMap, List.mem_cons, List.not_mem_nil, or_false]
+
+open scoped Classical in
+theorem map_fst_petRawChildren {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    (petRawChildren u Qp S).map Prod.fst
+      = (petAllItems S).flatMap
+          (fun item => [(Polynomial.taylor u) item.1 - Qp, item.1 - Qp]) := by
+  rw [petRawChildren, List.map_flatMap]
+  rfl
+
+open scoped Classical in
+/-- **The raw children's polynomials.** -/
+theorem mem_petRawChildren_fst_iff {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    (P : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) :
+    P ∈ (petRawChildren u Qp S).map Prod.fst
+      ↔ ∃ item ∈ petAllItems S,
+          P = (Polynomial.taylor u) item.1 - Qp ∨ P = item.1 - Qp := by
+  rw [map_fst_petRawChildren]
+  exact mem_flatMap_pair_iff _ _ _ _
+
+open scoped Classical in
+/-- **The normalized children's polynomials**, which is the form the class count sees. -/
+theorem mem_petNormalized_fst_iff {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    (P : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) :
+    P ∈ (petNormalized u Qp S).map Prod.fst
+      ↔ ∃ item ∈ petAllItems S,
+          P = petSubConst ((Polynomial.taylor u) item.1 - Qp)
+            ∨ P = petSubConst (item.1 - Qp) := by
+  rw [petNormalized, List.map_map, petRawChildren, List.map_flatMap]
+  exact mem_flatMap_pair_iff _ _ _ _
+
+/-! ### Patch 3: the survivors, and the assembled state's count
+
+The last two structural steps.  `Auto.petNonConstChildren` drops the new head with `.tail` and the
+constant children with a `filter`, and `Auto.petAssemble` puts the head back in front of the
+grouped survivors.  Since the count sees only the set of polynomials
+(`Auto.petListClasses_congr`), the grouping disappears and the assembled state's count is that of
+the head consed onto the ungrouped survivors. -/
+
+/-- Filtering out the zero polynomials, at the level of the carried polynomials. -/
+theorem mem_map_fst_filter_ne_zero_iff {α β : Type*} [DecidableEq α] [Zero α]
+    (l : List (α × β)) (P : α) :
+    P ∈ ((l.filter fun it => decide (it.1 ≠ 0)).map Prod.fst) ↔ P ∈ l.map Prod.fst ∧ P ≠ 0 := by
+  simp only [List.mem_map, List.mem_filter, decide_eq_true_eq]
+  constructor
+  · rintro ⟨x, ⟨hx, hne⟩, rfl⟩
+    exact ⟨⟨x, hx, rfl⟩, hne⟩
+  · rintro ⟨⟨x, hx, rfl⟩, hne⟩
+    exact ⟨x, ⟨hx, hne⟩, rfl⟩
+
+open scoped Classical in
+/-- **The surviving children's polynomials**: the normalized ones after the head, minus the zero
+ones. -/
+theorem mem_petNonConstChildren_fst_iff {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    (P : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) :
+    P ∈ (petNonConstChildren u Qp S).map Prod.fst
+      ↔ P ∈ ((petNormalized u Qp S).map Prod.fst).tail ∧ P ≠ 0 := by
+  rw [petNonConstChildren, mem_map_fst_filter_ne_zero_iff, List.map_tail]
+
+open scoped Classical in
+/-- **The assembled state's count** is that of the head consed onto the ungrouped survivors: the
+grouping is invisible, by `Auto.mem_petGroup_fst_iff`. -/
+theorem petStateClasses_petAssemble {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
+    (spat : List (PetFactor r n ι))
+    (hdPoly : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (hdFac : PetFactor r n ι)
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι)))
+    (horigin : hdFac.origin = f) (hd0 : hdPoly ≠ 0) (hdv : hdPoly.coeff 0 = 0)
+    (hl0 : ∀ it ∈ l, it.1 ≠ 0) (hlv : ∀ it ∈ l, it.1.coeff 0 = 0)
+    (hlh : ∀ it ∈ l, it.1 ≠ hdPoly)
+    (hlm : ∀ it ∈ l, it.1.natDegree ≤ hdPoly.natDegree) :
+    petStateClasses q (petAssemble (f := f) spat hdPoly hdFac l horigin hd0 hdv hl0 hlv hlh hlm)
+      = petListClasses q ((hdPoly, [hdFac]) :: l) := by
+  rw [petStateClasses_eq_petListClasses]
+  refine petListClasses_congr q ?_
+  intro Q
+  show Q ∈ (((hdPoly, [hdFac]) :: petGroup l).map Prod.fst)
+    ↔ Q ∈ (((hdPoly, [hdFac]) :: l).map Prod.fst)
+  simp only [List.map_cons, List.mem_cons]
+  constructor
+  · rintro (h | h)
+    · exact Or.inl h
+    · exact Or.inr ((mem_petGroup_fst_iff l Q).mp h)
+  · rintro (h | h)
+    · exact Or.inl h
+    · exact Or.inr ((mem_petGroup_fst_iff l Q).mpr h)
+
+/-! ### Patch 3: comparing states by their leading-coefficient data
+
+`Auto.petListClasses_congr` compares two item lists that carry the *same* polynomials.  The update
+does not: the children are different polynomials from their parents, and what is preserved is their
+degree and leading coefficient.  The comparison therefore has to be made on that data, which is
+what this section supplies.
+
+`Auto.petListClasses_congr_lc` is the form the assembly uses: two lists have the same count at
+degree `q` as soon as the same leading coefficients are realized at that degree, by whatever
+polynomials. -/
+
+open scoped Classical in
+/-- What it means for a leading coefficient to be realized at degree `q`. -/
+theorem mem_lcList_iff {r n : ℕ} {ι : Type*} (q : ℕ)
+    (l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι)))
+    (c : Fin n → MvPolynomial (Fin r) ℝ) :
+    c ∈ (((l.map Prod.fst).filter fun Q => decide (Q.natDegree = q)).map
+        Polynomial.leadingCoeff)
+      ↔ ∃ P ∈ l.map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c := by
+  simp only [List.mem_map, List.mem_filter, decide_eq_true_eq]
+  constructor
+  · rintro ⟨P, ⟨hP, hdeg⟩, rfl⟩
+    exact ⟨P, hP, hdeg, rfl⟩
+  · rintro ⟨P, hP, hdeg, rfl⟩
+    exact ⟨P, ⟨hP, hdeg⟩, rfl⟩
+
+open scoped Classical in
+/-- **The comparison the assembly uses.**  Two item lists have the same count at degree `q` as soon
+as the same leading coefficients are realized there, by whatever polynomials. -/
+theorem petListClasses_congr_lc {r n : ℕ} {ι : Type*} (q : ℕ)
+    {l₁ l₂ : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))}
+    (h : ∀ c, (∃ P ∈ l₁.map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c)
+            ↔ (∃ P ∈ l₂.map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c)) :
+    petListClasses q l₁ = petListClasses q l₂ := by
+  refine dedup_length_eq_of_mem_iff (fun c => ?_)
+  rw [mem_lcList_iff, mem_lcList_iff]
+  exact h c
+
+open scoped Classical in
+/-- The same, for a state against a list. -/
+theorem petStateClasses_congr_lc {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
+    (S : NormalPETState r n ι f)
+    {l : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))}
+    (h : ∀ c, (∃ P ∈ (petAllItems S).map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c)
+            ↔ (∃ P ∈ l.map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c)) :
+    petStateClasses q S = petListClasses q l := by
+  rw [petStateClasses_eq_petListClasses]
+  exact petListClasses_congr_lc q h
+
+/-! ### Patch 3: above the pivot's degree, a child lands there exactly when its parent does
+
+The per-parent case analysis behind `w'_q = w_q` for `q > l`.  The pivot has degree `l` and `l` is
+the minimum degree present, so every parent has degree at least `l`, and there are two cases.
+
+If the parent also has degree `l`, both children have degree at most `l`, because the leading terms
+are then at the same degree and can only cancel or stay; either way the child is below `q`.  If the
+parent has degree above `l`, the pivot is of strictly smaller degree and the children keep the
+parent's degree and leading coefficient.
+
+So at a degree above `l` the children realize exactly the parents' leading coefficients, which is
+the content of `w'_q = w_q`. -/
+
+section PetChildHigh
+
+variable {R : Type*} [CommRing R]
+
+theorem petChild_high_data (Q Qp : Polynomial R) (u : R) {l q : ℕ}
+    (hQp : Qp.natDegree = l) (hQ : l ≤ Q.natDegree) (hq : l < q) :
+    ((petSubConst ((Polynomial.taylor u) Q - Qp)).natDegree = q ↔ Q.natDegree = q)
+      ∧ ((petSubConst (Q - Qp)).natDegree = q ↔ Q.natDegree = q)
+      ∧ (Q.natDegree = q →
+          (petSubConst ((Polynomial.taylor u) Q - Qp)).leadingCoeff = Q.leadingCoeff)
+      ∧ (Q.natDegree = q → (petSubConst (Q - Qp)).leadingCoeff = Q.leadingCoeff) := by
+  rcases eq_or_lt_of_le hQ with heq | hlt
+  · -- the parent sits at the pivot's degree: both children fall below `q`
+    have hSle : (petSubConst ((Polynomial.taylor u) Q - Qp)).natDegree ≤ l := by
+      refine le_trans (natDegree_petSubConst_le _) ?_
+      refine le_trans (Polynomial.natDegree_sub_le _ _) ?_
+      rw [Polynomial.natDegree_taylor, ← heq, hQp]
+      exact le_of_eq (max_self l)
+    have hUle : (petSubConst (Q - Qp)).natDegree ≤ l := by
+      refine le_trans (natDegree_petSubConst_le _) ?_
+      refine le_trans (Polynomial.natDegree_sub_le _ _) ?_
+      rw [← heq, hQp]
+      exact le_of_eq (max_self l)
+    refine ⟨⟨fun hc => by omega, fun hc => by omega⟩, ⟨fun hc => by omega, fun hc => by omega⟩,
+      fun hc => by omega, fun hc => by omega⟩
+  · -- the parent is above the pivot: the children keep its degree and leading coefficient
+    have hlt' : Qp.natDegree < Q.natDegree := by omega
+    obtain ⟨hdS, hlcS, hdU, hlcU⟩ := natDegree_leadingCoeff_petChild_of_lt Q Qp u hlt'
+    exact ⟨by rw [hdS], by rw [hdU], fun _ => hlcS, fun _ => hlcU⟩
+
+end PetChildHigh
+
+/-! ### Patch 3: at the pivot's degree, the leading coefficients subtract
+
+The per-parent case analysis behind `w'_l = w_l - 1`.  A parent above the pivot's degree keeps that
+higher degree in both children, so it contributes nothing at `l`.  A parent *at* the pivot's degree
+contributes, in both children, the difference of leading coefficients -- and stays at degree `l`
+exactly when that difference is nonzero.
+
+The pivot itself is the parent whose difference vanishes, so both of its children leave degree `l`.
+That is the single class lost, and it is lost exactly once. -/
+
+section PetChildAtPivot
+
+variable {R : Type*} [CommRing R]
+
+/-- When the leading coefficients agree, the difference drops below their common degree. -/
+theorem natDegree_sub_lt_of_leadingCoeff_eq (A B : Polynomial R) {l : ℕ} (hl : 1 ≤ l)
+    (hA : A.natDegree = l) (hB : B.natDegree = l)
+    (hzero : A.leadingCoeff - B.leadingCoeff = 0) :
+    (A - B).natDegree < l := by
+  have hle : (A - B).natDegree ≤ l := by
+    refine le_trans (Polynomial.natDegree_sub_le _ _) ?_
+    rw [hA, hB]
+    exact le_of_eq (max_self l)
+  rcases lt_or_eq_of_le hle with h | h
+  · exact h
+  · exfalso
+    have hA' : A.coeff l = A.leadingCoeff := by rw [Polynomial.leadingCoeff, hA]
+    have hB' : B.coeff l = B.leadingCoeff := by rw [Polynomial.leadingCoeff, hB]
+    have hcoeff : (A - B).coeff l = 0 := by
+      rw [Polynomial.coeff_sub, hA', hB', hzero]
+    rw [← h] at hcoeff
+    have hzeroPoly : A - B = 0 := Polynomial.leadingCoeff_eq_zero.mp hcoeff
+    rw [hzeroPoly, Polynomial.natDegree_zero] at h
+    omega
+
+/-- Both children of a parent at the pivot's degree carry the difference of leading coefficients,
+and stay at that degree exactly when the difference is nonzero. -/
+theorem petChild_at_pivot_data (Q Qp : Polynomial R) (u : R) {l : ℕ} (hl : 1 ≤ l)
+    (hQp : Qp.natDegree = l) (hQ : Q.natDegree = l) :
+    (Q.leadingCoeff - Qp.leadingCoeff ≠ 0 →
+        (petSubConst (Q - Qp)).natDegree = l
+          ∧ (petSubConst (Q - Qp)).leadingCoeff = Q.leadingCoeff - Qp.leadingCoeff
+          ∧ (petSubConst ((Polynomial.taylor u) Q - Qp)).natDegree = l
+          ∧ (petSubConst ((Polynomial.taylor u) Q - Qp)).leadingCoeff
+              = Q.leadingCoeff - Qp.leadingCoeff)
+      ∧ (Q.leadingCoeff - Qp.leadingCoeff = 0 →
+        (petSubConst (Q - Qp)).natDegree < l
+          ∧ (petSubConst ((Polynomial.taylor u) Q - Qp)).natDegree < l) := by
+  have hTd : ((Polynomial.taylor u) Q).natDegree = l := by
+    rw [Polynomial.natDegree_taylor, hQ]
+  have hTlc : ((Polynomial.taylor u) Q).leadingCoeff = Q.leadingCoeff := leadingCoeff_taylor Q u
+  constructor
+  · intro hne
+    obtain ⟨hdU, hlcU⟩ := natDegree_leadingCoeff_petChild_of_eq Q Qp hl hQ hQp hne
+    have hneT : ((Polynomial.taylor u) Q).leadingCoeff - Qp.leadingCoeff ≠ 0 := by
+      rw [hTlc]; exact hne
+    obtain ⟨hdS, hlcS⟩ :=
+      natDegree_leadingCoeff_petChild_of_eq ((Polynomial.taylor u) Q) Qp hl hTd hQp hneT
+    refine ⟨hdU, hlcU, hdS, ?_⟩
+    rw [hlcS, hTlc]
+  · intro hzero
+    have hzeroT : ((Polynomial.taylor u) Q).leadingCoeff - Qp.leadingCoeff = 0 := by
+      rw [hTlc]; exact hzero
+    refine ⟨?_, ?_⟩
+    · exact lt_of_le_of_lt (natDegree_petSubConst_le _)
+        (natDegree_sub_lt_of_leadingCoeff_eq Q Qp hl hQ hQp hzero)
+    · exact lt_of_le_of_lt (natDegree_petSubConst_le _)
+        (natDegree_sub_lt_of_leadingCoeff_eq ((Polynomial.taylor u) Q) Qp hl hTd hQp hzeroT)
+
+/-- The pivot's own children both leave its degree: the difference vanishes. -/
+theorem petChild_pivot_leaves_degree (Qp : Polynomial R) (u : R) {l : ℕ} (hl : 1 ≤ l)
+    (hQp : Qp.natDegree = l) :
+    (petSubConst (Qp - Qp)).natDegree < l
+      ∧ (petSubConst ((Polynomial.taylor u) Qp - Qp)).natDegree < l :=
+  (petChild_at_pivot_data Qp Qp u hl hQp hQp).2 (sub_self _)
+
+end PetChildAtPivot
+
+/-! ### Patch 3: above the pivot's degree the children realize exactly the parents' classes
+
+The per-parent analysis of `Auto.petChild_high_data`, lifted across the item list.  At a degree
+above the pivot's, a leading coefficient is realized by some normalized child exactly when it is
+realized by some parent: forward because a child at that degree forces its parent there with the
+same leading coefficient, backward because the unshifted child of such a parent is itself at that
+degree with that coefficient. -/
+
+open scoped Classical in
+theorem lc_realized_high {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    {l q : ℕ} (hQp : Qp.natDegree = l)
+    (hmin : ∀ P ∈ (petAllItems S).map Prod.fst, l ≤ P.natDegree) (hq : l < q)
+    (c : Fin n → MvPolynomial (Fin r) ℝ) :
+    (∃ P ∈ (petNormalized u Qp S).map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c)
+      ↔ (∃ P ∈ (petAllItems S).map Prod.fst, P.natDegree = q ∧ P.leadingCoeff = c) := by
+  constructor
+  · rintro ⟨P, hP, hdeg, hlc⟩
+    obtain ⟨item, hitem, hPeq⟩ := (mem_petNormalized_fst_iff u Qp S P).mp hP
+    have hQmem : item.1 ∈ (petAllItems S).map Prod.fst :=
+      List.mem_map.mpr ⟨item, hitem, rfl⟩
+    obtain ⟨hiffS, hiffU, hlcS, hlcU⟩ :=
+      petChild_high_data item.1 Qp u hQp (hmin item.1 hQmem) hq
+    rcases hPeq with rfl | rfl
+    · refine ⟨item.1, hQmem, hiffS.mp hdeg, ?_⟩
+      rw [← hlc, hlcS (hiffS.mp hdeg)]
+    · refine ⟨item.1, hQmem, hiffU.mp hdeg, ?_⟩
+      rw [← hlc, hlcU (hiffU.mp hdeg)]
+  · rintro ⟨Q, hQ, hdeg, hlc⟩
+    obtain ⟨item, hitem, rfl⟩ := List.mem_map.mp hQ
+    obtain ⟨hiffS, hiffU, hlcS, hlcU⟩ :=
+      petChild_high_data item.1 Qp u hQp (hmin item.1 hQ) hq
+    refine ⟨petSubConst (item.1 - Qp), ?_, hiffU.mpr hdeg, ?_⟩
+    · exact (mem_petNormalized_fst_iff u Qp S _).mpr ⟨item, hitem, Or.inr rfl⟩
+    · rw [hlcU hdeg, hlc]
+
+/-! ### Patch 3: at the pivot's degree the children realize the nonzero differences
+
+The companion of `Auto.lc_realized_high`, at `q = l`.  A leading coefficient is realized there by
+some normalized child exactly when it is a *nonzero* difference `lc Q - lc Q_p` for some parent `Q`
+of degree `l`.
+
+Three cases make the forward direction.  A parent above the pivot's degree has both children there
+too, so neither is at `l`.  A parent at the pivot's degree whose difference vanishes has both
+children below `l`.  Otherwise the difference is the child's leading coefficient.  The pivot is the
+instance of the middle case, which is why exactly one class is lost. -/
+
+open scoped Classical in
+theorem lc_realized_at_pivot {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    {l : ℕ} (hl : 1 ≤ l) (hQp : Qp.natDegree = l)
+    (hmin : ∀ P ∈ (petAllItems S).map Prod.fst, l ≤ P.natDegree)
+    (c : Fin n → MvPolynomial (Fin r) ℝ) :
+    (∃ P ∈ (petNormalized u Qp S).map Prod.fst, P.natDegree = l ∧ P.leadingCoeff = c)
+      ↔ (∃ Q ∈ (petAllItems S).map Prod.fst, Q.natDegree = l
+            ∧ Q.leadingCoeff - Qp.leadingCoeff = c
+            ∧ Q.leadingCoeff - Qp.leadingCoeff ≠ 0) := by
+  constructor
+  · rintro ⟨P, hP, hdeg, hlc⟩
+    obtain ⟨item, hitem, hPeq⟩ := (mem_petNormalized_fst_iff u Qp S P).mp hP
+    have hQmem : item.1 ∈ (petAllItems S).map Prod.fst := List.mem_map.mpr ⟨item, hitem, rfl⟩
+    rcases eq_or_lt_of_le (hmin item.1 hQmem) with heq | hlt
+    · have hQd : item.1.natDegree = l := heq.symm
+      obtain ⟨hpos, hzero⟩ := petChild_at_pivot_data item.1 Qp u hl hQp hQd
+      by_cases hne : item.1.leadingCoeff - Qp.leadingCoeff = 0
+      · exfalso
+        obtain ⟨hU, hS⟩ := hzero hne
+        rcases hPeq with rfl | rfl
+        · omega
+        · omega
+      · obtain ⟨hdU, hlcU, hdS, hlcS⟩ := hpos hne
+        refine ⟨item.1, hQmem, hQd, ?_, hne⟩
+        rcases hPeq with rfl | rfl
+        · rw [← hlc, hlcS]
+        · rw [← hlc, hlcU]
+    · exfalso
+      obtain ⟨hiffS, hiffU, _, _⟩ :=
+        petChild_high_data item.1 Qp u hQp (le_of_lt hlt) hlt
+      rcases hPeq with rfl | rfl
+      · have hS := hiffS.mpr rfl
+        omega
+      · have hU := hiffU.mpr rfl
+        omega
+  · rintro ⟨Q, hQ, hQd, hlc, hne⟩
+    obtain ⟨item, hitem, rfl⟩ := List.mem_map.mp hQ
+    obtain ⟨hpos, _⟩ := petChild_at_pivot_data item.1 Qp u hl hQp hQd
+    obtain ⟨hdU, hlcU, _, _⟩ := hpos hne
+    refine ⟨petSubConst (item.1 - Qp), ?_, hdU, ?_⟩
+    · exact (mem_petNormalized_fst_iff u Qp S _).mpr ⟨item, hitem, Or.inr rfl⟩
+    · rw [hlcU, hlc]
+
+/-! ### Patch 3: the assembled items are the nonzero normalized children
+
+The head/filter bookkeeping.  `Auto.petNewHead` is the first normalized child -- the shifted child
+of the head item -- so splitting it off and filtering the constants from the rest, then putting it
+back in front, recovers exactly the nonzero normalized children.  The head is kept whether or not
+it is constant, which is why it has to be nonzero for this to be an equality; in the update it is,
+because the new state requires it. -/
+
+open scoped Classical in
+/-- The normalized children begin with the new head. -/
+theorem petNormalized_cons {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f) :
+    petNormalized u Qp S
+      = petNewHead u Qp S
+        :: (((S.headPoly - Qp, [S.headFactor]) :: S.rest.flatMap (petChildren u Qp)).map
+            petNormalizeItem) := by
+  rw [petNormalized, petRawChildren, petAllItems, List.flatMap_cons]
+  rfl
+
+/-- Splitting a head off a filtered tail. -/
+theorem mem_cons_filter_ne_zero_iff {α : Type*} [Zero α] (a : α) (T : List α) (ha : a ≠ 0)
+    (P : α) : (P = a ∨ (P ∈ T ∧ P ≠ 0)) ↔ (P ∈ a :: T ∧ P ≠ 0) := by
+  constructor
+  · rintro (rfl | ⟨hT, hne⟩)
+    · exact ⟨List.mem_cons_self, ha⟩
+    · exact ⟨List.mem_cons_of_mem _ hT, hne⟩
+  · rintro ⟨hmem, hne⟩
+    rcases List.mem_cons.mp hmem with rfl | hT
+    · exact Or.inl rfl
+    · exact Or.inr ⟨hT, hne⟩
+
+open scoped Classical in
+/-- **The assembled state's polynomials are the nonzero normalized children.** -/
+theorem mem_cons_petNonConstChildren_fst_iff {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    (hdFac : List (PetFactor r n ι)) (hd0 : (petNewHead u Qp S).1 ≠ 0)
+    (P : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) :
+    P ∈ (((petNewHead u Qp S).1, hdFac) :: petNonConstChildren u Qp S).map Prod.fst
+      ↔ (P ∈ (petNormalized u Qp S).map Prod.fst ∧ P ≠ 0) := by
+  have hcons : (petNormalized u Qp S).map Prod.fst
+      = (petNewHead u Qp S).1 :: ((petNormalized u Qp S).map Prod.fst).tail := by
+    rw [petNormalized_cons u Qp S, List.map_cons, List.tail_cons]
+  rw [List.map_cons, List.mem_cons, mem_petNonConstChildren_fst_iff]
+  rw [mem_cons_filter_ne_zero_iff _ _ hd0 P, ← hcons]
+
+/-! ### Patch 3: `w'_q = w_q` above the selected degree
+
+The first half of the pivot display's conclusion, chaining the pieces: the assembled state's count
+is that of the head consed onto the survivors (`Auto.petStateClasses_petAssemble`), those are the
+nonzero normalized children (`Auto.mem_cons_petNonConstChildren_fst_iff`), and above the pivot's
+degree those realize exactly the parents' leading coefficients (`Auto.lc_realized_high`).
+
+The nonzero condition costs nothing here: a polynomial of degree `q > l >= 0` is nonzero, because
+`natDegree 0 = 0`. -/
+
+open scoped Classical in
+theorem petStateClasses_update_high {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    {l q : ℕ} (hQp : Qp.natDegree = l)
+    (hmin : ∀ P ∈ (petAllItems S).map Prod.fst, l ≤ P.natDegree) (hq : l < q)
+    (spat : List (PetFactor r n ι)) (hdFac : PetFactor r n ι)
+    (horigin : hdFac.origin = f) (hd0 : (petNewHead u Qp S).1 ≠ 0)
+    (hdv : (petNewHead u Qp S).1.coeff 0 = 0)
+    (hl0 : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ 0)
+    (hlv : ∀ it ∈ petNonConstChildren u Qp S, it.1.coeff 0 = 0)
+    (hlh : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ (petNewHead u Qp S).1)
+    (hlm : ∀ it ∈ petNonConstChildren u Qp S,
+      it.1.natDegree ≤ (petNewHead u Qp S).1.natDegree) :
+    petStateClasses q (petAssemble (f := f) spat (petNewHead u Qp S).1 hdFac
+        (petNonConstChildren u Qp S) horigin hd0 hdv hl0 hlv hlh hlm)
+      = petStateClasses q S := by
+  rw [petStateClasses_petAssemble, petStateClasses_eq_petListClasses]
+  refine petListClasses_congr_lc q ?_
+  intro c
+  constructor
+  · rintro ⟨P, hP, hdeg, hlc⟩
+    have hPn : P ∈ (petNormalized u Qp S).map Prod.fst :=
+      ((mem_cons_petNonConstChildren_fst_iff u Qp S [hdFac] hd0 P).mp hP).1
+    exact (lc_realized_high u Qp S hQp hmin hq c).mp ⟨P, hPn, hdeg, hlc⟩
+  · intro hex
+    obtain ⟨P, hPn, hdeg, hlc⟩ := (lc_realized_high u Qp S hQp hmin hq c).mpr hex
+    have hPne : P ≠ 0 := by
+      intro h0
+      rw [h0, Polynomial.natDegree_zero] at hdeg
+      omega
+    exact ⟨P, (mem_cons_petNonConstChildren_fst_iff u Qp S [hdFac] hd0 P).mpr ⟨hPn, hPne⟩,
+      hdeg, hlc⟩
+
+/-! ### Patch 3: `w'_l = w_l - 1` at the selected degree
+
+The second half of the pivot display's conclusion.  At the selected degree the surviving children
+realize exactly the *nonzero* differences with the pivot's leading coefficient
+(`Auto.lc_realized_at_pivot`), so the new value set is the old one with the pivot's class erased and
+the remainder translated -- and `Auto.dedup_length_sub_one_of_toFinset_eq` turns that into the drop
+by one.
+
+The pivot must be one of the items for its class to be there to lose, which is why `hQpmem` is a
+hypothesis. -/
+
+open scoped Classical in
+theorem petStateClasses_update_at_pivot {r n : ℕ} {ι : Type*} {f : ι}
+    (u : Fin n → MvPolynomial (Fin r) ℝ)
+    (Qp : Polynomial (Fin n → MvPolynomial (Fin r) ℝ)) (S : NormalPETState r n ι f)
+    {l : ℕ} (hl : 1 ≤ l) (hQp : Qp.natDegree = l)
+    (hQpmem : Qp ∈ (petAllItems S).map Prod.fst)
+    (hmin : ∀ P ∈ (petAllItems S).map Prod.fst, l ≤ P.natDegree)
+    (spat : List (PetFactor r n ι)) (hdFac : PetFactor r n ι)
+    (horigin : hdFac.origin = f) (hd0 : (petNewHead u Qp S).1 ≠ 0)
+    (hdv : (petNewHead u Qp S).1.coeff 0 = 0)
+    (hl0 : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ 0)
+    (hlv : ∀ it ∈ petNonConstChildren u Qp S, it.1.coeff 0 = 0)
+    (hlh : ∀ it ∈ petNonConstChildren u Qp S, it.1 ≠ (petNewHead u Qp S).1)
+    (hlm : ∀ it ∈ petNonConstChildren u Qp S,
+      it.1.natDegree ≤ (petNewHead u Qp S).1.natDegree) :
+    petStateClasses l (petAssemble (f := f) spat (petNewHead u Qp S).1 hdFac
+        (petNonConstChildren u Qp S) horigin hd0 hdv hl0 hlv hlh hlm)
+      = petStateClasses l S - 1 := by
+  have hfree : ∀ P : Polynomial (Fin n → MvPolynomial (Fin r) ℝ), P.natDegree = l → P ≠ 0 := by
+    intro P hP h0
+    rw [h0, Polynomial.natDegree_zero] at hP
+    omega
+  rw [petStateClasses_petAssemble, petStateClasses_eq_petListClasses, petListClasses,
+    petListClasses]
+  have hmemNew : ∀ c, c ∈ (((((((petNewHead u Qp S).1, [hdFac]) ::
+        petNonConstChildren u Qp S).map Prod.fst).filter
+        fun Q => decide (Q.natDegree = l)).map Polynomial.leadingCoeff))
+      ↔ ∃ Q ∈ (petAllItems S).map Prod.fst, Q.natDegree = l
+          ∧ Q.leadingCoeff - Qp.leadingCoeff = c
+          ∧ Q.leadingCoeff - Qp.leadingCoeff ≠ 0 := by
+    intro c
+    rw [mem_lcList_iff]
+    constructor
+    · rintro ⟨P, hP, hdeg, hlc⟩
+      have hPn := ((mem_cons_petNonConstChildren_fst_iff u Qp S [hdFac] hd0 P).mp hP).1
+      exact (lc_realized_at_pivot u Qp S hl hQp hmin c).mp ⟨P, hPn, hdeg, hlc⟩
+    · intro hex
+      obtain ⟨P, hPn, hdeg, hlc⟩ := (lc_realized_at_pivot u Qp S hl hQp hmin c).mpr hex
+      exact ⟨P, (mem_cons_petNonConstChildren_fst_iff u Qp S [hdFac] hd0 P).mpr
+        ⟨hPn, hfree P hdeg⟩, hdeg, hlc⟩
+  refine dedup_length_sub_one_of_toFinset_eq (a := Qp.leadingCoeff) ?_ ?_
+  · rw [mem_lcList_iff]
+    exact ⟨Qp, hQpmem, hQp, rfl⟩
+  · ext x
+    simp only [List.mem_toFinset, Finset.mem_image, Finset.mem_erase]
+    rw [hmemNew]
+    constructor
+    · rintro ⟨Q, hQ, hdeg, hx, hne⟩
+      refine ⟨Q.leadingCoeff, ⟨sub_ne_zero.mp hne, ?_⟩, hx⟩
+      rw [mem_lcList_iff]
+      exact ⟨Q, hQ, hdeg, rfl⟩
+    · rintro ⟨y, ⟨hyne, hy⟩, rfl⟩
+      rw [mem_lcList_iff] at hy
+      obtain ⟨Q, hQ, hdeg, rfl⟩ := hy
+      exact ⟨Q, hQ, hdeg, rfl, sub_ne_zero.mpr hyne⟩
+
+/-! ### Patch 3: admissible polynomial shifts
+
+The scale convention of `blueprints/patch_3_updated.tex` (lines 206-213).  A shift `P` is
+admissible with budget `c` when its degree is the prescribed `d`, its leading coefficient lies
+between the two budgets, and each lower coefficient is bounded by the upper budget scaled by the
+matching power of `N`:
+
+    deg P = d,   l_c(delta) <= |lc P| <= u_c(delta),   |[t^r] P| <= u_c(delta) N^(d-r)  (r < d).
+
+The file's existing `Auto.Admissible` is unrelated -- it is the admissibility of a *trilinear
+operator*, from the Marcinkiewicz development -- so this carries its own name.
+
+The lower bound on the leading coefficient is what makes an admissible polynomial nonzero of the
+stated degree, which is what the recursion needs of its shifts. -/
+
+/-- A polynomial shift of degree `d`, admissible with budget `c` at scale `N` and parameter
+`delta`. -/
+def AdmissiblePoly (c : ℕ) (δ N : ℝ) (d : ℕ) (P : Polynomial ℝ) : Prop :=
+  P.natDegree = d
+    ∧ budLo c δ ≤ |P.leadingCoeff|
+    ∧ |P.leadingCoeff| ≤ budHi c δ
+    ∧ ∀ r : ℕ, r < d → |P.coeff r| ≤ budHi c δ * N ^ (d - r)
+
+theorem AdmissiblePoly.natDegree_eq {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) : P.natDegree = d := h.1
+
+theorem AdmissiblePoly.budLo_le {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) : budLo c δ ≤ |P.leadingCoeff| := h.2.1
+
+theorem AdmissiblePoly.le_budHi {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) : |P.leadingCoeff| ≤ budHi c δ := h.2.2.1
+
+theorem AdmissiblePoly.coeff_le {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) {r : ℕ} (hr : r < d) :
+    |P.coeff r| ≤ budHi c δ * N ^ (d - r) := h.2.2.2 r hr
+
+/-- **An admissible polynomial is nonzero.**  Its leading coefficient is bounded below by a
+positive budget. -/
+theorem AdmissiblePoly.leadingCoeff_ne_zero {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) (hδ : 0 < δ) (hc : 1 ≤ c) : P.leadingCoeff ≠ 0 := by
+  intro h0
+  have hpos := budLo_pos hδ hc
+  have := h.budLo_le
+  rw [h0, abs_zero] at this
+  linarith
+
+theorem AdmissiblePoly.ne_zero {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) (hδ : 0 < δ) (hc : 1 ≤ c) : P ≠ 0 := by
+  intro h0
+  exact h.leadingCoeff_ne_zero hδ hc (by rw [h0, Polynomial.leadingCoeff_zero])
+
+/-- and it has the prescribed degree, which for `1 <= d` is positive. -/
+theorem AdmissiblePoly.natDegree_pos {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) (hd : 1 ≤ d) : 1 ≤ P.natDegree := by
+  rw [h.natDegree_eq]
+  exact hd
+
+/-! ### Patch 3: the correlation the proposition bounds below
+
+The quantity `patch:highest-control` assumes a power lower bound for,
+
+    int f_0(x) E_{t in [0,N]} prod_{i=1}^m f_i(x - P_i(t) e_i) e(p_x(t)) dx,
+
+with the phase `e(u) = exp(2 pi i u)` carried by `Auto.expPhase` from
+`DFR/Auto/SmoothingIneq3D/VanDerCorput.lean`.
+
+Each input has its *own* coordinate direction `e_i`, unlike `Auto.shiftProd`, whose factors all lie
+along one direction because they have already been reduced to it.  The assignment is therefore a
+parameter `j : ℕ → Fin 3`; the blueprint's own instance sends input `i` to the `i`-th coordinate.
+
+The phase is unimodular, so it does not disturb any of the bounds: the integrand is still dominated
+by the product of the inputs. -/
+
+open scoped Classical in
+/-- The product of the shifted inputs, each along its own coordinate, against the phase. -/
+noncomputable def phaseProd (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (t : ℝ) : ℂ :=
+  (∏ i ∈ Finset.Icc 1 m, f i (x - ((P i).eval t) • basisVec (j i)))
+    * expPhase (fun s => 2 * Real.pi * (p x).eval s) t
+
+open scoped Classical in
+/-- The correlation itself: a spatial block against the parameter average of that product. -/
+noncomputable def phaseCorr (N : ℝ) (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) : ℂ :=
+  ∫ x : E3, f 0 x * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N, phaseProd m f P p j x t)
+
+/-- **The phase does not disturb the bounds**: it is unimodular, so the product is one-bounded
+whenever the inputs are. -/
+theorem norm_phaseProd_le (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (t : ℝ) :
+    ‖phaseProd m f P p j x t‖ ≤ 1 := by
+  classical
+  rw [phaseProd, norm_mul, norm_expPhase, mul_one, norm_prod]
+  exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hf i _
+
+/-- and the product is dominated by any one of its factors, the phase costing nothing. -/
+theorem norm_phaseProd_le_single (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (t : ℝ)
+    {i₀ : ℕ} (hi₀ : i₀ ∈ Finset.Icc 1 m) :
+    ‖phaseProd m f P p j x t‖ ≤ ‖f i₀ (x - ((P i₀).eval t) • basisVec (j i₀))‖ := by
+  classical
+  rw [phaseProd, norm_mul, norm_expPhase, mul_one]
+  exact norm_finsetProd_le_single hi₀ fun i _ => hf i _
+
+/-! ### Patch 3: after four steps the phase is identically one
+
+"At `r = 4` the phase is identically one, by the fourth finite-difference identity for cubics."
+`Auto.cube_alternating_sum_cubic` is that identity for the polynomial; this is its consequence for
+the phase, which is what the four phase steps actually consume.
+
+The parity cube of a unimodular phase is the exponential of the *signed sum* of its arguments
+(`Auto.conjPar_expPhase` turns each conjugation into a sign), and for a cubic that sum vanishes. -/
+
+/-- A conjugation of a phase is the phase of the negated argument. -/
+theorem conjPar_expPhase (n : ℕ) (φ : ℝ → ℝ) (y : ℝ) :
+    conjPar n (expPhase φ y) = Complex.exp (((((-1 : ℝ) ^ n * φ y : ℝ)) : ℂ) * Complex.I) := by
+  rw [conjPar, expPhase]
+  by_cases h : Even n
+  · rw [if_pos h, h.neg_one_pow]
+    push_cast
+    ring_nf
+  · rw [if_neg h, (Nat.not_even_iff_odd.mp h).neg_one_pow, ← Complex.exp_conj]
+    congr 1
+    simp [Complex.conj_I]
+
+/-- **The phase cube of a cubic is one.**  The parity cube of `Auto.expPhase` over the
+four-dimensional cube of shifts collapses to the exponential of the alternating sum, which vanishes
+for a polynomial of degree at most three. -/
+theorem phase_cube_eq_one {p : Polynomial ℝ} (hp : p.natDegree ≤ 3) (t : ℝ) (u : Fin 4 → ℝ) :
+    (∏ ω : Fin 4 → Bool,
+        conjPar (numFalse ω)
+          (expPhase (fun s => 2 * Real.pi * p.eval s) (t + cubeShift u ω))) = 1 := by
+  classical
+  have hterm : ∀ ω : Fin 4 → Bool,
+      conjPar (numFalse ω) (expPhase (fun s => 2 * Real.pi * p.eval s) (t + cubeShift u ω))
+        = Complex.exp ((((-1 : ℝ) ^ numFalse ω * (2 * Real.pi * p.eval (t + cubeShift u ω))
+            : ℝ) : ℂ) * Complex.I) :=
+    fun ω => conjPar_expPhase _ _ _
+  rw [Finset.prod_congr rfl fun ω _ => hterm ω, ← Complex.exp_sum]
+  have hsum : (∑ ω : Fin 4 → Bool,
+        (((((-1 : ℝ) ^ numFalse ω * (2 * Real.pi * p.eval (t + cubeShift u ω))) : ℝ) : ℂ)
+          * Complex.I))
+      = (((2 * Real.pi * ∑ ω : Fin 4 → Bool,
+            (-1 : ℝ) ^ numFalse ω * p.eval (t + cubeShift u ω) : ℝ)) : ℂ) * Complex.I := by
+    rw [← Finset.sum_mul]
+    congr 1
+    push_cast
+    rw [Finset.mul_sum]
+    exact Finset.sum_congr rfl fun ω _ => by ring
+  rw [hsum, cube_alternating_sum_cubic u hp t]
+  simp
+
+/-! ### Patch 3: the degree-one branch, and the phase-free case
+
+"There is one degenerate initial case to treat separately.  If the highest active degree is one,
+there is only one active input.  After the four steps, translating `x` by its affine `P_1(t)`
+removes `t` and gives the raw order-four cube of `f_1` ... directly."
+
+Two elementary facts behind that branch.  With a single active input the product is that input
+alone, and translating the point by its shift cancels the shift -- which is what "removes `t`"
+means, the remaining `t`-dependence sitting only in the phase.  Since the branch is taken *after*
+the four steps, where `Auto.phase_cube_eq_one` has already removed the phase, the phase-free form is
+recorded as well. -/
+
+open scoped Classical in
+/-- With one active input the product is that input. -/
+theorem phaseProd_one (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ)
+    (j : ℕ → Fin 3) (x : E3) (t : ℝ) :
+    phaseProd 1 f P p j x t
+      = f 1 (x - ((P 1).eval t) • basisVec (j 1))
+        * expPhase (fun s => 2 * Real.pi * (p x).eval s) t := by
+  rw [phaseProd, Finset.Icc_self, Finset.prod_singleton]
+
+open scoped Classical in
+/-- **Translating the point by the affine shift removes it from the input.** -/
+theorem phaseProd_one_translate (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ)
+    (j : ℕ → Fin 3) (x : E3) (t : ℝ) :
+    phaseProd 1 f P p j (x + ((P 1).eval t) • basisVec (j 1)) t
+      = f 1 x
+        * expPhase (fun s =>
+            2 * Real.pi * (p (x + ((P 1).eval t) • basisVec (j 1))).eval s) t := by
+  rw [phaseProd_one]
+  congr 2
+  abel
+
+open scoped Classical in
+/-- With no phase the product is the bare product of shifted inputs, which is the shape the branch
+is in once the four steps have run. -/
+theorem phaseProd_zero_phase (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ) (j : ℕ → Fin 3)
+    (x : E3) (t : ℝ) :
+    phaseProd m f P (fun _ => 0) j x t
+      = ∏ i ∈ Finset.Icc 1 m, f i (x - ((P i).eval t) • basisVec (j i)) := by
+  rw [phaseProd]
+  have hone : expPhase (fun s => 2 * Real.pi * (0 : Polynomial ℝ).eval s) t = 1 := by
+    rw [expPhase]
+    simp
+  rw [hone, mul_one]
+
+/-! ### Patch 3: the phase drops out of the fourfold cube
+
+The consequence of `Auto.phase_cube_eq_one` that the four phase steps actually use.  After four
+applications of `patch:signed-vdc` the parameter-dependent part is the parity cube of the phased
+product; since `Auto.conjPar` is multiplicative and the phase's own cube is one, the phase drops out
+entirely and what remains is the parity cube of the bare shifted inputs.
+
+This is the precise sense in which "at `r = 4` the phase is identically one": not that the phase is
+one pointwise -- it is not -- but that it contributes nothing to the fourfold cube. -/
+
+open scoped Classical in
+theorem phaseProd_cube_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (hp : (p x).natDegree ≤ 3)
+    (t : ℝ) (h : Fin 4 → ℝ) :
+    (∏ ω : Fin 4 → Bool, conjPar (numFalse ω) (phaseProd m f P p j x (t + cubeShift h ω)))
+      = ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+          (∏ i ∈ Finset.Icc 1 m,
+            f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i))) := by
+  have hsplit : ∀ ω : Fin 4 → Bool,
+      conjPar (numFalse ω) (phaseProd m f P p j x (t + cubeShift h ω))
+        = conjPar (numFalse ω) (∏ i ∈ Finset.Icc 1 m,
+              f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i)))
+          * conjPar (numFalse ω)
+              (expPhase (fun s => 2 * Real.pi * (p x).eval s) (t + cubeShift h ω)) := by
+    intro ω
+    rw [phaseProd, conjPar_mul]
+  rw [Finset.prod_congr rfl fun ω _ => hsplit ω, Finset.prod_mul_distrib,
+    phase_cube_eq_one hp t h, mul_one]
+
+/-! ### Patch 3: the phased product as the tool's `F`
+
+What `Auto.sq_norm_signed_vdc` asks of its `F` for the *first* phase step, where `F` is
+`Auto.phaseProd` and the removed block is the original spatial factor `f_0`.
+
+Joint measurability is taken as a hypothesis rather than derived from continuity, because the
+blueprint only assumes the phase coefficients *measurable* in `x` -- "with measurable polynomial
+phases", and the proposition's own wording that the budgets are independent of "the measurable phase
+coefficients".  Assuming continuity there would strengthen the hypothesis of the proposition and so
+weaken it.
+
+Everything else is the same domination as in the unphased development, available because the phase
+is unimodular: the product is bounded by the protected input `f_m`, translated. -/
+
+/-- The phased product is dominated by the protected input, translated. -/
+theorem norm_phaseProd_le_protected (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (hm : 1 ≤ m)
+    (x : E3) (t : ℝ) :
+    ‖phaseProd m f P p j x t‖ ≤ ‖f m (x - ((P m).eval t) • basisVec (j m))‖ :=
+  norm_phaseProd_le_single m hf P p j x t (Finset.mem_Icc.mpr ⟨hm, le_refl m⟩)
+
+open MeasureTheory in
+/-- The `L^2` mass of the phased product in the point, at each parameter. -/
+theorem integrable_sq_phaseProd {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hm : 1 ≤ m)
+    (hf2 : Integrable fun x : E3 => ‖f m x‖ ^ 2) (t : ℝ) :
+    Integrable fun x : E3 => ‖phaseProd m f P p j x t‖ ^ 2 := by
+  refine Integrable.mono' (integrable_sq_translate hf2 (-(((P m).eval t) • basisVec (j m))))
+    (((hFm.comp (measurable_id.prodMk measurable_const)).norm.pow_const 2)).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  have hx : x - ((P m).eval t) • basisVec (j m) = x + -(((P m).eval t) • basisVec (j m)) := by
+    abel
+  rw [← hx]
+  exact pow_le_pow_left₀ (norm_nonneg _) (norm_phaseProd_le_protected m hf P p j hm x t) 2
+
+open MeasureTheory in
+theorem integral_sq_phaseProd_le {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hm : 1 ≤ m)
+    (hf2 : Integrable fun x : E3 => ‖f m x‖ ^ 2) (t : ℝ) :
+    (∫ x : E3, ‖phaseProd m f P p j x t‖ ^ 2) ≤ ∫ x : E3, ‖f m x‖ ^ 2 := by
+  have hx : ∀ x : E3, x - ((P m).eval t) • basisVec (j m)
+      = x + -(((P m).eval t) • basisVec (j m)) := fun x => by abel
+  have hmono : (∫ x : E3, ‖phaseProd m f P p j x t‖ ^ 2)
+      ≤ ∫ x : E3, ‖f m (x + -(((P m).eval t) • basisVec (j m)))‖ ^ 2 := by
+    refine integral_mono (integrable_sq_phaseProd hFm hf hm hf2 t)
+      (integrable_sq_translate hf2 _) fun x => ?_
+    rw [← hx x]
+    exact pow_le_pow_left₀ (norm_nonneg _) (norm_phaseProd_le_protected m hf P p j hm x t) 2
+  rw [integral_sq_translate (f m) (-(((P m).eval t) • basisVec (j m)))] at hmono
+  exact hmono
+
+open MeasureTheory in
+/-- The cross term, by the cheap domination: one copy dominated, the other one-bounded. -/
+theorem integrable_cross_phaseProd {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hm : 1 ≤ m)
+    (hfL1 : Integrable (f m)) (s s' : ℝ) :
+    Integrable fun x : E3 =>
+      ‖phaseProd m f P p j x s‖ * ‖phaseProd m f P p j x s'‖ := by
+  refine Integrable.mono' (hfL1.norm.comp_add_right (-(((P m).eval s) • basisVec (j m))))
+    ((((hFm.comp (measurable_id.prodMk measurable_const)).norm).mul
+      ((hFm.comp (measurable_id.prodMk measurable_const)).norm)).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  have hx : x - ((P m).eval s) • basisVec (j m)
+      = x + -(((P m).eval s) • basisVec (j m)) := by abel
+  calc ‖phaseProd m f P p j x s‖ * ‖phaseProd m f P p j x s'‖
+      ≤ ‖phaseProd m f P p j x s‖ * 1 :=
+        mul_le_mul_of_nonneg_left (norm_phaseProd_le m hf P p j x s') (norm_nonneg _)
+    _ = ‖phaseProd m f P p j x s‖ := mul_one _
+    _ ≤ ‖f m (x - ((P m).eval s) • basisVec (j m))‖ :=
+        norm_phaseProd_le_protected m hf P p j hm x s
+    _ = ‖f m (x + -(((P m).eval s) • basisVec (j m)))‖ := by rw [hx]
+
+/-! ### Patch 3: the windowed average of the phased product
+
+The remaining `Auto.sq_norm_signed_vdc` input for the first phase step: the spatial factor `f_0`
+paired against the window average of the phased product.  As before the normalized average is
+one-bounded, so the pairing is dominated by `f_0` itself.
+
+Measurability of the average comes from the *measurability* hypothesis on the product, promoted to
+strong measurability -- which is free for a complex-valued function on a second-countable space --
+rather than from any continuity of the phase. -/
+
+open MeasureTheory in
+theorem measurable_phaseProdAvg {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    {c N : ℝ} (hN : 0 ≤ N) :
+    Measurable fun x : E3 => ∫ t in c..(c + N), phaseProd m f P p j x t := by
+  have hle : c ≤ c + N := by linarith
+  have hfun : (fun x : E3 => ∫ t in c..(c + N), phaseProd m f P p j x t)
+      = fun x : E3 => ∫ t in Set.Ioc c (c + N), phaseProd m f P p j x t := by
+    funext x
+    rw [intervalIntegral.integral_of_le hle]
+  rw [hfun]
+  exact (hFm.stronglyMeasurable.integral_prod_right'
+    (ν := volume.restrict (Set.Ioc c (c + N)))).measurable
+
+open MeasureTheory in
+theorem norm_phaseProdAvg_le (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3)
+    {c N : ℝ} (hN : 0 ≤ N) (x : E3) :
+    ‖∫ t in c..(c + N), phaseProd m f P p j x t‖ ≤ N := by
+  have hle : c ≤ c + N := by linarith
+  rw [intervalIntegral.integral_of_le hle]
+  have hfin : (volume : Measure ℝ) (Set.Ioc c (c + N)) < ⊤ := by
+    rw [Real.volume_Ioc]
+    exact ENNReal.ofReal_lt_top
+  have hvol : (volume : Measure ℝ).real (Set.Ioc c (c + N)) = N := by
+    rw [MeasureTheory.measureReal_def, Real.volume_Ioc, ENNReal.toReal_ofReal (by linarith)]
+    ring
+  have hbd := norm_setIntegral_le_of_norm_le_const (C := 1)
+    (f := fun t : ℝ => phaseProd m f P p j x t) hfin
+    (fun t _ => norm_phaseProd_le m hf P p j x t)
+  rw [hvol, one_mul] at hbd
+  exact hbd
+
+open MeasureTheory in
+theorem norm_phaseProdAvg_normalized_le (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3)
+    {c N : ℝ} (hN : 0 < N) (x : E3) :
+    ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), phaseProd m f P p j x t‖ ≤ 1 := by
+  rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (by positivity : (0 : ℝ) ≤ N⁻¹)]
+  calc N⁻¹ * ‖∫ t in c..(c + N), phaseProd m f P p j x t‖
+      ≤ N⁻¹ * N := mul_le_mul_of_nonneg_left
+        (norm_phaseProdAvg_le m hf P p j hN.le x) (by positivity)
+    _ = 1 := inv_mul_cancel₀ hN.ne'
+
+open MeasureTheory in
+/-- The hypothesis `hgΦ` for the first phase step. -/
+theorem integrable_f0_mul_phaseProdAvg {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hf0c : Continuous (f 0)) (hf0L1 : Integrable (f 0))
+    {c N : ℝ} (hN : 0 < N) :
+    Integrable fun x : E3 => ‖f 0 x‖
+      * ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), phaseProd m f P p j x t‖ := by
+  refine Integrable.mono' hf0L1.norm
+    ((hf0c.norm.aestronglyMeasurable).mul
+      (((measurable_phaseProdAvg hFm (c := c) hN.le).const_smul
+        (N⁻¹ : ℝ)).norm).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  calc ‖f 0 x‖ * ‖(N⁻¹ : ℝ) • ∫ t in c..(c + N), phaseProd m f P p j x t‖
+      ≤ ‖f 0 x‖ * 1 := mul_le_mul_of_nonneg_left
+        (norm_phaseProdAvg_normalized_le m hf P p j hN x) (norm_nonneg _)
+    _ = ‖f 0 x‖ := mul_one _
+
+/-! ### Patch 3: the first phase step
+
+"Before any polynomial-dependent translation of `x`, apply `patch:signed-vdc` four times, retaining
+`x` as a fixed outer variable.  ...  The initial step removes the original spatial factor."
+
+This is that initial step: `Auto.sq_norm_signed_vdc` applied with `g = f_0`, the original spatial
+factor, and `F = Auto.phaseProd`.  Nine hypotheses are discharged from the preceding two sections;
+the six that need Cauchy-Schwarz in the parameter or a Fubini swap are carried, on the same terms as
+in `Auto.cs_remove_slope_block` and `Auto.petStep_signed`.
+
+The window is written `0..(0 + N)` to match the tool, `0 + N = N` being a theorem for reals rather
+than definitional. -/
+
+open MeasureTheory in
+theorem phaseStep_signed (m : ℕ) (hm : 1 ≤ m) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    {V N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4) (hV : 0 < V)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (hf0c : Continuous (f 0)) (hf0L1 : Integrable (f 0))
+    (hf02 : Integrable fun x : E3 => ‖f 0 x‖ ^ 2) (hf0V : (∫ x : E3, ‖f 0 x‖ ^ 2) ≤ V)
+    (hfmL1 : Integrable (f m)) (hfm2 : Integrable fun x : E3 => ‖f m x‖ ^ 2)
+    (hfmV : (∫ x : E3, ‖f m x‖ ^ 2) ≤ V)
+    (hΦ2 : Integrable fun x : E3 =>
+      ‖(N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProd m f P p j x t‖ ^ 2)
+    (hLi : Integrable fun x : E3 => ‖∫ u : ℝ, (Set.Ioc (0 : ℝ) (0 + N)).indicator
+      (fun s => phaseProd m f P p j x s) u‖ ^ 2)
+    (hRi : Integrable fun x : E3 => (∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc (0 : ℝ) (0 + N)).indicator (fun s => phaseProd m f P p j x s)) u).re)
+    (hRc : Integrable fun x : E3 => ∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc (0 : ℝ) (0 + N)).indicator (fun s => phaseProd m f P p j x s)) u)
+    (hswapH : Integrable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      fejer H u • autocorr ((Set.Ioc (0 : ℝ) (0 + N)).indicator
+        (fun s => phaseProd m f P p j x s)) u) ((volume : Measure E3).prod volume))
+    (hswapT : ∀ u : ℝ, Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      phaseProd m f P p j x (t + u) * (starRingEnd ℂ) (phaseProd m f P p j x t))
+      ((volume : Measure E3).prod (volume.restrict (capSet 0 N u)))) :
+    ‖(V⁻¹ : ℝ) • phaseCorr N m f P p j‖ ^ 2
+      ≤ 2 * (V⁻¹ * N⁻¹ * (∫ u : ℝ, fejer H u • ∫ t in (0 : ℝ)..(0 + N),
+          corrLine (volume : Measure E3)
+            (fun (x : E3) (s : ℝ) => phaseProd m f P p j x s) t u).re)
+        + 2 * H / N := by
+  classical
+  have hkey := sq_norm_signed_vdc (μ := (volume : Measure E3)) hN hH hHN hV
+    (g := f 0) (F := fun (x : E3) (s : ℝ) => phaseProd m f P p j x s)
+    hFm zero_le_one (fun x t => norm_phaseProd_le m hf P p j x t)
+    (fun s => integrable_sq_phaseProd hFm hf hm hfm2 s)
+    (integrable_cross_phaseProd hFm hf hm hfmL1)
+    (fun s => le_trans (integral_sq_phaseProd_le hFm hf hm hfm2 s) hfmV)
+    hf02 hf0V hΦ2
+    (integrable_f0_mul_phaseProdAvg hFm hf hf0c hf0L1 hN)
+    hLi hRi hRc hswapH hswapT
+  have hpt : ∀ x : E3, f 0 x * (((N : ℂ))⁻¹ * ∫ t in (0 : ℝ)..N, phaseProd m f P p j x t)
+      = f 0 x * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..N, phaseProd m f P p j x t) := by
+    intro x
+    rw [Complex.real_smul, Complex.ofReal_inv]
+  have hstate : (V⁻¹ : ℝ) • phaseCorr N m f P p j
+      = (V⁻¹ : ℝ) • ∫ x : E3, f 0 x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProd m f P p j x t) := by
+    rw [zero_add, phaseCorr, integral_congr_ae (Filter.Eventually.of_forall hpt)]
+  rw [hstate]
+  exact hkey
+
+/-! ### Patch 3: the `r`-step phased cube
+
+"After `r` steps the parameter-dependent part is
+
+    prod_i prod_{omega in {0,1}^r} C^{|omega|} f_i(x - P_i(t + omega . h) e_i)
+      e(sum_omega (-1)^{|omega|} p_x(t + omega . h))."
+
+That object is the parity cube of `Auto.phaseProd`, which is what the four steps iterate and what
+`Auto.csLoss` will be applied to.  At `r = 4` the phase leaves it entirely
+(`Auto.phaseProd_cube_eq`), which is restated here in terms of the iterate. -/
+
+open scoped Classical in
+/-- The parity cube of the phased product after `r` steps. -/
+noncomputable def phaseProdIter (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (h : Fin r → ℝ) (t : ℝ) : ℂ :=
+  ∏ ω : Fin r → Bool, conjPar (numFalse ω) (phaseProd m f P p j x (t + cubeShift h ω))
+
+open scoped Classical in
+theorem phaseProdIter_zero (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (h : Fin 0 → ℝ) (t : ℝ) :
+    phaseProdIter 0 m f P p j x h t = phaseProd m f P p j x t := by
+  rw [phaseProdIter, Fintype.prod_unique]
+  simp [numFalse, cubeShift, conjPar]
+
+open scoped Classical in
+/-- Every iterate is one-bounded, the phase being unimodular and the inputs one-bounded. -/
+theorem norm_phaseProdIter_le_one (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3)
+    (h : Fin r → ℝ) (t : ℝ) :
+    ‖phaseProdIter r m f P p j x h t‖ ≤ 1 := by
+  rw [phaseProdIter, norm_prod]
+  refine Finset.prod_le_one (fun ω _ => norm_nonneg _) fun ω _ => ?_
+  rw [norm_conjPar]
+  exact norm_phaseProd_le m hf P p j x _
+
+open scoped Classical in
+/-- **At four steps the phase is gone**: the iterate is the parity cube of the bare shifted
+inputs. -/
+theorem phaseProdIter_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (hp : (p x).natDegree ≤ 3)
+    (h : Fin 4 → ℝ) (t : ℝ) :
+    phaseProdIter 4 m f P p j x h t
+      = ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+          (∏ i ∈ Finset.Icc 1 m,
+            f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i))) :=
+  phaseProd_cube_eq m f P p j x hp t h
+
+/-! ### Patch 3: the zero-shift vertex supports the cube
+
+"At later steps use the indicator of a fixed enlarged spatial box: the zero-shift vertex supports
+the integrand there for `t` in `[0, N]`."
+
+The vertex `omega = 0` of the parity cube carries no shift, so its factor is the undifferenced
+phased product at `t` itself.  A product vanishes as soon as one factor does, so wherever the
+zero-shift vertex vanishes the whole cube does -- which is what confines the cube to the enlarged
+box and lets the later steps use its indicator. -/
+
+/-- The vertex with every bit false carries no shift. -/
+theorem cubeShift_const_false {s : ℕ} (h : Fin s → ℝ) :
+    cubeShift h (fun _ => false) = 0 := by
+  rw [cubeShift]
+  simp
+
+/-- and no conjugations. -/
+theorem numFalse_const_false {s : ℕ} : numFalse (fun _ : Fin s => false) = s := by
+  rw [numFalse]
+  simp
+
+open scoped Classical in
+/-- **The zero-shift vertex is a factor of the cube.** -/
+theorem phaseProdIter_zero_vertex (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (h : Fin r → ℝ) (t : ℝ) :
+    conjPar (numFalse (fun _ : Fin r => false)) (phaseProd m f P p j x t)
+      ∈ (Finset.univ.image fun ω : Fin r → Bool =>
+          conjPar (numFalse ω) (phaseProd m f P p j x (t + cubeShift h ω))) := by
+  refine Finset.mem_image.mpr ⟨fun _ => false, Finset.mem_univ _, ?_⟩
+  rw [cubeShift_const_false, add_zero]
+
+open scoped Classical in
+/-- **Hence the cube vanishes wherever the zero-shift vertex does.** -/
+theorem phaseProdIter_eq_zero_of_zero_vertex (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (h : Fin r → ℝ) (t : ℝ)
+    (h0 : phaseProd m f P p j x t = 0) :
+    phaseProdIter r m f P p j x h t = 0 := by
+  rw [phaseProdIter]
+  refine Finset.prod_eq_zero (Finset.mem_univ (fun _ : Fin r => false)) ?_
+  rw [cubeShift_const_false, add_zero, h0]
+  by_cases hev : Even (numFalse (fun _ : Fin r => false)) <;> simp [conjPar, hev]
+
+/-! ### Patch 3: an admissible shift is power-controlled on the window
+
+"Polynomial coefficient bounds and `4H <= N/8` give a single power-controlled volume for this box."
+The coefficient half of that: on `0 <= t <= N` an admissible shift of degree `d` is at most
+`(d + 1) u_c(delta) N^d`.
+
+Each coefficient contributes at most `u_c(delta) N^d`: the lower ones because
+`|[t^r] P| <= u_c(delta) N^(d-r)` and `t^r <= N^r`, the leading one because `|lc P| <= u_c(delta)`
+and `t^d <= N^d`.  There are `d + 1` of them. -/
+
+theorem AdmissiblePoly.abs_eval_le {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
+    (h : AdmissiblePoly c δ N d P) (hδ : 0 < δ) (hc : 1 ≤ c) (hN : 0 ≤ N)
+    {t : ℝ} (ht0 : 0 ≤ t) (htN : t ≤ N) :
+    |P.eval t| ≤ (d + 1) * budHi c δ * N ^ d := by
+  have hdeg := h.natDegree_eq
+  have hbud : 0 < budHi c δ := budHi_pos hδ hc
+  have htr : ∀ r : ℕ, |t| ^ r ≤ N ^ r := by
+    intro r
+    refine pow_le_pow_left₀ (abs_nonneg t) ?_ r
+    rw [abs_of_nonneg ht0]
+    exact htN
+  have hterm : ∀ r ∈ Finset.range (d + 1), |P.coeff r * t ^ r| ≤ budHi c δ * N ^ d := by
+    intro r hr
+    rw [abs_mul, abs_pow]
+    have hrd : r ≤ d := Nat.lt_succ_iff.mp (Finset.mem_range.mp hr)
+    rcases lt_or_eq_of_le hrd with hlt | heq
+    · have hcf := h.coeff_le hlt
+      have hstep : |P.coeff r| * |t| ^ r ≤ (budHi c δ * N ^ (d - r)) * N ^ r := by
+        refine mul_le_mul hcf (htr r) (by positivity) (by positivity)
+      refine hstep.trans (le_of_eq ?_)
+      rw [mul_assoc, ← pow_add]
+      congr 2
+      omega
+    · have hcf : |P.coeff r| ≤ budHi c δ := by
+        rw [heq, ← hdeg]
+        exact h.le_budHi
+      have hstep : |P.coeff r| * |t| ^ r ≤ budHi c δ * N ^ r :=
+        mul_le_mul hcf (htr r) (by positivity) (by positivity)
+      refine hstep.trans (le_of_eq ?_)
+      rw [heq]
+  have hsum : P.eval t = ∑ r ∈ Finset.range (d + 1), P.coeff r * t ^ r := by
+    rw [← hdeg]
+    exact Polynomial.eval_eq_sum_range t
+  rw [hsum]
+  refine (Finset.abs_sum_le_sum_abs _ _).trans ?_
+  refine (Finset.sum_le_sum hterm).trans (le_of_eq ?_)
+  rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+  push_cast
+  ring
+
+/-! ### Patch 3: the enlarged spatial box
+
+Combining the zero-shift vertex with the coefficient bound: if the protected input is supported in
+a budgeted box and its shift is admissible, the cube lives in an enlarged box.
+
+The enlargement is taken in the same family rather than in a new one: at scale `N >= 1` every side
+`C N^{d_i}` grows to at most `(C + K) N^{d_i}`, so the enlarged box is `Auto.petBox (C + K) N` and
+no new notion of box is needed.  This is what "a single power-controlled volume for this box" asks
+for, since `C + K` is again a budget when `K` is. -/
+
+theorem basisVec_apply (j k : Fin 3) : basisVec j k = if k = j then 1 else 0 := by
+  simp [basisVec, PiLp.single_apply]
+
+/-- **Translating by a bounded shift lands in an enlarged box.**  Only the shifted coordinate
+moves, and at scale `N >= 1` the enlargement is absorbed into the budget. -/
+theorem mem_petBox_of_sub_mem {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K) {j : Fin 3} {a : ℝ}
+    (ha : |a| ≤ K) {x : E3} (hx : x - a • basisVec j ∈ petBox C N) :
+    x ∈ petBox (C + K) N := by
+  intro i
+  have hxi : (x - a • basisVec j) i = x i - a * (if i = j then 1 else 0) := by
+    simp [basisVec_apply]
+  have hmem := hx i
+  rw [Set.mem_Icc] at hmem ⊢
+  have hNi : (1 : ℝ) ≤ N ^ expo i := one_le_pow₀ hN
+  rw [hxi] at hmem
+  by_cases hij : i = j
+  · rw [if_pos hij, mul_one] at hmem
+    constructor
+    · nlinarith [abs_le.mp ha, hmem.1, hmem.2]
+    · nlinarith [abs_le.mp ha, hmem.1, hmem.2]
+  · rw [if_neg hij, mul_zero, sub_zero] at hmem
+    constructor
+    · nlinarith [hmem.1, hmem.2]
+    · nlinarith [hmem.1, hmem.2]
+
+/-! ### Patch 3: the cube lives in the enlarged box
+
+The two preceding facts combined.  The zero-shift vertex of the cube carries the protected input
+undifferenced at `x - P_m(t) e_{j m}`; if that point left the budgeted box the input would vanish
+there and take the whole cube with it.  So wherever the cube is nonzero, that point is in the box,
+and therefore `x` is in the enlarged one.
+
+This is the support statement the later phase steps use: it is what makes the indicator of a fixed
+enlarged box an admissible block to remove. -/
+
+open scoped Classical in
+theorem phaseProdIter_eq_zero_of_notMem (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
+    (hm : 1 ≤ m) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    {t : ℝ} (hbd : |(P m).eval t| ≤ K)
+    {x : E3} (hx : x ∉ petBox (C + K) N) (h : Fin r → ℝ) :
+    phaseProdIter r m f P p j x h t = 0 := by
+  refine phaseProdIter_eq_zero_of_zero_vertex r m f P p j x h t ?_
+  rw [phaseProd]
+  have hzero : f m (x - ((P m).eval t) • basisVec (j m)) = 0 := by
+    refine hsupp _ fun hmem => ?_
+    exact hx (mem_petBox_of_sub_mem hN hK hbd hmem)
+  rw [Finset.prod_eq_zero (Finset.mem_Icc.mpr ⟨hm, le_refl m⟩) hzero, zero_mul]
+
+open scoped Classical in
+/-- **The same with the shift bound supplied by admissibility.**  On the window `0 <= t <= N` the
+admissible shift is at most `(d + 1) u_c(delta) N^d`, so that is the enlargement. -/
+theorem phaseProdIter_eq_zero_of_notMem_admissible (r m : ℕ) (f : ℕ → E3 → ℂ)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3)
+    {C N δ : ℝ} {c d : ℕ} (hN : 1 ≤ N) (hδ : 0 < δ) (hc : 1 ≤ c)
+    (hadm : AdmissiblePoly c δ N d (P m)) (hm : 1 ≤ m)
+    (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    {t : ℝ} (ht0 : 0 ≤ t) (htN : t ≤ N)
+    {x : E3} (hx : x ∉ petBox (C + (d + 1) * budHi c δ * N ^ d) N) (h : Fin r → ℝ) :
+    phaseProdIter r m f P p j x h t = 0 := by
+  have hK : (0 : ℝ) ≤ (d + 1) * budHi c δ * N ^ d := by
+    have := budHi_pos hδ hc
+    positivity
+  exact phaseProdIter_eq_zero_of_notMem r m f P p j hN hK hm hsupp
+    (hadm.abs_eval_le hδ hc (by linarith) ht0 htN) hx h
+
+/-! ### Patch 3: bounded functions supported in a budgeted box
+
+The `E3` counterpart of `Auto.integrable_of_bdd_support`, which is stated for the parameter line.
+A bounded function supported in `Auto.petBox` is integrable, and if it is one-bounded its `L^2` mass
+is at most the box's volume -- which `Auto.volume_petBox` computes as `8 C^3 N^6`, power-controlled
+whenever `C` is a budget.
+
+These are what let the later phase steps treat the enlarged box's indicator as the removed block:
+its `L^2` mass is the box volume, so the `V` of `Auto.sq_norm_signed_vdc` can be taken to be that.
+
+The real-valued twin is stated separately rather than the complex one being reused through a cast:
+the square of a norm is real, and routing it through `ℂ` only to take a real part again was the
+fragile step in an earlier attempt. -/
+
+open MeasureTheory in
+theorem integrable_of_bdd_support_box {C N M : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) {W : E3 → ℂ}
+    (hWm : Measurable W) (hWb : ∀ x, ‖W x‖ ≤ M)
+    (hWsupp : ∀ x, x ∉ petBox C N → W x = 0) : Integrable W := by
+  classical
+  have hfin : volume (petBox C N) ≠ ⊤ := by
+    rw [volume_petBox hC hN]
+    exact ENNReal.ofReal_ne_top
+  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+    constructor
+    rw [Measure.restrict_apply_univ]
+    exact lt_of_le_of_ne le_top hfin
+  have hdom : Integrable ((petBox C N).indicator fun _ : E3 => M) :=
+    (integrable_indicator_iff (measurableSet_petBox C N)).mpr (integrable_const M)
+  refine Integrable.mono' hdom hWm.aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  by_cases hx : x ∈ petBox C N
+  · rw [Set.indicator_of_mem hx]
+    exact hWb x
+  · rw [Set.indicator_of_notMem hx, hWsupp x hx, norm_zero]
+
+open MeasureTheory in
+/-- The real-valued twin. -/
+theorem integrable_of_bdd_support_box_real {C N M : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) {W : E3 → ℝ}
+    (hWm : Measurable W) (hWb : ∀ x, ‖W x‖ ≤ M)
+    (hWsupp : ∀ x, x ∉ petBox C N → W x = 0) : Integrable W := by
+  classical
+  have hfin : volume (petBox C N) ≠ ⊤ := by
+    rw [volume_petBox hC hN]
+    exact ENNReal.ofReal_ne_top
+  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+    constructor
+    rw [Measure.restrict_apply_univ]
+    exact lt_of_le_of_ne le_top hfin
+  have hdom : Integrable ((petBox C N).indicator fun _ : E3 => M) :=
+    (integrable_indicator_iff (measurableSet_petBox C N)).mpr (integrable_const M)
+  refine Integrable.mono' hdom hWm.aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  by_cases hx : x ∈ petBox C N
+  · rw [Set.indicator_of_mem hx]
+    exact hWb x
+  · rw [Set.indicator_of_notMem hx, hWsupp x hx, norm_zero]
+
+open MeasureTheory in
+/-- A one-bounded function supported in the box has `L^2` mass at most the box's volume. -/
+theorem integral_sq_le_volume_of_bdd_support {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) {W : E3 → ℂ}
+    (hWm : Measurable W) (hWb : ∀ x, ‖W x‖ ≤ 1)
+    (hWsupp : ∀ x, x ∉ petBox C N → W x = 0) :
+    (∫ x : E3, ‖W x‖ ^ 2) ≤ (volume (petBox C N)).toReal := by
+  classical
+  have hfin : volume (petBox C N) ≠ ⊤ := by
+    rw [volume_petBox hC hN]
+    exact ENNReal.ofReal_ne_top
+  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+    constructor
+    rw [Measure.restrict_apply_univ]
+    exact lt_of_le_of_ne le_top hfin
+  have hdom : Integrable ((petBox C N).indicator fun _ : E3 => (1 : ℝ)) :=
+    (integrable_indicator_iff (measurableSet_petBox C N)).mpr (integrable_const 1)
+  have hsq : Integrable fun x : E3 => ‖W x‖ ^ 2 := by
+    refine integrable_of_bdd_support_box_real (M := 1) hC hN ((hWm.norm).pow_const 2) ?_ ?_
+    · intro x
+      rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+      nlinarith [hWb x, norm_nonneg (W x)]
+    · intro x hx
+      rw [hWsupp x hx, norm_zero]
+      simp
+  refine (integral_mono hsq hdom fun x => ?_).trans (le_of_eq ?_)
+  · by_cases hx : x ∈ petBox C N
+    · rw [Set.indicator_of_mem hx]
+      nlinarith [hWb x, norm_nonneg (W x)]
+    · rw [Set.indicator_of_notMem hx, hWsupp x hx, norm_zero]
+      simp
+  · rw [integral_indicator_const _ (measurableSet_petBox C N), MeasureTheory.measureReal_def]
+    simp
+
+/-! ### Patch 3: the enlarged box's indicator as a removed block
+
+"At later steps use the indicator of a fixed enlarged spatial box ...  The indicator is removed by
+the same Cauchy-Schwarz step."
+
+The `g`-side hypotheses of `Auto.sq_norm_signed_vdc` for that block.  The indicator is one-bounded
+and supported in the box by construction, so the lemmas of the preceding section apply directly, and
+its `L^2` mass is exactly the box's volume -- which is the `V` the later steps use. -/
+
+theorem indicator_box_eq_zero (C N : ℝ) {x : E3} (hx : x ∉ petBox C N) :
+    (petBox C N).indicator (fun _ => (1 : ℂ)) x = 0 := Set.indicator_of_notMem hx _
+
+theorem norm_indicator_box_le_one (C N : ℝ) (x : E3) :
+    ‖(petBox C N).indicator (fun _ => (1 : ℂ)) x‖ ≤ 1 := by
+  by_cases hx : x ∈ petBox C N
+  · rw [Set.indicator_of_mem hx]
+    simp
+  · rw [Set.indicator_of_notMem hx]
+    simp
+
+open MeasureTheory in
+theorem measurable_indicator_box (C N : ℝ) :
+    Measurable ((petBox C N).indicator (fun _ => (1 : ℂ))) :=
+  measurable_const.indicator (measurableSet_petBox C N)
+
+open MeasureTheory in
+theorem integrable_indicator_box {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) :
+    Integrable ((petBox C N).indicator (fun _ => (1 : ℂ))) :=
+  integrable_of_bdd_support_box hC hN (measurable_indicator_box C N)
+    (norm_indicator_box_le_one C N) (fun _ hx => indicator_box_eq_zero C N hx)
+
+open MeasureTheory in
+theorem integrable_sq_indicator_box {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) :
+    Integrable fun x : E3 => ‖(petBox C N).indicator (fun _ => (1 : ℂ)) x‖ ^ 2 := by
+  refine integrable_of_bdd_support_box_real (M := 1) hC hN
+    (((measurable_indicator_box C N).norm).pow_const 2) ?_ ?_
+  · intro x
+    rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+    nlinarith [norm_indicator_box_le_one C N x,
+      norm_nonneg ((petBox C N).indicator (fun _ => (1 : ℂ)) x)]
+  · intro x hx
+    rw [indicator_box_eq_zero C N hx, norm_zero]
+    simp
+
+open MeasureTheory in
+/-- **The indicator's `L^2` mass is the box's volume**, which is the `V` the later steps use. -/
+theorem integral_sq_indicator_box (C N : ℝ) :
+    (∫ x : E3, ‖(petBox C N).indicator (fun _ => (1 : ℂ)) x‖ ^ 2)
+      = (volume (petBox C N)).toReal := by
+  classical
+  have hpt : ∀ x : E3, ‖(petBox C N).indicator (fun _ => (1 : ℂ)) x‖ ^ 2
+      = (petBox C N).indicator (fun _ => (1 : ℝ)) x := by
+    intro x
+    by_cases hx : x ∈ petBox C N
+    · rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx]
+      simp
+    · rw [Set.indicator_of_notMem hx, Set.indicator_of_notMem hx]
+      simp
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt),
+    integral_indicator_const _ (measurableSet_petBox C N), MeasureTheory.measureReal_def]
+  simp
+
+/-! ### Patch 3: the state of the phase iteration
+
+The object the four steps iterate: a removed block `g` against the window average of the `r`-step
+phased cube, normalized by `V`.  It is a function of the accumulated shifts `h`, and the recursion
+of `patch:signed-vdc` relates `|A_r(h)|^2` to the Fejer average over the new shift of
+`Re A_{r+1}(h, u)` -- which is the shape `Auto.csLoss` consumes.
+
+At `r = 0` the cube is the phased product itself and the block is the original spatial factor, so
+the state is the normalized `Auto.phaseCorr`; that identification is recorded here so the iteration
+starts from the proposition's own hypothesis. -/
+
+open MeasureTheory in
+noncomputable def phaseState (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ) (h : Fin r → ℝ) : ℂ :=
+  (V⁻¹ : ℂ) * ∫ x : E3, g x
+    * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N, phaseProdIter r m f P p j x h t)
+
+open MeasureTheory in
+/-- At the start the state is the normalized correlation of the proposition's hypothesis. -/
+theorem phaseState_zero (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (V N : ℝ) (h : Fin 0 → ℝ) :
+    phaseState 0 m f P p j (f 0) V N h = (V⁻¹ : ℂ) * phaseCorr N m f P p j := by
+  have hfun : ∀ x : E3, (∫ t in (0 : ℝ)..N, phaseProdIter 0 m f P p j x h t)
+      = ∫ t in (0 : ℝ)..N, phaseProd m f P p j x t := fun x =>
+    intervalIntegral.integral_congr fun t _ => phaseProdIter_zero m f P p j x h t
+  have hptx : ∀ x : E3, f 0 x
+        * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N, phaseProdIter 0 m f P p j x h t)
+      = f 0 x * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N, phaseProd m f P p j x t) := by
+    intro x
+    rw [hfun x]
+  rw [phaseState, phaseCorr, integral_congr_ae (Filter.Eventually.of_forall hptx)]
+
+open MeasureTheory in
+/-- The state is controlled by the block's `L^1` mass: the cube is one-bounded and the window
+average is normalized. -/
+theorem norm_phaseState_le (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {g : E3 → ℂ}
+    {V N : ℝ} (hV : 0 < V) (hN : 0 < N) (h : Fin r → ℝ)
+    (hgi : Integrable g) :
+    ‖phaseState r m f P p j g V N h‖ ≤ V⁻¹ * ∫ x : E3, ‖g x‖ := by
+  classical
+  have hle : (0 : ℝ) ≤ N := hN.le
+  have hptw : ∀ x : E3, ‖g x * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N,
+      phaseProdIter r m f P p j x h t)‖ ≤ ‖g x‖ := by
+    intro x
+    rw [norm_mul, norm_mul]
+    have hbd : ‖∫ t in (0 : ℝ)..N, phaseProdIter r m f P p j x h t‖ ≤ N := by
+      rw [intervalIntegral.integral_of_le hle]
+      have hfin : (volume : Measure ℝ) (Set.Ioc (0 : ℝ) N) < ⊤ := by
+        rw [Real.volume_Ioc]
+        exact ENNReal.ofReal_lt_top
+      have hvol : (volume : Measure ℝ).real (Set.Ioc (0 : ℝ) N) = N := by
+        rw [MeasureTheory.measureReal_def, Real.volume_Ioc, sub_zero, ENNReal.toReal_ofReal hle]
+      have hb := norm_setIntegral_le_of_norm_le_const (C := 1)
+        (f := fun t : ℝ => phaseProdIter r m f P p j x h t) hfin
+        (fun t _ => norm_phaseProdIter_le_one r m hf P p j x h t)
+      rw [hvol, one_mul] at hb
+      exact hb
+    have hNinv : ‖((N : ℂ))⁻¹‖ = N⁻¹ := by
+      rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hle]
+    rw [hNinv]
+    calc ‖g x‖ * (N⁻¹ * ‖∫ t in (0 : ℝ)..N, phaseProdIter r m f P p j x h t‖)
+        ≤ ‖g x‖ * (N⁻¹ * N) :=
+          mul_le_mul_of_nonneg_left
+            (mul_le_mul_of_nonneg_left hbd (by positivity)) (norm_nonneg _)
+      _ = ‖g x‖ := by
+          rw [inv_mul_cancel₀ hN.ne', mul_one]
+  rw [phaseState, norm_mul]
+  have hVinv : ‖((V : ℂ))⁻¹‖ = V⁻¹ := by
+    rw [norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hV.le]
+  rw [hVinv]
+  refine mul_le_mul_of_nonneg_left ?_ (by positivity)
+  refine (norm_integral_le_integral_norm _).trans ?_
+  exact integral_mono_of_nonneg (Filter.Eventually.of_forall fun x => norm_nonneg _)
+    hgi.norm (Filter.Eventually.of_forall hptw)
+
+/-! ### Patch 3: the state after four steps carries no phase
+
+Composing `Auto.phaseProdIter_four_eq` with the state.  After the four phase steps the state is the
+removed block against the window average of the parity cube of the *bare* shifted inputs -- the
+phase has left the argument, and what remains is an object of the kind the PET recursion and the
+affine endpoint already handle.
+
+This is the junction between the phase half of the proposition's proof and the polynomial half. -/
+
+open MeasureTheory in
+theorem phaseState_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ)
+    (hp : ∀ x : E3, (p x).natDegree ≤ 3) (h : Fin 4 → ℝ) :
+    phaseState 4 m f P p j g V N h
+      = (V⁻¹ : ℂ) * ∫ x : E3, g x * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N,
+          ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+            (∏ i ∈ Finset.Icc 1 m,
+              f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i)))) := by
+  classical
+  have hfun : ∀ x : E3, (∫ t in (0 : ℝ)..N, phaseProdIter 4 m f P p j x h t)
+      = ∫ t in (0 : ℝ)..N, ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+          (∏ i ∈ Finset.Icc 1 m,
+            f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i))) := fun x =>
+    intervalIntegral.integral_congr fun t _ =>
+      phaseProdIter_four_eq m f P p j x (hp x) h t
+  have hptx : ∀ x : E3, g x * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N,
+        phaseProdIter 4 m f P p j x h t)
+      = g x * ((N⁻¹ : ℂ) * ∫ t in (0 : ℝ)..N,
+          ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+            (∏ i ∈ Finset.Icc 1 m,
+              f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i)))) := by
+    intro x
+    rw [hfun x]
+  rw [phaseState, integral_congr_ae (Filter.Eventually.of_forall hptx)]
+
+/-! ### The correlation step doubles the cube
+
+The step that `patch:signed-vdc` performs on the level-`r` state replaces the integrand by its
+correlation `F x (t + u) * conj (F x t)`.  For `F = phaseProdIter r`, that correlation is again a
+cube of the same shape, one dimension taller, with the new shift `u` prepended: the parity count of
+a vertex `Fin.cons b σ` is `numFalse σ` when `b = true` and `numFalse σ + 1` when `b = false`, and
+`conjPar (n + 1) = conj ∘ conjPar n`, so the `false` half of the cube assembles exactly into the
+conjugated factor.  This is what lets the same step be iterated. -/
+
+/-- **The cube doubles under a correlation step.**  Splitting a vertex of the `(r+1)`-cube into its
+first coordinate and the rest sends the `true` half to the shifted cube and the `false` half to the
+conjugate of the unshifted one. -/
+theorem phaseProdIter_succ (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (H : Fin (r + 1) → ℝ) (t : ℝ) :
+    phaseProdIter (r + 1) m f P p j x H t
+      = phaseProdIter r m f P p j x (fun i => H i.succ) (t + H 0)
+        * (starRingEnd ℂ) (phaseProdIter r m f P p j x (fun i => H i.succ) t) := by
+  classical
+  rw [phaseProdIter, phaseProdIter, phaseProdIter, map_prod, ← Finset.prod_mul_distrib,
+    ← (consBoolEquiv r).prod_comp
+      fun ω => conjPar (numFalse ω) (phaseProd m f P p j x (t + cubeShift H ω)),
+    Fintype.prod_prod_type, Fintype.prod_bool, ← Finset.prod_mul_distrib]
+  refine Finset.prod_congr rfl fun σ _ => ?_
+  have hct : numFalse (Fin.cons true σ) = numFalse σ := by
+    rw [numFalse_cons]
+    simp
+  have hcf : numFalse (Fin.cons false σ) = numFalse σ + 1 := by
+    rw [numFalse_cons]
+    simp [add_comm]
+  have hst : cubeShift H (Fin.cons true σ) = H 0 + cubeShift (fun i => H i.succ) σ := by
+    rw [cubeShift_cons]
+    simp
+  have hsf : cubeShift H (Fin.cons false σ) = cubeShift (fun i => H i.succ) σ := by
+    rw [cubeShift_cons]
+    simp
+  simp only [consBoolEquiv, Equiv.coe_fn_mk, hct, hcf, hst, hsf, conjPar_succ, ← add_assoc]
+
+/-- The `Fin.cons` form, as the correlation step produces it: the new shift is prepended. -/
+theorem phaseProdIter_cons (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3) (u : ℝ) (h : Fin r → ℝ) (t : ℝ) :
+    phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t
+      = phaseProdIter r m f P p j x h (t + u)
+        * (starRingEnd ℂ) (phaseProdIter r m f P p j x h t) := by
+  rw [phaseProdIter_succ r m f P p j x (Fin.cons u h) t]
+  simp
+
+open MeasureTheory in
+/-- **The correlation of the level-`r` cube is the level-`(r+1)` cube.**  This is the identity that
+turns `Auto.sq_norm_signed_vdc` into a recursion: the `corrLine` its conclusion produces at shift
+`u` is the spatial integral of the cube one level up. -/
+theorem corrLine_phaseProdIter (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (h : Fin r → ℝ) (t u : ℝ) :
+    corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => phaseProdIter r m f P p j x h s) t u
+      = ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t := by
+  have hpt : ∀ x : E3, phaseProdIter r m f P p j x h (t + u)
+        * (starRingEnd ℂ) (phaseProdIter r m f P p j x h t)
+      = phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t :=
+    fun x => (phaseProdIter_cons r m f P p j x u h t).symm
+  rw [corrLine]
+  exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+
+/-! ### The iterate inherits its analytic hypotheses from its zero-shift vertex
+
+`Auto.sq_norm_signed_vdc` asks of its `F` a one-bound, `L^2` integrability at each parameter, an
+integrable cross term, and an `L^2` budget.  For `F = phaseProdIter r` all four come for free: the
+vertex `omega = (fun _ => false)` contributes the factor `phaseProd m f P p j x t` with no shift and
+no conjugation, every other factor is one-bounded, so the whole iterate is dominated *pointwise* by
+that single factor -- for which the four facts are already proved. -/
+
+/-- Conjugating by parity preserves measurability. -/
+theorem measurable_conjPar (n : ℕ) : Measurable (conjPar n) := by
+  by_cases hn : Even n
+  · have hid : conjPar n = id := by
+      funext z
+      simp [conjPar, hn]
+    rw [hid]
+    exact measurable_id
+  · have hcj : conjPar n = (starRingEnd ℂ) := by
+      funext z
+      simp [conjPar, hn]
+    rw [hcj]
+    exact Complex.continuous_conj.measurable
+
+open scoped Classical in
+/-- **The iterate is dominated by its zero-shift vertex.** -/
+theorem norm_phaseProdIter_le_zero_vertex (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (x : E3)
+    (h : Fin r → ℝ) (t : ℝ) :
+    ‖phaseProdIter r m f P p j x h t‖ ≤ ‖phaseProd m f P p j x t‖ := by
+  classical
+  have hle := norm_finsetProd_le_single
+    (F := fun ω : Fin r → Bool =>
+      conjPar (numFalse ω) (phaseProd m f P p j x (t + cubeShift h ω)))
+    (i₀ := fun _ : Fin r => false) (Finset.mem_univ _)
+    (fun ω _ => by
+      rw [norm_conjPar]
+      exact norm_phaseProd_le m hf P p j x _)
+  rw [norm_conjPar, cubeShift_const_false, add_zero] at hle
+  rw [phaseProdIter]
+  exact hle
+
+open MeasureTheory in
+/-- Measurability of the iterate in the pair, inherited from the block. -/
+theorem measurable_uncurry_phaseProdIter (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (h : Fin r → ℝ) :
+    Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProdIter r m f P p j x h t) := by
+  have hfac : ∀ ω : Fin r → Bool, Measurable fun q : E3 × ℝ =>
+      conjPar (numFalse ω) (phaseProd m f P p j q.1 (q.2 + cubeShift h ω)) := by
+    intro ω
+    -- The composition is introduced with its own `∘` type and only then coerced to the
+    -- applied form.  Asking `Measurable.comp` to produce the applied form directly sends the
+    -- unifier into `phaseProd` and does not terminate within the heartbeat budget.
+    have hshift : Measurable ((Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t)
+        ∘ fun q : E3 × ℝ => ((q.1, q.2 + cubeShift h ω) : E3 × ℝ)) :=
+      hFm.comp (measurable_fst.prodMk (measurable_snd.add_const (cubeShift h ω)))
+    have hg : Measurable fun q : E3 × ℝ =>
+        phaseProd m f P p j q.1 (q.2 + cubeShift h ω) := hshift
+    have hcomp : Measurable (conjPar (numFalse ω) ∘
+        fun q : E3 × ℝ => phaseProd m f P p j q.1 (q.2 + cubeShift h ω)) :=
+      (measurable_conjPar (numFalse ω)).comp hg
+    exact hcomp
+  show Measurable fun q : E3 × ℝ =>
+    ∏ ω : Fin r → Bool, conjPar (numFalse ω) (phaseProd m f P p j q.1 (q.2 + cubeShift h ω))
+  exact Finset.measurable_prod _ fun ω _ => hfac ω
+
+open MeasureTheory in
+/-- The `L^2` mass of the iterate in the point, at each parameter. -/
+theorem integrable_sq_phaseProdIter (r : ℕ) {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hm : 1 ≤ m)
+    (hf2 : Integrable fun x : E3 => ‖f m x‖ ^ 2) (h : Fin r → ℝ) (t : ℝ) :
+    Integrable fun x : E3 => ‖phaseProdIter r m f P p j x h t‖ ^ 2 := by
+  refine Integrable.mono' (integrable_sq_phaseProd hFm hf hm hf2 t)
+    ((((measurable_uncurry_phaseProdIter r m hFm h).comp
+      (measurable_id.prodMk measurable_const)).norm.pow_const 2)).aestronglyMeasurable
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  exact pow_le_pow_left₀ (norm_nonneg _)
+    (norm_phaseProdIter_le_zero_vertex r m hf P p j x h t) 2
+
+open MeasureTheory in
+/-- The cross term of two iterates, at any two parameters. -/
+theorem integrable_cross_phaseProdIter (r : ℕ) {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hm : 1 ≤ m)
+    (hfL1 : Integrable (f m)) (h : Fin r → ℝ) (s s' : ℝ) :
+    Integrable fun x : E3 =>
+      ‖phaseProdIter r m f P p j x h s‖ * ‖phaseProdIter r m f P p j x h s'‖ := by
+  refine Integrable.mono' (integrable_cross_phaseProd hFm hf hm hfL1 s s')
+    (((((measurable_uncurry_phaseProdIter r m hFm h).comp
+      (measurable_id.prodMk measurable_const)).norm).mul
+      (((measurable_uncurry_phaseProdIter r m hFm h).comp
+      (measurable_id.prodMk measurable_const)).norm)).aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun x => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+  exact mul_le_mul (norm_phaseProdIter_le_zero_vertex r m hf P p j x h s)
+    (norm_phaseProdIter_le_zero_vertex r m hf P p j x h s') (norm_nonneg _) (norm_nonneg _)
+
+open MeasureTheory in
+/-- and the `L^2` budget passes to the iterate unchanged. -/
+theorem integral_sq_phaseProdIter_le (r : ℕ) {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hm : 1 ≤ m)
+    (hf2 : Integrable fun x : E3 => ‖f m x‖ ^ 2) (h : Fin r → ℝ) (t : ℝ) :
+    (∫ x : E3, ‖phaseProdIter r m f P p j x h t‖ ^ 2) ≤ ∫ x : E3, ‖f m x‖ ^ 2 := by
+  refine le_trans ?_ (integral_sq_phaseProd_le hFm hf hm hf2 t)
+  refine integral_mono (integrable_sq_phaseProdIter r hFm hf hm hf2 h t)
+    (integrable_sq_phaseProd hFm hf hm hf2 t) fun x => ?_
+  exact pow_le_pow_left₀ (norm_nonneg _)
+    (norm_phaseProdIter_le_zero_vertex r m hf P p j x h t) 2
+
+open MeasureTheory in
+/-- **The signed van der Corput step at level `r`.**  This is `Auto.phaseStep_signed` with the
+block `phaseProd` replaced by its `r`-fold iterate and the removed factor `g` left abstract, so
+that the enlarged box's indicator can be supplied for it.  Its conclusion is stated in terms of the
+level-`(r+1)` iterate, via `Auto.corrLine_phaseProdIter`, which is what makes the step iterable. -/
+theorem phaseStepIter_signed (r m : ℕ) (hm : 1 ≤ m) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {h : Fin r → ℝ}
+    {V N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4) (hV : 0 < V)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (hfmL1 : Integrable (f m)) (hfm2 : Integrable fun x : E3 => ‖f m x‖ ^ 2)
+    (hfmV : (∫ x : E3, ‖f m x‖ ^ 2) ≤ V)
+    (hg2 : Integrable fun x : E3 => ‖g x‖ ^ 2) (hgV : (∫ x : E3, ‖g x‖ ^ 2) ≤ V)
+    (hΦ2 : Integrable fun x : E3 =>
+      ‖(N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t‖ ^ 2)
+    (hgΦ : Integrable fun x : E3 => ‖g x‖
+      * ‖(N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t‖)
+    (hLi : Integrable fun x : E3 => ‖∫ u : ℝ, (Set.Ioc (0 : ℝ) (0 + N)).indicator
+      (fun s => phaseProdIter r m f P p j x h s) u‖ ^ 2)
+    (hRi : Integrable fun x : E3 => (∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc (0 : ℝ) (0 + N)).indicator (fun s => phaseProdIter r m f P p j x h s)) u).re)
+    (hRc : Integrable fun x : E3 => ∫ u : ℝ, fejer H u • autocorr
+      ((Set.Ioc (0 : ℝ) (0 + N)).indicator (fun s => phaseProdIter r m f P p j x h s)) u)
+    (hswapH : Integrable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      fejer H u • autocorr ((Set.Ioc (0 : ℝ) (0 + N)).indicator
+        (fun s => phaseProdIter r m f P p j x h s)) u) ((volume : Measure E3).prod volume))
+    (hswapT : ∀ u : ℝ, Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      phaseProdIter r m f P p j x h (t + u)
+        * (starRingEnd ℂ) (phaseProdIter r m f P p j x h t))
+      ((volume : Measure E3).prod (volume.restrict (capSet 0 N u)))) :
+    ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+        * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖ ^ 2
+      ≤ 2 * (V⁻¹ * N⁻¹ * (∫ u : ℝ, fejer H u • ∫ t in (0 : ℝ)..(0 + N),
+          ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re)
+        + 2 * H / N := by
+  have hkey := sq_norm_signed_vdc (μ := (volume : Measure E3)) hN hH hHN hV
+    (g := g) (F := fun (x : E3) (s : ℝ) => phaseProdIter r m f P p j x h s)
+    (measurable_uncurry_phaseProdIter r m hFm h) zero_le_one
+    (fun x t => norm_phaseProdIter_le_one r m hf P p j x h t)
+    (fun s => integrable_sq_phaseProdIter r hFm hf hm hfm2 h s)
+    (fun s s' => integrable_cross_phaseProdIter r hFm hf hm hfmL1 h s s')
+    (fun s => le_trans (integral_sq_phaseProdIter_le r hFm hf hm hfm2 h s) hfmV)
+    hg2 hgV hΦ2 hgΦ hLi hRi hRc hswapH hswapT
+  have hinner : ∀ u : ℝ, (∫ t in (0 : ℝ)..(0 + N), corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => phaseProdIter r m f P p j x h s) t u)
+      = ∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+          phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t := fun u =>
+    intervalIntegral.integral_congr fun t _ => corrLine_phaseProdIter r m f P p j h t u
+  have hpt : ∀ u : ℝ, fejer H u • (∫ t in (0 : ℝ)..(0 + N), corrLine (volume : Measure E3)
+        (fun (x : E3) (s : ℝ) => phaseProdIter r m f P p j x h s) t u)
+      = fejer H u • ∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+          phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t := by
+    intro u
+    rw [hinner u]
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt)] at hkey
+  exact hkey
+
+/-! ### Reinstating the block, and the level-`r` mean
+
+The step removes its block `g`; to apply it again a block must be put back.  The patch's answer is
+the indicator of a fixed enlarged spatial box: the iterate vanishes off that box, so inserting the
+indicator changes nothing, and the indicator is exactly the block the next step removes.
+
+The chain then runs on quantities already averaged over every shift introduced so far -- the patch
+selects shifts only once, at the very end, against the sublevel exclusion -- so the object the
+recursion is stated for is the Fejer mean below. -/
+
+open MeasureTheory in
+/-- **Reinstating the removed block.**  Multiplying by the enlarged box's indicator changes
+nothing, because the iterate already vanishes off that box. -/
+theorem integral_phaseProdIter_eq_indicator (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
+    (hm : 1 ≤ m) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    {t : ℝ} (hbd : |(P m).eval t| ≤ K) (h : Fin r → ℝ) :
+    (∫ x : E3, phaseProdIter r m f P p j x h t)
+      = ∫ x : E3, (petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+          * phaseProdIter r m f P p j x h t := by
+  have hpt : ∀ x : E3, phaseProdIter r m f P p j x h t
+      = (petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+        * phaseProdIter r m f P p j x h t := by
+    intro x
+    by_cases hx : x ∈ petBox (C + K) N
+    · rw [Set.indicator_of_mem hx, one_mul]
+    · rw [Set.indicator_of_notMem hx, zero_mul,
+        phaseProdIter_eq_zero_of_notMem r m f P p j hN hK hm hsupp hbd hx h]
+  exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+
+open MeasureTheory in
+/-- **The level-`r` mean**: the magnitude of the level-`r` state, averaged over all `r` shifts
+introduced so far against the product Fejer density.  This is the `M r` the Cauchy--Schwarz chain
+of `Auto.csLoss` consumes. -/
+noncomputable def phaseMean (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N H : ℝ) : ℝ :=
+  ∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+    * ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+        * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖
+
+open MeasureTheory in
+/-- The mean is nonnegative, the Fejer density and a norm both being so. -/
+theorem phaseMean_nonneg {H : ℝ} (hH : 0 < H) (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ) :
+    0 ≤ phaseMean r m f P p j g V N H :=
+  integral_nonneg fun h => mul_nonneg (prod_fejer_nonneg hH h) (norm_nonneg _)
+
+open MeasureTheory in
+/-- At level zero there are no shifts, so the mean is the state itself. -/
+theorem phaseMean_zero (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N H : ℝ) :
+    phaseMean 0 m f P p j g V N H
+      = ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProd m f P p j x t)‖ := by
+  have hvol : (volume : Measure (Fin 0 → ℝ)) Set.univ = 1 := by
+    rw [volume_pi,
+      Measure.pi_of_empty (fun _ : Fin 0 => (volume : Measure ℝ)) (fun _ => (0 : ℝ))]
+    simp
+  rw [phaseMean]
+  have hpt : ∀ h : Fin 0 → ℝ, (∏ l : Fin 0, fejer H (h l))
+      * ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter 0 m f P p j x h t)‖
+      = ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProd m f P p j x t)‖ := by
+    intro h
+    have hinner : ∀ x : E3, (∫ t in (0 : ℝ)..(0 + N), phaseProdIter 0 m f P p j x h t)
+        = ∫ t in (0 : ℝ)..(0 + N), phaseProd m f P p j x t := fun x =>
+      intervalIntegral.integral_congr fun t _ => phaseProdIter_zero m f P p j x h t
+    have hx : ∀ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter 0 m f P p j x h t)
+        = g x * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProd m f P p j x t) := by
+      intro x
+      rw [hinner x]
+    rw [integral_congr_ae (Filter.Eventually.of_forall hx)]
+    simp
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_const,
+    MeasureTheory.measureReal_def, hvol]
+  simp
+
+open MeasureTheory in
+/-- **Off the enlarged box the whole window average vanishes.**  The shift bound is needed at every
+parameter of the window, not just at one, so it is hypothesized on `Set.uIcc`. -/
+theorem integral_window_phaseProdIter_eq_zero (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
+    (hm : 1 ≤ m) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    {x : E3} (hx : x ∉ petBox (C + K) N) (h : Fin r → ℝ) :
+    (∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t) = 0 := by
+  have hzero : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), phaseProdIter r m f P p j x h t = 0 :=
+    fun t ht => phaseProdIter_eq_zero_of_notMem r m f P p j hN hK hm hsupp (hbd t ht) hx h
+  rw [intervalIntegral.integral_congr hzero]
+  simp
+
+open MeasureTheory in
+/-- **Reinstating the block around the window average.**  This is the form the recursion uses: after
+the `t`- and `x`-integrals are swapped, the indicator goes back in outside the window average. -/
+theorem integral_window_eq_indicator (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
+    (hm : 1 ≤ m) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K) (h : Fin r → ℝ) :
+    (∫ x : E3, ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)
+      = ∫ x : E3, (petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+          * ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t := by
+  have hpt : ∀ x : E3, (∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)
+      = (petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+        * ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t := by
+    intro x
+    by_cases hx : x ∈ petBox (C + K) N
+    · rw [Set.indicator_of_mem hx, one_mul]
+    · rw [Set.indicator_of_notMem hx, zero_mul,
+        integral_window_phaseProdIter_eq_zero r m f P p j hN hK hm hsupp hbd hx h]
+  exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+
+/-- A real scalar pair against the real part is dominated by the norm of the scaled value. -/
+theorem re_le_norm_smul_smul {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (W : ℂ) :
+    a * b * W.re ≤ ‖a • (b • W)‖ := by
+  rw [norm_smul, norm_smul, Real.norm_eq_abs, Real.norm_eq_abs, abs_of_nonneg ha,
+    abs_of_nonneg hb, ← mul_assoc]
+  exact mul_le_mul_of_nonneg_left (Complex.re_le_norm W) (by positivity)
+
+open MeasureTheory in
+/-- **The step's right-hand side, at a fixed shift, in the shape of `Auto.phaseMean`'s integrand.**
+This is steps 1 and 4 of the recursion: the `x`-integral is brought outside the window average
+(hypothesis `hfub`, the Fubini swap), the block is reinstated by
+`Auto.integral_window_eq_indicator`, the two real scalars are moved inside, and the real part is
+finally bounded by the norm. -/
+theorem step_rhs_le_phaseMean_integrand (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N V : ℝ} (hV : 0 < V) (hN : 0 < N)
+    (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K) (h : Fin r → ℝ)
+    (hfub : (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3, phaseProdIter r m f P p j x h t)
+      = ∫ x : E3, ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t) :
+    V⁻¹ * N⁻¹ * (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3, phaseProdIter r m f P p j x h t).re
+      ≤ ‖(V⁻¹ : ℝ) • ∫ x : E3, (petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖ := by
+  have hinner : ∀ x : E3, (petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+      * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)
+      = (N⁻¹ : ℝ) • ((petBox (C + K) N).indicator (fun _ => (1 : ℂ)) x
+        * ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t) :=
+    fun x => mul_smul_comm _ _ _
+  rw [integral_congr_ae (Filter.Eventually.of_forall hinner), integral_smul, hfub,
+    integral_window_eq_indicator r m f P p j hN1 hK hm hsupp hbd h]
+  exact re_le_norm_smul_smul (le_of_lt (inv_pos.mpr hV)) (le_of_lt (inv_pos.mpr hN)) _
+
+open MeasureTheory in
+/-- **Splitting the shift average along its newest coordinate.**  An integral over
+`Fin (r+1) -> R` is the iterated integral over the new shift `u` and the old ones, in exactly the
+`Fin.cons` orientation that `Auto.phaseProdIter_cons` produces.  The peeling map is
+`Auto.measurePreserving_piFinSucc`, whose inverse is `Fin.cons`. -/
+theorem integral_cons_split {r : ℕ} {G : (Fin (r + 1) → ℝ) → ℂ}
+    (hG : Integrable (fun q : ℝ × (Fin r → ℝ) => G (Fin.cons q.1 q.2))) :
+    (∫ k : Fin (r + 1) → ℝ, G k) = ∫ u : ℝ, ∫ h : Fin r → ℝ, G (Fin.cons u h) := by
+  have h1 := (measurePreserving_piFinSucc r).integral_comp'
+    (fun q : ℝ × (Fin r → ℝ) =>
+      G ((MeasurableEquiv.piFinSuccAbove (fun _ : Fin (r + 1) => ℝ) 0).symm q))
+  simp only [MeasurableEquiv.symm_apply_apply] at h1
+  have hsymm : ∀ q : ℝ × (Fin r → ℝ),
+      (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (r + 1) => ℝ) 0).symm q
+        = Fin.cons q.1 q.2 := by
+    intro q
+    simp [MeasurableEquiv.piFinSuccAbove, Fin.consEquiv]
+  simp only [hsymm] at h1
+  rw [h1, Measure.volume_eq_prod, integral_prod _ (by rwa [← Measure.volume_eq_prod])]
+
+open MeasureTheory in
+/-- The real-valued twin, which is the one the mean uses. -/
+theorem integral_cons_split_real {r : ℕ} {G : (Fin (r + 1) → ℝ) → ℝ}
+    (hG : Integrable (fun q : ℝ × (Fin r → ℝ) => G (Fin.cons q.1 q.2))) :
+    (∫ k : Fin (r + 1) → ℝ, G k) = ∫ u : ℝ, ∫ h : Fin r → ℝ, G (Fin.cons u h) := by
+  have h1 := (measurePreserving_piFinSucc r).integral_comp'
+    (fun q : ℝ × (Fin r → ℝ) =>
+      G ((MeasurableEquiv.piFinSuccAbove (fun _ : Fin (r + 1) => ℝ) 0).symm q))
+  simp only [MeasurableEquiv.symm_apply_apply] at h1
+  have hsymm : ∀ q : ℝ × (Fin r → ℝ),
+      (MeasurableEquiv.piFinSuccAbove (fun _ : Fin (r + 1) => ℝ) 0).symm q
+        = Fin.cons q.1 q.2 := by
+    intro q
+    simp [MeasurableEquiv.piFinSuccAbove, Fin.consEquiv]
+  simp only [hsymm] at h1
+  rw [h1, Measure.volume_eq_prod, integral_prod _ (by rwa [← Measure.volume_eq_prod])]
+
+/-- The product Fejer weight splits along the newest coordinate. -/
+theorem prod_fejer_cons {H : ℝ} {r : ℕ} (u : ℝ) (h : Fin r → ℝ) :
+    (∏ l : Fin (r + 1), fejer H ((Fin.cons u h : Fin (r + 1) → ℝ) l))
+      = fejer H u * ∏ l : Fin r, fejer H (h l) := by
+  rw [Fin.prod_univ_succ]
+  simp
+
+/-! ### The product Fejer weight is a probability density, and Jensen against it
+
+`Auto.sq_integral_fejer_le` (line 11262) is Jensen for a *single* Fejer variable.  The recursion
+averages over all `r` shifts at once, against `∏ l, fejer H (h l)` on `Fin r -> R`, so what is
+needed is Jensen against that product weight.  Rather than redo the argument for it, the weighted
+Cauchy--Schwarz below is stated for an arbitrary probability density on an arbitrary measure space;
+the two facts that make the product weight one -- that it is integrable and has total mass `1` --
+are already in Mathlib, as `MeasureTheory.Integrable.fintype_prod` and
+`MeasureTheory.integral_fintype_prod_volume_eq_pow`. -/
+
+open MeasureTheory in
+/-- **Weighted Cauchy--Schwarz against a probability density.**  The square of a weighted mean is at
+most the weighted mean of the square.  Proved by expanding `∫ w (g - lam)^2 >= 0` at
+`lam = ∫ w g`. -/
+theorem sq_integral_weight_le {α : Type*} [MeasurableSpace α] {μ : Measure α} {w g : α → ℝ}
+    (hw0 : ∀ x, 0 ≤ w x) (hw1 : (∫ x, w x ∂μ) = 1)
+    (hwi : Integrable w μ)
+    (hwg : Integrable (fun x => w x * g x) μ)
+    (hwg2 : Integrable (fun x => w x * g x ^ 2) μ) :
+    (∫ x, w x * g x ∂μ) ^ 2 ≤ ∫ x, w x * g x ^ 2 ∂μ := by
+  set lam := ∫ x, w x * g x ∂μ with hlam
+  have hexp : ∀ x, w x * (g x - lam) ^ 2
+      = w x * g x ^ 2 - 2 * lam * (w x * g x) + lam ^ 2 * w x := by
+    intro x
+    ring
+  have hi1 : Integrable (fun x => w x * g x ^ 2 - 2 * lam * (w x * g x)) μ :=
+    hwg2.sub (hwg.const_mul (2 * lam))
+  have hi2 : Integrable (fun x => lam ^ 2 * w x) μ := hwi.const_mul (lam ^ 2)
+  have hnonneg : 0 ≤ ∫ x, w x * (g x - lam) ^ 2 ∂μ :=
+    integral_nonneg fun x => mul_nonneg (hw0 x) (sq_nonneg _)
+  have hval : (∫ x, w x * (g x - lam) ^ 2 ∂μ) = (∫ x, w x * g x ^ 2 ∂μ) - lam ^ 2 := by
+    rw [integral_congr_ae (Filter.Eventually.of_forall hexp), integral_add hi1 hi2,
+      integral_sub hwg2 (hwg.const_mul (2 * lam)), integral_const_mul, integral_const_mul, hw1,
+      ← hlam]
+    ring
+  linarith [hnonneg, hval]
+
+open MeasureTheory in
+/-- The product Fejer weight on `Fin r -> R` is integrable. -/
+theorem integrable_prod_fejer {H : ℝ} (hH : 0 < H) (r : ℕ) :
+    Integrable (fun h : Fin r → ℝ => ∏ l : Fin r, fejer H (h l)) := by
+  rw [volume_pi]
+  exact Integrable.fintype_prod fun _ => integrable_fejer hH
+
+open MeasureTheory in
+/-- **The product Fejer weight has total mass one**, so the shift averages are genuine convex
+means.  Each factor has mass one by `Auto.integral_fejer`, and Fubini in `r` variables is
+`MeasureTheory.integral_fintype_prod_volume_eq_pow`. -/
+theorem integral_prod_fejer {H : ℝ} (hH : 0 < H) (r : ℕ) :
+    (∫ h : Fin r → ℝ, ∏ l : Fin r, fejer H (h l)) = 1 := by
+  rw [integral_fintype_prod_volume_eq_pow (fejer H), integral_fejer hH, one_pow]
+
+open MeasureTheory in
+/-- **Averaging a pointwise Cauchy--Schwarz recursion against a probability density.**  If
+`A^2 <= 2 S + delta` holds at every point, then the same holds for the weighted mean of `A`, with
+the *square* on the outside: `(∫ w A)^2 <= 2 ∫ w S + delta`.  Jensen supplies the passage from the
+square of the mean to the mean of the square. -/
+theorem sq_weighted_mean_le_of_pointwise {α : Type*} [MeasurableSpace α] {μ : Measure α}
+    {w A S : α → ℝ} {δ : ℝ}
+    (hw0 : ∀ x, 0 ≤ w x) (hw1 : (∫ x, w x ∂μ) = 1) (hwi : Integrable w μ)
+    (hwA : Integrable (fun x => w x * A x) μ)
+    (hwA2 : Integrable (fun x => w x * A x ^ 2) μ)
+    (hwS : Integrable (fun x => w x * S x) μ)
+    (hptwise : ∀ x, A x ^ 2 ≤ 2 * S x + δ) :
+    (∫ x, w x * A x ∂μ) ^ 2 ≤ 2 * (∫ x, w x * S x ∂μ) + δ := by
+  have hjen := sq_integral_weight_le hw0 hw1 hwi hwA hwA2
+  have hmaj : Integrable (fun x => 2 * (w x * S x) + δ * w x) μ :=
+    (hwS.const_mul 2).add (hwi.const_mul δ)
+  have hle : (∫ x, w x * A x ^ 2 ∂μ) ≤ ∫ x, (2 * (w x * S x) + δ * w x) ∂μ := by
+    refine integral_mono hwA2 hmaj fun x => ?_
+    calc w x * A x ^ 2 ≤ w x * (2 * S x + δ) :=
+          mul_le_mul_of_nonneg_left (hptwise x) (hw0 x)
+      _ = 2 * (w x * S x) + δ * w x := by ring
+  have hval : (∫ x, (2 * (w x * S x) + δ * w x) ∂μ) = 2 * (∫ x, w x * S x ∂μ) + δ := by
+    rw [integral_add (hwS.const_mul 2) (hwi.const_mul δ), integral_const_mul, integral_const_mul,
+      hw1, mul_one]
+  linarith [hjen, hle, hval]
+
+open MeasureTheory in
+/-- **The same for `Auto.phaseMean`**: the product Fejer weight qualifies as the density, by
+`Auto.prod_fejer_nonneg`, `Auto.integral_prod_fejer` and `Auto.integrable_prod_fejer`.  This turns
+a bound holding at every fixed shift into a bound on the mean. -/
+theorem sq_phaseMean_le_of_pointwise (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) {V N H : ℝ} (hH : 0 < H)
+    {S : (Fin r → ℝ) → ℝ} {δ : ℝ}
+    (hwA : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖)
+    (hwA2 : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖ ^ 2)
+    (hwS : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l)) * S h)
+    (hptwise : ∀ h : Fin r → ℝ,
+      ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+          * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖ ^ 2
+        ≤ 2 * S h + δ) :
+    (phaseMean r m f P p j g V N H) ^ 2
+      ≤ 2 * (∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l)) * S h) + δ := by
+  rw [phaseMean]
+  exact sq_weighted_mean_le_of_pointwise (fun h => prod_fejer_nonneg hH h)
+    (integral_prod_fejer hH r) (integrable_prod_fejer hH r) hwA hwA2 hwS hptwise
+
+open MeasureTheory in
+/-- **Recombining the level-`(r+1)` mean.**  The mean over the old shifts of the Fejer average over
+the new one is the mean over all `r+1` shifts at once.  The old weight is pulled inside the new
+average, the two integrals are swapped, and `Auto.integral_cons_split_real` together with
+`Auto.prod_fejer_cons` reassembles the product weight. -/
+theorem integral_prod_fejer_mul_inner_eq (r : ℕ) {H : ℝ} {B : (Fin (r + 1) → ℝ) → ℝ}
+    (hswap : (∫ h : Fin r → ℝ, ∫ u : ℝ,
+        (∏ l : Fin r, fejer H (h l)) * (fejer H u * B (Fin.cons u h)))
+      = ∫ u : ℝ, ∫ h : Fin r → ℝ,
+        (∏ l : Fin r, fejer H (h l)) * (fejer H u * B (Fin.cons u h)))
+    (hint : Integrable fun q : ℝ × (Fin r → ℝ) =>
+      (∏ l : Fin (r + 1), fejer H ((Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) l))
+        * B (Fin.cons q.1 q.2)) :
+    (∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+        * ∫ u : ℝ, fejer H u * B (Fin.cons u h))
+      = ∫ k : Fin (r + 1) → ℝ, (∏ l : Fin (r + 1), fejer H (k l)) * B k := by
+  have hpull : ∀ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+      * (∫ u : ℝ, fejer H u * B (Fin.cons u h))
+      = ∫ u : ℝ, (∏ l : Fin r, fejer H (h l)) * (fejer H u * B (Fin.cons u h)) := by
+    intro h
+    rw [integral_const_mul]
+  have hinner : ∀ u : ℝ, (∫ h : Fin r → ℝ,
+        (∏ l : Fin r, fejer H (h l)) * (fejer H u * B (Fin.cons u h)))
+      = ∫ h : Fin r → ℝ,
+        (∏ l : Fin (r + 1), fejer H ((Fin.cons u h : Fin (r + 1) → ℝ) l))
+          * B (Fin.cons u h) := by
+    intro u
+    have hpt : ∀ h : Fin r → ℝ,
+        (∏ l : Fin r, fejer H (h l)) * (fejer H u * B (Fin.cons u h))
+        = (∏ l : Fin (r + 1), fejer H ((Fin.cons u h : Fin (r + 1) → ℝ) l))
+            * B (Fin.cons u h) := by
+      intro h
+      rw [prod_fejer_cons u h]
+      ring
+    exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpull), hswap,
+    integral_cons_split_real (G := fun k : Fin (r + 1) → ℝ =>
+      (∏ l : Fin (r + 1), fejer H (k l)) * B k) hint]
+  exact integral_congr_ae (Filter.Eventually.of_forall hinner)
+
+open MeasureTheory in
+/-- **The level-`r` amplitude at a fixed shift.**  `Auto.phaseMean` is its Fejer average.  Naming it
+keeps the recursion's statement readable; it unfolds to the expression the earlier lemmas use. -/
+noncomputable def phaseAmp (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ) (h : Fin r → ℝ) : ℝ :=
+  ‖(V⁻¹ : ℝ) • ∫ x : E3, g x
+      * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t)‖
+
+open MeasureTheory in
+/-- The mean is the Fejer average of the amplitude, by definition. -/
+theorem phaseMean_eq_integral_amp (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N H : ℝ) :
+    phaseMean r m f P p j g V N H
+      = ∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+          * phaseAmp r m f P p j g V N h := rfl
+
+open MeasureTheory in
+/-- **The recursion.**  A bound holding at every fixed shift, of the form the signed van der Corput
+step produces, becomes the Cauchy--Schwarz recursion between consecutive means:
+`M r ^ 2 <= 2 * M (r+1) + 2H/N`.  Divided by two this is exactly the hypothesis `Auto.csLoss`
+consumes, at `delta = H/N`.  The block at level `r+1` is the enlarged box's indicator, reinstated
+by `Auto.integral_window_eq_indicator`. -/
+theorem phaseMean_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) {C K N H V : ℝ} (hH : 0 < H)
+    (hwA : Integrable fun h : Fin r → ℝ =>
+      (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h)
+    (hwA2 : Integrable fun h : Fin r → ℝ =>
+      (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h ^ 2)
+    (hwS : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h))
+    (hptwise : ∀ h : Fin r → ℝ, phaseAmp r m f P p j g V N h ^ 2
+      ≤ 2 * (∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)) + 2 * H / N)
+    (hswap : (∫ h : Fin r → ℝ, ∫ u : ℝ, (∏ l : Fin r, fejer H (h l))
+        * (fejer H u * phaseAmp (r + 1) m f P p j
+            ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)))
+      = ∫ u : ℝ, ∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+        * (fejer H u * phaseAmp (r + 1) m f P p j
+            ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)))
+    (hint : Integrable fun q : ℝ × (Fin r → ℝ) =>
+      (∏ l : Fin (r + 1), fejer H ((Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) l))
+        * phaseAmp (r + 1) m f P p j
+            ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons q.1 q.2)) :
+    (phaseMean r m f P p j g V N H) ^ 2
+      ≤ 2 * phaseMean (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N H + 2 * H / N := by
+  have h1 : (phaseMean r m f P p j g V N H) ^ 2
+      ≤ 2 * (∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+          * ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j
+              ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h))
+        + 2 * H / N :=
+    sq_phaseMean_le_of_pointwise r m f P p j g hH hwA hwA2 hwS hptwise
+  rw [integral_prod_fejer_mul_inner_eq r
+    (B := phaseAmp (r + 1) m f P p j
+      ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N) hswap hint] at h1
+  rw [phaseMean_eq_integral_amp (r + 1)]
+  exact h1
+
+open MeasureTheory in
+/-- **A weighted average of real parts, bounded termwise.**  Pushing `Complex.re` through the
+average, pulling the two scalars in, and comparing termwise. -/
+theorem integral_weight_re_le_of_bound {V N : ℝ} {w : ℝ → ℝ} (hw0 : ∀ u, 0 ≤ w u)
+    {Z : ℝ → ℂ} {Amp : ℝ → ℝ}
+    (hbound : ∀ u, V⁻¹ * N⁻¹ * (Z u).re ≤ Amp u)
+    (hcre : Integrable fun u => w u • Z u)
+    (hmono1 : Integrable fun u => V⁻¹ * N⁻¹ * (w u * (Z u).re))
+    (hmono2 : Integrable fun u => w u * Amp u) :
+    V⁻¹ * N⁻¹ * (∫ u : ℝ, w u • Z u).re ≤ ∫ u : ℝ, w u * Amp u := by
+  have hpt : ∀ u : ℝ, (w u • Z u).re = w u * (Z u).re := by
+    intro u
+    simp
+  have hre : (∫ u : ℝ, w u • Z u).re = ∫ u : ℝ, w u * (Z u).re := by
+    rw [← integral_re_of_integrable hcre]
+    exact integral_congr_ae (Filter.Eventually.of_forall hpt)
+  rw [hre, ← integral_const_mul]
+  refine integral_mono hmono1 hmono2 fun u => ?_
+  calc V⁻¹ * N⁻¹ * (w u * (Z u).re)
+      = w u * (V⁻¹ * N⁻¹ * (Z u).re) := by ring
+    _ ≤ w u * Amp u := mul_le_mul_of_nonneg_left (hbound u) (hw0 u)
+
+open MeasureTheory in
+/-- **Feeding the step into the recursion.**  The conclusion of `Auto.phaseStepIter_signed` at a
+fixed shift, rewritten into the pointwise hypothesis `Auto.phaseMean_step` consumes: the Fejer
+average over the new shift of the level-`(r+1)` amplitude, with the enlarged box's indicator as its
+block.  `Auto.step_rhs_le_phaseMean_integrand` supplies the termwise bound. -/
+theorem phaseAmp_sq_le_of_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) {C K N H V : ℝ}
+    (hH : 0 < H) (hV : 0 < V) (hN : 0 < N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (h : Fin r → ℝ)
+    (hstep : phaseAmp r m f P p j g V N h ^ 2
+      ≤ 2 * (V⁻¹ * N⁻¹ * (∫ u : ℝ, fejer H u • ∫ t in (0 : ℝ)..(0 + N),
+          ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re) + 2 * H / N)
+    (hfub : ∀ u : ℝ, (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+          phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t)
+        = ∫ x : E3, ∫ t in (0 : ℝ)..(0 + N),
+          phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t)
+    (hcre : Integrable fun u : ℝ => fejer H u • ∫ t in (0 : ℝ)..(0 + N),
+      ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t)
+    (hmono1 : Integrable fun u : ℝ => V⁻¹ * N⁻¹ * (fejer H u
+      * (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+          phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re))
+    (hmono2 : Integrable fun u : ℝ => fejer H u * phaseAmp (r + 1) m f P p j
+      ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)) :
+    phaseAmp r m f P p j g V N h ^ 2
+      ≤ 2 * (∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)) + 2 * H / N := by
+  have hbound : ∀ u : ℝ, V⁻¹ * N⁻¹ * (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+        phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re
+      ≤ phaseAmp (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h) := fun u =>
+    step_rhs_le_phaseMean_integrand (r + 1) m f P p j hV hN hN1 hK hm hsupp hbd
+      (Fin.cons u h) (hfub u)
+  have hbr := integral_weight_re_le_of_bound (V := V) (N := N) (w := fejer H)
+    (fun u => fejer_nonneg hH u) hbound hcre hmono1 hmono2
+  linarith [hstep, hbr]
+
+open MeasureTheory in
+/-- **The mean is at most one** when the amplitude is, the Fejer weight being a probability
+density. -/
+theorem phaseMean_le_one {H : ℝ} (hH : 0 < H) (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ)
+    (hamp : ∀ h : Fin r → ℝ, phaseAmp r m f P p j g V N h ≤ 1)
+    (hint : Integrable fun h : Fin r → ℝ =>
+      (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h) :
+    phaseMean r m f P p j g V N H ≤ 1 := by
+  have hone : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l)) * 1 := by
+    simpa using integrable_prod_fejer hH r
+  have hmono : (∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+        * phaseAmp r m f P p j g V N h)
+      ≤ ∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l)) * 1 :=
+    integral_mono hint hone fun h =>
+      mul_le_mul_of_nonneg_left (hamp h) (prod_fejer_nonneg hH h)
+  have hval : (∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l)) * 1) = 1 := by
+    simpa using integral_prod_fejer hH r
+  rw [phaseMean_eq_integral_amp]
+  linarith [hmono, hval]
+
+/-- **The Cauchy--Schwarz chain at four steps.**  `Auto.csLoss` specialized to `T = 4` and
+`delta = H/N`, in the form `Auto.phaseMean_step` produces its recursion: the step gives
+`M r ^ 2 <= 2 M (r+1) + 2H/N`, which halved is `csPhi (M r) <= M (r+1) + H/N`. -/
+theorem csLoss_four {M : ℕ → ℝ} {H N Q : ℝ} (hH : 0 < H) (hN : 0 < N)
+    (hM0 : ∀ r, 0 ≤ M r) (hM1 : ∀ r, M r ≤ 1)
+    (hrec : ∀ r, r < 4 → M r ^ 2 ≤ 2 * M (r + 1) + 2 * H / N)
+    (hlast : M 4 ≤ Q) :
+    M 0 ^ (2 ^ 4) ≤ 2 ^ (2 ^ 4) / 2 * (Q + ((4 : ℕ) : ℝ) * (H / N)) := by
+  refine csLoss (T := 4) (δ := H / N) (div_nonneg hH.le hN.le) hM0 hM1 (fun r hr => ?_) hlast
+  have h := hrec r hr
+  have hd : 2 * H / N = 2 * (H / N) := by ring
+  rw [hd] at h
+  rw [csPhi]
+  linarith [h]
+
+/-! ### The chain as a concrete sequence
+
+`Auto.csLoss` consumes a sequence `M : N -> R`.  The means at different levels have blocks of
+different kinds -- the original spatial factor `f 0` at level zero, the enlarged box's indicator at
+every later level, since the step removes its block and the indicator is what is put back -- so the
+sequence carries the block as a function of the level. -/
+
+/-- The block of the chain: `f 0` at level zero, the enlarged box's indicator afterwards. -/
+noncomputable def phaseBlock (f : ℕ → E3 → ℂ) (C K N : ℝ) (r : ℕ) : E3 → ℂ :=
+  if r = 0 then f 0 else (petBox (C + K) N).indicator fun _ => (1 : ℂ)
+
+open MeasureTheory in
+/-- The chain's sequence of means. -/
+noncomputable def phaseMeanSeq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (C K V N H : ℝ) (r : ℕ) : ℝ :=
+  phaseMean r m f P p j (phaseBlock f C K N r) V N H
+
+theorem phaseBlock_zero (f : ℕ → E3 → ℂ) (C K N : ℝ) : phaseBlock f C K N 0 = f 0 := by
+  rw [phaseBlock, if_pos rfl]
+
+theorem phaseBlock_succ (f : ℕ → E3 → ℂ) (C K N : ℝ) (r : ℕ) :
+    phaseBlock f C K N (r + 1) = (petBox (C + K) N).indicator fun _ => (1 : ℂ) := by
+  rw [phaseBlock, if_neg (Nat.succ_ne_zero r)]
+
+open MeasureTheory in
+theorem phaseMeanSeq_zero (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (C K V N H : ℝ) :
+    phaseMeanSeq m f P p j C K V N H 0 = phaseMean 0 m f P p j (f 0) V N H := by
+  rw [phaseMeanSeq, phaseBlock_zero]
+
+open MeasureTheory in
+theorem phaseMeanSeq_succ (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (C K V N H : ℝ) (r : ℕ) :
+    phaseMeanSeq m f P p j C K V N H (r + 1)
+      = phaseMean (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N H := by
+  rw [phaseMeanSeq, phaseBlock_succ]
+
+open MeasureTheory in
+theorem phaseMeanSeq_nonneg {H : ℝ} (hH : 0 < H) (m : ℕ) (f : ℕ → E3 → ℂ)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (C K V N : ℝ) (r : ℕ) :
+    0 ≤ phaseMeanSeq m f P p j C K V N H r :=
+  phaseMean_nonneg hH r m f P p j _ V N
+
+open MeasureTheory in
+/-- **The chain, run.**  Given the recursion at each of the four levels, the sequence bounds, and a
+terminal bound `Q` on the level-four mean, the level-zero mean -- which is the correlation the
+proposition's hypothesis bounds below -- obeys the power bound `Auto.csLoss` delivers. -/
+theorem phaseMean_chain (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N H V Q : ℝ} (hH : 0 < H) (hN : 0 < N)
+    (hle1 : ∀ r, phaseMeanSeq m f P p j C K V N H r ≤ 1)
+    (hrec : ∀ r, r < 4 → phaseMeanSeq m f P p j C K V N H r ^ 2
+      ≤ 2 * phaseMeanSeq m f P p j C K V N H (r + 1) + 2 * H / N)
+    (hlast : phaseMeanSeq m f P p j C K V N H 4 ≤ Q) :
+    (phaseMean 0 m f P p j (f 0) V N H) ^ (2 ^ 4)
+      ≤ 2 ^ (2 ^ 4) / 2 * (Q + ((4 : ℕ) : ℝ) * (H / N)) := by
+  have h := csLoss_four (M := phaseMeanSeq m f P p j C K V N H) hH hN
+    (fun r => phaseMeanSeq_nonneg hH m f P p j C K V N r) hle1 hrec hlast
+  rwa [phaseMeanSeq_zero] at h
+
+open MeasureTheory in
+/-- **The chain's recursion at one level**, from `Auto.phaseMean_step` with the level's own block
+supplied.  At level zero that block is `f 0`; afterwards it is the enlarged box's indicator, which
+is exactly what the step puts back. -/
+theorem phaseMeanSeq_rec_of_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N H V : ℝ} (hH : 0 < H)
+    (hwA : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * phaseAmp r m f P p j (phaseBlock f C K N r) V N h)
+    (hwA2 : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * phaseAmp r m f P p j (phaseBlock f C K N r) V N h ^ 2)
+    (hwS : Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h))
+    (hptwise : ∀ h : Fin r → ℝ,
+      phaseAmp r m f P p j (phaseBlock f C K N r) V N h ^ 2
+      ≤ 2 * (∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j
+          ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)) + 2 * H / N)
+    (hswap : (∫ h : Fin r → ℝ, ∫ u : ℝ, (∏ l : Fin r, fejer H (h l))
+        * (fejer H u * phaseAmp (r + 1) m f P p j
+            ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)))
+      = ∫ u : ℝ, ∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+        * (fejer H u * phaseAmp (r + 1) m f P p j
+            ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons u h)))
+    (hint : Integrable fun q : ℝ × (Fin r → ℝ) =>
+      (∏ l : Fin (r + 1), fejer H ((Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) l))
+        * phaseAmp (r + 1) m f P p j
+            ((petBox (C + K) N).indicator fun _ => (1 : ℂ)) V N (Fin.cons q.1 q.2)) :
+    phaseMeanSeq m f P p j C K V N H r ^ 2
+      ≤ 2 * phaseMeanSeq m f P p j C K V N H (r + 1) + 2 * H / N := by
+  rw [phaseMeanSeq_succ, phaseMeanSeq]
+  exact phaseMean_step r m f P p j (phaseBlock f C K N r) hH hwA hwA2 hwS hptwise hswap hint
+
+open MeasureTheory in
+/-- **At level four the phase is gone from the amplitude.**  By
+`Auto.phaseProdIter_four_eq`: the fourth finite difference of a cubic phase vanishes, so what
+remains is the raw parity cube of the shifted inputs -- the object `patch:uniformize` consumes. -/
+theorem phaseAmp_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ)
+    (hp : ∀ x : E3, (p x).natDegree ≤ 3) (h : Fin 4 → ℝ) :
+    phaseAmp 4 m f P p j g V N h
+      = ‖(V⁻¹ : ℝ) • ∫ x : E3, g x * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N),
+          ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+            (∏ i ∈ Finset.Icc 1 m,
+              f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i))))‖ := by
+  have hfun : ∀ x : E3, (∫ t in (0 : ℝ)..(0 + N), phaseProdIter 4 m f P p j x h t)
+      = ∫ t in (0 : ℝ)..(0 + N), ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+          (∏ i ∈ Finset.Icc 1 m,
+            f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i))) := fun x =>
+    intervalIntegral.integral_congr fun t _ =>
+      phaseProdIter_four_eq m f P p j x (hp x) h t
+  have hptx : ∀ x : E3, g x
+        * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N), phaseProdIter 4 m f P p j x h t)
+      = g x * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N),
+          ∏ ω : Fin 4 → Bool, conjPar (numFalse ω)
+            (∏ i ∈ Finset.Icc 1 m,
+              f i (x - ((P i).eval (t + cubeShift h ω)) • basisVec (j i)))) := by
+    intro x
+    rw [hfun x]
+  rw [phaseAmp, integral_congr_ae (Filter.Eventually.of_forall hptx)]
+
+open MeasureTheory in
+/-- **The amplitude is bounded by the block's `L^1` mass over the volume.**  The real-scalar twin of
+`Auto.norm_phaseState_le`: the iterate is one-bounded, so the window average is, and what is left is
+the block. -/
+theorem phaseAmp_le (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {g : E3 → ℂ}
+    {V N : ℝ} (hV : 0 < V) (hN : 0 < N) (h : Fin r → ℝ) (hgi : Integrable g) :
+    phaseAmp r m f P p j g V N h ≤ V⁻¹ * ∫ x : E3, ‖g x‖ := by
+  classical
+  have hle : (0 : ℝ) ≤ N := hN.le
+  have hNinv : (0 : ℝ) ≤ N⁻¹ := inv_nonneg.mpr hle
+  have hVinv : (0 : ℝ) ≤ V⁻¹ := inv_nonneg.mpr hV.le
+  have hptw : ∀ x : E3, ‖g x * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N),
+      phaseProdIter r m f P p j x h t)‖ ≤ ‖g x‖ := by
+    intro x
+    rw [norm_mul, norm_smul, Real.norm_eq_abs, abs_of_nonneg hNinv]
+    have hbd : ‖∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t‖ ≤ N := by
+      rw [zero_add, intervalIntegral.integral_of_le hle]
+      have hfin : (volume : Measure ℝ) (Set.Ioc (0 : ℝ) N) < ⊤ := by
+        rw [Real.volume_Ioc]
+        exact ENNReal.ofReal_lt_top
+      have hvol : (volume : Measure ℝ).real (Set.Ioc (0 : ℝ) N) = N := by
+        rw [MeasureTheory.measureReal_def, Real.volume_Ioc, sub_zero, ENNReal.toReal_ofReal hle]
+      have hb := norm_setIntegral_le_of_norm_le_const (C := 1)
+        (f := fun t : ℝ => phaseProdIter r m f P p j x h t) hfin
+        (fun t _ => norm_phaseProdIter_le_one r m hf P p j x h t)
+      rw [hvol, one_mul] at hb
+      exact hb
+    calc ‖g x‖ * (N⁻¹ * ‖∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x h t‖)
+        ≤ ‖g x‖ * (N⁻¹ * N) :=
+          mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hbd hNinv) (norm_nonneg _)
+      _ = ‖g x‖ := by
+          rw [inv_mul_cancel₀ hN.ne', mul_one]
+  rw [phaseAmp, norm_smul, Real.norm_eq_abs, abs_of_nonneg hVinv]
+  refine mul_le_mul_of_nonneg_left ?_ hVinv
+  refine (norm_integral_le_integral_norm _).trans ?_
+  exact integral_mono_of_nonneg (Filter.Eventually.of_forall fun x => norm_nonneg _)
+    hgi.norm (Filter.Eventually.of_forall hptw)
+
+open MeasureTheory in
+/-- **The amplitude is at most one** when the block's `L^1` mass is at most the volume.  For the
+enlarged box's indicator with `V` the box's volume this holds with equality, which is why that is
+the `V` the later steps use. -/
+theorem phaseAmp_le_one (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {g : E3 → ℂ}
+    {V N : ℝ} (hV : 0 < V) (hN : 0 < N) (h : Fin r → ℝ) (hgi : Integrable g)
+    (hgV : (∫ x : E3, ‖g x‖) ≤ V) :
+    phaseAmp r m f P p j g V N h ≤ 1 := by
+  refine (phaseAmp_le r m hf P p j hV hN h hgi).trans ?_
+  rw [← inv_mul_cancel₀ hV.ne']
+  exact mul_le_mul_of_nonneg_left hgV (inv_nonneg.mpr hV.le)
+
+/-! ### Joint measurability in the shift
+
+The integrability conditions the chain carries are all about functions of the *shift* -- the mean
+integrates over `Fin r -> R` -- so they need the iterate to be measurable in the shift as well as in
+the point and the parameter.  `Auto.measurable_uncurry_phaseProdIter` gives the latter at a fixed
+shift; this section adds the shift itself. -/
+
+theorem measurable_cubeShift {r : ℕ} (ω : Fin r → Bool) :
+    Measurable fun h : Fin r → ℝ => cubeShift h ω := by
+  show Measurable fun h : Fin r → ℝ => ∑ i : Fin r, if ω i then h i else 0
+  refine Finset.measurable_sum _ fun i _ => ?_
+  split_ifs with hb
+  · exact measurable_pi_apply i
+  · exact measurable_const
+
+open MeasureTheory in
+/-- **The iterate is measurable in point, shift and parameter jointly.** -/
+theorem measurable_phaseProdIter_shift (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t)) :
+    Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+      phaseProdIter r m f P p j q.1.1 q.1.2 q.2 := by
+  show Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+    ∏ ω : Fin r → Bool, conjPar (numFalse ω)
+      (phaseProd m f P p j q.1.1 (q.2 + cubeShift q.1.2 ω))
+  refine Finset.measurable_prod _ fun ω _ => ?_
+  -- as in `Auto.measurable_uncurry_phaseProdIter`, the composition is given its own `∘`-typed
+  -- `have` and coerced afterwards; asking `Measurable.comp` to land on the applied form directly
+  -- sends the unifier into `phaseProd` and does not terminate.
+  have hmap : Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+      ((q.1.1, q.2 + cubeShift q.1.2 ω) : E3 × ℝ) :=
+    (measurable_fst.comp measurable_fst).prodMk
+      (measurable_snd.add ((measurable_cubeShift ω).comp (measurable_snd.comp measurable_fst)))
+  have hcomp0 : Measurable ((Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t)
+      ∘ fun q : (E3 × (Fin r → ℝ)) × ℝ => ((q.1.1, q.2 + cubeShift q.1.2 ω) : E3 × ℝ)) :=
+    hFm.comp hmap
+  have hcomp : Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+      phaseProd m f P p j q.1.1 (q.2 + cubeShift q.1.2 ω) := hcomp0
+  have hfin : Measurable (conjPar (numFalse ω) ∘
+      fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+        phaseProd m f P p j q.1.1 (q.2 + cubeShift q.1.2 ω)) :=
+    (measurable_conjPar (numFalse ω)).comp hcomp
+  exact hfin
+
+open MeasureTheory in
+/-- **The window average is strongly measurable in point and shift jointly.**  Integrating the
+parameter out of `Auto.measurable_phaseProdIter_shift`, by
+`MeasureTheory.StronglyMeasurable.integral_prod_right'` -- the same route the `locUnifPow`
+development takes at `Auto.stronglyMeasurable_innerFejer` (line 20067). -/
+theorem stronglyMeasurable_windowAvg (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {N : ℝ} (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t)) :
+    StronglyMeasurable fun q : E3 × (Fin r → ℝ) =>
+      ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j q.1 q.2 t := by
+  have hjoint : StronglyMeasurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+      phaseProdIter r m f P p j q.1.1 q.1.2 q.2 :=
+    (measurable_phaseProdIter_shift r m hFm).stronglyMeasurable
+  have hres := hjoint.integral_prod_right'
+    (ν := (volume : Measure ℝ).restrict (Set.Ioc 0 (0 + N)))
+  have hfun : (fun q : E3 × (Fin r → ℝ) =>
+        ∫ t, phaseProdIter r m f P p j q.1 q.2 t
+          ∂((volume : Measure ℝ).restrict (Set.Ioc 0 (0 + N))))
+      = fun q : E3 × (Fin r → ℝ) =>
+        ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j q.1 q.2 t := by
+    funext q
+    rw [intervalIntegral.integral_of_le hN]
+  rw [← hfun]
+  exact hres
+
+open MeasureTheory in
+/-- **The amplitude is strongly measurable in the shift.**  This is the ingredient every one of the
+chain's integrability hypotheses needs: the mean integrates over the shift, so the amplitude must be
+measurable there. -/
+theorem stronglyMeasurable_phaseAmp (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g) :
+    StronglyMeasurable fun h : Fin r → ℝ => phaseAmp r m f P p j g V N h := by
+  have hW := stronglyMeasurable_windowAvg r m hN hFm
+  have hjoint : StronglyMeasurable fun q : (Fin r → ℝ) × E3 =>
+      g q.2 * ((N⁻¹ : ℝ) • ∫ t in (0 : ℝ)..(0 + N),
+        phaseProdIter r m f P p j q.2 q.1 t) := by
+    refine StronglyMeasurable.mul (hg.comp_measurable measurable_snd) ?_
+    exact ((hW.measurable.comp
+      (measurable_snd.prodMk measurable_fst)).stronglyMeasurable).const_smul (N⁻¹ : ℝ)
+  have hint := hjoint.integral_prod_right' (ν := (volume : Measure E3))
+  exact (hint.const_smul (V⁻¹ : ℝ)).norm
+
+/-- The amplitude is a norm, hence nonnegative. -/
+theorem phaseAmp_nonneg (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
+    (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ) (h : Fin r → ℝ) :
+    0 ≤ phaseAmp r m f P p j g V N h := norm_nonneg _
+
+open MeasureTheory in
+/-- **The weighted amplitude is integrable**, being a one-bounded measurable function against the
+integrable Fejer weight.  This discharges the `hwA` hypothesis of `Auto.phaseMean_step` and the
+`hint` hypothesis of `Auto.phaseMean_le_one`. -/
+theorem integrable_prod_fejer_mul_phaseAmp {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ h : Fin r → ℝ, phaseAmp r m f P p j g V N h ≤ 1) :
+    Integrable fun h : Fin r → ℝ =>
+      (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h := by
+  refine Integrable.mono' (integrable_prod_fejer hH r)
+    (((integrable_prod_fejer hH r).aestronglyMeasurable).mul
+      ((stronglyMeasurable_phaseAmp r m hN hFm hg).aestronglyMeasurable))
+    (Filter.Eventually.of_forall fun h => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg
+    (mul_nonneg (prod_fejer_nonneg hH h) (phaseAmp_nonneg r m f P p j g V N h))]
+  calc (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h
+      ≤ (∏ l : Fin r, fejer H (h l)) * 1 :=
+        mul_le_mul_of_nonneg_left (hamp h) (prod_fejer_nonneg hH h)
+    _ = ∏ l : Fin r, fejer H (h l) := mul_one _
+
+open MeasureTheory in
+/-- The same for the square, which is what Jensen consumes.  This discharges the `hwA2` hypothesis
+of `Auto.phaseMean_step`. -/
+theorem integrable_prod_fejer_mul_phaseAmp_sq {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ h : Fin r → ℝ, phaseAmp r m f P p j g V N h ≤ 1) :
+    Integrable fun h : Fin r → ℝ =>
+      (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h ^ 2 := by
+  refine Integrable.mono' (integrable_prod_fejer hH r)
+    (((integrable_prod_fejer hH r).aestronglyMeasurable).mul
+      (((stronglyMeasurable_phaseAmp r m hN hFm hg).pow 2).aestronglyMeasurable))
+    (Filter.Eventually.of_forall fun h => ?_)
+  have hsq : phaseAmp r m f P p j g V N h ^ 2 ≤ 1 :=
+    pow_le_one₀ (phaseAmp_nonneg r m f P p j g V N h) (hamp h)
+  have hsq0 : 0 ≤ phaseAmp r m f P p j g V N h ^ 2 := by positivity
+  rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (prod_fejer_nonneg hH h) hsq0)]
+  calc (∏ l : Fin r, fejer H (h l)) * phaseAmp r m f P p j g V N h ^ 2
+      ≤ (∏ l : Fin r, fejer H (h l)) * 1 :=
+        mul_le_mul_of_nonneg_left hsq (prod_fejer_nonneg hH h)
+    _ = ∏ l : Fin r, fejer H (h l) := mul_one _
+
+theorem measurable_cons_left {r : ℕ} (h : Fin r → ℝ) :
+    Measurable fun u : ℝ => (Fin.cons u h : Fin (r + 1) → ℝ) := by
+  refine measurable_pi_lambda _ fun i => ?_
+  induction i using Fin.cases with
+  | zero =>
+      simp only [Fin.cons_zero]
+      exact measurable_id
+  | succ k =>
+      simp only [Fin.cons_succ]
+      exact measurable_const
+
+theorem measurable_cons_pair {r : ℕ} :
+    Measurable fun q : (Fin r → ℝ) × ℝ => (Fin.cons q.2 q.1 : Fin (r + 1) → ℝ) := by
+  refine measurable_pi_lambda _ fun i => ?_
+  induction i using Fin.cases with
+  | zero =>
+      simp only [Fin.cons_zero]
+      exact measurable_snd
+  | succ k =>
+      simp only [Fin.cons_succ]
+      exact (measurable_pi_apply k).comp measurable_fst
+
+open MeasureTheory in
+/-- The Fejer-weighted amplitude over the *new* shift is integrable.  This discharges the `hmono2`
+hypothesis of `Auto.phaseAmp_sq_le_of_step`. -/
+theorem integrable_fejer_mul_phaseAmp_cons {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ k : Fin (r + 1) → ℝ, phaseAmp (r + 1) m f P p j g V N k ≤ 1)
+    (h : Fin r → ℝ) :
+    Integrable fun u : ℝ =>
+      fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h) := by
+  refine Integrable.mono' (integrable_fejer hH)
+    (((integrable_fejer hH).aestronglyMeasurable).mul
+      (((stronglyMeasurable_phaseAmp (r + 1) m hN hFm hg).comp_measurable
+        (measurable_cons_left h)).aestronglyMeasurable))
+    (Filter.Eventually.of_forall fun u => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (fejer_nonneg hH u)
+    (phaseAmp_nonneg (r + 1) m f P p j g V N _))]
+  calc fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h)
+      ≤ fejer H u * 1 := mul_le_mul_of_nonneg_left (hamp _) (fejer_nonneg hH u)
+    _ = fejer H u := mul_one _
+
+open MeasureTheory in
+/-- The inner Fejer average over the new shift is strongly measurable in the old ones. -/
+theorem stronglyMeasurable_innerAvg {H : ℝ} (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g) :
+    StronglyMeasurable fun h : Fin r → ℝ =>
+      ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h) := by
+  have hjoint : StronglyMeasurable fun q : (Fin r → ℝ) × ℝ =>
+      fejer H q.2 * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.2 q.1) := by
+    refine StronglyMeasurable.mul
+      ((continuous_fejer.comp continuous_snd).stronglyMeasurable) ?_
+    exact (stronglyMeasurable_phaseAmp (r + 1) m hN hFm hg).comp_measurable measurable_cons_pair
+  exact hjoint.integral_prod_right' (ν := (volume : Measure ℝ))
+
+open MeasureTheory in
+theorem innerAvg_nonneg {H : ℝ} (hH : 0 < H) (r m : ℕ) (f : ℕ → E3 → ℂ)
+    (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ)
+    (h : Fin r → ℝ) :
+    0 ≤ ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h) :=
+  integral_nonneg fun u =>
+    mul_nonneg (fejer_nonneg hH u) (phaseAmp_nonneg (r + 1) m f P p j g V N _)
+
+open MeasureTheory in
+theorem innerAvg_le_one {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ k : Fin (r + 1) → ℝ, phaseAmp (r + 1) m f P p j g V N k ≤ 1)
+    (h : Fin r → ℝ) :
+    (∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h)) ≤ 1 := by
+  have hone : Integrable fun u : ℝ => fejer H u * 1 := by
+    simpa using integrable_fejer hH
+  have hmono : (∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h))
+      ≤ ∫ u : ℝ, fejer H u * 1 :=
+    integral_mono (integrable_fejer_mul_phaseAmp_cons hH r m hN hFm hg hamp h) hone
+      fun u => mul_le_mul_of_nonneg_left (hamp _) (fejer_nonneg hH u)
+  have hval : (∫ u : ℝ, fejer H u * 1) = 1 := by
+    simpa using integral_fejer hH
+  linarith [hmono, hval]
+
+open MeasureTheory in
+/-- The old-shift weighting of the inner average is integrable.  This discharges the `hwS`
+hypothesis of `Auto.phaseMean_step`. -/
+theorem integrable_prod_fejer_mul_innerAvg {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ k : Fin (r + 1) → ℝ, phaseAmp (r + 1) m f P p j g V N k ≤ 1) :
+    Integrable fun h : Fin r → ℝ => (∏ l : Fin r, fejer H (h l))
+      * ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h) := by
+  refine Integrable.mono' (integrable_prod_fejer hH r)
+    (((integrable_prod_fejer hH r).aestronglyMeasurable).mul
+      ((stronglyMeasurable_innerAvg r m hN hFm hg).aestronglyMeasurable))
+    (Filter.Eventually.of_forall fun h => ?_)
+  rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (prod_fejer_nonneg hH h)
+    (innerAvg_nonneg hH r m f P p j g V N h))]
+  calc (∏ l : Fin r, fejer H (h l))
+        * ∫ u : ℝ, fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h)
+      ≤ (∏ l : Fin r, fejer H (h l)) * 1 :=
+        mul_le_mul_of_nonneg_left (innerAvg_le_one hH r m hN hFm hg hamp h)
+          (prod_fejer_nonneg hH h)
+    _ = ∏ l : Fin r, fejer H (h l) := mul_one _
+
+theorem measurable_cons_pair' {r : ℕ} :
+    Measurable fun q : ℝ × (Fin r → ℝ) => (Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) := by
+  refine measurable_pi_lambda _ fun i => ?_
+  induction i using Fin.cases with
+  | zero =>
+      simp only [Fin.cons_zero]
+      exact measurable_fst
+  | succ k =>
+      simp only [Fin.cons_succ]
+      exact (measurable_pi_apply k).comp measurable_snd
+
+open MeasureTheory in
+/-- **The cons-split integrand is integrable on the product.**  This discharges the `hint`
+hypothesis of `Auto.phaseMean_step`, the joint integrability
+`Auto.integral_cons_split_real` needs.  The weight is split by `Auto.prod_fejer_cons` first, after
+which it is a product of an integrable function of the new shift and one of the old shifts, and
+`MeasureTheory.Integrable.mul_prod` applies. -/
+theorem integrable_cons_prod_fejer_mul_phaseAmp {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ k : Fin (r + 1) → ℝ, phaseAmp (r + 1) m f P p j g V N k ≤ 1) :
+    Integrable fun q : ℝ × (Fin r → ℝ) =>
+      (∏ l : Fin (r + 1), fejer H ((Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) l))
+        * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.1 q.2) := by
+  have hfun : (fun q : ℝ × (Fin r → ℝ) =>
+        (∏ l : Fin (r + 1), fejer H ((Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) l))
+          * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.1 q.2))
+      = fun q : ℝ × (Fin r → ℝ) =>
+        (fejer H q.1 * ∏ l : Fin r, fejer H (q.2 l))
+          * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.1 q.2) := by
+    funext q
+    rw [prod_fejer_cons q.1 q.2]
+  rw [hfun]
+  have hdom : Integrable fun q : ℝ × (Fin r → ℝ) =>
+      fejer H q.1 * ∏ l : Fin r, fejer H (q.2 l) := by
+    rw [Measure.volume_eq_prod]
+    exact (integrable_fejer hH).mul_prod (integrable_prod_fejer hH r)
+  refine Integrable.mono' hdom ?_ (Filter.Eventually.of_forall fun q => ?_)
+  · refine AEStronglyMeasurable.mul ?_ ?_
+    · exact (((continuous_fejer.comp continuous_fst).mul
+        (continuous_finsetProd _ fun l _ =>
+          continuous_fejer.comp ((continuous_apply l).comp continuous_snd)))).aestronglyMeasurable
+    · exact ((stronglyMeasurable_phaseAmp (r + 1) m hN hFm hg).comp_measurable
+        measurable_cons_pair').aestronglyMeasurable
+  · have hw0 : 0 ≤ fejer H q.1 * ∏ l : Fin r, fejer H (q.2 l) :=
+      mul_nonneg (fejer_nonneg hH q.1) (prod_fejer_nonneg hH q.2)
+    rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg hw0
+      (phaseAmp_nonneg (r + 1) m f P p j g V N _))]
+    calc (fejer H q.1 * ∏ l : Fin r, fejer H (q.2 l))
+          * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.1 q.2)
+        ≤ (fejer H q.1 * ∏ l : Fin r, fejer H (q.2 l)) * 1 :=
+          mul_le_mul_of_nonneg_left (hamp _) hw0
+      _ = fejer H q.1 * ∏ l : Fin r, fejer H (q.2 l) := mul_one _
+
+open MeasureTheory in
+/-- Joint integrability of the swap integrand on the product of the old and new shift spaces. -/
+theorem integrable_uncurry_swap {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ k : Fin (r + 1) → ℝ, phaseAmp (r + 1) m f P p j g V N k ≤ 1) :
+    Integrable (Function.uncurry fun (h : Fin r → ℝ) (u : ℝ) =>
+        (∏ l : Fin r, fejer H (h l))
+          * (fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h)))
+      ((volume : Measure (Fin r → ℝ)).prod (volume : Measure ℝ)) := by
+  have hdom : Integrable (fun q : (Fin r → ℝ) × ℝ =>
+      (∏ l : Fin r, fejer H (q.1 l)) * fejer H q.2)
+      ((volume : Measure (Fin r → ℝ)).prod (volume : Measure ℝ)) :=
+    (integrable_prod_fejer hH r).mul_prod (integrable_fejer hH)
+  refine Integrable.mono' hdom ?_ (Filter.Eventually.of_forall fun q => ?_)
+  · refine AEStronglyMeasurable.mul
+      ((continuous_finsetProd _ fun l _ =>
+        continuous_fejer.comp ((continuous_apply l).comp continuous_fst)).aestronglyMeasurable) ?_
+    refine AEStronglyMeasurable.mul
+      ((continuous_fejer.comp continuous_snd).aestronglyMeasurable) ?_
+    exact ((stronglyMeasurable_phaseAmp (r + 1) m hN hFm hg).comp_measurable
+      measurable_cons_pair).aestronglyMeasurable
+  · show ‖(∏ l : Fin r, fejer H (q.1 l))
+          * (fejer H q.2 * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.2 q.1))‖
+        ≤ (∏ l : Fin r, fejer H (q.1 l)) * fejer H q.2
+    have hw0 : 0 ≤ ∏ l : Fin r, fejer H (q.1 l) := prod_fejer_nonneg hH q.1
+    have hf0 : 0 ≤ fejer H q.2 := fejer_nonneg hH q.2
+    have hB0 : 0 ≤ phaseAmp (r + 1) m f P p j g V N (Fin.cons q.2 q.1) :=
+      phaseAmp_nonneg (r + 1) m f P p j g V N _
+    rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg hw0 (mul_nonneg hf0 hB0))]
+    calc (∏ l : Fin r, fejer H (q.1 l))
+          * (fejer H q.2 * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.2 q.1))
+        ≤ (∏ l : Fin r, fejer H (q.1 l)) * (fejer H q.2 * 1) :=
+          mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left (hamp _) hf0) hw0
+      _ = (∏ l : Fin r, fejer H (q.1 l)) * fejer H q.2 := by rw [mul_one]
+
+open MeasureTheory in
+/-- **The Fubini swap between the old and new shift averages.**  This discharges the `hswap`
+hypothesis of `Auto.phaseMean_step`. -/
+theorem phaseMean_swap {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
+    (hN : (0 : ℝ) ≤ 0 + N)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (hg : StronglyMeasurable g)
+    (hamp : ∀ k : Fin (r + 1) → ℝ, phaseAmp (r + 1) m f P p j g V N k ≤ 1) :
+    (∫ h : Fin r → ℝ, ∫ u : ℝ, (∏ l : Fin r, fejer H (h l))
+        * (fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h)))
+      = ∫ u : ℝ, ∫ h : Fin r → ℝ, (∏ l : Fin r, fejer H (h l))
+        * (fejer H u * phaseAmp (r + 1) m f P p j g V N (Fin.cons u h)) :=
+  integral_integral_swap (integrable_uncurry_swap hH r m hN hFm hg hamp)
+
+open MeasureTheory in
+/-- **A one-bounded function supported in the box has `L^1` mass at most the box's volume.**  The
+`L^1` twin of `Auto.integral_sq_le_volume_of_bdd_support`; the remaining conditions of the chain
+integrate the iterate over all of `E3`, which is finite only for this reason. -/
+theorem integral_norm_le_volume_of_bdd_support {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) {W : E3 → ℂ}
+    (hWm : Measurable W) (hWb : ∀ x, ‖W x‖ ≤ 1)
+    (hWsupp : ∀ x, x ∉ petBox C N → W x = 0) :
+    (∫ x : E3, ‖W x‖) ≤ (volume (petBox C N)).toReal := by
+  classical
+  have hfin : volume (petBox C N) ≠ ⊤ := by
+    rw [volume_petBox hC hN]
+    exact ENNReal.ofReal_ne_top
+  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+    constructor
+    rw [Measure.restrict_apply_univ]
+    exact lt_of_le_of_ne le_top hfin
+  have hdom : Integrable ((petBox C N).indicator fun _ : E3 => (1 : ℝ)) :=
+    (integrable_indicator_iff (measurableSet_petBox C N)).mpr (integrable_const 1)
+  have hnorm : Integrable fun x : E3 => ‖W x‖ := by
+    refine integrable_of_bdd_support_box_real (M := 1) hC hN hWm.norm ?_ ?_
+    · intro x
+      rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
+      exact hWb x
+    · intro x hx
+      rw [hWsupp x hx, norm_zero]
+  refine (integral_mono hnorm hdom fun x => ?_).trans (le_of_eq ?_)
+  · by_cases hx : x ∈ petBox C N
+    · rw [Set.indicator_of_mem hx]
+      exact hWb x
+    · rw [Set.indicator_of_notMem hx, hWsupp x hx, norm_zero]
+  · rw [integral_indicator_const _ (measurableSet_petBox C N), MeasureTheory.measureReal_def]
+    simp
+
+
+open MeasureTheory in
+/-- The iterate is integrable in the point, being one-bounded and supported in the enlarged box. -/
+theorem integrable_phaseProdIter_x (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ} (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N)
+    (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m) (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    {t : ℝ} (hbd : |(P m).eval t| ≤ K) (k : Fin r → ℝ) :
+    Integrable fun x : E3 => phaseProdIter r m f P p j x k t := by
+  -- the composition gets its own `∘`-typed `have` and is coerced afterwards; handing
+  -- `Measurable.comp` straight to `integrable_of_bdd_support_box` makes the unifier descend into
+  -- `phaseProd` and time out.
+  have hcomp0 : Measurable ((Function.uncurry fun (x : E3) (s : ℝ) =>
+      phaseProdIter r m f P p j x k s) ∘ fun x : E3 => ((x, t) : E3 × ℝ)) :=
+    (measurable_uncurry_phaseProdIter r m hFm k).comp (measurable_id.prodMk measurable_const)
+  have hmx : Measurable fun x : E3 => phaseProdIter r m f P p j x k t := hcomp0
+  refine integrable_of_bdd_support_box (M := 1) hCK hN0 hmx ?_ ?_
+  · exact fun x => norm_phaseProdIter_le_one r m hf P p j x k t
+  · exact fun x hx => phaseProdIter_eq_zero_of_notMem r m f P p j hN1 hK hm hsupp hbd hx k
+
+open MeasureTheory in
+/-- and its integral over the point is bounded by the enlarged box's volume, uniformly in the
+parameter and the shift. -/
+theorem norm_integral_phaseProdIter_x_le (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
+    {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ} (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N)
+    (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m) (hf : ∀ i y, ‖f i y‖ ≤ 1)
+    (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    {t : ℝ} (hbd : |(P m).eval t| ≤ K) (k : Fin r → ℝ) :
+    ‖∫ x : E3, phaseProdIter r m f P p j x k t‖
+      ≤ (volume (petBox (C + K) N)).toReal := by
+  have hcomp0 : Measurable ((Function.uncurry fun (x : E3) (s : ℝ) =>
+      phaseProdIter r m f P p j x k s) ∘ fun x : E3 => ((x, t) : E3 × ℝ)) :=
+    (measurable_uncurry_phaseProdIter r m hFm k).comp (measurable_id.prodMk measurable_const)
+  have hmx : Measurable fun x : E3 => phaseProdIter r m f P p j x k t := hcomp0
+  refine (norm_integral_le_integral_norm _).trans ?_
+  exact integral_norm_le_volume_of_bdd_support hCK hN0 hmx
+    (fun x => norm_phaseProdIter_le_one r m hf P p j x k t)
+    (fun x hx => phaseProdIter_eq_zero_of_notMem r m f P p j hN1 hK hm hsupp hbd hx k)
+
+open MeasureTheory in
+/-- **Joint integrability of the iterate over the window and the space.**  The window has finite
+length and the iterate is one-bounded and supported in the enlarged box at every parameter of the
+window, so it is dominated by the box's indicator on the product. -/
+theorem integrable_uncurry_phaseProdIter_window (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ}
+    (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (k : Fin r → ℝ) :
+    Integrable (Function.uncurry fun (t : ℝ) (x : E3) => phaseProdIter r m f P p j x k t)
+      (((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))).prod
+        (volume : Measure E3)) := by
+  classical
+  have hBfin : volume (petBox (C + K) N) ≠ ⊤ := by
+    rw [volume_petBox hCK hN0]
+    exact ENNReal.ofReal_ne_top
+  haveI : IsFiniteMeasure ((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))) := by
+    constructor
+    rw [Measure.restrict_apply_univ]
+    exact measure_Ioc_lt_top
+  haveI : IsFiniteMeasure ((volume : Measure E3).restrict (petBox (C + K) N)) := by
+    constructor
+    rw [Measure.restrict_apply_univ]
+    exact lt_of_le_of_ne le_top hBfin
+  have hswapm0 : Measurable ((Function.uncurry fun (x : E3) (s : ℝ) =>
+      phaseProdIter r m f P p j x k s) ∘ fun q : ℝ × E3 => ((q.2, q.1) : E3 × ℝ)) :=
+    (measurable_uncurry_phaseProdIter r m hFm k).comp
+      (measurable_snd.prodMk measurable_fst)
+  have hswapm : Measurable (Function.uncurry fun (t : ℝ) (x : E3) =>
+      phaseProdIter r m f P p j x k t) := hswapm0
+  have hprod : ((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))).prod
+        (volume : Measure E3)
+      = ((volume : Measure ℝ).prod (volume : Measure E3)).restrict
+        (Set.uIoc (0 : ℝ) (0 + N) ×ˢ (Set.univ : Set E3)) := by
+    rw [← Measure.prod_restrict, Measure.restrict_univ]
+  have hdom : Integrable
+      (fun q : ℝ × E3 => (petBox (C + K) N).indicator (fun _ => (1 : ℝ)) q.2)
+      (((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))).prod
+        (volume : Measure E3)) := by
+    have h1 : Integrable (fun _ : ℝ => (1 : ℝ))
+        ((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))) := integrable_const 1
+    have h2 : Integrable ((petBox (C + K) N).indicator fun _ : E3 => (1 : ℝ)) :=
+      (integrable_indicator_iff (measurableSet_petBox (C + K) N)).mpr (integrable_const 1)
+    simpa using h1.mul_prod h2
+  refine Integrable.mono' hdom hswapm.aestronglyMeasurable ?_
+  rw [hprod]
+  refine (ae_restrict_iff' (measurableSet_uIoc.prod MeasurableSet.univ)).mpr
+    (Filter.Eventually.of_forall fun q hq => ?_)
+  have ht : q.1 ∈ Set.uIcc (0 : ℝ) (0 + N) := Set.uIoc_subset_uIcc hq.1
+  show ‖phaseProdIter r m f P p j q.2 k q.1‖
+    ≤ (petBox (C + K) N).indicator (fun _ => (1 : ℝ)) q.2
+  by_cases hx : q.2 ∈ petBox (C + K) N
+  · rw [Set.indicator_of_mem hx]
+    exact norm_phaseProdIter_le_one r m hf P p j q.2 k q.1
+  · rw [Set.indicator_of_notMem hx,
+      phaseProdIter_eq_zero_of_notMem r m f P p j hN1 hK hm hsupp (hbd q.1 ht) hx k, norm_zero]
+
+open MeasureTheory in
+/-- **The Fubini swap of the window and the space.**  This discharges the `hfub` hypothesis of
+`Auto.step_rhs_le_phaseMean_integrand`, the last of the chain's deferred conditions. -/
+theorem phaseProdIter_window_swap (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ}
+    (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (k : Fin r → ℝ) :
+    (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3, phaseProdIter r m f P p j x k t)
+      = ∫ x : E3, ∫ t in (0 : ℝ)..(0 + N), phaseProdIter r m f P p j x k t :=
+  intervalIntegral_integral_swap
+    (integrable_uncurry_phaseProdIter_window r m hCK hN0 hN1 hK hm hf hsupp hbd hFm k)
+
+open MeasureTheory in
+/-- The window-space double integral is strongly measurable in the new shift.  Measurability is
+read off the *swapped* order, where the inner integral is `Auto.stronglyMeasurable_windowAvg`;
+`Auto.phaseProdIter_window_swap` transports it back. -/
+theorem stronglyMeasurable_windowSpace (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ}
+    (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (h : Fin r → ℝ) :
+    StronglyMeasurable fun u : ℝ => ∫ t in (0 : ℝ)..(0 + N),
+      ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t := by
+  have hW := stronglyMeasurable_windowAvg (r + 1) m (by linarith : (0 : ℝ) ≤ 0 + N) hFm
+  have hmapq : Measurable fun q : ℝ × E3 =>
+      ((q.2, Fin.cons q.1 h) : E3 × (Fin (r + 1) → ℝ)) :=
+    measurable_snd.prodMk ((measurable_cons_left h).comp measurable_fst)
+  have hjoint0 : StronglyMeasurable ((fun q : E3 × (Fin (r + 1) → ℝ) =>
+      ∫ t in (0 : ℝ)..(0 + N), phaseProdIter (r + 1) m f P p j q.1 q.2 t)
+      ∘ fun q : ℝ × E3 => ((q.2, Fin.cons q.1 h) : E3 × (Fin (r + 1) → ℝ))) :=
+    hW.comp_measurable hmapq
+  have hjoint : StronglyMeasurable fun q : ℝ × E3 =>
+      ∫ t in (0 : ℝ)..(0 + N),
+        phaseProdIter (r + 1) m f P p j q.2 (Fin.cons q.1 h) t := hjoint0
+  have hswapped : StronglyMeasurable fun u : ℝ => ∫ x : E3,
+      ∫ t in (0 : ℝ)..(0 + N), phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t :=
+    hjoint.integral_prod_right' (ν := (volume : Measure E3))
+  have hfun : (fun u : ℝ => ∫ t in (0 : ℝ)..(0 + N),
+        ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t)
+      = fun u : ℝ => ∫ x : E3, ∫ t in (0 : ℝ)..(0 + N),
+        phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t := by
+    funext u
+    exact phaseProdIter_window_swap (r + 1) m hCK hN0 hN1 hK hm hf hsupp hbd hFm
+      (Fin.cons u h)
+  rw [hfun]
+  exact hswapped
+
+open MeasureTheory in
+/-- and it is bounded by the window length times the enlarged box's volume. -/
+theorem norm_windowSpace_le (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ}
+    (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (k : Fin (r + 1) → ℝ) :
+    ‖∫ t in (0 : ℝ)..(0 + N), ∫ x : E3, phaseProdIter (r + 1) m f P p j x k t‖
+      ≤ (volume (petBox (C + K) N)).toReal * N := by
+  have hptw : ∀ t ∈ Set.uIoc (0 : ℝ) (0 + N),
+      ‖∫ x : E3, phaseProdIter (r + 1) m f P p j x k t‖
+        ≤ (volume (petBox (C + K) N)).toReal := fun t ht =>
+    norm_integral_phaseProdIter_x_le (r + 1) m hCK hN0 hN1 hK hm hf hsupp hFm
+      (hbd t (Set.uIoc_subset_uIcc ht)) k
+  have hb := intervalIntegral.norm_integral_le_of_norm_le_const hptw
+  have habs : |0 + N - 0| = N := by
+    rw [sub_zero, zero_add, abs_of_nonneg hN0]
+  rwa [habs] at hb
+
+open MeasureTheory in
+/-- **Discharges `hcre` of `Auto.phaseAmp_sq_le_of_step`.** -/
+theorem integrable_fejer_smul_windowSpace {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
+    {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ}
+    (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (h : Fin r → ℝ) :
+    Integrable fun u : ℝ => fejer H u • ∫ t in (0 : ℝ)..(0 + N),
+      ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t := by
+  have hZ := stronglyMeasurable_windowSpace r m hCK hN0 hN1 hK hm hf hsupp hbd hFm h
+  refine Integrable.mono'
+    ((integrable_fejer hH).mul_const ((volume (petBox (C + K) N)).toReal * N))
+    ((continuous_fejer.aestronglyMeasurable).smul hZ.aestronglyMeasurable)
+    (Filter.Eventually.of_forall fun u => ?_)
+  rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (fejer_nonneg hH u)]
+  exact mul_le_mul_of_nonneg_left
+    (norm_windowSpace_le r m hCK hN0 hN1 hK hm hf hsupp hbd hFm (Fin.cons u h))
+    (fejer_nonneg hH u)
+
+open MeasureTheory in
+/-- **Discharges `hmono1` of `Auto.phaseAmp_sq_le_of_step`**, the last of the chain's integrability
+conditions. -/
+theorem integrable_scaled_fejer_mul_re_windowSpace {H : ℝ} (hH : 0 < H) (r m : ℕ)
+    {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3}
+    {C K N V : ℝ}
+    (hCK : 0 ≤ C + K) (hN0 : 0 ≤ N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
+    (hf : ∀ i y, ‖f i y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f m y = 0)
+    (hbd : ∀ t ∈ Set.uIcc (0 : ℝ) (0 + N), |(P m).eval t| ≤ K)
+    (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t))
+    (h : Fin r → ℝ) :
+    Integrable fun u : ℝ => V⁻¹ * N⁻¹ * (fejer H u
+      * (∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+          phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re) := by
+  have hZ := stronglyMeasurable_windowSpace r m hCK hN0 hN1 hK hm hf hsupp hbd hFm h
+  have hre0 : StronglyMeasurable (Complex.re ∘ fun u : ℝ => ∫ t in (0 : ℝ)..(0 + N),
+      ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t) :=
+    Complex.continuous_re.comp_stronglyMeasurable hZ
+  have hreZ : StronglyMeasurable fun u : ℝ => (∫ t in (0 : ℝ)..(0 + N),
+      ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re := hre0
+  refine Integrable.mono'
+    (((integrable_fejer hH).mul_const
+      ((volume (petBox (C + K) N)).toReal * N)).const_mul |V⁻¹ * N⁻¹|)
+    (((continuous_fejer.aestronglyMeasurable).mul hreZ.aestronglyMeasurable).const_mul _)
+    (Filter.Eventually.of_forall fun u => ?_)
+  have hfu : (0 : ℝ) ≤ fejer H u := fejer_nonneg hH u
+  have hReZ : |(∫ t in (0 : ℝ)..(0 + N), ∫ x : E3,
+        phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re|
+      ≤ (volume (petBox (C + K) N)).toReal * N :=
+    le_trans (Complex.abs_re_le_norm _)
+      (norm_windowSpace_le r m hCK hN0 hN1 hK hm hf hsupp hbd hFm (Fin.cons u h))
+  rw [Real.norm_eq_abs]
+  calc |V⁻¹ * N⁻¹ * (fejer H u * (∫ t in (0 : ℝ)..(0 + N),
+          ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re)|
+      = |V⁻¹ * N⁻¹| * (fejer H u * |(∫ t in (0 : ℝ)..(0 + N),
+          ∫ x : E3, phaseProdIter (r + 1) m f P p j x (Fin.cons u h) t).re|) := by
+        simp [abs_mul, abs_of_nonneg hfu]
+    _ ≤ |V⁻¹ * N⁻¹| * (fejer H u * ((volume (petBox (C + K) N)).toReal * N)) :=
+        mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hReZ hfu) (abs_nonneg _)
+
+/-! ### The two cube conventions agree in even dimension
+
+The affine development writes its cubes with `Auto.numTrue` and `Auto.slopeShift`; the Fejer
+difference and the local uniformity norms use `Auto.numFalse` and `Auto.cubeShift`.  The shifts
+differ only by scaling each coordinate by its slope gap, and the two parity counts sum to the cube's
+dimension -- so in *even* dimension, and in particular at the four steps this proposition runs, the
+two conjugation conventions coincide.  This is the "translation/conjugation invariance" by which
+`patch:affine-terminal` identifies its integrated power with that of `f`. -/
+
+theorem slopeShift_eq_cubeShift (a : ℕ → ℝ) (i : ℕ) {r : ℕ} (h : Fin r → ℝ)
+    (ω : Fin r → Bool) :
+    slopeShift a i h ω = cubeShift (fun ν : Fin r => (a i - a ν.val) * h ν) ω := by
+  rw [slopeShift, cubeShift]
+
+theorem numTrue_add_numFalse {s : ℕ} (ω : Fin s → Bool) : numTrue ω + numFalse ω = s := by
+  rw [numTrue, numFalse, ← Finset.sum_add_distrib]
+  have hone : ∀ i : Fin s, ((if ω i then 1 else 0) + (if ω i then 0 else 1)) = 1 := by
+    intro i
+    split_ifs <;> rfl
+  rw [Finset.sum_congr rfl fun i _ => hone i]
+  simp
+
+/-- **In even dimension the two parity conventions agree.** -/
+theorem conjPar_numTrue_eq_numFalse {s : ℕ} (hs : Even s) (ω : Fin s → Bool) (z : ℂ) :
+    conjPar (numTrue ω) z = conjPar (numFalse ω) z := by
+  have hsum : Even (numTrue ω + numFalse ω) := by
+    rw [numTrue_add_numFalse ω]
+    exact hs
+  have hiff : Even (numTrue ω) ↔ Even (numFalse ω) := Nat.even_add.mp hsum
+  rw [conjPar, conjPar]
+  by_cases hT : Even (numTrue ω)
+  · rw [if_pos hT, if_pos (hiff.mp hT)]
+  · rw [if_neg hT, if_neg fun hF => hT (hiff.mpr hF)]
+
+/-- The affine block, written in the Fejer-difference convention. -/
+theorem headBlock_cube_eq_cubeProd (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i : ℕ) {r : ℕ}
+    (hr : Even r) (h : Fin r → ℝ) (x : E3) :
+    headBlock j a g i r h x
+      = ∏ ω : Fin r → Bool, conjPar (numFalse ω)
+          (g (x + cubeShift (fun ν : Fin r => (a i - a ν.val) * h ν) ω • basisVec j)) := by
+  rw [headBlock_cube]
+  refine Finset.prod_congr rfl fun ω _ => ?_
+  rw [conjPar_numTrue_eq_numFalse hr ω, slopeShift_eq_cubeShift]
+
+/-- **The affine block is an iterated Fejer difference.**  This is the bridge from the affine
+development -- `Auto.headBlock` and the results of row 394 -- to the local uniformity norms of
+`Auto.locUnifPow`, whose cubes are `Auto.fdiffIter`.  The increments are the slope gaps times the
+shifts. -/
+theorem headBlock_eq_fdiffIter (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i : ℕ) {r : ℕ}
+    (hr : Even r) (h : Fin r → ℝ) (x : E3) :
+    headBlock j a g i r h x
+      = fdiffIter (basisVec j) r (fun ν : Fin r => (a i - a ν.val) * h ν) g x := by
+  rw [headBlock_cube_eq_cubeProd j a g i hr h x,
+    fdiffIter_eq_cubeProd (basisVec j) r (fun ν : Fin r => (a i - a ν.val) * h ν) g x]
+
+open MeasureTheory in
+/-- Translating the point leaves the block's integral unchanged, Lebesgue measure on `E3` being
+translation invariant.  This is the step by which `patch:affine-terminal` "translates away
+`a_s t e_m`". -/
+theorem integral_headBlock_translate (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i r : ℕ)
+    (h : Fin r → ℝ) (v : ℝ) :
+    (∫ x : E3, headBlock j a g i r h (x + v • basisVec j))
+      = ∫ x : E3, headBlock j a g i r h x :=
+  integral_add_right_eq_self (fun x : E3 => headBlock j a g i r h x) (v • basisVec j)
+
+open MeasureTheory in
+/-- **The affine terminal identity**, the patch's `patch:affine-terminal`.  At the last stage the
+surviving product is a single block, translating the point removes the parameter, and the parameter
+average collapses. -/
+theorem slopeState_terminal (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) {V N c : ℝ} (hN : 0 < N)
+    (m : ℕ) (h : Fin m → ℝ)
+    (hswap : (∫ x : E3, ∫ t in c..(c + N), slopeProd j a g m m h x t)
+      = ∫ t in c..(c + N), ∫ x : E3, slopeProd j a g m m h x t) :
+    slopeState j a g V N c m m h
+      = (V⁻¹ : ℂ) * ∫ x : E3, headBlock j a (g m) m m h x := by
+  have hconst : ∀ t : ℝ, (∫ x : E3, slopeProd j a g m m h x t)
+      = ∫ x : E3, headBlock j a (g m) m m h x := by
+    intro t
+    have hpt : ∀ x : E3, slopeProd j a g m m h x t
+        = headBlock j a (g m) m m h (x + (a m * t) • basisVec j) := fun x =>
+      slopeProd_terminal j a g m h x t
+    rw [integral_congr_ae (Filter.Eventually.of_forall hpt)]
+    exact integral_headBlock_translate j a (g m) m m h (a m * t)
+  have hpull : (∫ x : E3, (N⁻¹ : ℂ) * ∫ t in c..(c + N), slopeProd j a g m m h x t)
+      = (N⁻¹ : ℂ) * ∫ x : E3, ∫ t in c..(c + N), slopeProd j a g m m h x t :=
+    integral_const_mul _ _
+  have hNne : ((N : ℂ)) ≠ 0 := by
+    simpa using (ne_of_gt hN)
+  rw [slopeState, hpull, hswap,
+    intervalIntegral.integral_congr (fun t _ => hconst t),
+    intervalIntegral.integral_const, add_sub_cancel_left, Complex.real_smul,
+    ← mul_assoc, ← mul_assoc, mul_assoc ((V : ℂ))⁻¹ ((N : ℂ))⁻¹ ((N : ℂ)),
+    inv_mul_cancel₀ hNne, mul_one]
+
+/-! ### The Fejer kernel's scaling law
+
+The affine terminal cube carries the *gap-scaled* shifts `(a i - a nu) * h nu`, while the local
+uniformity norms integrate against `fejer` in the shift itself.  Passing between them is a change of
+variables `z = c h`, and what makes it work is that the kernel scales: dilating both the radius and
+the point by `c` divides the kernel by `c`, so the Jacobian is absorbed exactly.  This is the
+patch's "changing the new affine increments by `z_i = a p_i(h) u_i` produces Fejer radii
+`L_i = |a p_i(h)| H`". -/
+
+/-- **The Fejer kernel's scaling law.** -/
+theorem fejer_scale {c H h : ℝ} (hc : 0 < c) :
+    fejer (c * H) (c * h) = c⁻¹ * fejer H h := by
+  rw [fejer, fejer, abs_mul, abs_of_pos hc, mul_inv]
+  have hdiv : c * |h| / (c * H) = |h| / H := by
+    rw [mul_div_mul_left _ _ (ne_of_gt hc)]
+  rw [hdiv, mul_assoc]
+
+/-- and the form the change of variables uses: the Jacobian factor is absorbed exactly. -/
+theorem mul_fejer_scale {c H h : ℝ} (hc : 0 < c) :
+    c * fejer (c * H) (c * h) = fejer H h := by
+  rw [fejer_scale hc, ← mul_assoc, mul_inv_cancel₀ (ne_of_gt hc), one_mul]
+
+/-- **The product form**, with the full Jacobian of the coordinatewise scaling. -/
+theorem prod_fejer_scale {s : ℕ} {H : ℝ} {c : Fin s → ℝ} (hc : ∀ l, 0 < c l)
+    (h : Fin s → ℝ) :
+    ((∏ l : Fin s, c l) * ∏ l : Fin s, fejer (c l * H) (c l * h l))
+      = ∏ l : Fin s, fejer H (h l) := by
+  rw [← Finset.prod_mul_distrib]
+  exact Finset.prod_congr rfl fun l _ => mul_fejer_scale (hc l)
+
+open MeasureTheory in
+/-- **Scaling each factor of a product measure scales the product by the product of the scalars.**
+Mathlib has `MeasureTheory.Measure.pi_map_pi`, which pushes a product measure forward along a
+product of maps, and `Real.map_volume_mul_left`, which scales one-dimensional Lebesgue measure; what
+it does not have is this last step, which combines them.  It is what turns the coordinatewise
+dilation `z = c h` on `Fin s -> R` into a single Jacobian factor. -/
+theorem pi_smul_eq {ι : Type*} [Fintype ι] {α : ι → Type*} [∀ i, MeasurableSpace (α i)]
+    (μ : ∀ i, Measure (α i)) [∀ i, SigmaFinite (μ i)] (k : ι → ENNReal)
+    [∀ i, SigmaFinite (k i • μ i)] :
+    Measure.pi (fun i => k i • μ i) = (∏ i, k i) • Measure.pi μ := by
+  classical
+  refine Measure.pi_eq fun s hs => ?_
+  rw [Measure.smul_apply, Measure.pi_pi, smul_eq_mul, ← Finset.prod_mul_distrib]
+  exact Finset.prod_congr rfl fun i _ => by rw [Measure.smul_apply, smul_eq_mul]
+
+open MeasureTheory in
+/-- A finite multiple of a sigma-finite measure is sigma-finite.  Mathlib has no instance for this,
+and both `MeasureTheory.Measure.pi_map_pi` and `Auto.pi_smul_eq` require it. -/
+theorem sigmaFinite_smul {α : Type*} [MeasurableSpace α] (μ : Measure α) [SigmaFinite μ]
+    {c : ENNReal} (hc : c ≠ ⊤) : SigmaFinite (c • μ) := by
+  refine ⟨⟨⟨spanningSets μ, fun _ => trivial, fun n => ?_, iUnion_spanningSets μ⟩⟩⟩
+  rw [Measure.smul_apply, smul_eq_mul]
+  exact ENNReal.mul_lt_top hc.lt_top (measure_spanningSets_lt_top μ n)
+
+open MeasureTheory in
+/-- **The coordinatewise dilation of `Fin s → ℝ` scales Lebesgue measure by the inverse Jacobian.**
+This is the change of variables `z = c h` that carries the affine terminal cube's gap-scaled shifts
+into the shift variable of a mixed-radii uniformity norm. -/
+theorem map_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i) :
+    Measure.map (fun h : Fin s → ℝ => fun i => c i * h i) (volume : Measure (Fin s → ℝ))
+      = (∏ i : Fin s, ENNReal.ofReal ((c i)⁻¹)) • (volume : Measure (Fin s → ℝ)) := by
+  have hmap : ∀ i : Fin s, Measure.map (fun x : ℝ => c i * x) (volume : Measure ℝ)
+      = ENNReal.ofReal ((c i)⁻¹) • (volume : Measure ℝ) := by
+    intro i
+    rw [Real.map_volume_mul_left (ne_of_gt (hc i)), abs_of_pos (inv_pos.mpr (hc i))]
+  haveI hsf2 : ∀ i : Fin s,
+      SigmaFinite (ENNReal.ofReal ((c i)⁻¹) • (volume : Measure ℝ)) := fun i =>
+    sigmaFinite_smul _ ENNReal.ofReal_ne_top
+  haveI hsf1 : ∀ i : Fin s,
+      SigmaFinite (Measure.map (fun x : ℝ => c i * x) (volume : Measure ℝ)) := by
+    intro i
+    rw [hmap i]
+    exact hsf2 i
+  rw [volume_pi, Measure.pi_map_pi (fun i => (measurable_const_mul (c i)).aemeasurable),
+    show (fun i : Fin s => Measure.map (fun x : ℝ => c i * x) (volume : Measure ℝ))
+      = fun i : Fin s => ENNReal.ofReal ((c i)⁻¹) • (volume : Measure ℝ) from funext hmap,
+    pi_smul_eq]
+
+open MeasureTheory in
+/-- **The change of variables `z = c h`, in integral form.**  Composing
+`Auto.map_diag_scale` with `MeasureTheory.integral_map`: dilating the shift coordinatewise costs
+exactly the inverse Jacobian. -/
+theorem integral_comp_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i)
+    {F : (Fin s → ℝ) → ℂ} (hF : AEStronglyMeasurable F (volume : Measure (Fin s → ℝ))) :
+    (∫ h : Fin s → ℝ, F (fun i => c i * h i))
+      = (∏ i : Fin s, (c i)⁻¹) • ∫ z : Fin s → ℝ, F z := by
+  have hφ : Measurable (fun h : Fin s → ℝ => fun i => c i * h i) :=
+    measurable_pi_lambda _ fun i => (measurable_const_mul (c i)).comp (measurable_pi_apply i)
+  have hFm : AEStronglyMeasurable F
+      (Measure.map (fun h : Fin s → ℝ => fun i => c i * h i)
+        (volume : Measure (Fin s → ℝ))) := by
+    rw [map_diag_scale hc]
+    exact hF.smul_measure _
+  have hkey := integral_map hφ.aemeasurable hFm
+  rw [map_diag_scale hc, integral_smul_measure] at hkey
+  rw [← hkey]
+  congr 1
+  rw [ENNReal.toReal_prod]
+  exact Finset.prod_congr rfl fun i _ =>
+    ENNReal.toReal_ofReal (le_of_lt (inv_pos.mpr (hc i)))
+
+open MeasureTheory in
+/-- **The gap-scaled cube is a mixed-radii average.**  Averaging a cube whose increments are the
+*scaled* shifts `c l * h l` against a single-radius Fejer weight is the same as averaging the plain
+cube against Fejer weights at the scaled radii `c l * H`.  The Jacobian of the substitution cancels
+exactly against the kernel's own scaling (`Auto.prod_fejer_scale`), so the identity carries no
+constant.
+
+This is the patch's "changing the new affine increments by `z_i = a p_i(h) u_i` produces Fejer radii
+`L_i = |a p_i(h)| H`", and it is what lets the affine terminal cube be read as an
+`Auto.locUnifPowMixed`. -/
+theorem integral_prod_fejer_mul_comp_diag {s : ℕ} {H : ℝ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i)
+    {G : (Fin s → ℝ) → ℂ}
+    (hF : AEStronglyMeasurable
+      (fun z : Fin s → ℝ => ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ) * G z)
+      (volume : Measure (Fin s → ℝ))) :
+    (∫ h : Fin s → ℝ, ((∏ l : Fin s, fejer H (h l) : ℝ) : ℂ) * G (fun i => c i * h i))
+      = ∫ z : Fin s → ℝ, ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ) * G z := by
+  have hcprod : (0 : ℝ) < ∏ l : Fin s, c l := Finset.prod_pos fun l _ => hc l
+  have hcv : (∫ h : Fin s → ℝ,
+        ((∏ l : Fin s, fejer (c l * H) (c l * h l) : ℝ) : ℂ) * G (fun i => c i * h i))
+      = (∏ i : Fin s, (c i)⁻¹) • ∫ z : Fin s → ℝ,
+        ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ) * G z :=
+    integral_comp_diag_scale hc hF
+  have hpt : ∀ h : Fin s → ℝ,
+      ((∏ l : Fin s, fejer H (h l) : ℝ) : ℂ) * G (fun i => c i * h i)
+      = ((∏ l : Fin s, c l : ℝ) : ℂ) *
+        (((∏ l : Fin s, fejer (c l * H) (c l * h l) : ℝ) : ℂ) * G (fun i => c i * h i)) := by
+    intro h
+    rw [← prod_fejer_scale hc h]
+    push_cast
+    ring
+  rw [integral_congr_ae (Filter.Eventually.of_forall hpt), integral_const_mul, hcv,
+    Complex.real_smul, ← mul_assoc, ← Complex.ofReal_mul, Finset.prod_inv_distrib,
+    mul_inv_cancel₀ (ne_of_gt hcprod), Complex.ofReal_one, one_mul]
+
+open MeasureTheory in
+/-- **The same in the orientation `Auto.locUnifPowMixed` uses**, with the cube first and the Fejer
+weight distributed over the product.  This is `Auto.integral_prod_fejer_mul_comp_diag` with the
+factors reordered and the cast pushed inside. -/
+theorem integral_fdiffIter_fejer_comp_diag {s : ℕ} {H : ℝ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i)
+    (j : Fin 3) (f : E3 → ℂ) (x : E3)
+    (hF : AEStronglyMeasurable
+      (fun z : Fin s → ℝ => ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ)
+        * fdiffIter (basisVec j) s z f x)
+      (volume : Measure (Fin s → ℝ))) :
+    (∫ h : Fin s → ℝ, fdiffIter (basisVec j) s (fun i => c i * h i) f x
+        * ∏ l : Fin s, ((fejer H (h l) : ℝ) : ℂ))
+      = ∫ z : Fin s → ℝ, fdiffIter (basisVec j) s z f x
+        * ∏ l : Fin s, ((fejer (c l * H) (z l) : ℝ) : ℂ) := by
+  have hmid : (∫ h : Fin s → ℝ, ((∏ l : Fin s, fejer H (h l) : ℝ) : ℂ)
+        * fdiffIter (basisVec j) s (fun i => c i * h i) f x)
+      = ∫ z : Fin s → ℝ, ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ)
+        * fdiffIter (basisVec j) s z f x :=
+    integral_prod_fejer_mul_comp_diag hc hF
+  have hL : ∀ h : Fin s → ℝ,
+      fdiffIter (basisVec j) s (fun i => c i * h i) f x
+          * ∏ l : Fin s, ((fejer H (h l) : ℝ) : ℂ)
+      = ((∏ l : Fin s, fejer H (h l) : ℝ) : ℂ)
+          * fdiffIter (basisVec j) s (fun i => c i * h i) f x := by
+    intro h
+    push_cast
+    ring
+  have hR : ∀ z : Fin s → ℝ,
+      ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ) * fdiffIter (basisVec j) s z f x
+      = fdiffIter (basisVec j) s z f x
+          * ∏ l : Fin s, ((fejer (c l * H) (z l) : ℝ) : ℂ) := by
+    intro z
+    push_cast
+    ring
+  rw [integral_congr_ae (Filter.Eventually.of_forall hL), hmid,
+    integral_congr_ae (Filter.Eventually.of_forall hR)]
+
+open MeasureTheory in
+/-- The same, integrated over the point. -/
+theorem integral_x_fdiffIter_fejer_comp_diag {s : ℕ} {H : ℝ} {c : Fin s → ℝ}
+    (hc : ∀ i, 0 < c i) (j : Fin 3) (f : E3 → ℂ)
+    (hF : ∀ x : E3, AEStronglyMeasurable
+      (fun z : Fin s → ℝ => ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ)
+        * fdiffIter (basisVec j) s z f x)
+      (volume : Measure (Fin s → ℝ))) :
+    (∫ x : E3, ∫ h : Fin s → ℝ, fdiffIter (basisVec j) s (fun i => c i * h i) f x
+        * ∏ l : Fin s, ((fejer H (h l) : ℝ) : ℂ))
+      = ∫ x : E3, ∫ z : Fin s → ℝ, fdiffIter (basisVec j) s z f x
+        * ∏ l : Fin s, ((fejer (c l * H) (z l) : ℝ) : ℂ) :=
+  integral_congr_ae (Filter.Eventually.of_forall fun x =>
+    integral_fdiffIter_fejer_comp_diag hc j f x (hF x))
+
+open MeasureTheory in
+/-- `Auto.locUnifPowMixed` spelled out, so that it can be rewritten at an explicit radius
+vector. -/
+theorem locUnifPowMixed_eq_integral (N : ℝ) {s : ℕ} (Lv : Fin s → ℝ) (j : Fin 3) (f : E3 → ℂ) :
+    locUnifPowMixed N Lv j f
+      = ((N ^ (6 : ℕ))⁻¹ : ℂ) * ∫ x : E3, ∫ h : Fin s → ℝ,
+          fdiffIter (basisVec j) s h f x
+            * ∏ l : Fin s, ((fejer (Lv l) (h l) : ℝ) : ℂ) := rfl
+
+open MeasureTheory in
+/-- **The mixed-radii uniformity norm at the gap-scaled radii is the single-radius average of the
+gap-scaled cube.**  This is the identification the terminal bound needs: the affine terminal cube --
+whose increments are the slope gaps times the shifts, averaged against one Fejer radius `H` -- is
+literally an `Auto.locUnifPowMixed` at radii `c l * H`, which is what
+`Auto.sq_re_locUnifPowMixed_le_scaled` consumes. -/
+theorem locUnifPowMixed_comp_diag {s : ℕ} {N H : ℝ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i)
+    (j : Fin 3) (f : E3 → ℂ)
+    (hF : ∀ x : E3, AEStronglyMeasurable
+      (fun z : Fin s → ℝ => ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ)
+        * fdiffIter (basisVec j) s z f x)
+      (volume : Measure (Fin s → ℝ))) :
+    locUnifPowMixed N (fun l => c l * H) j f
+      = ((N ^ (6 : ℕ))⁻¹ : ℂ) * ∫ x : E3, ∫ h : Fin s → ℝ,
+          fdiffIter (basisVec j) s (fun i => c i * h i) f x
+            * ∏ l : Fin s, ((fejer H (h l) : ℝ) : ℂ) := by
+  have hdef : locUnifPowMixed N (fun l => c l * H) j f
+      = ((N ^ (6 : ℕ))⁻¹ : ℂ) * ∫ x : E3, ∫ z : Fin s → ℝ,
+          fdiffIter (basisVec j) s z f x
+            * ∏ l : Fin s, ((fejer (c l * H) (z l) : ℝ) : ℂ) := rfl
+  rw [hdef, ← integral_x_fdiffIter_fejer_comp_diag hc j f hF]
+
+open MeasureTheory in
+/-- **The terminal bound.**  The single-radius average of the gap-scaled cube -- which is what the
+affine terminal identity produces -- obeys the `patch:uniformize` estimate, so its square is
+controlled by a *single-radius* directional uniformity norm of `f` at order `s + 1`.  This is the
+form in which the proposition's conclusion is stated. -/
+theorem sq_re_gapScaled_le_locUnifPow {C N L H : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN : 0 < N)
+    (j : Fin 3) (hLS : L ≤ 2 * (C * N ^ expo j)) {s : ℕ} {c : Fin s → ℝ}
+    (hc : ∀ i, 0 < c i) (hH : 0 < H) (hhalf : ∀ l, c l * H ≤ L / 2)
+    {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1)
+    (hsupp : ∀ y, y ∉ petBox C N → f y = 0)
+    (hF : ∀ x : E3, AEStronglyMeasurable
+      (fun z : Fin s → ℝ => ((∏ l : Fin s, fejer (c l * H) (z l) : ℝ) : ℂ)
+        * fdiffIter (basisVec j) s z f x)
+      (volume : Measure (Fin s → ℝ))) :
+    ((((N ^ (6 : ℕ))⁻¹ : ℂ) * ∫ x : E3, ∫ h : Fin s → ℝ,
+        fdiffIter (basisVec j) s (fun i => c i * h i) f x
+          * ∏ l : Fin s, ((fejer H (h l) : ℝ) : ℂ)).re) ^ 2
+      ≤ 16 * C ^ 3 * ((∏ l : Fin s, 2 * L / (c l * H))
+          * (locUnifPow N L j (s + 1) f).re) := by
+  rw [← locUnifPowMixed_comp_diag hc j f hF]
+  exact sq_re_locUnifPowMixed_le_scaled hL hC hN j hLS
+    (fun l => mul_pos (hc l) hH) hhalf hf hf1 hsupp
 end Auto
