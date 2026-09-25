@@ -51,3 +51,4 @@ automation/raw.md
 _minted*/
 
 # Keep .tex, .bib, and source PDFs trackable.
+*.zip

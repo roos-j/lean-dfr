@@ -1,0 +1,2910 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype}
+\usepackage[margin=0.88in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,mathrsfs}
+\usepackage{array,longtable,booktabs,enumitem,xcolor}
+\usepackage{hyperref,aliascnt}
+\usepackage[nameinlink,capitalise,noabbrev]{cleveref}
+\usepackage{fancyhdr}
+\hypersetup{colorlinks=true,linkcolor=blue!35!black,citecolor=blue!35!black,urlcolor=blue!35!black,pdftitle={A proof blueprint for Auto.KoszAdjoint},pdfauthor={}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.4em}
+\setlength{\headheight}{14pt}
+\setlength{\emergencystretch}{3em}
+\pagestyle{fancy}\fancyhf{}\lhead{\small A proof blueprint for \texttt{Auto.KoszAdjoint}}\rhead{\small \thepage}
+\newtheorem{theorem}{Theorem}[section]
+\newaliascnt{proposition}{theorem}\newtheorem{proposition}[proposition]{Proposition}\aliascntresetthe{proposition}
+\newaliascnt{lemma}{theorem}\newtheorem{lemma}[lemma]{Lemma}\aliascntresetthe{lemma}
+\newaliascnt{corollary}{theorem}\newtheorem{corollary}[corollary]{Corollary}\aliascntresetthe{corollary}
+\theoremstyle{definition}
+\newaliascnt{definition}{theorem}\newtheorem{definition}[definition]{Definition}\aliascntresetthe{definition}
+\newaliascnt{remark}{theorem}\newtheorem{remark}[remark]{Remark}\aliascntresetthe{remark}
+\newcommand{\ee}[1]{\mathrm e\!\left(#1\right)}
+\newcommand{\pid}[1]{\nolinkurl{#1}}
+\newcommand{\one}{\mathbf 1}
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\dd}{\,\mathrm d}
+\newcommand{\Idx}{\{0,1,2,3\}}
+\begin{document}
+\begin{titlepage}
+\vspace*{1.3cm}
+{\Huge\bfseries A proof blueprint for\par \texttt{Auto.KoszAdjoint}\par}
+\vspace{0.9cm}
+{\Large The real monomial system $t,t^2,t^3$\par}
+\vspace{0.5cm}
+{\large Complete mathematical dependency development, including PET\par}
+\vspace{1.1cm}
+\textbf{Repository examined}\par
+\texttt{roos-j/lean-dfr}, supplied \texttt{lean-dfr.task2.zip}.\par
+\textbf{Pinned toolchain}\par
+\texttt{leanprover/lean4:v4.33.0-rc1}.\par
+\textbf{Pinned mathlib revision}\par
+{\small\pid{79d0395a1825a6264ad5d269e35e60537518955e}}.\par
+\textbf{Source}\par
+Kosz--Mirek--Peluse--Wan--Wright, arXiv:2411.09478v4,\par
+especially Sections 4--6.\par
+\vfill
+\textbf{Status of this document}\par
+A mathematical proof and implementation specification, not a completed Lean formalization.
+The supplied declarations and dependency manifest were inspected; this document has not been checked
+by the Lean kernel. New declaration names in the implementation register are proposed names, not claims
+about existing mathlib APIs.
+\vspace{0.6cm}
+\end{titlepage}
+\setcounter{tocdepth}{2}\tableofcontents\clearpage
+\section*{Scope and the exact remaining target}
+\addcontentsline{toc}{section}{Scope and the exact remaining target}
+The target is the proposition \pid{Auto.KoszAdjoint}, defined at lines 1803--1820 of
+\pid{DFR/Auto/SmoothingIneq3D/Smoothing3D.lean} in the supplied archive.
+Its three indices are represented in Lean by \pid{Fin 3}; the mathematical index $j\in\{1,2,3\}$
+here corresponds to the Lean index $j-1$ and to \pid{expo (j-1) = j}.
+No inverse theorem, major-arc theorem, polynomial-uniformity theorem, or adjoint estimate is assumed.
+The existing improving estimate is also proved mathematically below, so that it is not an unexplained
+analytic input. The subunit estimate is not needed for this target.
+
+The dependency order is: elementary integration and Fourier identities; a real improving estimate;
+signed van der Corput and a finite polynomial exhaustion argument; Fourier selection and degree lowering;
+a noncircular major-arc induction; lowest-input and then every-input positive energy;
+a compact high-frequency estimate; interpolation; support removal; and the exact extended-norm conclusion.
+Statements introducing a conditional implication are proved before the induction supplying their premise.
+The target is stated at the end, after all the facts used in its proof.
+
+The inverse-theorem development reorganizes and expands the supplied \pid{patch_3_updated.tex}.
+In particular, it retains the distinguished input through every polynomial operation and proves the
+terminal cube identity, instead of appealing to an unspecified sequence of Cauchy--Schwarz applications.
+The final adjoint argument uses a truncated high-frequency residual, rather than the older
+Hahn--Banach structural decomposition. Thus Hahn--Banach separation, weak compactness of a
+structured class, and a decomposition certificate are not additional obligations on this proof path.
+
+Throughout, elementary facts about Lebesgue integration, change of variables, finite-dimensional
+calculus, and finite polynomial algebra have their usual meanings. The precise nontrivial Fourier
+identities for nonsmooth functions are proved below; they are not inferred from a theorem that only
+identifies the Fourier transform of Schwartz functions. The implementation register states the
+library interface and distinguishes checked-in declarations from newly required lemmas.
+
+
+\section{Conventions and quantitative bookkeeping}\label{patch:conventions}
+We use $\ee u=\exp(2\pi i u)$, $\langle f,g\rangle=\int f\overline g$, and
+$\widehat f(\xi)=\int f(x)\ee{-x\cdot\xi}\,dx$.  Write $\mathcal C$ for complex conjugation.
+For $N>0$,
+\[
+ A_N(f_1,f_2,f_3)(x)=\frac1N\int_0^N\prod_{i=1}^3f_i(x+t^ie_i)\,dt.
+\]
+and $\Lambda_N=\langle A_N(f_1,f_2,f_3),f_0\rangle$.
+The notation $\|f\|_p$ denotes the Lebesgue $L^p$ norm.
+Fix an even real smooth cutoff $\eta$ with
+$\mathbf1_{[-1/4,1/4]}\leq\eta\leq\mathbf1_{(-1/2,1/2)}$.
+The operator $P_L^{(j)}$ has multiplier $\eta(\xi_j/L)$.
+
+Work first with Borel representatives, pointwise bounded by the stated bounds and zero off
+the stated boxes.  Almost-everywhere versions follow at the end: for a null set $E$ and any
+measurable translation $v(t)$,
+\[
+ \int\!\int\mathbf1_E(x+v(t))\,dx\,dt=0
+\]
+by translation invariance and Tonelli.  The same argument handles any finite number of shift
+parameters.  Thus changing representatives does not change any correlation or cube integral.
+All auxiliary phase functions can be chosen Borel after discarding the standard Fubini null
+sets.
+
+\subsection{A precise meaning for the power losses}
+For an integer $c\geq1$, set
+\[
+ \ell_c(\delta)=c^{-1}\delta^c,\qquad u_c(\delta)=c\delta^{-c}
+ \qquad(0<\delta\leq1).
+\]
+An assertion below of the form $X\geq\delta^{O(1)}S$ means that the proof returns an integer
+$c$, depending only on the fixed degrees, support/coefficient budgets, and any fixed cube order,
+with $X\geq\ell_c(\delta)S$.  Similarly $X\leq\delta^{-O(1)}S$ returns $c$ with
+$X\leq u_c(\delta)S$.  It never means that the exponent may depend on a function, a selected
+section, $N$, or the numerical value of $\delta$.
+
+For implementation, retain the returned integers rather than using asymptotic notation.
+The following rules suffice to compose every budget in the proof.
+\begin{lemma}[Budget arithmetic and popularity]\label{patch:budgets}
+Finite sums, products, quotients with a positive lower bound, and fixed natural powers of
+power-controlled positive quantities are power-controlled.  A fixed positive root of a
+power lower bound is again a power lower bound.  If a finite measure space has measure at most
+$M$, $0\leq F\leq B$, and $\int F\geq a>0$, then
+\[
+ E=\{F\geq a/(2M)\}\quad\hbox{satisfies}\quad \mu(E)\geq a/(2B).
+\]
+Removing a set of measure at most $a/(2B)$ loses at most half the lower bound.  A partition
+into $K$ measurable cells has a cell carrying at least $1/K$ of a nonnegative total mass.
+\end{lemma}
+\begin{proof}
+For upper bounds choose, for example, an integer at least both the new coefficient and the
+new exponent.  For a product of $u_a$ and $u_b$ it suffices to take
+$c\geq\max(ab,a+b)$; for a product of $\ell_a$ and $\ell_b$ the same choice works.
+For $r$-th powers take $c\geq\max(a^r,ra)$.  Bound $X/Y$ using an upper bound for $X$
+and a positive lower bound for $Y$, or the reverse for a lower bound.  Round all constants
+upward by the Archimedean property.  Since $0<\delta\leq1$, increasing a lower-bound exponent
+weakens it and increasing an upper-bound exponent enlarges it.  These observations also
+handle roots and rational fixed exponents.
+For popularity, the integral on $E^c$ is at most $a/2$, whereas the integral on $E$ is at most
+$B\mu(E)$.  The remaining assertions follow from integral monotonicity and a finite sum.
+\end{proof}
+
+Whenever a proof chooses a finer parameter, it uses these explicit recipes:
+\[
+ \text{discarded measure}\leq\frac{\text{retained mass}}{4\,\text{integrand bound}},
+ \qquad
+ \text{phase error}\leq\frac{\text{retained mass}}{4\,\text{integration-volume bound}}.
+\]
+For a phase perturbation use $|\ee u-\ee v|\leq2\pi|u-v|$.
+A bounded interval of frequencies of length $2M$ can be partitioned into at most
+$1+\lceil2M/\tau\rceil$ cells of width $\tau$.  All such counts below are power-controlled.
+The iteration counts are bounded independently of $\delta$ before these recipes are applied.
+
+\paragraph{Scale convention in the inverse module.}
+For $1\leq d_1<\cdots<d_k\leq3$, write $D_r=\sum_{i\leq r}d_i$, $D_0=0$ and $D=D_k$.
+A budgeted support box has sides $[-u_c(\delta)N^{d_i},u_c(\delta)N^{d_i}]$.
+A polynomial $P_i$ is admissible with budget $c$ when
+\[
+ \deg P_i=d_i,\qquad
+ \ell_c(\delta)\leq|\operatorname{lc}P_i|\leq u_c(\delta),\qquad
+ |[t^r]P_i|\leq u_c(\delta)N^{d_i-r}\quad(0\leq r<d_i).
+\]
+These are the paper's admissibility and enlarged-support hypotheses, with a single integer
+budget enlarged as needed.  Setting $t=Nu$ and $x_i=N^{d_i}y_i$ reduces all coefficient,
+volume, and sublevel estimates to bounded parameter intervals with power-controlled
+constants.  This change has determinant $N^D$; the powers of $N$ in subsequent statements
+are therefore exact, not part of the budget.
+
+
+
+\paragraph{All uses of power bounds are quantified.}
+In the inverse module, ``power-large'' means a lower bound $\ell_c(\delta)$ times the
+stated physical normalization, for a specified input budget $c$. ``Power-controlled'' means
+between such a lower bound and $u_c(\delta)$ times that normalization. Each theorem is
+quantified over every input budget and returns an integer output budget. Every choice made
+below is one of the arithmetic, threshold, or finite-partition operations in
+\cref{patch:budgets}, except the finite polynomial recursion, whose independent uniform
+bound is proved explicitly. Thus no choice may depend on a selected function value or on
+an unbounded family of parameter sections. The notation $\delta^{O(1)}$ and
+$\delta^{-O(1)}$ is only a display abbreviation for these returned integers, not an
+additional hypothesis or an unspecified uniformity principle.
+
+For clarity, an application stated with a ``power lower bound'' has the logical form:
+for every input budget $c$ there is an output budget $C$ such that the hypotheses with
+$\ell_c,u_c$ imply the stated conclusion with $\ell_C,u_C$. This is also the meaning for
+all correlations and section measures in the intermediate lemmas. At each application
+feed it the common lower threshold from the preceding popularity step, not the actual
+value on a particular section. Enlarging a cutoff radius to compare energies always uses
+at least a factor of two; monotonicity of $\eta$ is never silently invoked.
+
+
+\section{Analytic facts used by the proof}\label{sec:analytic-foundations}
+All measures in this section are Lebesgue measures. The space $\R^0$ is a singleton with
+measure one. A box in $\R^n$ is a product of bounded intervals; its measure is the product
+of their lengths. All equalities of $L^p$ functions are understood almost everywhere unless
+pointwise equality is expressly stated. Write
+\[
+ k(u)=\int_{\R}\eta(\xi)\ee{u\xi}\,d\xi,
+ \qquad K_R(u)=Rk(Ru)\quad(R>0).
+\]
+The cutoff is the one fixed in the conventions. It is available in the supplied source as
+\pid{Auto.eta}, constructed from \pid{ContDiffBump} with inner radius $1/4$ and outer radius $1/2$.
+No monotonicity of $\eta$ as a function of $|\xi|$ is assumed.
+
+\subsection{Integration, approximation, and norm inequalities}
+\begin{lemma}[The elementary integral inequalities in the required form]\label{new:integral-inequalities}
+Let $1\leq p<\infty$. Translations preserve the $L^p$ norm. If $1/p=\sum_{i=1}^r1/p_i$
+with $p_i\in[1,\infty]$, then
+\[
+ \left\|\prod_{i=1}^r f_i\right\|_p\leq\prod_{i=1}^r\|f_i\|_{p_i}.
+\]
+For jointly measurable $F$ with $\int\|F(u,\cdot)\|_p\,d\nu(u)<\infty$,
+\[
+ \left\|\int F(u,\cdot)\,d\nu(u)\right\|_p
+ \leq\int\|F(u,\cdot)\|_p\,d\nu(u).
+\]
+Consequently, if $a\in L^1(\R)$ and $f\in L^p(\R^n)$, their one-coordinate convolution satisfies
+\[
+ \left\|\int a(u)f(\cdot-ue_j)\,du\right\|_p\leq\|a\|_1\|f\|_p.
+\]
+The analogous $p=\infty$ statements hold with essential suprema.
+\end{lemma}
+\begin{proof}
+Translation invariance is the substitution $y=x+v$ in the integral of $|f|^p$.
+For the product inequality apply H\"older to $\prod |f_i|^p$ with exponents $p_i/p$;
+factors with exponent $\infty$ are removed by their essential supremum. Induction gives the
+finite-factor version from the two-factor version. For $p=1$, the integral inequality is
+Tonelli and $|\int F|\leq\int|F|$. For $1<p<\infty$, first prove it on finite sums:
+H\"older applied to $|\sum F_i|^{p-1}$ gives the usual triangle inequality after division by
+$\|\sum F_i\|_p^{p-1}$, with the zero case separated. Simple approximation in the parameter,
+followed by Fatou, gives the displayed integral inequality. Equivalently, one may use the
+Bochner integral inequality in the Banach space $L^p$; strong measurability follows by simple
+approximation of the joint measurable function. The convolution conclusion follows because
+$\|a(u)f(\cdot-ue_j)\|_p=|a(u)|\|f\|_p$. For $p=\infty$ use the pointwise integral bound
+outside the joint null set supplied by Tonelli.
+\end{proof}
+
+\begin{lemma}[Approximation and translation continuity]\label{new:translation-continuity}
+If $1\leq p<\infty$ and $f\in L^p(\R^n)$, bounded finite-valued functions supported in bounded
+boxes approximate $f$ in $L^p$. Moreover,
+\[
+ \|f(\cdot-h)-f\|_p\longrightarrow0\quad\text{as }h\longrightarrow0.
+\]
+\end{lemma}
+\begin{proof}
+First replace $f$ by $f\one_{[-M,M]^n}\one_{\{|f|\leq M\}}$. The $p$-th power of the
+error tends to zero by dominated convergence, with majorant $|f|^p$. On this bounded box,
+round the real and imaginary parts to multiples of $1/q$ within their bounded ranges.
+The rounding error is at most $\sqrt2/q$ pointwise, so its $L^p$ norm is at most
+$\sqrt2\,|[-M,M]^n|^{1/p}/q$. These are the asserted approximants.
+
+For the indicator of a finite-measure measurable set $E$, fix $\epsilon>0$. Lebesgue
+regularity gives compact $K\subseteq E$ with $|E\setminus K|<\epsilon$, and a bounded open
+$O\supseteq K$ with $|O\setminus K|<\epsilon$. Compactness gives a neighborhood of zero
+such that $K+h\subseteq O$ there: cover $K$ by finitely many balls whose doubled radii
+remain inside $O$ and take the minimum radius. Since $|K+h|=|K|$,
+\[
+ |K\mathbin\triangle(K+h)|=2|(K+h)\setminus K|\leq2|O\setminus K|<2\epsilon.
+\]
+The symmetric-difference triangle inequality therefore gives
+$|E\mathbin\triangle(E+h)|<4\epsilon$. This equals
+$\|\one_E(\cdot-h)-\one_E\|_p^p$. Finite linear combinations inherit translation continuity
+by the triangle inequality. For general $f$, choose a simple approximant $s$ and use
+\[
+ \|f(\cdot-h)-f\|_p\leq2\|f-s\|_p+\|s(\cdot-h)-s\|_p.
+\]
+First make the first term small and then let $h$ tend to zero.
+\end{proof}
+
+\begin{lemma}[Duality in the form used here]\label{new:duality}
+For $1<p<\infty$, $p'=p/(p-1)$, and a measurable $F$, a bound
+\[
+ \left|\int Fh\right|\leq B\|h\|_{p'}
+\]
+for all bounded, compactly supported measurable $h$ for which the pairing is defined implies
+$F\in L^p$ and $\|F\|_p\leq B$. It is enough to test finite-valued such $h$ when $F$ is locally
+integrable. The same norm bound, with the same class of tests, holds whenever $F\in L^p$.
+\end{lemma}
+\begin{proof}
+The upper bound when $F\in L^p$ is H\"older. For the converse put
+$E_M=[-M,M]^n\cap\{M^{-1}\leq|F|\leq M\}$ and
+$h_M=\one_{E_M}\overline F|F|^{p-2}$. It is bounded with bounded support, and
+\[
+ \int Fh_M=\int_{E_M}|F|^p,
+ \qquad \|h_M\|_{p'}=\left(\int_{E_M}|F|^p\right)^{1/p'}.
+\]
+If this integral is positive, division gives its $1/p$ power at most $B$; if it is zero the
+same conclusion holds. The increasing sets $E_M$ exhaust $\{0<|F|<\infty\}$, so monotone
+convergence proves the result. For simple tests only, approximate each $h_M$ uniformly on
+its support by finite-valued functions. Local integrability of $F$ justifies passage in the
+pairing, and uniform approximation on a finite-measure support justifies passage in the
+$L^{p'}$ norm. The functions arising before the extension steps below are bounded and in
+$L^1$, so this local integrability hypothesis is always satisfied.
+\end{proof}
+
+\begin{lemma}[Null sets, sections, and measurable unit phases]\label{new:measurability}
+All finite products, translates, averaged translates, and cube averages of the bounded Borel
+functions used below are jointly measurable. For a measurable scalar function $b$, the function
+$\overline b/|b|$ on $\{b\ne0\}$ and zero elsewhere is measurable, bounded by one, and
+its product with $b$ equals $|b|$. Replacing any input by an almost-everywhere equal input
+does not change the averaged functions almost everywhere or any of their integrals.
+\end{lemma}
+\begin{proof}
+The translation maps used below are continuous polynomial maps in their real variables;
+composition with Borel functions and finite products are Borel. Parameter integrals are
+measurable by the measurable-integral theorem, applied first to nonnegative real and
+imaginary parts and then to integrable complex functions. Absolute integrability follows
+from the explicitly stated bounded-support envelopes or from
+\cref{new:integral-inequalities}. For the phase, division is continuous away from zero and
+the two pieces are measurable. Finally, for a null set $E$ and any measurable translation
+$v(t)$, Tonelli and translation invariance give
+\[
+ \int\!\int\one_E(x+v(t))\,dx\,dt=\int|E|\,dt=0.
+\]
+The same calculation applies to finitely many parameter variables. Lebesgue measurable
+functions admit Borel versions; changing to these versions is therefore harmless. Every
+sectional identity below is used on the full-measure set furnished by Fubini, not on an
+unjustified collection of all exceptional sections.
+\end{proof}
+
+\subsection{Schwartz kernels and integral Plancherel without a missing compatibility lemma}
+\begin{lemma}[Kernel facts]\label{new:kernel-facts}
+The function $k$ is real, even, and Schwartz, $\widehat k=\eta$, and $\int k=1$.
+For every integer $M\geq0$, the quantities
+\[
+ B_0=\|k\|_1,\qquad B_1=\|k'\|_1,\qquad
+ B_M^{\rm tail}=\int |u|^M|k(u)|\,du
+\]
+are finite. For $R,a>0$,
+\[
+ \|K_R\|_1=B_0,\qquad \|K_R'\|_1=RB_1,
+ \qquad \int_{|u|\geq a}|K_R(u)|\,du\leq B_M^{\rm tail}(Ra)^{-M}.
+\]
+Also, if $|f|\leq1$, then $P_R^{(j)}f=K_R*_{j}f$ satisfies
+\[
+ \|P_R^{(j)}f\|_\infty\leq B_0,
+ \qquad |P_R^{(j)}f(x+ve_j)-P_R^{(j)}f(x)|\leq RB_1|v|.
+\]
+\end{lemma}
+\begin{proof}
+A smooth compactly supported function is Schwartz. The Fourier transform and inverse
+Fourier transform preserve Schwartz space, and on that space their compositions are the
+identity. These are the Schwartz Fourier equivalence and inversion already used by
+\pid{Auto.fourier_etaKer}; no nonsmooth Plancherel identification enters here.
+Alternatively, decay of $k$ and each of its derivatives follows by integrating by parts
+arbitrarily many times in its defining integral; the boundary terms vanish because $\eta$
+has compact support and is smooth. The imaginary part is zero by oddness of the sine term,
+and changing $u$ to $-u$ proves evenness. Evaluating $\widehat k=\eta$ at zero gives
+$\int k=\eta(0)=1$. Schwartz decay proves all displayed integrability statements.
+The substitutions $v=Ru$ give the first two scaled norms. On $|v|\geq Ra$ use
+$1\leq |v|^M/(Ra)^M$ to obtain the tail inequality. The supremum bound follows from the
+integral triangle inequality. For the Lipschitz bound use
+\[
+ \int|K_R(u+v)-K_R(u)|\,du
+ \leq\int\!\int_0^{|v|}|K_R'(u+\operatorname{sgn}(v)t)|\,dt\,du
+ =|v|RB_1.
+\]
+Translation in the convolution variable proves the claimed bound for every bounded Borel
+section. This argument does not require differentiability of $f$.
+\end{proof}
+
+\begin{lemma}[An $L^2$ approximate identity]\label{new:approximate-identity}
+Let $a\in L^1(\R^n)$ with $\int a=1$ and put $a_R(x)=R^na(Rx)$. For every $f\in L^2$,
+\[
+ \|a_R*f-f\|_2\longrightarrow0\quad(R\longrightarrow\infty).
+\]
+\end{lemma}
+\begin{proof}
+Substitute $u=Ry$ in the convolution. The integral inequality gives
+\[
+ \|a_R*f-f\|_2\leq\int|a(u)|\,\|f(\cdot-u/R)-f\|_2\,du.
+\]
+For each $u$ the norm tends to zero by \cref{new:translation-continuity}, and it is at most
+$2\|f\|_2$. Dominated convergence with the integrable majorant
+$2\|f\|_2|a(u)|$ proves the assertion.
+\end{proof}
+
+\begin{theorem}[Plancherel for the integral Fourier transform]\label{new:integral-plancherel}
+If $f\in L^1(\R^n)\cap L^2(\R^n)$, define its Fourier transform by the ordinary integral.
+Then $\widehat f\in L^2$ and
+\[
+ \int|\widehat f(\xi)|^2\,d\xi=\int|f(x)|^2\,dx.
+\]
+For $f,g\in L^1\cap L^2$,
+\[
+ \int f\overline g=\int\widehat f\,\overline{\widehat g}.
+\]
+\end{theorem}
+\begin{proof}
+Put $\chi(\xi)=\prod_{i=1}^n\eta(\xi_i)$ and
+$a(x)=\prod_{i=1}^nk(x_i)$. Thus $a\in L^1$, $\int a=1$, and $a$ is the inverse Fourier
+transform of $\chi$, by repeated Fubini. For $R>0$ set $\chi_R(\xi)=\chi(\xi/R)$ and
+$a_R(x)=R^na(Rx)$. Expanding the two Fourier integrals gives
+\[
+ \int\chi_R(\xi)|\widehat f(\xi)|^2\,d\xi
+ =\int f(x)\overline{(a_R*f)(x)}\,dx.
+\]
+Indeed, the expanded absolute integral is bounded by
+$\|\chi_R\|_1\|f\|_1^2<\infty$, so Fubini is applicable. The inner frequency integral is
+$a_R(y-x)=a_R(x-y)$, and it is real; this gives exactly the displayed pairing.
+By \cref{new:approximate-identity} and Cauchy--Schwarz its right side tends to $\|f\|_2^2$.
+Take $R=n+1$ with $n$ a natural number. The left integrands are nonnegative and converge
+pointwise to $|\widehat f|^2$, because
+$\chi_R\to1$. Fatou first gives $\int|\widehat f|^2\leq\|f\|_2^2$, proving its integrability.
+Now dominated convergence, with majorant $|\widehat f|^2$, proves equality. Notice that
+monotonicity in $R$ was not used. Applying this norm identity to $f+g$, $f-g$, $f+ig$,
+and $f-ig$, and expanding the four squares, proves the pairing identity by polarization.
+All these sums remain in $L^1\cap L^2$.
+\end{proof}
+
+\begin{lemma}[Multipliers, directional energies, and slices]\label{new:multiplier-facts}
+For $f\in L^1\cap L^2$ and $R>0$,
+\[
+ \widehat{P_R^{(j)}f}(\xi)=\eta(\xi_j/R)\widehat f(\xi),
+ \qquad \|P_R^{(j)}f\|_2\leq\|f\|_2.
+\]
+The operator $P_R^{(j)}$ is self-adjoint, and
+\[
+ \langle f,P_R^{(j)}f\rangle
+ =\int\eta(\xi_j/R)|\widehat f(\xi)|^2\,d\xi\geq0.
+\]
+If $L\leq R/2$, then $P_L^{(j)}(I-P_R^{(j)})f=0$ in $L^2$. If $L'\geq2L$, then
+\[
+ \langle f,P_{L'}^{(j)}f\rangle\geq\langle f,P_L^{(j)}f\rangle.
+\]
+For a coordinate $i\ne j$, writing $f_v$ for the section at $x_i=v$ gives
+\[
+ \langle f,P_R^{(j)}f\rangle=\int\langle f_v,P_R^{(j)}f_v\rangle\,dv.
+\]
+For bounded compactly supported $f$, each sectional energy is nonnegative and the last formula
+holds with the sectionwise integral transform, on the Fubini full-measure set.
+\end{lemma}
+\begin{proof}
+The absolute double integral for Fourier transformation of $K_R*_{j}f$ is at most
+$\|K_R\|_1\|f\|_1$. Fubini and the translation $x=y+ue_j$ give the multiplier
+$\widehat{K_R}(\xi_j)=\eta(\xi_j/R)$. The convolution belongs to $L^1\cap L^2$ by
+\cref{new:integral-inequalities}. Apply \cref{new:integral-plancherel}; the bounds
+$0\leq\eta\leq1$ give the contraction and energy identities. The pairing identity also
+proves self-adjointness. On the support of $\eta(\xi_j/L)$, one has
+$|\xi_j|\leq L/2\leq R/4$, so $\eta(\xi_j/R)=1$. Thus the annihilation multiplier is
+zero; integral Plancherel makes its physical function zero in $L^2$.
+Likewise the cutoff at $L'$ equals one on the support of the cutoff at $L$ when $L'\geq2L$;
+this proves the energy comparison without radial monotonicity.
+
+For slicing, expand the physical convolution pairing. The absolute integral is bounded by
+$\|K_R\|_1\|f\|_2^2$, using Cauchy--Schwarz and translation invariance. Fubini therefore
+allows the $v$ integral to be outermost and gives the displayed formula. The sectional
+nonnegativity follows from the already proved energy identity in one lower dimension.
+Translation or conjugation of $f$ preserves this energy, since the Fourier modulus is
+unchanged up to reflection and the cutoff is even. The same arguments establish all these
+identities for the $L^2$ extensions: approximate by $L^1\cap L^2$ functions and use the
+contraction and Cauchy--Schwarz. The inverse argument below itself only needs $L^1\cap L^2$.
+\end{proof}
+
+\begin{lemma}[The averaged-translation multiplier]\label{new:average-multiplier}
+Let $v(t)$ be a measurable bounded vector on a finite probability space and $|b(t)|\leq1$.
+For $f\in L^1\cap L^2$ put $Tf(x)=\mathbb E_t b(t)f(x-v(t))$. Then $Tf\in L^1\cap L^2$,
+\[
+ \widehat{Tf}(\xi)=\left(\mathbb E_t b(t)\ee{-\xi\cdot v(t)}\right)\widehat f(\xi),
+\]
+and its squared $L^2$ norm is the integral of the squared modulus of the displayed multiplier
+against $|\widehat f|^2$.
+\end{lemma}
+\begin{proof}
+The $L^1$ and $L^2$ bounds are at most the corresponding norms of $f$, by
+\cref{new:integral-inequalities}. The absolute joint Fourier integral is at most $\|f\|_1$.
+Fubini and translation give the formula; \cref{new:integral-plancherel} gives the norm identity.
+\end{proof}
+
+\subsection{An interpolation lemma with proof}
+\begin{lemma}[Three lines in the form used below]\label{new:three-lines}
+Suppose $F$ is continuous and bounded on $0\leq\operatorname{Re}z\leq1$, holomorphic in
+its interior, and $|F(it)|\leq M_0$, $|F(1+it)|\leq M_1$, with $M_0,M_1>0$.
+For $0<\theta<1$,
+\[
+ |F(\theta)|\leq M_0^{1-\theta}M_1^\theta.
+\]
+\end{lemma}
+\begin{proof}
+Divide $F(z)$ by $\exp((1-z)\log M_0+z\log M_1)$, obtaining a bounded holomorphic function
+$G$ with boundary modulus at most one. For $\epsilon>0$ consider
+$G(z)\exp(\epsilon(z^2-1))$ on the rectangle $0\leq\operatorname{Re}z\leq1$,
+$|\operatorname{Im}z|\leq T$. On the vertical sides its modulus is at most one. On the
+horizontal sides it is at most $\sup|G|\exp(-\epsilon T^2)$, hence at most one for sufficiently
+large $T$. The maximum-modulus theorem gives the same bound inside, so
+$|G(\theta)|\leq\exp(\epsilon(1-\theta^2))$. Let $\epsilon$ decrease to zero.
+\end{proof}
+
+\begin{lemma}[Multilinear interpolation on a fixed support domain]\label{new:interpolation}
+Let $T$ be a complex multilinear operator on bounded finite-valued functions of bounded support,
+with $r$ inputs. The support restrictions may be fixed measurable sets, provided they are unchanged
+when nonzero values of a simple function are replaced by other nonzero values.
+Assume, for $a=0,1$, the estimates
+\[
+ \|T(f_1,\ldots,f_r)\|_{q_a}\leq M_a\prod_i\|f_i\|_{p_{i,a}},
+\]
+where $1<q_a<\infty$, $p_{i,a}\in[1,\infty]$, and $M_a>0$.
+Define $1/p_i=(1-\theta)/p_{i,0}+\theta/p_{i,1}$ and
+$1/q=(1-\theta)/q_0+\theta/q_1$, with $0<\theta<1$ and all $p_i<\infty$.
+Then
+\[
+ \|T(f_1,\ldots,f_r)\|_q\leq M_0^{1-\theta}M_1^\theta\prod_i\|f_i\|_{p_i}.
+\]
+The same result applies when some inputs are conjugate-linear, by conjugating those inputs
+first. It also applies to their norm-continuous extensions.
+\end{lemma}
+\begin{proof}
+The zero-norm cases vanish by multilinearity. By homogeneity suppose $\|f_i\|_{p_i}=1$.
+For a simple test function $h$ with $\|h\|_{q'}=1$, use the bilinear pairing $\int Th$, without
+complex conjugation, and define on the nonzero values of each input
+\[
+ f_{i,z}=\frac{f_i}{|f_i|}\exp\!\left(p_i\left(\frac{1-z}{p_{i,0}}+
+                   \frac{z}{p_{i,1}}\right)\log|f_i|\right).
+\]
+Set it equal to zero where $f_i=0$, and use $1/\infty=0$. Define $h_z$ in the same way using
+the pair $q_0',q_1'$ and the exponent $q'$. The identity
+$1/q'=(1-\theta)/q_0'+\theta/q_1'$ follows by subtracting the output identity from one.
+At $z=\theta$ these are the original functions. At $z=a+it$, each input has $L^{p_{i,a}}$
+norm one; when that exponent is infinite its modulus is its support indicator. Also
+$\|h_{a+it}\|_{q_a'}=1$. Every function has its original fixed support.
+
+Expand the simple functions on their disjoint level sets. The scalar
+$F(z)=\int T(f_{1,z},\ldots,f_{r,z})h_z$ is a finite sum of exponentials of affine functions
+of $z$, whose coefficients are the fixed pairings of indicator inputs and indicator tests.
+These pairings are finite by the assumed endpoint bounds. Hence $F$ is entire and bounded
+on the closed strip. H\"older and the two endpoint estimates bound its boundary values by
+$M_0,M_1$. Apply \cref{new:three-lines}. Taking the supremum over simple tests and using
+\cref{new:duality} gives the result. For general bounded supported inputs, simple approximation
+and the existing crude multilinear bound justify passage to the limit in the applications
+below; the precise extensions are carried out where they are needed.
+\end{proof}
+
+
+\section{A real improving estimate, proved before it is used}\label{new:improving-section}
+This section proves the particular improving estimate needed at each adjoint index.
+It also explains why no integer mean-value theorem is involved. The conclusion is already
+available, in a more symmetric form, as \pid{Auto.strong_real_improving'} and
+\pid{Auto.kosz53_internal} in the supplied Lean file. The proof here makes the mathematical
+dependency explicit instead of treating either result as an imported analytic assertion.
+
+\subsection{A six-dimensional incidence estimate}
+Work at scale one in this subsection. Write $\R^6=\R\times\R^2\times\R^3$ and put
+\[
+ \Gamma_1(t)=(t;0,0;0,0,0),\qquad
+ \Gamma_2(t)=(0;t,t^2;0,0,0),\qquad
+ \Gamma_3(t)=(0;0,0;t,t^2,t^3),\qquad \Gamma_0=0.
+\]
+For finite-measure Borel sets $E_0,E_1,E_2,E_3\subseteq\R^6$ define the incidence
+\[
+ K=\int\one_{E_0}(x)\int_0^1\prod_{i=1}^3\one_{E_i}(x-\Gamma_i(t))\,dt\,dx.
+\]
+By translation and Tonelli, $0\leq K\leq\min_i|E_i|$. When $K>0$, write
+$\alpha_i=K/|E_i|\in(0,1]$.
+
+\begin{lemma}[Finite refinements and their pointwise incidence bounds]\label{new:refinements}
+There exist nested Borel sets $E_i^r\subseteq E_i$, $0\leq r\leq60$, with $E_i^0=E_i$,
+whose joint incidence after stage $r$ is at least $2^{-4r}K>0$.
+For $x\in E_a^r$, the set of parameters taking $x$ to the required sets at the other labels
+has measure at least $2^{-240}\alpha_a$. More precisely, for $b\ne a$, the translated point
+$x+\Gamma_a(t)-\Gamma_b(t)$ lies in $E_b^r$ if $b<a$ and in $E_b^{r-1}$ if $b>a$,
+simultaneously for all $b\ne a$, on such a parameter set.
+\end{lemma}
+\begin{proof}
+At stage $r$, update labels $a=0,1,2,3$ in that order. Keep all already updated sets at level
+$r$, and the other sets at level $r-1$. For label $a$, let $H_a^r(x)$ be the integral in
+$t\in[0,1]$ of their incidence indicators after translating the point at label $a$ to $x$:
+\[
+ H_a^r(x)=\int_0^1\prod_{b<a}\one_{E_b^r}(x+\Gamma_a(t)-\Gamma_b(t))
+                       \prod_{b>a}\one_{E_b^{r-1}}(x+\Gamma_a(t)-\Gamma_b(t))\,dt.
+\]
+Define
+\[
+ E_a^r=E_a^{r-1}\cap\{H_a^r\geq2^{-(4(r-1)+a+1)}\alpha_a\}.
+\]
+The functions and sets are measurable by \cref{new:measurability}. Before this deletion the
+incidence is at least $2^{-(4(r-1)+a)}K$, by induction on the lexicographic pair $(r,a)$.
+The deleted contribution is at most
+$2^{-(4(r-1)+a+1)}\alpha_a|E_a|=2^{-(4(r-1)+a+1)}K$.
+Thus at least half remains. The adjoint change of variables identifying the incidence at
+label $a$ with the preceding joint incidence is exactly $y=x+\Gamma_a(t)$, of determinant one.
+This proves the induction and the pointwise bounds. For $r\leq60$ the displayed threshold
+is at least $2^{-240}\alpha_a$.
+\end{proof}
+
+\begin{lemma}[The two flows actually needed]\label{new:flows}
+For each terminal label $b\in\{1,3\}$, there is a Borel parameter tower
+$\mathcal P\subseteq[0,1]^6$ and a polynomial map $\Phi:\R^6\to\R^6$ whose image on
+$\mathcal P$ lies in $E_b$. Each successive tower fiber has measure at least
+$2^{-240}\alpha_a$, where $a$ is the label being left. In the order of the moment blocks,
+\[
+ |\det D\Phi|=12|u-v|\,|a_1-a_2|\,|a_1-a_3|\,|a_2-a_3|.
+\]
+Here $u,v$ are the two parameters of the degree-two block and $a_1,a_2,a_3$ the three
+parameters of the degree-three block. On the set where this determinant is nonzero,
+$\Phi$ is the union of two injective restrictions.
+\end{lemma}
+\begin{proof}
+Use the following fixed sequences of labels, respectively for terminal labels $3$ and $1$:
+\[
+ (1,0,2,0,3,0,3),\qquad (3,0,3,0,2,0,1).
+\]
+Choose a point $x_0$ in the level-60 refinement of the initial label; it is nonempty because
+the joint incidence there is positive. At a move from label $a$ at level $r$ to label $b$,
+use the parameter fiber from \cref{new:refinements}, and put
+\[
+ x_{\ell}=x_{\ell-1}+\Gamma_a(t_\ell)-\Gamma_b(t_\ell).
+\]
+The new level is $r$ if $b<a$, and $r-1$ if $b>a$. Each of these two sequences has three
+increases of label, so no level below 57 is used. Define the tower recursively by these
+fiber conditions. Each condition is Borel in the previous parameters, giving a Borel tower;
+the fiber lower bound is exactly the one at the label being left. The endpoint map is
+\[
+ \Phi(t_1,\ldots,t_6)=x_0+\sum_{\ell=1}^6
+       (\Gamma_{w_{\ell-1}}(t_\ell)-\Gamma_{w_\ell}(t_\ell)).
+\]
+Its image lies in the required terminal refinement.
+
+For the first sequence the independent moment blocks use parameters
+$(t_1)$, $(t_2,t_3)$, $(t_4,t_5,t_6)$. For the second they use
+$(t_1,t_2,t_3)$, $(t_4,t_5)$, $(t_6)$, in degrees three, two, one.
+Every move touches label zero, so there are no cross-block terms. Up to a common sign in
+each block, the three maps are
+\[
+ u\longmapsto u,\qquad
+ (u,v)\longmapsto(u-v,u^2-v^2),
+\]
+\[
+ (a_1,a_2,a_3)\longmapsto
+ (a_1-a_2+a_3,a_1^2-a_2^2+a_3^2,a_1^3-a_2^3+a_3^3).
+\]
+Their derivative determinants have absolute values $1$, $2|u-v|$, and
+$6|a_1-a_2||a_1-a_3||a_2-a_3|$, respectively. The last formula follows by factoring
+$1,2,3$ from the derivative rows and expanding the three-column Vandermonde determinant.
+Multiplication gives the claimed formula.
+
+To verify multiplicity, the first block determines its parameter. In the second, if
+$s_1=u-v\ne0$ and $s_2=u^2-v^2$, then $u+v=s_2/s_1$, determining both parameters.
+For the third put $U=a_1+a_3$, $V=a_1a_3$, and let $s_1,s_2,s_3$ be its three outputs.
+Direct expansion gives
+\[
+ a_2=U-s_1,\qquad V=s_1U-\frac{s_1^2+s_2}{2},
+\]
+\[
+ s_3=\frac32(s_2-s_1^2)U+s_1^3,
+ \qquad s_2-s_1^2=2(a_1-a_2)(a_2-a_3).
+\]
+At a noncritical point the last expression is nonzero. Thus $U$, then $V$, then $a_2$
+are determined. The distinct numbers $a_1,a_3$ are the two roots of $X^2-UX+V$, so there
+are at most two orderings. Restricting to $a_1<a_3$ or $a_1>a_3$ gives two Borel injective
+pieces. This proves the assertion without a general polynomial multiplicity theorem.
+\end{proof}
+
+\begin{lemma}[Integrated incidence consequence]\label{new:incidence-consequence}
+There is an absolute $c_*>0$ such that, for $b\in\{1,3\}$,
+\[
+ |E_b|\geq c_*(\alpha_0\alpha_1\alpha_2\alpha_3)^{10}.
+\]
+Consequently, for any $j\in\{1,2,3\}\setminus\{b\}$ and the remaining index $c$,
+\[
+ K\leq C_*|E_0|^{1/6}|E_j|^{1/2}|E_b|^{11/60}|E_c|^{1/6}.
+\]
+\end{lemma}
+\begin{proof}
+Let $\gamma=2^{-240}\alpha_0\alpha_1\alpha_2\alpha_3$. Every fiber in the preceding
+lemma has measure at least $\gamma$, since the product of the four numbers $\alpha_i\leq1$
+is at most each factor. When selecting a new parameter in a moment block, remove the open
+intervals of radius $\gamma/8$ around the at most two previously selected parameters of
+that block. Their total length is at most $\gamma/2$, so each pruned fiber has measure at
+least $\gamma/2$. The conditions defining these removals are Borel, so the pruned set is
+still a measurable tower. All four Vandermonde factors on it have modulus at least $\gamma/8$.
+Successive integration over its six fibers gives
+\[
+ \int_{\mathcal P}|\det D\Phi|\geq
+ 12(\gamma/8)^4(\gamma/2)^6.
+\]
+Use the injective change-of-variables inequality on each of the two pieces in
+\cref{new:flows}: for a $C^1$ map injective on a measurable set $S$,
+$\int_S|\det D\Phi|\leq|\Phi(S)|$, with outer measure if necessary.
+Each image is contained in $E_b$, so the whole integral is at most $2|E_b|$.
+This is the usual Jacobian change-of-variables theorem; the precise one-sided form is
+available as \pid{MeasureTheory.lintegral_abs_det_fderiv_le_addHaar_image}, used in the
+supplied file. The critical set contributes zero. Thus one may take
+$c_*=6\,8^{-4}2^{-6}2^{-2400}$.
+
+Since $\alpha_j\leq1$, replacing its exponent 10 by 30 weakens the resulting lower bound:
+\[
+ |E_b|\geq c_*\alpha_0^{10}\alpha_j^{30}\alpha_b^{10}\alpha_c^{10}.
+\]
+Substitute $\alpha_i=K/|E_i|$, multiply by the denominator, and take the sixtieth root.
+This gives the second assertion with $C_*=c_*^{-1/60}$. If $K=0$ the conclusion is immediate;
+if a set has measure zero then $K=0$, as was noted before the refinements.
+\end{proof}
+
+\subsection{Descent and the strong endpoint, including the summation}
+For the sign convention of this subsection put
+\[
+ T(f_1,f_2,f_3)(x)=\int_0^1\prod_{i=1}^3f_i(x-t^ie_i)\,dt,
+ \qquad \mathcal B(f_0,f_1,f_2,f_3)=\int f_0T(f_1,f_2,f_3).
+\]
+Fix $j$ and choose $(b,c)$ by
+\[
+ j=1:\ (b,c)=(3,2);\qquad j=2:\ (b,c)=(3,1);\qquad
+ j=3:\ (b,c)=(1,2).
+\]
+Only terminal labels 1 and 3 are needed; no relabeling of unequal polynomial degrees is used.
+
+\begin{lemma}[A full neighborhood of restricted exponents]\label{new:restricted-neighborhood}
+For indicator inputs of finite-measure sets in $\R^3$, $\mathcal B$ obeys a restricted
+bound at the reciprocal-exponent vector $v$, where
+\[
+ v_0=\tfrac16,\qquad v_j=\tfrac12,\qquad v_b=\tfrac{11}{60},\qquad v_c=\tfrac16,
+\]
+with a finite absolute constant. It also obeys all restricted bounds at the corners
+$\beta+\epsilon\sigma$, $\sigma\in\{-1,1\}^4$, with a common finite constant, where
+\[
+ \beta_0=\tfrac16,\qquad\beta_j=\tfrac12,\qquad
+ \beta_b=\tfrac7{40},\qquad\beta_c=\tfrac16,\qquad\epsilon=\tfrac1{10000}.
+\]
+\end{lemma}
+\begin{proof}
+Lift a set in $\R^3$ to $\R^6$ using the last coordinate in each of the three blocks.
+For $E_0$ use $[-1,1]$ in each of the three unused coordinates; for each of the other
+sets use $[-2,2]$ in those coordinates. For $t\in[0,1]$, a point in the inner unused-coordinate
+box remains in the outer one after every shift. The lifted incidence is therefore exactly
+$8$ times the three-dimensional incidence. All four lifted set measures are fixed positive
+multiples of the original measures. Apply \cref{new:incidence-consequence}, absorbing these
+fixed multiples into the constant. This proves the bound at $v$.
+
+The trivial bound is $\mathcal B(\one_{E_0},\ldots,\one_{E_3})\leq|E_i|$ for each $i$.
+Let $w=(1/6,1/2,1/6,1/6)$ in the order $(0,j,b,c)$. Then $\sum w_i=1$ and
+$\beta=(v+w)/2$. For $\beta'=\beta+\epsilon\sigma$ define
+\[
+ \lambda=60\left(\sum_i\beta_i'-1\right),\qquad r_i=\beta_i'-\lambda v_i.
+\]
+Since $\sum_i\beta_i=121/120$, $\sum_i v_i=61/60$, and $|\sum_i\sigma_i|\leq4$,
+\[
+ |\lambda-\tfrac12|\leq240\epsilon,
+ \qquad r_i\geq\tfrac1{12}-121\epsilon>0,
+ \qquad \sum_i r_i=1-\lambda.
+\]
+Thus $0<\lambda<1$ and $\beta'=\lambda v+\sum_i r_i e_i$ is a convex combination.
+Raise the restricted bound at $v$ to the power $\lambda$ and each trivial bound at $e_i$
+to $r_i$, and multiply. The powers on the left sum to one; the powers of each set measure
+on the right sum to $\beta'_i$. Increasing the original constant to at least one makes the
+constant uniform in all 16 corners.
+\end{proof}
+
+\begin{lemma}[Restricted-to-strong summation with no unstated interpolation theorem]
+\label{new:restricted-strong}
+The form $\mathcal B$ satisfies
+\[
+ |\mathcal B(f_0,f_1,f_2,f_3)|\leq C\|f_0\|_6\|f_j\|_2
+                                      \|f_b\|_{40/7}\|f_c\|_6.
+\]
+\end{lemma}
+\begin{proof}
+Positivity permits replacing all inputs by their absolute values. By homogeneity assume
+$\|f_i\|_{p_i}=1$, where $p_i=1/\beta_i$; zero norms give zero by Tonelli.
+Use disjoint sets $E_{i,n}=\{2^n\leq f_i<2^{n+1}\}$, and let $m_{i,n}=|E_{i,n}|$.
+They have finite measure, and
+\[
+ \sum_n2^{np_i}m_{i,n}\leq1,\qquad
+ f_i\leq\sum_n2^{n+1}\one_{E_{i,n}}.
+\]
+For each tuple of nonzero measures, select from \cref{new:restricted-neighborhood} the
+corner whose sign in coordinate $i$ minimizes $m_{i,n_i}^{\epsilon\sigma_i}$.
+Its restricted bound is
+\[
+ C\prod_i m_{i,n_i}^{\beta_i}
+                   \min\{m_{i,n_i}^{\epsilon},m_{i,n_i}^{-\epsilon}\}.
+\]
+The positive expansion of the form and Tonelli therefore bound the normalized form by
+\[
+ 16C\prod_{i=0}^3\left(\sum_{n:m_{i,n}>0}
+       2^n m_{i,n}^{\beta_i}
+              \min\{m_{i,n}^{\epsilon},m_{i,n}^{-\epsilon}\}\right).
+\]
+For $n\geq0$, $m_{i,n}\leq2^{-np_i}\leq1$, so its summand is at most
+$2^{-np_i\epsilon}$. For $n<0$ and $m_{i,n}\geq1$, it is at most $2^{np_i\epsilon}$.
+For $n<0$ and $m_{i,n}<1$, it is at most $2^n\leq2^{np_i\epsilon}$, because
+$0<p_i\epsilon<1$. Each parenthesis is thus at most
+\[
+ \sum_{n\in\mathbb Z}2^{-|n|p_i\epsilon}
+ =\frac{1+2^{-p_i\epsilon}}{1-2^{-p_i\epsilon}}<\infty.
+\]
+This proves the displayed estimate with an explicit finite constant. Finite partial sums
+and then monotone convergence justify the argument for arbitrary nonnegative inputs;
+complex inputs follow by domination. No cone-summation or Marcinkiewicz assertion is left
+unproved.
+\end{proof}
+
+\begin{theorem}[Improving estimates at general scale]\label{new:improving}
+With $j,b,c$ chosen as above and $N>0$,
+\[
+ \|A_N(f_1,f_2,f_3)\|_{6/5}
+ \leq C N^{-1/20}\|f_j\|_2\|f_b\|_{40/7}\|f_c\|_6.
+\]
+Define the adjoint, with all conjugations specified, by
+\[
+ A_N^{*j}(g_0,g_b,g_c)(y)
+ =\frac1N\int_0^N g_0(y-t^je_j)
+        \overline{g_b(y-t^je_j+t^be_b)}
+        \overline{g_c(y-t^je_j+t^ce_c)}\,dt.
+\]
+Then
+\[
+ \|A_N^{*j}(g_0,g_b,g_c)\|_2
+ \leq C N^{-1/20}\|g_0\|_6\|g_b\|_{40/7}\|g_c\|_6.
+\]
+\end{theorem}
+\begin{proof}
+The unit-scale form estimate gives the unit-scale $L^{6/5}$ estimate by
+\cref{new:duality}. Reflection $x\mapsto-x$ changes all three negative shifts to positive
+shifts and preserves all norms. For general $N$, use
+$D_Nx=(Nx_1,N^2x_2,N^3x_3)$ and substitute $t=Nu$. Its determinant is $N^6$, and
+\[
+ A_N(f)(D_Nx)=A_1(f_1\circ D_N,f_2\circ D_N,f_3\circ D_N)(x),
+ \qquad \|f_i\circ D_N\|_{p_i}=N^{-6/p_i}\|f_i\|_{p_i}.
+\]
+The norm factor is
+\[
+ N^{6(5/6-1/2-7/40-1/6)}=N^{-1/20}.
+\]
+For bounded supported inputs and a bounded supported test $h$, Fubini and the translation
+$y=x+t^je_j$ give the exact identity
+\[
+ \langle A_N(f_1,f_2,f_3),g_0\rangle
+ =\langle f_j,A_N^{*j}(g_0,f_b,f_c)\rangle.
+\]
+Every integral is absolutely convergent, since the inputs are bounded and one spatial
+support is bounded uniformly in $t\in[0,N]$. Apply the first estimate and H\"older to its
+left side, and then \cref{new:duality} with output exponent two, to obtain the adjoint
+estimate. Truncate absolute values and spatial supports, use positivity for the absolute
+adjoint, and apply monotone convergence and domination to extend to all inputs of the
+stated finite norms. This also shows that the concrete parameter integral represents the
+bounded extension almost everywhere.
+\end{proof}
+
+
+\section{The real inverse theorem, developed in dependency order}\label{sec:internal-kosz-adjoint}
+The source organization is \cite[\S\S4.2--4.5]{KoszEtAl}.  The public every-input uniformity
+lemma is \emph{not} a premise of this section.  The only polynomial uniformity estimate used
+inside the section is the highest-active-degree estimate proved below, including its
+parameter-shifted version.  We work with all increasing degree lists contained in $\{1,2,3\}$,
+not just the list $(1,2,3)$: shorter lists and lower coefficients are needed by the slicing argument.
+
+\subsection{Fej\'er measures and the existing cube quantity}
+\begin{definition}[Fej\'er measures]\label{def:local-uniformity}
+For $H>0$ let $\kappa_H(h)=H^{-1}(1-|h|/H)_+$. It is a probability density on $\R$.
+All independent shift variables below are integrated against the explicitly specified
+uniform or Fej\'er probability measure.
+\end{definition}
+For calculations let
+\[
+ C_s(f;x,\mathbf h)=\prod_{\omega\in\{0,1\}^s}
+       \mathcal C^{|\omega|}f\bigl(x+(\omega\cdot\mathbf h)e_j\bigr),
+ \qquad C_0(f;x)=f(x).
+\]
+Then
+\refstepcounter{equation}
+\[
+ \label{patch:cube-succ}
+ C_{s+1}(f;x,\mathbf h,h)=C_s(f;x,\mathbf h)
+                                  \overline{C_s(f;x+he_j,\mathbf h)}.
+ \tag{\theequation}
+\]
+In ambient dimension $n$, with an explicit positive spatial normalizer $V$, write
+\[
+ Q_{s,H,V}^{j}(f)=V^{-1}\operatorname{Re}\int\!\int C_s(f;x,\mathbf h)
+                                   \prod_i\kappa_H(h_i)\,d\mathbf h\,dx.
+\]
+The notation with unequal radii, $Q_{\mathbf L,V}^{j}$, means the same expression with
+$\prod_i\kappa_{L_i}(h_i)$.  These are proof-local normalizations.  For the three-dimensional monomial system the normalization is $N^6$; when a box volume
+$V$ is used to obtain bounds by one, the factor $V/N^6$ is retained explicitly.
+Define $T_{H,j}u(x)=H^{-1}\int_0^H u(x+te_j)\,dt$.
+
+\begin{lemma}[Squares, positivity, and appending a coordinate]\label{patch:fejer-squares}
+The difference of two independent uniform variables in $[0,H]$ has density $\kappa_H$.
+Consequently
+\[
+ \int\!\int u(x)\overline{u(x+he_j)}\kappa_H(h)\,dh\,dx
+       =\|T_{H,j}u\|_2^2.
+\]
+For $s\geq1$, every order-$s$ cube power above is real and nonnegative.  If $|f|\leq1$ and $f$ is supported in a
+rectangular box of volume $V$, then $0\leq Q_{s,H,V}^{j}(f)\leq1$.
+If the box has $j$-th side length $S$, then
+\refstepcounter{equation}
+\[
+ \label{patch:raise-order}
+ \bigl(Q_{s,H,V}^{j}(f)\bigr)^2
+       \leq(1+H/S)Q_{s+1,H,V}^{j}(f).
+ \tag{\theequation}
+\]
+\end{lemma}
+\begin{proof}
+Expand the square of $T_{H,j}u$, use translation in $x$, and apply Fubini.  The density of
+$a-b$ for $a,b\in[0,H]$ is $H^{-2}|[0,H]\cap([0,H]-h)|=\kappa_H(h)$.
+Apply this identity to $u=C_{s-1}(f;\cdot,\mathbf h)$ for the last difference.  It proves
+reality and positivity before any comparison of kernels is made.  The zero vertex gives
+$|C_s(f;x,\mathbf h)|\leq\mathbf1_B(x)$, so the upper bound is one.
+For \eqref{patch:raise-order}, $u=C_s$ is supported in $B$, its full integral is unchanged
+by $T_{H,j}$, and $T_{H,j}u$ is supported in a box of volume $V(1+H/S)$.
+Thus $|\int u|^2\leq V(1+H/S)\|T_{H,j}u\|_2^2$.  Average over the first $s$ increments,
+apply Jensen, and use \eqref{patch:cube-succ}.  The same argument applies to translated
+support boxes.  Translation and conjugation of $f$ preserve every integrated cube power.
+\end{proof}
+
+\begin{lemma}[Fej\'er van der Corput]\label{lem:fejer-vdc}
+Let $I$ have length $N>0$, $0<H\leq N/4$, and $F$ be measurable and $1$-bounded.  Then
+\[
+ \left|\frac1N\int_I F(t)\,dt\right|^2
+ \leq4\int\kappa_H(h)
+       \left|\frac1N\int_{I\cap(I-h)}F(t+h)\overline{F(t)}\,dt\right|\,dh
+       +\frac{8H}{N}.
+\]
+\end{lemma}
+\begin{proof}
+Put $W=\mathbf1_IF$ and $S(u)=H^{-1}\int_0^H W(u+a)\,da$.
+Then $\int S=\int_I F$ and $S$ is supported in an interval of length $N+H$.
+Cauchy--Schwarz followed by square expansion gives the stronger upper bound
+$(1+H/N)\int\kappa_H(h)|N^{-1}\int_{I\cap(I-h)}F(t+h)\overline{F(t)}\,dt|\,dh$.
+Use $1+H/N\leq2$.  The displayed version is therefore valid; it is the existing
+\pid{fejer_vdc'} interface.  The plus sign before $8H/N$ is explicit.
+\end{proof}
+No unrestricted polynomial-to-uniformity assertion is included in this scalar lemma.
+
+\begin{lemma}[Signed integrated removal]\label{patch:signed-vdc}
+Let $I$ have length $N>0$ and $0<H\leq N/4$.  Suppose $V>0$, $\int|g|^2\leq V$, and $\int|F(x,t)|^2\,dx\leq V$ for the relevant
+parameter values.  Assume joint measurability and the integrability supplied, in applications,
+by bounded factors and their finite-support envelopes.  Set
+$A=V^{-1}\int g(x)\mathbb E_{t\in I}F(x,t)\,dx$.  Then
+\refstepcounter{equation}
+\[
+ \label{patch:signed-vdc-eq}
+ |A|^2\leq2\operatorname{Re}\int\kappa_H(h)
+      \frac1V\int\mathbb E_{t\in I}F(x,t)\overline{F(x,t+h)}\,dx\,dh
+      +2H/N.
+ \tag{\theequation}
+\]
+\end{lemma}
+\begin{proof}
+First remove exactly $g$, which is independent of $t$, by Cauchy--Schwarz in $x$:
+$|A|^2\leq V^{-1}\int|\mathbb E_I F(x,t)|^2dx$.
+Apply the window construction in the preceding proof with $x$ retained and integrate in $x$.
+It gives $(1+H/N)$ times the real part of the averaged cut-off correlation.  This whole
+averaged correlation is nonnegative because it came from an integrated square.
+Its replacement of $I\cap(I-h)$ by $I$ costs at most $|h|/N$: indeed
+$\int|F(x,t)\overline{F(x,t+h)}|dx\leq V$ by Cauchy--Schwarz.
+Bound $1+H/N$ by two and average $|h|\leq H$.
+This proves \eqref{patch:signed-vdc-eq}.  In particular, it is not obtained by deleting an
+absolute value from \pid{fejer_vdc'}.
+\end{proof}
+
+\subsection{The elementary coordinate-removal induction}
+\begin{lemma}[Cylinder Cauchy--Schwarz, with its state]\label{patch:cylinder}
+Let $z$ be an auxiliary probability-space variable and $b_i$ independent probability-space
+variables, $1\leq i\leq r$.  Let $v(z,\mathbf b)$ and $u_i(z,\mathbf b)$ be jointly measurable and $1$-bounded,
+with $u_i$ independent of $b_i$.  Then
+\[
+ \left|\mathbb E_{z,\mathbf b}v(z,\mathbf b)\prod_{i=1}^r u_i(z,\mathbf b)\right|^{2^r}
+ \leq\mathbb E_{z,\mathbf b^0,\mathbf b^1}
+       \prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}v(z,\mathbf b^\omega).
+\]
+The right-hand side is real and nonnegative.  The same statement for finite nonprobability
+spaces follows by writing every normalization factor explicitly.
+\end{lemma}
+\begin{proof}
+After $a$ steps use independent pairs $b_i^0,b_i^1$ for $i\leq a$ and one variable $b_i$
+for $i>a$.  Define
+\[
+ v_a=\prod_{\omega\in\{0,1\}^a}\mathcal C^{|\omega|}v(z,\mathbf b^\omega),
+ \qquad
+ u_{i,a}=\prod_{\omega\in\{0,1\}^a}\mathcal C^{|\omega|}u_i(z,\mathbf b^\omega)
+ \quad(i>a),
+\]
+and $J_a=\mathbb E[v_a\prod_{i>a}u_{i,a}]$.
+At step $a+1$ the removed block is exactly $u_{a+1,a}$.
+It is independent of the only variable being doubled, $b_{a+1}$.
+Write the average as an outer average of this block times the inner $b_{a+1}$ average.
+Cauchy--Schwarz in all the outer variables and expansion of the inner square yield
+$|J_a|^2\leq J_{a+1}$.  The new $J_{a+1}$ is nonnegative because it is that square average.
+The finite-product equivalence $\{0,1\}^{a+1}\simeq\{0,1\}^a\times\{0,1\}$ proves
+that the expanded factors are precisely the displayed next state; the new bit toggles
+conjugation.  Induct on $a=0,\ldots,r-1$.  The auxiliary variable $z$ is never doubled.
+\end{proof}
+This is the reusable, fully specified Gowers--Cauchy--Schwarz induction used below.
+It does not claim that a polynomial family is already a cube.
+
+\subsection{Scalar polynomial oscillation and coefficient separation}
+\begin{lemma}[Real polynomial oscillation]\label{lem:real-polynomial-oscillation}
+For $1\leq d\leq3$ there is $C_d\geq1$ such that
+\[
+ \left|N^{-1}\int_0^N\ee{\sum_{r=1}^d a_rt^r}\,dt\right|
+ \leq C_d\min\{1,(\max_r|a_r|N^r)^{-1/d}\}.
+\]
+When $\max_r|a_r|N^r=0$, interpret the minimum as one; in Lean use a separate zero case,
+not a negative real power of zero.  Hence a lower bound $0<\varepsilon\leq1$ for this average bounds every nonconstant coefficient
+by $|a_r|N^r\leq (C_d/\varepsilon)^d$.
+\end{lemma}
+\begin{proof}
+Scale to $N=1$.  For a real polynomial $p$ of degree at most $d-1$ with a coefficient of
+modulus at least $A$, a measurable sublevel set $E\subseteq[0,1]$ on which $|p|\leq\theta$
+has length at most $C_d(\theta/A)^{1/(d-1)}$ when $d\geq2$.
+To see this, choose $d$ points in $E$ with mutual separations at least $|E|/(2d)$ by successively
+removing intervals about the previously chosen points (or use $d$ separated quantile blocks).
+Lagrange interpolation then bounds every coefficient by $C_d\theta|E|^{-(d-1)}$.
+Null sets and degree-zero polynomials are handled separately.
+Apply this to $p=P'$ and $A=\max|a_r|$.  Split $[0,1]$ at the finitely many roots of
+$P''$, $P'-\theta$, and $P'+\theta$.  On each remaining interval where $|P'|\geq\theta$,
+$P'$ is monotone; integration by parts in $\ee{P}/(2\pi iP')$ bounds the integral by
+$C_d/\theta$.  The total number of intervals is bounded in terms of $d$.
+Choose $\theta=A^{1/d}$ when $A\geq1$.  The sublevel contribution and the integration-by-parts
+contribution are both $O_d(A^{-1/d})$.  For $d=1$ integrate the exponential directly;
+for $A<1$ use the bound one.  Scale back.
+\end{proof}
+
+\begin{lemma}[Distinct degrees give a triangular frequency bound]\label{patch:triangular}
+For admissible $P_1,\ldots,P_k$, if
+$|\mathbb E_{t\in[0,N]}\ee{\sum_i\xi_iP_i(t)}|\geq\delta^{O(1)}$, then
+$\sum_iN^{d_i}|\xi_i|\leq\delta^{-O(1)}$.
+\end{lemma}
+\begin{proof}
+Write $a_r=[t^r]\sum_i\xi_iP_i(t)$ and $z_i=N^{d_i}|\xi_i|$.
+The preceding lemma bounds every $N^r|a_r|$ by a power of $\delta^{-1}$.
+Starting at $i=k$ and descending, use the exact identity
+\[
+ \xi_i\operatorname{lc}(P_i)=a_{d_i}-\sum_{u>i}\xi_u[t^{d_i}]P_u.
+\]
+Consequently $z_i\leq u_c(\delta)\{M+u_c(\delta)\sum_{u>i}z_u\}$ for a known power bound $M$.
+There are at most three steps.  Apply \cref{patch:budgets} to this explicit recursion.
+\end{proof}
+
+
+\subsection{The protected highest-degree PET argument}\label{patch:pet-producer}
+This subsection supplies, rather than assumes, the polynomial estimate needed inside the
+real inverse proof.  It is deliberately a highest-\emph{active}-degree result.  General selected
+indices will be handled later by the independent slicing argument.
+
+\subsubsection{Symbolic state and a leading-coefficient invariant}
+Use $t$ for the averaging variable and $\mathbf h=(h_1,\ldots,h_r)$ for formal indeterminates.
+Polynomials are elements of $(\mathbb R[\mathbf h])^n[t]$; degrees in this subsection are degrees
+in $t$, \emph{before} evaluating the $h_i$.  A normal state consists of a finite ordered list
+\[
+ Q_1,\ldots,Q_L,\qquad Q_i(0,\mathbf h)=0,
+\]
+of nonzero distinct vector polynomials, with $Q_1$ of maximum degree, together with a bounded
+function block $g_i$ for each $Q_i$ and a spatial block $g_0$.
+A block is a finite list of translated/conjugated input factors.  Multiplicities are retained.
+The distinguished block $g_1$ is required to contain \emph{one} translated or conjugated copy
+of the protected input $f$, not a product containing $f$.
+
+Fix the protected input's original degree $D\in\{2,3\}$, leading scalar coefficient $a\ne0$,
+and coordinate $e_m$.  Retain the following invariant for $Q_1$ and for every nonzero
+$Q_1-Q_i$, including $Q_0=0$:
+\refstepcounter{equation}
+\[
+ \label{patch:lead-invariant}
+ \operatorname{lc}_t R=a\,p_R(\mathbf h)e_m,
+ \quad p_R\in\mathbb Z[\mathbf h]\setminus\{0\},
+ \quad p_R\text{ multilinear and homogeneous of degree }D-\deg_t R.
+ \tag{\theequation}
+\]
+Only the leading coefficients have this form.  The full polynomials may contain lower
+coefficients in any active coordinate and with arbitrary admissible real values.
+
+Initially the input polynomials are $P_i(t)e_i$ with increasing degrees and protected index $m$.
+Then \eqref{patch:lead-invariant} holds with $p_R=1$ for the head and its differences with
+lower-degree inputs.  It also holds for the shifted family
+\refstepcounter{equation}
+\[
+ \label{patch:initial-shift-family}
+ P_i(t+\omega\cdot\mathbf h)e_i-P_i(\omega\cdot\mathbf h)e_i,
+       \qquad \omega\in\{0,1\}^{r_0},\quad r_0\leq4,
+ \tag{\theequation}
+\]
+when the protected head is the highest input with $\omega=(1,\ldots,1)$.
+For two shifts of that input, their difference has degree $D-1$ and leading coefficient
+$aD[(\mathbf1-\omega)\cdot\mathbf h]e_m$; differences with lower inputs still have degree $D$.
+Repeated normalized polynomials among nuisance blocks are grouped.  Since $D\geq2$, the
+protected head has no duplicate in this initial family.
+
+\begin{lemma}[A labelled update preserves the protected head]\label{patch:pet-update}
+Suppose the current head degree is $d\geq2$.  For a pivot $p\in\{1,\ldots,L\}$ introduce one
+fresh indeterminate $u$ and form the ordered children
+\[
+ Q_i(t+u)-Q_p(t),\quad Q_i(t)-Q_p(t)\qquad(1\leq i\leq L),
+\]
+putting the shifted head first.  Subtract each child's constant term in $t$, absorb that
+constant as a translation of its function, collect zero polynomials in the new spatial block,
+and multiply the function lists attached to identical remaining polynomials.
+If the shifted head has maximum degree, the new state is normal, its head block is a
+singleton of origin $f$, and \eqref{patch:lead-invariant} is preserved.
+\end{lemma}
+\begin{proof}
+Let $\delta_u Q_1=Q_1(t+u)-Q_1(t)$.  Its degree is $d-1$ and leading coefficient
+$d u\operatorname{lc}_tQ_1$.  For every $i$, compare the new head with an unshifted child:
+\[
+ [Q_1(t+u)-Q_p(t)]-[Q_i(t)-Q_p(t)]
+       =\delta_uQ_1+(Q_1-Q_i).
+\]
+If the degrees of the two summands differ, take the larger.  If they agree, the leading
+coefficient is the sum of an old polynomial in $\mathbf h$ and $du$ times another nonzero
+old polynomial.  It cannot vanish because $u$ is a fresh indeterminate.  The sum is still
+$a$ times a nonzero integer multilinear polynomial with the asserted homogeneous degree.
+For a shifted child the difference is simply $(Q_1-Q_i)(t+u)$, whose leading coefficient is
+unchanged.  Apply the first calculation with $i=p$ to the new head itself.
+Subtracting constants does not change these nonconstant leading terms.
+In particular the head differs nontrivially from every other child, and is nonconstant even
+when $p=1$.  Therefore grouping never multiplies another factor into the protected head.
+The shifted child conjugates its function, whereas an unshifted child retains its conjugation
+flag.  Translation by its constant term preserves origin and singleton status.
+\end{proof}
+If all integer polynomials in the invariant have coefficient $\ell^1$-norm at most $M$,
+the proof gives the bound $(D+1)M$ after an update.  Initially one can take
+$M=1+2Dr_0$.  These are numerical bounds independent of the values of the real lower coefficients.
+
+\subsubsection{The pivot is specified, and termination has a uniform bound}
+Let $w_q$ count distinct leading coefficients of degree-$q$ polynomials in the normal state.
+Order $(w_D,\ldots,w_1)$ lexicographically.  Stop when every degree is at most one.
+Otherwise let $d=\deg_tQ_1$ and let $l$ be the minimum degree present.  Choose the first
+index in the ordered list satisfying the relevant case:
+If $l<d$, take the first $p$ with $\deg Q_p=l$.
+If $l=d$ and $w_d>1$, take the first $p$ with
+$\operatorname{lc}Q_p\ne\operatorname{lc}Q_1$.
+If $l=d$ and $w_d=1$, take $p=1$.
+For the first two cases the head retains maximum degree; for the third it has degree $d-1$
+and every child has degree at most $d-1$.  For the selected degree $l$, the new leading
+classes are the nonzero differences with the pivot leading coefficient.  Thus
+\[
+ w'_q=w_q\ (q>l),\qquad w'_l=w_l-1,\qquad 0\leq w'_q\leq2L\ (q<l).
+\]
+The type strictly decreases and the new length is at most $2L$.
+The argument is in the formal polynomial ring; numerical exceptional parameter values do
+not change the choice of pivot.
+
+For an actual uniform iteration bound define $B(w,L)$ by well-founded recursion on the type,
+with its value a function of the length budget $L$:
+\[
+ B(w,L)=0\quad\hbox{at a linear type},\qquad
+ B(w,L)=1+\max_{w'\in\mathscr C(w,L)}B(w',2L)\quad\hbox{otherwise},
+\]
+where $\mathscr C(w,L)$ is the finite set of types with the preceding displayed bounds for
+the chosen $l$.  Each $w'<w$, so this is a well-founded definition.  The usual induction
+proves that it bounds the execution on every family of length at most $L$ and type $w$.
+If the initial length is at most $L_0\leq3\cdot2^4$, take the finite maximum of $B(w,L_0)$
+over $0\leq w_q\leq L_0$.  Call it $R_0$.  The terminal length is at most $L_1=2^{R_0}L_0$.
+This proves uniform complexity, not merely termination of each individual execution.
+For definiteness, $l$ in this recursion is the least $q$ with $w_q>0$; the maximum head
+degree is the greatest such $q$. In the recursive maximum take all tuples satisfying the
+displayed bounds, including tuples not realized by an actual family. This set is finite:
+each of the at most three entries is either fixed or lies in $\{0,\ldots,2L\}$.
+Every recursive call lowers the lexicographic tuple of natural numbers, a well-founded
+order on a fixed finite product. To prove the bound, induct in that well-founded order,
+then apply the induction hypothesis to the actual child tuple and its length bound $2L$.
+Thus it bounds every possible grouping of lower-coefficient coincidences, not just one
+chosen generic family.
+
+
+\paragraph{Full coefficient and translation bounds.}
+For a fixed spatial coordinate $i$, retain a bound $M N^{d_i-q}$ for the coefficient of
+$t^q$ of every current polynomial and constant-translation record; coefficients with
+$q>d_i$ remain zero.  A shift $t\mapsto t+u$, $|u|\leq H\leq N$, transforms that
+coefficient into $\sum_{v\geq q}\binom vq c_v u^{v-q}$, whose modulus is at most
+$2^{d_i}M N^{d_i-q}$.  Subtracting the pivot multiplies this bound by at most two.
+Adding a constant translation to a function record adds two such bounds at $q=0$.
+Induction for the at most $R_0$ steps gives a fixed numerical multiple of the initial budget.
+This proves every support-envelope and coefficient upper bound used by the analytic execution.
+
+\paragraph{Lean state.}
+Use an outer polynomial in $t$ with coefficients in a multivariate polynomial ring in the
+shift variables.  A factor carries its origin index, conjugation flag, and constant-translation
+polynomial.  Normalization groups \emph{function lists}; it does not discard duplicate factors.
+The head list has length one.  Polynomial equality can be handled classically; computability
+of comparisons between arbitrary real coefficients is not asserted.  The termination proof
+uses the lexicographic well-founded relation, not an incorrect induction on maximum degree alone.
+
+\subsubsection{The analytic update, with no assumed cube}
+For fixed old shifts let
+\[
+ A=V^{-1}\int g_0(x)\mathbb E_{t\in[0,N]}
+                   \prod_{i=1}^L g_i(x+Q_i(t))\,dx,
+\]
+where every block is $1$-bounded and has $L^2$ norm squared at most $V$.
+Apply \cref{patch:signed-vdc} with $g=g_0$ and the remaining product as $F$.
+Then translate $x$ by $-Q_p(t)$ in the correlation on its right side.
+The two children of a factor $(g_i,Q_i)$ are exactly
+\[
+ (\overline{g_i},Q_i(t+u)-Q_p(t)),\qquad(g_i,Q_i(t)-Q_p(t)).
+\]
+Normalize constants as in \cref{patch:pet-update}.  The old spatial block was removed by the
+Cauchy--Schwarz inequality; constant children form the new spatial block.  This proves
+\refstepcounter{equation}
+\[
+ \label{patch:pet-analytic-step}
+ |A(\mathbf h)|^2\leq2\operatorname{Re}\mathbb E_{u\sim\kappa_H}
+                       A'(\mathbf h,u)+2H/N.
+ \tag{\theequation}
+\]
+A product block is dominated by any one of its factors, so all required $L^2$ and $L^1$
+bounds remain at most $V$.  The shifted head is a translated/conjugated copy of $f$.
+Every joint integral is measurable; no numerical shift is selected during this symbolic recursion.
+
+\subsubsection{The affine endpoint: removal order and cube invariant}
+At a formal linear state, \eqref{patch:lead-invariant} says that the head slope and its differences
+with every other slope are multiples of $e_m$.  Hence all the slopes are multiples of $e_m$.
+Include the spatial block as a nuisance of slope zero, list all nuisances in their inherited
+order $0,\ldots,s-1$, and place the protected block last, at index $s$.
+For fixed old shifts the quantity has the exact form
+\[
+ A_0=V^{-1}\int\mathbb E_{t\in[0,N]}\prod_{i=0}^{s}g_i(x+a_it e_m)\,dx,
+ \qquad g_s=\hbox{one translate/conjugate of }f.
+\]
+For $r\leq i\leq s$ define
+\[
+ G_{i,0}(x)=g_i(x).
+\]
+\refstepcounter{equation}
+\[
+ \label{patch:affine-block}
+ G_{i,r+1}(x;\mathbf u,u_r)=G_{i,r}(x;\mathbf u)
+     \overline{G_{i,r}(x+(a_i-a_r)u_re_m;\mathbf u)}.
+ \tag{\theequation}
+\]
+\[
+ A_r(\mathbf u)=V^{-1}\int\mathbb E_t
+           \prod_{i=r}^sG_{i,r}(x+a_it e_m;\mathbf u)\,dx.
+\]
+The following induction gives the precise cube identity. At $r=0$ the Boolean cube has
+one element and the product is $g_i$. In the successor product split the vertices according
+to their last bit. The last-bit-zero product is $G_{i,r}(x)$ by the induction hypothesis.
+The last-bit-one product is its conjugate evaluated at $x+(a_i-a_r)u_re_m$, because the
+extra bit changes the parity once. Their product is the defining formula for $G_{i,r+1}$.
+Thus, for every $r$, the invariant is
+\refstepcounter{equation}
+\[
+ \label{patch:affine-cube-invariant}
+ G_{i,r}(x;\mathbf u)=\prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}
+        g_i\left(x+\sum_{\nu<r}\omega_\nu(a_i-a_\nu)u_\nu e_m\right).
+ \tag{\theequation}
+\]
+At step $r$ translate by $-a_rt e_m$ and remove \emph{exactly} $G_{r,r}$ by
+\cref{patch:signed-vdc}.  It is independent of $t$ after that translation.
+Equation \eqref{patch:affine-block} identifies the resulting correlation with $A_{r+1}$, so
+\[
+ |A_r|^2\leq2\operatorname{Re}\mathbb E_{u_r\sim\kappa_H}A_{r+1}+2H/N.
+\]
+The zero vertex bounds $|G_{i,r}|$ by $|g_i|$, and $|A_r|\leq1$.
+At $r=s$ translate away $a_st e_m$; the parameter average disappears and the result is
+\refstepcounter{equation}
+\[
+ \label{patch:affine-terminal}
+ A_s(\mathbf u)=V^{-1}\int
+     \prod_{\omega\in\{0,1\}^s}\mathcal C^{|\omega|}
+         g_s\left(x+\sum_{\nu<s}\omega_\nu(a_s-a_\nu)u_\nu e_m\right)dx.
+ \tag{\theequation}
+\]
+Translation/conjugation invariance identifies its integrated power with that of $f$.
+The raw cube in \eqref{patch:affine-terminal} makes sense even at a parameter where a slope
+difference evaluates to zero.  We only require nonzero gaps later, for changing variables.
+Thus no exceptional set is hidden in the analytic recursion.
+
+\begin{lemma}[Explicit accumulation of the removal losses]\label{patch:cs-loss}
+Suppose a chain of $T$ such steps has $|A_r|\leq1$, probability shift measures, and error
+$2H/N$ at each step.  If its final signed average is a nonnegative cube power $Q\leq1$, then
+\[
+ |A_0|^{2^T}\leq c_T\bigl(Q+T H/N\bigr),\qquad c_T=2^{2^T-1}.
+\]
+The same assertion holds with all earlier shift parameters retained and averaged.
+\end{lemma}
+\begin{proof}
+Set $M_r=\mathbb E|A_r|$ except at the last stage, where use $Q=\operatorname{Re}\mathbb E A_T$.
+Jensen gives $M_r^2\leq2M_{r+1}+2H/N$, with $Q$ in the last line.
+For $\phi(x)=x^2/2$, $x,y\in[0,1]$ imply
+$|\phi(x)-\phi(y)|\leq|x-y|$.  Inductively
+$\phi^{\circ r}(M_0)\leq M_r+rH/N$, and at the last stage use $Q$.
+For a completely scalar induction, split into $\phi^{\circ r}(M_0)\leq M_r$ or its reverse
+and use $(x^2-y^2)/2=(x-y)(x+y)/2$ on $[0,1]$.
+Since $\phi^{\circ T}(x)=x^{2^T}/c_T$, the result follows.
+The last signed average is essential; it is not replaced by absolute cube correlations.
+\end{proof}
+
+\subsubsection{Real sublevel exclusion and the common-scale cube}
+At the terminal stage every head gap, including the gap with the spatial slope zero, has form
+\[
+ a\,p_i(\mathbf h),\qquad p_i\in\mathbb Z[\mathbf h]\setminus\{0\},
+\]
+where $p_i$ is multilinear homogeneous of degree $D-1\leq2$, with a coefficient bound fixed
+by the recursion above.  All old parameter shifts have the same radius $H$.
+
+\begin{lemma}[The sublevel estimate actually needed here]\label{patch:multiaffine-sublevel}
+Let $p\ne0$ be a multilinear integer polynomial of degree at most two.  If the coordinates
+of $u$ are independently distributed with density $\kappa_1$, then, for $0<\varepsilon<1$,
+\[
+ \Pr\{|p(u)|\leq\varepsilon\}\leq4\sqrt\varepsilon.
+\]
+\end{lemma}
+\begin{proof}
+A nonzero constant has modulus at least one.  For a nonconstant linear polynomial, fix all
+but a coordinate with a nonzero integer coefficient.  The sublevel interval has length at
+most $2\varepsilon$, and $\kappa_1\leq1$.
+If a quadratic term is present, write $p=A(u')u_r+B(u')$ where $A$ is linear and has a
+nonzero integer coefficient.  The probability $|A|\leq\sqrt\varepsilon$ is at most
+$2\sqrt\varepsilon$ by the linear case.  On its complement, the conditional sublevel
+probability in $u_r$ is at most $2\varepsilon/|A|\leq2\sqrt\varepsilon$.
+Integrate the remaining probability variables.  No dimension-dependent inverse theorem is used.
+\end{proof}
+
+Let $T_0$ bound the total number of parameter and affine removals; for example use
+$T_0=4+R_0+L_1$.  If the original normalized lower bound is $\lambda\leq1$, choose
+\[
+ H/N=\min\{1/32,\lambda^{2^{T_0}}/(4T_0c_{T_0})\}>0.
+\]
+Take $\lambda$ to be the fixed lower bound returned from the input budget, rather than
+the measured value of the particular correlation.  This choice of $H/N$ has both a power
+lower bound and a power upper bound by the budget rules.  The loss lemma gives an averaged raw
+terminal cube at least $\kappa=\lambda^{2^{T_0}}/(2c_{T_0})$ after harmless weakening.
+For $s$ terminal gaps, take $\varepsilon=(\kappa/(16s))^2$.
+Homogeneity gives $p_i(Hu)=H^{D-1}p_i(u)$.
+By \cref{patch:multiaffine-sublevel}, the union of all bad gap sets has probability at most
+$\kappa/4$.  Let $F$ be the raw cube after averaging all the new affine increments, as a function
+of the old shifts. Then $0\leq F\leq1$ by the last-square identity, also when a gap is zero.
+Its mean is at least $\kappa$. If every old shift outside the bad union had
+$F<\kappa/2$, then splitting the probability integral would give
+\[
+ \mathbb E F\leq\Pr(\text{bad union})+\kappa/2\leq3\kappa/4<\kappa,
+\]
+a contradiction. Hence there are old shifts outside the union with $F\geq\kappa/2$.
+Only this existence assertion is used; a measurable choice of old shifts is unnecessary.  At those shifts
+\[
+ |a|H^{D-1}\varepsilon\leq |a p_i(\mathbf h)|
+       \leq |a|H^{D-1}M_1,
+\]
+where $M_1$ is the integer coefficient $\ell^1$ bound.
+Changing the new affine increments by $z_i=a p_i(\mathbf h)u_i$ therefore produces
+Fej\'er radii $L_i=|a p_i(\mathbf h)|H$ with
+\refstepcounter{equation}
+\[
+ \label{patch:pet-physical-radii}
+ \delta^{O(1)}N^D\leq L_i\leq\delta^{-O(1)}N^D.
+ \tag{\theequation}
+\]
+Here $D$ is the protected polynomial degree, not the sum of ambient degrees.
+
+\begin{lemma}[Mixed radii to one radius, with positivity before comparison]\label{patch:uniformize}
+Suppose $f$ is $1$-bounded on a box of volume $V$ and $j$-th side length $S$.
+If $L_i>0$ and $L\geq2\max_iL_i$, then
+\[
+ (Q_{\mathbf L,V}^{j}(f))^2
+ \leq\left(1+\frac LS\right)\prod_i\frac{2L}{L_i}\ Q_{s+1,L,V}^{j}(f).
+\]
+\end{lemma}
+\begin{proof}
+For fixed $z_1,\ldots,z_s$ put $u_z=C_s(f;\cdot,z)$.
+The zero vertex supports $u_z$ on the original box, so
+\[
+ |V^{-1}\!\int u_z|^2\leq(1+L/S)\,P(z),\qquad
+ P(z)=V^{-1}\|T_{L,j}u_z\|_2^2\geq0.
+\]
+Since $L_i\leq L/2$, pointwise
+$\kappa_{L_i}(z_i)\leq(2L/L_i)\kappa_L(z_i)$.
+Apply this comparison only to the nonnegative $P$, after Jensen in the first display.
+Square expansion of $P$ appends one cube coordinate by \eqref{patch:cube-succ}; all $s+1$
+increments now have the same Fej\'er density.  This proves the identity and inequality claimed.
+\end{proof}
+Choose a deterministic $L=u_C(\delta)N^D$ exceeding twice the upper bounds in
+\eqref{patch:pet-physical-radii} and comparable, up to a power of $\delta$, to the protected
+support side length.  Every factor in \cref{patch:uniformize} is power-controlled.
+If needed, pad the resulting order to a single fixed order using \eqref{patch:raise-order}.
+This proves highest-active-degree uniformity control with polynomial losses, including the
+shifted families \eqref{patch:initial-shift-family}; its protected factor is still the original $f$.
+
+\subsubsection{Polynomial phases: the four initial steps are also explicit}
+Suppose the correlation also contains $\ee{p_x(t)}$, with $p_x$ a measurable-in-$x$ polynomial
+in $t$ of degree at most three.  Its coefficients need not be bounded.
+Before any polynomial-dependent translation of $x$, apply \cref{patch:signed-vdc} four times,
+retaining $x$ as a fixed outer variable.  After $r$ steps the parameter-dependent part is
+\[
+ \prod_{i=1}^{m}\prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}
+     f_i(x-P_i(t+\omega\cdot\mathbf h)e_i)\;
+ \ee{\sum_{\omega\in\{0,1\}^r}(-1)^{|\omega|}p_x(t+\omega\cdot\mathbf h)}.
+\]
+The initial step removes the original spatial factor.  At later steps use the indicator of
+a fixed enlarged spatial box: the zero-shift vertex supports the integrand there for
+$t\in[0,N]$.  Polynomial coefficient bounds and $4H\leq N/8$ give a single power-controlled
+volume for this box.  The indicator is removed by the same Cauchy--Schwarz step.
+At $r=4$ the phase is identically one, by the fourth finite-difference identity for cubics.
+Normalize the constant terms of the remaining polynomial shifts and run the preceding PET
+argument, retaining all four old shift variables in its averages and sublevel exclusions.
+
+There is one degenerate initial case to treat separately.  If the highest active degree is
+one, there is only one active input.  After the four steps, translating $x$ by its affine
+$P_1(t)$ removes $t$ and gives the raw order-four cube of $f_1$ with increments
+$\operatorname{lc}(P_1)h_i e_1$ directly.  Keep the signed average at this last step.
+Its radius is $|\operatorname{lc}(P_1)|H>0$ and is comparable to $N$ up to powers of $\delta$.
+Uniformize and pad as above.  Do \emph{not} group these equal-slope head copies and call the
+result a singleton head.
+
+\begin{proposition}[Highest-active-input control, including measurable polynomial phases]
+\label{patch:highest-control}
+Fix $1\leq d_1<\cdots<d_k\leq3$, $1\leq m\leq k$, and an integer budget $c\geq1$.
+There are integers $s_0\geq2$ and $C\geq c$, depending only on these data, with the following
+property. Let $0<\delta\leq1$, $N>0$, let $P_i$ for $i\leq m$ be admissible with budget
+$c$, and let $f_0,f_1,\ldots,f_m$ be Borel, bounded by one, and supported in the budget-$c$
+box in $\R^k$. If $p_x(t)$ is a polynomial in $t$ of degree at most three, with arbitrary
+Borel real coefficients in $x$, and
+\[
+ \left|\int f_0(x)\mathbb E_{t\in[0,N]}\prod_{i=1}^m
+          f_i(x-P_i(t)e_i)\ee{p_x(t)}\,dx\right|\geq\ell_c(\delta)N^{D_k},
+\]
+then, at the deterministic radius $H=u_C(\delta)N^{d_m}$,
+\[
+ Q_{s_0,H,N^{D_k}}^m(f_m)\geq\ell_C(\delta).
+\]
+The order can be chosen uniformly over the input functions, lower coefficients, and phase
+coefficients. Coordinates $m+1,\ldots,k$ are passive spatial variables throughout the proof.
+\end{proposition}
+\begin{proof}
+The four phase steps, the normal-state update with invariant \eqref{patch:lead-invariant},
+the explicit pivot recursion, \eqref{patch:affine-terminal}, the loss lemma, the sublevel
+exclusion, and \cref{patch:uniformize} give the result.  Each ingredient has been proved above.
+The degree-one branch is the direct cube calculation just given.  Dividing by the chosen
+spatial volume and finally converting to the stated box normalization costs only a budgeted
+factor; the exact ambient factor remains $N^{\sum d_i}$.
+\end{proof}
+The proposition is not an extra hypothesis in any later theorem.
+
+
+\subsection{Fourier selection and the two difference lemmas}\label{patch:auxiliary-differences}
+These are the real versions of the preparation tools in \cite[\S4.5.1]{KoszEtAl}.
+Their Cauchy--Schwarz steps are expanded here using \cref{patch:cylinder}.
+For a scalar function supported on an interval $J$ of length $S>0$, define the paired cube
+\[
+ D_{a,b}^{r}f(x)=\prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}
+       f\left(x+\sum_{i=1}^r[\omega_i a_i+(1-\omega_i)b_i]\right),
+ \quad a,b\in[0,H]^r.
+\]
+After translation in $x$, averaging this expression over $a,b$ is the same as averaging
+$C_r$ against $r$ independent Fej\'er densities.  All scalar normalizers in this subsection
+are written as $S$; changing to a larger interval costs its explicit length ratio.
+
+\begin{lemma}[One-dimensional $U^2$ inverse estimate and measurable frequencies]
+\label{patch:u2-fourier-selection}
+If $|f|\leq1$ and $f$ is supported in $J$, then
+\[
+ Q_{2,H,S}(f)\leq H^{-2}\|\widehat f\|_\infty^2.
+\]
+For a jointly measurable bounded family with uniformly bounded support, a power lower bound
+for these powers on a measurable set of parameters gives a measurable choice of frequencies
+with Fourier coefficients of power size.  A finite frequency set is not assumed.
+\end{lemma}
+\begin{proof}
+Put $g_a(x)=f(x)\overline{f(x+a)}$.  By \cref{patch:fejer-squares},
+$SQ_{2,H,S}=\int\kappa_H(a)\|T_Hg_a\|_2^2da$.
+Use $\kappa_H\leq H^{-1}$ against this nonnegative integrand and apply \cref{new:integral-plancherel} in $x$.
+For each $\xi$, a second application of \cref{new:integral-plancherel}, this time in $a$, gives
+\[
+ \int|\widehat{g_a}(\xi)|^2da
+    =\int|\widehat f(\zeta+\xi)|^2|\widehat f(\zeta)|^2d\zeta
+    \leq\|\widehat f\|_\infty^2\|f\|_2^2.
+\]
+Here the second identity can be verified without an unproved ambiguity-function formula.
+For fixed $\xi$ put $b_\xi(a)=\int f(x)\overline{f(x+a)}\ee{-\xi x}\,dx$.
+Bounded support makes $b_\xi$ integrable, square-integrable, and compactly supported in the
+$a$ variable. Fubini gives
+\[
+ \widehat {b_\xi}(\zeta)=\widehat f(\xi-\zeta)\,
+                                  \overline{\widehat f(-\zeta)}.
+\]
+Indeed, set $y=x+a$ in its defining double integral; its absolute integral is at most
+$\|f\|_1^2$. Applying the integral Plancherel identity to $b_\xi$ and then changing
+$\zeta$ to $-\zeta$ proves exactly the preceding display.
+The multiplier of $T_H$ at $\xi$ is $\widehat w_H(-\xi)$, where
+$w_H=H^{-1}\mathbf1_{[0,H]}$. Its squared $L^2$ norm is $H^{-1}$ by the integral
+Plancherel identity and reflection invariance.  Hence $SQ_2\leq H^{-2}\|\widehat f\|_\infty^2\|f\|_2^2$;
+use $\|f\|_2^2\leq S$.
+For selection enumerate $\mathbb Q$.  The Fourier transform of each integrable section is
+continuous in frequency, and its value at each rational is measurable in the parameter by
+Fubini.  Where the supremum exceeds a threshold $a$, choose the first rational at which the
+modulus exceeds $a/2$.  The disjoint least-index sets are measurable and cover the required
+parameter set.  Outside it use zero.  Popularity supplies a uniform positive threshold
+before selection.  This proves the claimed jointly measurable choice and does not infer a
+uniform finite set from continuity alone.
+\end{proof}
+
+\begin{lemma}[Dual--difference interchange, explicit cylinder proof]\label{patch:dual-difference}
+Let $F(x)=\mathbb E_tF_t(x)$, where the $F_t$ are jointly measurable, $1$-bounded and supported
+in a common interval $J$.  Let $E\subseteq[0,H]^{2r}$ and $\varphi(a,b)$ be measurable, $r\geq1$.
+Put
+\[
+ \theta=\mathbb E_{a,b\in[0,H]^r}\mathbf1_E(a,b)
+           \left|S^{-1}\int D_{a,b}^{r}F(x)\ee{\varphi(a,b)x}\,dx\right|^2.
+\]
+Write $J_r=J-[0,rH]$, $T=|J_r|/S$, and
+\[
+ \Box^r E=\{(a,b,c): (a,b^\omega)\in E\text{ for every }\omega\in\{0,1\}^r\},
+ \quad b_i^\omega=(1-\omega_i)b_i+\omega_i c_i.
+\]
+Then, with $G_{b,c}(x)=\mathbb E_tD_{c,b}^{r}F_t(x)$ and
+$\psi(a,b,c)=\sum_\omega(-1)^{|\omega|}\varphi(a,b^\omega)$,
+\refstepcounter{equation}
+\[
+ \label{patch:dual-diff-bound}
+ \mathbb E_{a,b,c}\mathbf1_{\Box^r E}
+       \left|S^{-1}\int G_{b,c}(x)\ee{\psi(a,b,c)x}\,dx\right|^2
+ \geq\theta^{2^r}T^{-2(2^r-1)}.
+ \tag{\theequation}
+\]
+\end{lemma}
+\begin{proof}
+Expand the square defining $\theta$ using two spatial variables $x,z$ and expand every copy
+of $F$ using independent parameters $t_{\omega,0},t_{\omega,1}$.
+The vertex $\omega=0$ contributes
+\[
+ v=\mathbf1_E(a,b)F_{t_{0,0}}(x+\textstyle\sum b_i)
+       \overline{F_{t_{0,1}}(z+\textstyle\sum b_i)}\,
+       \ee{\varphi(a,b)(x-z)}.
+\]
+Partition the other Boolean vertices by their first nonzero coordinate:
+$\Omega_i=\{\omega:\omega_1=\cdots=\omega_{i-1}=0,\ \omega_i=1\}$.
+The product of their two spatial factors for $\omega\in\Omega_i$ is a $1$-bounded nuisance
+$u_i$ independent of $b_i$.  Normalize $x,z$ on $J_r$, and normalize all parameter variables
+by their probability measures.  The initial average is $\theta/T^2$.
+Apply \cref{patch:cylinder}, doubling $b_1,\ldots,b_r$ in that order.
+At stage $i$ it removes exactly the block indexed by $\Omega_i$ and hence all its unused
+$t$ parameters.  The only parameters surviving at the endpoint are $t_{0,0},t_{0,1}$.
+The indicator becomes the product over all corners, namely $\mathbf1_{\Box^r E}$;
+the phase becomes $\ee{\psi(x-z)}$; the two function products become
+$D_{c,b}^{r}F_{t_{0,0}}(x)$ and its conjugate at $z$.
+Integrating $t_{0,0},t_{0,1},x,z$ is exactly the squared coefficient of $G_{b,c}$.
+The support remains in $J_r$, so these spatial integrals may be written over $\mathbb R$.
+Multiply the cylinder inequality by $T^2$ to obtain \eqref{patch:dual-diff-bound}.
+\end{proof}
+
+\begin{lemma}[Removal of missing-coordinate phases]\label{patch:missing-phase}
+Let $f$ be as above and let $\varphi_i(a,b)$ be independent of $b_i$, $1\leq i\leq r$.
+If
+\[
+ \theta=\mathbb E_{a,b}
+       \left|S^{-1}\int D_{a,b}^{r}f(x)\ee{(\sum_i\varphi_i(a,b))x}\,dx\right|^2,
+\]
+then
+\refstepcounter{equation}
+\[
+ \label{patch:missing-phase-bound}
+ Q_{r+1,H,S}(f)\geq
+       \frac{\theta^{2^r}}{T^{2(2^r-1)}(1+H/S)},\qquad T=(S+rH)/S.
+ \tag{\theequation}
+\]
+\end{lemma}
+\begin{proof}
+Expand the square using $x,z\in J_r$.
+Use as head $v=f(x+\sum b_i)\overline{f(z+\sum b_i)}$.
+For nuisance $u_i$, multiply the vertex factors indexed by $\Omega_i$ from the preceding
+proof by $\ee{\varphi_i(a,b)(x-z)}$.  This block is independent of $b_i$.
+The same cylinder induction gives
+\[
+ R:=\mathbb E_{b,c}\left|S^{-1}\int D_{c,b}^{r}f(x)\,dx\right|^2
+       \geq\theta^{2^r}T^{-2(2^r-1)}.
+\]
+For each $b,c$, $u=D_{c,b}^{r}f$ is supported in a translate of $J$, by its zero vertex.
+Its full integral equals $\int T_Hu$, and the latter function has support length at most $S+H$.
+Thus $|S^{-1}\int u|^2\leq(1+H/S)S^{-1}\|T_Hu\|_2^2$.
+Average in $b,c$ and expand this last square.  It is exactly the paired cube with $r+1$
+uniform pairs in $[0,H]$, hence $Q_{r+1,H,S}$.  This proves \eqref{patch:missing-phase-bound}.
+\end{proof}
+These two lemmas are useful even when the support/shift ratios are large: the displayed
+ratios are then retained and bounded by the budget rules.  No comparison of complex
+integrands by positive kernels is implicit.
+
+\begin{lemma}[A measurable dummy phase with a small exceptional set]\label{patch:dummy-phase}
+For $r\geq1$, $H,M>0$, and $0<\epsilon<1$, there is a finite-valued measurable function
+$\Phi(a,b)$ on $[0,H]^{2r}$ such that its alternating sum
+$\Psi(a,b,c)=\sum_\omega(-1)^{|\omega|}\Phi(a,b^\omega)$ satisfies $|\Psi|>M$ except on
+a set of relative measure at most $\epsilon$ in $[0,H]^{3r}$.
+\end{lemma}
+\begin{proof}
+Choose $n$ with $r2^{-n}\leq\epsilon$ and partition each $[0,H]$ into $2^n$ half-open
+intervals, with the final endpoint assigned to the last cell.
+Enumerate the resulting $r$-dimensional cells by distinct nonnegative integers $\iota$.
+On a cell of the $b$ variable put $\Phi(a,b)=2M\,2^{\iota(b)}$.
+Except when some $b_i,c_i$ are in the same one-dimensional cell, the $2^r$ corners $b^\omega$
+are in distinct cells.  A signed sum of distinct powers of two has absolute value at least
+one: its largest term exceeds the sum of all smaller possible terms.
+Thus $|\Psi|\geq2M$ there.  The union of the $r$ bad coordinate events has relative measure
+at most $r2^{-n}$.  Boundaries are null.  This grid resolves the purpose-built function
+$\Phi$, not the level sets of an arbitrary input.  The possibly enormous phase values are
+permitted: later phase mappings are arbitrary measurable functions, and their exponentials
+still have modulus one.
+\end{proof}
+
+\subsection{Conditional degree lowering with all hypotheses exposed}\label{patch:conditional-dl}
+Let $\mathbb R^0$ be a point with measure one.  For fixed $k,l,m$ with $1\leq m\leq l\leq k$,
+define $\mathsf{MA}(m,l)$ to be the following assertion. For every integer input budget
+$c\geq1$ there is an integer $C\geq c$ with this property for every $0<\delta\leq1$
+and $N>0$. The $P_i$ are admissible with budget $c$. The Borel functions
+$g_0,\ldots,g_{m-1}$ on $\mathbb R^{m-1}$ are bounded by one and supported in
+$\prod_{i<m}[-u_c(\delta)N^{d_i},u_c(\delta)N^{d_i}]$.
+The mappings $\zeta_m,\ldots,\zeta_l$ are measurable and
+$\theta_{l+1},\ldots,\theta_k$ are fixed real numbers.
+A lower bound $\ell_c(\delta)N^{D_{m-1}}$ for
+\refstepcounter{equation}
+\[
+ \label{patch:ma-correlation}
+ \left|\int g_0(y)\mathbb E_t\prod_{i<m}g_i(y-P_i(t)e_i)
+       \ee{\sum_{i=m}^l\zeta_i(y)P_i(t)+\sum_{i>l}\theta_iP_i(t)}\,dy\right|
+ \tag{\theequation}
+\]
+implies that the canonical set
+\refstepcounter{equation}
+\[
+ \label{patch:ma-set}
+ Y=\left\{y\text{ in the support envelope}:\
+      \sum_{i=m}^lN^{d_i}|\zeta_i(y)|+\sum_{i>l}N^{d_i}|\theta_i|
+                           \leq u_C(\delta)\right\}
+ \tag{\theequation}
+\]
+has measure at least $\ell_C(\delta)N^{D_{m-1}}$. Here the support envelope means
+$\prod_{i<m}[-u_C(\delta)N^{d_i},u_C(\delta)N^{d_i}]$, allowing the output budget to
+absorb the bounded enlargements used below.
+There is no bound on the phase mappings before this conclusion.  In the real case no
+integer denominator occurs.  The output budget is independent of the phase values.
+
+\begin{lemma}[Conditional structured degree lowering]\label{patch:conditional-degree}
+Assume the theorem $\mathsf{MA}(m,l)$ for every budget.  For $s\geq3$ and admissible data set
+\[
+ p_x(t)=\sum_{i=m+1}^l\xi_i(x)P_i(t)+\sum_{i>l}\eta_iP_i(t),\qquad x\in\R^m.
+\]
+\[
+ F(x)=\mathbb E_t f_0(x+P_m(t)e_m)
+           \prod_{i<m}f_i(x-P_i(t)e_i+P_m(t)e_m)
+           \ee{p_{x+P_m(t)e_m}(t)}.
+\]
+Here the $f_i$ are $1$-bounded with budgeted support, the $\xi_i$ are measurable, and the
+$\eta_i$ are fixed.  If $H$ is comparable to $N^{d_m}$ up to budgeted powers and the
+order-$s$ uniformity norm of $F$ in direction $e_m$ is power-large, then its order-$(s-1)$
+norm at the \emph{same} $H$ is power-large.  Enlarge the support normalizer to contain $F$;
+its volume ratio is explicitly power-controlled.
+\end{lemma}
+\begin{proof}
+Write $r=s-2$, $x=(y,z)$ with $y=x_{<m}$ and $z=x_m$.
+The following steps specify every selection and every use of the assumed major-arc theorem.
+
+\paragraph{1. Fourier coefficients on popular sections.}
+Expand the first $r$ paired differences in the order-$s$ power.  Fubini identifies the
+remainder with a one-dimensional $U^2$ power on each $y$ section.
+Use \cref{patch:budgets,patch:u2-fourier-selection}.  There is a measurable power-large set
+of $y$ and, on each such section, a measurable power-large set $E_y\subseteq[0,H]^{2r}$
+on which
+\[
+ \left|S^{-1}\int D_{a,b}^{r}F_y(z)\ee{\varphi_y(a,b)z}\,dz\right|\geq\delta^{O(1)}.
+\]
+Here $S$ is the length of one fixed enlarged section interval $J$, comparable to $N^{d_m}$
+up to powers.  The frequency $\varphi_y(a,b)$ is the least-rational selection described above,
+so it is jointly measurable.  Translated supports of the differences are all contained in
+$J-[0,rH]$ after one further budgeted enlargement if necessary.
+
+\paragraph{2. Interchange the average and the differences.}
+Write $F_y=\mathbb E_tF_{t,y}$ and apply \cref{patch:dual-difference} on each good $y$.
+Define
+\[
+ G_{y,b,c}(z)=\mathbb E_tD_{c,b}^{r}F_{t,y}(z),\qquad
+ \psi_y(a,b,c)=\sum_\omega(-1)^{|\omega|}\varphi_y(a,b^\omega).
+\]
+Popularity gives a canonical measurable set $Z$ of pairs $(y,k)$, $k=(a,b,c)$, on which
+$(a,b^\omega)\in E_y$ for every corner and
+$|\int G_{y,b,c}(z)\ee{\psi_y(k)z}dz|\geq\delta^{O(1)}N^{d_m}$.
+The measure of $Z$ is power-large in the units $N^{D_{m-1}}H^{3r}$.
+
+\paragraph{3. Interchange the section and cube parameters.}
+Fubini and popularity produce a measurable set $K\subseteq[0,H]^{3r}$ of power-large relative
+measure such that each $k\in K$ has a power-large section $Z_k$ in the $y$ variables.
+Every later set can be defined by explicit thresholds on these joint measurable functions;
+no arbitrary sectionwise choice of a set is made.
+
+\paragraph{4. Extend by a dummy phase.}
+On $Z$ retain $\psi_y(k)$.  Off $Z$ replace it by the phase $\Psi(k)$ from
+\cref{patch:dummy-phase}.  Denote the result by $\psi_y^*(k)$.
+Choose its threshold $M$ larger than the frequency bound returned in Step 5, and its exceptional
+relative measure smaller than one quarter of the power mass used in Step 6.
+These choices are legitimate: Step 5's constants do not depend on phase values.
+The modified phase is not asserted to be a cube derivative off $Z$.
+For every $k\in K$,
+\[
+ \int\left|\int G_{y,b,c}(z)\ee{\psi_y^*(k)z}dz\right|dy
+                    \geq\delta^{O(1)}N^{D_m}.
+\]
+
+\paragraph{5. Apply precisely $\mathsf{MA}(m,l)$.}
+Choose a measurable unit phase in $y$ to turn the inner coefficient into its modulus.
+Expand $G$, distribute the paired derivative over the factors, and set the new spatial
+variable equal to $x+P_m(t)e_m$.  The fixed $\eta$ phase cancels because $r\geq1$.
+The resulting integral is
+\[
+ \int f'_0(x)\mathbb E_t\prod_{i<m}D_{c,b}^{r}f_i(x-P_i(t)e_i)
+           \ee{\sum_{i=m}^l\zeta'_i(x)P_i(t)}\,dx,
+\]
+where
+\[
+ \zeta'_m(y,z)=-\psi_y^*(k),\qquad
+ \zeta'_i(x)=\sum_\omega(-1)^{|\omega|}\xi_i(x+\textstyle\sum_j b_j^\omega e_m)
+       \quad(i>m),
+\]
+and $f'_0$ is the product of the chosen $y$ phase, $D_{c,b}^{r}f_0(x)$, and
+$\ee{\psi_y^*(k)x_m}$.  It is $1$-bounded and supported in a budgeted box.
+Fix a $z$ section carrying a power-large correlation.  This is exactly
+\eqref{patch:ma-correlation}, in $m-1$ variables, with the same $(m,l)$ and zero fixed higher
+phase.  The assumed $\mathsf{MA}(m,l)$ yields a power-large set of $y$ on which
+$|\psi_y^*(k)|\leq u_{C_6}(\delta)N^{-d_m}$.
+Take as this set the full threshold set.  It is jointly measurable in $(y,k)$, whether or
+not the intermediate selected $z$ depends measurably on $k$.
+
+\paragraph{6. Recover the original cube phase.}
+Choose the dummy threshold in Step 4 greater than $u_{C_6}(\delta)N^{-d_m}$.
+Outside its small exceptional set in $k$, every low-frequency point just obtained lies in
+$Z$, where $\psi_y^*=\psi_y$.
+Removing the exceptional set and applying Fubini/popularity again leaves power-many $y$,
+each with power-many $k=(a,b,c)$ for which the original alternating sum is small and all
+corners belong to $E_y$.  All losses are bounded by the explicit discard rule in
+\cref{patch:budgets}.
+
+\paragraph{7. Quantize and partition the nonzero vertices.}
+Partition the interval of possible $\psi_y(k)$ values into cells of width $\tau N^{-d_m}$.
+Choose a common cell carrying power mass, with center $\zeta$; the number of cells is
+power-controlled.  Choose $\tau>0$ small enough that
+$2\pi(\sup_{z\in J-[0,rH]}|z|)\tau N^{-d_m}$ is at most a quarter of the normalized Fourier
+coefficient lower bound in Step 1.  This choice is made before the loss from selecting a cell.
+For $\Omega_i=\{\omega:\omega_{<i}=0,\omega_i=1\}$ define
+\[
+ \alpha_1=\zeta-\sum_{\omega\in\Omega_1}(-1)^{|\omega|}\varphi_y(a,b^\omega),
+ \qquad
+ \alpha_i=-\sum_{\omega\in\Omega_i}(-1)^{|\omega|}\varphi_y(a,b^\omega)\ (i>1).
+\]
+Each $\alpha_i$ is independent of $b_i$, and on the retained set
+\[
+ \left|\varphi_y(a,b)-\sum_i\alpha_i(y,a,b,c)\right|
+       =|\psi_y(a,b,c)-\zeta|\leq\tau N^{-d_m}.
+\]
+This is an exact partition of all nonzero Boolean vertices, not an asserted separation of
+variables.
+
+\paragraph{8. Remove the phases and integrate.}
+For each good $y$, fix one $c$ for which the retained $(a,b)$ section has power-large measure.
+On it, replacing the Fourier phase in Step 1 by $\sum_i\alpha_i$ loses at most a quarter of
+its lower bound, by the choice of $\tau$ and $|\ee u-\ee v|\leq2\pi|u-v|$.
+Enlarge the average to all $(a,b)$ only after taking the squared modulus, which is nonnegative.
+Apply \cref{patch:missing-phase}.  Since $r+1=s-1$, it gives a power lower bound for the
+order-$(s-1)$ norm of $F_y$ at the same $H$.
+There is no need to choose $c$ measurably: the resulting norm inequality is an intrinsic
+measurable statement about $F_y$ and holds for every good $y$.
+Integrate over the already measurable good set of $y$.  Section normalization ratios,
+shift/support ratios, and the fixed roots involved are all handled by \cref{patch:budgets}.
+
+\paragraph{Explicit thresholds for the eight steps.}
+Here are numerical choices for every popularity and discretization in this proof. They also
+verify that the output budget is uniform. Normalize the transverse envelope $Y$ to a probability
+space and the section interval to length $S$, so the full spatial normalizer is $|Y|S$.
+Enlarge these two envelopes once at the outset to contain the displayed translates; all
+length ratios are bounded above and below by the input budget. Let $0<a\leq1$ be a
+fixed lower bound for the resulting order-$s$ power. Put $r=s-2$ and $T=(S+rH)/S$.
+Expanding the first $r$ pairs gives an average of $Q_{2,H,S}(D^r_{a,b}F_y)$ at least $a$,
+with integrand between zero and one. The set where this integrand is at least $a/2$ has
+relative measure at least $a/2$. The set $Y_1$ where its $(a,b)$ section has relative
+measure at least $a/4$ has relative measure at least $a/4$.
+
+On those sections rational Fourier selection gives a coefficient threshold
+\[
+ b=\min\left\{\frac12,\frac{H}{2S}\sqrt{a/2}\right\}>0.
+\]
+For every $y\in Y_1$ the quantity $\theta$ in the dual--difference lemma is at least
+$\theta_0=(a/4)b^2$. Define
+\[
+ d=\theta_0^{2^r}T^{-2(2^r-1)},\qquad z_0=ad/8.
+\]
+After dual--difference interchange, let $Z$ be the set on which all corners lie in $E_y$
+and the squared normalized coefficient of $G$ is at least $d/2$. That squared coefficient
+is at most one: the zero vertex supports $G$ in an interval of length $S$.
+Thus every $y\in Y_1$ has a $Z$ section of relative measure at least $d/2$, and the joint
+relative measure of $Z$ is at least $z_0$. The set $K$ of shifts for which the $y$ section
+has relative measure at least $z_0/2$ has relative measure at least $z_0/2$.
+For each $k\in K$, the absolute-coefficient integral in Step 4 is at least
+\[
+ (z_0/2)\sqrt{d/2}\,|Y|S.
+\]
+This is the uniform lower threshold fed into Step 5, after conversion to $N^{D_m}$.
+To select a $z$ section there, divide half that threshold by the length of the common
+$z$ envelope. A section at least this large exists, by the integral triangle inequality.
+The assumed major-arc theorem therefore returns a common positive relative lower bound
+$\rho$ for the set of $y$ with $|\psi_y^*(k)|\leq B$, where $B=u_A(\delta)N^{-d_m}$.
+Decrease $\rho$ to at most one if necessary. Both $\rho$ and $B$ depend only on the budgets
+already specified, not on the dummy values.
+
+Choose the dummy threshold greater than $B$ and the exceptional relative measure at most
+$z_0/4$. At least $z_0/4$ of the shifts in $K$ remain. For each such shift the returned
+low-frequency set has relative $y$ measure at least $\rho$ and lies in $Z$. Consequently
+the joint relative measure of original useful small-phase points is at least
+$w=z_0\rho/4$.
+Let $Z_*\geq N^{d_m}$ also bound $|z|$ on $J-[0,rH]$, and choose frequency-cell width
+\[
+ \Delta=b/(8\pi Z_*).
+\]
+Changing a frequency by at most $\Delta$ changes the normalized coefficient in Step 1 by
+at most $2\pi Z_*\Delta=b/4$. The interval $[-B,B]$ has a partition into
+$q\leq1+\lceil2B/\Delta\rceil$ cells of that width. Some cell carries joint mass at least
+$m_0=w/q$. Its set of $y$ sections with relative mass at least $m_0/2$ has relative measure
+at least $m_0/2$. For every such $y$, Fubini gives a $c$ section whose relative $(a,b)$ measure
+is at least $m_0/4$. There the perturbed coefficient is at least $b/2$. In Step 8 the
+quantity $\theta$ of the missing-phase lemma is thus at least $m_0b^2/16$. The final
+normalized lower bound is at least
+\[
+ \frac{m_0}{2}\,
+ \frac{(m_0b^2/16)^{2^r}}{T^{2(2^r-1)}(1+H/S)}.
+\]
+Every factor is positive and is obtained by a fixed number of the budget operations.
+The number of degree-lowering iterations is fixed before these choices. This proves the
+promised quantitative assertion and specifies the selections without relying on a
+uniform finite set of frequencies or a measurable choice of arbitrary sections.
+\end{proof}
+\paragraph{Dependency warning built into the implementation.}
+\pid{conditionalDegreeLowering} is a theorem with an internal premise
+\pid{MajorArcProperty m l}; it is proved \emph{before} the major-arc induction.
+The next subsection supplies that premise by induction.  The final every-input theorem
+will have no such premise.
+
+
+\subsection{The major-arc induction is noncircular}\label{patch:major-induction}
+\begin{theorem}[Real major-arc property]\label{patch:major-arc}
+For every increasing degree list contained in $\{1,2,3\}$ and every $1\leq m\leq l\leq k$,
+the property $\mathsf{MA}(m,l)$ defined in \eqref{patch:ma-correlation}--\eqref{patch:ma-set}
+holds.  All output budgets depend only on the input budget and the degree list.
+\end{theorem}
+\begin{proof}
+Fix $k,l$ and induct on $m=1,\ldots,l$, with the induction hypothesis quantified over
+\emph{every} support/coefficient/correlation budget.
+
+\paragraph{Base $m=1$.}
+The space $\mathbb R^0$ has one point and measure one.  Since $|g_0(0)|\leq1$, a lower
+bound for \eqref{patch:ma-correlation} gives the same lower bound for the scalar exponential
+average.  Apply \cref{patch:triangular}.  The canonical set in \eqref{patch:ma-set} is the
+whole point space after increasing its budget, and its measure is one.
+
+\paragraph{Induction step: replace the last active input by its exact adjoint.}
+Suppose $\mathsf{MA}(m,l)$ is proved, and consider the correlation for $\mathsf{MA}(m+1,l)$:
+\[
+ \Gamma=\int g_0(x)\mathbb E_t\prod_{i\leq m}g_i(x-P_i(t)e_i)\,
+          \ee{p_x(t)}\,dx,\qquad
+ p_x(t)=\sum_{i=m+1}^l\zeta_i(x)P_i(t)+\sum_{i>l}\theta_iP_i(t).
+\]
+Here $x\in\mathbb R^m$.  Define, with all conjugations shown,
+\refstepcounter{equation}
+\[
+ \label{patch:ma-adjoint}
+ F(y)=\mathbb E_t\overline{g_0(y+P_m(t)e_m)}
+     \prod_{i<m}\overline{g_i(y+P_m(t)e_m-P_i(t)e_i)}\,
+               \ee{-p_{y+P_m(t)e_m}(t)}.
+ \tag{\theequation}
+\]
+Translation in $x$ gives $\Gamma=\langle g_m,F\rangle$.
+If the $g_i$ have squared $L^2$ norms bounded by $V$, then
+\[
+ \|F\|_2^2\geq |\Gamma|^2/V.
+\]
+The function $F$ is $1$-bounded and is supported in a fixed enlarged box, because its first
+factor is a translate of $g_0$.  Replacing $g_m$ by $F$ in $\Gamma$ produces exactly
+$\langle F,F\rangle=\|F\|_2^2$.  Thus the replaced correlation remains power-large in
+units $N^{D_m}$.
+
+\paragraph{Obtain uniformity, using only the smaller major-arc property.}
+The phase in the replaced correlation is still $p_x(t)$, a polynomial in $t$ of degree at
+most three with measurable coefficients.  Apply \cref{patch:highest-control}, whose proof
+is independent of every major-arc assertion.  It gives power-large order-$S_0$ uniformity
+of $F$ in direction $e_m$, at a radius $H$ comparable to $N^{d_m}$ up to powers.
+The order $S_0$ is bounded independently of all functions and parameters; pad it to a fixed
+order if necessary using \eqref{patch:raise-order}.
+The function \eqref{patch:ma-adjoint} has exactly the form in
+\cref{patch:conditional-degree}, with conjugated $g_i$, mappings $\xi_i=-\zeta_i$, and
+constants $\eta_i=-\theta_i$.
+Use the induction hypothesis $\mathsf{MA}(m,l)$ in that conditional lemma, and lower the
+order $S_0-2$ times, at the same $H$.  If $S_0=2$ there is no lowering step.
+This obtains a power-large directional $U^2$ power of $F$.
+
+\paragraph{Fourier-select and expose the smaller pattern.}
+By Fubini, popularity, and \cref{patch:u2-fourier-selection}, there is a measurable mapping
+$\lambda:\mathbb R^{m-1}\to\mathbb R$ such that
+\[
+ \int\left|\int F(y,z)\ee{\lambda(y)z}\,dz\right|dy
+                      \geq\delta^{O(1)}N^{D_m}.
+\]
+Take a measurable scalar $c(y)$ of modulus at most one that turns the inner coefficient
+into its modulus.  Expand $F$ and put the new variable $x$ equal to the old variable plus
+$P_m(t)e_m$.  The resulting power-large scalar is exactly
+\refstepcounter{equation}
+\[
+ \label{patch:ma-smaller-pattern}
+ \int \overline{g_0(x)}c(x_{<m})\ee{\lambda(x_{<m})x_m}
+ \mathbb E_t\prod_{i<m}\overline{g_i(x-P_i(t)e_i)}
+ \ee{-\lambda(x_{<m})P_m(t)-p_x(t)}\,dx.
+ \tag{\theequation}
+\]
+The $x_m$ integration is restricted by $g_0$ to an interval of power-controlled length
+in units $N^{d_m}$.  Each section has absolute value at most a power-controlled multiple
+of $N^{D_{m-1}}$.  Since the integral of the absolute values of the sections is at least
+the modulus of \eqref{patch:ma-smaller-pattern}, popularity gives a measurable set $Z_m$
+of $x_m$ values with measure at least $\delta^{O(1)}N^{d_m}$, on every one of which the
+section correlation is at least $\delta^{O(1)}N^{D_{m-1}}$.
+Use a fixed threshold for all these sections; do not feed their individual sizes into the
+induction hypothesis.
+
+For each $z\in Z_m$, the section of \eqref{patch:ma-smaller-pattern} is an
+$\mathsf{MA}(m,l)$ correlation, with variable phases
+\[
+ -\lambda(y),\quad -\zeta_{m+1}(y,z),\ldots,-\zeta_l(y,z)
+\]
+and fixed higher phases $-\theta_i$.
+Apply the induction hypothesis with one common budget.  Drop the nonnegative term
+$N^{d_m}|\lambda(y)|$ from its conclusion.  It follows that the section of the canonical set
+\[
+ Y=\left\{(y,z)\text{ in the enlarged box}:\
+       \sum_{i=m+1}^lN^{d_i}|\zeta_i(y,z)|+
+       \sum_{i>l}N^{d_i}|\theta_i|\leq u_C(\delta)\right\}
+\]
+has measure at least $\delta^{O(1)}N^{D_{m-1}}$ for each $z\in Z_m$.
+This set is jointly measurable, with no sectionwise set-selection issue.
+Fubini yields $|Y|\geq\delta^{O(1)}N^{D_m}$, which is $\mathsf{MA}(m+1,l)$.
+
+All losses in a step are products, fixed powers, or finite-order applications of the budget
+rules.  All statements used in this induction hold for every $N>0$ in the real case.
+There are at most $k-1\leq2$ induction steps, although each step invokes the
+previously bounded number of degree-lowering iterations.  This proves the claimed uniform
+structural budgets.
+\end{proof}
+
+The dependency at stage $m$ is precisely
+\[
+ \mathsf{MA}(m,l)
+ \ \Longrightarrow\ \mathsf{ConditionalDL}(m,l)
+ \ \Longrightarrow\ \mathsf{MA}(m+1,l),
+\]
+with highest-active uniformity proved before this induction.  In particular, neither the
+conclusion at $m+1$ nor the final inverse theorem is used as an induction hypothesis.
+
+\begin{corollary}[Unconditional degree lowering for structured adjoints]
+\label{patch:structured-degree}
+Let $2\leq l\leq k\leq3$ and fix admissible polynomials and bounded, budget-supported inputs.
+Let $F_l$ be the $l$-th adjoint of the modulated average with active inputs $1,\ldots,l$
+and a fixed phase $\ee{\sum_{i>l}\zeta_iP_i(t)}$.  If its directional order-$s$ norm,
+$s\geq3$, is power-large at $H\asymp\delta^{O(1)}N^{d_l}$, then its order-$(s-1)$ norm
+at the same $H$ is power-large, with uniform budgets.
+\end{corollary}
+\begin{proof}
+Keep the passive coordinates $x_{>l}$ fixed.  The active $l$-variable function is exactly
+the function in \cref{patch:conditional-degree} with $m=l$ and fixed higher phase,
+up to the explicitly harmless conjugations.  Popularity first restricts to passive sections
+with power-large order-$s$ power.  Apply that lemma using the now proved
+$\mathsf{MA}(l,l)$, with the same budgets on all selected sections, and integrate the
+resulting nonnegative order-$(s-1)$ powers.  The passive-section volume has its exact factor
+$N^{D-D_l}$; support ratios are handled by \cref{patch:budgets}.
+\end{proof}
+This corollary is the structured statement corresponding to \cite[Lemma 4.70]{KoszEtAl}.
+It makes no assertion that a generic function with large high-order uniformity has large
+low-frequency energy or admits degree lowering.
+The major-arc induction hypothesis must quantify over budgets; specializing its budget
+before the induction would prevent its use on the enlarged supports.
+
+
+\subsection{Remove the higher inputs, then prove lowest-input energy}
+\label{patch:lowest-inverse}
+For this subsection write a modulated correlation without inner-product notation as
+\[
+ \Gamma_l(g_0;f_1,\ldots,f_l;\zeta_{>l})
+ =\int g_0(x)\mathbb E_t\prod_{i\leq l}f_i(x-P_i(t)e_i)
+                   \ee{\sum_{i>l}\zeta_iP_i(t)}\,dx.
+\]
+The output factor is $g_0$, not its conjugate.  This convention eliminates implicit
+conjugations in the identities below; the original four-linear form corresponds to
+$g_0=\overline{f_0}$.
+
+\begin{lemma}[Backward elimination of higher inputs]\label{patch:remove-high-inputs}
+For an increasing degree list in $\{1,2,3\}$, a power-large unmodulated correlation
+$\Gamma_k(g_0;f_1,\ldots,f_k)$ produces a fixed frequency vector $\zeta_{>1}$ and a
+measurable $g'_0$ with $|g'_0|\leq|g_0|$ such that
+\[
+ |\Gamma_1(g'_0;f_1;\zeta_{>1})|\geq\delta^{O(1)}N^D.
+\]
+All inputs are $1$-bounded with budgeted support and admissible polynomials.
+\end{lemma}
+\begin{proof}
+Induct backwards on $l=k,k-1,\ldots,2$ while retaining the original $f_1,\ldots,f_l$ and
+one fixed vector $\zeta_{>l}$.  The base is the assumed correlation.
+Suppose $\Gamma_l$ is power-large.  Define
+\[
+ F_l(y)=\mathbb E_t\overline{g_{0,l}(y+P_l(t)e_l)}
+          \prod_{i<l}\overline{f_i(y+P_l(t)e_l-P_i(t)e_i)}
+                           \ee{-\sum_{i>l}\zeta_iP_i(t)}.
+\]
+Then $\Gamma_l=\langle f_l,F_l\rangle$.  As in \eqref{patch:ma-adjoint}, replacing $f_l$
+by $F_l$ gives a power-large correlation equal to $\|F_l\|_2^2$.
+Apply \cref{patch:highest-control}, followed by \cref{patch:structured-degree} a bounded
+number of times, to obtain power-large directional $U^2$ of $F_l$ at a radius comparable
+to $N^{d_l}$ up to powers.
+
+\paragraph{Measurable section frequencies.}
+Let $y=x_{<l}$, $z=x_l$, and $w=x_{>l}$.
+By \cref{patch:u2-fourier-selection} and popularity there is a measurable set
+$Z\subseteq\{(y,w)\}$ of measure at least $\delta^{O(1)}N^{D-d_l}$ and a measurable
+frequency $\lambda(y,w)$ for which
+\refstepcounter{equation}
+\[
+ \label{patch:high-section-coeff}
+ \left|\int F_l(y,z,w)\ee{\lambda(y,w)z}\,dz\right|
+                                  \geq\delta^{O(1)}N^{d_l}\qquad((y,w)\in Z).
+ \tag{\theequation}
+\]
+Popularity in $w$ gives a measurable set $W$ of measure at least
+$\delta^{O(1)}N^{D-D_l}$ such that each $Z_w$ has measure at least
+$\delta^{O(1)}N^{D_{l-1}}$.
+Extend $\lambda$ off $Z$ by a fixed real number $\lambda_{\rm dummy}$ whose modulus is
+larger than the major-arc bound used in the next paragraph.  This is permitted because that
+bound is independent of the input phase values.  No Fourier-coefficient assertion is made
+for the extended values off $Z$.
+
+\paragraph{Use $\mathsf{MA}(l,l)$ to keep the selected frequencies small.}
+For each $w\in W$, the integral over $y$ of the absolute coefficient with this extended
+frequency is power-large.  Dualize by a measurable phase in $y$, expand $F_l$, and translate
+by $P_l(t)e_l$.  This gives a power-large integral in $(y,z)$ with the $l-1$ active inputs
+$\overline{f_i}$, the variable coefficient $-\lambda(y,w)$ of $P_l(t)$, and fixed coefficients
+$-\zeta_i$ for $i>l$.
+Select a $z$ section carrying a power-large correlation and apply the already proved
+$\mathsf{MA}(l,l)$.  Its output budget is the same for every $w$.
+In particular, the canonical set of $y$ with
+\[
+ N^{d_l}|\lambda(y,w)|+\sum_{i>l}N^{d_i}|\zeta_i|\leq u_C(\delta)
+\]
+is power-large.  Choose $|\lambda_{\rm dummy}|>u_C(\delta)N^{-d_l}$.
+Every point of this canonical set must lie in $Z_w$, so the original estimate
+\eqref{patch:high-section-coeff} holds there.  The full set of these $(y,w)$ is jointly
+measurable, is power-large, and has $|\lambda(y,w)|\leq u_C(\delta)N^{-d_l}$.
+This dummy-value step prevents the major-arc theorem from returning unrelated points on
+which no useful Fourier coefficient was obtained.
+
+\paragraph{Make the frequency constant.}
+Partition that bounded frequency interval into cells of width $\tau N^{-d_l}$.
+Choose $\tau>0$ so that changing $\lambda$ by at most $\tau N^{-d_l}$ changes the coefficient
+in \eqref{patch:high-section-coeff} by at most one quarter of its lower bound.
+Indeed $F_l$ is $1$-bounded and its $z$ support has length and absolute location bounded
+by $u_c(\delta)N^{d_l}$; integrate
+$|\ee{\lambda z}-\ee{\lambda_0 z}|\leq2\pi|\lambda-\lambda_0||z|$.
+The chosen $\tau$ is a power of $\delta$ before the cell selection.
+There are power-many cells, so a common center $\lambda_0$ works on a measurable set of
+$(y,w)$ of power-large measure.  The coefficient at $\lambda_0$ is still pointwise power-large
+on that set.  Choose a measurable $c(y,w)$, zero off that set and of modulus one on it,
+such that
+\[
+ \int c(y,w)\int F_l(y,z,w)\ee{\lambda_0z}\,dz\,dy\,dw
+\]
+is nonnegative and power-large.
+Expand $F_l$, translate by $P_l(t)e_l$, and conjugate the entire scalar integral.
+The result is exactly $\Gamma_{l-1}$, with
+\[
+ g_{0,l-1}(x)=g_{0,l}(x)\overline{c(x_{\{l\}^c})}\ee{-\lambda_0x_l},
+ \qquad \zeta_l=\lambda_0,
+\]
+and with the earlier fixed $\zeta_{>l}$ unchanged.  Thus
+$|g_{0,l-1}|\leq|g_{0,l}|$, the support does not enlarge, and the remaining lower inputs are
+still the original $f_i$, not modified products.
+There are at most two backward steps.  All budget choices are explicit applications of
+\cref{patch:budgets}, so the iteration yields the stated conclusion.
+\end{proof}
+The inequality $|g'_0|\leq|g_0|$ is the form needed here.  The paper states a modulus-equality
+version in Lemma 4.71; no such stronger equality is needed or asserted in this patch.
+
+\begin{theorem}[Lowest-input positive Fourier energy]\label{patch:lowest-energy}
+Fix the increasing degree list and an input budget.  There is a structural integer $C$ such
+that a power-large correlation $\Gamma_k$ as above, for $N\geq u_C(\delta)$, implies
+\[
+ \left\langle f_1,P_{L}^{(1)}f_1\right\rangle
+       =\int\eta(\xi_1/L)|\widehat f_1(\xi)|^2\,d\xi
+       \geq\ell_C(\delta)N^D,
+       \qquad L=u_C(\delta)N^{-d_1}.
+\]
+The energy is real and nonnegative.  The theorem holds for every increasing sublist of
+$\{1,2,3\}$, including lists of length one whose sole degree is two or three.
+\end{theorem}
+\begin{proof}
+For $k\geq2$, apply \cref{patch:remove-high-inputs}.  For $k=1$ begin with the original
+correlation.  Set
+\[
+ T f_1(x)=\mathbb E_t f_1(x-P_1(t)e_1)\ee{\sum_{i>1}\zeta_iP_i(t)}.
+\]
+Cauchy--Schwarz with the supported output factor gives
+$\|Tf_1\|_2^2\geq\delta^{O(1)}N^D$.
+\Cref{new:average-multiplier,new:integral-plancherel} give
+\[
+ \|Tf_1\|_2^2=\int |m(\xi_1)|^2|\widehat f_1(\xi)|^2\,d\xi,
+ \qquad m(v)=\mathbb E_t\ee{-vP_1(t)+\sum_{i>1}\zeta_iP_i(t)}.
+\]
+We have $|m|\leq1$ and $\|f_1\|_2^2\leq u_c(\delta)N^D$ for a known budget.
+Write the already obtained bounds as $\|Tf_1\|_2^2\geq\kappa N^D$
+and $\|f_1\|_2^2\leq V_0N^D$, where $\kappa>0$ is power-large and $V_0>0$ is
+power-bounded. Choose
+\[
+ \varepsilon=\min\{1/2,\sqrt{\kappa/(4V_0)}\}>0.
+\]
+Then $\varepsilon^2\|f_1\|_2^2\leq\kappa N^D/4$.
+By \cref{patch:triangular}, $|m(v)|\geq\varepsilon$ implies
+$|v|\leq R=u_{C'}(\delta)N^{-d_1}$.
+Thus the Fourier energy in $|\xi_1|\leq R$ is power-large.
+Choose $L\geq4R$.  The cutoff equals one on this band and is nonnegative elsewhere, so
+\[
+ \langle f_1,P_L^{(1)}f_1\rangle\geq
+          \int_{|\xi_1|\leq R}|\widehat f_1(\xi)|^2d\xi
+                              \geq\delta^{O(1)}N^D.
+\]
+Choose a single integer $C$ dominating the threshold, radius coefficient and exponent,
+and lower-bound coefficient and exponent, so that $L=u_C(\delta)N^{-d_1}$ still has its
+plateau on the same band.  This proves the exact statement.
+\end{proof}
+This last step uses the source's modulated-linear-average and scalar-oscillation argument,
+but full Plancherel avoids an unnecessary final sectionwise choice of Fourier data.
+
+\subsection{General selected indices: quantitative freezing and slicing}
+\label{patch:all-indices}
+The next theorem is the independent substitute for the source's Theorem 4.30 needed by the
+public monomial wrappers.  Its proof is given here rather than taken as an axiom.
+
+\begin{theorem}[Every-input positive energy, independently proved]
+\label{patch:energy-core}
+Fix an increasing list $1\leq d_1<\cdots<d_k\leq3$ and an integer input budget $c\geq1$.
+There exists an integer $C\geq c$ such that the following holds for $0<\delta\leq1$ and
+$N\geq u_C(\delta)$.  Suppose that all $P_i$ are admissible with budget $c$, the functions
+$g_0,f_1,\ldots,f_k$ are $1$-bounded and supported in the budget-$c$ box, and
+\[
+ |\Gamma_k(g_0;f_1,\ldots,f_k)|\geq\ell_c(\delta)N^D.
+\]
+Then, for every $j\in\{1,\ldots,k\}$,
+\refstepcounter{equation}
+\[
+ \label{patch:all-energy}
+ \left\langle f_j,P_{L_j}^{(j)}f_j\right\rangle
+      \geq\ell_C(\delta)N^D,
+       \qquad L_j=u_C(\delta)N^{-d_j}.
+ \tag{\theequation}
+\]
+\end{theorem}
+\begin{proof}
+Induct on $k$, with the statement quantified over all increasing degree lists and all input
+budgets.  For $k=1$, or for $j=1$ at any $k$, use \cref{patch:lowest-energy}.
+Suppose $k\geq2$ and $j>1$.
+
+\paragraph{1. Replace the first input, and smooth that adjoint.}
+Define its exact adjoint
+\[
+ F_1(y)=\mathbb E_t\overline{g_0(y+P_1(t)e_1)}
+                  \prod_{i>1}\overline{f_i(y+P_1(t)e_1-P_i(t)e_i)}.
+\]
+The original scalar is $\langle f_1,F_1\rangle$.  Its size gives
+$\|F_1\|_2^2\geq\delta^{O(1)}N^D$, and replacing $f_1$ by $F_1$ produces this positive
+correlation.  All its inputs, including $F_1$, are $1$-bounded and supported in a budgeted
+enlargement.  Apply \cref{patch:lowest-energy} to this new correlation to obtain
+\[
+ \langle F_1,P_{L_1}^{(1)}F_1\rangle\geq\kappa N^D,
+ \qquad L_1=\delta^{-O(1)}N^{-d_1},\quad\kappa=\delta^{O(1)}.
+\]
+Set $G=P_{L_1}^{(1)}F_1$.  The adjoint identity gives the same lower bound for the
+correlation with first input $G$ and other inputs the original $f_2,\ldots,f_k$.
+The scalar is real by self-adjointness, but only its modulus will be used.
+
+Let $M=\max(1,\|\check\eta\|_1)$ and $M_1=\| (\check\eta)'\|_1$.
+The kernel estimate in \cref{new:kernel-facts} gives
+\[
+ \|G\|_\infty\leq M,\qquad
+ |G(x+ve_1)-G(x)|\leq M_1L_1|v|.
+\]
+This holds on every bounded Borel section directly from the $L^1$ translation bound for the
+smooth kernel. No differentiability of $F_1$ or of a merely measurable input is assumed.
+The output factor $g_0$ retains finite support even though $G$ itself need not have compact
+support in coordinate one.
+
+\paragraph{2. Freeze on one of finitely many equal intervals.}
+Admissibility bounds $|P_1'(t)|\leq u_{c'}(\delta)N^{d_1-1}$ on $[0,N]$.
+Partition $[0,N]$ into $K$ equal intervals $[a,a+n]$ with $n=N/K$.
+On such an interval,
+\[
+ |G(x-P_1(t)e_1)-G(x-P_1(a)e_1)|
+ \leq M_1L_1u_{c'}(\delta)N^{d_1-1}n
+ \leq u_{c''}(\delta)/K.
+\]
+After integrating against $g_0$ and the other bounded factors, the total normalized
+correlation error is at most $u_{c'''}(\delta)N^D/K$.
+Choose
+\[
+ K=\max\{1,\lceil 4u_{c'''}(\delta)/\kappa\rceil\}.
+\]
+This is power-bounded above, and ensures error at most $\kappa N^D/4$.
+The full average is the average of these $K$ normalized local averages.  Hence at least one
+frozen interval has scalar modulus at least $\kappa N^D/2$.
+Choose the first such interval in this finite family.  No discarded remainder interval is needed.
+
+\paragraph{3. Expose the lower-dimensional polynomial family.}
+For that $a$, put
+\[
+ Q_i(u)=P_i(a+u)-P_i(a),\qquad
+ f_i^a(x)=f_i(x-P_i(a)e_i)\quad(i\geq2),
+\]
+\[
+ g_0^a(x)=M^{-1}g_0(x)G(x-P_1(a)e_1).
+\]
+The frozen normalized correlation, divided by $M$, is exactly
+\refstepcounter{equation}
+\[
+ \label{patch:frozen-correlation}
+ \int g_0^a(x)\mathbb E_{u\in[0,n]}
+               \prod_{i=2}^k f_i^a(x-Q_i(u)e_i)\,dx.
+ \tag{\theequation}
+\]
+It is power-large in units $N^D$, and all its displayed functions are $1$-bounded.
+The $Q_i$ have degrees $d_i$ and the same leading coefficients as $P_i$.
+By the binomial formula and $0\leq a\leq N$, their degree-$r$ coefficients are bounded by
+$u_{c'}(\delta)N^{d_i-r}$, hence by
+$u_{c'}(\delta)K^{d_i-r}n^{d_i-r}$.
+Since $K$ is power-bounded, these are admissible coefficients at scale $n$ with one new
+structural budget.  The translated supports are contained in boxes with sides bounded by
+$u_{c'}(\delta)N^{d_i}=u_{c'}(\delta)K^{d_i}n^{d_i}$ and therefore satisfy the same kind
+of enlarged-support hypothesis at scale $n$.
+
+\paragraph{4. Obtain a measurable set of large sections.}
+For $v=x_1$, let $B(v)$ be the integral in the remaining coordinates in
+\eqref{patch:frozen-correlation}.  It is measurable by Fubini, vanishes unless $v$ lies in
+the original coordinate-one support interval, and
+$|B(v)|\leq u_{c'}(\delta)N^{D-d_1}$.
+Since $\int|B(v)|dv\geq|\int B(v)dv|\geq\delta^{O(1)}N^D$, popularity produces a
+canonical measurable set $X_1$ of measure at least $\delta^{O(1)}N^{d_1}$ on which
+\[
+ |B(v)|\geq\delta^{O(1)}N^{D-d_1}\geq\delta^{O(1)}n^{D-d_1}.
+\]
+All hypotheses of the $(k-1)$-dimensional induction theorem now hold with the increasing
+list $(d_2,\ldots,d_k)$ and one common input budget, independent of $v\in X_1$.
+This includes lists starting with degree two or three, not only lists starting with one.
+Because $n=N/K$ and $K\leq u_{c'}(\delta)$, choosing the original threshold $N$ larger
+by the product of the two known budget bounds ensures the required lower threshold for $n$.
+
+\paragraph{5. Apply the induction hypothesis and integrate positive energies.}
+The induction hypothesis gives, for every $v\in X_1$, a lower bound
+$\delta^{O(1)}n^{D-d_1}$ for the positive energy of the section of $f_j^a$ at the same
+radius $L'=u_{C'}(\delta)n^{-d_j}$.  Translation by $P_j(a)e_j$ does not change its
+coordinate-one section and preserves the directional Fourier energy in the remaining
+coordinates.  Thus this is also the section energy of the original $f_j$.
+Since $n=N/K$ and $K$ is power-bounded, the lower bound is
+$\delta^{O(1)}N^{D-d_1}$.
+Integrate over $X_1$ and use nonnegativity on its complement.  This gives
+\[
+ \langle f_j,P_{L'}^{(j)}f_j\rangle\geq\delta^{O(1)}N^D,
+ \qquad L'\leq u_{C''}(\delta)N^{-d_j}.
+\]
+The radius is common to all sections; no varying-radius integral is being identified with
+one projection.
+Finally choose $L_j=u_C(\delta)N^{-d_j}\geq2L'$.  On the support of
+$\eta(\xi_j/L')$, the larger cutoff equals one, so
+$\eta(\xi_j/L_j)\geq\eta(\xi_j/L')$ pointwise.
+The positive energy therefore only increases.  A common maximum of the finitely many
+budgets handles all $j$, thresholds, and the degree-list induction.
+This proves \eqref{patch:all-energy}.
+\end{proof}
+
+\paragraph{Why this is not the old circular proof.}
+\Cref{patch:energy-core} uses the independently proved \cref{patch:lowest-energy}, the
+adjoint identities, freezing, and lower-dimensional instances of itself.
+It does not use the public \pid{lem:pet-reduction}, the old \pid{lem:degree-lowering-zero},
+or the public \pid{thm:real-inverse}.  The only PET premise used in proving
+\cref{patch:lowest-energy} was proved explicitly in \cref{patch:pet-producer}.
+
+
+\section{The monomial inverse theorem and the compact adjoint estimate}
+\label{new:compact-section}
+Return to $\R^3$ and to the positive translations $t,t^2,t^3$. Write
+\[
+ B_N(C_0)=[-C_0N,C_0N]\times[-C_0N^2,C_0N^2]\times[-C_0N^3,C_0N^3].
+\]
+The pairing is linear in its first argument, as in the conventions.
+
+\begin{theorem}[The precise inverse statement used in the adjoint argument]\label{new:monomial-inverse}
+For every $C_0\geq1$ there is an integer $A\geq1$ such that, for $0<\delta\leq1$,
+$N\geq A\delta^{-A}$, and Borel functions $f_0,f_1,f_2,f_3$ bounded by one and supported
+in $B_N(C_0)$, the implication
+\[
+ |\langle A_N(f_1,f_2,f_3),f_0\rangle|\geq\delta N^6
+\]
+has the following conclusion, for every $j\in\{1,2,3\}$:
+\[
+ \left\langle f_j,P_{A\delta^{-A}N^{-j}}^{(j)}f_j\right\rangle
+ \geq A^{-1}\delta^A N^6.
+\]
+This scalar is real and nonnegative. In particular the witness in a formulation asking for
+$\langle f_j,P_L^{(j)}h_j\rangle$ can be chosen to be $h_j=f_j$.
+\end{theorem}
+\begin{proof}
+Apply \cref{patch:energy-core} with degrees $(1,2,3)$, polynomials $P_i(t)=-t^i$, and
+$g_0=\overline{f_0}$. These signs give $x-P_i(t)e_i=x+t^ie_i$, so its correlation is the
+one displayed here, not its adjoint or a different translation convention. Choose an integer
+input budget $c\geq\max\{1,\lceil C_0\rceil\}$. Then $|\operatorname{lc}P_i|=1$, the lower
+coefficients vanish, and the support conditions hold with that budget. Also
+$\delta\geq\ell_c(\delta)$. The output budget $C$ in \cref{patch:energy-core} supplies the
+claimed conclusion with $A=C$. Any further increase of $A$ may be made with $A\geq2C$;
+then the larger cutoff dominates the old one on its support by
+\cref{new:multiplier-facts}, while its lower bound weakens and its scale threshold strengthens.
+This permits one common integer for all three indices. Nonnegativity follows from the same
+multiplier lemma. No instance of the source's inverse theorem is being assumed in this step.
+\end{proof}
+
+\begin{lemma}[Adjoint support and the elementary global bound]\label{new:adjoint-basic}
+Let $\mathcal G=A_N^{*j}(g_0,g_b,g_c)$, with $j,b,c$ distinct. If the inputs are bounded
+by one and supported in $B_N(C_0)$, then $|\mathcal G|\leq1$ and
+$\operatorname{supp}\mathcal G\subseteq B_N(C_0+1)$.
+For exponents $r_i\in[1,\infty]$, $i\in\{0,b,c\}$, with
+$1/r=1/r_0+1/r_b+1/r_c$ and $1\leq r<\infty$,
+\[
+ \|\mathcal G\|_r\leq\|g_0\|_{r_0}\|g_b\|_{r_b}\|g_c\|_{r_c},
+\]
+\[
+ \|(I-P_R^{(j)})\mathcal G\|_r
+ \leq(1+B_0)\|g_0\|_{r_0}\|g_b\|_{r_b}\|g_c\|_{r_c}.
+\]
+These estimates hold for all inputs with finite displayed norms.
+\end{lemma}
+\begin{proof}
+The pointwise integrand has modulus at most one. If it is nonzero, its $g_0$ argument
+$y-t^je_j$ lies in $B_N(C_0)$; since $0\leq t^j\leq N^j$, the output lies in the asserted
+enlargement. The norm bound is H\"older for the three translated inputs at each fixed $t$,
+followed by the integral inequality and translation invariance from
+\cref{new:integral-inequalities}. The second estimate follows from the convolution bound
+$\|P_R^{(j)}\|_{L^r\to L^r}\leq B_0$. Approximation by bounded supported functions, or
+Tonelli applied to their absolute values followed by this norm bound, gives the stated
+extension and its almost-everywhere interpretation as the concrete parameter integral.
+\end{proof}
+
+\begin{theorem}[Compact bounded-input high-frequency estimate]\label{new:compact-highpass}
+Fix $C_0\geq1$ and $j$. There are $a\in(0,1)$, $K_0\geq1$, and $C_1\geq1$ such that
+for $0<\mu\leq1$, $N\geq K_0\mu^{-K_0}$, and bounded Borel inputs supported in $B_N(C_0)$,
+\[
+ \left\|(I-P_R^{(j)})A_N^{*j}(g_0,g_b,g_c)\right\|_2
+ \leq C_1\mu^a N^3\|g_0\|_\infty\|g_b\|_\infty\|g_c\|_\infty,
+ \qquad R=N^{-j}\mu^{-2}.
+\]
+\end{theorem}
+\begin{proof}
+Zero input norms give zero output. By homogeneity reduce to inputs bounded by one, using
+Borel representatives with pointwise bounds. Put $\mathcal G=A_N^{*j}(g)$ and
+$H=(I-P_R^{(j)})\mathcal G$. By \cref{new:adjoint-basic}, $\mathcal G$ is supported in
+$B_N(C_0+1)$, is bounded by one, and belongs to $L^1\cap L^2$. The same membership for
+$H$ follows from the convolution estimates. Let
+\[
+ M=1+B_0,\qquad B'=B_N(C_0+2),\qquad h=M^{-1}\one_{B'}H.
+\]
+Then $|h|\leq1$, and $h$ has the same fixed support envelope as the three other inputs.
+Since $\mathcal G$ is zero off $B'$, the multiplier identities give
+\[
+ \langle h,\mathcal G\rangle
+ =M^{-1}\int(1-\eta(\xi_j/R))|\widehat{\mathcal G}(\xi)|^2\,d\xi
+ \geq M^{-1}\|H\|_2^2.
+\]
+The inequality uses $0\leq1-\eta\leq1$, so $(1-\eta)^2\leq1-\eta$. In particular this
+correlation is real and nonnegative.
+
+Take the integer $A$ from \cref{new:monomial-inverse} with support parameter $C_0+2$ and set
+\[
+ \delta=\mu^{1/(2A)},\qquad L=A\delta^{-A}N^{-j}=A\mu^{-1/2}N^{-j}.
+\]
+Choose $K_0\geq A$ and $K_0\geq1$. Then $N\geq K_0\mu^{-K_0}$ implies
+$N\geq A\mu^{-1/2}=A\delta^{-A}$. Suppose, towards a contradiction, that
+\[
+ \|H\|_2^2>M\delta N^6.
+\]
+The adjoint identity in \cref{new:improving}, applied with the $j$-th input equal to $h$,
+turns $\langle h,\mathcal G\rangle$ into the original four-function correlation.
+The inverse theorem therefore implies
+\[
+ \langle h,P_L^{(j)}h\rangle\geq A^{-1}\mu^{1/2}N^6.
+\]
+
+For all sufficiently small $\mu$, $2A\mu^{3/2}\leq1$, so $2L\leq R$.
+Consequently $P_L^{(j)}H=0$ in $L^2$, by \cref{new:multiplier-facts}. Hence
+\[
+ P_L^{(j)}h=-M^{-1}P_L^{(j)}(\one_{(B')^c}H).
+\]
+Outside $B'$, $H=-P_R^{(j)}\mathcal G$. The convolution vanishes outside the passive-coordinate
+support of $\mathcal G$. At any remaining point outside $B'$, a nonzero convolution
+integrand must have $|u|\geq N^j$: the $j$ coordinate of the point has distance at least
+$N^j$ from the support of $\mathcal G$. The pointwise integral triangle inequality and Young's
+inequality therefore give
+\[
+ \|\one_{(B')^c}H\|_2
+ \leq\left(\int_{|u|\geq N^j}|K_R(u)|\,du\right)\|\mathcal G\|_2
+ \leq B_2^{\rm tail}\mu^4[2(C_0+1)]^{3/2}N^3.
+\]
+Use the $L^2$ contraction of $P_L^{(j)}$, $\|h\|_2\leq[2(C_0+2)]^{3/2}N^3$, and
+Cauchy--Schwarz. There is a fixed finite $C_2$ such that
+\[
+ 0\leq\langle h,P_L^{(j)}h\rangle\leq C_2\mu^4N^6.
+\]
+Choose $0<\mu_0\leq1$ so that both $2A\mu_0^{3/2}\leq1$ and
+$C_2\mu_0^{7/2}\leq(2A)^{-1}$. If $C_2=0$ the latter restriction is unnecessary.
+For $\mu\leq\mu_0$ the last two energy bounds contradict each other. Thus
+\[
+ \|H\|_2\leq\sqrt M\,\mu^{1/(4A)}N^3\qquad(0<\mu\leq\mu_0).
+\]
+For $\mu_0\leq\mu\leq1$, integral Plancherel gives the crude bound
+$\|H\|_2\leq\|\mathcal G\|_2\leq[2(C_0+1)]^{3/2}N^3$; enlarge the constant by
+$\mu_0^{-1/(4A)}$. Set $a=1/(4A)$ and take a constant at least one covering both cases.
+This proves the theorem. The proof does not assume compact support of $P_R\mathcal G$;
+its noncompact part is exactly the tail estimated above.
+\end{proof}
+
+\begin{theorem}[A compact decaying point on the $L^2$ exponent hyperplane]
+\label{new:compact-decaying-point}
+Fix $j$ and use the choice of $b,c$ made in \cref{new:improving-section}. Put
+\[
+ \rho_0=\frac{10}{61},\qquad\rho_b=\frac{21}{122},\qquad
+ \rho_c=\frac{10}{61},\qquad u_i=1/\rho_i.
+\]
+Thus $\sum_{i\in\{0,b,c\}}\rho_i=1/2$ and all $u_i>2$. There are constants
+$a_1\in(0,1)$, $K_0,C_3\geq1$ such that, for inputs supported in $B_N(C_0)$,
+\[
+ \|(I-P_{N^{-j}\mu^{-2}}^{(j)})A_N^{*j}(g)\|_2
+ \leq C_3\mu^{a_1}\prod_{i\in\{0,b,c\}}\|g_i\|_{u_i}
+\]
+whenever $0<\mu\leq1$ and $N\geq K_0\mu^{-K_0}$.
+\end{theorem}
+\begin{proof}
+For fixed $N,\mu$, the compact bounded-input endpoint has constant $C_1\mu^a N^3$.
+The improving endpoint \cref{new:improving} has constant $CN^{-1/20}$ and input exponents
+$(6,40/7,6)$. Composing with $I-P_R$ does not enlarge its $L^2$ constant: its multiplier
+lies in $[0,1]$, so it is a contraction. Apply \cref{new:interpolation} on the fixed support
+box with weight $\theta=60/61$ on the improving endpoint and $1/61$ on the bounded endpoint.
+Conjugate the $b,c$ inputs first to make the operator complex multilinear, as allowed there.
+The three interpolated reciprocals are exactly the displayed $\rho_i$, and
+\[
+ 3(1-\theta)-\theta/20=3/61-3/61=0.
+\]
+The frequency gain is $\mu^{a/61}$, so take $a_1=a/61$. Initially the proof applies to
+bounded finite-valued inputs with the specified supports. They are dense in each $L^{u_i}$
+on that box. The crude global estimate in \cref{new:adjoint-basic}, with output two and
+$\sum1/u_i=1/2$, shows that the outputs converge in $L^2$ under these approximations:
+expand a difference of two triples as three multilinear differences and use boundedness of
+the other factors' norms. The same estimate for absolute inputs identifies the limit with
+the concrete parameter integral and its convolution almost everywhere. Passing to the limit
+proves the stated compact estimate for all finite-norm inputs.
+\end{proof}
+
+\section{Support removal, all exponents, and the exact Lean proposition}
+\label{new:global-section}
+\subsection{Support removal with an explicit summable off-diagonal estimate}
+\begin{theorem}[Global decaying $L^2$ estimate]\label{new:global-decaying-point}
+With the exponents and constants of \cref{new:compact-decaying-point}, there are
+$C_4,K_0\geq1$ such that
+\[
+ \|(I-P_{N^{-j}\mu^{-2}}^{(j)})A_N^{*j}(g)\|_2
+ \leq C_4\mu^{a_1}\prod_{i\in\{0,b,c\}}\|g_i\|_{u_i}
+\]
+for all $g_i\in L^{u_i}(\R^3)$, with no support restriction, provided
+$0<\mu\leq1$ and $N\geq K_0\mu^{-K_0}$.
+\end{theorem}
+\begin{proof}
+First take bounded inputs of bounded support, so that all sums introduced here are finite.
+For $\nu\in\mathbb Z^3$ let
+\[
+ Q_\nu=D_N(\nu+[0,1)^3),\qquad g_{i,\nu}=\one_{Q_\nu}g_i.
+\]
+These boxes partition $\R^3$. In the adjoint integral put $z=y-t^je_j$. If $z\in Q_\nu$,
+then $z+t^be_b$ lies in $Q_{\nu+\epsilon e_b}$ for exactly one $\epsilon\in\{0,1\}$,
+and $z+t^ce_c$ lies in $Q_{\nu+\epsilon'e_c}$ for one $\epsilon'\in\{0,1\}$.
+This follows coordinate by coordinate from $0\leq t^i\leq N^i$ and the half-open convention.
+Consequently the exact decomposition is
+\[
+ A_N^{*j}(g)=\sum_{\epsilon,\epsilon'\in\{0,1\}}\sum_{\nu\in\mathbb Z^3}
+ A_N^{*j}(g_{0,\nu},g_{b,\nu+\epsilon e_b},g_{c,\nu+\epsilon'e_c}).
+\]
+Fix one of the four offset pairs, and denote its individual adjoints by $G_\nu$ and its
+high-frequency outputs by $H_\nu=(I-P_R^{(j)})G_\nu$.
+After the common translation $D_N\nu$, all their input supports are in $B_N(2)$.
+Translation covariance of both the average and the convolution, followed by
+\cref{new:compact-decaying-point} with $C_0=2$, gives
+\[
+ \|H_\nu\|_2\leq C\mu^{a_1}a_\nu,
+ \qquad
+ a_\nu=\|g_{0,\nu}\|_{u_0}\|g_{b,\nu+\epsilon e_b}\|_{u_b}
+                       \|g_{c,\nu+\epsilon'e_c}\|_{u_c}.
+\]
+The crude bound \cref{new:adjoint-basic} gives $\|G_\nu\|_2\leq a_\nu$.
+Moreover $G_\nu$ is supported in the same two passive-coordinate intervals as $Q_\nu$, and
+in $[\nu_jN^j,(\nu_j+2)N^j)$ in coordinate $j$. The one-coordinate convolution preserves
+those passive-coordinate supports exactly.
+
+Let $Q_\omega$ be an output box. Its intersection with $H_\nu$ is empty unless
+$\omega_i=\nu_i$ for $i\ne j$. Put $\ell=\omega_j-\nu_j$ in the remaining case.
+For $|\ell|\leq3$ use the compact estimate. For $|\ell|>3$, the unprojected $G_\nu$
+vanishes on $Q_\omega$ and a nonzero convolution term must have
+$|u|\geq(|\ell|-2)N^j$. The same tail-Young calculation as in
+\cref{new:compact-highpass}, now with $\|G_\nu\|_2\leq a_\nu$, gives
+\[
+ \|\one_{Q_\omega}H_\nu\|_2\leq B_2^{\rm tail}\mu^4(|\ell|-2)^{-2}a_\nu.
+\]
+Define the nonnegative sequence on $\mathbb Z$
+\[
+ w_\ell=C\mu^{a_1}\quad (|\ell|\leq3).
+\]
+\[
+ w_\ell=B_2^{\rm tail}\mu^4(|\ell|-2)^{-2}\quad (|\ell|>3).
+\]
+The series $\sum_{n\geq2}n^{-2}$ is finite (compare it to the integral of $x^{-2}$), and
+$\mu^4\leq\mu^{a_1}$. Thus $\|w\|_{\ell^1}\leq C'\mu^{a_1}$.
+For $b_\omega=\|\one_{Q_\omega}\sum_\nu H_\nu\|_2$, the triangle inequality yields
+\[
+ b_\omega\leq\sum_{\ell\in\mathbb Z}w_\ell a_{\omega-\ell e_j}.
+\]
+Take the $\ell^2(\mathbb Z^3)$ norm. The triangle inequality for finite sums, followed by
+monotone convergence, proves the discrete Young bound
+\[
+ \|b\|_{\ell^2}\leq\sum_\ell w_\ell
+           \left(\sum_\omega a_{\omega-\ell e_j}^2\right)^{1/2}
+ =\|w\|_{\ell^1}\|a\|_{\ell^2}.
+\]
+There is no overlap loss hidden here: disjointness of the output boxes gives
+$\|\sum_\nu H_\nu\|_2=\|b\|_{\ell^2}$. Discrete H\"older, with exponents $u_i/2>1$
+and $\sum_i2/u_i=1$, gives
+\[
+ \|a\|_{\ell^2}\leq
+ \prod_{i\in\{0,b,c\}}\left(\sum_\nu\|g_{i,\nu}\|_{u_i}^{u_i}\right)^{1/u_i}
+ =\prod_i\|g_i\|_{u_i}.
+\]
+The fixed offsets merely permute the lattice in their corresponding sums. Sum the four
+offset estimates by the $L^2$ triangle inequality. This proves the global bound for the
+initial bounded inputs. Approximate arbitrary $L^{u_i}$ inputs by bounded finite-support
+ones. As in \cref{new:compact-decaying-point}, the crude global $L^2$ estimate proves
+convergence and identifies the limiting operator; the improved bound passes to the limit.
+
+This decomposition is performed on the \emph{inputs}. Cutting the unprojected output into
+boxes before applying $I-P_R$ would introduce unestimated boundary terms and is not used.
+\end{proof}
+
+\subsection{Explicit convex completion of the exponent range}
+\begin{theorem}[The real monomial adjoint estimate at every required exponent]
+\label{new:adjoint-all-exponents}
+Fix $j\in\{1,2,3\}$ and numbers $\alpha_0,\alpha_1,\alpha_2,\alpha_3\in(0,1)$ with
+$\sum_{i=0}^3\alpha_i=1$. There are constants $c\in(0,1)$ and $K,C\geq1$ such that, for
+$0<\mu\leq1$, $N\geq K\mu^{-K}$, and $g_i\in L^{1/\alpha_i}(\R^3)$ for $i\ne j$,
+\[
+ \left\|(I-P_{N^{-j}\mu^{-2}}^{(j)})A_N^{*j}((g_i)_{i\ne j})\right\|_{1/(1-\alpha_j)}
+ \leq C\mu^c\prod_{i\ne j}\|g_i\|_{1/\alpha_i}.
+\]
+There is no compact-support assumption.
+\end{theorem}
+\begin{proof}
+Let $b,c_*$ denote the other two positive indices, to distinguish the index from the gain
+constant. Set $\sigma=\alpha_0+\alpha_b+\alpha_{c_*}=1-\alpha_j\in(0,1)$.
+Use the fixed reciprocals $\rho_i$ of \cref{new:global-decaying-point}. Choose
+\[
+ \tau=\frac14\min\left\{1,\ 2(1-\sigma),\
+       \min_{i\ne j}\frac{\alpha_i}{\rho_i},\
+       \min_{i\ne j}\frac{1-\alpha_i}{1-\rho_i}\right\}>0.
+\]
+All entries are strictly positive and finite, so $0<\tau\leq1/4<1$.
+Put $v_i=(\alpha_i-\tau\rho_i)/(1-\tau)$ for $i\ne j$.
+The choice of $\tau$ gives $0<v_i<1$. Indeed,
+$\tau\rho_i\leq\alpha_i/4$ makes the numerator positive, and
+$\tau(1-\rho_i)\leq(1-\alpha_i)/4<1-\alpha_i$ implies $v_i<1$.
+Also
+\[
+ 0<\sum_{i\ne j}v_i=\frac{\sigma-\tau/2}{1-\tau}<1.
+\]
+Positivity follows from positivity of every $v_i$. The upper inequality is equivalent to
+$\tau<2(1-\sigma)$, which is built into the choice. Put $r=1/\sum v_i>1$.
+The crude global estimate \cref{new:adjoint-basic} gives a uniform bound from
+$\prod_i L^{1/v_i}$ to $L^r$ with constant $1+B_0$.
+Interpolate this with \cref{new:global-decaying-point}, assigning weight $\tau$ to the
+latter decaying estimate. The exact reciprocal identities are
+\[
+ \alpha_i=(1-\tau)v_i+\tau\rho_i,
+ \qquad \sigma=(1-\tau)/r+\tau/2.
+\]
+\Cref{new:interpolation} therefore gives the desired input and output exponents and the
+gain $\mu^{a_1\tau}$. Set $c=a_1\tau\in(0,1)$, keep the threshold constant $K$ from the
+global decaying point (enlarging it to at least one), and enlarge the interpolation constant
+to $C\geq1$.
+
+Initially this interpolation is on bounded finite-valued supported functions. Approximate
+all three finite-norm inputs by such functions. Since their reciprocals sum to $\sigma<1$,
+\cref{new:adjoint-basic} with output $1/\sigma$ bounds each term in the telescoping
+multilinear difference and proves norm convergence. Its absolute-value version supplies
+an almost-everywhere defined concrete average, and Young's inequality supplies its
+convolution. The resulting output is the same limit. Thus the estimate holds for the
+stated full $L^p$ domains.
+\end{proof}
+
+\begin{corollary}[The exact proposition \texttt{Auto.KoszAdjoint}]\label{new:exact-lean-target}
+For every $j$ of type \pid{Fin 3}, the proposition \pid{Auto.KoszAdjoint j} defined in the supplied
+source is true. In mathematical indexing, its complete statement is as follows.
+For $\alpha_0\in(0,1)$, $\alpha_i\in(0,1)$ for $1\leq i\leq3$, and
+$\alpha_0+\sum_{i=1}^3\alpha_i=1$, there are $c\in(0,1)$, $K,C\geq1$ such that for
+$0<\mu\leq1$ and $N\geq K\mu^{-K}$, every collection of continuous complex functions
+$f_0,f_1,f_2,f_3$ on $\R^3$ satisfies
+\[
+ \left\|A_N^{*j}(f_0,(f_i)_{i\ne j})
+     -P_{(N^j)^{-1}(\mu^2)^{-1}}^{(j)}A_N^{*j}(f_0,(f_i)_{i\ne j})
+          \right\|_{1/(1-\alpha_j)}
+ \leq C\mu^c\|f_0\|_{1/\alpha_0}
+                 \prod_{\substack{1\leq i\leq3\\i\ne j}}\|f_i\|_{1/\alpha_i}.
+\]
+The norms here are extended nonnegative norms, with precisely the zero-times-infinity
+convention of \pid{ENNReal}. The unused input $f_j$ has no effect on the left or right side.
+\end{corollary}
+\begin{proof}
+If any norm of an actually used input is zero, that continuous input is identically zero.
+To justify this last statement, if $|f(x_0)|>0$, continuity bounds $|f|$ below by
+$|f(x_0)|/2$ on a nonempty ball, whose Lebesgue measure is positive; its $L^p$ norm cannot
+then be zero. Thus the adjoint is pointwise zero in this case, and so is its convolution.
+Both sides are zero, even if another input norm is infinite.
+
+Next suppose all used norms are nonzero. If any is infinite, their finite product is
+infinite in $\mathbb R_{\geq0}\cup\{\infty\}$, and multiplication by the strictly positive
+finite factor $C\mu^c$ keeps it infinite. The inequality is then immediate. It remains to
+consider positive finite norms, where \cref{new:adjoint-all-exponents} applies.
+For continuous inputs the $t$-integrand is continuous on the compact interval $[0,N]$ for
+every $y$, so the concrete adjoint integral exists pointwise. The finite-norm estimate
+identifies it almost everywhere with the $L^p$ output used there. Its one-coordinate
+convolution is integrable for almost every output point by Young's inequality and Fubini;
+at any exceptional points the totalized Bochner integral used by Lean does not affect the
+extended norm. All functions involved are measurable (indeed the adjoint is continuous
+locally by compact-parameter dominated convergence).
+
+Finally $N>0$ and $\mu>0$ follow from the hypotheses, and real-power algebra gives
+$(N^j)^{-1}(\mu^2)^{-1}=N^{-j}\mu^{-2}$. The mathematical output reciprocal is
+$1-\alpha_j$, exactly as in the definition. Passing from a finite real $L^p$ norm to
+\pid{eLpNorm} at \pid{ENNReal.ofReal p} preserves the estimate by its defining integral
+formula. Multiplication, finite products, and positive real constants pass through
+\pid{ENNReal.ofReal}; zero and infinity were already handled separately.
+Replace mathematical indices $1,2,3$ by Lean indices $0,1,2$, and use
+\pid{expo j = (j.val + 1)}. The product over the two other positive indices becomes
+\pid{Finset.univ.erase j}. This is exactly the supplied definition, with no added
+regularity, support, finite-norm, inverse-theorem, or improving-theorem hypothesis.
+\end{proof}
+
+
+\section{Implementation register and dependency audit}\label{new:register}
+\subsection{What has and has not been checked}
+This register refers to the submitted archive, not to a moving GitHub branch.
+The toolchain is \pid{leanprover/lean4:v4.33.0-rc1}. The manifest pins mathlib to
+\par{\small\texttt{79d0395a1825a6264ad5d269e35e60537518955e}}\par
+and \pid{lean_spherical} to
+\par{\small\texttt{d45bcdce0a6b68a3fea0581cba6dd84fdce31186}}.\par
+The archive's SHA-256 is
+\par{\small\texttt{f212ffa7214169734d3474228a44aec1f51a789eb14daae7a65b546f708c580b}}.\par
+
+The source declarations listed below were read in the submitted files. This is source
+inspection, not a fresh build or a transitive axiom check. No Lean executable or downloaded
+pinned dependency tree was available in the working environment. The pinned Schwartz
+Fourier source was independently accessible and checked; current online documentation is
+used only to identify other library interfaces, not as a claim that all their argument lists
+were checked at the pinned revision.
+
+The document supplies mathematical proofs of every nonstandard analytic implication used
+on this route. There are no residual assumptions named \pid{RealInverse},
+\pid{HighestControl}, \pid{MajorArcProperty}, \pid{PETCertificate}, or \pid{KoszAdjoint}
+in the final result. Turning the proof into Lean still requires elaborating the stated
+measure, polynomial, and exponent interfaces. Names prefixed ``proposed'' below are an
+implementation specification, not declarations claimed to have been added to the archive.
+
+\subsection{The mathematical library leaves}
+The following are the precise forms of the standard library facts at which the proof stops.
+All specialized polynomial and harmonic-analysis consequences were established above.
+
+\paragraph{Product integration and limits.}
+For nonnegative measurable $F$ on two sigma-finite measure spaces, the product integral equals
+both iterated integrals, including infinity. For integrable complex $F$, both iterated Bochner
+integrals equal its product integral and its sections are integrable almost everywhere.
+Dominated convergence applies to an almost-everywhere convergent sequence bounded in norm by
+an integrable scalar function. Fatou applies to a sequence of nonnegative measurable functions.
+The interfaces are in \pid{Mathlib.MeasureTheory.Integral.Prod},
+\pid{Mathlib.MeasureTheory.Measure.Prod}, and the Bochner and Lebesgue integral modules.
+The submitted file uses \pid{MeasureTheory.lintegral_prod},
+\pid{MeasureTheory.lintegral_liminf_le},
+\pid{MeasureTheory.StronglyMeasurable.integral_prod_right'}, and integrable Fubini.
+All ``relative measures'' in the inverse section are normalized restrictions to its finite
+boxes, not probability measures on all of $\R^n$.
+
+\paragraph{Haar measure, regularity, and calculus.}
+Translation preserves Lebesgue measure; an invertible linear change with matrix $A$ scales
+it by $|\det A|$. Nonempty Euclidean balls have positive measure. For a finite-measure
+measurable $E$ and $\epsilon>0$, there is compact $K\subseteq E$ with
+$|E\setminus K|<\epsilon$. A compact $K$ has an open neighborhood $O$ with
+$|O\setminus K|<\epsilon$. The regularity locators are
+\pid{MeasurableSet.exists_isCompact_sdiff_lt} and
+\pid{MeasurableSet.exists_isOpen_sdiff_lt} in
+\pid{Mathlib.MeasureTheory.Measure.Regular}. Intersect $O$ with a bounded open box
+containing $K$ for the bounded version used in \cref{new:translation-continuity}.
+Approximation and translation continuity themselves were proved there.
+The fundamental theorem of calculus, integration by parts, compactness, and maximum modulus
+are the usual finite-dimensional calculus leaves. The supplied imports include
+\pid{Mathlib.MeasureTheory.Integral.IntervalIntegral.IntegrationByParts} and
+\pid{Mathlib.Analysis.Complex.Liouville}. Three lines and interpolation are proved in
+\cref{new:three-lines,new:interpolation}, not imported as specialized analytic assertions.
+
+\paragraph{Norms.}
+H\"older, the integral triangle inequality, the Banach-space Bochner integral bound, and
+completeness of $L^p$ for $1\leq p<\infty$ are the mean-inequalities, Bochner, and
+\pid{LpSpace.Complete} interfaces already used by the archive. Their specialized forms are
+in \cref{new:integral-inequalities,new:duality}. For $0<p<\infty$ the extended norm is
+\[
+ \operatorname{eLpNorm}(f,p)=\left(\int |f|^p\right)^{1/p}.
+\]
+The endpoint wrapper separates zero, finite positive, and infinite norms; it does not cancel
+an extended norm or assume finiteness merely from continuity.
+
+\paragraph{Schwartz inversion is the only Fourier inversion leaf.}
+On Schwartz functions over a finite-dimensional real inner-product space, integral Fourier
+transformation and inverse transformation preserve Schwartz space and are inverse linear maps.
+Schwartz functions and their polynomially weighted derivatives are integrable. The checked
+pinned module is \pid{Mathlib.Analysis.Distribution.SchwartzSpace.Fourier}, with
+\pid{SchwartzMap.fourier_coe}, \pid{SchwartzMap.fourierInv_coe}, and its
+\pid{FourierPair}/\pid{FourierInvPair} instances. The supplied
+\pid{Auto.fourier_etaKer} uses \pid{FourierTransform.fourier_fourierInv_eq} on the Schwartz
+cutoff. Plancherel for merely $L^1\cap L^2$ functions is \emph{not} a library leaf here:
+\cref{new:integral-plancherel} proves it using the explicit approximate identity. An abstract
+$L^2$ Fourier isometry and compatibility only for Schwartz functions would not suffice instead.
+
+\paragraph{The exact Jacobian leaf.}
+For a map $f:\R^n\to\R^n$ differentiable within a measurable set $S$ at every point of $S$
+and injective on $S$, the one-sided inequality is
+\[
+ \int_S|\det Df(x)|\,dx\leq |f(S)|,
+\]
+with outer measure for the image when needed. The supplied source invokes
+\pid{MeasureTheory.lintegral_abs_det_fderiv_le_addHaar_image} in
+\pid{Auto.lintegral_abs_det_fderiv_le_card_mul_image}. In \cref{new:incidence-consequence}
+there are exactly two explicitly described injective Borel pieces of a polynomial map.
+Both images lie in the target set. No general polynomial multiplicity theorem or unproved
+finite-fiber area formula is needed.
+
+\paragraph{Polynomial and order algebra.}
+The leaves are the binomial formula, coefficient equality, finite-product expansion,
+independence of distinct monomials, the finite root bound for a nonzero scalar polynomial,
+and well-founded induction on a fixed lexicographic tuple of natural numbers.
+Use \pid{Polynomial} over \pid{MvPolynomial} with real coefficients, and carry the integer
+coefficient certificate as an equality after coefficient mapping. Degree in the averaging
+variable is distinct from total degree in the shift variables. All specialized consequences,
+including the uniform termination bound, are proved in \cref{patch:pet-producer}.
+The real sublevel estimate is proved in \cref{patch:multiaffine-sublevel}; no Remez theorem
+is an additional premise.
+
+\subsection{Existing declarations and their limits}
+All line numbers below refer to
+\pid{DFR/Auto/SmoothingIneq3D/Smoothing3D.lean} in the uploaded archive; they are locators,
+not stable identifiers after editing.
+\begin{longtable}{@{}p{0.52\linewidth}p{0.43\linewidth}@{}}
+\toprule Declaration or group & Role and limitation \\
+\midrule\endfirsthead
+\toprule Declaration or group & Role and limitation \\
+\midrule\endhead
+\pid{Auto.E3}, \pid{Auto.expo} (122, 128) & Euclidean ambient space and natural exponent
+\pid{j.val + 1}; \pid{expo} is not real-valued. \\
+\pid{Auto.eta}, \pid{Auto.etaS}, \pid{Auto.etaKer};
+\pid{Auto.fourier_etaKer} (795--858) & Chosen cutoff and inverse kernel. Do not replace it
+silently by a monotone cutoff. \\
+\pid{Auto.projKernel}, \pid{Auto.P}, \pid{Auto.fourier_P} (879--1186) & The existing Fourier
+identity assumes continuity. The measurable generalization is proved in
+\cref{new:multiplier-facts}. \\
+\pid{Auto.P_self_adjoint}, \pid{Auto.Astar}, \pid{Auto.adjoint_identity} (1506--1619) & Match
+all conjugations and the interval normalization exactly. \\
+\pid{Auto.KoszAdjoint} (1803--1820) & Proposition, not proved theorem; target of
+\cref{new:exact-lean-target}. \\
+\pid{Auto.strong_real_improving'} (19225), \pid{Auto.kosz53_internal} (19430) & Existing
+improving estimates; the instances needed here are proved in \cref{new:improving-section}. \\
+\pid{Auto.locUnifPow_re_nonneg} (20097), \pid{Auto.cfgHeadInt_cube} (22515) & Positivity and
+cube identities. PET must produce the actual configuration first. \\
+\pid{Auto.locUnifPow_succ_split} (24596), \pid{Auto.locUnifPow_fdiff_eq} (24672) & Order and
+difference expansions; retain all normalization ratios. \\
+\pid{Auto.etaKer_decay} (26005), \pid{Auto.projKernel_decay} (26036),
+\pid{Auto.integral_projKernel_mom} (26101), \pid{Auto.integral_projKernel_tail_le} (26119) &
+Kernel moments and tails supporting \cref{new:kernel-facts}. \\
+\pid{Auto.sq_re_gapScaled_le_locUnifPow} (37853) & Mixed-to-common scale comparison; the
+polynomial state and sublevel selection are separate obligations. \\
+\bottomrule
+\end{longtable}
+
+\subsection{New declarations in forward implementation order}
+Each row names an interface whose full mathematical statement and proof occur earlier.
+Rows may be split into additional elementary lemmas, but not replaced by axioms or proved
+using later results that depend on them.
+\begin{longtable}{@{}p{0.38\linewidth}p{0.57\linewidth}@{}}
+\toprule Proposed interface & Proof and immediate dependencies \\
+\midrule\endfirsthead
+\toprule Proposed interface & Proof and immediate dependencies \\
+\midrule\endhead
+\pid{integralFourier_plancherel} & \Cref{new:translation-continuity,new:approximate-identity,new:integral-plancherel}:
+regularity, Schwartz inversion, dominated convergence, Fatou, polarization. \\
+\pid{directionalProjection_energy} & \Cref{new:multiplier-facts,new:average-multiplier}:
+Fubini, preceding Plancherel, the real even cutoff. \\
+\pid{multilinearInterpolation_simple} & \Cref{new:three-lines,new:interpolation}:
+maximum modulus, explicit analytic simple-function families, duality. \\
+\pid{realImproving_forAdjoint} & \Cref{new:flows,new:incidence-consequence,new:restricted-strong,new:improving}:
+refinements, two flows, Jacobian inequality, dyadic summation, scaling. \\
+\pid{signedIntegratedVdC}; \pid{cylinderCS} & \Cref{patch:signed-vdc,patch:cylinder}:
+window-square expansion and Boolean-product induction. \\
+\pid{protectedPet_update}; \pid{protectedPet_terminates} & \Cref{patch:pet-update,patch:pet-producer}:
+symbolic state, leading-coefficient invariant, fixed pivot, lexicographic recursion. \\
+\pid{affineHead_cube}; \pid{pet_gaps_nonzero} & \Cref{patch:cs-loss,patch:multiaffine-sublevel,patch:uniformize}:
+ordered affine removal, signed losses, sublevel exclusion, positivity before comparison. \\
+\pid{highestActiveControl} & \Cref{patch:highest-control}:
+four phase differences, PET execution, and the separate degree-one case. \\
+\pid{u2_selectFrequency}; \pid{dualDifference}; \pid{removeMissingPhases}; \pid{dummyPhase} &
+\Cref{patch:u2-fourier-selection,patch:dual-difference,patch:missing-phase,patch:dummy-phase}:
+Plancherel, least-rational selection, explicit cylinder inductions. \\
+\pid{conditionalDegreeLowering} & \Cref{patch:conditional-degree}:
+internal premise \pid{MajorArcProperty m l}; thresholds in the eight-step ledger. \\
+\pid{realMajorArc}; \pid{structuredDegreeLowering} & \Cref{patch:major-arc,patch:structured-degree}:
+induction on $m$ over every budget; only the smaller major-arc property is used. \\
+\pid{removeHigherInputs}; \pid{lowestInputEnergy} & \Cref{patch:remove-high-inputs,patch:lowest-energy}:
+backward elimination, useful frequency selection, scalar oscillation. \\
+\pid{everyInputEnergy}; \pid{monomialInverse} & \Cref{patch:energy-core,new:monomial-inverse}:
+lowest energy, freezing, shorter increasing degree lists, positive section energies. \\
+\pid{compactAdjointHighPass} & \Cref{new:compact-highpass}:
+inverse theorem applied to the truncated residual, multiplier annihilation, kernel tail. \\
+\pid{compactAdjointDecay}; \pid{globalAdjointDecay} & \Cref{new:compact-decaying-point,new:global-decaying-point}:
+interpolation with weight $60/61$, exact input-cube decomposition, summable off-diagonal sequence. \\
+\pid{adjointAllExponents}; \pid{koszAdjoint} & \Cref{new:adjoint-all-exponents,new:exact-lean-target}:
+explicit convex completion, approximation, zero/finite/infinite norm cases. \\
+\bottomrule
+\end{longtable}
+
+\paragraph{The PET state is data, not an assumed certificate.}
+Use a finite list of vector polynomials, a head index, and factor lists with records
+(origin, conjugation bit, constant translation). Store proofs of normalized distinctness,
+a singleton head list, maximal head degree, and the integer multilinear leading-coefficient
+identity for every head gap. The update and preservation proofs are
+\cref{patch:pet-update}. Store the type and length bound separately and recurse using $B(w,L)$.
+Evaluate numerical shifts only after the formal execution. Good shifts then exist by the
+proved sublevel and probability estimates. A structure containing the final cube conclusion
+without these construction and preservation proofs would not implement the argument.
+
+\paragraph{Analytic equality and extended norms.}
+Develop the inverse module on bounded Borel functions and absolutely convergent integrals.
+Use almost-everywhere equality when passing to $L^p$ classes. Keep \pid{Continuous} exactly
+as required in the final wrapper; handle infinite norms before finite real-power algebra.
+Do not assume that the indicator-truncated residual in \cref{new:compact-highpass} is
+continuous: it generally is not, and its continuity is never used.
+
+\paragraph{Final declaration and validation boundary.}
+The proposed signature inside \pid{namespace Auto} is
+\begin{verbatim}
+theorem koszAdjoint (j : Fin 3) : KoszAdjoint j
+\end{verbatim}
+Its proof is \cref{new:exact-lean-target}, not an application of \pid{main_smoothing}, which
+already depends on this proposition. After implementation, a build and a transitive axiom
+inspection must check that the declaration has no added analytic axiom or \pid{sorryAx}.
+Those checks have not been performed for this mathematical document. The existing subunit
+estimate is separate and is not used to prove this declaration.
+
+\subsection{Source correspondence and replaced steps}
+\cite[Sections 4.2--4.5]{KoszEtAl} supplies the organization of the inverse argument:
+uniformity control, conditional degree lowering, the major-arc induction, lowest-index
+information, and general-index reduction. Lemma 4.43 omits detailed PET and points to the
+method of \cite[Proposition 4.8]{KKL}. The real degree-at-most-three PET proof here is supplied
+explicitly; no integer statement from that reference is asserted without proof to hold over
+$\R$.
+
+The improving argument follows the real refinement-and-flow method of
+\cite[Section 5.6]{KoszEtAl}, with the two explicit flows and dyadic summation proved here.
+The target is the real nontruncated monomial instance of \cite[Theorem 6.13]{KoszEtAl}.
+The proof here replaces the structural Hahn--Banach route by \cref{new:compact-highpass}
+and supplies support removal in \cref{new:global-decaying-point}. These are derivations in
+this blueprint, not passages attributed verbatim to the paper.
+
+The supplied \pid{patch_3_updated.tex} is the starting text for much of the inverse module.
+The superseded unrestricted polynomial-to-cube assertion, generic degree-lowering assertion,
+and circular use of the final inverse theorem do not occur on the proved dependency route.
+
+\begin{thebibliography}{9}
+\bibitem{KoszEtAl}
+D. Kosz, M. Mirek, S. Peluse, R. Wan, and J. Wright,
+\emph{The multilinear circle method and a question of Bergelson},
+arXiv:2411.09478v4, 2 September 2026.
+\url{https://arxiv.org/abs/2411.09478v4}.
+\bibitem{KKL}
+N. Kravitz, B. Kuca, and J. Leng,
+\emph{Quantitative concatenation for polynomial box norms},
+arXiv:2407.08636v2, especially Proposition 4.8.
+\url{https://arxiv.org/abs/2407.08636v2}.
+\bibitem{MathlibFourier}
+The mathlib contributors, \emph{Schwartz-space Fourier transformation}, source at revision
+\pid{79d0395a1825a6264ad5d269e35e60537518955e},
+\pid{Mathlib/Analysis/Distribution/SchwartzSpace/Fourier.lean}.
+\url{https://github.com/leanprover-community/mathlib4/blob/79d0395a1825a6264ad5d269e35e60537518955e/Mathlib/Analysis/Distribution/SchwartzSpace/Fourier.lean}.
+\bibitem{MathlibRegular}
+The mathlib contributors, \emph{Regular measures}, online API documentation,
+\pid{Mathlib.MeasureTheory.Measure.Regular}. An interface locator, not a substitute for
+checking the pinned dependency during implementation.
+\url{https://leanprover-community.github.io/mathlib4_docs/Mathlib/MeasureTheory/Measure/Regular.html}.
+\bibitem{SubmittedArchive}
+\texttt{roos-j/lean-dfr}, submitted task-2 archive \pid{lean-dfr.task2.zip}, especially
+\pid{DFR/Auto/SmoothingIneq3D/Smoothing3D.lean},
+\pid{blueprints/patch_3_updated.tex}, the earlier blueprints, and automation ledgers.
+Source version identified by the manifest and archive digest in \cref{new:register}.
+\end{thebibliography}
+\end{document}
