@@ -753,3 +753,101 @@ Raw prompt: `automation/raw.md` under the same timestamp.  Every commit subject 
 the `Co-authored-by: Claude <noreply@anthropic.com>` trailer follows.  This supersedes the
 2026-09-17 and 2026-09-24 precedent of omitting the prefix.  All four skill copies were updated
 to make the format binding.  The scheduled 09:00, 12:00 and 15:00 commits use it.
+
+## 2026-09-25T08:07:25-04:00 - commit and push authorized
+
+One-time authorization, executed as `13207c2` on `task-2` (pushed).  Scheduled 09:00, 12:00,
+15:00 commits remain.
+
+Continuation note for `new:interpolation`: the consumer `new:compact-decaying-point` needs an
+`L^∞` input endpoint, which `Auto.interpolate_of_analyticFamily` (finite positive exponents)
+does not cover.  Plan: generalize its edge-norm lemmas to reciprocal exponent `0` (Lean's
+`x / 0 = 0` makes `anFam p 0 p₁` the correct family), with the `L^∞` edge bound
+`‖anFam p 0 p₁ f (i t)‖_∞ ≤ 1`, and instantiate the class `S` as simple functions supported in a
+fixed measurable set, with analyticity from `Auto.Trilin.expand3`.
+
+## 2026-09-25T08:26:49-04:00 - continuation note
+
+Verification: `lake build DFR.Auto.SmoothingIneq3D.Smoothing3D` and `lake build` pass; the
+fifteen main theorems added today audit to `propext`, `Classical.choice`, `Quot.sound`.
+Sections 1-3 of the KoszAdjoint ledger are complete.  Section 4 has reached
+`patch:pet-physical-radii` / `patch:highest-control`.  The symbolic PET state
+(`Auto.NormalPETState`, `Auto.petUpdate_*`, `Auto.petRun_bounded`), the analytic step
+(`Auto.petStep_signed`, `Auto.phaseMean_chain`), the affine endpoint
+(`Auto.slopeState_terminal`, `Auto.headBlock_eq_fdiffIter`), the change of variables and
+uniformization (`Auto.sq_re_gapScaled_le_locUnifPow`) and the sublevel pigeonhole
+(`Auto.exists_notMem_ge_of_mean`) all exist; the missing piece is the execution that runs the
+symbolic update for the bounded number of steps while evaluating it analytically at numeric
+shifts, which is the next thing to design.
+
+## 2026-09-25T08:51:25-04:00 - plan for `patch:highest-control`
+
+Settled: every step of the chain (the four phase steps and the PET steps) uses
+`Auto.vecStep_phase` (vector shifts, a unimodular phase factor, supports in a bounded set `K`
+with `|K| ≤ V`; the phase steps are the pivot-zero case).  All integrability side conditions are
+discharged inside (`Auto.sq_norm_signed_vdc_bdd`).  `V` is the volume of the enlarged budget
+box, so it is power-comparable to `N^{D_k}`.
+
+Remaining order: (1) the symbolic run -- an invariant bundle over `Auto.NormalPETState` (head
+witness and difference witnesses with variables below the step count, fresh variable = step
+index), one update per pivot rule via `Auto.petUpdate_protected_of_invariant` and
+`Auto.petUpdate_invariant_*`, type decrease into `Auto.petTypeStep`, run length from
+`Auto.petRun_bounded`; (2) evaluation of a symbolic state at numeric shifts as a
+`Auto.PetFam`, and the identity "children of the evaluation = spatial block times evaluation of
+the update"; (3) the chain of means with `Auto.csLoss`; (4) the linear endpoint along `e_m` via
+the existing affine lemmas, the sublevel choice (`Auto.exists_notMem_ge_of_mean`,
+`Auto.multiAff_sublevel_le`), radii (`Auto.petPhysicalRadius_bounds`), uniformization; (5) the
+degree-one branch; (6) extension from continuous to Borel inputs.
+
+## 2026-09-25T11:54:51-04:00 - continuation: `patch:highest-control` core estimate done
+
+Verification: `lake build DFR.Auto.SmoothingIneq3D.Smoothing3D` passes; `Auto.hc_core`,
+`Auto.hc_chain` audit to `propext`, `Classical.choice`, `Quot.sound`.  The whole chain is
+formalized: levels `Auto.hcLevel` (phase `Auto.phaseLevel`, PET `Auto.petLevel` along
+`Auto.hcSeq`, affine `Auto.affAmp`), the recursion `Auto.hcLevel_step` from
+`Auto.vecAmp_step`/`Auto.vecAmp_step_re`, the loss `Auto.fejerChain_box`, the terminal mean
+`Auto.hc_terminal_mean`, the sublevel exclusion `Auto.hc_good_old`, and uniformization
+`Auto.sq_fejer_mean_hcTerm_le`; `Auto.hc_core` combines them for a run of length `T` ending
+linear.  Next: the degree-one branch; the budget theorem choosing `H/N`, `ε`, the radius
+`budHi C₁ δ N^{expo (j m)}` and padding to order `16 m 2^R + 1` (`Auto.locUnifPow_pad`),
+with monomial lower bounds turned into `budLo C₂ δ` (`Auto.exists_budLo_le`); the statement has
+two output budgets (see ErrorReport).  Then the Borel extension of the protected input.
+
+## 2026-09-25T13:00:01-04:00 - continuation: `patch:highest-control` complete
+
+`Auto.highestControl` (Borel inputs) is proved; `lake build DFR.Auto.SmoothingIneq3D.Smoothing3D`
+passes and `#print axioms Auto.highestControl` gives `propext`, `Classical.choice`,
+`Quot.sound`.  Next rows: `patch:u2-fourier-selection`, then the difference lemmas and the
+conditional degree lowering (blueprint lines 1436 onward).
+
+## 2026-09-25T14:51:33-04:00 - continuation: conditional degree lowering
+
+Proved and verified in `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` (build clean, axioms
+`propext`, `Classical.choice`, `Quot.sound`): the one-dimensional lemmas
+`Auto.unifPow1_two_le`, `Auto.exists_measurable_freq_unifPow1`, `Auto.dual_diff_bound`,
+`Auto.missing_phase_bound`, `Auto.exists_dummy_phase`, the definition
+`Auto.MajorArcProperty` (on `ℝ³` with passive coordinates, see `automation/ErrorReport.md`), and
+`Auto.cdl_abstract`: Steps 1-4 and 6-8 of `patch:conditional-degree` for a family of sections over a
+probability space `Y`, with Step 5 as the explicit hypothesis `hMA` and the explicit output
+`Auto.cdlOut`.  Next: the `ℝ³` wrapper verifying `hMA` from `MA(m, l)`.  Plan: take
+`Y = Fin 2 → ℝ` (the coordinates other than `j m`, with the section point inserted at
+coordinate `j m`), `μ` the normalized Lebesgue measure on the input envelope, `Ω = ℝ` with the
+uniform law on `[0, N]`; extend a phase `ψ` off the envelope by `B + 1` before applying `MA`, so
+the canonical set lies over the envelope.
+
+## 2026-09-25T15:40:11-04:00 - continuation: `patch:conditional-degree` complete
+
+`Auto.conditionalDegreeLowering` is proved (build clean; axioms `propext`, `Classical.choice`,
+`Quot.sound`).  Next rows: `patch:major-arc` base case, `patch:ma-adjoint`, the uniformity and
+degree lowering inside the induction, `patch:ma-smaller-pattern`, and the induction.  The
+highest-control output (`Auto.highestControl`, Fejer form `Auto.locUnifPow`) must be converted to
+the section form of `Auto.unifPow1` used by `Auto.conditionalDegreeLowering`.
+
+## 2026-09-25T17:16:40-04:00 - continuation: major arc, remove-high-inputs, lowest energy
+
+Proved and verified in `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` (build clean; axioms
+`propext`, `Classical.choice`, `Quot.sound`): `Auto.ma_uniformity`, `Auto.ma_smaller_pattern`,
+`Auto.majorArc_step`, `Auto.majorArc` (Theorem `patch:major-arc`), `Auto.structuredDegree`,
+`Auto.structured_uniformity`, `Auto.exists_section_freq`, `Auto.removeHigh_small`,
+`Auto.removeHigh_step`, `Auto.removeHighInputs`, `Auto.lowestEnergy`.  Next rows:
+`patch:energy-core` steps 1-5 (blueprint lines 2133 onward), then Sections 5-6.

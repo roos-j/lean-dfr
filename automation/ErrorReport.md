@@ -1623,3 +1623,146 @@ Fourier isometry `MeasureTheory.Lp.fourierTransformₗᵢ`, by testing both agai
 supported functions (tempered distributions, `ae_eq_of_integral_contDiff_smul_eq`).  Statement
 unchanged; only the proof route differs.  `new:approximate-identity` is used nowhere else in the
 blueprint and is therefore not on the formalized dependency path.  Resolved.
+
+## 2026-09-25T08:14:07-04:00 - `new:interpolation`: Stein's analytic-family route instead of duality
+
+Source: `blueprints/koszAdjoint_blueprint.tex`, Lemma `new:interpolation` (lines 497-539),
+proved there by pairing with analytic families of simple tests and `new:three-lines`, then
+`new:duality`.  The Lean proof (`Auto.interpolate_trilin_simple`) applies the existing Stein
+interpolation theorem `Auto.eLpNorm_le_of_analyticFamily` directly to the output family, whose
+analyticity comes from expanding the trilinear operator over level sets
+(`Auto.trilin_anFam_expand`).  The `L^∞` input endpoints are encoded as exponent `0`
+(`Auto.eIn`).  Statement unchanged (it even allows subunit output exponents); resolved.
+
+## 2026-09-25T08:31:39-04:00 - `patch:pet-analytic-step` reopened; `patch:highest-control` split
+
+`Auto.petStep_signed` (recorded complete in the retrospective ledger mapping) handles shifts along a
+single coordinate only, while `patch:pet-analytic-step` (blueprint lines 1185-1209) acts on vector
+polynomial shifts across all coordinates.  The row is reopened.  The existing affine endpoint and
+`patch:uniformize` lemmas assume continuous inputs; `patch:highest-control` is therefore proved
+first for continuous compactly supported inputs and then extended to Borel inputs by approximation,
+the blueprint's own convention at `patch:conventions` ("changing representatives does not change
+any correlation or cube integral").  No statement changes; unresolved until both rows close.
+
+## 2026-09-25T09:19:09-04:00 - "Full coefficient and translation bounds" (blueprint lines 1167-1175)
+
+The Lean route does not need translation or coefficient envelopes: every block and every spatial
+block contains a translate of an input bounded by one and supported in the budget box, so all
+`L^2` bounds are the budget-box volume whatever the translations (`Auto.vecStep_phase` takes a
+bounded support set `K` with `|K| ≤ V`).  What is needed is the uniform bound on the integer
+witnesses on the unit cube, used for the radii upper bound; it is carried as `Auto.PetRunBd`, with
+factor `D + 2` per step (`Auto.petRunBd_step`).  Statement-level change: none; resolved.
+
+## 2026-09-25T11:38:12-04:00 - "Full coefficient and translation bounds" revisited: the support envelope is needed
+
+The entry of 2026-09-25T09:19:09-04:00 is corrected.  The PET steps put back a spatial block, and
+that block must cover the support of the children for every parameter in the window; this needs
+the envelope of the evaluated shifts in units `N^{expo k}` of the box sides, which the blueprint
+supplies in the same paragraph.  It is carried as `Auto.PetStateEnv` (factor `4` and range loss
+`H` per update, `Auto.petRunSeq_env`); the spatial block is the enlarged box translated with the
+protected input (`Auto.petSpatialFun`).  The phase steps likewise bound the protected shift in
+units of its box side (`Auto.phaseProdIter_eq_zero_of_notMem_scaled`), so that the chain volume
+stays `u(δ) N^6`.  No statement changes; resolved.
+
+## 2026-09-25T11:38:12-04:00 - `patch:highest-control`: one output budget for both the radius and the lower bound
+
+Source: `blueprints/koszAdjoint_blueprint.tex`, Proposition `patch:highest-control` (lines
+1406-1424): "There are integers `s_0 ≥ 2` and `C ≥ c` ... at the deterministic radius
+`H = u_C(δ) N^{d_m}`, `Q ≥ ℓ_C(δ)`."  With the same `C` for the radius and the lower bound
+the proof does not give the assertion: `patch:uniformize` loses `∏ 2L/L_i`, so at radius
+`L = u_C(δ) N^{d_m}` the bound obtained is `δ^{O(1)} u_C(δ)^{-s}`, never `≥ ℓ_C(δ)` for
+`s ≥ 2`.  The loss is genuine: for `f_m` the indicator of the budget box the order-`s` power at
+radius `u_C(δ) N^{d_m}` is of size `u_c(δ)^3 (u_c(δ)/u_C(δ))^s`, below `ℓ_C(δ)` as `δ → 0`
+once `C > (s + 3) c / (s - 1)`.  The Lean
+statement therefore returns two budgets, `C₁` for the radius and `C₂` for the lower bound;
+this is all that the later uses need ("at a radius `H` comparable to `N^{d_m}` up to powers",
+line 1880).  Status: the formal statement deviates in this respect; recorded, awaiting review.
+
+## 2026-09-25T13:00:01-04:00 - `patch:highest-control` proved; the split of 08:31 resolved; conventions of the Lean statement
+
+The continuous case (`Auto.highestControl_nice`, both the degree-one branch and degree at least
+two) and the Borel extension (`Auto.highestControl`, by `L^1` approximation of the protected
+input, `Auto.exists_nice_approx`) are proved; the entry of 2026-09-25T08:31:39-04:00 is resolved.
+Conventions of the Lean statement relative to lines 1406-1424: the ambient space is `E3` with the
+inputs along coordinates `j i` of degree `expo (j i)` (a degree list contained in `{1,2,3}`,
+other coordinates passive), so the normalizations are `N^6` in place of `N^{D_k}`; the scale is
+`N ≥ 1` (the blueprint writes `N > 0`); the phase coefficients are Borel and the phase has
+degree at most three, as stated.  Two output budgets as recorded above.  Status: statement
+conventions recorded; the `N ≥ 1` restriction awaits review when the consumers are formalized.
+
+## 2026-09-25T13:25:54-04:00 - `patch:u2-fourier-selection`: conventions of the Lean statements
+
+`Auto.unifPow1 H S r f` defines the one-dimensional `Q_{r,H,S}(f)` by the paired-cube average
+`S^{-1} Re E_{a,b ∈ [0,H]^r} ∫ D^r_{a,b} f` of lines 1440-1447 (uniform pairs), not by Fejer
+densities; the blueprint states the two agree after translation, and the Fejer form is not needed
+by the consumers `patch:dual-difference` and `patch:missing-phase`.  The support interval is
+`[c, c + S]`.  The measurable selection enumerates a countable dense sequence of reals in place of
+`ℚ` (the argument is the same), with the explicit threshold `H √η / 2` for `Q_2 ≥ η`.
+Status: recorded; no change to the mathematics.
+
+## 2026-09-25T13:58:36-04:00 - `patch:dummy-phase`: a different dummy phase
+
+`Auto.exists_dummy_phase` proves the statement of `patch:dummy-phase` (lines 1573-1580) with
+`Φ(a,b) = L ∏_i b_i`, whose alternating sum is `Ψ(a,b,c) = L ∏_i (b_i - c_i)`
+(`Auto.sum_neg_one_pow_prod_cubeSel`), in place of the grid function `2M 2^{ι(b)}` of the
+blueprint's proof: `|Ψ| ≤ M` forces `|b_i - c_i| ≤ η` for some `i`, and each such event has
+probability at most `2η/H`.  The statement, including measurability and finite values, is
+unchanged; the blueprint's argument is correct as well.  Status: recorded; no change to the
+statement.
+
+## 2026-09-25T14:01:37-04:00 - `MA(m, l)` is stated on `ℝ³` with passive coordinates
+
+`Auto.MajorArcProperty k j m l` states `MA(m, l)` of lines 1600-1629 for functions on `ℝ³` rather
+than on `ℝ^{m-1}`: the inputs `g_1, …, g_{m-1}` move in the directions `j 1, …, j (m-1)` of degrees
+`expo (j i)`, every other coordinate is passive, the phases `ζ_i` may depend on all of `x`, and
+both the correlation lower bound and the measure of the canonical set are in units `N^6` with the
+envelope `petBox (u_C(δ)) N`.  This is the passive-section family form used in
+`patch:structured-degree`; it matches `Auto.highestControl` (also on `ℝ³`), and it removes the
+`z`-section selections of Step 5 of `patch:conditional-degree` and of the major-arc induction
+step, since the full `ℝ³` correlations there are already of this form.  For `m = 1` the base case
+becomes pointwise in the passive variables (`patch:triangular` plus popularity).  The scale is
+`N ≥ 1` as for `Auto.highestControl`.  Status: convention recorded; awaiting review.
+
+## 2026-09-25T15:40:11-04:00 - `patch:conditional-degree`: conventions of the Lean statement
+
+`Auto.conditionalDegreeLowering` states the lemma of lines 1631-1646 for the adjoint-type function
+`Auto.cdlF` on `ℝ³` (inputs along `j i`, passive coordinates as in `Auto.MajorArcProperty`).  The
+order-`s` norm of `F` in the direction `e_m` is expressed through its sections
+`z ↦ F(embT (j m) y z)` over the transverse coordinates `y ∈ ℝ²`: the hypothesis and the conclusion
+are `∫ y, Q_{s,H,S}(F_y) dy ≥ ℓ(δ) N^{6 - d_m}` with the one-dimensional paired-cube powers
+`Auto.unifPow1` and the section length `S = 10 u_c(δ) N^{d_m}` (the enlarged support of the
+sections); `s = r + 2 ≥ 3`.  The blueprint's explicit thresholds are followed with minor
+variations recorded in `Auto.cdlOut` (cell width `b₀/(2π Z)` and a `c` section of relative
+measure `m₀/2`).  Step 5 is proved for every measurable phase `ψ` of the transverse variable,
+after replacing `ψ` by `B + 1` off the envelope (`Auto.cdl_step5`).  Status: conventions recorded.
+
+## 2026-09-25T17:16:40-04:00 - `patch:major-arc`, `patch:remove-high-inputs`, `patch:lowest-energy`: Lean conventions
+
+With `MA(m, l)` on `ℝ³` (entry 2026-09-25T14:01:37-04:00), the smaller pattern of
+`patch:ma-smaller-pattern` is itself an `MA(m, l)` correlation on all of `ℝ³` (`Auto.spIn`,
+`Auto.spFreq`; the coordinate `x_m` is passive for it), so `Auto.majorArc_step` applies the
+induction hypothesis once to it instead of to each `x_m` section with a popular set `Z_m`; the
+canonical set of the smaller pattern lies in that of `MA(m+1, l)` after dropping
+`N^{d_m} |λ|` (`Auto.maSet_sp_subset`).  The same applies to the `w`-section step of
+`patch:remove-high-inputs` (`Auto.removeHigh_small`).  The pairing scalar `c(y)` is chosen by
+`Auto.unitScalar`.  The order raising of the major-arc step always raises twice from the order
+`s₀` of `patch:highest-control` and then lowers `s₀` times (`Auto.ma_uniformity`), which covers
+`s₀ ∈ {0, 1, 2}` uniformly.  `Auto.lowestEnergy` holds for all `N ≥ 1` (no `N ≥ u_C(δ)` is
+needed) and for any phase data of `Γ_k`; its energy is `∫ η(ξ_{j 1} / L) |ĝ_1|²` with
+`L = u_C(δ) (N^{d_1})⁻¹`.  Status: conventions recorded.
+
+## 2026-09-25T17:46:30-04:00 - `patch:energy-core`: Lean conventions
+
+`Auto.energyCore` is stated on `ℝ³` for unmodulated `Γ_k` (phase `fun _ => 0`), all
+increasing degree lists of length `k`, and `N ≥ u_C(δ)`.  Step 1 obtains the adjoint of the
+first input as `Auto.maAdj` after rotating the inputs so that the first comes last
+(`Auto.phaseCorr_rot`), and normalizes the smoothed adjoint by `max 1 ‖k‖₁` so that it is
+one-bounded; its cut-off to the enlarged box enters the correlation (it agrees with the smoothed
+adjoint wherever the output factor is nonzero).  Step 2 uses the explicit increment bound
+`|P_1(t) - P_1(a)| ≤ 12 u N^{d_1 - 1} |t - a|` (`Auto.abs_eval_sub_le_of_admissible`) and
+`K = ⌈192 u^4 u_{C_1}/ℓ_{C_1}⌉ + 1`.  Step 3's frozen inputs are cut off above `k - 1`
+(`Auto.frozenCut`), since the hypotheses of the induction theorem quantify over all input indices.
+Step 4 is not needed: with passive coordinates the frozen correlation is itself a `Γ_{k-1}` on
+`ℝ³`, so the induction hypothesis applies to it directly and gives the full-space energy of the
+translate `g_i(· - P_i(a) e_i)`, whose Fourier modulus is that of `g_i`
+(`Auto.norm_fourier_comp_sub`).  Status: conventions recorded.

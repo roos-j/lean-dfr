@@ -481,8 +481,8 @@ complete | `new:multiplier-facts`, `⟨f, P_{L'} f⟩ ≥ ⟨f, P_L f⟩` for `L
 complete | `new:multiplier-facts`, slicing `⟨f, P_R f⟩ = ∫ ⟨f_v, P_R f_v⟩ dv` and sectional nonnegativity | `Auto.secSwap`, `Auto.measurePreserving_secSwap`, `Auto.integral_integral_sec`, `Auto.padSec`, `Auto.P_padSec`, `Auto.integral_mul_conj_P_slice`, `Auto.integral_padSec_energy_eq` | 2026-09-25T07:59:48-04:00
 complete | `new:average-multiplier`, the multiplier of `T f = E_t b(t) f(· - v(t))` and its `L^2` identity | `Auto.avgTranslate`, `Auto.avgMultiplier`, `Auto.eLpNorm_avgTranslate_le`, `Auto.memLp_avgTranslate`, `Auto.fourier_avgTranslate`, `Auto.integral_norm_sq_avgTranslate` | 2026-09-25T08:03:39-04:00
 complete | `new:three-lines`, `|F(θ)| ≤ M_0^{1-θ} M_1^θ` | `Auto.norm_le_three_lines` | 2026-09-25T08:05:27-04:00
-in progress | `new:interpolation`, the analytic family on simple functions and its boundary norms | -- | 2026-09-25T08:05:27-04:00
-not started | `new:interpolation`, the multilinear interpolation bound on a fixed support domain | -- | 2026-09-25T06:51:43-04:00
+complete | `new:interpolation`, the analytic family on simple functions and its boundary norms | `Auto.eIn`, `Auto.anFam_at'`, `Auto.eLpNorm_anFam_edge_le`, `Auto.anFamCoef`, `Auto.anFam_eq_sum`, `Auto.simpleOn_anFam` | 2026-09-25T08:14:07-04:00
+complete | `new:interpolation`, the multilinear interpolation bound on a fixed support domain | `Auto.interpolate_of_analyticFamily_ext`, `Auto.trilin_anFam_expand`, `Auto.interpolate_trilin_simple` | 2026-09-25T08:14:07-04:00
 
 ### Section 3: the real improving estimate
 
@@ -496,7 +496,7 @@ complete | `new:restricted-strong`, the strong form bound | `Auto.strong_real_im
 complete | `new:improving`, `‖A_N f‖_{6/5} ≤ C N^{-1/20} ‖f_j‖_2 ‖f_b‖_{40/7} ‖f_c‖_6` for measurable inputs | `Auto.strong_real_improving'` | 2026-09-25T06:51:43-04:00
 complete | `new:improving`, the adjoint identity | `Auto.adjoint_identity` | 2026-09-25T06:51:43-04:00
 complete | `new:improving`, `‖A_N^{*j} g‖_2 ≤ C N^{-1/20} ‖g_0‖_6 ‖g_b‖_{40/7} ‖g_c‖_6` for `Nice` inputs | `Auto.kosz53_internal` | 2026-09-25T06:51:43-04:00
-not started | `new:improving`, the adjoint estimate for all finite-norm inputs, the concrete integral a.e. | -- | 2026-09-25T06:51:43-04:00
+complete | `new:improving`, the adjoint estimate for all finite-norm inputs, the concrete integral a.e. | `Auto.adjoint_identity_of_integrable`, `Auto.lintegral_prodShift_mul_le`, `Auto.measurable_Astar`, `Auto.kosz53_of_memLp` | 2026-09-25T08:23:20-04:00
 
 ### Section 4: the real inverse theorem
 
@@ -513,59 +513,79 @@ complete | `lem:real-polynomial-oscillation` | `Auto.real_polynomial_oscillation
 complete | `patch:triangular` | `Auto.sum_le_of_oscillation_ge` | 2026-09-25T06:51:43-04:00
 complete | `patch:lead-invariant`, `patch:initial-shift-family` | `Auto.petUpdate_invariant_head`, `Auto.petUpdate_invariant_diff` | 2026-09-25T06:51:43-04:00
 complete | `patch:pet-update` | `Auto.petUpdate_protected_of_invariant`, `Auto.petNewHeadFactor_origin` | 2026-09-25T06:51:43-04:00
-complete | `patch:pet-producer`, the pivot rule, `w' < w`, length at most `2L` | `Auto.petType_lt_of_pivot`, `Auto.petStateClasses_update_at_pivot` | 2026-09-25T06:51:43-04:00
+complete | `patch:pet-producer`, the pivot rule, `w' < w`, length at most `2L` | `Auto.petType_lt_of_pivot`, `Auto.petStateClasses_update_at_pivot`, `Auto.exists_petPivot`, `Auto.PetRunInv`, `Auto.petRunStep` | 2026-09-25T09:06:16-04:00
 complete | `patch:pet-producer`, the uniform iteration bound `B(w, L)` | `Auto.petRun_bounded` | 2026-09-25T06:51:43-04:00
-complete | `patch:pet-analytic-step` | `Auto.petStep_signed` | 2026-09-25T06:51:43-04:00
+complete | `patch:pet-analytic-step` | `Auto.sq_norm_signed_vdc_bdd`, `Auto.vecProd`, `Auto.vecChildren`, `Auto.corrLine_vecProd`, `Auto.vecStep` | 2026-09-25T08:44:22-04:00
+complete | `patch:pet-producer`, full coefficient and translation bounds along the run | `Auto.EvalBd`, `Auto.PetRunBd`, `Auto.petRunBd_step`, `Auto.petRunSeq`, `Auto.petRun_terminates` | 2026-09-25T09:19:09-04:00
 complete | `patch:affine-block`, `patch:affine-cube-invariant`, `patch:affine-terminal` | `Auto.cs_remove_slope_block`, `Auto.headBlock_eq_fdiffIter` | 2026-09-25T06:51:43-04:00
 complete | `patch:cs-loss` | `Auto.csPhi_iter_eq`, `Auto.csLoss` | 2026-09-25T06:51:43-04:00
 complete | `patch:multiaffine-sublevel`, `Pr{|p(u)| ≤ ε} ≤ 4 √ε` | `Auto.fejerMeasure_abs_affine_le` | 2026-09-25T06:51:43-04:00
-not started | sublevel exclusion after `patch:multiaffine-sublevel`: old shifts off the bad union with raw cube `≥ κ/2` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:pet-physical-radii`, the change of variables `z_i = a p_i(h) u_i` and the radii bounds | -- | 2026-09-25T06:51:43-04:00
+complete | sublevel exclusion after `patch:multiaffine-sublevel`: old shifts off the bad union with raw cube `≥ κ/2` | `Auto.exists_notMem_ge_of_mean` | 2026-09-25T08:25:13-04:00
+complete | `patch:pet-physical-radii`, the change of variables `z_i = a p_i(h) u_i` and the radii bounds | `Auto.aeval_smul_of_isHomogeneous`, `Auto.petPhysicalRadius_bounds` | 2026-09-25T08:31:26-04:00
 complete | `patch:uniformize` | `Auto.fejerCubeMixed_le_scaled`, `Auto.sq_re_gapScaled_le_locUnifPow` | 2026-09-25T06:51:43-04:00
 complete | the four phase steps: four differences annihilate a cubic phase | `Auto.pdiffIter_four_eq_zero` | 2026-09-25T06:51:43-04:00
-not started | the degree-one branch before `patch:highest-control` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:highest-control` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:u2-fourier-selection`, `Q_{2,H,S}(f) ≤ H^{-2} ‖f̂‖_∞^2` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:u2-fourier-selection`, measurable least-rational frequency selection | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:dual-diff-bound` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:missing-phase-bound` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:dummy-phase` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:ma-correlation`, `patch:ma-set`, the property `MA(m, l)` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 1, Fourier coefficients on popular sections | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 2, dual-difference interchange | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 3, interchange of section and cube parameters | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 4, extension by a dummy phase | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 5, application of `MA(m, l)` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 6, recovery of the original cube phase | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 7, quantization and partition of the nonzero vertices | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:conditional-degree`, step 8, phase removal and integration | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:major-arc`, base case `m = 1` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:ma-adjoint`, the exact adjoint of the last active input | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:major-arc`, uniformity and degree lowering using `MA(m, l)` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:ma-smaller-pattern`, Fourier selection and the smaller pattern | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:major-arc`, the induction step and the theorem | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:structured-degree` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:high-section-coeff`, measurable section frequencies | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:remove-high-inputs`, small frequencies via `MA(l, l)` and the dummy value | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:remove-high-inputs`, the constant frequency and the backward step | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:lowest-energy` | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:energy-core`, step 1, replacing the first input and smoothing its adjoint | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:energy-core`, step 2, freezing on one of `K` intervals | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:frozen-correlation`, step 3, the lower-dimensional polynomial family | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:energy-core`, step 4, a measurable set of large sections | -- | 2026-09-25T06:51:43-04:00
-not started | `patch:all-energy`, step 5, induction hypothesis and integration of energies | -- | 2026-09-25T06:51:43-04:00
+complete | `patch:cs-loss` along a chain of levels: Jensen, averaging over the fresh shift, and the power bound | `Auto.fejerMean`, `Auto.fejerMean_sq_le`, `Auto.fejerChain`, `Auto.fejerChain_box`, `Auto.vecAmp`, `Auto.integral_children_eq_vecAmp`, `Auto.vecAmp_step`, `Auto.norm_vecAmp_le_one`, `Auto.measurable_vecAmp_param` | 2026-09-25T09:43:50-04:00
+complete | the four phase steps before `patch:highest-control` as levels `0` to `4` of the chain | `Auto.phaseHead`, `Auto.phaseLevel`, `Auto.vecProd_phaseHead_mul`, `Auto.measurable_phaseLevel`, `Auto.phaseLevel_step`, `Auto.phaseLevel_zero`, `Auto.phaseProdIter_four_eq` | 2026-09-25T09:43:50-04:00
+complete | the degree-one branch before `patch:highest-control` | `Auto.phaseLevel_step_re`, `Auto.phaseProdIter_four_linear`, `Auto.phaseLevel_four_linear`, `Auto.fejer_mean_cube_eq`, `Auto.sq_fejer_mean_cube_le`, `Auto.d1_chain`, `Auto.highestControl_one` | 2026-09-25T12:39:30-04:00
+complete | `patch:pet-analytic-step` along the run: evaluation of a symbolic state at numeric shifts and the children identity | `Auto.petEvalPoly`, `Auto.petFacFun`, `Auto.petBlockFun`, `Auto.petEvalFam`, `Auto.prod_group_eq`, `Auto.vecProd_petGroup`, `Auto.vecProd_vecChildren_petEvalFam`, `Auto.vecProd_vecChildren_update` | 2026-09-25T09:52:08-04:00
+complete | `patch:pet-producer`, Lean state: translation records use only the shift variables already introduced, along the run | `Auto.PetFacBelow`, `Auto.PetFacsBelow`, `Auto.petNormalized_facBelow`, `Auto.petFacsBelow_update`, `Auto.PetRunInv.itemsBelow`, `Auto.petRunSeq_facsBelow` | 2026-09-25T09:54:42-04:00
+complete | "Full coefficient and translation bounds": the support envelope of the evaluated shifts along the run | `Auto.PetEnv`, `Auto.PetEnv.normalize`, `Auto.PetStateEnv`, `Auto.petStateEnv_update`, `Auto.petRunSeq_env` | 2026-09-25T09:59:45-04:00
+complete | `patch:pet-analytic-step` along the run: the step between consecutive PET levels with the translated enlarged box | `Auto.translBox_facts`, `Auto.petSpatialFun`, `Auto.petLevel`, `Auto.measurable_petLevel`, `Auto.petLevel_norm_le_one`, `Auto.petLevel_step`, `Auto.petEvalFam_eq_of_below`, `Auto.measurable_vecProd_petEvalFam`, `Auto.mem_petBox_of_add_mem` | 2026-09-25T10:07:42-04:00
+complete | `patch:initial-shift-family`, the family after the four phase steps as a normal state with the run invariant | `Auto.vecLift`, `Auto.initPoly`, `Auto.sub_initPoly_same`, `Auto.vShiftZ`, `Auto.petShiftVec`, `Auto.petShiftVec_cons`, `Auto.initItem_lead`, `Auto.initState`, `Auto.initState_inv`, `Auto.initState_bd`, `Auto.initState_facsBelow`, `Auto.initState_env`, `Auto.vecProd_initState`, `Auto.phaseLevel_four_eq_petLevel` | 2026-09-25T10:24:40-04:00
+complete | `patch:cs-loss` along the run: the PET levels from `4` to the linear state | `Auto.petRun_level_step` | 2026-09-25T10:27:27-04:00
+complete | `patch:pet-producer`, Lean state: every block of the run is nonempty, so every nuisance block has bounded support | `Auto.PetBlocksNonempty`, `Auto.petGroup_nonempty`, `Auto.petBlocksNonempty_update`, `Auto.petRunSeq_nonempty`, `Auto.initState_nonempty`, `Auto.petBlockFun_eq_zero_of_notMem` | 2026-09-25T10:29:30-04:00
+complete | `patch:affine-block`, `patch:affine-cube-invariant`: the affine removal steps as levels of the chain | `Auto.vecAmp_step_re`, `Auto.affG`, `Auto.affFam`, `Auto.affAmp`, `Auto.affG_succ`, `Auto.affChildren_eq`, `Auto.AffData`, `Auto.affAmp_step`, `Auto.affAmp_step_re`, `Auto.measurable_affAmp` | 2026-09-25T10:40:26-04:00
+complete | `patch:affine-terminal`: the last affine level is the raw cube of the protected input | `Auto.affAmp_terminal` | 2026-09-25T10:40:26-04:00
+complete | `patch:affine-terminal` at the linear state: slopes along `e_m`, gaps `a p_i(h)` | `Auto.petEvalPoly_linear`, `Auto.linState_facts`, `Auto.linState_gap`, `Auto.linState_headSlope`, `Auto.linBlocks`, `Auto.linSlopes`, `Auto.linBlocks_affData`, `Auto.petLevel_eq_affAmp_zero` | 2026-09-25T10:44:54-04:00
+complete | `patch:pet-producer`, "take the finite maximum of `B(w, L_0)`": a run bound uniform over all initial types of bounded length | `Auto.petRun_terminates_uniform` | 2026-09-25T10:50:03-04:00
+complete | `patch:highest-control`, proof: the whole chain of levels (four phase steps, the PET run, the affine removal) and `patch:cs-loss` along it | `Auto.hcLevel`, `Auto.measurable_hcLevel`, `Auto.hcLevel_bounds`, `Auto.hcSeq`, `Auto.hcLevel_step`, `Auto.hc_chain`, `Auto.measurable_affAmp_param`, `Auto.affAmp_congr`, `Auto.hcW`, `Auto.hcOld` | 2026-09-25T11:06:19-04:00
+complete | `patch:highest-control`, proof: the terminal mean as the averaged raw cube of the protected input at the gaps `a p_i(h)` | `Auto.fdiffIter_translate`, `Auto.fdiffIter_conj`, `Auto.re_integral_fdiffIter_condConj`, `Auto.hcGap`, `Auto.hcLevel_terminal`, `Auto.fejer_inner_eq`, `Auto.integral_split_fejer`, `Auto.hcTerm`, `Auto.hc_terminal_mean` | 2026-09-25T11:13:47-04:00
+complete | `patch:highest-control`, proof: the sublevel exclusion at the old shifts and `patch:pet-physical-radii` | `Auto.pi_fejerMeasure_eq`, `Auto.mvPoly_sublevel_le`, `Auto.integral_prod_fejer_indicator_scale`, `Auto.integral_bad_le`, `Auto.exists_good_old`, `Auto.exists_reverse_poly`, `Auto.linState_gap_witness`, `Auto.hc_good_old` | 2026-09-25T11:27:45-04:00
+complete | `patch:highest-control`, proof: sign symmetry of the Fejer density, the change of variables to the radii `|a p_i(h)| H`, `patch:uniformize` and padding | `Auto.signFlip`, `Auto.integral_fejer_signFlip`, `Auto.fejer_mean_hcTerm_eq`, `Auto.sq_fejer_mean_hcTerm_le`, `Auto.locUnifPow_pad` | 2026-09-25T11:44:15-04:00
+complete | `patch:highest-control`, proof: the choice of `H/N`, the lower bound `κ` from the loss lemma, and the output budgets | `Auto.hc_core`, `Auto.chain_mean_lower`, `Auto.MonoLow`, `Auto.MonoHigh`, `Auto.hcPhi`, `Auto.monoLow_hcPhi`, `Auto.locUnifPow_pad`, `Auto.exists_budLo_le`, `Auto.hcSeq_length` | 2026-09-25T12:21:04-04:00
+complete | `patch:highest-control` for continuous compactly supported inputs | `Auto.highestControl_ge2`, `Auto.highestControl_one`, `Auto.highestControl_nice` | 2026-09-25T12:39:30-04:00
+complete | `patch:conventions` (Borel representatives), `patch:highest-control` for Borel inputs | `Auto.measurable_phaseProd`, `Auto.AdmissiblePoly.mono`, `Auto.norm_phaseCorr_update_sub_le`, `Auto.abs_re_locUnifPow_sub_le`, `Auto.diskClamp`, `Auto.exists_boxCutoff`, `Auto.exists_nice_approx`, `Auto.highestControl` | 2026-09-25T12:58:11-04:00
+complete | `patch:u2-fourier-selection`, `Q_{2,H,S}(f) ≤ H^{-2} ‖f̂‖_∞^2` | `Auto.unifMeas`, `Auto.avgH`, `Auto.fourier_avgH`, `Auto.lintegral_enorm_avgMult_sq`, `Auto.corrFT`, `Auto.fourier_corrFT`, `Auto.lintegral_corrFT_sq_le`, `Auto.lintegral_pair_avgH_le`, `Auto.unifPow1`, `Auto.integral_cube_two_eq`, `Auto.unifPow1_two_le` | 2026-09-25T13:25:46-04:00
+complete | `patch:u2-fourier-selection`, measurable least-rational frequency selection | `Auto.exists_measurable_freq`, `Auto.measurable_fourier_param`, `Auto.exists_measurable_freq_unifPow1` | 2026-09-25T13:25:46-04:00
+complete | `patch:dual-diff-bound` | `Auto.unifIcc`, `Auto.ephase`, `Auto.vkey`, `Auto.prod_vertices_split`, `Auto.ddVert`, `Auto.ddHead`, `Auto.ddNuis`, `Auto.cubeBoxSet`, `Auto.altPhase`, `Auto.cubeProdSel_ddHead`, `Auto.integral_prod_ddVert`, `Auto.integral_ddHead_nuis`, `Auto.integral_cube_ddHead`, `Auto.dual_diff_bound` | 2026-09-25T13:41:22-04:00
+complete | `patch:missing-phase-bound` | `Auto.integral_avgH`, `Auto.sq_norm_integral_le_avgH`, `Auto.altPhase_eq_zero_of_indep`, `Auto.cubeProdSel_snoc_shift`, `Auto.unifPow1_succ_eq`, `Auto.missing_phase_bound` | 2026-09-25T13:54:33-04:00
+complete | `patch:dummy-phase` | `Auto.sum_neg_one_pow_prod_cubeSel`, `Auto.unif_prod_abs_sub_le`, `Auto.measurePreserving_coord_pair`, `Auto.exists_dummy_phase` | 2026-09-25T13:58:36-04:00
+complete | `patch:ma-correlation`, `patch:ma-set`, the property `MA(m, l)` | `Auto.maPhase`, `Auto.maSize`, `Auto.maSet`, `Auto.MajorArcProperty`, `Auto.maPhase_natDegree_le`, `Auto.measurable_maPhase_coeff` | 2026-09-25T14:01:37-04:00
+complete | `patch:conditional-degree`, step 1, Fourier coefficients on popular sections | `Auto.unifPow1_add_two`, `Auto.unifPow1_mem_Icc`, `Auto.measurable_unifPow1_param`, `Auto.exists_measurable_freq_unifPow1'`, `Auto.cdl_step1` | 2026-09-25T14:40:48-04:00
+complete | `patch:conditional-degree`, step 2, dual-difference interchange | `Auto.cdlCoef`, `Auto.cdlBox`, `Auto.cdlPsi`, `Auto.cdlG`, `Auto.cdlL`, `Auto.cdl_step2`, `Auto.measure_prod_popular_ge` | 2026-09-25T14:40:48-04:00
+complete | `patch:conditional-degree`, step 3, interchange of section and cube parameters | `Auto.measure_popular_sections_right`, `Auto.measure_popular_sections_left`, `Auto.cdl_abstract` | 2026-09-25T14:40:48-04:00
+complete | `patch:conditional-degree`, step 4, extension by a dummy phase | `Auto.exists_dummy_phase`, `Auto.cdl_abstract` | 2026-09-25T14:40:48-04:00
+complete | `patch:conditional-degree`, step 5, application of `MA(m, l)` | `Auto.cube_cdlPhi`, `Auto.cdl_step5_identity`, `Auto.integral_embT`, `Auto.lintegral_embT`, `Auto.transMeas`, `Auto.MAAt`, `Auto.cdl_step5` | 2026-09-25T15:28:10-04:00
+complete | `patch:conditional-degree`, step 6, recovery of the original cube phase | `Auto.measure_prod_ge_of_sections`, `Auto.ae_pi3_unifMeas_mem`, `Auto.cdl_abstract` | 2026-09-25T14:40:48-04:00
+complete | `patch:conditional-degree`, step 7, quantization and partition of the nonzero vertices | `Auto.exists_heavy_cell`, `Auto.exists_section_last`, `Auto.cdlAlpha`, `Auto.cdlAlpha_sum`, `Auto.sum_vertices_split` | 2026-09-25T14:40:48-04:00
+complete | `patch:conditional-degree`, step 8, phase removal and integration | `Auto.norm_ephase_sub_le`, `Auto.norm_cdlCoef_sub_le`, `Auto.cdl_step8`, `Auto.cdlOut`, `Auto.cdl_abstract`, `Auto.cdlOut_ge`, `Auto.monoLow_cdlOutLow`, `Auto.conditionalDegreeLowering` | 2026-09-25T15:39:57-04:00
+complete | `patch:major-arc`, base case `m = 1` | `Auto.MonoHigh.exists_budHi`, `Auto.maCoef`, `Auto.maPhase_one_eq`, `Auto.maSize_one_eq`, `Auto.majorArc_base` | 2026-09-25T15:47:52-04:00
+complete | `patch:ma-adjoint`, the exact adjoint of the last active input | `Auto.maAdj`, `Auto.conj_maAdj`, `Auto.phaseCorr_eq_inner_maAdj`, `Auto.measurable_cdlF`, `Auto.cdlF_eq_zero_of_box`, `Auto.ma_adjoint` | 2026-09-25T15:55:32-04:00
+complete | `patch:major-arc`, uniformity and degree lowering using `MA(m, l)` | `Auto.conditionalDegreeLowering'`, `Auto.unifPow1_zero_eq`, `Auto.sq_unifPow1_zero_le`, `Auto.sq_integral_raise`, `Auto.cdl_iterate`, `Auto.sq_integral_sections_raise`, `Auto.ma_uniformity` | 2026-09-25T16:34:29-04:00
+complete | `patch:ma-smaller-pattern`, Fourier selection and the smaller pattern | `Auto.projT_add_smul`, `Auto.projT_sub_smul`, `Auto.maAdj_update`, `Auto.spIn`, `Auto.spFreq`, `Auto.maPhase_spFreq_eval`, `Auto.phaseCorr_update_eq_sp`, `Auto.norm_sections_eq_sp`, `Auto.mem_of_embT_ne_zero`, `Auto.unitScalar`, `Auto.ma_smaller_pattern` | 2026-09-25T16:46:47-04:00
+complete | `patch:major-arc`, the induction step and the theorem | `Auto.maSize_succ_le_spFreq`, `Auto.maSet_sp_subset`, `Auto.majorArc_step`, `Auto.majorArc` | 2026-09-25T16:49:32-04:00
+complete | `patch:structured-degree` | `Auto.structuredDegree`, `Auto.structured_uniformity` | 2026-09-25T16:52:14-04:00
+complete | `patch:high-section-coeff`, measurable section frequencies | `Auto.exists_section_freq` | 2026-09-25T17:00:13-04:00
+complete | `patch:remove-high-inputs`, small frequencies via `MA(l, l)` and the dummy value | `Auto.volume_cyl`, `Auto.maSize_self_eq`, `Auto.removeHigh_small` | 2026-09-25T17:00:13-04:00
+complete | `patch:remove-high-inputs`, the constant frequency and the backward step | `Auto.maPhase_spFreq_const`, `Auto.spIn_eq_update`, `Auto.removeHigh_step`, `Auto.removeHighInputs` | 2026-09-25T17:06:10-04:00
+complete | `patch:lowest-energy` | `Auto.phaseCorr_one_eq_avg`, `Auto.avgMultiplier_one_eq`, `Auto.maPhase_two_one_eval`, `Auto.maPhase_one_one_eval`, `Auto.lowestEnergy` | 2026-09-25T17:15:38-04:00
+complete | `patch:energy-core`, step 1, replacing the first input and smoothing its adjoint | `Auto.phaseCorr_comp_perm`, `Auto.rot`, `Auto.phaseCorr_rot`, `Auto.update_comp_rot`, `Auto.maPhase_empty`, `Auto.integrable_memLp_of_box`, `Auto.energyCore_step1` | 2026-09-25T17:24:06-04:00
+complete | `patch:energy-core`, step 2, freezing on one of `K` intervals | `Auto.abs_eval_sub_le_of_admissible`, `Auto.sub_eval_smul_mem_petBox`, `Auto.measurable_intervalIntegral_param`, `Auto.intervalIntegrable_of_norm_le_one`, `Auto.energyCore_freeze` | 2026-09-25T17:35:14-04:00
+complete | `patch:frozen-correlation`, step 3, the lower-dimensional polynomial family | `Auto.frozenPoly`, `Auto.frozenPoly_eval`, `Auto.frozenIn`, `Auto.phaseCorr_frozen`, `Auto.abs_coeff_le_of_admissible`, `Auto.abs_coeff_taylor_le`, `Auto.add_eval_smul_mem_petBox`, `Auto.petBox_subset_scale`, `Auto.phaseCorr_congr_inputs`, `Auto.frozenCut`, `Auto.phaseCorr_frozenCut`, `Auto.energyCore_frozen` | 2026-09-25T17:40:03-04:00
+complete | `patch:energy-core`, step 4, a measurable set of large sections | `Auto.energyCore` | 2026-09-25T17:45:51-04:00
+complete | `patch:all-energy`, step 5, induction hypothesis and integration of energies | `Auto.norm_fourier_comp_sub`, `Auto.energy_raise`, `Auto.frozenCut_pred`, `Auto.energyCore` | 2026-09-25T17:45:51-04:00
 
 ### Sections 5-6: the adjoint estimate and the exact proposition
 
 status | source item | Lean name | timestamp
 --- | --- | --- | ---
-not started | `new:monomial-inverse`, witness `h_j = f_j` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:adjoint-basic`, support and `|G| ≤ 1` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:adjoint-basic`, the crude `L^r` bounds for `G` and `(I - P_R) G` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:compact-highpass`, `⟨h, G⟩ ≥ M^{-1} ‖H‖_2^2` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:compact-highpass`, the tail bound for `1_{(B')^c} H` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:compact-highpass`, the contradiction and the bound `C_1 μ^a N^3` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:compact-decaying-point`, interpolation with weight `60/61` on bounded finite-valued inputs | -- | 2026-09-25T06:51:43-04:00
+complete | `new:monomial-inverse`, witness `h_j = f_j` | `Auto.monoDir`, `Auto.monoPoly`, `Auto.monoIn`, `Auto.Lambda_eq_phaseCorr`, `Auto.admissible_monoPoly`, `Auto.monomialInverse` | 2026-09-25T17:49:47-04:00
+complete | `new:adjoint-basic`, support and `|G| ≤ 1` | `Auto.measurable_adjShift`, `Auto.Astar_basic` | 2026-09-25T17:55:25-04:00
+complete | `new:adjoint-basic`, the crude `L^r` bounds for `G` and `(I - P_R) G` | `Auto.adjShift_eq_prod`, `Auto.eLpNorm_Astar_le`, `Auto.eLpNorm_projKernel`, `Auto.eLpNorm_P_le_of_measurable`, `Auto.eLpNorm_sub_P_le`, `Auto.eLpNorm_Astar_sub_P_le` | 2026-09-25T17:55:25-04:00
+complete | `new:compact-highpass`, `⟨h, G⟩ ≥ M^{-1} ‖H‖_2^2` | `Auto.norm_sub_sq_eq`, `Auto.highpass_energy` | 2026-09-25T18:02:45-04:00
+complete | `new:compact-highpass`, the tail bound for `1_{(B')^c} H` | `Auto.highpass_tail` | 2026-09-25T18:02:45-04:00
+complete | `new:compact-highpass`, the contradiction and the bound `C_1 μ^a N^3` | `Auto.integrable_fourier_integrand`, `Auto.fourier_sub_of_integrable`, `Auto.fourier_const_mul`, `Auto.integral_sq_le_of_eLpNorm_le`, `Auto.rpow_inv_two_mul_pow`, `Auto.integral_sq_le_box`, `Auto.compactHighpass` | 2026-09-25T18:15:23-04:00
+in progress | `new:compact-decaying-point`, interpolation with weight `60/61` on bounded finite-valued inputs | -- | 2026-09-25T18:15:23-04:00
 not started | `new:compact-decaying-point`, extension to all finite-norm inputs | -- | 2026-09-25T06:51:43-04:00
 not started | `new:global-decaying-point`, the exact input-cube decomposition | -- | 2026-09-25T06:51:43-04:00
 not started | `new:global-decaying-point`, the off-diagonal tail `B_2^tail μ^4 (|l| - 2)^{-2}` | -- | 2026-09-25T06:51:43-04:00
