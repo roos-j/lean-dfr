@@ -30,6 +30,12 @@ import Mathlib.MeasureTheory.Function.Jacobian
 import Mathlib.Analysis.SpecialFunctions.Pow.Integral
 import Mathlib.Analysis.SpecialFunctions.ImproperIntegrals
 import Mathlib.RingTheory.MvPolynomial.Homogeneous
+import Mathlib.MeasureTheory.Function.ContinuousMapDense
+import Mathlib.MeasureTheory.Function.SimpleFuncDenseLp
+import Mathlib.MeasureTheory.Function.LpSpace.DomAct.Continuous
+import Mathlib.MeasureTheory.Integral.DominatedConvergence
+import Mathlib.MeasureTheory.Function.LocallyIntegrable
+import DFR.Auto.IntegralPlancherel
 import DFR.Auto.SteinInterpolation
 import DFR.Auto.SmoothingIneq3D.VanDerCorput
 
@@ -37867,4 +37873,1358 @@ theorem sq_re_gapScaled_le_locUnifPow {C N L H : ℝ} (hL : 0 < L) (hC : 0 ≤ C
   rw [← locUnifPowMixed_comp_diag hc j f hF]
   exact sq_re_locUnifPowMixed_le_scaled hL hC hN j hLS
     (fun l => mul_pos (hc l) hH) hhalf hf hf1 hsupp
+
+/-! ## Blueprint `koszAdjoint_blueprint.tex`, Section 2: analytic facts
+
+The integral inequalities of `new:integral-inequalities`, for measurable (not only continuous)
+inputs, as used by the adjoint estimate. -/
+
+open MeasureTheory in
+/-- **Blueprint `new:integral-inequalities`, translation invariance**: the `L^p` seminorm is
+invariant under translation, for every a.e. strongly measurable function. -/
+theorem eLpNorm_comp_add_right_of_aestronglyMeasurable {G E : Type*} [MeasurableSpace G]
+    [AddGroup G] [MeasurableAdd G] [NormedAddCommGroup E] {μ : Measure G} [μ.IsAddRightInvariant]
+    {f : G → E} (hf : AEStronglyMeasurable f μ) (c : G) (p : ℝ≥0∞) :
+    eLpNorm (fun x => f (x + c)) p μ = eLpNorm f p μ :=
+  eLpNorm_comp_measurePreserving (f := fun x => x + c) hf (measurePreserving_add_right μ c)
+
+open MeasureTheory in
+/-- **Blueprint `new:integral-inequalities`, Hoelder's inequality for finitely many factors**:
+if `∑ 1/p_i = 1/r`, then `‖∏ f_i‖_r ≤ ∏ ‖f_i‖_{p_i}`. -/
+theorem eLpNorm_prod_le {α ι : Type*} [MeasurableSpace α] {μ : Measure α}
+    (s : Finset ι) {f : ι → α → ℂ} (hf : ∀ i ∈ s, AEStronglyMeasurable (f i) μ)
+    {p : ι → ℝ≥0∞} {r : ℝ≥0∞} (hpr : ∑ i ∈ s, (p i)⁻¹ = r⁻¹) :
+    eLpNorm (fun x => ∏ i ∈ s, f i x) r μ ≤ ∏ i ∈ s, eLpNorm (f i) (p i) μ := by
+  classical
+  induction s using Finset.induction_on generalizing r with
+  | empty =>
+    simp only [Finset.sum_empty] at hpr
+    have hr : r = ⊤ := by simpa using hpr.symm
+    subst hr
+    simp only [Finset.prod_empty]
+    refine (eLpNorm_le_of_ae_bound (C := 1) (.of_forall fun x => by simp)).trans ?_
+    simp only [ENNReal.toReal_top, inv_zero, ENNReal.rpow_zero, mul_one,
+      ENNReal.ofReal_one, le_refl]
+  | insert a s ha ih =>
+    rw [Finset.sum_insert ha] at hpr
+    have hfs : ∀ i ∈ s, AEStronglyMeasurable (f i) μ := fun i hi =>
+      hf i (Finset.mem_insert_of_mem hi)
+    have ih' := ih hfs (r := (∑ i ∈ s, (p i)⁻¹)⁻¹) (by rw [inv_inv])
+    haveI : ENNReal.HolderTriple (p a) (∑ i ∈ s, (p i)⁻¹)⁻¹ r := ⟨by rw [inv_inv, hpr]⟩
+    have hprod : AEStronglyMeasurable (fun x => ∏ i ∈ s, f i x) μ :=
+      Finset.aestronglyMeasurable_fun_prod s hfs
+    have h := eLpNorm_smul_le_mul_eLpNorm (p := p a) (q := (∑ i ∈ s, (p i)⁻¹)⁻¹) (r := r)
+      hprod (hf a (Finset.mem_insert_self a s))
+    simp only [Finset.prod_insert ha]
+    refine le_trans (le_of_eq ?_) (h.trans (mul_le_mul' le_rfl ih'))
+    congr 1
+
+open MeasureTheory in
+/-- **Blueprint `new:integral-inequalities`, Minkowski's integral inequality** for nonnegative
+functions: `‖∫ F(u, ·) dν(u)‖_p ≤ ∫ ‖F(u, ·)‖_p dν(u)` for `1 ≤ p < ∞`. -/
+theorem eLpNorm_lintegral_le {α β : Type*} [MeasurableSpace α] [MeasurableSpace β]
+    {μ : Measure α} {ν : Measure β} [SigmaFinite μ] [SFinite ν] {p : ℝ≥0∞} (hp1 : 1 ≤ p)
+    (hptop : p ≠ ⊤) {F : β → α → ℝ≥0∞} (hF : Measurable (Function.uncurry F)) :
+    eLpNorm (fun x => ∫⁻ u, F u x ∂ν) p μ ≤ ∫⁻ u, eLpNorm (F u) p μ ∂ν := by
+  have hp0 : p ≠ 0 := (lt_of_lt_of_le one_pos hp1).ne'
+  set P := p.toReal with hPdef
+  have hP1 : 1 ≤ P := by
+    rw [hPdef, show (1 : ℝ) = (1 : ℝ≥0∞).toReal by simp]
+    exact ENNReal.toReal_mono hptop hp1
+  have hP0 : 0 < P := lt_of_lt_of_le one_pos hP1
+  set H : α → ℝ≥0∞ := fun x => ∫⁻ u, F u x ∂ν with hHdef
+  have hFx : ∀ x, Measurable fun u => F u x := fun x =>
+    hF.comp (measurable_id.prodMk measurable_const)
+  have hFu : ∀ u, Measurable (F u) := fun u => hF.comp (measurable_const.prodMk measurable_id)
+  have hHm : Measurable H := by
+    have : Measurable (Function.uncurry fun (x : α) (u : β) => F u x) :=
+      hF.comp measurable_swap
+    exact this.lintegral_prod_right'
+  set R : ℝ≥0∞ := ∫⁻ u, eLpNorm (F u) p μ ∂ν with hRdef
+  have hnorm : ∀ g : α → ℝ≥0∞, eLpNorm g p μ = (∫⁻ x, g x ^ P ∂μ) ^ (1 / P) := fun g => by
+    rw [eLpNorm_eq_eLpNorm' hp0 hptop, eLpNorm']
+    simp [hPdef]
+  rcases eq_or_lt_of_le hP1 with hP | hP
+  · -- the case `p = 1`: Tonelli
+    have hp : p = 1 := by
+      rw [← ENNReal.ofReal_toReal hptop, ← hPdef, ← hP, ENNReal.ofReal_one]
+    subst hp
+    simp only [eLpNorm_one_eq_lintegral_enorm, enorm_eq_self, hHdef, hRdef]
+    exact (lintegral_lintegral_swap (f := fun x u => F u x) (μ := μ) (ν := ν)
+      (hF.comp measurable_swap).aemeasurable).le
+  -- the case `1 < p`
+  set Q := P / (P - 1) with hQdef
+  have hPQ : P.HolderConjugate Q := Real.HolderConjugate.conjExponent hP
+  -- truncations
+  set S := spanningSets μ with hSdef
+  set Hn : ℕ → α → ℝ≥0∞ := fun n => (S n).indicator fun x => min (H x) n with hHndef
+  have hHnm : ∀ n, Measurable (Hn n) := fun n =>
+    (hHm.min measurable_const).indicator (measurableSet_spanningSets μ n)
+  have hHnle : ∀ n x, Hn n x ≤ H x := fun n x => by
+    simp only [hHndef, Set.indicator]
+    split_ifs
+    · exact min_le_left _ _
+    · exact bot_le
+  have hHnbd : ∀ n x, Hn n x ≤ (S n).indicator (fun _ => (n : ℝ≥0∞)) x := fun n x => by
+    simp only [hHndef, Set.indicator]
+    split_ifs
+    · exact min_le_right _ _
+    · exact le_rfl
+  have hfin : ∀ n, ∫⁻ x, Hn n x ^ P ∂μ ≠ ⊤ := fun n => by
+    refine ne_top_of_le_ne_top ?_ (lintegral_mono fun x =>
+      ENNReal.rpow_le_rpow (hHnbd n x) hP0.le)
+    rw [show (fun x => (S n).indicator (fun _ => (n : ℝ≥0∞)) x ^ P) =
+        (S n).indicator (fun _ => (n : ℝ≥0∞) ^ P) from funext fun x => by
+          simp only [Set.indicator]; split_ifs <;> simp [ENNReal.zero_rpow_of_pos hP0]]
+    rw [lintegral_indicator (measurableSet_spanningSets μ n), setLIntegral_const]
+    exact ENNReal.mul_ne_top (ENNReal.rpow_ne_top_of_nonneg hP0.le (by simp))
+      (measure_spanningSets_lt_top μ n).ne
+  have hstep : ∀ n, eLpNorm (Hn n) p μ ≤ R := fun n => by
+    set I := ∫⁻ x, Hn n x ^ P ∂μ with hIdef
+    have hkey : I ≤ I ^ (1 / Q) * R := by
+      calc I = ∫⁻ x, Hn n x ^ (P - 1) * Hn n x ∂μ := by
+            refine lintegral_congr fun x => ?_
+            have hP' : P = (P - 1) + 1 := by ring
+            conv_lhs => rw [hP']
+            rw [ENNReal.rpow_add_of_nonneg _ _ (by linarith) zero_le_one, ENNReal.rpow_one]
+        _ ≤ ∫⁻ x, Hn n x ^ (P - 1) * H x ∂μ :=
+            lintegral_mono fun x => mul_le_mul' le_rfl (hHnle n x)
+        _ = ∫⁻ x, ∫⁻ u, Hn n x ^ (P - 1) * F u x ∂ν ∂μ := by
+            refine lintegral_congr fun x => ?_
+            rw [hHdef, lintegral_const_mul _ (hFx x)]
+        _ = ∫⁻ u, ∫⁻ x, Hn n x ^ (P - 1) * F u x ∂μ ∂ν := by
+            rw [lintegral_lintegral_swap]
+            exact (((hHnm n).pow_const _).comp measurable_fst |>.mul
+              (hF.comp measurable_swap)).aemeasurable
+        _ ≤ ∫⁻ u, (∫⁻ x, (Hn n x ^ (P - 1)) ^ Q ∂μ) ^ (1 / Q) *
+              (∫⁻ x, F u x ^ P ∂μ) ^ (1 / P) ∂ν := by
+            refine lintegral_mono fun u => ?_
+            have := ENNReal.lintegral_mul_le_Lp_mul_Lq μ hPQ.symm
+              (((hHnm n).pow_const (P - 1)).aemeasurable) (hFu u).aemeasurable
+            simpa [mul_comm] using this
+        _ = I ^ (1 / Q) * R := by
+            have hpow : ∀ x, (Hn n x ^ (P - 1)) ^ Q = Hn n x ^ P := fun x => by
+              rw [← ENNReal.rpow_mul]
+              congr 1
+              rw [hQdef]
+              field_simp [(by linarith : P - 1 ≠ 0)]
+            simp_rw [hpow, ← hIdef]
+            rw [lintegral_const_mul' _ _ (ENNReal.rpow_ne_top_of_nonneg (by
+              have := hPQ.symm.inv_pos; positivity) (hfin n))]
+            congr 1
+            refine lintegral_congr fun u => ?_
+            rw [hnorm]
+    rw [hnorm]
+    rcases eq_or_ne I 0 with hI0 | hI0
+    · rw [← hIdef, hI0, ENNReal.zero_rpow_of_pos (by positivity)]
+      exact bot_le
+    -- divide by `I ^ (1/Q)`
+    have hIQ0 : I ^ (1 / Q) ≠ 0 := by
+      have := hPQ.symm.pos
+      exact (ENNReal.rpow_pos (pos_iff_ne_zero.mpr hI0) (hfin n)).ne'
+    have hIQtop : I ^ (1 / Q) ≠ ⊤ := ENNReal.rpow_ne_top_of_nonneg (by
+      have := hPQ.symm.pos; positivity) (hfin n)
+    have hsplit : I = I ^ (1 / P) * I ^ (1 / Q) := by
+      rw [← ENNReal.rpow_add _ _ hI0 (hfin n)]
+      have h1 : 1 / P + 1 / Q = 1 := by rw [one_div, one_div]; exact hPQ.inv_add_inv_eq_one
+      rw [h1, ENNReal.rpow_one]
+    rw [← hIdef]
+    have h2 : I ^ (1 / P) * I ^ (1 / Q) ≤ R * I ^ (1 / Q) := by
+      rw [← hsplit, mul_comm]; exact hkey
+    exact (ENNReal.mul_le_mul_iff_left hIQ0 hIQtop).mp h2
+  -- monotone convergence
+  have hsupP : ∀ a : ℕ → ℝ≥0∞, (⨆ n, a n) ^ P = ⨆ n, a n ^ P := fun a =>
+    (ENNReal.orderIsoRpow P hP0).map_iSup a
+  have hmono : Monotone Hn := fun m n hmn x => by
+    simp only [hHndef, Set.indicator]
+    have hS : S m ⊆ S n := monotone_spanningSets μ hmn
+    split_ifs with h1 h2 h2
+    · exact min_le_min le_rfl (by exact_mod_cast hmn)
+    · exact absurd (hS h1) h2
+    · exact bot_le
+    · exact le_rfl
+  have hlim : ∀ x, ⨆ n, Hn n x = H x := fun x => by
+    refine le_antisymm (iSup_le fun n => hHnle n x) ?_
+    obtain ⟨N, hN⟩ : ∃ N, x ∈ S N := by
+      have := iUnion_spanningSets μ
+      have hx : x ∈ ⋃ n, S n := by rw [this]; trivial
+      simpa using hx
+    have hev : ∀ n, N ≤ n → Hn n x = min (H x) n := fun n hn => by
+      simp only [hHndef]
+      rw [Set.indicator_of_mem (monotone_spanningSets μ hn hN)]
+    calc H x = ⨆ n : ℕ, min (H x) (n : ℝ≥0∞) := by
+          rw [← inf_iSup_eq, ENNReal.iSup_natCast, inf_top_eq]
+      _ ≤ ⨆ n, Hn n x := by
+          refine iSup_le fun n => ?_
+          refine le_trans ?_ (le_iSup _ (max n N))
+          rw [hev _ (le_max_right _ _)]
+          exact min_le_min le_rfl (by exact_mod_cast le_max_left n N)
+  rw [hnorm]
+  have hlimP : ∫⁻ x, H x ^ P ∂μ = ⨆ n, ∫⁻ x, Hn n x ^ P ∂μ := by
+    rw [← lintegral_iSup (fun n => (hHnm n).pow_const _)
+      (fun m n hmn x => ENNReal.rpow_le_rpow (hmono hmn x) hP0.le)]
+    refine lintegral_congr fun x => ?_
+    rw [← hlim x, hsupP]
+  have h1P : (⨆ n, ∫⁻ x, Hn n x ^ P ∂μ) ^ (1 / P) = ⨆ n, (∫⁻ x, Hn n x ^ P ∂μ) ^ (1 / P) :=
+    (ENNReal.orderIsoRpow (1 / P) (by positivity)).map_iSup _
+  rw [hlimP, h1P]
+  refine iSup_le fun n => ?_
+  have := hstep n
+  rwa [hnorm] at this
+
+open MeasureTheory in
+/-- **Blueprint `new:integral-inequalities`, Minkowski's integral inequality** for Bochner
+integrals of a jointly measurable family: `‖∫ F(u, ·) dν(u)‖_p ≤ ∫ ‖F(u, ·)‖_p dν(u)`. -/
+theorem eLpNorm_integral_le_lintegral {α β : Type*} [MeasurableSpace α] [MeasurableSpace β]
+    {μ : Measure α} {ν : Measure β} [SigmaFinite μ] [SFinite ν] {p : ℝ≥0∞} (hp1 : 1 ≤ p)
+    (hptop : p ≠ ⊤) {F : β → α → ℂ} (hF : Measurable (Function.uncurry F)) :
+    eLpNorm (fun x => ∫ u, F u x ∂ν) p μ ≤ ∫⁻ u, eLpNorm (F u) p μ ∂ν := by
+  refine (eLpNorm_mono_enorm fun x => ?_).trans
+    ((eLpNorm_lintegral_le (μ := μ) (ν := ν) hp1 hptop (F := fun u x => ‖F u x‖ₑ)
+      hF.enorm).trans_eq ?_)
+  · simpa using enorm_integral_le_lintegral_enorm (fun u => F u x)
+  · refine lintegral_congr fun u => ?_
+    exact eLpNorm_enorm (F u)
+
+open MeasureTheory in
+/-- **Blueprint `new:integral-inequalities`, the one-coordinate convolution bound**:
+`‖∫ a(u) f(· - u e) du‖_p ≤ ‖a‖_1 ‖f‖_p`, for Borel `a` on `ℝ` and `f` on a finite-dimensional
+real normed space with an additive Haar measure. -/
+theorem eLpNorm_integral_smul_translate_le {V : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V]
+    [MeasurableSpace V] [BorelSpace V] [FiniteDimensional ℝ V] {μ : Measure V} [μ.IsAddHaarMeasure]
+    {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p ≠ ⊤) {a : ℝ → ℂ} (ha : Measurable a) {f : V → ℂ}
+    (hf : Measurable f) (e : V) :
+    eLpNorm (fun x => ∫ u, a u * f (x - u • e)) p μ
+      ≤ eLpNorm a 1 volume * eLpNorm f p μ := by
+  have hF : Measurable (Function.uncurry fun (u : ℝ) (x : V) => a u * f (x - u • e)) :=
+    (ha.comp measurable_fst).mul
+      (hf.comp (measurable_snd.sub (measurable_fst.smul measurable_const)))
+  refine (eLpNorm_integral_le_lintegral (ν := volume) hp1 hptop hF).trans_eq ?_
+  have hsec : ∀ u : ℝ, eLpNorm (fun x => a u * f (x - u • e)) p μ = ‖a u‖ₑ * eLpNorm f p μ := by
+    intro u
+    have h1 : (fun x => a u * f (x - u • e)) = a u • fun x => f (x + -(u • e)) := by
+      funext x; simp [sub_eq_add_neg]
+    rw [h1, eLpNorm_const_smul, eLpNorm_comp_add_right_of_aestronglyMeasurable
+      hf.aestronglyMeasurable]
+  simp_rw [hsec]
+  rw [lintegral_mul_const _ ha.enorm, eLpNorm_one_eq_lintegral_enorm]
+
+open MeasureTheory in
+/-- **Blueprint `new:translation-continuity`, approximation**: for `p < ∞`, every `f ∈ L^p` of a
+finite-dimensional real normed space is approximated in `L^p` by finite-valued (simple) functions
+with bounded support. -/
+theorem exists_simpleFunc_isBounded_support_eLpNorm_sub_le {V : Type*} [NormedAddCommGroup V]
+    [NormedSpace ℝ V] [FiniteDimensional ℝ V] [MeasurableSpace V] [BorelSpace V]
+    {μ : Measure V} [μ.IsAddHaarMeasure] {p : ℝ≥0∞} (hp : p ≠ ⊤) (hp1 : 1 ≤ p) {f : V → ℂ}
+    (hf : MemLp f p μ) {ε : ℝ≥0∞} (hε : ε ≠ 0) :
+    ∃ g : SimpleFunc V ℂ, Bornology.IsBounded (Function.support g) ∧
+      eLpNorm (f - ⇑g) p μ ≤ ε := by
+  have hε2 : ε / 2 ≠ 0 := by simpa using hε
+  obtain ⟨g, hgc, hfg, hgcont, hgmem⟩ := hf.exists_hasCompactSupport_eLpNorm_sub_le hp hε2
+  obtain ⟨s, hgs, -⟩ := hgmem.exists_simpleFunc_eLpNorm_sub_lt hp hε2
+  set K := tsupport g
+  have hK : MeasurableSet K := (isClosed_tsupport g).measurableSet
+  refine ⟨s.restrict K, ?_, ?_⟩
+  · refine hgc.isCompact.isBounded.subset ?_
+    intro x hx
+    rw [SimpleFunc.coe_restrict _ hK] at hx
+    by_contra hxK
+    exact hx (Set.indicator_of_notMem hxK _)
+  · have hsplit : f - ⇑(s.restrict K) = (f - g) + K.indicator (g - ⇑s) := by
+      funext x
+      rw [SimpleFunc.coe_restrict _ hK]
+      by_cases hx : x ∈ K
+      · simp [Set.indicator_of_mem hx]
+      · have hgx : g x = 0 := image_eq_zero_of_notMem_tsupport hx
+        simp [Set.indicator_of_notMem hx, hgx]
+    rw [hsplit]
+    calc eLpNorm ((f - g) + K.indicator (g - ⇑s)) p μ
+        ≤ eLpNorm (f - g) p μ + eLpNorm (K.indicator (g - ⇑s)) p μ :=
+          eLpNorm_add_le (hf.1.sub hgcont.aestronglyMeasurable)
+            ((hgcont.aestronglyMeasurable.sub s.aestronglyMeasurable).indicator hK) hp1
+      _ ≤ ε / 2 + ε / 2 := by
+          gcongr
+          exact (eLpNorm_indicator_le _).trans hgs.le
+      _ = ε := ENNReal.add_halves ε
+
+open MeasureTheory in
+/-- **Blueprint `new:translation-continuity`**: for `1 ≤ p < ∞` and `f ∈ L^p`,
+`‖f(· + h) - f‖_p → 0` as `h → 0`. -/
+theorem tendsto_eLpNorm_comp_add_sub {V : Type*} [NormedAddCommGroup V]
+    [NormedSpace ℝ V] [FiniteDimensional ℝ V] [MeasurableSpace V] [BorelSpace V]
+    {μ : Measure V} [μ.IsAddHaarMeasure] {p : ℝ≥0∞} [hp1 : Fact (1 ≤ p)] (hp : p ≠ ⊤)
+    {f : V → ℂ} (hf : MemLp f p μ) :
+    Filter.Tendsto (fun h : V => eLpNorm (fun x => f (x + h) - f x) p μ) (nhds 0) (nhds 0) := by
+  haveI : Fact (p ≠ ⊤) := ⟨hp⟩
+  set F := hf.toLp f
+  have hcont : Continuous fun h : V => (DomAddAct.mk h) +ᵥ F :=
+    (continuous_id.vadd continuous_const).comp DomAddAct.continuous_mk
+  have hlim : Filter.Tendsto (fun h : V => (DomAddAct.mk h) +ᵥ F) (nhds 0) (nhds F) := by
+    have := hcont.tendsto 0
+    simpa using this
+  have hae : ∀ h : V, eLpNorm (fun x => f (x + h) - f x) p μ
+      = edist ((DomAddAct.mk h) +ᵥ F) F := by
+    intro h
+    rw [Lp.edist_def]
+    apply eLpNorm_congr_ae
+    filter_upwards [DomAddAct.vadd_Lp_ae_eq (DomAddAct.mk h) F, hf.coeFn_toLp,
+      (measurePreserving_add_left μ h).quasiMeasurePreserving.ae_eq_comp hf.coeFn_toLp]
+      with x h1 h2 h3
+    simp only [Pi.sub_apply]
+    rw [h1, Equiv.symm_apply_apply, h2, vadd_eq_add]
+    simp only [Function.comp_apply] at h3
+    rw [h3, add_comm]
+  simp_rw [hae]
+  have := (tendsto_iff_edist_tendsto_0.mp hlim)
+  simpa using this
+
+section
+open Filter Topology
+
+open MeasureTheory in
+/-- **Blueprint `new:duality`**: for `1 < p < ∞` with conjugate `p'` and a measurable `F`, a bound
+`|∫ F h| ≤ B ‖h‖_{p'}` for every bounded, boundedly supported measurable test `h` for which
+`F h` is integrable implies `‖F‖_p ≤ B` (in particular `F ∈ L^p` when `B < ∞`). -/
+theorem eLpNorm_le_of_pairing_bound_of_measurable {V : Type*} [NormedAddCommGroup V]
+    [NormedSpace ℝ V] [FiniteDimensional ℝ V] [MeasurableSpace V] [BorelSpace V]
+    {μ : Measure V} [μ.IsAddHaarMeasure] {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + p'⁻¹ = 1)
+    {F : V → ℂ} (hF : Measurable F) {B : ℝ≥0∞}
+    (hpair : ∀ h : V → ℂ, Measurable h → (∃ C : ℝ, ∀ x, ‖h x‖ ≤ C) →
+      Bornology.IsBounded (Function.support h) → Integrable (fun x => F x * h x) μ →
+      ‖∫ x, F x * h x ∂μ‖ₑ ≤ B * eLpNorm h (ENNReal.ofReal p') μ) :
+    eLpNorm F (ENNReal.ofReal p) μ ≤ B := by
+  have hp0 : 0 < p := by linarith
+  have hpinv : p⁻¹ < 1 := inv_lt_one_of_one_lt₀ hp
+  have hp'inv : 0 < p'⁻¹ := by linarith
+  have hp'0 : 0 < p' := inv_pos.mp hp'inv
+  have hpp' : (p - 1) * p' = p := by
+    have h1 : p'⁻¹ = (p - 1) / p := by
+      rw [← sub_eq_of_eq_add' hconj.symm]; field_simp
+    have h2 : p' = p / (p - 1) := by
+      rw [← inv_inv p', h1, inv_div]
+    rw [h2]; field_simp [(by linarith : p - 1 ≠ 0)]
+  -- the exhausting sets
+  set E : ℕ → Set V := fun M =>
+    Metric.closedBall 0 ((M : ℝ) + 1) ∩ {x | ((M : ℝ) + 1)⁻¹ ≤ ‖F x‖ ∧ ‖F x‖ ≤ (M : ℝ) + 1}
+    with hEdef
+  have hEm : ∀ M, MeasurableSet (E M) := fun M =>
+    measurableSet_closedBall.inter
+      ((measurableSet_le measurable_const hF.norm).inter
+        (measurableSet_le hF.norm measurable_const))
+  have hEpos : ∀ M x, x ∈ E M → 0 < ‖F x‖ := fun M x hx =>
+    lt_of_lt_of_le (inv_pos.mpr (by positivity)) hx.2.1
+  set J : ℕ → ℝ≥0∞ := fun M => ∫⁻ x in E M, ‖F x‖ₑ ^ p ∂μ with hJdef
+  have hJfin : ∀ M, J M ≠ ⊤ := fun M => by
+    refine ne_top_of_le_ne_top (b := ∫⁻ _x in E M, ENNReal.ofReal (((M : ℝ) + 1) ^ p) ∂μ) ?_ ?_
+    · rw [setLIntegral_const]
+      refine ENNReal.mul_ne_top ENNReal.ofReal_ne_top ?_
+      exact ((measure_mono Set.inter_subset_left).trans_lt
+        measure_closedBall_lt_top).ne
+    · refine setLIntegral_mono measurable_const fun x hx => ?_
+      rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp0.le]
+      exact ENNReal.ofReal_le_ofReal (Real.rpow_le_rpow (norm_nonneg _) hx.2.2 hp0.le)
+  -- the test functions
+  set h : ℕ → V → ℂ := fun M => (E M).indicator fun x =>
+    conj (F x) * ((‖F x‖ ^ (p - 2) : ℝ) : ℂ) with hhdef
+  have hhm : ∀ M, Measurable (h M) := fun M =>
+    ((Complex.continuous_conj.measurable.comp hF).mul
+      (Complex.measurable_ofReal.comp (hF.norm.pow_const _))).indicator (hEm M)
+  have hFh : ∀ M x, F x * h M x = (E M).indicator (fun x => ((‖F x‖ ^ p : ℝ) : ℂ)) x := by
+    intro M x
+    by_cases hx : x ∈ E M
+    · simp only [hhdef, Set.indicator_of_mem hx]
+      have hr : ‖F x‖ ^ 2 * ‖F x‖ ^ (p - 2) = ‖F x‖ ^ p := by
+        rw [← Real.rpow_natCast, ← Real.rpow_add (hEpos M x hx)]
+        norm_num
+      rw [← mul_assoc, Complex.mul_conj, Complex.normSq_eq_norm_sq, ← hr]
+      push_cast
+      ring
+    · simp [hhdef, Set.indicator_of_notMem hx]
+  have hnh : ∀ M x, ‖h M x‖ = (E M).indicator (fun x => ‖F x‖ ^ (p - 1)) x := by
+    intro M x
+    by_cases hx : x ∈ E M
+    · simp only [hhdef, Set.indicator_of_mem hx, norm_mul, Complex.norm_conj,
+        Complex.norm_real, Real.norm_eq_abs,
+        abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
+      rw [← Real.rpow_one_add' (norm_nonneg _) (by linarith)]
+      · ring_nf
+    · simp [hhdef, Set.indicator_of_notMem hx]
+  -- the bound on each `J M`
+  have hstep : ∀ M, J M ^ (1 / p) ≤ B := by
+    intro M
+    have hbdd : ∃ C : ℝ, ∀ x, ‖h M x‖ ≤ C := ⟨((M : ℝ) + 1) ^ (p - 1), fun x => by
+      rw [hnh]
+      by_cases hx : x ∈ E M
+      · rw [Set.indicator_of_mem hx]
+        exact Real.rpow_le_rpow (norm_nonneg _) hx.2.2 (by linarith)
+      · rw [Set.indicator_of_notMem hx]; positivity⟩
+    have hsupp : Bornology.IsBounded (Function.support (h M)) :=
+      Metric.isBounded_closedBall.subset fun x hx => by
+        by_contra hxE
+        exact hx (Set.indicator_of_notMem (fun h => hxE h.1) _)
+    have hint : Integrable (fun x => F x * h M x) μ := by
+      simp_rw [hFh]
+      refine IntegrableOn.integrable_indicator ?_ (hEm M)
+      refine Measure.integrableOn_of_bounded (M := ((M : ℝ) + 1) ^ p) ?_ ?_ ?_
+      · exact ((measure_mono Set.inter_subset_left).trans_lt measure_closedBall_lt_top).ne
+      · exact (Complex.measurable_ofReal.comp (hF.norm.pow_const _)).aestronglyMeasurable
+      · refine (ae_restrict_iff' (hEm M)).mpr (.of_forall fun x hx => ?_)
+        rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+        exact Real.rpow_le_rpow (norm_nonneg _) hx.2.2 hp0.le
+    have hL : ‖∫ x, F x * h M x ∂μ‖ₑ = J M := by
+      simp_rw [hFh]
+      rw [integral_indicator (hEm M), integral_complex_ofReal, ← ofReal_norm,
+        Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (setIntegral_nonneg (hEm M)
+          fun x _ => by positivity), ofReal_integral_eq_lintegral_ofReal]
+      · refine setLIntegral_congr_fun (hEm M) fun x _ => ?_
+        rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp0.le]
+      · refine Measure.integrableOn_of_bounded (M := ((M : ℝ) + 1) ^ p) ?_ ?_ ?_
+        · exact ((measure_mono Set.inter_subset_left).trans_lt measure_closedBall_lt_top).ne
+        · exact (hF.norm.pow_const _).aestronglyMeasurable
+        · refine (ae_restrict_iff' (hEm M)).mpr (.of_forall fun x hx => ?_)
+          rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
+          exact Real.rpow_le_rpow (norm_nonneg _) hx.2.2 hp0.le
+      · exact .of_forall fun x => by positivity
+    have hR : eLpNorm (h M) (ENNReal.ofReal p') μ = J M ^ (1 / p') := by
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp'0) ENNReal.ofReal_ne_top,
+        ENNReal.toReal_ofReal hp'0.le]
+      congr 1
+      change _ = ∫⁻ x in E M, ‖F x‖ₑ ^ p ∂μ
+      rw [← lintegral_indicator (hEm M)]
+      refine lintegral_congr fun x => ?_
+      rw [← ofReal_norm, hnh]
+      by_cases hx : x ∈ E M
+      · rw [Set.indicator_of_mem hx, Set.indicator_of_mem hx, ← ofReal_norm,
+          ENNReal.ofReal_rpow_of_nonneg (by positivity) hp'0.le,
+          ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hp0.le, ← Real.rpow_mul (norm_nonneg _),
+          hpp']
+      · rw [Set.indicator_of_notMem hx, Set.indicator_of_notMem hx, ENNReal.ofReal_zero,
+          ENNReal.zero_rpow_of_pos hp'0]
+    have key := hpair (h M) (hhm M) hbdd hsupp hint
+    rw [hL, hR] at key
+    -- `J ≤ B J^{1/p'}` gives `J^{1/p} ≤ B`
+    rcases eq_or_ne (J M) 0 with hJ0 | hJ0
+    · rw [hJ0, ENNReal.zero_rpow_of_pos (by positivity)]; exact bot_le
+    have hJp' : J M ^ (1 / p') ≠ 0 := (ENNReal.rpow_pos (pos_iff_ne_zero.mpr hJ0) (hJfin M)).ne'
+    have hJp'top : J M ^ (1 / p') ≠ ⊤ :=
+      ENNReal.rpow_ne_top_of_nonneg (by positivity) (hJfin M)
+    have hsplit : J M = J M ^ (1 / p) * J M ^ (1 / p') := by
+      rw [← ENNReal.rpow_add _ _ hJ0 (hJfin M), one_div, one_div, hconj, ENNReal.rpow_one]
+    have key' : J M ^ (1 / p) * J M ^ (1 / p') ≤ B * J M ^ (1 / p') := by
+      rw [← hsplit]; exact key
+    exact (ENNReal.mul_le_mul_iff_left hJp' hJp'top).mp key'
+  -- monotone convergence
+  have hEmono : Monotone E := by
+    intro M N hMN x hx
+    have hMN' : (M : ℝ) + 1 ≤ N + 1 := by exact_mod_cast Nat.add_le_add_right hMN 1
+    exact ⟨Metric.closedBall_subset_closedBall hMN' hx.1,
+      (inv_anti₀ (by positivity) hMN').trans hx.2.1, hx.2.2.trans hMN'⟩
+  have hcover : ∀ x, F x ≠ 0 → ∃ M, x ∈ E M := by
+    intro x hx
+    have hpos : 0 < ‖F x‖ := norm_pos_iff.mpr hx
+    obtain ⟨M, hM⟩ := exists_nat_gt (max (max ‖x‖ ‖F x‖) (‖F x‖)⁻¹)
+    refine ⟨M, ?_, ?_, ?_⟩
+    · rw [Metric.mem_closedBall, dist_zero_right]
+      linarith [le_max_left (max ‖x‖ ‖F x‖) (‖F x‖)⁻¹, le_max_left ‖x‖ ‖F x‖]
+    · rw [inv_le_comm₀ (by positivity) hpos]
+      linarith [le_max_right (max ‖x‖ ‖F x‖) (‖F x‖)⁻¹]
+    · linarith [le_max_left (max ‖x‖ ‖F x‖) (‖F x‖)⁻¹, le_max_right ‖x‖ ‖F x‖]
+  have hsup : ∫⁻ x, ‖F x‖ₑ ^ p ∂μ = ⨆ M, J M := by
+    simp_rw [hJdef, ← lintegral_indicator (hEm _)]
+    rw [← lintegral_iSup (fun M => (hF.enorm.pow_const _).indicator (hEm M))
+      (fun M N hMN x => Set.indicator_le_indicator_of_subset (hEmono hMN) (fun _ => bot_le) x)]
+    refine lintegral_congr fun x => ?_
+    by_cases hx : F x = 0
+    · have h0 : ∀ N, (E N).indicator (fun x => ‖F x‖ₑ ^ p) x = 0 := fun N => by
+        simp [hx, ENNReal.zero_rpow_of_pos hp0]
+      simp [h0, hx, ENNReal.zero_rpow_of_pos hp0]
+    · obtain ⟨M, hM⟩ := hcover x hx
+      refine le_antisymm ?_ (iSup_le fun N => Set.indicator_le_self _ _ x)
+      exact le_iSup_of_le M (by rw [Set.indicator_of_mem hM])
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp0) ENNReal.ofReal_ne_top,
+    ENNReal.toReal_ofReal hp0.le, hsup]
+  have h1p : (⨆ M, J M) ^ (1 / p) = ⨆ M, J M ^ (1 / p) :=
+    (ENNReal.orderIsoRpow (1 / p) (by positivity)).map_iSup _
+  rw [h1p]
+  exact iSup_le hstep
+
+open MeasureTheory in
+/-- **Blueprint `new:duality`, finite-valued tests**: for a measurable, locally integrable `F`, it
+is enough to test the pairing bound of `Auto.eLpNorm_le_of_pairing_bound_of_measurable` against
+simple functions of bounded support. -/
+theorem eLpNorm_le_of_pairing_bound_simpleFunc {V : Type*} [NormedAddCommGroup V]
+    [NormedSpace ℝ V] [FiniteDimensional ℝ V] [MeasurableSpace V] [BorelSpace V]
+    {μ : Measure V} [μ.IsAddHaarMeasure] {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + p'⁻¹ = 1)
+    {F : V → ℂ} (hF : Measurable F) (hFloc : LocallyIntegrable F μ) {B : ℝ≥0∞}
+    (hpair : ∀ g : SimpleFunc V ℂ, Bornology.IsBounded (Function.support g) →
+      ‖∫ x, F x * g x ∂μ‖ₑ ≤ B * eLpNorm g (ENNReal.ofReal p') μ) :
+    eLpNorm F (ENNReal.ofReal p) μ ≤ B := by
+  have hp'0 : 0 < p' := by
+    have : p⁻¹ < 1 := inv_lt_one_of_one_lt₀ hp
+    exact inv_pos.mp (by linarith)
+  refine eLpNorm_le_of_pairing_bound_of_measurable hp hconj hF ?_
+  rintro h hh ⟨C, hC⟩ hsupp -
+  set s : ℕ → SimpleFunc V ℂ := fun n =>
+    SimpleFunc.approxOn h hh Set.univ 0 (Set.mem_univ _) n with hsdef
+  have hsC : ∀ n x, ‖s n x‖ ≤ 2 * ‖h x‖ := fun n x => by
+    have := SimpleFunc.norm_approxOn_zero_le hh (Set.mem_univ (0 : ℂ)) x n
+    linarith
+  have hssupp : ∀ n, Function.support (s n) ⊆ Function.support h := fun n x hx => by
+    intro hx0
+    apply hx
+    have := hsC n x
+    rw [hx0, norm_zero, mul_zero] at this
+    exact norm_le_zero_iff.mp this
+  set K := closure (Function.support h)
+  have hK : IsCompact K := hsupp.isCompact_closure
+  have hFK : IntegrableOn F K μ := hFloc.integrableOn_isCompact hK
+  -- the pairings converge
+  have hlimI : Tendsto (fun n => ∫ x, F x * s n x ∂μ) atTop (𝓝 (∫ x, F x * h x ∂μ)) := by
+    refine tendsto_integral_of_dominated_convergence
+      (fun x => K.indicator (fun x => 2 * C * ‖F x‖) x) (fun n => ?_) ?_ (fun n => ?_) ?_
+    · exact (hF.mul (s n).measurable).aestronglyMeasurable
+    · exact IntegrableOn.integrable_indicator (hFK.norm.const_mul (2 * C))
+        hK.isClosed.measurableSet
+    · refine .of_forall fun x => ?_
+      by_cases hx : x ∈ Function.support (s n)
+      · rw [Set.indicator_of_mem (subset_closure (hssupp n hx)), norm_mul]
+        nlinarith [hsC n x, hC x, norm_nonneg (F x), norm_nonneg (s n x), norm_nonneg (h x)]
+      · rw [Function.notMem_support.mp hx, mul_zero, norm_zero]
+        exact Set.indicator_nonneg (fun _ _ => by
+          have : 0 ≤ C := (norm_nonneg _).trans (hC x); positivity) x
+    · refine .of_forall fun x => ?_
+      exact (SimpleFunc.tendsto_approxOn hh (Set.mem_univ _) (by simp)).const_mul (F x)
+  -- the test norms converge
+  have hhfin : eLpNorm (fun x => h x - 0) (ENNReal.ofReal p') μ < ⊤ := by
+    simp only [sub_zero]
+    have hμK : μ K ≠ ⊤ := hK.measure_lt_top.ne
+    refine (eLpNorm_mono (g := K.indicator fun _ => C) fun x => ?_).trans_lt ?_
+    · by_cases hx : x ∈ K
+      · rw [Set.indicator_of_mem hx, Real.norm_eq_abs]
+        exact (hC x).trans (le_abs_self C)
+      · have : h x = 0 := by
+          by_contra hx0
+          exact hx (subset_closure hx0)
+        rw [this, norm_zero]; exact norm_nonneg _
+    · refine (eLpNorm_indicator_const_le _ _).trans_lt ?_
+      exact ENNReal.mul_lt_top ENNReal.coe_lt_top
+        (ENNReal.rpow_lt_top_of_nonneg (by positivity) hμK)
+  have hlimN : Tendsto (fun n => eLpNorm (⇑(s n) - h) (ENNReal.ofReal p') μ) atTop (𝓝 0) :=
+    SimpleFunc.tendsto_approxOn_Lp_eLpNorm hh (Set.mem_univ _) ENNReal.ofReal_ne_top
+      (.of_forall fun x => by simp) hhfin
+  have hmh : AEStronglyMeasurable h μ := hh.aestronglyMeasurable
+  -- pass to the limit
+  rcases eq_or_ne B ⊤ with hB | hB
+  · rcases eq_or_ne (eLpNorm h (ENNReal.ofReal p') μ) 0 with h0 | h0
+    · have hae : h =ᵐ[μ] 0 := (eLpNorm_eq_zero_iff hmh (by simpa using hp'0)).mp h0
+      have : ∫ x, F x * h x ∂μ = 0 := by
+        rw [integral_eq_zero_of_ae]
+        filter_upwards [hae] with x hx
+        simp [hx]
+      rw [this]; simp
+    · rw [hB, ENNReal.top_mul h0]; exact le_top
+  have hb : Tendsto (fun n => B * (eLpNorm h (ENNReal.ofReal p') μ +
+      eLpNorm (⇑(s n) - h) (ENNReal.ofReal p') μ)) atTop
+      (𝓝 (B * (eLpNorm h (ENNReal.ofReal p') μ + 0))) :=
+    ENNReal.Tendsto.const_mul (tendsto_const_nhds.add hlimN) (Or.inr hB)
+  rw [add_zero] at hb
+  refine le_of_tendsto_of_tendsto' (continuous_enorm.tendsto _ |>.comp hlimI) hb fun n => ?_
+  refine (hpair (s n) (hsupp.subset (hssupp n))).trans (mul_le_mul' le_rfl ?_)
+  calc eLpNorm (⇑(s n)) (ENNReal.ofReal p') μ
+      = eLpNorm (h + (⇑(s n) - h)) (ENNReal.ofReal p') μ := by congr 1; abel
+    _ ≤ _ := eLpNorm_add_le hmh ((s n).aestronglyMeasurable.sub hmh)
+        (by
+          have h1 : p'⁻¹ ≤ 1 := by linarith [inv_pos.mpr (show (0 : ℝ) < p by linarith)]
+          have h2 : (1 : ℝ) ≤ p' := (inv_le_one₀ hp'0).mp h1
+          simpa using h2)
+
+end
+
+section
+open Filter Topology
+
+open MeasureTheory in
+/-- **Blueprint `new:measurability`, null sets under measurable translations**: if `f = g` almost
+everywhere, then `f (x + v t) = g (x + v t)` for almost every `(x, t)`, for any measurable
+translation `v`, by translation invariance and Tonelli. -/
+theorem ae_prod_comp_add_eq {V T E : Type*} [MeasurableSpace V] [AddGroup V] [MeasurableAdd₂ V]
+    [MeasurableNeg V] {μ : Measure V} [μ.IsAddRightInvariant] [SFinite μ]
+    [MeasurableSpace T] {ν : Measure T} [SFinite ν] {v : T → V} (hv : Measurable v)
+    {f g : V → E} (hfg : f =ᵐ[μ] g) :
+    ∀ᵐ z ∂(μ.prod ν), f (z.1 + v z.2) = g (z.1 + v z.2) := by
+  set N := toMeasurable μ {x | f x ≠ g x} with hN
+  have hNm : MeasurableSet N := measurableSet_toMeasurable _ _
+  have hN0 : μ N = 0 := by rw [hN, measure_toMeasurable]; exact hfg
+  have hSm : MeasurableSet {z : V × T | z.1 + v z.2 ∈ N} :=
+    (measurable_fst.add (hv.comp measurable_snd)) hNm
+  have hS0 : (μ.prod ν) {z : V × T | z.1 + v z.2 ∈ N} = 0 := by
+    rw [Measure.prod_apply_symm hSm]
+    have hsec : ∀ t : T, μ ((fun x => (x, t)) ⁻¹' {z : V × T | z.1 + v z.2 ∈ N}) = 0 := by
+      intro t
+      change μ ((fun x => x + v t) ⁻¹' N) = 0
+      rw [measure_preimage_add_right]
+      exact hN0
+    exact (lintegral_congr hsec).trans lintegral_zero
+  refine measure_mono_null (fun z hz => ?_) hS0
+  exact subset_toMeasurable μ _ hz
+
+open MeasureTheory in
+/-- **Blueprint `new:measurability`**: in iterated form, for almost every `x`, almost every
+parameter `t` sees equal values. -/
+theorem ae_ae_comp_add_eq {V T E : Type*} [MeasurableSpace V] [AddGroup V] [MeasurableAdd₂ V]
+    [MeasurableNeg V] {μ : Measure V} [μ.IsAddRightInvariant] [SFinite μ]
+    [MeasurableSpace T] {ν : Measure T} [SFinite ν] {v : T → V} (hv : Measurable v)
+    {f g : V → E} (hfg : f =ᵐ[μ] g) :
+    ∀ᵐ x ∂μ, ∀ᵐ t ∂ν, f (x + v t) = g (x + v t) :=
+  Measure.ae_ae_of_ae_prod (ae_prod_comp_add_eq hv hfg)
+
+end
+
+section
+open Filter Topology MeasureTheory
+
+/-- **Blueprint `new:kernel-facts`**: the kernel profile `k = η̌` is even. -/
+theorem etaKer_even (w : ℝ) : etaKer (-w) = etaKer w := by
+  rw [etaKer_eq_fourierInv, Real.fourierInv_eq, Real.fourierInv_eq,
+    ← integral_neg_eq_self (fun v : ℝ => 𝐞 ⟪v, w⟫ • ((eta v : ℝ) : ℂ))]
+  refine integral_congr_ae (.of_forall fun v => ?_)
+  simp only [eta_even, inner_neg_left, inner_neg_right]
+
+/-- **Blueprint `new:kernel-facts`**: the kernel profile `k = η̌` is real. -/
+theorem etaKer_conj (w : ℝ) : conj (etaKer w) = etaKer w := by
+  rw [etaKer_hermitian, etaKer_even]
+
+/-- **Blueprint `new:kernel-facts`**: `∫ k = η(0) = 1`. -/
+theorem integral_etaKer : ∫ u : ℝ, etaKer u = 1 := by
+  have h := congrFun fourier_etaKer 0
+  rw [Real.fourier_eq] at h
+  simp only [inner_zero_right, neg_zero, AddChar.map_zero_eq_one, one_smul] at h
+  rw [h, eta_eq_one (by norm_num)]
+  simp
+
+/-- The derivative `k'` of the kernel profile. -/
+noncomputable def etaKerDeriv : ℝ → ℂ := deriv etaKer
+
+theorem etaKerDeriv_eq : etaKerDeriv = SchwartzMap.derivCLM ℝ ℂ etaKerS := by
+  funext x
+  rw [SchwartzMap.derivCLM_apply]
+  rfl
+
+theorem etaKerDeriv_integrable : Integrable etaKerDeriv := by
+  rw [etaKerDeriv_eq]; exact (SchwartzMap.derivCLM ℝ ℂ etaKerS).integrable
+
+theorem etaKerDeriv_continuous : Continuous etaKerDeriv := by
+  rw [etaKerDeriv_eq]; exact (SchwartzMap.derivCLM ℝ ℂ etaKerS).continuous
+
+theorem hasDerivAt_etaKer (x : ℝ) : HasDerivAt etaKer (etaKerDeriv x) x :=
+  (etaKerS.differentiableAt).hasDerivAt
+
+/-- **Blueprint `new:kernel-facts`**: the constant `B_1 = ‖k'‖_1`, finite. -/
+noncomputable def etaKerDerivL1 : ℝ := ∫ u : ℝ, ‖etaKerDeriv u‖
+
+theorem etaKerDerivL1_nonneg : 0 ≤ etaKerDerivL1 :=
+  integral_nonneg fun _ => norm_nonneg _
+
+/-- The derivative of the scaled kernel: `K_R' (u) = R² k'(R u)`. -/
+theorem hasDerivAt_projKernel (R u : ℝ) :
+    HasDerivAt (projKernel R) ((R : ℂ) * ((R : ℂ) * etaKerDeriv (R * u))) u := by
+  have h1 : HasDerivAt (fun u : ℝ => R * u) R u := by
+    simpa using (hasDerivAt_id u).const_mul R
+  have h2 := (hasDerivAt_etaKer (R * u)).scomp u h1
+  have h3 := h2.const_mul (R : ℂ)
+  have h4 : HasDerivAt (fun y => (R : ℂ) * etaKer (R * y))
+      ((R : ℂ) * ((R : ℂ) * etaKerDeriv (R * u))) u := by
+    simpa [Function.comp_def, Complex.real_smul] using h3
+  exact h4
+
+/-- **Blueprint `new:kernel-facts`**: `‖K_R'‖_1 = R B_1`. -/
+theorem integral_norm_deriv_projKernel {R : ℝ} (hR : 0 < R) :
+    ∫ u : ℝ, ‖(R : ℂ) * ((R : ℂ) * etaKerDeriv (R * u))‖ = R * etaKerDerivL1 := by
+  have hnorm : ∀ u : ℝ, ‖(R : ℂ) * ((R : ℂ) * etaKerDeriv (R * u))‖
+      = R * (R * ‖etaKerDeriv (R * u)‖) := fun u => by
+    rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
+  simp_rw [hnorm]
+  rw [integral_const_mul, integral_const_mul,
+    Measure.integral_comp_mul_left (fun v => ‖etaKerDeriv v‖) R,
+    abs_of_pos (inv_pos.mpr hR), smul_eq_mul]
+  unfold etaKerDerivL1
+  field_simp
+
+/-- **Blueprint `new:kernel-facts`**: the tail bound, in the blueprint's form
+`∫_{|u| ≥ a} |K_R| · (R a)^M ≤ B_M^tail`, with the moment constant of `Auto.etaKerMom`. -/
+theorem integral_projKernel_tail_le' {R a : ℝ} (hR : 0 < R) (ha : 0 ≤ a) (M : ℕ) :
+    (∫ u in {u : ℝ | a ≤ |u|}, ‖projKernel R u‖) * (R * a) ^ M ≤ etaKerMom M := by
+  refine le_trans ?_ (integral_projKernel_tail_le hR ha M)
+  refine mul_le_mul_of_nonneg_left ?_ (setIntegral_nonneg
+    (measurableSet_le measurable_const continuous_abs.measurable) fun _ _ => norm_nonneg _)
+  exact pow_le_pow_left₀ (by positivity) (by linarith) M
+
+/-- The `L¹` modulus of continuity of the kernel:
+`∫ |K_R(u + v) - K_R(u)| du ≤ |v| ‖K_R'‖_1`. -/
+theorem lintegral_projKernel_sub_le {R : ℝ} (hR : 0 < R) (v : ℝ) :
+    ∫⁻ u : ℝ, ‖projKernel R (u + v) - projKernel R u‖ₑ
+      ≤ ENNReal.ofReal (|v| * (R * etaKerDerivL1)) := by
+  set K' : ℝ → ℂ := fun u => (R : ℂ) * ((R : ℂ) * etaKerDeriv (R * u)) with hK'
+  have hK'c : Continuous K' := continuous_const.mul (continuous_const.mul
+    (etaKerDeriv_continuous.comp (continuous_const.mul continuous_id)))
+  have hK'i : Integrable K' := by
+    exact ((etaKerDeriv_integrable.comp_mul_left' hR.ne').const_mul (R : ℂ)).const_mul (R : ℂ)
+  have hFTC : ∀ u, projKernel R (u + v) - projKernel R u = ∫ s in (0 : ℝ)..v, K' (u + s) := by
+    intro u
+    have := intervalIntegral.integral_eq_sub_of_hasDerivAt
+      (f := fun s => projKernel R (u + s)) (f' := fun s => K' (u + s)) (a := 0) (b := v)
+      (fun s _ => by
+        have := (hasDerivAt_projKernel R (u + s)).scomp s ((hasDerivAt_id s).const_add u)
+        simpa [hK', Function.comp_def] using this)
+      ((hK'c.comp (continuous_const.add continuous_id)).intervalIntegrable _ _)
+    simpa using this.symm
+  calc ∫⁻ u : ℝ, ‖projKernel R (u + v) - projKernel R u‖ₑ
+      ≤ ∫⁻ u : ℝ, ∫⁻ s in Set.uIoc 0 v, ‖K' (u + s)‖ₑ := by
+        refine lintegral_mono fun u => ?_
+        rw [hFTC u]
+        have he : ‖∫ s in (0 : ℝ)..v, K' (u + s)‖ₑ = ‖∫ s in Set.uIoc 0 v, K' (u + s)‖ₑ := by
+          simp only [← ofReal_norm]
+          rw [intervalIntegral.norm_integral_eq_norm_integral_uIoc]
+        rw [he]
+        exact enorm_integral_le_lintegral_enorm _
+    _ = ∫⁻ s in Set.uIoc 0 v, ∫⁻ u : ℝ, ‖K' (u + s)‖ₑ := by
+        rw [lintegral_lintegral_swap]
+        exact (hK'c.comp (continuous_fst.add continuous_snd)).enorm.aemeasurable
+    _ = ∫⁻ s in Set.uIoc 0 v, ENNReal.ofReal (R * etaKerDerivL1) := by
+        refine setLIntegral_congr_fun measurableSet_uIoc fun s _ => ?_
+        rw [lintegral_add_right_eq_self (fun u => ‖K' u‖ₑ) s,
+          ← ofReal_integral_norm_eq_lintegral_enorm hK'i, integral_norm_deriv_projKernel hR]
+    _ = ENNReal.ofReal (|v| * (R * etaKerDerivL1)) := by
+        rw [setLIntegral_const, Real.volume_uIoc, sub_zero, mul_comm,
+          ← ENNReal.ofReal_mul (abs_nonneg _)]
+
+/-- The convolution integrand of `P_R^{(j)}` is integrable for bounded measurable inputs. -/
+theorem integrable_projKernel_mul_of_bdd {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) {C : ℝ} (hC : ∀ x, ‖f x‖ ≤ C) (x : E3) (v : ℝ) :
+    Integrable fun u : ℝ => projKernel R (u + v) * f (x - u • basisVec j) := by
+  refine ((projKernel_integrable hR).comp_add_right v).mul_bdd (c := C) ?_
+    (.of_forall fun u => hC _)
+  exact (hf.comp (measurable_const.sub (measurable_id.smul measurable_const))).aestronglyMeasurable
+
+/-- **Blueprint `new:kernel-facts`, the sup bound**: `|P_R f| ≤ B_0` when `|f| ≤ 1`. -/
+theorem norm_P_le_of_norm_le_one {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
+    (hf1 : ∀ x, ‖f x‖ ≤ 1) (y : E3) : ‖P R j f y‖ ≤ etaKerL1 := by
+  simpa using norm_P_le hR j hf1 y
+
+/-- **Blueprint `new:kernel-facts`, the Lipschitz bound**: for a measurable `f` with `|f| ≤ 1`,
+`|P_R f(x + v e_j) - P_R f(x)| ≤ R B_1 |v|`.  No differentiability of `f` is used. -/
+theorem norm_P_add_sub_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f)
+    (hf1 : ∀ x, ‖f x‖ ≤ 1) (x : E3) (v : ℝ) :
+    ‖P R j f (x + v • basisVec j) - P R j f x‖ ≤ R * etaKerDerivL1 * |v| := by
+  have e1 : P R j f (x + v • basisVec j)
+      = ∫ w : ℝ, projKernel R (w + v) * f (x - w • basisVec j) := by
+    unfold P
+    rw [← integral_add_right_eq_self
+      (fun u => projKernel R u * f (x + v • basisVec j - u • basisVec j)) v]
+    refine integral_congr_ae (.of_forall fun w => ?_)
+    simp only [add_smul]
+    congr 2
+    abel
+  have hi1 := integrable_projKernel_mul_of_bdd hR j hf hf1 x v
+  have hi2 := integrable_projKernel_mul_of_bdd hR j hf hf1 x 0
+  simp only [add_zero] at hi2
+  rw [e1, P, ← integral_sub hi1 hi2]
+  have hbd : ‖∫ w : ℝ, (projKernel R (w + v) * f (x - w • basisVec j)
+      - projKernel R w * f (x - w • basisVec j))‖ₑ
+      ≤ ENNReal.ofReal (|v| * (R * etaKerDerivL1)) := by
+    refine (enorm_integral_le_lintegral_enorm _).trans ((lintegral_mono fun w => ?_).trans
+      (lintegral_projKernel_sub_le hR v))
+    rw [← sub_mul, enorm_mul]
+    calc ‖projKernel R (w + v) - projKernel R w‖ₑ * ‖f (x - w • basisVec j)‖ₑ
+        ≤ ‖projKernel R (w + v) - projKernel R w‖ₑ * 1 := by
+          gcongr
+          rw [← ofReal_norm, ENNReal.ofReal_le_one]
+          exact hf1 _
+      _ = _ := mul_one _
+  rw [← ofReal_norm, ENNReal.ofReal_le_ofReal_iff
+    (mul_nonneg (abs_nonneg _) (mul_nonneg hR.le etaKerDerivL1_nonneg))] at hbd
+  linarith
+
+end
+
+section
+open Filter Topology MeasureTheory
+
+/-- Joint integrability of the convolution integrand for a measurable integrable input. -/
+theorem integrable_kernel_prod_of_measurable {k : ℝ → ℂ} (hk : Integrable k)
+    (hkm : Measurable k) {f : E3 → ℂ} (hf : Measurable f) (hfi : Integrable f) (j : Fin 3) :
+    Integrable (Function.uncurry fun (x : E3) (u : ℝ) => k u * f (x - u • basisVec j))
+      (volume.prod volume) := by
+  have hmeas : Measurable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      k u * f (x - u • basisVec j)) :=
+    (hkm.comp measurable_snd).mul
+      (hf.comp (measurable_fst.sub (measurable_snd.smul measurable_const)))
+  refine ⟨hmeas.aestronglyMeasurable, ?_⟩
+  rw [hasFiniteIntegral_iff_enorm]
+  have hinner : ∀ u : ℝ, (∫⁻ x : E3, ‖k u‖ₑ * ‖f (x - u • basisVec j)‖ₑ)
+      = ‖k u‖ₑ * ∫⁻ x : E3, ‖f x‖ₑ := by
+    intro u
+    rw [lintegral_const_mul' _ _ (by simp)]
+    congr 1
+    have h := (measurePreserving_add_right volume (-(u • basisVec j))).lintegral_comp
+      hf.enorm
+    simpa [sub_eq_add_neg] using h
+  have hEq : (∫⁻ z : E3 × ℝ, ‖Function.uncurry
+        (fun (x : E3) (u : ℝ) => k u * f (x - u • basisVec j)) z‖ₑ ∂(volume.prod volume))
+      = (∫⁻ u : ℝ, ‖k u‖ₑ) * ∫⁻ x : E3, ‖f x‖ₑ := by
+    rw [lintegral_prod _ hmeas.enorm.aemeasurable]
+    simp only [Function.uncurry_apply_pair, enorm_mul]
+    have hm2 : AEMeasurable (Function.uncurry
+        fun (x : E3) (u : ℝ) => ‖k u‖ₑ * ‖f (x - u • basisVec j)‖ₑ) (volume.prod volume) := by
+      have hrw : (Function.uncurry fun (x : E3) (u : ℝ) => ‖k u‖ₑ * ‖f (x - u • basisVec j)‖ₑ)
+          = fun z => ‖Function.uncurry
+            (fun (x : E3) (u : ℝ) => k u * f (x - u • basisVec j)) z‖ₑ := by
+        funext z; simp [Function.uncurry, enorm_mul]
+      rw [hrw]
+      exact hmeas.enorm.aemeasurable
+    rw [lintegral_lintegral_swap hm2]
+    simp only [hinner]
+    rw [lintegral_mul_const' _ _ hfi.hasFiniteIntegral.ne]
+  rw [hEq]
+  exact ENNReal.mul_lt_top hk.hasFiniteIntegral hfi.hasFiniteIntegral
+
+/-- The projection of a measurable integrable function is integrable. -/
+theorem integrable_P_of_measurable {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) : Integrable (P R j f) :=
+  (integrable_kernel_prod_of_measurable (projKernel_integrable hR)
+    (projKernel_continuous R).measurable hf hfi j).integral_prod_left
+
+/-- **Blueprint `new:multiplier-facts`**: for measurable `f ∈ L¹`,
+`𝓕 (P_R^{(j)} f) ξ = η(ξ_j / R) 𝓕 f ξ`. -/
+theorem fourier_P_of_measurable {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) (ξ : E3) :
+    𝓕 (P R j f) ξ = (eta (ξ j / R) : ℂ) * 𝓕 f ξ := by
+  have hkc : Continuous (projKernel R) := projKernel_continuous R
+  have hki : Integrable (projKernel R) := projKernel_integrable hR
+  have hbase : Measurable fun z : E3 × ℝ => projKernel R z.2 * f (z.1 - z.2 • basisVec j) :=
+    (hkc.measurable.comp measurable_snd).mul
+      (hf.comp (measurable_fst.sub (measurable_snd.smul measurable_const)))
+  have hphase : Continuous fun z : E3 × ℝ => (𝐞 (-(inner ℝ z.1 ξ)) : Circle) :=
+    Real.continuous_fourierChar.comp (by fun_prop)
+  have hmeas : Measurable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j))) := by
+    have hrw : (Function.uncurry fun (x : E3) (u : ℝ) =>
+        (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j)))
+        = fun z : E3 × ℝ => ((𝐞 (-(inner ℝ z.1 ξ)) : Circle) : ℂ)
+          * (projKernel R z.2 * f (z.1 - z.2 • basisVec j)) := by
+      funext z; simp [Function.uncurry, Circle.smul_def]
+    rw [hrw]
+    exact (continuous_subtype_val.comp hphase).measurable.mul hbase
+  have hswapint : Integrable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j)))
+      (volume.prod volume) := by
+    refine ⟨hmeas.aestronglyMeasurable,
+      (integrable_kernel_prod_of_measurable hki hkc.measurable hf hfi j).hasFiniteIntegral.congr'
+        ?_⟩
+    filter_upwards with z
+    simp [Function.uncurry]
+  calc 𝓕 (P R j f) ξ
+      = ∫ x : E3, ∫ u : ℝ,
+          (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j)) := by
+        rw [Real.fourier_eq]
+        refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
+        change (𝐞 (-(inner ℝ x ξ)) : Circle) • P R j f x
+            = ∫ u : ℝ, (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j))
+        simp only [Circle.smul_def, smul_eq_mul]
+        rw [integral_const_mul]
+        rfl
+    _ = ∫ u : ℝ, ∫ x : E3,
+          (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j)) :=
+        integral_integral_swap hswapint
+    _ = ∫ u : ℝ, projKernel R u
+          * ((𝐞 (-(inner ℝ (u • basisVec j) ξ)) : Circle) • 𝓕 f ξ) := by
+        refine integral_congr_ae (Filter.Eventually.of_forall fun u => ?_)
+        have hpull : ∀ x : E3,
+            (𝐞 (-(inner ℝ x ξ)) : Circle) • (projKernel R u * f (x - u • basisVec j))
+              = projKernel R u
+                * ((𝐞 (-(inner ℝ x ξ)) : Circle) • f (x - u • basisVec j)) := by
+          intro x
+          rw [Circle.smul_def, Circle.smul_def]
+          ring
+        simp only [hpull]
+        rw [integral_const_mul]
+        congr 1
+        rw [← fourier_comp_sub f (u • basisVec j) ξ, Real.fourier_eq]
+    _ = (∫ u : ℝ, (𝐞 (-(inner ℝ u (ξ j))) : Circle) • projKernel R u) * 𝓕 f ξ := by
+        rw [← integral_mul_const]
+        refine integral_congr_ae (Filter.Eventually.of_forall fun u => ?_)
+        simp only [inner_smul_basisVec, inner_real_eq_mul, Circle.smul_def]
+        ring
+    _ = (eta (ξ j / R) : ℂ) * 𝓕 f ξ := by
+        rw [← Real.fourier_eq, fourier_projKernel hR]
+
+/-- `P_R^{(j)}` maps measurable functions to measurable functions (a parametric integral). -/
+theorem measurable_P {R : ℝ} (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f) :
+    Measurable (P R j f) := by
+  have hm : Measurable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      projKernel R u * f (x - u • basisVec j)) :=
+    ((projKernel_continuous R).measurable.comp measurable_snd).mul
+      (hf.comp (measurable_fst.sub (measurable_snd.smul measurable_const)))
+  exact hm.stronglyMeasurable.integral_prod_right'.measurable
+
+/-- `P_R^{(j)}` maps `L²` to `L²`, with the crude bound `B_0`. -/
+theorem memLp_two_P {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f)
+    (hf2 : MemLp f 2) : MemLp (P R j f) 2 := by
+  refine ⟨(measurable_P j hf).aestronglyMeasurable, ?_⟩
+  have h := eLpNorm_integral_smul_translate_le (μ := volume) (p := 2) (by norm_num) (by simp)
+    (projKernel_continuous R).measurable hf (basisVec j)
+  refine h.trans_lt (ENNReal.mul_lt_top ?_ hf2.eLpNorm_lt_top)
+  exact (memLp_one_iff_integrable.mpr (projKernel_integrable hR)).eLpNorm_lt_top
+
+/-- **Blueprint `new:multiplier-facts`, the `L²` contraction**: `‖P_R f‖_2 ≤ ‖f‖_2` for measurable
+`f ∈ L¹ ∩ L²`, by Plancherel and `0 ≤ η ≤ 1`. -/
+theorem eLpNorm_two_P_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f)
+    (hfi : Integrable f) (hf2 : MemLp f 2) :
+    eLpNorm (P R j f) 2 volume ≤ eLpNorm f 2 volume := by
+  rw [← eLpNorm_two_fourier (integrable_P_of_measurable hR j hf hfi) (memLp_two_P hR j hf hf2),
+    ← eLpNorm_two_fourier hfi hf2]
+  refine eLpNorm_mono fun ξ => ?_
+  rw [fourier_P_of_measurable hR j hf hfi, norm_mul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_nonneg (eta_nonneg _)]
+  exact mul_le_of_le_one_left (norm_nonneg _) (eta_le_one _)
+
+end
+
+section
+open Filter Topology MeasureTheory
+
+/-- **Blueprint `new:multiplier-facts`, self-adjointness**: for measurable `f, g ∈ L¹ ∩ L²`,
+`⟨P_R f, g⟩ = ⟨f, P_R g⟩`, with `⟨u, w⟩ = ∫ u conj w`. -/
+theorem integral_P_mul_conj_eq {R : ℝ} (hR : 0 < R) (j : Fin 3) {f g : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) (hf2 : MemLp f 2)
+    (hg : Measurable g) (hgi : Integrable g) (hg2 : MemLp g 2) :
+    ∫ x, P R j f x * conj (g x) = ∫ x, f x * conj (P R j g x) := by
+  rw [← integral_mul_conj_fourier (integrable_P_of_measurable hR j hf hfi)
+      (memLp_two_P hR j hf hf2) hgi hg2,
+    ← integral_mul_conj_fourier hfi hf2 (integrable_P_of_measurable hR j hg hgi)
+      (memLp_two_P hR j hg hg2)]
+  refine integral_congr_ae (.of_forall fun ξ => ?_)
+  simp only [fourier_P_of_measurable hR j hf hfi, fourier_P_of_measurable hR j hg hgi, map_mul,
+    Complex.conj_ofReal]
+  ring
+
+/-- **Blueprint `new:multiplier-facts`, the energy identity**: for measurable `f ∈ L¹ ∩ L²`,
+`⟨f, P_R f⟩ = ∫ η(ξ_j / R) |𝓕 f ξ|²`. -/
+theorem integral_mul_conj_P_eq {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) (hf2 : MemLp f 2) :
+    ∫ x, f x * conj (P R j f x) = ((∫ ξ, eta (ξ j / R) * ‖𝓕 f ξ‖ ^ 2 : ℝ) : ℂ) := by
+  rw [← integral_mul_conj_fourier hfi hf2 (integrable_P_of_measurable hR j hf hfi)
+      (memLp_two_P hR j hf hf2), ← integral_complex_ofReal]
+  refine integral_congr_ae (.of_forall fun ξ => ?_)
+  simp only
+  rw [fourier_P_of_measurable hR j hf hfi, map_mul, Complex.conj_ofReal, mul_left_comm,
+    Complex.mul_conj, Complex.normSq_eq_norm_sq]
+  push_cast
+  ring
+
+/-- **Blueprint `new:multiplier-facts`, positivity**: the energy `∫ η(ξ_j / R) |𝓕 f ξ|²` is
+nonnegative. -/
+theorem integral_eta_mul_norm_sq_nonneg (R : ℝ) (j : Fin 3) (f : E3 → ℂ) :
+    0 ≤ ∫ ξ, eta (ξ j / R) * ‖𝓕 f ξ‖ ^ 2 :=
+  integral_nonneg fun _ => mul_nonneg (eta_nonneg _) (sq_nonneg _)
+
+/-- The cutoff at `R` equals one on the support of the cutoff at `L`, when `2 L ≤ R`. -/
+theorem eta_div_eq_one_of_eta_ne_zero {L R t : ℝ} (hL : 0 < L) (hLR : 2 * L ≤ R)
+    (h : eta (t / L) ≠ 0) : eta (t / R) = 1 := by
+  have h1 : |t / L| < 1 / 2 := by
+    by_contra hc
+    exact h (eta_eq_zero (not_lt.mp hc))
+  have hR : 0 < R := by linarith
+  apply eta_eq_one
+  rw [abs_div, abs_of_pos hR] at *
+  rw [abs_of_pos hL] at h1
+  rw [div_lt_iff₀ hL] at h1
+  rw [div_le_iff₀ hR]
+  nlinarith [abs_nonneg t]
+
+/-- **Blueprint `new:multiplier-facts`, monotonicity of the energy**: for `L' ≥ 2 L`,
+`η(ξ_j / L) ≤ η(ξ_j / L')` pointwise, hence `⟨f, P_L f⟩ ≤ ⟨f, P_{L'} f⟩`. -/
+theorem eta_div_le_eta_div {L L' t : ℝ} (hL : 0 < L) (hLL : 2 * L ≤ L') :
+    eta (t / L) ≤ eta (t / L') := by
+  by_cases h : eta (t / L) = 0
+  · rw [h]; exact eta_nonneg _
+  · rw [eta_div_eq_one_of_eta_ne_zero hL hLL h]; exact eta_le_one _
+
+theorem integral_eta_mul_norm_sq_mono {L L' : ℝ} (hL : 0 < L) (hLL : 2 * L ≤ L') (j : Fin 3)
+    {f : E3 → ℂ} (hfi : Integrable f) (hf2 : MemLp f 2) :
+    ∫ ξ, eta (ξ j / L) * ‖𝓕 f ξ‖ ^ 2 ≤ ∫ ξ, eta (ξ j / L') * ‖𝓕 f ξ‖ ^ 2 := by
+  have hF2 : Integrable fun ξ => ‖𝓕 f ξ‖ ^ 2 := (memLp_two_fourier hfi hf2).integrable_norm_pow
+    (by norm_num)
+  have hm : ∀ L : ℝ, Integrable fun ξ : E3 => eta (ξ j / L) * ‖𝓕 f ξ‖ ^ 2 := fun L =>
+    hF2.bdd_mul (c := 1) ((eta_continuous.comp (show Continuous fun ξ : E3 => ξ j / L by
+      fun_prop)).aestronglyMeasurable)
+      (.of_forall fun ξ => by
+        rw [Real.norm_eq_abs, abs_of_nonneg (eta_nonneg _)]; exact eta_le_one _)
+  exact integral_mono (hm L) (hm L') fun ξ =>
+    mul_le_mul_of_nonneg_right (eta_div_le_eta_div hL hLL) (sq_nonneg _)
+
+/-- **Blueprint `new:multiplier-facts`, annihilation**: for `L ≤ R / 2` and measurable
+`f ∈ L¹ ∩ L²`, `P_L^{(j)} (f - P_R^{(j)} f) = 0` almost everywhere. -/
+theorem P_sub_P_ae_eq_zero {L R : ℝ} (hL : 0 < L) (hLR : 2 * L ≤ R) (j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) (hf2 : MemLp f 2) :
+    P L j (fun x => f x - P R j f x) =ᵐ[volume] 0 := by
+  have hR : 0 < R := by linarith
+  set g : E3 → ℂ := fun x => f x - P R j f x with hg
+  have hgm : Measurable g := hf.sub (measurable_P j hf)
+  have hgi : Integrable g := hfi.sub (integrable_P_of_measurable hR j hf hfi)
+  have hg2 : MemLp g 2 := hf2.sub (memLp_two_P hR j hf hf2)
+  have hFg : ∀ ξ, 𝓕 g ξ = (1 - (eta (ξ j / R) : ℂ)) * 𝓕 f ξ := fun ξ => by
+    have hPi := integrable_P_of_measurable hR j hf hfi
+    have hsub : 𝓕 g ξ = 𝓕 f ξ - 𝓕 (P R j f) ξ := by
+      rw [Real.fourier_eq, Real.fourier_eq, Real.fourier_eq, ← integral_sub
+        ((Real.fourierIntegral_convergent_iff ξ).2 hfi)
+        ((Real.fourierIntegral_convergent_iff ξ).2 hPi)]
+      refine integral_congr_ae (.of_forall fun x => ?_)
+      simp [hg, smul_sub]
+    rw [hsub, fourier_P_of_measurable hR j hf hfi]
+    ring
+  have hzero : 𝓕 (P L j g) = 0 := by
+    funext ξ
+    rw [fourier_P_of_measurable hL j hgm hgi, hFg, Pi.zero_apply]
+    by_cases h : eta (ξ j / L) = 0
+    · simp [h]
+    · simp [eta_div_eq_one_of_eta_ne_zero hL hLR h]
+  have h2 := eLpNorm_two_fourier (integrable_P_of_measurable hL j hgm hgi)
+    (memLp_two_P hL j hgm hg2)
+  rw [hzero] at h2
+  have h0 : eLpNorm (P L j g) 2 volume = 0 := by
+    rw [← h2]; simp
+  exact (eLpNorm_eq_zero_iff (measurable_P j hgm).aestronglyMeasurable (by norm_num)).mp h0
+
+end
+
+section
+open Filter Topology MeasureTheory
+
+theorem basisVec_apply_self (i : Fin 3) : basisVec i i = 1 := by
+  simp [basisVec]
+
+theorem basisVec_apply_ne {i k : Fin 3} (h : k ≠ i) : basisVec i k = 0 := by
+  simp [basisVec, h]
+
+/-- The linear map `(x, v) ↦ (x + (v - x_i) e_i, x_i)` exchanging the `i`-th coordinate of a
+point of `E3` with a scalar parameter. -/
+noncomputable def secSwapLin (i : Fin 3) : (E3 × ℝ) →ₗ[ℝ] (E3 × ℝ) :=
+  LinearMap.prod
+    (LinearMap.fst ℝ E3 ℝ + (LinearMap.snd ℝ E3 ℝ
+      - (EuclideanSpace.proj i : E3 →L[ℝ] ℝ).toLinearMap ∘ₗ LinearMap.fst ℝ E3 ℝ).smulRight
+        (basisVec i))
+    ((EuclideanSpace.proj i : E3 →L[ℝ] ℝ).toLinearMap ∘ₗ LinearMap.fst ℝ E3 ℝ)
+
+theorem secSwapLin_apply (i : Fin 3) (p : E3 × ℝ) :
+    secSwapLin i p = (p.1 + (p.2 - p.1 i) • basisVec i, p.1 i) := by
+  simp [secSwapLin]
+
+theorem secSwapLin_involutive (i : Fin 3) (p : E3 × ℝ) : secSwapLin i (secSwapLin i p) = p := by
+  rcases p with ⟨x, v⟩
+  simp only [secSwapLin_apply]
+  have h1 : (x + (v - x i) • basisVec i) i = v := by
+    simp [basisVec_apply_self]
+  rw [h1]
+  refine Prod.ext ?_ rfl
+  simp only
+  rw [add_assoc, ← add_smul]
+  simp
+
+/-- The coordinate exchange as a linear equivalence (it is an involution). -/
+noncomputable def secSwap (i : Fin 3) : (E3 × ℝ) ≃ₗ[ℝ] (E3 × ℝ) :=
+  LinearEquiv.ofInvolutive (secSwapLin i) (secSwapLin_involutive i)
+
+theorem secSwap_apply (i : Fin 3) (p : E3 × ℝ) :
+    secSwap i p = (p.1 + (p.2 - p.1 i) • basisVec i, p.1 i) := secSwapLin_apply i p
+
+/-- The coordinate exchange preserves Lebesgue measure on `E3 × ℝ`. -/
+theorem measurePreserving_secSwap (i : Fin 3) :
+    MeasurePreserving (secSwap i) (volume : Measure (E3 × ℝ)) volume := by
+  have hcomp : secSwapLin i ∘ₗ secSwapLin i = LinearMap.id := by
+    exact LinearMap.ext fun p => secSwapLin_involutive i p
+  have hdet : LinearMap.det (secSwapLin i) * LinearMap.det (secSwapLin i) = 1 := by
+    rw [← LinearMap.det_comp, hcomp, LinearMap.det_id]
+  have hd0 : LinearMap.det (secSwapLin i) ≠ 0 := by
+    intro h; rw [h, zero_mul] at hdet; exact zero_ne_one hdet
+  have habs : |(LinearMap.det (secSwapLin i))⁻¹| = 1 := by
+    rw [abs_inv]
+    have : |LinearMap.det (secSwapLin i)| ^ 2 = 1 := by rw [sq_abs, sq, hdet]
+    have h0 : 0 ≤ |LinearMap.det (secSwapLin i)| := abs_nonneg _
+    have : |LinearMap.det (secSwapLin i)| = 1 := by nlinarith
+    rw [this, inv_one]
+  haveI : (volume : Measure (E3 × ℝ)).IsAddHaarMeasure := by
+    rw [Measure.volume_eq_prod]; infer_instance
+  refine ⟨(secSwapLin i).continuous_of_finiteDimensional.measurable, ?_⟩
+  change Measure.map (secSwapLin i) volume = volume
+  rw [Measure.map_linearMap_addHaar_eq_smul_addHaar _ hd0, habs, ENNReal.ofReal_one, one_smul]
+
+/-- **Slicing by Fubini**: `∫_v ∫_x 1_{[0,1]}(x_i) h(x + (v - x_i) e_i) dx dv = ∫ h`. -/
+theorem integral_integral_sec (i : Fin 3) {h : E3 → ℂ} (hh : Integrable h) :
+    ∫ v : ℝ, ∫ x : E3, (Set.Icc (0 : ℝ) 1).indicator (fun _ => (1 : ℂ)) (x i)
+      * h (x + (v - x i) • basisVec i) = ∫ x, h x := by
+  set G : E3 × ℝ → ℂ := fun z => h z.1 * (Set.Icc (0 : ℝ) 1).indicator (fun _ => (1 : ℂ)) z.2
+  have hind : Integrable ((Set.Icc (0 : ℝ) 1).indicator fun _ => (1 : ℂ)) :=
+    (continuous_const.integrableOn_Icc).integrable_indicator measurableSet_Icc
+  have hG : Integrable G (volume.prod volume) := hh.mul_prod hind
+  have hmp := measurePreserving_secSwap i
+  have hemb : MeasurableEmbedding (secSwap i) :=
+    (secSwap i).toContinuousLinearEquiv.toHomeomorph.measurableEmbedding
+  have hGc : Integrable (G ∘ secSwap i) (volume.prod volume) :=
+    (hmp.integrable_comp_emb hemb).mpr hG
+  have key : ∫ z, (G ∘ secSwap i) z ∂(volume.prod volume) = ∫ z, G z ∂(volume.prod volume) :=
+    hmp.integral_comp hemb G
+  rw [integral_prod_symm _ hGc, integral_prod_mul, integral_indicator measurableSet_Icc] at key
+  simp only [setIntegral_const, Real.volume_real_Icc_of_le zero_le_one, sub_zero, one_smul,
+    mul_one] at key
+  rw [← key]
+  refine integral_congr_ae (.of_forall fun v => integral_congr_ae (.of_forall fun x => ?_))
+  simp [G, secSwap_apply, mul_comm]
+
+/-- The section of `f` at `x_i = v`, padded to a function on `E3` by the unit interval in the
+`i`-th coordinate: `x ↦ 1_{[0,1]}(x_i) f(x + (v - x_i) e_i)`. -/
+noncomputable def padSec (i : Fin 3) (v : ℝ) (f : E3 → ℂ) (x : E3) : ℂ :=
+  (Set.Icc (0 : ℝ) 1).indicator (fun _ => (1 : ℂ)) (x i) * f (x + (v - x i) • basisVec i)
+
+theorem measurable_padSec (i : Fin 3) (v : ℝ) {f : E3 → ℂ} (hf : Measurable f) :
+    Measurable (padSec i v f) := by
+  have hi : Measurable fun x : E3 => x i := (EuclideanSpace.proj i).continuous.measurable
+  exact ((measurable_const.indicator measurableSet_Icc).comp hi).mul
+    (hf.comp (measurable_id.add ((measurable_const.sub hi).smul measurable_const)))
+
+/-- `P_R^{(j)}` commutes with taking padded sections in a coordinate `i ≠ j`. -/
+theorem P_padSec {R : ℝ} {i j : Fin 3} (hij : i ≠ j) (v : ℝ) (f : E3 → ℂ) :
+    P R j (padSec i v f) = padSec i v (P R j f) := by
+  funext x
+  have hxi : ∀ u : ℝ, (x - u • basisVec j) i = x i := fun u => by
+    simp [basisVec_apply_ne hij]
+  unfold P padSec
+  simp only [hxi]
+  rw [← integral_const_mul]
+  refine integral_congr_ae (.of_forall fun u => ?_)
+  have : x - u • basisVec j + (v - x i) • basisVec i
+      = x + (v - x i) • basisVec i - u • basisVec j := by abel
+  simp only
+  rw [this]
+  ring
+
+/-- **Blueprint `new:multiplier-facts`, slicing**: for a coordinate `i ≠ j` and measurable
+`f ∈ L¹ ∩ L²`, the energy is the integral over `v` of the energies of the padded sections at
+`x_i = v`: `⟨f, P_R f⟩ = ∫ ⟨f_v, P_R f_v⟩ dv`. -/
+theorem integral_mul_conj_P_slice {R : ℝ} (hR : 0 < R) {i j : Fin 3} (hij : i ≠ j)
+    {f : E3 → ℂ} (hf : Measurable f) (hf2 : MemLp f 2) :
+    ∫ x, f x * conj (P R j f x)
+      = ∫ v : ℝ, ∫ x, padSec i v f x * conj (P R j (padSec i v f) x) := by
+  have hh : Integrable fun x => f x * conj (P R j f x) := by
+    have h2 := (memLp_two_P hR j hf hf2).star
+    exact hf2.integrable_mul h2
+  rw [← integral_integral_sec i hh]
+  refine integral_congr_ae (.of_forall fun v => integral_congr_ae (.of_forall fun x => ?_))
+  rw [P_padSec hij]
+  simp only [padSec, map_mul]
+  by_cases hx : x i ∈ Set.Icc (0 : ℝ) 1
+  · simp [Set.indicator_of_mem hx]
+  · simp [Set.indicator_of_notMem hx]
+
+/-- A bounded measurable function vanishing off a ball lies in every `L^p`, `p < ∞`. -/
+theorem memLp_of_bdd_of_ball {f : E3 → ℂ} (hf : Measurable f) {C M : ℝ}
+    (hC : ∀ x, ‖f x‖ ≤ C) (hS : ∀ x, M < ‖x‖ → f x = 0) (p : ℝ≥0∞) : MemLp f p volume := by
+  have hg : MemLp ((Metric.closedBall (0 : E3) M).indicator fun _ => C) p volume :=
+    memLp_indicator_const p measurableSet_closedBall C (Or.inr measure_closedBall_lt_top.ne)
+  refine hg.of_le hf.aestronglyMeasurable (.of_forall fun x => ?_)
+  by_cases hx : x ∈ Metric.closedBall (0 : E3) M
+  · rw [Set.indicator_of_mem hx, Real.norm_eq_abs]
+    exact (hC x).trans (le_abs_self C)
+  · have : M < ‖x‖ := by simpa using hx
+    rw [hS x this, norm_zero]; exact norm_nonneg _
+
+/-- A padded section of a bounded function vanishing off the ball of radius `M` vanishes off the
+ball of radius `M + |v| + 1`. -/
+theorem padSec_eq_zero_of_norm {f : E3 → ℂ} {M : ℝ} (hS : ∀ x, M < ‖x‖ → f x = 0)
+    (i : Fin 3) (v : ℝ) (x : E3) (hx : M + |v| + 1 < ‖x‖) : padSec i v f x = 0 := by
+  unfold padSec
+  by_cases hxi : x i ∈ Set.Icc (0 : ℝ) 1
+  · rw [hS, mul_zero]
+    have h1 : ‖(v - x i) • basisVec i‖ ≤ |v| + 1 := by
+      rw [norm_smul, Real.norm_eq_abs]
+      have : ‖basisVec i‖ = 1 := by simp [basisVec]
+      rw [this, mul_one]
+      calc |v - x i| ≤ |v| + |x i| := abs_sub _ _
+        _ ≤ |v| + 1 := by rw [abs_of_nonneg hxi.1]; linarith [hxi.2]
+    have h2 := norm_sub_norm_le x (-((v - x i) • basisVec i))
+    rw [norm_neg, sub_neg_eq_add] at h2
+    linarith
+  · rw [Set.indicator_of_notMem hxi, zero_mul]
+
+/-- **Blueprint `new:multiplier-facts`, sectional nonnegativity**: for a bounded measurable `f`
+vanishing off a ball, every padded section energy is `∫ η(ξ_j/R) |𝓕 f_v|² ≥ 0`. -/
+theorem integral_padSec_energy_eq {R : ℝ} (hR : 0 < R) (i j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) {C M : ℝ} (hC : ∀ x, ‖f x‖ ≤ C) (hS : ∀ x, M < ‖x‖ → f x = 0) (v : ℝ) :
+    ∫ x, padSec i v f x * conj (P R j (padSec i v f) x)
+      = ((∫ ξ, eta (ξ j / R) * ‖𝓕 (padSec i v f) ξ‖ ^ 2 : ℝ) : ℂ) := by
+  have hm := measurable_padSec i v hf
+  have hC' : ∀ x, ‖padSec i v f x‖ ≤ C := fun x => by
+    unfold padSec
+    rw [norm_mul]
+    by_cases hxi : x i ∈ Set.Icc (0 : ℝ) 1
+    · rw [Set.indicator_of_mem hxi, norm_one, one_mul]; exact hC _
+    · rw [Set.indicator_of_notMem hxi, norm_zero, zero_mul]
+      exact (norm_nonneg _).trans (hC x)
+  have hS' := padSec_eq_zero_of_norm hS i v
+  exact integral_mul_conj_P_eq hR j hm (memLp_one_iff_integrable.mp
+    (memLp_of_bdd_of_ball hm hC' hS' 1)) (memLp_of_bdd_of_ball hm hC' hS' 2)
+
+end
+
+section
+open Filter Topology MeasureTheory
+
+variable {Θ : Type*} [MeasurableSpace Θ]
+
+/-- The averaged translation `T f (x) = E_t b(t) f(x - v(t))` of blueprint
+`new:average-multiplier`. -/
+noncomputable def avgTranslate (ν : Measure Θ) (b : Θ → ℂ) (v : Θ → E3) (f : E3 → ℂ)
+    (x : E3) : ℂ :=
+  ∫ t, b t * f (x - v t) ∂ν
+
+/-- Its multiplier `m(ξ) = E_t b(t) e(-ξ · v(t))`. -/
+noncomputable def avgMultiplier (ν : Measure Θ) (b : Θ → ℂ) (v : Θ → E3) (ξ : E3) : ℂ :=
+  ∫ t, b t * ((𝐞 (-(inner ℝ (v t) ξ)) : Circle) : ℂ) ∂ν
+
+theorem measurable_avgTranslate {ν : Measure Θ} [SFinite ν] {b : Θ → ℂ} (hb : Measurable b)
+    {v : Θ → E3} (hv : Measurable v) {f : E3 → ℂ} (hf : Measurable f) :
+    Measurable (avgTranslate ν b v f) := by
+  have hm : Measurable (Function.uncurry fun (x : E3) (t : Θ) => b t * f (x - v t)) :=
+    (hb.comp measurable_snd).mul (hf.comp (measurable_fst.sub (hv.comp measurable_snd)))
+  exact hm.stronglyMeasurable.integral_prod_right'.measurable
+
+/-- **Blueprint `new:average-multiplier`, the `L^p` bounds**: `‖T f‖_p ≤ ‖f‖_p` for
+`1 ≤ p < ∞`, a probability parameter measure and `|b| ≤ 1`. -/
+theorem eLpNorm_avgTranslate_le {ν : Measure Θ} [IsProbabilityMeasure ν] {b : Θ → ℂ}
+    (hb : Measurable b) (hb1 : ∀ t, ‖b t‖ ≤ 1) {v : Θ → E3} (hv : Measurable v) {f : E3 → ℂ}
+    (hf : Measurable f) {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p ≠ ⊤) :
+    eLpNorm (avgTranslate ν b v f) p volume ≤ eLpNorm f p volume := by
+  have hm : Measurable (Function.uncurry fun (t : Θ) (x : E3) => b t * f (x - v t)) :=
+    (hb.comp measurable_fst).mul (hf.comp (measurable_snd.sub (hv.comp measurable_fst)))
+  refine (eLpNorm_integral_le_lintegral (μ := volume) (ν := ν) hp1 hptop hm).trans ?_
+  have hsec : ∀ t, eLpNorm (fun x => b t * f (x - v t)) p volume ≤ eLpNorm f p volume := by
+    intro t
+    have h1 : (fun x => b t * f (x - v t)) = b t • fun x => f (x + -(v t)) := by
+      funext x; simp [sub_eq_add_neg]
+    rw [h1, eLpNorm_const_smul, eLpNorm_comp_add_right_of_aestronglyMeasurable
+      hf.aestronglyMeasurable]
+    refine mul_le_of_le_one_left bot_le ?_
+    rw [← ofReal_norm, ENNReal.ofReal_le_one]; exact hb1 t
+  calc ∫⁻ t, eLpNorm (fun x => b t * f (x - v t)) p volume ∂ν
+      ≤ ∫⁻ _t, eLpNorm f p volume ∂ν := lintegral_mono hsec
+    _ = eLpNorm f p volume := by simp
+
+theorem memLp_avgTranslate {ν : Measure Θ} [IsProbabilityMeasure ν] {b : Θ → ℂ}
+    (hb : Measurable b) (hb1 : ∀ t, ‖b t‖ ≤ 1) {v : Θ → E3} (hv : Measurable v) {f : E3 → ℂ}
+    (hf : Measurable f) {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p ≠ ⊤) (hfp : MemLp f p) :
+    MemLp (avgTranslate ν b v f) p :=
+  ⟨(measurable_avgTranslate hb hv hf).aestronglyMeasurable,
+    (eLpNorm_avgTranslate_le hb hb1 hv hf hp1 hptop).trans_lt hfp.eLpNorm_lt_top⟩
+
+/-- **Blueprint `new:average-multiplier`, the multiplier**: for measurable integrable `f`,
+`𝓕 (T f) ξ = m(ξ) 𝓕 f ξ`. -/
+theorem fourier_avgTranslate {ν : Measure Θ} [IsProbabilityMeasure ν] {b : Θ → ℂ}
+    (hb : Measurable b) (hb1 : ∀ t, ‖b t‖ ≤ 1) {v : Θ → E3} (hv : Measurable v) {f : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) (ξ : E3) :
+    𝓕 (avgTranslate ν b v f) ξ = avgMultiplier ν b v ξ * 𝓕 f ξ := by
+  have hphase : Continuous fun x : E3 => ((𝐞 (-(inner ℝ x ξ)) : Circle) : ℂ) :=
+    continuous_subtype_val.comp (Real.continuous_fourierChar.comp (by fun_prop))
+  set G : E3 × Θ → ℂ := fun z =>
+    ((𝐞 (-(inner ℝ z.1 ξ)) : Circle) : ℂ) * (b z.2 * f (z.1 - v z.2)) with hG
+  have hGm : Measurable G := (hphase.measurable.comp measurable_fst).mul
+    ((hb.comp measurable_snd).mul (hf.comp (measurable_fst.sub (hv.comp measurable_snd))))
+  have hGi : Integrable G (volume.prod ν) := by
+    refine ⟨hGm.aestronglyMeasurable, ?_⟩
+    rw [hasFiniteIntegral_iff_enorm, lintegral_prod_symm _ hGm.enorm.aemeasurable]
+    have hin : ∀ t, ∫⁻ x, ‖G (x, t)‖ₑ ≤ ∫⁻ x, ‖f x‖ₑ := by
+      intro t
+      calc ∫⁻ x, ‖G (x, t)‖ₑ ≤ ∫⁻ x, ‖f (x - v t)‖ₑ := lintegral_mono fun x => by
+            simp only [hG, enorm_mul]
+            have h1 : ‖((𝐞 (-(inner ℝ x ξ)) : Circle) : ℂ)‖ₑ = 1 := by
+              rw [← ofReal_norm, Circle.norm_coe, ENNReal.ofReal_one]
+            rw [h1, one_mul]
+            refine mul_le_of_le_one_left bot_le ?_
+            rw [← ofReal_norm, ENNReal.ofReal_le_one]; exact hb1 t
+        _ = ∫⁻ x, ‖f x‖ₑ := by
+            have h := (measurePreserving_add_right volume (-(v t))).lintegral_comp hf.enorm
+            simpa [sub_eq_add_neg] using h
+    calc ∫⁻ t, (∫⁻ x, ‖G (x, t)‖ₑ) ∂ν ≤ ∫⁻ _t, (∫⁻ x, ‖f x‖ₑ) ∂ν := lintegral_mono hin
+      _ < ⊤ := by
+          have := hfi.hasFiniteIntegral
+          rw [hasFiniteIntegral_iff_enorm] at this
+          simpa using this
+  calc 𝓕 (avgTranslate ν b v f) ξ = ∫ x, ∫ t, G (x, t) ∂ν := by
+        rw [Real.fourier_eq]
+        refine integral_congr_ae (.of_forall fun x => ?_)
+        simp only [Circle.smul_def, smul_eq_mul, avgTranslate, hG]
+        rw [← integral_const_mul]
+    _ = ∫ t, (∫ x, G (x, t)) ∂ν := integral_integral_swap hGi
+    _ = ∫ t, b t * (((𝐞 (-(inner ℝ (v t) ξ)) : Circle) : ℂ) * 𝓕 f ξ) ∂ν := by
+        refine integral_congr_ae (.of_forall fun t => ?_)
+        have hpull : ∀ x : E3, G (x, t)
+            = b t * (((𝐞 (-(inner ℝ x ξ)) : Circle) : ℂ) * f (x - v t)) := fun x => by
+          simp only [hG]; ring
+        simp only [hpull]
+        rw [integral_const_mul]
+        congr 1
+        have h := fourier_comp_sub f (v t) ξ
+        rw [Real.fourier_eq, Circle.smul_def, smul_eq_mul] at h
+        simpa [Circle.smul_def] using h
+    _ = avgMultiplier ν b v ξ * 𝓕 f ξ := by
+        rw [avgMultiplier, ← integral_mul_const]
+        refine integral_congr_ae (.of_forall fun t => ?_)
+        ring
+
+/-- **Blueprint `new:average-multiplier`, the `L²` identity**:
+`‖T f‖_2² = ∫ |m(ξ)|² |𝓕 f ξ|²` for measurable `f ∈ L¹ ∩ L²`. -/
+theorem integral_norm_sq_avgTranslate {ν : Measure Θ} [IsProbabilityMeasure ν] {b : Θ → ℂ}
+    (hb : Measurable b) (hb1 : ∀ t, ‖b t‖ ≤ 1) {v : Θ → E3} (hv : Measurable v) {f : E3 → ℂ}
+    (hf : Measurable f) (hfi : Integrable f) (hf2 : MemLp f 2) :
+    ∫ x, ‖avgTranslate ν b v f x‖ ^ 2
+      = ∫ ξ, ‖avgMultiplier ν b v ξ‖ ^ 2 * ‖𝓕 f ξ‖ ^ 2 := by
+  have hTi : Integrable (avgTranslate ν b v f) := memLp_one_iff_integrable.mp
+    (memLp_avgTranslate (ν := ν) (p := 1) hb hb1 hv hf le_rfl (by simp)
+      (memLp_one_iff_integrable.mpr hfi))
+  have hT2 := memLp_avgTranslate (ν := ν) (p := 2) hb hb1 hv hf (by norm_num) (by simp) hf2
+  rw [← integral_norm_sq_fourier hTi hT2]
+  refine integral_congr_ae (.of_forall fun ξ => ?_)
+  simp only
+  rw [fourier_avgTranslate (ν := ν) hb hb1 hv hf hfi, norm_mul, mul_pow]
+
+end
+
+section
+open Filter Topology MeasureTheory
+
+/-- **Blueprint `new:three-lines`**: if `F` is continuous and bounded on `0 ≤ Re z ≤ 1`,
+holomorphic inside, `|F(it)| ≤ M_0` and `|F(1 + it)| ≤ M_1`, then
+`|F(θ)| ≤ M_0^{1-θ} M_1^θ` for `0 < θ < 1`. -/
+theorem norm_le_three_lines {F : ℂ → ℂ}
+    (hd : DiffContOnCl ℂ F (Complex.HadamardThreeLines.verticalStrip 0 1))
+    (hB : BddAbove ((norm ∘ F) '' Complex.HadamardThreeLines.verticalClosedStrip 0 1))
+    {M₀ M₁ : ℝ} (h₀ : ∀ t : ℝ, ‖F (t * Complex.I)‖ ≤ M₀)
+    (h₁ : ∀ t : ℝ, ‖F (1 + t * Complex.I)‖ ≤ M₁) {θ : ℝ} (hθ : θ ∈ Set.Ioo (0 : ℝ) 1) :
+    ‖F θ‖ ≤ M₀ ^ (1 - θ) * M₁ ^ θ := by
+  have hz : (θ : ℂ) ∈ Complex.HadamardThreeLines.verticalClosedStrip 0 1 := by
+    simp [Complex.HadamardThreeLines.verticalClosedStrip, hθ.1.le, hθ.2.le]
+  have := Complex.HadamardThreeLines.norm_le_interp_of_mem_verticalClosedStrip₀₁' F hz hd hB
+    (a := M₀) (b := M₁) (fun z hz => by
+      have hre : z.re = 0 := hz
+      have : z = (z.im : ℂ) * Complex.I := by
+        apply Complex.ext <;> simp [hre]
+      rw [this]; exact h₀ _)
+    (fun z hz => by
+      have hre : z.re = 1 := hz
+      have : z = 1 + (z.im : ℂ) * Complex.I := by
+        apply Complex.ext <;> simp [hre]
+      rw [this]; exact h₁ _)
+  simpa using this
+
+end
+
 end Auto

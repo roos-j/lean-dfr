@@ -430,3 +430,146 @@ status | source item | reason
 --- | --- | ---
 n/a | `prop:removed-material`, `prop:simplifications`, `prop:no-imported-analytic-declarations` | metatheoretic commentary on the blueprint, not mathematical content
 n/a | `prop:acyclic-implementation-order` | the implementation order itself, realized by this ledger
+
+## Task 2: `Auto.KoszAdjoint` from `blueprints/koszAdjoint_blueprint.tex`, in forward reasoning order
+
+### Overview
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+not started | `new:exact-lean-target`, `theorem koszAdjoint (j : Fin 3) : KoszAdjoint j` | -- | 2026-09-25T06:51:43-04:00
+
+### Reusable prerequisite: Plancherel for the integral Fourier transform on `L^1 ∩ L^2`
+
+Justification: needed by `new:multiplier-facts`, `new:average-multiplier`, `patch:u2-fourier-selection`, `patch:lowest-energy` and `new:compact-highpass`; Mathlib has only the Schwartz and the abstract `L^2` versions, not the identification for integrable square-integrable functions; a named textbook theorem, stated on finite-dimensional real inner product spaces; file `DFR/Auto/IntegralPlancherel.lean`.
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+complete | `new:integral-plancherel`, the multiplication formula `∫ (𝓕 g) f = ∫ g (𝓕 f)` for Schwartz `g` and integrable `f` | `Auto.integral_fourier_smul_eq_of_integrable` | 2026-09-25T07:00:11-04:00
+complete | `new:integral-plancherel`, `𝓕 f` agrees a.e. with the `L^2` Fourier transform of `f ∈ L^1 ∩ L^2` | `Auto.fourierLp_ae_eq_fourier` | 2026-09-25T07:00:11-04:00
+complete | `new:integral-plancherel`, `f̂ ∈ L^2` and `∫ |f̂|^2 = ∫ |f|^2` | `Auto.memLp_two_fourier`, `Auto.eLpNorm_two_fourier`, `Auto.integral_norm_sq_fourier` | 2026-09-25T07:00:11-04:00
+complete | `new:integral-plancherel`, the pairing identity `∫ f conj g = ∫ f̂ conj ĝ` | `Auto.integral_conj_mul_fourier`, `Auto.integral_mul_conj_fourier` | 2026-09-25T07:00:11-04:00
+
+### Section 1: conventions and budgets
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+complete | `patch:budgets`, budget arithmetic, popularity, a heavy cell of a finite partition | `Auto.budLo`, `Auto.budHi`, `Auto.budLo_mul`, `Auto.budLo_pow`, `Auto.le_setIntegral_compl_add`, `Auto.measure_popular_ge`, `Auto.exists_cell_ge` | 2026-09-25T06:51:43-04:00
+
+### Section 2: analytic facts
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+complete | `new:integral-inequalities`, translation invariance of `‖·‖_p` | `Auto.eLpNorm_comp_add_right_of_aestronglyMeasurable` | 2026-09-25T07:11:15-04:00
+complete | `new:integral-inequalities`, finite Hoelder `‖∏ f_i‖_p ≤ ∏ ‖f_i‖_{p_i}` | `Auto.eLpNorm_prod_le` | 2026-09-25T07:11:15-04:00
+complete | `new:integral-inequalities`, Minkowski's integral inequality `‖∫ F(u,·) dν‖_p ≤ ∫ ‖F(u,·)‖_p dν` | `Auto.eLpNorm_lintegral_le`, `Auto.eLpNorm_integral_le_lintegral` | 2026-09-25T07:11:15-04:00
+complete | `new:integral-inequalities`, the one-coordinate convolution bound `‖∫ a(u) f(· - u e_j) du‖_p ≤ ‖a‖_1 ‖f‖_p` | `Auto.eLpNorm_integral_smul_translate_le` | 2026-09-25T07:11:15-04:00
+complete | `new:translation-continuity`, approximation of `f ∈ L^p` by bounded finite-valued box-supported functions | `Auto.exists_simpleFunc_isBounded_support_eLpNorm_sub_le` | 2026-09-25T07:15:15-04:00
+complete | `new:translation-continuity`, `‖f(· - h) - f‖_p → 0` as `h → 0` | `Auto.tendsto_eLpNorm_comp_add_sub` | 2026-09-25T07:15:15-04:00
+complete | `new:duality`, `|∫ F h| ≤ B ‖h‖_{p'}` for bounded compactly supported `h` implies `‖F‖_p ≤ B` | `Auto.eLpNorm_le_of_pairing_bound_of_measurable` | 2026-09-25T07:22:15-04:00
+complete | `new:duality`, the same with finite-valued tests for locally integrable `F` | `Auto.eLpNorm_le_of_pairing_bound_simpleFunc` | 2026-09-25T07:22:15-04:00
+complete | `new:measurability`, the unit phase `conj b / |b|` is measurable and `b · phase = |b|` | `Auto.unitPhase`, `Auto.norm_unitPhase_le`, `Auto.unitPhase_mul`, `Auto.measurable_unitPhase` | 2026-09-25T07:25:02-04:00
+complete | `new:measurability`, a.e.-equal inputs give a.e.-equal averages | `Auto.ae_prod_comp_add_eq`, `Auto.ae_ae_comp_add_eq` | 2026-09-25T07:25:02-04:00
+complete | `new:kernel-facts`, `k` real, even, Schwartz, `k̂ = η`, `∫ k = 1` | `Auto.etaKerS`, `Auto.fourier_etaKer`, `Auto.etaKer_even`, `Auto.etaKer_conj`, `Auto.integral_etaKer` | 2026-09-25T07:32:47-04:00
+complete | `new:kernel-facts`, finiteness of `B_0 = ‖k‖_1`, `B_1 = ‖k'‖_1`, `B_M^tail` | `Auto.etaKerL1`, `Auto.etaKer_integrable`, `Auto.etaKerDerivL1`, `Auto.etaKerDeriv_integrable`, `Auto.etaKerMom`, `Auto.integrable_etaKer_mom` | 2026-09-25T07:32:47-04:00
+complete | `new:kernel-facts`, `‖K_R‖_1 = B_0`, `‖K_R'‖_1 = R B_1`, the tail bound `B_M^tail (Ra)^{-M}` | `Auto.projKernel_L1`, `Auto.hasDerivAt_projKernel`, `Auto.integral_norm_deriv_projKernel`, `Auto.integral_projKernel_tail_le'` | 2026-09-25T07:32:47-04:00
+complete | `new:kernel-facts`, `‖P_R f‖_∞ ≤ B_0` and the Lipschitz bound `R B_1 |v|` for `|f| ≤ 1` | `Auto.norm_P_le_of_norm_le_one`, `Auto.lintegral_projKernel_sub_le`, `Auto.norm_P_add_sub_le` | 2026-09-25T07:32:47-04:00
+complete | `new:multiplier-facts`, the multiplier of `P_R^{(j)}` on `L^1 ∩ L^2` and the `L^2` contraction | `Auto.fourier_P_of_measurable`, `Auto.integrable_P_of_measurable`, `Auto.memLp_two_P`, `Auto.eLpNorm_two_P_le` | 2026-09-25T07:50:41-04:00
+complete | `new:multiplier-facts`, self-adjointness and `⟨f, P_R f⟩ = ∫ η(ξ_j/R) |f̂|^2 ≥ 0` | `Auto.integral_P_mul_conj_eq`, `Auto.integral_mul_conj_P_eq`, `Auto.integral_eta_mul_norm_sq_nonneg` | 2026-09-25T07:54:03-04:00
+complete | `new:multiplier-facts`, `P_L (I - P_R) f = 0` for `L ≤ R/2` | `Auto.eta_div_eq_one_of_eta_ne_zero`, `Auto.P_sub_P_ae_eq_zero` | 2026-09-25T07:54:03-04:00
+complete | `new:multiplier-facts`, `⟨f, P_{L'} f⟩ ≥ ⟨f, P_L f⟩` for `L' ≥ 2L` | `Auto.eta_div_le_eta_div`, `Auto.integral_eta_mul_norm_sq_mono` | 2026-09-25T07:54:03-04:00
+complete | `new:multiplier-facts`, slicing `⟨f, P_R f⟩ = ∫ ⟨f_v, P_R f_v⟩ dv` and sectional nonnegativity | `Auto.secSwap`, `Auto.measurePreserving_secSwap`, `Auto.integral_integral_sec`, `Auto.padSec`, `Auto.P_padSec`, `Auto.integral_mul_conj_P_slice`, `Auto.integral_padSec_energy_eq` | 2026-09-25T07:59:48-04:00
+complete | `new:average-multiplier`, the multiplier of `T f = E_t b(t) f(· - v(t))` and its `L^2` identity | `Auto.avgTranslate`, `Auto.avgMultiplier`, `Auto.eLpNorm_avgTranslate_le`, `Auto.memLp_avgTranslate`, `Auto.fourier_avgTranslate`, `Auto.integral_norm_sq_avgTranslate` | 2026-09-25T08:03:39-04:00
+complete | `new:three-lines`, `|F(θ)| ≤ M_0^{1-θ} M_1^θ` | `Auto.norm_le_three_lines` | 2026-09-25T08:05:27-04:00
+in progress | `new:interpolation`, the analytic family on simple functions and its boundary norms | -- | 2026-09-25T08:05:27-04:00
+not started | `new:interpolation`, the multilinear interpolation bound on a fixed support domain | -- | 2026-09-25T06:51:43-04:00
+
+### Section 3: the real improving estimate
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+complete | `new:refinements`, nested refinements and pointwise incidence bounds | `Auto.refinement_stage`, `Auto.refinement_tower` | 2026-09-25T06:51:43-04:00
+complete | `new:flows`, parameter towers, flow maps, `|det DΦ|`, two injective pieces | `Auto.measure_tower6_ge`, `Auto.det_flowDeriv`, `Auto.abs_det_flowDeriv`, `Auto.flowBlock3_pair` | 2026-09-25T06:51:43-04:00
+complete | `new:incidence-consequence`, `|E_b| ≥ c_* (α_0 α_1 α_2 α_3)^10` and the incidence bound | `Auto.lintegral_abs_det_fderiv_le_card_mul_image`, `Auto.exists_separated_lintegral_ge` | 2026-09-25T06:51:43-04:00
+complete | `new:restricted-neighborhood`, restricted bounds at `v` and at the corners `β + ε σ` | `Auto.incid_lifted`, `Auto.restrictedStrong_of_chain` | 2026-09-25T06:51:43-04:00
+complete | `new:restricted-strong`, the strong form bound | `Auto.strong_real_improving` | 2026-09-25T06:51:43-04:00
+complete | `new:improving`, `‖A_N f‖_{6/5} ≤ C N^{-1/20} ‖f_j‖_2 ‖f_b‖_{40/7} ‖f_c‖_6` for measurable inputs | `Auto.strong_real_improving'` | 2026-09-25T06:51:43-04:00
+complete | `new:improving`, the adjoint identity | `Auto.adjoint_identity` | 2026-09-25T06:51:43-04:00
+complete | `new:improving`, `‖A_N^{*j} g‖_2 ≤ C N^{-1/20} ‖g_0‖_6 ‖g_b‖_{40/7} ‖g_c‖_6` for `Nice` inputs | `Auto.kosz53_internal` | 2026-09-25T06:51:43-04:00
+not started | `new:improving`, the adjoint estimate for all finite-norm inputs, the concrete integral a.e. | -- | 2026-09-25T06:51:43-04:00
+
+### Section 4: the real inverse theorem
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+complete | `def:local-uniformity`, Fejer densities `κ_H` | `Auto.fejer`, `Auto.fejer_nonneg`, `Auto.fejerMeasure` | 2026-09-25T06:51:43-04:00
+complete | `patch:cube-succ`, `C_{s+1} = C_s · conj(C_s(· + h e_j))` | `Auto.cubeSel_snoc`, `Auto.locUnifPow_succ_split` | 2026-09-25T06:51:43-04:00
+complete | `patch:fejer-squares`, Fejer square identity, positivity, `0 ≤ Q ≤ 1` | `Auto.integral_fejer_pairAvg_eq_sq`, `Auto.locUnifPow_re_nonneg` | 2026-09-25T06:51:43-04:00
+complete | `patch:raise-order`, `Q_s^2 ≤ (1 + H/S) Q_{s+1}` | `Auto.locUnifPow_one_eq`, `Auto.locUnifPow_two_eq` | 2026-09-25T06:51:43-04:00
+complete | `lem:fejer-vdc` | `Auto.fejer_vdc'` | 2026-09-25T06:51:43-04:00
+complete | `patch:signed-vdc-eq`, signed integrated removal | `Auto.sq_norm_normalized_pairing_le`, `Auto.sq_norm_signed_vdc` | 2026-09-25T06:51:43-04:00
+complete | `patch:cylinder`, cylinder Cauchy-Schwarz with its state | `Auto.cubeSel`, `Auto.sq_norm_pow_le_integral_cubeProdSel_prod`, `Auto.integral_cubeProdSel_re_nonneg` | 2026-09-25T06:51:43-04:00
+complete | `lem:real-polynomial-oscillation` | `Auto.real_polynomial_oscillation` | 2026-09-25T06:51:43-04:00
+complete | `patch:triangular` | `Auto.sum_le_of_oscillation_ge` | 2026-09-25T06:51:43-04:00
+complete | `patch:lead-invariant`, `patch:initial-shift-family` | `Auto.petUpdate_invariant_head`, `Auto.petUpdate_invariant_diff` | 2026-09-25T06:51:43-04:00
+complete | `patch:pet-update` | `Auto.petUpdate_protected_of_invariant`, `Auto.petNewHeadFactor_origin` | 2026-09-25T06:51:43-04:00
+complete | `patch:pet-producer`, the pivot rule, `w' < w`, length at most `2L` | `Auto.petType_lt_of_pivot`, `Auto.petStateClasses_update_at_pivot` | 2026-09-25T06:51:43-04:00
+complete | `patch:pet-producer`, the uniform iteration bound `B(w, L)` | `Auto.petRun_bounded` | 2026-09-25T06:51:43-04:00
+complete | `patch:pet-analytic-step` | `Auto.petStep_signed` | 2026-09-25T06:51:43-04:00
+complete | `patch:affine-block`, `patch:affine-cube-invariant`, `patch:affine-terminal` | `Auto.cs_remove_slope_block`, `Auto.headBlock_eq_fdiffIter` | 2026-09-25T06:51:43-04:00
+complete | `patch:cs-loss` | `Auto.csPhi_iter_eq`, `Auto.csLoss` | 2026-09-25T06:51:43-04:00
+complete | `patch:multiaffine-sublevel`, `Pr{|p(u)| ≤ ε} ≤ 4 √ε` | `Auto.fejerMeasure_abs_affine_le` | 2026-09-25T06:51:43-04:00
+not started | sublevel exclusion after `patch:multiaffine-sublevel`: old shifts off the bad union with raw cube `≥ κ/2` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:pet-physical-radii`, the change of variables `z_i = a p_i(h) u_i` and the radii bounds | -- | 2026-09-25T06:51:43-04:00
+complete | `patch:uniformize` | `Auto.fejerCubeMixed_le_scaled`, `Auto.sq_re_gapScaled_le_locUnifPow` | 2026-09-25T06:51:43-04:00
+complete | the four phase steps: four differences annihilate a cubic phase | `Auto.pdiffIter_four_eq_zero` | 2026-09-25T06:51:43-04:00
+not started | the degree-one branch before `patch:highest-control` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:highest-control` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:u2-fourier-selection`, `Q_{2,H,S}(f) ≤ H^{-2} ‖f̂‖_∞^2` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:u2-fourier-selection`, measurable least-rational frequency selection | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:dual-diff-bound` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:missing-phase-bound` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:dummy-phase` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:ma-correlation`, `patch:ma-set`, the property `MA(m, l)` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 1, Fourier coefficients on popular sections | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 2, dual-difference interchange | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 3, interchange of section and cube parameters | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 4, extension by a dummy phase | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 5, application of `MA(m, l)` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 6, recovery of the original cube phase | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 7, quantization and partition of the nonzero vertices | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:conditional-degree`, step 8, phase removal and integration | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:major-arc`, base case `m = 1` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:ma-adjoint`, the exact adjoint of the last active input | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:major-arc`, uniformity and degree lowering using `MA(m, l)` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:ma-smaller-pattern`, Fourier selection and the smaller pattern | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:major-arc`, the induction step and the theorem | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:structured-degree` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:high-section-coeff`, measurable section frequencies | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:remove-high-inputs`, small frequencies via `MA(l, l)` and the dummy value | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:remove-high-inputs`, the constant frequency and the backward step | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:lowest-energy` | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:energy-core`, step 1, replacing the first input and smoothing its adjoint | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:energy-core`, step 2, freezing on one of `K` intervals | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:frozen-correlation`, step 3, the lower-dimensional polynomial family | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:energy-core`, step 4, a measurable set of large sections | -- | 2026-09-25T06:51:43-04:00
+not started | `patch:all-energy`, step 5, induction hypothesis and integration of energies | -- | 2026-09-25T06:51:43-04:00
+
+### Sections 5-6: the adjoint estimate and the exact proposition
+
+status | source item | Lean name | timestamp
+--- | --- | --- | ---
+not started | `new:monomial-inverse`, witness `h_j = f_j` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:adjoint-basic`, support and `|G| ≤ 1` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:adjoint-basic`, the crude `L^r` bounds for `G` and `(I - P_R) G` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:compact-highpass`, `⟨h, G⟩ ≥ M^{-1} ‖H‖_2^2` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:compact-highpass`, the tail bound for `1_{(B')^c} H` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:compact-highpass`, the contradiction and the bound `C_1 μ^a N^3` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:compact-decaying-point`, interpolation with weight `60/61` on bounded finite-valued inputs | -- | 2026-09-25T06:51:43-04:00
+not started | `new:compact-decaying-point`, extension to all finite-norm inputs | -- | 2026-09-25T06:51:43-04:00
+not started | `new:global-decaying-point`, the exact input-cube decomposition | -- | 2026-09-25T06:51:43-04:00
+not started | `new:global-decaying-point`, the off-diagonal tail `B_2^tail μ^4 (|l| - 2)^{-2}` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:global-decaying-point`, discrete Young and Hoelder, the global bound | -- | 2026-09-25T06:51:43-04:00
+not started | `new:adjoint-all-exponents`, the convex completion exponents `τ`, `v_i` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:adjoint-all-exponents`, interpolation and extension to full `L^p` | -- | 2026-09-25T06:51:43-04:00
+not started | `new:exact-lean-target`, zero, infinite and finite-norm cases, `KoszAdjoint j` | -- | 2026-09-25T06:51:43-04:00

@@ -741,3 +741,15 @@ step "`0 <= F <= 1`, mean `>= kappa`, `mu(B) <= kappa/4` gives a point off `B` w
 (`patch_3_updated.tex` line 668, part of `patch:highest-control`) hung the elaborator twice without
 a diagnostic.  Bisect it under `set_option maxHeartbeats 40000` with the body replaced by `sorry`
 and the `have`s reintroduced one at a time, rather than rewriting it.
+
+Jobs created 2026-09-25T06:50-04:00 (session-only): recurring `117996c0` (`7,22,37,52 * * * *`,
+re-invokes `/autoformalize` on this target, never commits); one-shot commit-and-push jobs
+`f6685b43` (09:00), `61d90787` (12:00), `34a026aa` (15:00); replaced at the commit-format change by `f6245777`, `4b1c57eb`, `aca5aa28`.
+
+## 2026-09-25T07:47:14-04:00 - commit message format
+
+Raw prompt: `automation/raw.md` under the same timestamp.  Every commit subject starts with
+`[claude]`, is one brief descriptive line in the blueprint's terminology, and has no body; only
+the `Co-authored-by: Claude <noreply@anthropic.com>` trailer follows.  This supersedes the
+2026-09-17 and 2026-09-24 precedent of omitting the prefix.  All four skill copies were updated
+to make the format binding.  The scheduled 09:00, 12:00 and 15:00 commits use it.

@@ -1613,3 +1613,13 @@ The supporting facts are `Auto.numTrue_add_numFalse` (the counts sum to the dime
 vector).  No change to any statement of the blueprint or to any Lean statement was required; this
 addendum records that the notational deviation is now discharged by a theorem, so a later reader
 need not re-derive it.
+
+## 2026-09-25T07:00:11-04:00 - `new:integral-plancherel`: proof route replaced by verified Mathlib reuse
+
+Source: `blueprints/koszAdjoint_blueprint.tex`, Theorem `new:integral-plancherel` (lines 386-417),
+proved there from `new:approximate-identity` and `new:translation-continuity`.  The Lean proof in
+`DFR/Auto/IntegralPlancherel.lean` instead identifies the integral transform with Mathlib's `L^2`
+Fourier isometry `MeasureTheory.Lp.fourierTransformₗᵢ`, by testing both against smooth compactly
+supported functions (tempered distributions, `ae_eq_of_integral_contDiff_smul_eq`).  Statement
+unchanged; only the proof route differs.  `new:approximate-identity` is used nowhere else in the
+blueprint and is therefore not on the formalized dependency path.  Resolved.
