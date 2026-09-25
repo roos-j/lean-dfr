@@ -716,3 +716,28 @@ The scratch probe `probe88.lean` was deleted from the repository root before sta
 is committed.  Everything committed is verified: the owned file compiles under `lake env lean` with
 no error and no new warning, and every declaration audits to `propext`, `Classical.choice`,
 `Quot.sound`.
+
+## 2026-09-25T06:45:55-04:00 - Status.md rules, the KoszAdjoint blueprint, cron and commit schedule
+
+Raw prompt: `automation/raw.md` under the same timestamp.  It supersedes the conflicting parts of
+earlier entries, in particular the 2026-09-15T12:44:52-04:00 sentence placing progress in a
+Historical log of Status.md, and the setup rule against editing globally installed skills (the
+user asked for the user-folder skill to be updated; all four copies -- repository and user folder,
+Claude and Codex editions -- carry the same new Status.md rules).
+
+- `automation/Status.md` holds only ledger tables and headings: fine-grained rows, each tied to one
+  individual step, equation, lemma, etc. of the blueprint, in logical forward reasoning order,
+  completed one by one.  No free text status updates.  The former Historical log was purged; it
+  survives in Git history at commit `11c07cf`.  Continuation notes live here, discrepancies in
+  `ErrorReport.md`.
+- Target: complete `Auto.KoszAdjoint` following `blueprints/koszAdjoint_blueprint.tex`, tracked in
+  a new section of Status.md.  Owned folder unchanged: `DFR/Auto/SmoothingIneq3D/`.
+- A recurring 15-minute cron job re-invokes `/autoformalize` on this target.
+- Commits authorized: exactly one commit and push after the skill fix (this entry), then one commit
+  and push each at 09:00, 12:00 and 15:00 on 2026-09-25.  No other commits.
+
+Continuation note carried over from the purged log (2026-09-24T13:38:49-04:00): the pigeonhole
+step "`0 <= F <= 1`, mean `>= kappa`, `mu(B) <= kappa/4` gives a point off `B` with `F >= kappa/2`"
+(`patch_3_updated.tex` line 668, part of `patch:highest-control`) hung the elaborator twice without
+a diagnostic.  Bisect it under `set_option maxHeartbeats 40000` with the body replaced by `sorry`
+and the `have`s reintroduced one at a time, rather than rewriting it.
