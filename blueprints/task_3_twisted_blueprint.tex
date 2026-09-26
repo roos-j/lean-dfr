@@ -1,0 +1,3074 @@
+\documentclass[12pt,reqno]{amsart}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm,mathrsfs}
+\usepackage{hyperref}
+\usepackage{bookmark}
+\hypersetup{hidelinks,pdfstartview={FitH}}
+\addtolength{\hoffset}{-1.5cm}
+\addtolength{\textwidth}{3cm}
+\addtolength{\voffset}{-1cm}
+\addtolength{\textheight}{1.2cm}
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{exttheorem}[theorem]{External Theorem}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\numberwithin{equation}{section}
+\newcommand{\R}{\mathbb R}
+\newcommand{\C}{\mathbb C}
+\newcommand{\N}{\mathbb N}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\Sp}{\mathcal S}
+\newcommand{\T}{\mathcal T}
+\newcommand{\g}{\mathsf g}
+\newcommand{\h}{\mathsf h}
+\newcommand{\B}{\mathsf B}
+\newcommand{\F}{\mathcal F}
+\newcommand{\dd}{\,d}
+\newcommand{\one}{\mathbf 1}
+\newcommand{\br}[1]{\langle #1\rangle}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\ch}{ch}
+\title[Anisotropic twisted paraproduct]{The three-dimensional anisotropic twisted paraproduct}
+\date{\today}
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Conventions and the main statement}
+
+Let $E_d=\R^d$ with its Euclidean norm and Lebesgue measure.
+Coordinates of $E_3$ are indexed by $1,2,3$, and the input functions
+by $0,1,2,3$.
+Product-coordinate identifications are measure-preserving linear
+equivalences. All integrals are Lebesgue integrals; Fubini's theorem
+is applied to signed or complex integrals only after absolute
+integrability has been established.
+For $1\le p<\infty$, $\|f\|_p=(\int |f|^p)^{1/p}$, and
+$\|f\|_\infty$ is the essential supremum.
+For pointwise fiber constructions from $L^p$ classes, choose Borel
+representatives.
+
+\begin{definition}[Anisotropy and dilations]\label{def:anisotropy}
+Fix $\alpha=(\alpha_1,\alpha_2,\alpha_3)\in\N^3$ with $\alpha_i\ge1$.
+Set
+\[
+ A=\alpha_1+\alpha_2+\alpha_3,\qquad
+ D_t x=(t^{\alpha_1}x_1,t^{\alpha_2}x_2,t^{\alpha_3}x_3),\qquad
+ \rho_\alpha(\xi)=\sum_{i=1}^3|\xi_i|^{1/\alpha_i}.
+\]
+Here $t>0$, $\det D_t=t^A$, and
+$\rho_\alpha(D_t\xi)=t\rho_\alpha(\xi)$.
+The inverse and composition laws are
+\[
+ D_t^{-1}x=(t^{-\alpha_1}x_1,t^{-\alpha_2}x_2,t^{-\alpha_3}x_3),
+ \qquad D_sD_t=D_{st},\qquad D_1=\operatorname{id}.
+\]
+For a one-dimensional function $v$, put
+\[
+ v_{(s)}(x)=s^{-1}v(x/s),\quad
+ v_{s,a}(x)=v_{(s)}(x-a),\quad
+ (f*_i v)(x)=\int_\R f(x-ye_i)v(y)\dd y.
+\]
+Also write $v_s=v_{(s)}$. Thus $(v_{1,r})_{s,a}=v_{s,a+sr}$.
+\end{definition}
+
+The Fourier transform is
+$\widehat f(\xi)=\int f(x)e^{-2\pi i x\cdot\xi}\dd x$ and the inverse
+transform has a positive sign in the exponential. Distributional
+pairings are complex bilinear, with
+$\widehat T(\phi)=T(\widehat\phi)$.
+Define the decaying bracket by
+\[
+ \br{x}=(1+|x|)^{-1},\qquad
+ \br{x}_{(s)}^N=s^{-1}(1+|x|/s)^{-N}.
+\]
+For translation parameters put
+\[
+ U(u)=1+|u_1|+|u_2|+|u_3|,\qquad R(r)=1+|r|.
+\]
+Unless additional dependence is displayed, constants depend only on
+$\alpha$ and the fixed bumps defined below. Constants in exponent
+estimates may also depend on the exponents. They never depend on a
+tree, its depth, a scale truncation, $u$, or a measurable coefficient
+of modulus at most one.
+
+\begin{definition}[Multiplier and quadrilinear form]\label{def:multiplier}
+Let $M\ge0$ and let $m:\R^3\to\C$ be measurable, with $m(0)=0$,
+smooth off the origin, and, for every multi-index $\beta\in\N^3$ with
+$|\beta|\le110$ and every $\xi\ne0$, satisfying
+\begin{equation}\label{eq:symbol}
+ |\partial^\beta m(\xi)|\le M\rho_\alpha(\xi)^{-\alpha\cdot\beta}.
+\end{equation}
+For $f_j\in\Sp(E_3;\C)$ define
+\[
+ P_f(t)=\int_{E_3}f_0(x)\prod_{j=1}^3f_j(x+t_je_j)\dd x,
+ \qquad
+ \Lambda_m(f)=\int_{E_3}m(\xi)\widehat {P_f}(-\xi)\dd\xi.
+\]
+Equivalently, with $K=\F^{-1}m$ as a tempered distribution,
+$\Lambda_m(f)=K(P_f)$.
+\end{definition}
+
+\begin{lemma}[Well-defined multiplier pairing]\label{lem:pairing}
+The function $P_f$ is Schwartz, the defining integral for $\Lambda_m$
+is absolutely convergent, and the stated distributional identity holds.
+Writing $\zeta=(\zeta^{(1)},\zeta^{(2)},\zeta^{(3)})\in E_9$ and
+$\eta(\zeta)=(\zeta^{(1)}_1,\zeta^{(2)}_2,\zeta^{(3)}_3)$, one has
+the absolutely convergent frequency representation
+\begin{equation}\label{eq:frequency_form}
+ \Lambda_m(f)=\int_{E_9}m(-\eta(\zeta))
+   \widehat f_0\left(-\sum_{j=1}^3\zeta^{(j)}\right)
+                 \prod_{j=1}^3\widehat f_j(\zeta^{(j)})\dd\zeta.
+\end{equation}
+\end{lemma}
+\begin{proof}
+The linear map
+$(x,t)\mapsto(x,x+t_1e_1,x+t_2e_2,x+t_3e_3)$ is injective.
+The product of the four Schwartz functions, pulled back along this map,
+is Schwartz on $E_6$. Integrating in $x$ preserves the Schwartz space:
+differentiate under the integral and absorb an integrable factor
+$(1+|x|)^{-4}$ in every Schwartz seminorm estimate.
+The case $\beta=0$ of \eqref{eq:symbol} gives $|m|\le M$.
+Fourier inversion on Schwartz functions and
+$\F^{-1}P_f(\xi)=\widehat {P_f}(-\xi)$ give the last assertion.
+For \eqref{eq:frequency_form}, apply Fourier inversion to $f_1,f_2,f_3$
+in the definition of $P_f$ and integrate $f_0$ in $x$. Fubini is
+justified by $\|f_0\|_1\prod_{j=1}^3\|\widehat f_j\|_1$.
+The resulting integrand has oscillatory factor
+$e^{2\pi i t\cdot\eta(\zeta)}$. Separate the three diagonal
+coordinates $\eta$ from the other six coordinates by a coordinate
+permutation, and integrate those other six coordinates. The resulting
+Schwartz function of $\eta$ is $\widehat {P_f}(\eta)$ by Fourier
+inversion. Substitute it into the definition of $\Lambda_m$ and use
+$\xi=-\eta$. Absolute convergence follows from $|m|\le M$ and
+$\|\widehat f_0\|_\infty\prod_{j=1}^3\|\widehat f_j\|_1$.
+\end{proof}
+
+\begin{theorem}[Anisotropic paraproduct]\label{thm:main}
+Suppose $4<p_0<\infty$, $1<p_1,p_2,p_3<4$, and
+$\sum_{j=0}^3p_j^{-1}=1$. There exists $C_{\alpha,p}>0$ such that
+every multiplier in Definition~\ref{def:multiplier} and every complex
+Schwartz tuple satisfy
+\[
+ |\Lambda_m(f)|\le C_{\alpha,p}M\prod_{j=0}^3\|f_j\|_{p_j}.
+\]
+\end{theorem}
+
+\begin{remark}[Distributional multiplier hypothesis]\label{rem:distributional}
+The assumption on $K$ is that $\widehat K$ is the regular distribution
+defined by the bounded function $m$, including across the origin.
+Merely identifying $\widehat K$ with $m$ on $\R^3\setminus\{0\}$
+would allow an extra distribution supported at the origin. For example,
+$\widehat K=\delta_0$ would have zero punctured symbol and $K=1$;
+its form scales like $L^6$ on inputs $f_j(x/L)$, whereas the claimed
+norm bound scales like $L^3$. The regular-distribution interpretation
+is therefore necessary. Setting $m(0)=0$ changes no integrals.
+The proof uses multiplier derivative bounds only through order $110$.
+\end{remark}
+
+\section{Function spaces and fixed bumps}
+
+\begin{definition}[Schwartz test functions]\label{def:schwartz}
+Let $\mathbb K$ be $\R$ or $\C$. The space $\Sp(E_d;\mathbb K)$
+consists of smooth functions $f:E_d\to\mathbb K$ for which
+\[
+ q_{N,\gamma}(f)=\sup_{x\in E_d}(1+|x|)^N|\partial^\gamma f(x)|<\infty
+ \qquad(N\in\N,\ \gamma\in\N^d).
+\]
+These seminorms define the Schwartz topology.
+Schwartz functions are smooth, so restriction to a specified
+fiber is meaningful before passing to almost-everywhere classes.
+Write $C_b(E_d;\mathbb K)$ for bounded continuous functions, with
+the uniform norm.
+\end{definition}
+
+\begin{lemma}[Schwartz-space toolkit]\label{lem:schwartz}
+The following properties hold over $\mathbb K\in\{\R,\C\}$.
+\begin{enumerate}
+\item $\Sp(E_d)\subset C_b(E_d)\cap L^p(E_d)$
+for every $1\le p\le\infty$.
+\item The Schwartz class is closed under differentiation, products,
+finite tensor products, and translations. The Fourier transform and
+its inverse are continuous maps of the complex Schwartz space to itself.
+\item If $L:E_k\to E_n$ is injective linear, $a\in E_n$, and
+$f\in\Sp(E_n)$, then $x\mapsto f(Lx+a)$ belongs to $\Sp(E_k)$.
+More generally, if $f_j\in\Sp(E_{d_j})$ and the joint linear map
+$x\mapsto(L_jx)_j$ is injective, then
+$x\mapsto\prod_j f_j(L_jx+a_j)$ is Schwartz.
+\item If $F\in\Sp(E_m\times E_l)$, then every fixed fiber
+$v\mapsto F(u,v)$ is Schwartz and
+\[
+ g(u)=\int_{E_l}F(u,v)\dd v
+ \quad\text{belongs to }\Sp(E_m),\qquad
+ \partial^\beta g(u)=\int_{E_l}\partial_u^\beta F(u,v)\dd v.
+\]
+These operations have bounds in the corresponding Schwartz seminorms;
+fixed-fiber bounds may depend on the fixed value of $u$.
+In particular,
+\[
+ \sup_u\int_{E_l}|F(u,v)|\dd v<\infty.
+\]
+\item If $f\in\Sp(E_d)$ and $v\in\Sp(\R)$, then $f*_i v$
+is Schwartz. Ordinary convolution of two Schwartz functions is
+Schwartz as well. Schwartz functions are dense in $L^p(E_d)$ for
+every finite $1\le p<\infty$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+For the embeddings use $|f(x)|\le q_{N,0}(f)(1+|x|)^{-N}$ with
+$N>d$, together with boundedness. Leibniz and the chain rule give
+the derivative, product, tensor and translation assertions.
+For example, the product bound is
+\[
+ q_{N,\gamma}(fg)\le
+ \sum_{\beta\le\gamma}\binom{\gamma}{\beta}
+        q_{N,\beta}(f)q_{0,\gamma-\beta}(g).
+\]
+For the Fourier transform, differentiation under the integral and
+integration by parts give
+\[
+ \partial_\xi^\gamma\widehat f
+       =\F\big((-2\pi ix)^\gamma f\big),\qquad
+ (2\pi i\xi)^\beta\partial_\xi^\gamma\widehat f
+       =\F\big(\partial_x^\beta[(-2\pi ix)^\gamma f]\big).
+\]
+The absolute value of the last expression is bounded by the $L^1$
+norm of its argument. Bound that norm by a finite sum of Schwartz
+seminorms, using the integrable weight $(1+|x|)^{-d-1}$.
+Expanding $(1+\sum_i|\xi_i|)^N$ then bounds every
+$q_{N,\gamma}(\widehat f)$ by a finite sum of seminorms of $f$.
+This proves continuity, and changing the Fourier sign proves the
+same assertion for the inverse transform.
+
+For injective $L$, finite-dimensional norm comparison gives
+$|x|\le C_L|Lx|$, hence
+$1+|x|\le C_{L,a}(1+|Lx+a|)$. Apply this to each derivative in
+the chain rule. For the joint-map statement first take the tensor
+product of the $f_j$, and then apply the injective-pullback statement.
+An individual coordinate projection need not be injective; no
+Schwartz pullback claim is made for such a projection by itself.
+
+For fiber integration, rapid decay gives, for every $N$ and $\beta$,
+\[
+ |\partial_u^\beta F(u,v)|
+       \le q_{N+l+1,(\beta,0)}(F)
+                     (1+|u|)^{-N}(1+|v|)^{-l-1}.
+\]
+The last factor is integrable. Dominated differentiation proves the
+displayed derivative identity, and integration of this majorant gives
+\[
+ q_{N,\beta}(g)\le C_lq_{N+l+1,(\beta,0)}(F),\qquad
+ C_l=\int_{E_l}(1+|v|)^{-l-1}\dd v<\infty.
+\]
+Restriction to a fixed fiber follows from injective affine pullback.
+The same bound with $N=0$ gives the uniform absolute fiber integral.
+
+For coordinate convolution, $(x,y)\mapsto(x-ye_i,y)$ is a linear
+isomorphism. Thus $f(x-ye_i)v(y)$ is Schwartz jointly in $(x,y)$;
+integrating in $y$ proves the assertion. Use
+$(x,y)\mapsto(x-y,y)$ for ordinary convolution.
+Finally, truncation followed by convolution with a smooth compactly
+supported approximate identity gives density in finite $L^p$.
+\end{proof}
+
+\begin{remark}[Domains of the auxiliary forms]
+The global model estimates are first proved for Schwartz inputs and
+extended to finite $L^p$ spaces by density. Local cube forms are defined
+on $C_b(E_3)^8$, which contains the Schwartz functions and the constant
+function $1$ used in the edge slots.
+All derivatives in the local telescoping identity fall on the kernels,
+so boundedness and continuity of the local inputs suffice.
+
+Absolute values and noninteger powers of Schwartz functions need not
+be smooth. Expressions such as $|f|^s$ and $|\varphi|$ below are
+used as measurable functions with the decay bounds inherited from
+the original Schwartz functions. The bracket kernels $\theta$ and
+$\Theta_t$ are positive integrable comparison weights; Schwartz
+regularity is not required of them. The measurable good and bad
+functions in the fiberwise decomposition are handled in $L^p$.
+\end{remark}
+
+\begin{definition}[Gaussian and bracket kernels]\label{def:gaussian}
+Set
+\[
+ \g(x)=e^{-\pi x^2},\quad \h(x)=\g'(x)=-2\pi x\g(x),\quad
+ \theta(x)=\br{x}^{10},\quad
+ \Theta_t=\bigotimes_{i=1}^3\theta_{(t^{\alpha_i})}.
+\]
+Notice that $\int\g=1$, $\int\h=0$, $\int\theta=2/9\le1$,
+$\widehat\g=\g$, and $\widehat\h(\xi)=2\pi i\xi\g(\xi)=-i\h(\xi)$.
+\end{definition}
+
+\begin{definition}[Standard bump and cone cutoffs]\label{def:bumps}
+Define the standard bump $\B$ and its Fourier transform $b$ by
+\[
+ \B_l=\widehat{\one_{[-3/4,3/4]}}
+       \prod_{i=0}^{l-1}2^{i+2}
+          \widehat{\one_{[-2^{-i-3},2^{-i-3}]}},\qquad
+ \B=\lim_{l\to\infty}\B_l,\qquad b=\widehat\B.
+\]
+Define
+\[
+ \Psi(\eta)=b(4(\eta-3/2))+b(4(\eta+3/2)),\qquad
+ c_\Psi=\int_0^\infty\Psi(v)\h(v)^2\frac{\dd v}{v},
+\]
+\[
+ \Phi(\eta)=\int_{|\eta|}^\infty\Psi(v)\h(v)^2\frac{\dd v}{v},
+ \qquad \psi=\F^{-1}\Psi,\quad\varphi=\F^{-1}\Phi.
+\]
+At zero the integrand $\Psi(v)\h(v)^2/v$ is defined to be zero.
+\end{definition}
+
+\begin{lemma}[Bump properties]\label{lem:bumps}
+The standard bump is real, even, and Schwartz; $0\le b\le1$,
+$\supp b\subset[-1,1]$, and $b=1$ on $[-1/2,1/2]$.
+Moreover $c_\Psi>0$, $\Psi$ and $\Phi$ are real, even and smooth,
+\[
+ \supp\Psi\subset[-2,-1]\cup[1,2],\quad
+ \supp\Phi\subset[-2,2],\quad \Phi=c_\Psi\text{ on }[-1,1].
+\]
+The functions $\psi,\varphi$ are real even Schwartz functions.
+For each fixed integer $N\ge0$, the seminorms
+$\sup_x(1+|x|)^N|v^{(a)}(x)|$, $a=0,1$, are finite for
+$v=\g,\h,\psi,\varphi,\g*\varphi,\h*\h*\psi$.
+\end{lemma}
+\begin{proof}
+Put $a_i=2^{-i-3}$ and
+$\mu_i=2^{i+2}\one_{[-a_i,a_i]}$. These are nonnegative
+probability densities. For $l\ge1$, Fourier transformation of the finite
+product, using evenness to remove reflection, gives
+\[
+ b_l=\widehat\B_l
+     =\one_{[-3/4,3/4]}*\mu_0*\cdots*\mu_{l-1},\qquad
+ \sum_{i=0}^{l-1}a_i=\frac14-2^{-l-2}.
+\]
+In particular $0\le b_l\le1$, its support is contained in
+$[-1+2^{-l-2},1-2^{-l-2}]$, and
+$b_l=1$ on $[-1/2-2^{-l-2},1/2+2^{-l-2}]$.
+For fixed $\xi$, the factors
+\[
+ \widehat\mu_i(\xi)=\frac{\sin(2\pi a_i\xi)}{2\pi a_i\xi},
+ \qquad \widehat\mu_i(0)=1,
+ \qquad |1-\widehat\mu_i(\xi)|\le C a_i^2|\xi|^2
+\]
+show convergence of the product, uniformly on compact $\xi$ sets.
+For $l\ge1$, the initial interval factor and $\widehat\mu_0$
+give $|\B_l(\xi)|\le C(1+|\xi|)^{-2}$, since every remaining
+factor has modulus at most one. Dominated convergence gives
+$\B_l\to\B$ in $L^1$ and therefore $b_l\to b$ uniformly.
+The positivity, support, and plateau properties pass to $b$.
+
+Distributionally, the finite signed measure
+\[
+ \mu_i'=2^{i+2}(\delta_{-a_i}-\delta_{a_i})
+ \quad\hbox{has total variation }2^{i+3}.
+\]
+For $l\ge\max(1,r)$, differentiate distinct factors
+$\mu_0,\ldots,\mu_{r-1}$.
+Convolution with the other probability densities is an $L^\infty$
+contraction, whence
+\[
+ \|b_l^{(r)}\|_\infty
+       \le\prod_{i=0}^{r-1}2^{i+3}
+       =2^{r(r-1)/2+3r}.
+\]
+Uniform convergence transfers these weak derivative bounds to $b$.
+Applying the one-dimensional fundamental theorem for weak
+derivatives successively, for arbitrarily large $r$, gives a smooth
+representative. It is the continuous function $b$ already obtained.
+Thus $b\in C_c^\infty$, and Fourier inversion and
+Lemma~\ref{lem:schwartz} give $\B\in\Sp(\R)$.
+Our two translates of $b$ have supports in
+$[5/4,7/4]$ and $[-7/4,-5/4]$. Positivity on a subinterval implies
+$c_\Psi>0$. In addition to the defining formula, for $\eta\ne0$
+the substitution $v=s|\eta|$ gives
+\[
+ \Phi(\eta)=\int_1^\infty\Psi(s\eta)\h(s\eta)^2\frac{\dd s}{s}.
+\]
+The defining formula gives $0\le\Phi\le c_\Psi$, with
+$\Phi=c_\Psi$ on $[-1,1]$ and $\Phi=0$ for $|\eta|\ge2$.
+For $\eta\ne0$ its derivative is
+\[
+ \Phi'(\eta)=-\frac{\Psi(\eta)\h(\eta)^2}{\eta}.
+\]
+The right side vanishes near zero, so the formula and the constant
+extension prove smoothness everywhere. Inverse Fourier transformation
+and Schwartz convolution give the remaining assertions.
+\end{proof}
+
+\begin{lemma}[Gaussian domination]\label{lem:domination}
+For $\lambda\ge1$ and $r\in\R$,
+\begin{align*}
+ |\g_{\lambda,0}(v)|+|\h_{\lambda,0}(v)|&\le C\lambda^9\theta(v),\\
+ |\g_{1,r}(v)|+|\h_{1,r}(v)|&\le C R(r)^{10}\theta(v).
+\end{align*}
+For $z\in E_4$, $u\in E_3$, one also has
+\begin{equation}\label{eq:superposition}
+ |\varphi(z_1-u_1)|\g(z_2)|\varphi(z_3-u_2)|\g(z_4)
+ \le C U(u)^{50}\int_1^\infty
+       \prod_{a=1}^4\g_{(\lambda)}(z_a)\lambda^{-47}\dd\lambda.
+\end{equation}
+Finally $|\psi(r\pm u_3)|\le C U(u)^{50}R(r)^{-50}$ and
+$\int|\psi(r\pm u_3)|\dd r=\|\psi\|_1$.
+\end{lemma}
+\begin{proof}
+Use $1+|v|\le\lambda(1+|v|/\lambda)$ and
+$1+|v|\le R(r)(1+|v-r|)$ with order $10$ decay.
+The left side of \eqref{eq:superposition} is at most
+$C U(u)^{50}(1+|z|)^{-50}$. In its right side, restrict
+$\lambda$ to $[1+|z|,2(1+|z|)]$; the Gaussian exponential is at
+least $e^{-\pi}$ and the remaining integrand is $\lambda^{-51}$.
+This proves the required lower bound for the positive superposition.
+Translation invariance and order $50$ decay prove the last assertions.
+\end{proof}
+
+\section{Dyadic geometry and local sizes}
+
+\begin{definition}[Boxes, forests, trees, and regions]\label{def:tree}
+A box is encoded by $(k,n)\in\Z\times\Z^3$ and denotes
+\[
+ Q(k,n)=\prod_{i=1}^3[2^{k\alpha_i}n_i,2^{k\alpha_i}(n_i+1)).
+\]
+Set $\ell(Q)=2^k$, $|Q|=2^{kA}$, and let $c(Q)$ be its center.
+Write
+\[
+ I_i(Q)=[a_i(Q),b_i(Q)),\qquad
+ a_i(Q)=2^{k\alpha_i}n_i,\quad
+ b_i(Q)=2^{k\alpha_i}(n_i+1),\quad
+ c(Q)_i=2^{k\alpha_i}(n_i+\tfrac12).
+\]
+Its parent has level $k+1$ and indices
+$\lfloor n_i/2^{\alpha_i}\rfloor$ (integer floor, also for negative
+indices). Its children are
+\[
+ \ch(Q(k,n))=
+ \left\{Q(k-1,m):m_i=2^{\alpha_i}n_i+v_i,
+          \quad v_i\in\{0,\ldots,2^{\alpha_i}-1\}\right\}.
+\]
+A finite collection is convex if it contains every intermediate box
+between two of its members ordered by inclusion. A convex tree is a
+nonempty finite convex collection with a largest member $Q_\T$.
+Its leaves and its collections at a fixed level are
+\[
+ \mathcal L(\T)=\{L:L\notin\T,\ \operatorname{parent}(L)\in\T\},
+ \qquad \T_k=\{Q\in\T:\ell(Q)=2^k\},\qquad
+ T_k=\bigcup_{Q\in\T_k}Q.
+\]
+For any finite collection $\mathcal Q$ put
+\[
+ \Omega_{\mathcal Q}=\bigcup_{Q\in\mathcal Q}
+       Q\times(\ell(Q)/2,\ell(Q)],\qquad
+ d\nu(p,t)=\dd p\,\frac{\dd t}{t}\quad(t>0).
+\]
+Empty collections have empty region. Upper half-open scale intervals
+give exact disjointness; closures are used only in local suprema.
+\end{definition}
+
+\begin{definition}[Oriented faces and adjacent boxes]\label{def:faces}
+For $\varepsilon\in\{-1,1\}$ put
+\[
+ q_i(Q,\varepsilon)=
+ \begin{cases}a_i(Q),&\varepsilon=-1,\\b_i(Q),&\varepsilon=1,
+ \end{cases}
+ \qquad Q_i^\varepsilon=Q(k,n+\varepsilon e_i)
+ \quad\text{if }Q=Q(k,n),
+\]
+where $e_i$ is the $i$th coordinate unit vector in $\Z^3$.
+The closed $i$-face with outward orientation $\varepsilon$ is
+\[
+ \partial_i^\varepsilon Q
+ =\{p:p_i=q_i(Q,\varepsilon),\ 
+                  p_m\in[a_m(Q),b_m(Q)]\ (m\ne i)\}.
+\]
+Its two-dimensional measure means the pushforward of coordinate
+Lebesgue measure under insertion of $q_i(Q,\varepsilon)$ in the
+$i$th coordinate, rather than three-dimensional Lebesgue measure.
+Encode each surviving face by its incident box and orientation:
+\[
+ \mathscr S_{i,k}
+ =\{(Q,\varepsilon):Q\in\T_k,\ 
+             \varepsilon\in\{-1,1\},\ Q_i^\varepsilon\notin\T\}.
+\]
+For $S=(Q,\varepsilon)\in\mathscr S_{i,k}$ define
+\[
+ Q_S=Q,\quad Q_S^{\rm out}=Q_i^\varepsilon,\quad
+ \varepsilon(S)=\varepsilon,\quad q_i(S)=q_i(Q,\varepsilon),
+ \qquad R_S=\prod_{m\ne i}I_m(Q).
+\]
+The underlying closed face of $S$ is
+\[
+ \{p:p_i=q_i(S),\ p_{-i}\in\overline{R_S}\},\qquad
+ |R_S|=2^{k(A-\alpha_i)}.
+\]
+The boundary of $R_S$ has two-dimensional measure zero, so face
+integrals can be taken over the half-open set $R_S$. The surviving
+faces are precisely the elementary $i$-faces contained in
+$\partial T_k$.
+\end{definition}
+
+\begin{lemma}[Dyadic facts and boundary packing]\label{lem:geometry}
+Intersecting boxes are nested. A box has $2^A$ children, which
+partition it, and the leaves of a finite convex tree partition its root.
+All these sets are measurable. The surviving faces satisfy
+\begin{equation}\label{eq:packing}
+ \sum_k2^{kA}\#\mathscr S_{i,k}\le8|Q_\T|\quad(i=1,2,3).
+\end{equation}
+Faces carry two-dimensional coordinate Lebesgue measure and have area
+$2^{k(A-\alpha_i)}$.
+\end{lemma}
+\begin{proof}
+For $k\le s$, every interval of length $2^{s\alpha_i}$ is the
+disjoint union of its $2^{(s-k)\alpha_i}$ dyadic subintervals of
+length $2^{k\alpha_i}$. Thus a scale-$2^k$ box intersecting a
+scale-$2^s$ box lies inside it. Integer division gives the stated
+parent and children, and multiplication of the coordinate counts gives
+$\#\ch(Q)=\prod_i2^{\alpha_i}=2^A$. At any fixed level the boxes
+partition $E_3$; all boxes are Borel sets.
+
+Given $x\in Q_\T$, follow its unique descendant chain starting at
+$Q_\T$. The tree is finite, so there is a first absent child $L$;
+then $x\in L\in\mathcal L(\T)$. Distinct leaves are disjoint:
+if $L\subsetneq L'$ were two leaves, then
+$L'\subseteq\operatorname{parent}(L')$ and
+$\operatorname{parent}(L)\subseteq L'$. Convexity between these
+two parents, which belong to $\T$, would force $L'\in\T$.
+Hence
+\begin{equation}\label{eq:leaf_partition}
+ Q_\T=\bigsqcup_{L\in\mathcal L(\T)}L,\qquad
+ \sum_{L\in\mathcal L(\T)}|L|=|Q_\T|.
+\end{equation}
+
+Fix $i$ and a surviving face $S\in\mathscr S_{i,k}$. There is
+exactly one incident scale-$2^k$ tree box, namely $Q_S$: if the
+other incident box were also in the tree, the face would not survive.
+First suppose $Q_S^{\rm out}\subseteq Q_\T$. Let $P$ be the first
+ancestor of $Q_S^{\rm out}$ belonging to $\T$, which exists because
+the chain reaches $Q_\T$. Let $L$ be the child of $P$ containing
+$Q_S^{\rm out}$. By minimality of $P$,
+\[
+ Q_S^{\rm out}\subseteq L,\qquad L\notin\T,\qquad
+ \operatorname{parent}(L)=P\in\T,
+\]
+so $L\in\mathcal L(\T)$. Also $Q_S\not\subseteq L$: otherwise
+$Q_S\subseteq L\subseteq P$ and convexity would give $L\in\T$.
+For $m\ne i$, adjacency gives
+\[
+ I_m(Q_S)=I_m(Q_S^{\rm out})\subseteq I_m(L).
+\]
+Therefore failure of $Q_S\subseteq L$ occurs only in the $i$th
+coordinate. The adjacent intervals $I_i(Q_S)$ and
+$I_i(Q_S^{\rm out})$ have equal length, with the second inside
+$I_i(L)$ and the first outside. Since $I_i(L)$ is a union of
+intervals of that length, their common endpoint is one of the two
+endpoints of $I_i(L)$. The face $S$ consequently lies in an
+$i$-face of $L$.
+
+For $L\in\mathcal L(\T)$ define $\mathscr S_{i,k}(L)$ to be the
+faces for which this ancestor construction produces $L$. These sets
+partition the surviving faces with outside box contained in the root.
+If $\ell(L)=2^s$, then $\mathscr S_{i,k}(L)$ is empty for $k>s$.
+For $k\le s$, either $i$-face of $L$ is tiled by exactly
+\[
+ \prod_{m\ne i}2^{(s-k)\alpha_m}
+ =2^{(s-k)(A-\alpha_i)}
+\]
+elementary scale-$2^k$ faces. Thus
+\begin{align*}
+ \#\mathscr S_{i,k}(L)&\le2\,2^{(s-k)(A-\alpha_i)},\\
+ \sum_k2^{kA}\#\mathscr S_{i,k}(L)
+ &\le 2\sum_{k\le s}2^{kA}2^{(s-k)(A-\alpha_i)}\\
+ &=2\,2^{sA}\sum_{d=0}^\infty2^{-d\alpha_i}
+ =\frac{2|L|}{1-2^{-\alpha_i}}\le4|L|.
+\end{align*}
+Summing over the leaves and using \eqref{eq:leaf_partition} bounds
+the total contribution of these faces by $4|Q_\T|$.
+
+If $Q_S^{\rm out}\not\subseteq Q_\T$, the root is a union of
+scale-$2^k$ boxes and contains $Q_S$, so $S$ lies on one of its
+two $i$-faces. Write $\ell(Q_\T)=2^{s_\T}$. There are at most
+$2\,2^{(s_\T-k)(A-\alpha_i)}$ such faces at level $k\le s_\T$,
+and their total weighted contribution is at most
+\[
+ 2\sum_{k\le s_\T}2^{kA}2^{(s_\T-k)(A-\alpha_i)}
+ =\frac{2|Q_\T|}{1-2^{-\alpha_i}}\le4|Q_\T|.
+\]
+The two cases are disjoint and exhaustive, proving
+\eqref{eq:packing}. All sums over faces are finite; the infinite
+geometric series above are only numerical upper bounds.
+\end{proof}
+
+\begin{definition}[Local size]\label{def:size}
+For $s\ge1$, $f\in C_b(E_3)$ and nonempty finite $\mathcal Q$, define
+\[
+ M_{\mathcal Q,s}(f)=\max_{Q\in\mathcal Q}
+       (|f|^s*\Theta_{\ell(Q)}(c(Q)))^{1/s}.
+\]
+Write $J=\{0,1\}^3$. For $x=(x_i^b)_{1\le i\le3,\,b\in\{0,1\}}$
+let $\Pi_j x=(x_1^{j_1},x_2^{j_2},x_3^{j_3})$.
+Thus $E_6$ is identified with two copies of each coordinate of $E_3$,
+and $\dd x=\prod_{i=1}^3\prod_{b=0}^1\dd x_i^b$.
+For $F\in C_b(E_3;\R)^J$, put
+\[
+ \mathcal C_\T(F)=\sup_{(p,t)\in\overline{\Omega_\T}}
+ \int_{E_6}\prod_{j\in J}|F_j(\Pi_j x)|
+       \prod_{i,b}\theta_{t^{\alpha_i},p_i}(x_i^b)\dd x.
+\]
+For empty collections set the size to zero. For $L^p$ inputs with
+$p>s$ use the same formula with measurable representatives; the
+convolutions are finite by H\"older and are independent of those
+representatives.
+\end{definition}
+
+\begin{lemma}[Size comparison and zero size]\label{lem:size}
+There is $C_{\alpha,s}$ such that
+\[
+ M_{\T,s}(f)\le
+ \sup_{(p,t)\in\overline{\Omega_\T}}(|f|^s*\Theta_t(p))^{1/s}
+ \le C_{\alpha,s} M_{\T,s}(f).
+\]
+All suprema are finite. For a nonempty tree, zero size implies
+$f=0$ almost everywhere, and pointwise when $f$ is continuous.
+\end{lemma}
+\begin{proof}
+For $p\in\overline Q$ and $\ell(Q)/2\le t\le\ell(Q)$,
+compare $t^{\alpha_i}$ with $\ell(Q)^{\alpha_i}$ and use
+$|p_i-c(Q)_i|\le\ell(Q)^{\alpha_i}/2$ in each bracket factor.
+For example, $\Theta_t(p-y)\le
+2^A(3/2)^{30}\Theta_{\ell(Q)}(c(Q)-y)$ suffices.
+The closure of a finite union is the union of the closures.
+Strict positivity of $\Theta_{\ell(Q)}$ proves the zero-size assertion.
+\end{proof}
+
+\begin{lemma}[Full-cube and edge Brascamp--Lieb inequalities]\label{lem:bl}
+For bounded measurable nonnegative $F_j$,
+\begin{equation}\label{eq:bl4}
+ \int_{E_6}\prod_{j\in J}F_j(\Pi_jx)
+    \prod_{i,b}\theta_{t^{\alpha_i},p_i}(x_i^b)\dd x
+ \le\prod_{j\in J}(F_j^4*\Theta_t(p))^{1/4}.
+\end{equation}
+If only $F_{000}=F_0$ and $F_{001}=F_1$ differ from $1$, the left
+side is at most
+\begin{equation}\label{eq:bl2}
+ (F_0^2*\Theta_t(p))^{1/2}(F_1^2*\Theta_t(p))^{1/2}.
+\end{equation}
+In fact the following four-variable inequality, before inserting the
+two unused coordinates, holds:
+\begin{align}
+ &\int_{E_4} F_0(x_1,x_2,z_0)F_1(x_1,x_2,z_1)
+       \theta_{t^{\alpha_1},p_1}(x_1)
+       \theta_{t^{\alpha_2},p_2}(x_2)
+       \prod_{b=0}^1\theta_{t^{\alpha_3},p_3}(z_b)
+       \dd x_1\dd x_2\dd z_0\dd z_1\notag\\
+ &\hspace{25mm}\le
+ (F_0^2*\Theta_t(p))^{1/2}(F_1^2*\Theta_t(p))^{1/2}.
+ \label{eq:edge_bl_four_variables}
+\end{align}
+\end{lemma}
+\begin{proof}
+Set
+\[
+ \dd\mu_i^b(v)=\theta_{t^{\alpha_i},p_i}(v)\dd v,
+ \qquad \dd\mu(x)=\prod_{i,b}\dd\mu_i^b(x_i^b),\qquad
+ m_\theta=\int_\R\theta(v)\dd v=\frac29.
+\]
+Let $\bar j=(1-j_1,1-j_2,1-j_3)$, $J_0=\{0\}\times\{0,1\}^2$,
+and define $B_j(x)=F_j(\Pi_jx)F_{\bar j}(\Pi_{\bar j}x)$.
+Every vertex belongs to exactly one of these four opposite pairs, so
+the left side of \eqref{eq:bl4} equals $\int\prod_{j\in J_0}B_j\dd\mu$.
+Two applications of Cauchy--Schwarz give
+\begin{align*}
+ \int\prod_{j\in J_0}B_j\dd\mu
+ &\le\left(\int B_{000}^2B_{001}^2\dd\mu\right)^{1/2}
+       \left(\int B_{010}^2B_{011}^2\dd\mu\right)^{1/2}\\
+ &\le\prod_{j\in J_0}\left(\int B_j^4\dd\mu\right)^{1/4}.
+\end{align*}
+For each $j$, the coordinate sets used by $\Pi_j$ and $\Pi_{\bar j}$
+are disjoint and together exhaust the six variables. Fubini therefore
+gives the exact factorization
+\begin{align*}
+ \int B_j^4\dd\mu
+ &=\left(\int_{E_3}F_j(y)^4
+                    \prod_i\theta_{t^{\alpha_i},p_i}(y_i)\dd y\right)
+   \left(\int_{E_3}F_{\bar j}(z)^4
+                    \prod_i\theta_{t^{\alpha_i},p_i}(z_i)\dd z\right)\\
+ &=(F_j^4*\Theta_t)(p)(F_{\bar j}^4*\Theta_t)(p).
+\end{align*}
+Here evenness of $\theta$ identifies the weighted integrals with
+the displayed convolutions. Multiplying over $J_0$ proves
+\eqref{eq:bl4}.
+
+For the four-variable assertion set
+\begin{align*}
+ \dd\eta&=\theta_{t^{\alpha_1},p_1}(x_1)
+          \theta_{t^{\alpha_2},p_2}(x_2)
+          \prod_{b=0}^1\theta_{t^{\alpha_3},p_3}(z_b)
+          \dd x_1\dd x_2\dd z_0\dd z_1,\\
+ B_b&=F_b(x_1,x_2,z_b).
+\end{align*}
+Cauchy--Schwarz and integration in the unused $z$ variable give
+\begin{align*}
+ \int B_0B_1\dd\eta
+ &\le\left(\int B_0^2\dd\eta\right)^{1/2}
+       \left(\int B_1^2\dd\eta\right)^{1/2},\\
+ \int B_0^2\dd\eta
+ &=\left(\int_\R\theta_{t^{\alpha_3},p_3}(z_1)\dd z_1\right)
+   \int_{E_3}F_0(x_1,x_2,z_0)^2
+       \theta_{t^{\alpha_1},p_1}(x_1)\\
+ &\hspace{10mm}\times
+       \theta_{t^{\alpha_2},p_2}(x_2)
+       \theta_{t^{\alpha_3},p_3}(z_0)\dd x_1\dd x_2\dd z_0\\
+ &=m_\theta(F_0^2*\Theta_t)(p).
+\end{align*}
+The corresponding identity for $B_1$ has the same factor
+$m_\theta\le1$, proving \eqref{eq:edge_bl_four_variables}.
+Finally, in the six-variable edge form, integration in $x_1^1,x_2^1$
+adds the factor $m_\theta^2\le1$. This proves \eqref{eq:bl2}.
+\end{proof}
+
+\section{Cubical telescoping with boundary terms}
+
+\begin{definition}[Local cube forms]\label{def:cube}
+For a tuple $F\in C_b(E_3;\R)^J$, a finite collection $\mathcal Q$,
+$\lambda\ge1$, $r\in\R$, $t>0$, and $p\in E_3$, set
+\[
+ (\mu_1,s_1)=(\lambda,0),\quad(\mu_2,s_2)=(\lambda,0),\quad
+ (\mu_3,s_3)=(1,r),
+\]
+\[
+ G_i(v)=\g_{\mu_i t^{\alpha_i},p_i+s_it^{\alpha_i}}(v),\quad
+ H_i(v)=\h_{\mu_i t^{\alpha_i},p_i+s_it^{\alpha_i}}(v),\quad
+ \mathcal F_F(x)=\prod_{j\in J}F_j(\Pi_jx).
+\]
+Dependence on $t,p$ is suppressed only in $G_i,H_i$.
+Define
+\begin{equation}\label{eq:cubeform}
+ \Theta^{(i)}_{\mathcal Q,\lambda,r}(F)=
+ \int_{\Omega_{\mathcal Q}}\int_{E_6}\mathcal F_F(x)
+ H_i(x_i^0)H_i(x_i^1)
+ \prod_{m\ne i}G_m(x_m^0)G_m(x_m^1)\dd x\,d\nu(p,t).
+\end{equation}
+In coordinates,
+\begin{align}
+ \Theta^{(1)}_{\mathcal Q,\lambda,r}(F)
+ &=\int_{\Omega_{\mathcal Q}}\int_{E_6}\mathcal F_F(x)
+       \prod_{b=0}^1\h_{\lambda t^{\alpha_1},p_1}(x_1^b)
+       \prod_{b=0}^1\g_{\lambda t^{\alpha_2},p_2}(x_2^b)\notag\\
+ &\hspace{12mm}\times\prod_{b=0}^1\g_{t^{\alpha_3},p_3+rt^{\alpha_3}}(x_3^b)
+       \dd x\,d\nu(p,t),\label{eq:cubeform_first}\\
+ \Theta^{(2)}_{\mathcal Q,\lambda,r}(F)
+ &=\int_{\Omega_{\mathcal Q}}\int_{E_6}\mathcal F_F(x)
+       \prod_{b=0}^1\g_{\lambda t^{\alpha_1},p_1}(x_1^b)
+       \prod_{b=0}^1\h_{\lambda t^{\alpha_2},p_2}(x_2^b)\notag\\
+ &\hspace{12mm}\times\prod_{b=0}^1\g_{t^{\alpha_3},p_3+rt^{\alpha_3}}(x_3^b)
+       \dd x\,d\nu(p,t),\label{eq:cubeform_second}\\
+ \Theta^{(3)}_{\mathcal Q,\lambda,r}(F)
+ &=\int_{\Omega_{\mathcal Q}}\int_{E_6}\mathcal F_F(x)
+       \prod_{b=0}^1\g_{\lambda t^{\alpha_1},p_1}(x_1^b)
+       \prod_{b=0}^1\g_{\lambda t^{\alpha_2},p_2}(x_2^b)\notag\\
+ &\hspace{12mm}\times\prod_{b=0}^1\h_{t^{\alpha_3},p_3+rt^{\alpha_3}}(x_3^b)
+       \dd x\,d\nu(p,t).\label{eq:cubeform_third}
+\end{align}
+Define the vertex map
+\[
+ \rho_i^b(j)=j[i\mapsto b]
+ =(j_1,\ldots,j_{i-1},b,j_{i+1},\ldots,j_3)
+\]
+and the coordinate-copy operator
+\[
+ (\mathsf C_i^bF)_j=F_{\rho_i^b(j)}.
+\]
+It obeys
+\[
+ (\mathsf C_i^b)^2=\mathsf C_i^b,\qquad
+ \mathsf C_i^a\mathsf C_q^b=\mathsf C_q^b\mathsf C_i^a
+ \quad(i\ne q).
+\]
+These equalities follow slot by slot from the analogous identities
+for replacement of distinct coordinates of a vertex.
+\end{definition}
+
+\begin{lemma}[Local integrability and differentiation]\label{lem:local_integrability}
+For bounded continuous real $F_j$ and a finite collection,
+\eqref{eq:cubeform} is absolutely integrable and multilinear.
+The same holds with a Gaussian replaced by its first scale or center
+derivative, and for the face and endpoint integrals defined below.
+Differentiation under the spatial integrals is valid on compact
+positive scale intervals and bounded sets of centers.
+\end{lemma}
+\begin{proof}
+The scale lies in $[a,b]\subset(0,\infty)$ and the centers in a
+bounded set. Gaussian derivatives, with these parameters fixed in a
+compact set, admit one common integrable rapidly decreasing majorant
+in all six variables. Multiply by $\prod_j\|F_j\|_\infty$.
+The same argument works on each coordinate face; its parameter domain
+has finite area. Dominated convergence proves the derivative statements.
+\end{proof}
+
+\begin{definition}[Endpoint and boundary forms]\label{def:boundary}
+Write
+\[
+ D_i=G_i(x_i^0)G_i(x_i^1),\quad P_i=H_i(x_i^0)H_i(x_i^1),
+\]
+\[
+ E_i=\frac{\mu_i}{2\pi}
+       \big(H_i(x_i^0)G_i(x_i^1)+G_i(x_i^0)H_i(x_i^1)\big)-s_iD_i,
+ \qquad K_{t,p}(x)=\prod_iD_i.
+\]
+For $Q=I_1\times I_2\times I_3$ write
+\[
+ I_{-i}=\prod_{m\ne i}I_m,\qquad
+ \dd p_{-i}=\prod_{m\ne i}\dd p_m,\qquad
+ [U]_{p_i=a}^{p_i=b}=U|_{p_i=b}-U|_{p_i=a}.
+\]
+Define the interior and boundary center integrals
+\[
+ U_{Q,i}(t,x)=\int_Q P_i\prod_{m\ne i}D_m\dd p,
+\]
+\[
+ V_{Q,i}(t,x)=\int_{I_{-i}}
+       [E_i]_{p_i=\inf I_i}^{p_i=\sup I_i}\prod_{m\ne i}D_m\dd p_{-i}.
+\]
+For $S\in\mathscr S_{i,k}$, define the face integral
+\[
+ \mathcal J_{i,S}(t;F)
+ =\int_{R_S}\int_{E_6}\mathcal F_F(x)
+       E_i\big|_{p_i=q_i(S)}\prod_{m\ne i}D_m\dd x\dd p_{-i}.
+\]
+Set
+\[
+ \Xi_{\mathcal Q}(F)=\pi\sum_{Q\in\mathcal Q}
+       \int_Q\int_{E_6}\mathcal F_F(x)K_{\ell(Q),p}(x)\dd x\dd p,
+\]
+\[
+ \mathcal B_{\mathcal Q}(F)=-\pi\sum_{Q\in\mathcal Q}\sum_i\alpha_i
+       \int_{\ell(Q)/2}^{\ell(Q)}t^{\alpha_i-1}
+         \int_{E_6}\mathcal F_F(x)V_{Q,i}(t,x)\dd x\dd t,
+\]
+\[
+ \mathcal R_\T(F)=\Xi_{\mathcal L(\T)}(F)-\Xi_{\{Q_\T\}}(F)
+                         +\mathcal B_\T(F).
+\]
+Each form also depends on $\lambda,r$.
+The three boundary kernels are
+\begin{align*}
+ E_1&=\frac{\lambda}{2\pi}
+       \big(H_1(x_1^0)G_1(x_1^1)+G_1(x_1^0)H_1(x_1^1)\big),\\
+ E_2&=\frac{\lambda}{2\pi}
+       \big(H_2(x_2^0)G_2(x_2^1)+G_2(x_2^0)H_2(x_2^1)\big),\\
+ E_3&=\frac{1}{2\pi}
+       \big(H_3(x_3^0)G_3(x_3^1)+G_3(x_3^0)H_3(x_3^1)\big)
+                    -rG_3(x_3^0)G_3(x_3^1).
+\end{align*}
+All sums in these definitions are finite, and all forms are multilinear
+in the eight real inputs on $C_b(E_3)^J$.
+\end{definition}
+
+\begin{lemma}[One-dimensional differential identity]\label{lem:oned_telescoping}
+For $I=[a,b]$ with $a\le b$ and fixed $x_i^0,x_i^1$,
+\begin{equation}\label{eq:oned_telescoping}
+ \int_I-t\partial_tD_i\dd p_i
+ =\frac{\alpha_i}{\pi}\int_IP_i\dd p_i
+                  +\alpha_i t^{\alpha_i}[E_i]_{\inf I}^{\sup I}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+For a Schwartz function $v$ let $v^\sharp(z)=zv(z)$. For any
+$\alpha>0$, direct differentiation of
+$v_{t^\alpha,p}(u)=t^{-\alpha}v(t^{-\alpha}(u-p))$ gives
+\begin{align}
+ -t\partial_tv_{t^\alpha,p}(u)
+   &=\alpha v_{t^\alpha,p}(u)
+       +\alpha((v')^\sharp)_{t^\alpha,p}(u),\label{eq:scale_derivative}\\
+ ((v')^\sharp)_{t^\alpha,p}(u)
+   &=-t^\alpha\partial_p(v^\sharp)_{t^\alpha,p}(u)
+       -v_{t^\alpha,p}(u),\label{eq:center_derivative}\\
+ \partial_pv_{t^\alpha,p}(u)&=-t^{-\alpha}(v')_{t^\alpha,p}(u).
+                                                        \label{eq:center_derivative_v}
+\end{align}
+Substituting \eqref{eq:center_derivative} in
+\eqref{eq:scale_derivative}, multiplying by
+$v_{t^\alpha,p}(u_1)$, and integrating by parts on $I=[a,b]$ yields
+\begin{align}
+ &\int_I(-t\partial_tv_{t^\alpha,p}(u_0))v_{t^\alpha,p}(u_1)\dd p\notag\\
+ &\qquad=-\alpha t^\alpha[(v^\sharp)_{t^\alpha,p}(u_0)
+                       v_{t^\alpha,p}(u_1)]_{p=a}^{p=b}\notag\\
+ &\qquad\quad-\alpha\int_I(v^\sharp)_{t^\alpha,p}(u_0)
+                       (v')_{t^\alpha,p}(u_1)\dd p.
+                                             \label{eq:scale_ibp}
+\end{align}
+Every factor is smooth on the compact interval, so this integration
+by parts is an ordinary one-dimensional identity.
+
+For $v=\g_{\mu,s}$ use $\h(z)=-2\pi z\g(z)$ to obtain
+\[
+ v'=\mu^{-1}\h_{\mu,s},\qquad
+ v^\sharp=-\frac{\mu}{2\pi}\h_{\mu,s}+s\g_{\mu,s},\qquad
+ H_i=-\mu_it^{\alpha_i}\partial_{p_i}G_i.
+\]
+Fix $i$, put $u_b=x_i^b$, and apply \eqref{eq:scale_ibp} with
+$v=\g_{\mu_i,s_i}$ and $\alpha=\alpha_i$. Add the result with
+$u_0,u_1$ exchanged. With
+\[
+ W_i=H_i(x_i^0)G_i(x_i^1)+G_i(x_i^0)H_i(x_i^1)
+\]
+the resulting terms, before the last cancellation, are
+\begin{align}
+ \int_I-t\partial_tD_i\dd p_i
+ &=\frac{\alpha_i}{\pi}\int_IP_i\dd p_i
+    +\frac{\alpha_i\mu_i t^{\alpha_i}}{2\pi}[W_i]_{a}^{b}\notag\\
+ &\quad-2\alpha_i s_it^{\alpha_i}[D_i]_{a}^{b}
+    -\frac{\alpha_i s_i}{\mu_i}\int_IW_i\dd p_i.
+                                                  \label{eq:oned_before_cancel}
+\end{align}
+The center derivative formula implies
+\[
+ W_i=-\mu_it^{\alpha_i}\partial_{p_i}D_i,
+ \qquad
+ -\frac{\alpha_i s_i}{\mu_i}\int_IW_i\dd p_i
+       =\alpha_i s_it^{\alpha_i}[D_i]_{a}^{b}.
+\]
+Substitution in \eqref{eq:oned_before_cancel} changes the coefficient
+of $s_iD_i$ from $-2$ to $-1$, leaving exactly
+\[
+ \frac{\alpha_i}{\pi}\int_IP_i\dd p_i
+ +\alpha_it^{\alpha_i}
+        \left[\frac{\mu_i}{2\pi}W_i-s_iD_i\right]_{a}^{b}.
+\]
+This is \eqref{eq:oned_telescoping}.
+\end{proof}
+
+\begin{lemma}[Finite telescoping identity]\label{lem:telescoping_identity}
+For a single box and then a finite convex tree,
+\begin{align}
+ \sum_i\alpha_i\Theta^{(i)}_{\{Q\},\lambda,r}(F)
+   &=\Xi_{\ch(Q)}(F)-\Xi_{\{Q\}}(F)+\mathcal B_{\{Q\}}(F),\label{eq:single_tel}\\
+ \sum_i\alpha_i\Theta^{(i)}_{\T,\lambda,r}(F)&=\mathcal R_\T(F).
+                                                        \label{eq:tree_tel}
+\end{align}
+\end{lemma}
+\begin{proof}
+Fix $Q$ with $\ell(Q)=2^k$. The product rule and integration of
+\eqref{eq:oned_telescoping} in the other two center coordinates give
+\begin{align}
+ \int_Q-t\partial_tK_{t,p}(x)\dd p
+ &=\sum_{i=1}^3\int_{I_{-i}}
+     \left(\int_{I_i}-t\partial_tD_i\dd p_i\right)
+                       \prod_{m\ne i}D_m\dd p_{-i}\notag\\
+ &=\frac1\pi\sum_{i=1}^3\alpha_iU_{Q,i}(t,x)
+       +\sum_{i=1}^3\alpha_it^{\alpha_i}V_{Q,i}(t,x).
+                                                    \label{eq:box_derivative}
+\end{align}
+The fundamental theorem of calculus yields
+\begin{align}
+ &\int_QK_{2^{k-1},p}(x)\dd p-\int_QK_{2^k,p}(x)\dd p\notag\\
+ &\qquad=\int_{2^{k-1}}^{2^k}\int_Q-t\partial_tK_{t,p}(x)
+                                      \dd p\,\frac{\dd t}{t}.
+                                                    \label{eq:box_scale_endpoints}
+\end{align}
+The local-integrability lemma justifies differentiating under the
+center integral and subsequently multiplying by $\mathcal F_F(x)$
+and integrating in $x$. By definition,
+\[
+ \Theta^{(i)}_{\{Q\},\lambda,r}(F)
+ =\int_{2^{k-1}}^{2^k}\int_{E_6}
+       \mathcal F_F(x)U_{Q,i}(t,x)\dd x\,\frac{\dd t}{t}.
+\]
+Every child $L\in\ch(Q)$ has $\ell(L)=2^{k-1}$ and the children
+partition $Q$. Therefore
+\[
+ \Xi_{\ch(Q)}(F)
+ =\pi\int_Q\int_{E_6}\mathcal F_F(x)K_{2^{k-1},p}(x)\dd x\dd p.
+\]
+Multiply \eqref{eq:box_scale_endpoints} by $\pi\mathcal F_F(x)$,
+integrate in $x$, and substitute \eqref{eq:box_derivative}. Moving
+the boundary contribution to the other side gives
+\eqref{eq:single_tel}, with exactly the negative sign in the
+definition of $\mathcal B_{\{Q\}}$.
+
+Sum \eqref{eq:single_tel} over $Q\in\T$. If
+$P\in\T\setminus\{Q_\T\}$, its parent lies between $P$ and
+$Q_\T$ and hence belongs to $\T$ by convexity. The negative term
+$-\Xi_{\{P\}}$ in the summand indexed by $P$ cancels its unique
+positive occurrence inside $\Xi_{\ch(\operatorname{parent}(P))}$.
+The root has no parent in the tree and supplies the only uncancelled
+negative endpoint term. The uncancelled positive terms are indexed
+by children of tree boxes which do not belong to the tree, exactly
+$\mathcal L(\T)$. Thus the finite reindexing identity is
+\[
+ \sum_{Q\in\T}\big(\Xi_{\ch(Q)}-\Xi_{\{Q\}}\big)
+   =\Xi_{\mathcal L(\T)}-\Xi_{\{Q_\T\}},\qquad
+ \sum_{Q\in\T}\mathcal B_{\{Q\}}=\mathcal B_\T.
+\]
+This proves \eqref{eq:tree_tel}.
+\end{proof}
+
+\begin{lemma}[Cancellation of interior faces]\label{lem:face_cancellation}
+For every finite convex tree,
+\begin{equation}\label{eq:boundary_face_expansion}
+ \mathcal B_\T(F)
+ =-\pi\sum_{i=1}^3\alpha_i\sum_{k\in\Z}
+       \int_{2^{k-1}}^{2^k}t^{\alpha_i-1}
+       \sum_{S\in\mathscr S_{i,k}}
+             \varepsilon(S)\mathcal J_{i,S}(t;F)\dd t.
+\end{equation}
+Only levels occupied by the finite tree contribute to this sum.
+\end{lemma}
+\begin{proof}
+Expand the endpoint brackets defining $V_{Q,i}$. An upper face has
+coefficient $+1$ and a lower face coefficient $-1$. If both
+$Q$ and $Q_i^+$ belong to $\T_k$, the upper face of $Q$ and lower
+face of $Q_i^+$ have the same center coordinate $p_i$ and the same
+transverse rectangle $R_S$. Their kernels $E_i\prod_{m\ne i}D_m$
+also agree, since they depend on $p,t,x$, not on the box containing
+the center. The two face integrals cancel exactly. The same argument
+applies to every adjacent pair, each counted once. A face cannot have
+more than two incident boxes at a fixed level. Thus the uncancelled
+terms are exactly the records in $\mathscr S_{i,k}$ and
+\[
+ \sum_{Q\in\T_k}\int_{E_6}\mathcal F_F(x)V_{Q,i}(t,x)\dd x
+       =\sum_{S\in\mathscr S_{i,k}}
+                       \varepsilon(S)\mathcal J_{i,S}(t;F).
+\]
+The intersections of transverse face edges have measure zero and
+do not alter this identity. Multiply by
+$-\pi\alpha_it^{\alpha_i-1}$, integrate over the scale interval,
+and sum in $i,k$ to obtain \eqref{eq:boundary_face_expansion}.
+\end{proof}
+
+\begin{lemma}[Remainder estimate]\label{lem:remainder}
+There exists $C_\alpha>0$ such that, for every $\lambda\ge1$, $r$,
+finite convex tree, and bounded continuous real tuple,
+\begin{equation}\label{eq:remainder}
+ |\mathcal R_\T(F)|\le C_\alpha\lambda^{37}R(r)^{21}
+                        |Q_\T|\mathcal C_\T(F).
+\end{equation}
+\end{lemma}
+\begin{proof}
+For $\lambda\ge1$, rapid decay gives
+\[
+ |\g_{\lambda,0}(z)|+|\h_{\lambda,0}(z)|
+ \le C\lambda^{-1}(1+|z|/\lambda)^{-10}
+ \le C\lambda^9\theta(z).
+\]
+The elementary inequality
+$1+|z|\le(1+|r|)(1+|z-r|)$ similarly gives
+\[
+ |\g_{1,r}(z)|+|\h_{1,r}(z)|\le CR(r)^{10}\theta(z).
+\]
+After dilation and translation,
+\begin{align}
+ |G_i(v)|+|H_i(v)|&\le C\lambda^9
+                      \theta_{t^{\alpha_i},p_i}(v)\quad(i=1,2),\notag\\
+ |G_3(v)|+|H_3(v)|&\le CR(r)^{10}
+                      \theta_{t^{\alpha_3},p_3}(v).
+                                               \label{eq:cube_kernel_domination}
+\end{align}
+For every choice $\Gamma_{i,b}\in\{G_i,H_i\}$, multiplication of
+these six inequalities gives
+\begin{equation}\label{eq:cube_integrand_control}
+ \int_{E_6}|\mathcal F_F(x)|\prod_{i,b}|\Gamma_{i,b}(x_i^b)|\dd x
+ \le C\lambda^{36}R(r)^{20}\mathcal C_\T(F)
+\end{equation}
+when $(p,t)\in\overline{\Omega_\T}$. There are four scaled factors
+contributing $\lambda^9$ each and two translated factors contributing
+$R(r)^{10}$ each.
+
+For $p\in Q_\T$ the point $(p,\ell(Q_\T))$ belongs to
+$\overline{\Omega_\T}$. If $L\in\mathcal L(\T)$ has parent $P$,
+then $P\in\T$, $L\subseteq P$ and $\ell(L)=\ell(P)/2$, so
+\[
+ (p,\ell(L))\in
+ \overline{P\times(\ell(P)/2,\ell(P)]}
+       \subseteq\overline{\Omega_\T}\qquad(p\in L).
+\]
+Apply \eqref{eq:cube_integrand_control} at these parameters and
+integrate in $p$. The leaf partition gives
+\begin{align}
+ |\Xi_{\{Q_\T\}}(F)|+|\Xi_{\mathcal L(\T)}(F)|
+ &\le C\lambda^{36}R(r)^{20}\mathcal C_\T(F)
+                      \left(|Q_\T|+\sum_{L\in\mathcal L(\T)}|L|\right)
+                                                       \notag\\
+ &\le C\lambda^{36}R(r)^{20}|Q_\T|\mathcal C_\T(F).
+                                                 \label{eq:endpoint_bound}
+\end{align}
+
+It remains to estimate the face sum
+\eqref{eq:boundary_face_expansion}. If $S\in\mathscr S_{i,k}$,
+$p_{-i}\in R_S$, and $2^{k-1}\le t\le2^k$, insertion of
+$q_i(S)$ gives a point $(p,t)\in\overline{\Omega_\T}$ because
+$S$ is a face of $Q_S\in\T_k$. For $i=1,2$ the two terms of
+$E_i$ each have coefficient $\lambda/(2\pi)$. For $i=3$ the
+$HG,GH$ terms have coefficient $1/(2\pi)$ and the $GG$ term has
+coefficient $-r$. Hence \eqref{eq:cube_integrand_control} gives
+\begin{align}
+ |\mathcal J_{i,S}(t;F)|
+ &\le C\lambda^{37}R(r)^{20}|R_S|\mathcal C_\T(F)
+                 \quad(i=1,2),\notag\\
+ |\mathcal J_{3,S}(t;F)|
+ &\le C\lambda^{36}R(r)^{21}|R_S|\mathcal C_\T(F).
+                                                  \label{eq:face_kernel_bound}
+\end{align}
+In each coordinate the scale integral is exactly
+\[
+ \alpha_i\int_{2^{k-1}}^{2^k}t^{\alpha_i-1}\dd t
+       =(1-2^{-\alpha_i})2^{k\alpha_i}\le2^{k\alpha_i}.
+\]
+Combining this with $|R_S|=2^{k(A-\alpha_i)}$,
+$\lambda\ge1$, $R(r)\ge1$, and setting
+$N_{i,k}=\#\mathscr S_{i,k}$, we obtain
+\begin{align}
+ |\mathcal B_\T(F)|
+ &\le C\lambda^{37}R(r)^{21}\mathcal C_\T(F)
+                  \sum_{i=1}^3\sum_k2^{kA}N_{i,k}\notag\\
+ &\le C\lambda^{37}R(r)^{21}|Q_\T|\mathcal C_\T(F).
+                                                  \label{eq:boundary_bound}
+\end{align}
+The last step is \eqref{eq:packing} for each coordinate. Finally,
+the defining equality
+$\mathcal R_\T=\Xi_{\mathcal L(\T)}-\Xi_{\{Q_\T\}}+\mathcal B_\T$
+and \eqref{eq:endpoint_bound}, \eqref{eq:boundary_bound} prove
+\eqref{eq:remainder}.
+\end{proof}
+
+\begin{corollary}[Two remainder norms]\label{cor:remainder_norms}
+Write $D_{\lambda,r}=C_\alpha\lambda^{37}R(r)^{21}$ with
+$C_\alpha$ enlarged if necessary. Then
+\[
+ |\mathcal R_\T(F)|\le D_{\lambda,r}|Q_\T|
+                   \prod_{j\in J}M_{\T,4}(F_j).
+\]
+For a tuple with only slots $000,001$ different from $1$, one also has
+\[
+ |\mathcal R_\T(F)|\le D_{\lambda,r}|Q_\T|
+                    M_{\T,2}(F_{000})M_{\T,2}(F_{001}).
+\]
+\end{corollary}
+\begin{proof}
+Apply \eqref{eq:bl4} or \eqref{eq:bl2} inside the supremum defining
+$\mathcal C_\T$, and then Lemma~\ref{lem:size}.
+\end{proof}
+
+\begin{lemma}[Cubical Cauchy--Schwarz and positivity]\label{lem:cube_cs}
+For real bounded continuous tuples,
+\[
+ |\Theta^{(i)}_\T(F)|^2\le
+ \Theta^{(i)}_\T(\mathsf C_i^0F)\Theta^{(i)}_\T(\mathsf C_i^1F),
+ \qquad \Theta^{(i)}_\T(\mathsf C_i^bF)\ge0.
+\]
+\end{lemma}
+\begin{proof}
+Write $x_{\widehat i}=(x_m^a)_{m\ne i,\,a\in\{0,1\}}\in E_4$
+and introduce the positive measure
+\[
+ \dd\sigma_{i,p,t}(x_{\widehat i})
+      =\prod_{m\ne i}\prod_{a=0}^1G_m(x_m^a)\dd x_{\widehat i},
+ \qquad
+ \dd\sigma_i=\one_{\Omega_\T}(p,t)
+          \dd\sigma_{i,p,t}(x_{\widehat i})\dd p\,\frac{\dd t}{t}.
+\]
+Positivity follows from $\g\ge0$, even though $H_i$ changes sign.
+If $j_i=b$, define $\Pi_{j,i}(x_{\widehat i},v)$ by placing $v$
+in coordinate $i$ and $x_m^{j_m}$ in coordinate $m\ne i$.
+For $b\in\{0,1\}$ set
+\[
+ A_b(x_{\widehat i},p,t)
+ =\int_\R H_i(v)\prod_{j\in J:\,j_i=b}
+                     F_j(\Pi_{j,i}(x_{\widehat i},v))\dd v.
+\]
+These functions are measurable. Since there are four factors in
+each product and $\int|H_i|=\|\h\|_1$, they satisfy
+\[
+ |A_b|\le\|\h\|_1\prod_{j:j_i=b}\|F_j\|_\infty.
+\]
+Furthermore, $\int G_m=1$ and
+$\nu(\Omega_\T)=\sum_{Q\in\T}|Q|\log2<\infty$, so
+$A_b\in L^2(\sigma_i)$. Fubini separates the variables
+$x_i^0,x_i^1$ in the original form and gives
+\[
+ \Theta^{(i)}_\T(F)
+   =\int A_0A_1\dd\sigma_i,
+ \qquad
+ |\Theta^{(i)}_\T(F)|^2\le\mathcal I_0\mathcal I_1,
+ \qquad \mathcal I_b=\int A_b^2\dd\sigma_i.
+\]
+
+To identify $\mathcal I_b$, expand the square in $A_b^2$ and name
+its two independent integration variables $x_i^0,x_i^1$. The product
+of input functions then equals
+\begin{align*}
+ \prod_{a=0}^1\prod_{j:j_i=b}
+                  F_j(\Pi_{\rho_i^a(j)}x)
+ &=\prod_{k\in J}F_{\rho_i^b(k)}(\Pi_kx)\\
+ &=\prod_{k\in J}(\mathsf C_i^bF)_k(\Pi_kx).
+\end{align*}
+The first equality is the bijection
+$(a,j)\mapsto k=\rho_i^a(j)$ from
+$\{0,1\}\times\{j:j_i=b\}$ to $J$, with inverse
+$k\mapsto(k_i,\rho_i^b(k))$. The other factors are exactly
+$H_i(x_i^0)H_i(x_i^1)\prod_{m\ne i,a}G_m(x_m^a)$.
+Consequently
+\[
+ \mathcal I_b=\Theta^{(i)}_\T(\mathsf C_i^bF)\ge0.
+\]
+Substitution proves both conclusions.
+\end{proof}
+
+\begin{proposition}[Full cube tree estimate]\label{prop:cube_tree}
+For $i=1,2,3$,
+\begin{equation}\label{eq:cube_tree}
+ |\Theta^{(i)}_{\T,\lambda,r}(F)|\le
+ C_\alpha\lambda^{37}R(r)^{21}|Q_\T|
+                           \prod_{j\in J}M_{\T,4}(F_j).
+\end{equation}
+\end{proposition}
+\begin{proof}
+If $M_{\T,4}(F_j)=0$ for some $j$, Lemma~\ref{lem:size} implies
+$F_j=0$ and multilinearity gives the estimate. Otherwise put
+\[
+ m_j=M_{\T,4}(F_j)>0,\qquad \widetilde F_j=m_j^{-1}F_j.
+\]
+Then $M_{\T,4}(\widetilde F_j)=1$ and
+\[
+ \Theta^{(i)}_\T(F)
+     =\left(\prod_{j\in J}m_j\right)
+                     \Theta^{(i)}_\T(\widetilde F).
+\]
+It suffices to prove the estimate for the normalized tuple, which we
+now denote by $F$. Each slot of every copied tuple is one of these
+normalized functions, so its size is also one. Thus
+Corollary~\ref{cor:remainder_norms} gives
+\[
+ |\mathcal R_\T(\mathsf C_{i_n}^{b_n}\cdots
+                     \mathsf C_{i_1}^{b_1}F)|\le D,
+ \qquad D=D_{\lambda,r}|Q_\T|,
+\]
+for every finite sequence of copies. We suppress the fixed parameters
+$\T,\lambda,r$ in the following displayed calculations.
+
+Fix $i$. The first Cauchy--Schwarz step is
+\begin{equation}\label{eq:cube_first_cs}
+ |\Theta^{(i)}(F)|^2
+ \le\Theta^{(i)}(F^0)\Theta^{(i)}(F^1),\qquad
+ F^a=\mathsf C_i^aF\quad(a=0,1).
+\end{equation}
+For each $a$, positivity and telescoping give
+\begin{align}
+ 0\le\alpha_i\Theta^{(i)}(F^a)
+ &=\mathcal R(F^a)-\sum_{q\ne i}\alpha_q\Theta^{(q)}(F^a)\notag\\
+ &\le D+\sum_{q\ne i}\alpha_q|\Theta^{(q)}(F^a)|.
+                                                  \label{eq:cube_first_reduction}
+\end{align}
+Fix one of the two coordinates $q\ne i$ and let $p$ be the unique
+element of $\{1,2,3\}\setminus\{i,q\}$. Set
+\[
+ F^{a,b}=\mathsf C_q^bF^a
+        =\mathsf C_q^b\mathsf C_i^aF\quad(b=0,1).
+\]
+The second Cauchy--Schwarz step is
+\begin{equation}\label{eq:cube_second_cs}
+ |\Theta^{(q)}(F^a)|^2
+       \le\Theta^{(q)}(F^{a,0})\Theta^{(q)}(F^{a,1}).
+\end{equation}
+Commutativity and idempotence of copies give
+$\mathsf C_i^aF^{a,b}=F^{a,b}=\mathsf C_q^bF^{a,b}$. Hence
+\[
+ \Theta^{(i)}(F^{a,b})\ge0,\qquad
+ \Theta^{(q)}(F^{a,b})\ge0.
+\]
+Discard the nonnegative $i$ term in telescoping to obtain
+\begin{align}
+ 0\le\alpha_q\Theta^{(q)}(F^{a,b})
+     &\le|\mathcal R(F^{a,b})|+
+                         \alpha_p|\Theta^{(p)}(F^{a,b})|\notag\\
+     &\le D+\alpha_p|\Theta^{(p)}(F^{a,b})|.
+                                      \label{eq:cube_second_reduction}
+\end{align}
+For the third Cauchy--Schwarz step define
+\[
+ F^{a,b,c}=\mathsf C_p^cF^{a,b}\quad(c=0,1).
+\]
+Then
+\begin{equation}\label{eq:cube_third_cs}
+ |\Theta^{(p)}(F^{a,b})|^2
+       \le\Theta^{(p)}(F^{a,b,0})\Theta^{(p)}(F^{a,b,1}).
+\end{equation}
+The tuple $F^{a,b,c}$ is fixed by a copy in every coordinate, so
+all three forms $\Theta^{(m)}(F^{a,b,c})$ are nonnegative.
+Telescoping now has no negative terms to control and gives
+\[
+ 0\le\alpha_p\Theta^{(p)}(F^{a,b,c})
+   \le\sum_{m=1}^3\alpha_m\Theta^{(m)}(F^{a,b,c})
+   =\mathcal R(F^{a,b,c})\le D.
+\]
+Substituting this bound in \eqref{eq:cube_third_cs} and taking
+nonnegative square roots yields
+\[
+ |\Theta^{(p)}(F^{a,b})|\le D/\alpha_p.
+\]
+Equation~\eqref{eq:cube_second_reduction} then gives
+$0\le\Theta^{(q)}(F^{a,b})\le2D/\alpha_q$, and
+\eqref{eq:cube_second_cs} gives
+\[
+ |\Theta^{(q)}(F^a)|\le2D/\alpha_q.
+\]
+This holds for each of the two $q\ne i$. Therefore
+\eqref{eq:cube_first_reduction} gives
+$0\le\Theta^{(i)}(F^a)\le5D/\alpha_i$, and
+\eqref{eq:cube_first_cs} finally gives
+\[
+ |\Theta^{(i)}(F)|\le5D/\alpha_i.
+\]
+Restore the factor $\prod_jm_j$ and absorb $5/\alpha_i$ into $C_\alpha$.
+\end{proof}
+
+\begin{proposition}[Edge tree estimate]\label{prop:edge_tree}
+If $F_{000}=F_{001}=f\in C_b(E_3;\R)$ and all other slots are $1$,
+then $\Theta^{(1)}_\T(F)=\Theta^{(2)}_\T(F)=0$ and
+\[
+ 0\le\Theta^{(3)}_{\T,\lambda,r}(F)
+ \le C_\alpha\lambda^{37}R(r)^{21}|Q_\T|M_{\T,2}(f)^2.
+\]
+\end{proposition}
+\begin{proof}
+The input product is
+\[
+ \mathcal F_F(x)=f(x_1^0,x_2^0,x_3^0)
+                         f(x_1^0,x_2^0,x_3^1).
+\]
+It is independent of $x_1^1,x_2^1$. By absolute integrability we
+may integrate the corresponding kernel factors first, and
+\[
+ \int_\R H_1(x_1^1)\dd x_1^1=\int_\R\h=0,\qquad
+ \int_\R H_2(x_2^1)\dd x_2^1=\int_\R\h=0.
+\]
+Thus $\Theta^{(1)}_\T(F)=\Theta^{(2)}_\T(F)=0$, and the
+telescoping identity becomes
+\[
+ \alpha_3\Theta^{(3)}_\T(F)=\mathcal R_\T(F).
+\]
+The tuple satisfies $F=\mathsf C_3^0F=\mathsf C_3^1F$, so the
+positivity conclusion of Lemma~\ref{lem:cube_cs} applies.
+Integrating $G_1(x_1^1),G_2(x_2^1)$, each of mass one,
+gives the nonnegative square representation
+\[
+ \Theta^{(3)}_\T(F)
+ =\int_{\Omega_\T}\int_{E_2}G_1(x_1)G_2(x_2)
+       \left(\int_\R f(x_1,x_2,v)H_3(v)\dd v\right)^2
+                     \dd x_1\dd x_2\,d\nu(p,t).
+\]
+The edge remainder estimate now gives
+\[
+ 0\le\Theta^{(3)}_\T(F)
+    \le\frac{D_{\lambda,r}}{\alpha_3}|Q_\T|
+               M_{\T,2}(f)M_{\T,2}(f).
+\]
+Absorb $\alpha_3^{-1}$ into $C_\alpha$ to conclude.
+\end{proof}
+
+\section{The model form and its localization}
+
+\begin{definition}[Truncated model operator and form]\label{def:model}
+Let $c:(0,\infty)\to\C$ be measurable with $|c(t)|\le1$, let
+$u\in E_3$, and let $0<a<b<\infty$. The inputs in this definition
+are Schwartz functions $f_j\in\Sp(E_3;\C)$. Put
+\[
+ \kappa_1=\kappa_2=\g*\varphi,\qquad\kappa_3=\h*\h*\psi,
+\]
+\begin{align*}
+ U^{a,b}_{u,c}(f_1,f_2,f_3)(x)&=\int_a^bc(t)
+    \prod_{j=1}^3(f_j*_j(\kappa_j)_{t^{\alpha_j},t^{\alpha_j}u_j})(x)
+                  \frac{\dd t}{t},\\
+ \Lambda^{a,b}_{u,c}(f)&=\int f_0(x)U^{a,b}_{u,c}(f_1,f_2,f_3)(x)\dd x.
+\end{align*}
+The coordinate convolution is
+\begin{align*}
+ &(f_j*_j(\kappa_j)_{t^{\alpha_j},t^{\alpha_j}u_j})(x)\\
+ &\quad=\int_\R f_j(x_1,\ldots,x_{j-1},y_j,x_{j+1},\ldots,x_3)
+    (\kappa_j)_{t^{\alpha_j},t^{\alpha_j}u_j}(x_j-y_j)\dd y_j.
+\end{align*}
+The translated factors can equivalently be written
+\[
+ (\g*\varphi_{1,u_j})_{(t^{\alpha_j})}\quad(j=1,2),
+ \qquad (\h*\h*\psi_{1,u_3})_{(t^{\alpha_3})}\quad(j=3).
+\]
+For Schwartz inputs, $\Lambda_{u,c}$ denotes the full-scale integral,
+whose convergence is proved in Lemma~\ref{lem:model_convergence}.
+An almost-everywhere bound on $c$ can be made pointwise by changing
+$c$ on a null set.
+\end{definition}
+
+\begin{definition}[Local form and energies]\label{def:local_model}
+For a finite collection $\mathcal Q$ and bounded continuous inputs
+$f_0,f_1,f_2,f_3$ define
+\begin{align*}
+ L_{\mathcal Q,u,c}(f)=-\int_{\Omega_{\mathcal Q}}c(t)\int_{E_6}
+ &f_0(x_1,x_2,x_3)f_1(y_1,x_2,x_3)
+ f_2(x_1,y_2,x_3)f_3(x_1,x_2,y_3)\\
+ &\times\varphi_{t^{\alpha_1},p_1+t^{\alpha_1}u_1}(x_1)
+                 \g_{t^{\alpha_1},p_1}(y_1)\\
+ &\times\varphi_{t^{\alpha_2},p_2+t^{\alpha_2}u_2}(x_2)
+                 \g_{t^{\alpha_2},p_2}(y_2)\\
+ &\times\h_{t^{\alpha_3},p_3}(x_3)
+       (\h*\psi_{1,-u_3})_{t^{\alpha_3},p_3}(y_3)
+                  \dd x\dd y\,d\nu(p,t).
+\end{align*}
+For real inputs set, with $z=(x_1,x_2,y_1,y_2,r)$,
+\begin{align*}
+ A_f(p,t,z)&=\int_\R f_0(x_1,x_2,v)f_1(y_1,x_2,v)f_2(x_1,y_2,v)
+                        \h_{t^{\alpha_3},p_3}(v)\dd v,\\
+ B_f(p,t,z)&=\int_\R f_3(x_1,x_2,v)
+                        \h_{t^{\alpha_3},p_3+rt^{\alpha_3}}(v)\dd v,
+\end{align*}
+and let $d\mu_{p,t,u}(z)$ be
+\[
+ |\varphi_{t^{\alpha_1},p_1+t^{\alpha_1}u_1}(x_1)|\g_{t^{\alpha_1},p_1}(y_1)
+ |\varphi_{t^{\alpha_2},p_2+t^{\alpha_2}u_2}(x_2)|\g_{t^{\alpha_2},p_2}(y_2)
+ |\psi(r+u_3)|\dd z.
+\]
+Define the nonnegative energies
+\[
+ E_{1,\mathcal Q,u}(f_0,f_1,f_2)=\int_{\Omega_{\mathcal Q}}\int A_f^2\dd\mu\,d\nu,
+ \qquad
+ E_{2,\mathcal Q,u}(f_3)=\int_{\Omega_{\mathcal Q}}\int B_f^2\dd\mu\,d\nu.
+\]
+Here $\dd z=\dd x_1\dd x_2\dd y_1\dd y_2\dd r$.
+The second definition also applies to a real measurable input $f_3$
+whose displayed fiber integrals exist almost everywhere, and to an
+arbitrary measurable region $V\subset E_3\times(0,\infty)$:
+\[
+ E_{2,V,u}(f_3)=\int_V\int_{E_5}|B_f(p,t,z)|^2
+                         \dd\mu_{p,t,u}(z)\,d\nu(p,t)\in[0,\infty].
+\]
+This is initially a nonnegative extended integral; for $L^2$ inputs
+the fiber integrals exist almost everywhere, as verified in
+Lemma~\ref{lem:global_energy}. Changing their values on the exceptional
+null set does not change the energy.
+\end{definition}
+
+\begin{lemma}[Localization sign and integrability]\label{lem:localization}
+The local forms and energies are finite on bounded continuous inputs
+for finite collections. On Schwartz inputs, replacing the region in
+$L$ by $E_3\times(a,b)$ gives exactly $\Lambda^{a,b}_{u,c}$.
+Exhausting the center variable by bounded sets at these fixed scales
+is justified by absolute integrability of the expanded integral.
+\end{lemma}
+\begin{proof}
+For each $p,t$, translation invariance and normalized dilation give
+\[
+ \int_{E_5}\dd\mu_{p,t,u}
+   =\|\varphi\|_1^2\|\g\|_1^2\|\psi\|_1=:C_\mu,
+ \qquad
+ \nu(\Omega_{\mathcal Q})=(\log2)\sum_{Q\in\mathcal Q}|Q|<\infty.
+\]
+The second equality follows from disjointness of the box-scale
+regions. In particular
+\[
+ |A_f|\le\|\h\|_1\prod_{j=0}^2\|f_j\|_\infty,
+ \qquad |B_f|\le\|\h\|_1\|f_3\|_\infty,
+\]
+and hence
+\begin{align*}
+ E_{1,\mathcal Q,u}(f_0,f_1,f_2)
+ &\le C_\mu\|\h\|_1^2\nu(\Omega_{\mathcal Q})
+                                     \prod_{j=0}^2\|f_j\|_\infty^2,\\
+ E_{2,\mathcal Q,u}(f_3)
+ &\le C_\mu\|\h\|_1^2\nu(\Omega_{\mathcal Q})\|f_3\|_\infty^2.
+\end{align*}
+The absolute integral defining $L_{\mathcal Q,u,c}$ is at most
+\[
+ \nu(\Omega_{\mathcal Q})\prod_{j=0}^3\|f_j\|_\infty\,
+ \|\varphi\|_1^2\|\g\|_1^2\|\h\|_1\|\h*\psi\|_1.
+\]
+These estimates prove local finiteness. They also justify the
+expansion of either square by Fubini, since replacing its two
+copies of $\h$ by $|\h|$ gives the same displayed finite bounds.
+All the functions under consideration are measurable; their fiber
+integrals are measurable by the parameter-integral theorem.
+For the global-center assertion, bound $f_1,f_2,f_3$ by their
+uniform norms and retain $|f_0(x)|$. At each fixed $t>0$, Tonelli
+allows the absolute kernel factors to be integrated first in
+$y_1,y_2,y_3$ and then in $p_1,p_2,p_3$. Their $L^1$ norms are
+invariant under the normalized dilations and translations, giving
+the bound
+\[
+ \|f_0\|_1\prod_{j=1}^3\|f_j\|_\infty\,
+ \|\varphi\|_1^2\|\g\|_1^2\|\h\|_1\|\h*\psi\|_1
+\]
+for the absolute spatial integral. Lemma~\ref{lem:schwartz} makes
+every factor finite. Integrating in $t\in[a,b]$ multiplies this
+bound by $\log(b/a)$, so the entire expanded integrand is absolutely
+integrable at these fixed scales. This proves Fubini and dominated
+center exhaustion directly from the Schwartz assumptions.
+For a one-dimensional kernel $v$, write $\check v(w)=v(-w)$.
+For Schwartz kernels $a,b$, the change of variables $q=x-p$ gives
+\[
+ \int_\R a(x-p)b(y-p)\dd p=(a*\check b)(x-y).
+\]
+In coordinates $j=1,2$, apply this with
+$a=\varphi_{s,su_j}$, $b=\g_{(s)}$, and $s=t^{\alpha_j}$.
+Since $\check\g=\g$, the result is
+$(\g*\varphi)_{s,su_j}(x_j-y_j)$.
+In the third coordinate, evenness of $\psi$ and oddness of $\h$ imply
+\[
+ \check{(\psi_{1,-u_3})}=\psi_{1,u_3},\qquad
+ \check{(\h*\psi_{1,-u_3})}
+       =-\h*\psi_{1,u_3}.
+\]
+The same center identity therefore gives
+\[
+ \int_\R\h_s(x-p)(\h*\psi_{1,-u_3})_s(y-p)\dd p
+   =-(\h*\h*\psi)_{s,su_3}(x-y).
+\]
+The outer minus sign cancels this minus sign, giving the model in
+Definition~\ref{def:model}. Also $U(u_1,u_2,-u_3)=U(u)$.
+\end{proof}
+
+\begin{lemma}[First local Cauchy--Schwarz]\label{lem:local_cs}
+For real inputs and possibly complex $c$,
+\[
+ |L_{\mathcal Q,u,c}(f)|^2\le E_{1,\mathcal Q,u}(f_0,f_1,f_2)
+                                    E_{2,\mathcal Q,u}(f_3).
+\]
+\end{lemma}
+\begin{proof}
+The convolution definition and the change of variables from the
+physical translation to $r$ give
+\[
+ (\h*\psi_{1,-u_3})_{s,p}(y)
+  =s^{-1}\int_\R\h((y-p)/s-r)\psi(r+u_3)\dd r
+  =\int_\R\h_{s,p+rs}(y)\psi(r+u_3)\dd r.
+\]
+Define the signed density
+\begin{align*}
+ w_{p,t,u}(z)={}&
+ \varphi_{t^{\alpha_1},p_1+t^{\alpha_1}u_1}(x_1)
+            \g_{t^{\alpha_1},p_1}(y_1)\\
+ &\times\varphi_{t^{\alpha_2},p_2+t^{\alpha_2}u_2}(x_2)
+            \g_{t^{\alpha_2},p_2}(y_2)\psi(r+u_3).
+\end{align*}
+Thus $\dd\mu_{p,t,u}=|w_{p,t,u}(z)|\dd z$. Substitution of the
+convolution expansion and integration first in $x_3,y_3$ give the
+exact factorization
+\[
+ L_{\mathcal Q,u,c}(f)=-\int_{\Omega_{\mathcal Q}}c(t)
+       \int_{E_5}A_f(p,t,z)B_f(p,t,z)w_{p,t,u}(z)\dd z\,d\nu(p,t).
+\]
+Absolute integrability follows from Lemma~\ref{lem:localization},
+also after expanding the extra $r$ integral using
+$\|\h\|_1\|\psi\|_1$ in place of $\|\h*\psi\|_1$.
+The triangle inequality and $|c|\le1$ yield
+\begin{align*}
+ |L_{\mathcal Q,u,c}(f)|&\le
+ \int_{\Omega_{\mathcal Q}}\int_{E_5}|A_fB_f|\dd\mu\,d\nu\\
+ &\le\left(\int_{\Omega_{\mathcal Q}}\int A_f^2\dd\mu\,d\nu\right)^{1/2}
+     \left(\int_{\Omega_{\mathcal Q}}\int B_f^2\dd\mu\,d\nu\right)^{1/2}.
+\end{align*}
+The last step is Cauchy--Schwarz on the single positive measure
+space with measure $\one_{\Omega_{\mathcal Q}}\dd\mu\,d\nu$,
+including both the center and the scale variables. Squaring proves
+the assertion.
+\end{proof}
+
+\begin{lemma}[Local energy bounds]\label{lem:local_energies}
+For finite convex trees and real bounded continuous inputs,
+\begin{align}
+ E_{1,\T,u}(f_0,f_1,f_2)&\le C U(u)^{50}|Q_\T|
+                              \prod_{j=0}^2M_{\T,4}(f_j)^2,\label{eq:energy1}\\
+ E_{2,\T,u}(f_3)&\le C U(u)^{100}|Q_\T|M_{\T,2}(f_3)^2.\label{eq:energy2}
+\end{align}
+\end{lemma}
+\begin{proof}
+Write $s_i=t^{\alpha_i}$ and set
+\begin{align*}
+ W_{p,t,u}(x_1,x_2,y_1,y_2)={}&
+ |\varphi_{s_1,p_1+s_1u_1}(x_1)|\g_{s_1,p_1}(y_1)
+ |\varphi_{s_2,p_2+s_2u_2}(x_2)|\g_{s_2,p_2}(y_2),\\
+ D_{\lambda,p,t}(x_1,x_2,y_1,y_2)={}&
+ \prod_{i=1}^2\g_{\lambda s_i,p_i}(x_i)
+                         \g_{\lambda s_i,p_i}(y_i).
+\end{align*}
+The unscaled superposition satisfies
+\begin{align*}
+ \int_1^\infty\prod_{a=1}^4\g_{(\lambda)}(z_a)
+                          \lambda^{-47}\dd\lambda
+ &=\int_1^\infty e^{-\pi|z|^2/\lambda^2}\lambda^{-51}\dd\lambda\\
+ &\ge e^{-\pi}\int_{1+|z|}^{2(1+|z|)}\lambda^{-51}\dd\lambda
+   =\frac{e^{-\pi}(1-2^{-50})}{50}(1+|z|)^{-50}.
+\end{align*}
+Order $50$ Schwartz decay of the four original factors and
+\[
+ 1+|z|\le (1+|z-(u_1,0,u_2,0)|)U(u)
+\]
+give their upper bound
+$C U(u)^{50}(1+|z|)^{-50}$, as in Lemma~\ref{lem:domination}.
+Substitute
+\[
+ z=\big((x_1-p_1)/s_1,(y_1-p_1)/s_1,
+        (x_2-p_2)/s_2,(y_2-p_2)/s_2\big)
+\]
+and multiply both sides by $s_1^{-2}s_2^{-2}$. The normalized result is
+\begin{equation}\label{eq:scaled_superposition}
+ W_{p,t,u}\le C U(u)^{50}\int_1^\infty
+                     D_{\lambda,p,t}\lambda^{-47}\dd\lambda.
+\end{equation}
+
+In $E_1$, the factor $A_f$ is independent of $r$, so first use
+\[
+ \int_\R|\psi(r+u_3)|\dd r=\|\psi\|_1.
+\]
+Apply \eqref{eq:scaled_superposition} to the nonnegative integrand
+$A_f^2W_{p,t,u}$ before expanding the square. With
+$\dd x'\dd y'=\dd x_1\dd x_2\dd y_1\dd y_2$, this gives
+\[
+ E_{1,\T,u}\le C U(u)^{50}\int_1^\infty
+ \left(\int_{\Omega_\T}\int_{E_4}A_f(p,t,z)^2
+                  D_{\lambda,p,t}(x',y')\dd x'\dd y'\,d\nu\right)
+                        \lambda^{-47}\dd\lambda.
+\]
+For each fixed $\lambda$ the inner integral is finite by boundedness
+of the inputs and integrability of the Gaussian factors.
+Expanding the square gives
+\begin{align*}
+ A_f(p,t,z)^2=\int_{\R^2}
+ &f_0(x_1,x_2,v)f_0(x_1,x_2,w)
+  f_1(y_1,x_2,v)f_1(y_1,x_2,w)\\
+ &\times f_2(x_1,y_2,v)f_2(x_1,y_2,w)
+                  \h_{s_3,p_3}(v)\h_{s_3,p_3}(w)\dd v\dd w.
+\end{align*}
+Under the measure-preserving coordinate identification
+\[
+ (x_1^0,x_1^1,x_2^0,x_2^1,x_3^0,x_3^1)
+                    =(x_1,y_1,x_2,y_2,v,w),
+\]
+the resulting tuple is
+\[
+ F^{[1]}_{00b}=f_0,\quad F^{[1]}_{10b}=f_1,\quad
+ F^{[1]}_{01b}=f_2,\quad F^{[1]}_{11b}=1\quad(b=0,1),
+\]
+and the inner integral is exactly
+$\Theta^{(3)}_{\T,\lambda,0}(F^{[1]})$. Consequently
+\begin{equation}\label{eq:first_energy_cube_comparison}
+ E_{1,\T,u}\le C U(u)^{50}\int_1^\infty
+       \Theta^{(3)}_{\T,\lambda,0}(F^{[1]})\lambda^{-47}\dd\lambda.
+\end{equation}
+The constant slots have $M_{\T,4}(1)=(2/9)^{3/4}\le1$.
+Each of $f_0,f_1,f_2$ appears twice, and hence
+Proposition~\ref{prop:cube_tree} gives
+\[
+ E_{1,\T,u}\le C U(u)^{50}|Q_\T|
+        \prod_{j=0}^2M_{\T,4}(f_j)^2
+          \int_1^\infty\lambda^{37}\lambda^{-47}\dd\lambda.
+\]
+The remaining integral is $\int_1^\infty\lambda^{-10}\dd\lambda=1/9$,
+which proves \eqref{eq:energy1}.
+
+For $E_2$, use \eqref{eq:scaled_superposition} and
+\[
+ |\psi(r+u_3)|\le C(1+|u_3|)^{50}(1+|r|)^{-50}
+                  \le C U(u)^{50}R(r)^{-50}.
+\]
+Both estimates are applied while $B_f^2$ is still a nonnegative
+square. For fixed $\lambda,r$, its expansion is
+\begin{align*}
+ B_f(p,t,z)^2=\int_{\R^2}
+ &f_3(x_1,x_2,v)f_3(x_1,x_2,w)\\
+ &\times\h_{s_3,p_3+rs_3}(v)\h_{s_3,p_3+rs_3}(w)\dd v\dd w.
+\end{align*}
+With the same coordinate identification as above, multiplication by
+$D_{\lambda,p,t}$ and integration on $\Omega_\T\times E_4$ give
+exactly $\Theta^{(3)}_{\T,\lambda,r}(F^{[2]})$, where
+\[
+ F^{[2]}_{000}=F^{[2]}_{001}=f_3,\qquad
+ F^{[2]}_j=1\quad\text{for }j\in J\setminus\{000,001\}.
+\]
+Thus
+\begin{equation}\label{eq:second_energy_cube_comparison}
+ E_{2,\T,u}\le C U(u)^{100}\int_1^\infty\int_\R
+       \Theta^{(3)}_{\T,\lambda,r}(F^{[2]})
+                      \lambda^{-47}R(r)^{-50}\dd r\dd\lambda.
+\end{equation}
+Proposition~\ref{prop:edge_tree} now yields
+\begin{align*}
+ E_{2,\T,u}\le{}& C U(u)^{100}|Q_\T|M_{\T,2}(f_3)^2\\
+ &\times\int_1^\infty\lambda^{37}\lambda^{-47}\dd\lambda
+        \int_\R R(r)^{21}R(r)^{-50}\dd r.
+\end{align*}
+The two integrals are $1/9$ and
+$\int_\R(1+|r|)^{-29}\dd r=1/14$, respectively, proving
+\eqref{eq:energy2}. All superpositions above involve nonnegative
+square integrands, so Tonelli applies even before these bounds prove
+finiteness of the $\lambda,r$ integrals. Expansion of a square is
+made only at fixed $\lambda,r$, where the absolute integrability
+argument from Lemma~\ref{lem:localization} applies.
+\end{proof}
+
+\begin{lemma}[Global second energy]\label{lem:global_energy}
+For real $f\in L^2(E_3)$,
+\begin{equation}\label{eq:global_energy}
+ E_{2,E_3\times(0,\infty),u}(f)
+ =\|\varphi\|_1^2\|\psi\|_1\frac{\pi}{\alpha_3}\|f\|_2^2.
+\end{equation}
+In particular the same upper bound holds on every measurable region,
+and the energies add over disjoint regions.
+For a finite convex tree and real $f\in C_b(E_3)\cap L^2(E_3)$,
+combining this with the local bound gives
+\begin{equation}\label{eq:second_energy_minimum}
+ E_{2,\T,u}(f)\le C\min\big\{
+        U(u)^{100}|Q_\T|M_{\T,2}(f)^2,\ \|f\|_2^2\big\}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Define the fiber transform, including its center variable, by
+\begin{equation}\label{eq:fiber_gaussian_transform}
+ H_t f(x_1,x_2,q)=\int_\R f(x_1,x_2,v)
+                              \h_{t^{\alpha_3},q}(v)\dd v.
+\end{equation}
+For Schwartz $f$ this is an ordinary absolutely integrable fiber
+integral. For $f\in L^2(E_3)$, Fubini gives
+$f(x_1,x_2,\cdot)\in L^2(\R)$ for almost every $(x_1,x_2)$.
+On such a fiber, Cauchy--Schwarz makes \eqref{eq:fiber_gaussian_transform}
+absolutely integrable for every $q,t$, since
+\[
+ \|\h_{t^{\alpha_3},q}\|_2=t^{-\alpha_3/2}\|\h\|_2.
+\]
+Set the transform to zero on the exceptional set of fibers.
+
+All integrands defining the energy are nonnegative. Tonelli first
+integrates $y_1,y_2$ using
+\[
+ \int_\R\g_{t^{\alpha_i},p_i}(y_i)\dd y_i=1\quad(i=1,2),
+\]
+and then $p_1,p_2$ using
+\[
+ \int_\R|\varphi_{t^{\alpha_i},p_i+t^{\alpha_i}u_i}(x_i)|\dd p_i
+                        =\|\varphi\|_1\quad(i=1,2).
+\]
+The remaining integrand contains
+$|H_t f(x_1,x_2,p_3+rt^{\alpha_3})|^2$. For fixed $r,t$, substitute
+$q=p_3+rt^{\alpha_3}$, whose Jacobian is one, and then use
+$\int_\R|\psi(r+u_3)|\dd r=\|\psi\|_1$. We obtain the exact identity
+\begin{equation}\label{eq:global_energy_fiber_reduction}
+ E_{2,E_3\times(0,\infty),u}(f)
+  =\|\varphi\|_1^2\|\psi\|_1
+    \int_{E_2}\int_0^\infty\int_\R
+       |H_t f(x_1,x_2,q)|^2\dd q\,\frac{\dd t}{t}\dd x_1\dd x_2.
+\end{equation}
+This equality holds for nonnegative extended integrals before any
+finiteness is known.
+
+Fix a fiber $F(v)=f(x_1,x_2,v)\in L^2(\R)$ and put $s=t^{\alpha_3}$.
+Oddness of $\h$ gives
+\[
+ H_t f(x_1,x_2,q)=-(F*\h_{(s)})(q),\qquad
+ \widehat{H_t f(x_1,x_2,\cdot)}(\xi)
+                 =-\widehat F(\xi)\widehat\h(s\xi).
+\]
+The Fourier identity is first the Schwartz convolution identity and
+then its $L^2$ extension; convolution with $\h_{(s)}\in L^1$
+is bounded on $L^2$. Plancherel and Tonelli give
+\begin{align*}
+ \int_0^\infty\int_\R|H_t f(x_1,x_2,q)|^2\dd q\,\frac{\dd t}{t}
+ &=\int_0^\infty\int_\R|\widehat F(\xi)|^2
+              |\widehat\h(t^{\alpha_3}\xi)|^2\dd\xi\,\frac{\dd t}{t}\\
+ &=\int_\R|\widehat F(\xi)|^2
+     \left(\int_0^\infty|\widehat\h(t^{\alpha_3}\xi)|^2
+                                          \frac{\dd t}{t}\right)\dd\xi.
+\end{align*}
+For $\xi\ne0$, put $v=t^{\alpha_3}|\xi|$, so that
+$\dd t/t=\dd v/(\alpha_3v)$. Since
+$|\widehat\h(\eta)|^2=4\pi^2\eta^2e^{-2\pi\eta^2}$, the multiplier
+integral is explicitly
+\[
+ \int_0^\infty|\widehat\h(t^{\alpha_3}\xi)|^2\frac{\dd t}{t}
+ =\frac{4\pi^2}{\alpha_3}\int_0^\infty v e^{-2\pi v^2}\dd v
+ =\frac{\pi}{\alpha_3}\quad(\xi\ne0).
+\]
+At $\xi=0$ that integral is zero; this single frequency is a null set.
+Plancherel once more therefore gives, on almost every fiber,
+\[
+ \int_0^\infty\int_\R|H_t f(x_1,x_2,q)|^2\dd q\,\frac{\dd t}{t}
+ =\frac{\pi}{\alpha_3}\int_\R|\widehat F(\xi)|^2\dd\xi
+ =\frac{\pi}{\alpha_3}\int_\R|f(x_1,x_2,v)|^2\dd v.
+\]
+Insert this in \eqref{eq:global_energy_fiber_reduction} and integrate
+in $(x_1,x_2)$ to obtain \eqref{eq:global_energy}.
+Restriction to a measurable region decreases the nonnegative
+integral, and disjoint regions have additive indicator functions,
+which proves both remaining assertions.
+Finally, apply \eqref{eq:energy2} as well as the global bound and
+enlarge the constant to the maximum of their two constants. This
+proves \eqref{eq:second_energy_minimum}.
+\end{proof}
+
+\begin{corollary}[Local model estimate]\label{cor:local_model}
+\[
+ |L_{\T,u,c}(f)|\le C U(u)^{75}|Q_\T|
+          \left(\prod_{j=0}^2M_{\T,4}(f_j)\right)M_{\T,2}(f_3).
+\]
+\end{corollary}
+\begin{proof}
+Take the square root of the product of \eqref{eq:energy1} and
+\eqref{eq:energy2}. The translation exponent is $(50+100)/2=75$.
+\end{proof}
+
+\section{Stopping time and the initial exponent range}
+
+\begin{exttheorem}[One-dimensional maximal theorem and differentiation]
+\label{ext:maximal}
+For a locally integrable function on $\R$, define
+\[
+ Mh(x)=\sup_{r>0}\frac1{2r}\int_{x-r}^{x+r}|h(y)|\dd y.
+\]
+For every $1<q<\infty$ there is $C_q$ such that
+$\|Mh\|_q\le C_q\|h\|_q$. Lebesgue differentiation holds for
+locally integrable functions, also along the nested standard dyadic
+intervals containing a point. The corresponding fiber statements hold
+for functions on $E_3$ whose fibers satisfy the respective hypotheses
+almost everywhere.
+\end{exttheorem}
+The fiber statements follow by Fubini. Fourier inversion, Plancherel,
+H\"older, dominated convergence, and elementary measure theory are
+background results.
+
+\begin{lemma}[Maximal sizes]\label{lem:maximal_size}
+For $1\le s<q<\infty$ and $g\in L^q(E_3)$ define
+\[
+ \mathfrak M_sg(x)=\sup_{t>0}(|g|^s*\Theta_t(x))^{1/s}.
+\]
+This is measurable, $\|\mathfrak M_sg\|_q\le C_{s,q}\|g\|_q$,
+and, for every box $Q$ and $x\in Q$,
+\begin{equation}\label{eq:ancestor_size}
+ \mathfrak M_sg(x)\ge(2/3)^{30/s}M_{\{Q\},s}(g).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Annular decomposition of $s^{-1}(1+|x|/s)^{-10}$ gives domination
+of convolution by a fixed multiple of the one-dimensional maximal
+operator. Applying this in the three coordinates yields
+\[
+ |g|^s*\Theta_t\le C M^{(1)}M^{(2)}M^{(3)}(|g|^s).
+\]
+Apply External Theorem~\ref{ext:maximal} three times in $L^{q/s}$.
+The convolutions depend continuously on $(x,t)$ for $t>0$, by
+H\"older and continuity of translations and dilations of the kernel
+in $L^{(q/s)'}$. Thus the supremum may be taken over rational $t>0$.
+Finally $|x_i-c(Q)_i|\le\ell(Q)^{\alpha_i}/2$ implies
+\[
+ \Theta_{\ell(Q)}(x-y)\ge(2/3)^{30}
+                      \Theta_{\ell(Q)}(c(Q)-y).
+\]
+Integrate this inequality to get \eqref{eq:ancestor_size}.
+\end{proof}
+
+\begin{definition}[Stopping data]\label{def:stopping}
+Let $d\ge2$, let $\mathcal Q_0$ be a finite convex collection, and let
+$g_j\in L^{q_j}(E_3)$ be nonzero as $L^{q_j}$ classes, where
+$1\le s_j<q_j<\infty$ for $0\le j<d$.
+For $Q\in\mathcal Q_0$ set
+\begin{equation}\label{eq:stopping_data}
+ a_j(Q)=\max_{\substack{Q'\in\mathcal Q_0\\Q\subseteq Q'}}
+                         M_{\{Q'\},s_j}(g_j).
+\end{equation}
+For $n=(n_j)_{0\le j<d}\in\Z^d$, define
+\begin{align}
+ \mathcal P_n
+ &=\{Q\in\mathcal Q_0:
+       \forall j<d,\ 2^{n_j-1}<a_j(Q)\le2^{n_j}\},
+                  \label{eq:stopping_levels}\\
+ \mathcal P_n^{\max}
+ &=\{Q\in\mathcal P_n:
+       \nexists R\in\mathcal P_n\text{ with }Q\subsetneq R\},
+                  \label{eq:stopping_roots}\\
+ \T_Q&=\{Q'\in\mathcal P_n:Q'\subseteq Q\}
+              \qquad(Q\in\mathcal P_n^{\max}).
+                  \label{eq:stopping_trees}
+\end{align}
+The forest is the family indexed by pairs $(n,Q)$ with
+$Q\in\mathcal P_n^{\max}$; its root is $Q$.
+\end{definition}
+
+\begin{lemma}[Stopping-time sum]\label{lem:stopping}
+Suppose also that $\sum_{j<d}q_j^{-1}=1$. The $\T_Q$ partition
+$\mathcal Q_0$ into convex trees, and
+\begin{equation}\label{eq:stopping_sum}
+ \sum_n\sum_{Q\in\mathcal P_n^{\max}}|Q|
+             \prod_{j<d}M_{\T_Q,s_j}(g_j)
+ \le C_{s,q,d}\prod_{j<d}\|g_j\|_{q_j}.
+\end{equation}
+Only finitely many summands are nonzero for a fixed $\mathcal Q_0$.
+\end{lemma}
+\begin{proof}
+The ancestor set in \eqref{eq:stopping_data} is nonempty because
+it contains $Q$. Each of its sizes is finite by H\"older, since
+$|g_j|^{s_j}\in L^{q_j/s_j}$ and the fixed translate of
+$\Theta_{\ell(Q')}$ belongs to the conjugate space. It is strictly
+positive because $g_j$ is nonzero almost everywhere on a set of
+positive measure and $\Theta$ is strictly positive. A maximum over
+the finite nonempty ancestor set is therefore finite and positive.
+For every positive real number $a$ there is exactly one $n\in\Z$
+with $2^{n-1}<a\le2^n$. Applying this separately to every $a_j(Q)$
+places each $Q$ in exactly one $\mathcal P_n$.
+
+If $Q\subseteq R$, then
+\[
+ \{R'\in\mathcal Q_0:R\subseteq R'\}
+ \subseteq\{Q'\in\mathcal Q_0:Q\subseteq Q'\},
+ \qquad a_j(Q)\ge a_j(R).
+\]
+For $Q_1\subseteq Q_2\subseteq Q_3$ in $\mathcal Q_0$ with
+$Q_1,Q_3\in\mathcal P_n$, one consequently has
+\[
+ 2^{n_j-1}<a_j(Q_3)\le a_j(Q_2)\le a_j(Q_1)\le2^{n_j}.
+\]
+Thus $Q_2\in\mathcal P_n$, proving convexity along dyadic chains.
+Intersecting anisotropic dyadic boxes are nested. Distinct maximal
+members of $\mathcal P_n$ are therefore disjoint, and finiteness
+gives a unique maximal ancestor for every member. The trees
+$\T_Q$ are convex, partition $\mathcal P_n$, and, as $n$ varies,
+partition $\mathcal Q_0$. Moreover, for $R\in\T_Q$,
+$M_{\{R\},s_j}(g_j)\le a_j(R)\le2^{n_j}$, whence
+\begin{equation}\label{eq:stopping_tree_size}
+ M_{\T_Q,s_j}(g_j)\le2^{n_j}.
+\end{equation}
+
+Set
+\begin{equation}\label{eq:stopping_level_constant}
+ c_*=\frac12\min_{0\le j<d}(2/3)^{30/s_j}>0,
+ \qquad E_{j,n}=\{x:\mathfrak M_{s_j}g_j(x)\ge c_*2^n\}.
+\end{equation}
+The sets $E_{j,n}$ are measurable by Lemma~\ref{lem:maximal_size}.
+Fix a root $Q\in\mathcal P_n^{\max}$ and $j<d$. An ancestor
+$R\supseteq Q$ realizes the maximum in $a_j(Q)$, so
+$M_{\{R\},s_j}(g_j)>2^{n_j-1}$. For $x\in Q\subseteq R$,
+the coordinate inequalities
+\[
+ |x_i-c(R)_i|\le\tfrac12\ell(R)^{\alpha_i},\qquad
+ 1+\ell(R)^{-\alpha_i}|x_i-y_i|
+ \le\tfrac32\big(1+\ell(R)^{-\alpha_i}|c(R)_i-y_i|\big)
+\]
+give
+\[
+ \Theta_{\ell(R)}(x-y)\ge(2/3)^{30}
+                              \Theta_{\ell(R)}(c(R)-y).
+\]
+After integration and taking the $s_j$th root,
+\[
+ \mathfrak M_{s_j}g_j(x)
+ \ge(2/3)^{30/s_j}M_{\{R\},s_j}(g_j)>c_*2^{n_j}.
+\]
+Thus $Q\subseteq E_{j,n_j}$ for every $j$, and disjointness of
+roots at the same level vector gives
+\begin{equation}\label{eq:stopping_root_measure}
+ \sum_{Q\in\mathcal P_n^{\max}}|Q|\le |E_{j,n_j}|.
+\end{equation}
+
+For $j<d$, define $L_j=\|g_j\|_{q_j}>0$ and
+$\sigma_j=\log_2L_j$, so $2^{\sigma_j}=L_j$. Define the
+tie-breaking selector and its level sets:
+\begin{align*}
+ J(n)&=\min\left\{j<d:q_j(n_j-\sigma_j)
+                    =\max_{k<d}q_k(n_k-\sigma_k)\right\},\\
+ \mathcal N_j&=\{n\in\Z^d:J(n)=j\},\\
+ S_j&=\sum_{n\in\mathcal N_j}2^{\sum_{k<d}n_k}
+                       \sum_{Q\in\mathcal P_n^{\max}}|Q|.
+\end{align*}
+The $\mathcal N_j$ partition $\Z^d$. The finite maximum exists,
+so $J$ is defined for every vector. If $n\in\mathcal N_j$ and
+$k\ne j$, then
+\begin{equation}\label{eq:stopping_dominant}
+ q_j(n_j-\sigma_j)\ge q_k(n_k-\sigma_k),\qquad
+ n_k\le\sigma_k+\frac{q_j}{q_k}(n_j-\sigma_j).
+\end{equation}
+By \eqref{eq:stopping_root_measure}, positivity, and enlargement
+of the remaining index sets,
+\begin{align*}
+ S_j
+ &\le\sum_{n\in\mathcal N_j}2^{\sum_kn_k}|E_{j,n_j}|\\
+ &\le\sum_{n_j\in\Z}2^{n_j}|E_{j,n_j}|
+       \prod_{k\ne j}
+       \sum_{\substack{n_k\in\Z\\
+          n_k\le\sigma_k+(q_j/q_k)(n_j-\sigma_j)}}2^{n_k}\\
+ &\le2^{d-1}\sum_{n_j\in\Z}2^{n_j}|E_{j,n_j}|
+                 \prod_{k\ne j}
+                 \left[L_k2^{(q_j/q_k)(n_j-\sigma_j)}\right].
+\end{align*}
+The last step is the elementary geometric-series identity
+$\sum_{n\le A}2^n=2^{\lfloor A\rfloor+1}\le2^{A+1}$.
+Because $\sum_{k\ne j}q_k^{-1}=1-q_j^{-1}$,
+\[
+ 2^{n_j}\prod_{k\ne j}2^{(q_j/q_k)(n_j-\sigma_j)}
+ =2^{q_jn_j-(q_j-1)\sigma_j}
+ =2^{q_jn_j}L_j^{1-q_j}.
+\]
+Consequently
+\begin{equation}\label{eq:stopping_distribution_sum}
+ S_j\le2^{d-1}\left(\prod_{k\ne j}L_k\right)L_j^{1-q_j}
+                 \sum_{n_j\in\Z}2^{q_jn_j}|E_{j,n_j}|.
+\end{equation}
+For measurable $h\ge0$ and $q>0$, Tonelli gives the discrete
+layer-cake bound
+\begin{align*}
+ \sum_{n\in\Z}2^{qn}|\{h\ge c_*2^n\}|
+ &=\int\sum_{\substack{n\in\Z\\c_*2^n\le h(x)}}2^{qn}\dd x\\
+ &\le\frac{2^q}{(2^q-1)c_*^q}\int h(x)^q\dd x.
+\end{align*}
+For $h(x)>0$ this is a geometric sum up to
+$\lfloor\log_2(h(x)/c_*)\rfloor$; for $h(x)=0$ the sum is empty.
+Apply it to $h=\mathfrak M_{s_j}g_j$ and $q=q_j$, and use
+Lemma~\ref{lem:maximal_size}, to obtain
+\[
+ \sum_{n_j\in\Z}2^{q_jn_j}|E_{j,n_j}|
+ \le C\|\mathfrak M_{s_j}g_j\|_{q_j}^{q_j}
+ \le C L_j^{q_j}.
+\]
+Equation~\eqref{eq:stopping_distribution_sum} now gives
+$S_j\le C\prod_kL_k$. Finally,
+\[
+ \sum_n\sum_{Q\in\mathcal P_n^{\max}}|Q|
+             \prod_{j<d}M_{\T_Q,s_j}(g_j)
+ \le\sum_n2^{\sum_jn_j}\sum_{Q\in\mathcal P_n^{\max}}|Q|
+ =\sum_{j<d}S_j\le C\prod_{j<d}\|g_j\|_{q_j}.
+\]
+All rearrangements above concern nonnegative series, so Tonelli
+applies before finiteness of the resulting bounds is known.
+\end{proof}
+
+\begin{lemma}[Finite-forest estimates, including the endpoint]
+\label{lem:forest_bound}
+If $p_0,p_1,p_2>4$, $2\le p_3<\infty$, all exponents are finite,
+and $\sum_jp_j^{-1}=1$, then for real Schwartz inputs
+\[
+ |L_{\mathcal Q_0,u,c}(f)|\le C_{\alpha,p}U(u)^{100}
+                              \prod_{j=0}^3\|f_j\|_{p_j},
+\]
+uniformly over finite convex collections. One may replace $100$ by
+$75$ when $p_3>2$, and by $25$ when $p_3=2$.
+\end{lemma}
+\begin{proof}
+If any function is zero, the conclusion follows by multilinearity.
+For $p_3>2$ apply the stopping lemma with $d=4$,
+$(s_0,s_1,s_2,s_3)=(4,4,4,2)$, $q_j=p_j$, $g_j=f_j$.
+Write its forest as $\mathfrak F=\{\T_Q:Q\in\mathcal P_n^{\max},
+n\in\Z^4\}$. The partition of boxes gives, up to the finitely
+many boundary hyperplanes of measure zero,
+\[
+ \Omega_{\mathcal Q_0}=\mathop{\dot\bigcup}_{\T\in\mathfrak F}
+               \Omega_\T,\qquad
+ L_{\mathcal Q_0,u,c}(f)=\sum_{\T\in\mathfrak F}L_{\T,u,c}(f).
+\]
+For each tree the Cauchy--Schwarz and energy bounds give
+\begin{align*}
+ |L_{\T_Q,u,c}(f)|^2
+ &\le E_{1,\T_Q,u}(f_0,f_1,f_2)E_{2,\T_Q,u}(f_3),\\
+ |L_{\T_Q,u,c}(f)|
+ &\le C U(u)^{75}|Q|
+               \left(\prod_{j=0}^2M_{\T_Q,4}(f_j)\right)
+               M_{\T_Q,2}(f_3).
+\end{align*}
+Thus the triangle inequality and \eqref{eq:stopping_sum} imply
+\begin{align*}
+ |L_{\mathcal Q_0,u,c}(f)|
+ &\le C U(u)^{75}\sum_n\sum_{Q\in\mathcal P_n^{\max}}
+       |Q|\left(\prod_{j=0}^2M_{\T_Q,4}(f_j)\right)
+                    M_{\T_Q,2}(f_3)\\
+ &\le C U(u)^{75}\prod_{j=0}^3\|f_j\|_{p_j}.
+\end{align*}
+
+For $p_3=2$, choose a different stopping partition: take $d=3$,
+$g_j=f_j^2$, $s_j=2$, and $q_j=p_j/2$ for $j=0,1,2$.
+These satisfy $q_j>2$ and $\sum_{j=0}^2q_j^{-1}=1$.
+Cauchy--Schwarz over the trees and Lemma~\ref{lem:local_cs} give
+\[
+ |L_{\mathcal Q_0,u,c}(f)|\le
+       \left(\sum_\T E_{1,\T,u}\right)^{1/2}
+       \left(\sum_\T E_{2,\T,u}\right)^{1/2}.
+\]
+For the first sum use \eqref{eq:energy1}, the identity
+$M_{\T,4}(f_j)^2=M_{\T,2}(g_j)$, and \eqref{eq:stopping_sum}:
+\begin{align*}
+ \sum_{\T\in\mathfrak F}E_{1,\T,u}(f_0,f_1,f_2)
+ &\le C U(u)^{50}\sum_n\sum_{Q\in\mathcal P_n^{\max}}
+                |Q|\prod_{j=0}^2M_{\T_Q,4}(f_j)^2\\
+ &=C U(u)^{50}\sum_n\sum_{Q\in\mathcal P_n^{\max}}
+                |Q|\prod_{j=0}^2M_{\T_Q,2}(g_j)\\
+ &\le C U(u)^{50}\prod_{j=0}^2\|g_j\|_{p_j/2}
+  = C U(u)^{50}\prod_{j=0}^2\|f_j\|_{p_j}^2.
+\end{align*}
+Here the identity for the local sizes follows directly by squaring
+the fourth root of the defining convolution; also
+$\|f_j^2\|_{p_j/2}=\|f_j\|_{p_j}^2$. For the second sum,
+nonnegativity and region disjointness give
+\[
+ \sum_{\T\in\mathfrak F}E_{2,\T,u}(f_3)
+ =E_{2,\mathcal Q_0,u}(f_3)
+ \le C\|f_3\|_2^2
+\]
+by the global bound \eqref{eq:global_energy}.
+Taking square roots proves the endpoint with power $25$.
+\end{proof}
+
+\begin{lemma}[Truncation, exhaustion, and convergence]\label{lem:model_convergence}
+For Schwartz tuples, the spatially integrated model integrand is
+absolutely integrable in $t$ on $(0,\infty)$. Moreover the forest
+estimate implies the identical bound for every $\Lambda^{a,b}_{u,c}$
+and for $\Lambda_{u,c}$, with the same constant.
+\end{lemma}
+\begin{proof}
+For small $t$, $\int\kappa_3=0$ and the mean value theorem give
+\[
+ \|f_3*_3(\kappa_3)_{t^{\alpha_3},t^{\alpha_3}u_3}\|_\infty
+ \le t^{\alpha_3}\|\partial_3f_3\|_\infty
+             \int|z+u_3||\kappa_3(z)|\dd z.
+\]
+Bound the other two convolutions by their $L^\infty$ norms and
+$f_0$ in $L^1$. For $t\ge1$, the third convolution is bounded by
+\[
+ t^{-\alpha_3}\|\kappa_3\|_\infty
+       \sup_{x_1,x_2}\int_\R|f_3(x_1,x_2,y)|\dd y.
+\]
+Again the other factors are bounded, and the displayed fiber supremum
+is finite for Schwartz $f_3$. Thus the absolute spatial integral is
+bounded by a tuple-dependent constant times
+$\min(t^{\alpha_3},t^{-\alpha_3})$, integrable against $\dd t/t$.
+
+To transfer the forest bound, replace $c$ by $c\one_{(a,b)}$.
+For $N\in\N$ set
+\begin{align*}
+ \mathcal R_N&=\{Q(N,v):v\in\{-1,0\}^3\},\\
+ B_N&=\bigcup_{R\in\mathcal R_N}R
+          =\prod_{i=1}^3[-2^{N\alpha_i},2^{N\alpha_i}),\\
+ \mathcal Q_N&=\{Q(k,n):-N\le k\le N,\ n\in\Z^3,
+                                      \ Q(k,n)\subseteq B_N\}.
+\end{align*}
+At every fixed level $k$ in this range, the included boxes partition
+$B_N$. Their number is finite, because each coordinate index is
+bounded by the side lengths of $B_N$. Dyadic nesting proves that
+each $\mathcal Q_N$ is convex, and the associated region is
+\[
+ \Omega_{\mathcal Q_N}=B_N\times(2^{-N-1},2^N].
+\]
+Indeed the level-$k$ boxes contribute
+$B_N\times(2^{k-1},2^k]$. Moreover,
+\[
+ B_N\subseteq B_{N+1},\quad
+ \mathcal Q_N\subseteq\mathcal Q_{N+1},\quad
+ \Omega_{\mathcal Q_N}\subseteq\Omega_{\mathcal Q_{N+1}},\quad
+ \bigcup_{N\in\N}\Omega_{\mathcal Q_N}=E_3\times(0,\infty).
+\]
+The union follows by choosing $N$ so that
+$|p_i|<2^{N\alpha_i}$ for all $i$ and $2^{-N-1}<t\le2^N$.
+At the fixed scales $[a,b]$ use the
+absolute majorant of Lemma~\ref{lem:localization} to take the limit
+in $L_{\mathcal Q_N,u,c\one_{(a,b)}}$. It is $\Lambda^{a,b}_{u,c}$.
+Only after this center exhaustion let $a\downarrow0$, $b\uparrow\infty$,
+using the scale estimate in the first paragraph. No absolute
+integrability of the fully expanded six-variable kernel over all
+scales is asserted or required.
+\end{proof}
+
+\begin{theorem}[Initial model range]\label{thm:initial_model}
+For finite exponents $p_0,p_1,p_2>4$, $p_3\ge2$ with
+$\sum_jp_j^{-1}=1$, all complex Schwartz tuples satisfy
+\[
+ |\Lambda^{a,b}_{u,c}(f)|+|\Lambda_{u,c}(f)|
+ \le C_{\alpha,p}U(u)^{100}\prod_{j=0}^3\|f_j\|_{p_j},
+\]
+uniformly in $0<a<b$. Each form extends uniquely and continuously
+to the product of these $L^{p_j}$ spaces.
+\end{theorem}
+\begin{proof}
+The two preceding lemmas prove the real case. Expand each complex
+input into real and imaginary parts and use the triangle inequality;
+there are $2^4$ terms and each part has norm at most the original
+norm. Multilinearity, the bound, and Schwartz density give the
+extension by telescoping differences of tuples. The constant can be
+enlarged to cover the sum of the two absolute values.
+\end{proof}
+
+\section{Fiberwise Calder\'on--Zygmund decomposition}
+
+All operators in this section are first the fixed truncated operator
+$U=U^{a,b}_{u,c}$. Every estimate is uniform in $a,b,c$.
+For input exponents with $\sum_jp_j^{-1}=R^{-1}\le1$, this operator
+is defined on the corresponding $L^p$ spaces by its actual integral:
+fiberwise Young gives
+\[
+ \|f_j*_j(\kappa_j)_{t^{\alpha_j},t^{\alpha_j}u_j}\|_{p_j}
+ \le\|\kappa_j\|_1\|f_j\|_{p_j}.
+\]
+H\"older, followed by Minkowski for $R\ge1$, then gives
+\begin{align*}
+ \|U(f)\|_R
+ &\le\int_a^b
+    \left\|\prod_{j=1}^3
+      (f_j*_j(\kappa_j)_{t^{\alpha_j},t^{\alpha_j}u_j})\right\|_R
+                                                     \frac{\dd t}{t}\\
+ &\le\log(b/a)\prod_{j=1}^3\|\kappa_j\|_1\|f_j\|_{p_j}.
+\end{align*}
+This bound justifies density and good--bad identities.
+
+\begin{definition}[Coordinate maximal functions]\label{def:fiber_maximal}
+For $j\in\{1,2,3\}$, define the one-dimensional maximal operator
+on the $j$th coordinate fiber by
+\[
+ M^{(j)}f(x)=\sup_{\rho>0}\frac1{2\rho}
+  \int_{x_j-\rho}^{x_j+\rho}
+  |f(x_1,\ldots,x_{j-1},y,x_{j+1},\ldots,x_3)|\dd y.
+\]
+On exceptional fibers where local integrability fails, assign the
+value zero. For $f\in L^p(E_3)$, $1\le p<\infty$, Fubini makes
+that set of fibers null; for $p>1$, External
+Theorem~\ref{ext:maximal} gives
+$\|M^{(j)}f\|_p\le C_p\|f\|_p$. The supremum can be restricted
+to rational $\rho>0$, making the chosen representative measurable.
+\end{definition}
+
+\begin{lemma}[Kernel bounds in one fiber]\label{lem:fiber_kernel}
+For $j=1,2,3$, $s>0$,
+\begin{align*}
+ |(\kappa_j)_{s,su_j}(y)|&\le C U(u)^{10}s^{-1}(1+|y|/s)^{-10},\\
+ |\partial_y(\kappa_j)_{s,su_j}(y)|&\le C U(u)^{10}s^{-2}(1+|y|/s)^{-10},\\
+ |f*_j(\kappa_j)_{s,su_j}(x)|&\le C U(u)^{10}M^{(j)}f(x).
+\end{align*}
+\end{lemma}
+\begin{proof}
+Use the order $10$ seminorms of $\kappa_j,\kappa_j'$ and
+$1+|y|/s\le(1+|u_j|)(1+|y/s-u_j|)$.
+For the last estimate decompose $|y|$ into the intervals
+$|y|\le s$ and $2^{l-1}s<|y|\le2^ls$; the resulting coefficients
+are bounded by a constant times $2^{-9l}$. Explicitly,
+\begin{align*}
+ |f*_j(\kappa_j)_{s,su_j}(x)|
+ &\le C U(u)^{10}\left[
+ s^{-1}\int_{|y|\le s}|f(x-ye_j)|\dd y\right.\\
+ &\hspace{38mm}\left.
+ +\sum_{l=1}^{\infty}s^{-1}2^{-10(l-1)}
+                    \int_{|y|\le2^ls}|f(x-ye_j)|\dd y\right]\\
+ &\le C U(u)^{10}\left(1+\sum_{l=1}^\infty2^{-9l}\right)
+                                                M^{(j)}f(x).
+\end{align*}
+\end{proof}
+
+\begin{lemma}[Measurable fiber decomposition]\label{lem:fiber_cz}
+Let $1\le p<\infty$, $f\in L^p(E_3)$, $m\in\{1,2,3\}$, and $H>0$.
+Write $x=(y,z)$ with $y=x_m$
+and $z=x_{\widehat m}\in E_2$, and set
+\[
+ Z_f=\left\{z:\int_\R|f(y,z)|^p\dd y<\infty\right\},\qquad
+ \mathcal D_1=\{[2^k n,2^k(n+1)):k,n\in\Z\}.
+\]
+For $I\in\mathcal D_1$, define the measurable fiber averages and
+selection set by
+\begin{align*}
+ A_I(z)&=|I|^{-1}\int_I|f(y,z)|^p\dd y,\qquad
+ f_I(z)=|I|^{-1}\int_I f(y,z)\dd y\quad(z\in Z_f),\\
+ S_I&=Z_f\cap\{z:A_I(z)>H\}
+       \cap\bigcap_{\substack{J\in\mathcal D_1\\I\subsetneq J}}
+                                           \{z:A_J(z)\le H\},\\
+ \mathcal I_z&=\{I\in\mathcal D_1:z\in S_I\}.
+\end{align*}
+Set $f_I=0$ off $Z_f$. On every $z\in Z_f$, the selected intervals
+are disjoint and maximal among those with average exceeding $H$;
+they satisfy
+\[
+ H<|I|^{-1}\int_I|f(y,z)|^p\dd y\le2H.
+\]
+Define the exceptional set, good function, and indexed bad functions by
+\begin{align*}
+ B&=\bigcup_{I\in\mathcal D_1}(I\times S_I),\\
+ g(y,z)&=\begin{cases}
+ f(y,z),&(y,z)\notin B,\ z\in Z_f,\\
+ f_I(z),&y\in I,\ z\in S_I,\\
+ 0,&z\notin Z_f,
+ \end{cases}\\
+ b_I(y,z)&=\one_{S_I}(z)\one_I(y)(f(y,z)-f_I(z)),\\
+ b(y,z)&=\sum_{I\in\mathcal D_1}b_I(y,z).
+\end{align*}
+All sets and functions in these formulas are measurable, and
+$f=g+b$ almost everywhere. Then
+\begin{gather*}
+ \int_Ib_I(y,z)\dd y=0,\quad
+ \|g\|_p\le\|f\|_p,\quad |g|\le(2H)^{1/p}\text{ a.e.},\\
+ \sum_{I\in\mathcal I_z}|I|\le H^{-1}\int|f(y,z)|^p\dd y,
+ \qquad \|b_I(\cdot,z)\|_1\le2(2H)^{1/p}|I|.
+\end{gather*}
+For finite $P\ge p$, $\|g\|_P\le(2H)^{1/p-1/P}\|f\|_p^{p/P}$.
+\end{lemma}
+\begin{proof}
+Enumerate the countable family of dyadic intervals. Declare $I$
+selected at $z$ when its $|f|^p$ average exceeds $H$ and every
+proper dyadic ancestor has average at most $H$. Each condition is
+measurable in $z$, so each $S_I$ and $B$ is measurable. Tonelli
+shows that $Z_f$ is conull. On $Z_f$, if $J$ runs through growing
+dyadic ancestors, then
+\[
+ A_J(z)\le |J|^{-1}\int_\R|f(y,z)|^p\dd y\longrightarrow0.
+\]
+Thus every interval with average above $H$ lies in a maximal one.
+Two selected intervals meeting at a point are nested and hence equal.
+If $I^+$ is the dyadic parent of a selected interval, then
+\[
+ H<A_I(z)\le2A_{I^+}(z)\le2H.
+\]
+Outside $\bigcup\mathcal I_z$, all dyadic interval averages
+containing $y$ are at most $H$. Dyadic differentiation gives
+$|f(y,z)|^p\le H$ for almost every such $y$. Fubini removes the
+resulting null subset of $E_3$. On a selected interval, Jensen gives
+\[
+ |f_I(z)|^p\le A_I(z)\le2H,\qquad
+ |I|\,|f_I(z)|^p\le\int_I|f(y,z)|^p\dd y.
+\]
+Summing the second inequality and retaining the unchanged complement
+proves $\|g\|_p^p\le\|f\|_p^p$. Also $|g|\le(2H)^{1/p}$
+almost everywhere. The defining average gives cancellation, and
+H\"older gives the bad mass bound. For $z\in S_I$ the calculation is
+\begin{align*}
+ \int_I b_I(y,z)\dd y&=\int_I f(y,z)\dd y-|I|f_I(z)=0,\\
+ \|b_I(\cdot,z)\|_1
+ &\le\int_I|f(y,z)|\dd y+|I|\,|f_I(z)|\\
+ &\le2|I|^{1-1/p}\left(\int_I|f(y,z)|^p\dd y\right)^{1/p}
+ \le2(2H)^{1/p}|I|.
+\end{align*}
+For $z\notin S_I$, the function $b_I(\cdot,z)$ is zero, so both
+conclusions hold there as well.
+Disjointness and $H|I|<\int_I|f|^p$ yield
+\[
+ \sum_{I\in\mathcal I_z}|I|
+ \le H^{-1}\sum_{I\in\mathcal I_z}\int_I|f(y,z)|^p\dd y
+ \le H^{-1}\int_\R|f(y,z)|^p\dd y.
+\]
+Finally,
+\[
+ \|g\|_P^P\le\|g\|_\infty^{P-p}\|g\|_p^p
+ \le(2H)^{P/p-1}\|f\|_p^p,
+\]
+which is the stated good-part norm after taking the $P$th root.
+For any enumeration $\mathcal D_1=\{I_1,I_2,\ldots\}$, the sums
+$\sum_{l\le N}b_{I_l}$ converge pointwise almost everywhere and
+in $L^p$ to $b$: at most one term is nonzero at each point, and
+$|b|^p\le2^{p-1}(|f|^p+|g|^p)$ is integrable.
+\end{proof}
+
+\begin{lemma}[Tails of disjoint intervals]\label{lem:interval_tails}
+For pairwise disjoint bounded intervals of positive length with
+$\sum_I|I|<\infty$,
+put $h(x)=\sum_I(1+|x-c_I|/|I|)^{-2}$. For $1\le p<\infty$,
+\[
+ \|h\|_p\le C_p\left(\sum_I|I|\right)^{1/p}.
+\]
+\end{lemma}
+\begin{proof}
+For $p=1$, integrate each summand, whose integral is $2|I|$.
+For $p>1$, let $v\ge0$ in $L^{p'}$. Annular decomposition and
+comparison of centered intervals show, for every $y\in I$,
+\[
+ \int(1+|x-c_I|/|I|)^{-2}v(x)\dd x\le C|I|Mv(y).
+\]
+Average this inequality over $y\in I$ and sum over the disjoint
+intervals. The result is at most
+$C\int_{\cup I}Mv\le C_p|\cup I|^{1/p}\|v\|_{p'}$.
+Duality proves the estimate for finite sums; monotone convergence
+gives countable sums. In the fiber setting, apply this estimate on
+each fiber and integrate its $p$th power in the remaining variables.
+\end{proof}
+
+\begin{definition}[Weak norm]\label{def:weak_norm}
+For $1\le R<\infty$ define
+$\|v\|_{R,\infty}=\sup_{\tau>0}\tau|\{|v|>\tau\}|^{1/R}$,
+initially as an extended nonnegative number. Finite bounds below
+assert the corresponding weak-$L^R$ membership.
+\end{definition}
+
+\begin{lemma}[One-fiber weak extension]\label{lem:one_fiber}
+Suppose $1<P_1,P_2,P_3,R_0<\infty$,
+$R_0^{-1}=\sum_jP_j^{-1}$, and
+\[
+ \|U(f_1,f_2,f_3)\|_{R_0}\le C_0U(u)^{100}\prod_j\|f_j\|_{P_j}.
+\]
+Fix $m$ and $1\le p\le P_m$ such that
+$R^{-1}=p^{-1}+\sum_{j\ne m}P_j^{-1}\le1$.
+These conditions imply $1\le R\le R_0$.
+Then
+\begin{equation}\label{eq:one_fiber}
+ \|U(f_1,f_2,f_3)\|_{R,\infty}
+ \le C U(u)^{100}\|f_m\|_p\prod_{j\ne m}\|f_j\|_{P_j}.
+\end{equation}
+The new constant depends on $C_0$ and the exponents, but is uniform
+in the truncation and coefficient.
+\end{lemma}
+\begin{proof}
+Normalize all input norms to one, with zero inputs treated separately.
+Thus $\|f_m\|_p=1$ and $\|f_j\|_{P_j}=1$ for $j\ne m$.
+Choose $\mathcal A_u=C_1U(u)^{100}$ with $C_1$ large enough for
+the starting estimate and the fixed kernel constants, and for
+$\tau>0$ put $H=(\tau/\mathcal A_u)^R$.
+Apply Lemma~\ref{lem:fiber_cz} to $f_m$ at height $H$.
+The good part satisfies $\|g_m\|_{P_m}\le C H^{1/p-1/P_m}$.
+The starting estimate applies to this possibly nonsmooth $g_m$:
+choose Schwartz approximants converging in $L^{P_m}$, and use the
+preliminary truncated-operator bound to identify their output limit
+with the integral defining $U$. The remaining inputs can be
+approximated in their $L^{P_j}$ norms in the same way.
+Write $f^{\mathrm g}=(f_1,\ldots,g_m,\ldots,f_3)$ and
+$f^{\mathrm b}=(f_1,\ldots,b_m,\ldots,f_3)$ for the tuples with
+only slot $m$ changed. Multilinearity gives $U(f)=U(f^{\mathrm g})+
+U(f^{\mathrm b})$ almost everywhere. Chebyshev and the starting
+estimate give
+\[
+ |\{|U(f^{\mathrm g})|>\tau/2\}|
+ \le C\tau^{-R_0}\mathcal A_u^{R_0}H^{R_0(1/p-1/P_m)}
+ = C\mathcal A_u^R\tau^{-R}.
+\]
+Indeed, subtracting the starting and target scaling identities gives
+\[
+ \frac1p-\frac1{P_m}=\frac1R-\frac1{R_0},\qquad
+ RR_0\left(\frac1p-\frac1{P_m}\right)=R_0-R.
+\]
+For $I\in\mathcal D_1$, put
+$2I=[c_I-|I|,c_I+|I|)$ and define
+\begin{equation}\label{eq:cz_exceptional_set}
+ E=\bigcup_{I\in\mathcal D_1}(2I\times S_I)
+  =\{(x_m,z):x_m\in\bigcup_{I\in\mathcal I_z}2I\}.
+\end{equation}
+This is measurable, and Tonelli and the selected-length estimate yield
+\begin{align*}
+ |E|&\le\int_{E_2}\sum_{I\in\mathcal I_z}2|I|\dd z\\
+ &\le2H^{-1}\int_{E_2}\int_\R|f_m(y,z)|^p\dd y\dd z
+  =2H^{-1}=2\mathcal A_u^R\tau^{-R}.
+\end{align*}
+
+Outside $E$, write $d=|x_m-c_I|\ge|I|$. Cancellation of $b_I$
+is the exact identity, with $s=t^{\alpha_m}$,
+\begin{align*}
+ (b_I*_m(\kappa_m)_{s,su_m})(x)
+ =\int_I b_I(y,z)\big[&(\kappa_m)_{s,su_m}(x_m-y)\\
+                      &-(\kappa_m)_{s,su_m}(x_m-c_I)\big]\dd y.
+\end{align*}
+For $y\in I$ and $0\le\theta\le1$,
+\[
+ |x_m-(c_I+\theta(y-c_I))|
+ \ge d-|I|/2\ge d/2,
+ \qquad |y-c_I|\le|I|/2.
+\]
+The mean value theorem and Lemma~\ref{lem:fiber_kernel} thus give
+\begin{align*}
+ &|(\kappa_m)_{s,su_m}(x_m-y)
+             -(\kappa_m)_{s,su_m}(x_m-c_I)|\\
+ &\hspace{15mm}\le C U(u)^{10}|I|s^{-2}(1+s^{-1}d)^{-10}.
+\end{align*}
+After multiplying by $\|b_I(\cdot,z)\|_1\le C H^{1/p}|I|$,
+one obtains
+\[
+ |b_I*_m(\kappa_m)_{t^{\alpha_m},t^{\alpha_m}u_m}(x)|
+ \le C U(u)^{10}H^{1/p}|I|^2t^{-2\alpha_m}
+                         (1+t^{-\alpha_m}d)^{-10}.
+\]
+For the scale integral substitute $v=t^{-\alpha_m}d$,
+so $\dd t/t=-\dd v/(\alpha_m v)$, to get
+\[
+ \int_0^\infty t^{-2\alpha_m}(1+t^{-\alpha_m}d)^{-10}
+                  \frac{\dd t}{t}
+ =\frac{d^{-2}}{\alpha_m}\int_0^\infty v(1+v)^{-10}\dd v
+ =\frac{d^{-2}}{72\alpha_m}.
+\]
+Here $\int_0^\infty v(1+v)^{-10}\dd v=1/8-1/9=1/72$.
+Also $d/|I|\ge1$ implies
+\[
+ \frac{|I|^2}{d^2}
+ \le4\left(1+\frac d{|I|}\right)^{-2}.
+\]
+Bound the other two convolutions by Lemma~\ref{lem:fiber_kernel}
+and sum the intervals. One obtains, almost everywhere outside $E$,
+\begin{equation}\label{eq:cz_bad_pointwise}
+ |U(f^{\mathrm b})(x)|
+ \le C U(u)^{30}H^{1/p}h_m(x)\prod_{j\ne m}M^{(j)}f_j(x),
+\end{equation}
+where the measurable tail function is
+\[
+ h_m(x_m,z)=\sum_{I\in\mathcal D_1}\one_{S_I}(z)
+       \left(1+\frac{|x_m-c_I|}{|I|}\right)^{-2}.
+\]
+Lemma~\ref{lem:interval_tails} on each fiber, followed by Tonelli,
+gives
+\begin{align*}
+ \|h_m\|_p^p
+ &=\int_{E_2}\|h_m(\cdot,z)\|_{L^p(\R)}^p\dd z\\
+ &\le C_p\int_{E_2}\sum_{I\in\mathcal I_z}|I|\dd z
+ \le C_pH^{-1}\|f_m\|_p^p=C_pH^{-1}.
+\end{align*}
+The maximal theorem gives
+$\|M^{(j)}f_j\|_{P_j}\le C_{P_j}$ for $j\ne m$.
+H\"older with $R^{-1}=p^{-1}+\sum_{j\ne m}P_j^{-1}$ therefore
+implies
+\[
+ \left\|h_m\prod_{j\ne m}M^{(j)}f_j\right\|_R
+ \le\|h_m\|_p\prod_{j\ne m}\|M^{(j)}f_j\|_{P_j}
+ \le C H^{-1/p}.
+\]
+By \eqref{eq:cz_bad_pointwise} and Chebyshev,
+\begin{align*}
+ |\{x\notin E:|U(f^{\mathrm b})(x)|>\tau/2\}|
+ &\le C\tau^{-R}U(u)^{30R}H^{R/p}
+             \left\|h_m\prod_{j\ne m}M^{(j)}f_j\right\|_R^R\\
+ &\le C\tau^{-R}U(u)^{30R}
+ \le C\mathcal A_u^R\tau^{-R}.
+\end{align*}
+Finally, the inclusion
+\[
+ \{|U(f)|>\tau\}\subseteq
+ \{|U(f^{\mathrm g})|>\tau/2\}\cup E\cup
+ \{x\notin E:|U(f^{\mathrm b})(x)|>\tau/2\}
+\]
+combines the three bounds into
+$\tau|\{|U(f)|>\tau\}|^{1/R}\le C\mathcal A_u$.
+For countably many bad intervals, pass from finite sums using
+$L^p$ convergence and the preliminary truncated-operator bound;
+take a subsequence of the outputs converging almost everywhere, while
+the positive tail majorants pass by Tonelli. Taking the supremum over
+$\tau>0$ and restoring the input norms proves \eqref{eq:one_fiber}.
+\end{proof}
+
+\begin{exttheorem}[Multilinear Marcinkiewicz interpolation]
+\label{ext:interpolation}
+Let $T$ be a trilinear operator on complex simple functions of finite
+measure support. Suppose
+at four affinely independent input reciprocal vectors
+$v^{(a)}=(1/p_{a,1},1/p_{a,2},1/p_{a,3})$, $a=0,1,2,3$,
+it has weak bounds
+\[
+ \|T(f)\|_{r_a,\infty}\le A_a\prod_{j=1}^3\|f_j\|_{p_{a,j}},
+ \quad 1<p_{a,j}<\infty,\quad1\le r_a<\infty,\quad
+ r_a^{-1}=\sum_jp_{a,j}^{-1}.
+\]
+Let $\vartheta_a>0$, $\sum_a\vartheta_a=1$, and define
+$p_j^{-1}=\sum_a\vartheta_ap_{a,j}^{-1}$,
+$r^{-1}=\sum_a\vartheta_ar_a^{-1}$. If $1<r<\infty$, then
+\[
+ \|T(f)\|_r\le C\prod_aA_a^{\vartheta_a}\prod_j\|f_j\|_{p_j}.
+\]
+The constant depends only on the exponent vectors and weights.
+The map extends to these $L^p$ spaces when initially defined on
+their dense simple-function subspaces.
+\end{exttheorem}
+
+\begin{lemma}[Exponent simplex]\label{lem:exponent_simplex}
+Suppose $0<\beta_j<1$, $\sum_{j=0}^3\beta_j=1$, and
+\begin{equation}\label{eq:extended_region}
+ \beta_0<\tfrac14,\quad \beta_3>\tfrac14,\quad
+ \beta_1+\beta_2>\tfrac14,\quad
+ \beta_1+\beta_3>\tfrac12,\quad\beta_2+\beta_3>\tfrac12.
+\end{equation}
+There exist $b_1,b_2,b_3>0$ with
+\[
+ b_j<\beta_j,\quad b_1,b_2<\tfrac14,\quad b_3<\tfrac12,
+ \qquad \tfrac34<b_1+b_2+b_3<1.
+\]
+Put $b_0=1-\sum_{j=1}^3b_j$. Then $0<\beta_0<b_0<1/4$,
+and the input vector $(\beta_1,\beta_2,\beta_3)$ is a strict convex
+combination of $b=(b_1,b_2,b_3)$ and the three vectors $b+b_0e_m$.
+The weights are
+\begin{equation}\label{eq:weights}
+ \vartheta_0=\beta_0/b_0,\qquad
+ \vartheta_m=(\beta_m-b_m)/b_0\quad(m=1,2,3).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Let $c=(1/4,1/4,1/2)$ and define
+\begin{equation}\label{eq:capped_sum}
+ S=\min(\beta_1,1/4)+\min(\beta_2,1/4)+\min(\beta_3,1/2).
+\end{equation}
+We prove $S>3/4$ by cases. If
+$\beta_3\ge1/2$ and $\beta_1,\beta_2<1/4$, then
+$S=\beta_1+\beta_2+1/2>3/4$. If $\beta_3\ge1/2$ and at
+least one of $\beta_1,\beta_2$ is at least $1/4$, its capped
+contribution is $1/4$, the other is strictly positive, and again
+$S>3/4$. If $\beta_3<1/2$, the four remaining possibilities are
+\[
+ \begin{array}{c|c|c}
+ &S&\text{reason }S>3/4\\ \hline
+ \beta_1<1/4,\ \beta_2<1/4
+    &1-\beta_0&\beta_0<1/4\\
+ \beta_1\ge1/4,\ \beta_2<1/4
+    &1/4+\beta_2+\beta_3&\beta_2+\beta_3>1/2\\
+ \beta_1<1/4,\ \beta_2\ge1/4
+    &\beta_1+1/4+\beta_3&\beta_1+\beta_3>1/2\\
+ \beta_1\ge1/4,\ \beta_2\ge1/4
+    &1/2+\beta_3&\beta_3>1/4.
+ \end{array}
+\]
+Equivalently, the finite-minimum identity
+\[
+ S=\min_{I\subseteq\{1,2,3\}}
+       \left(\sum_{j\in I}\beta_j+\sum_{j\notin I}c_j\right)
+ \]
+expands into the eight alternatives
+\begin{align*}
+ S=\min\{&1,\ \beta_1+3/4,\ \beta_2+3/4,\ \beta_3+1/2,\\
+         &\beta_1+\beta_2+1/2,\ \beta_1+\beta_3+1/4,
+            \ \beta_2+\beta_3+1/4,\ 1-\beta_0\}.
+\end{align*}
+Each entry exceeds $3/4$ by positivity or
+\eqref{eq:extended_region}.
+Make the choice constructive by setting
+\[
+ \epsilon=\frac12\min\left\{
+                  \min_{1\le j\le3}\min(\beta_j,c_j),
+                              \frac{S-3/4}{3}\right\}>0,
+ \qquad b_j=\min(\beta_j,c_j)-\epsilon.
+\]
+Then $b_j>0$, $b_j<\min(\beta_j,c_j)$, and
+\[
+ \frac34<S-3\epsilon=\sum_{j=1}^3b_j
+           <\sum_{j=1}^3\beta_j=1-\beta_0<1.
+\]
+With $b_0=1-\sum_{j=1}^3b_j$ this gives
+$0<\beta_0<b_0<1/4$. It also gives
+$b_3=1-b_0-b_1-b_2>1/4$ since the three subtracted terms are
+each less than $1/4$.
+Set $\delta_m=\beta_m-b_m>0$. Then
+\[
+ \sum_{m=1}^3\delta_m
+ =(1-\beta_0)-(1-b_0)=b_0-\beta_0,
+ \qquad\sum_{a=0}^3\vartheta_a
+ =\frac{\beta_0+\sum_m\delta_m}{b_0}=1.
+\]
+For each input coordinate $j$, the strict convex-combination identity is
+\[
+ \vartheta_0b_j+\sum_{m=1}^3\vartheta_m
+                  (b_j+b_0\one_{\{m=j\}})
+ =b_j+b_0\vartheta_j=\beta_j.
+\]
+The matching output reciprocal is
+\[
+ \vartheta_0(1-b_0)+\sum_{m=1}^3\vartheta_m
+ =1-b_0\vartheta_0=1-\beta_0.
+\]
+The simplex has independent edge vectors $b_0e_1,b_0e_2,b_0e_3$.
+\end{proof}
+
+\begin{theorem}[Extended model range]\label{thm:extended_model}
+Let $1<p_j<\infty$ with $\sum_jp_j^{-1}=1$, and suppose
+$\beta_j=p_j^{-1}$ satisfies \eqref{eq:extended_region}. Then
+\[
+ |\Lambda_{u,c}(f)|\le C_{\alpha,p}U(u)^{100}\prod_{j=0}^3\|f_j\|_{p_j}
+\]
+for complex Schwartz inputs, uniformly in $u,c$. The same estimate
+holds for all scale truncations, and defines a unique continuous form
+on the product of the four $L^{p_j}$ spaces.
+\end{theorem}
+\begin{proof}
+Choose $b$ by Lemma~\ref{lem:exponent_simplex}. Put
+$P_j=1/b_j$ for $j=1,2,3$ and $R_0=1/(1-b_0)$.
+Theorem~\ref{thm:initial_model}, with zeroth exponent $1/b_0$,
+gives by $L^p$ duality
+\[
+ \|U^{a,b}_{u,c}(f)\|_{R_0}\le C U(u)^{100}\prod_j\|f_j\|_{P_j}.
+\]
+For complex functions the bilinear pairing $\int f_0U$ gives the
+same dual norm, by replacing the usual test function by its conjugate.
+The hypotheses of the initial range hold since $b_0,b_1,b_2<1/4$
+and $b_3<1/2$; also $b_3>1/4$ follows by subtracting the first
+three coordinates from $1$.
+For each $m\in\{1,2,3\}$ define the complete endpoint tuple by
+\[
+ P_j^{(m)}=\begin{cases}
+        (b_m+b_0)^{-1},&j=m,\\
+        P_j,&j\ne m.
+        \end{cases}
+\]
+The identities
+\[
+ b_m<b_m+b_0=1-\sum_{j\ne m}b_j<1,\qquad
+ \sum_{j=1}^3\frac1{P_j^{(m)}}=
+           b_0+\sum_{j=1}^3b_j=1
+\]
+show $1<P_m^{(m)}<P_m$ and output exponent $1$. Apply
+Lemma~\ref{lem:one_fiber} with $p=P_m^{(m)}$ to obtain
+\begin{equation}\label{eq:interpolation_weak_endpoints}
+ \|U^{a,b}_{u,c}(f_1,f_2,f_3)\|_{1,\infty}
+ \le C_m U(u)^{100}\prod_{j=1}^3\|f_j\|_{P_j^{(m)}}
+                  \qquad(m=1,2,3).
+\end{equation}
+These are the three vertices $b+b_0e_m$.
+The base strong bound is also a weak bound at $b$.
+External Theorem~\ref{ext:interpolation}, with the weights
+\eqref{eq:weights}, gives the strong estimate at the target inputs
+and output $R$ with $R^{-1}=1-\beta_0$:
+\begin{equation}\label{eq:extended_operator_bound}
+ \|U^{a,b}_{u,c}(f_1,f_2,f_3)\|_R
+ \le C_{\alpha,p} U(u)^{100}\prod_{j=1}^3\|f_j\|_{p_j}.
+\end{equation}
+Indeed all endpoint constants have factor $U(u)^{100}$, and
+\[
+ \prod_{a=0}^3(U(u)^{100})^{\vartheta_a}
+ =U(u)^{100\sum_a\vartheta_a}=U(u)^{100}.
+\]
+Since $R^{-1}+p_0^{-1}=1$, H\"older gives
+\begin{align*}
+ |\Lambda^{a,b}_{u,c}(f)|
+ &=\left|\int_{E_3}f_0(x)U^{a,b}_{u,c}(f_1,f_2,f_3)(x)\dd x\right|\\
+ &\le\|f_0\|_{p_0}\|U^{a,b}_{u,c}(f_1,f_2,f_3)\|_R\\
+ &\le C_{\alpha,p}U(u)^{100}\prod_{j=0}^3\|f_j\|_{p_j}.
+\end{align*}
+The constants are independent of $a,b$; take the scale limit for
+Schwartz inputs by Lemma~\ref{lem:model_convergence}, then use density.
+\end{proof}
+
+\section{Cone decomposition and the multiplier theorem}
+
+\begin{definition}[Models in each active coordinate]\label{def:permuted_model}
+For $i,j\in\{1,2,3\}$ define
+\[
+ \kappa_j^{(i)}=
+ \begin{cases}
+  \h*\h*\psi,&j=i,\\
+  \g*\varphi,&j\ne i.
+ \end{cases}
+\]
+The corresponding truncated and full-scale forms are
+\begin{align*}
+ \Lambda^{(i),a,b}_{u,c}(f)
+ &=\int_a^b c(t)\int_{E_3}f_0(x)
+       \prod_{j=1}^3
+       \big(f_j*_j(\kappa_j^{(i)})_{t^{\alpha_j},t^{\alpha_j}u_j}\big)(x)
+                                      \dd x\frac{\dd t}{t},\\
+ \Lambda^{(i)}_{u,c}(f)
+ &=\lim_{a\downarrow0,\ b\uparrow\infty}\Lambda^{(i),a,b}_{u,c}(f).
+\end{align*}
+The last limit is initially taken on Schwartz tuples.
+For $i=3$ these are the forms of Definition~\ref{def:model}.
+Translation commutes with convolution, so, for example,
+\[
+ (\kappa_i^{(i)})_{t^{\alpha_i},t^{\alpha_i}u_i}
+      =(\h*\h*\psi_{1,u_i})_{(t^{\alpha_i})}.
+\]
+\end{definition}
+
+\begin{lemma}[Coordinate permutation]\label{lem:permutation}
+Choose a permutation $\sigma$ with $\sigma(3)=i$ and put
+\[
+ P_\sigma x=(x_{\sigma(1)},x_{\sigma(2)},x_{\sigma(3)}),\qquad
+ \widetilde\alpha_j=\alpha_{\sigma(j)},\quad
+ \widetilde u_j=u_{\sigma(j)},
+\]
+\[
+ \widetilde f_0=f_0\circ P_\sigma^{-1},\qquad
+ \widetilde f_j=f_{\sigma(j)}\circ P_\sigma^{-1}\quad(1\le j\le3).
+\]
+Writing the anisotropy as an extra subscript, one has
+\[
+ \Lambda^{(i),a,b}_{\alpha,u,c}(f)
+      =\Lambda^{(3),a,b}_{\widetilde\alpha,\widetilde u,c}(\widetilde f),
+ \qquad
+ \Lambda^{(i)}_{\alpha,u,c}(f)
+      =\Lambda^{(3)}_{\widetilde\alpha,\widetilde u,c}(\widetilde f).
+\]
+Lebesgue measure and Schwartz regularity are preserved, as are the
+corresponding $L^p$ norms and $U(\widetilde u)=U(u)$.
+\end{lemma}
+\begin{proof}
+The identities
+\[
+ P_\sigma e_{\sigma(j)}=e_j,\qquad
+ P_\sigma D_t^\alpha=D_t^{\widetilde\alpha}P_\sigma,
+ \qquad |\det P_\sigma|=1
+\]
+give the result by setting $z=P_\sigma x$ and relabeling each fiber
+integration variable. The $\sigma(j)$th factor becomes
+\[
+ \int_\R\widetilde f_j(z-ye_j)
+     (\kappa_j^{(3)})_{t^{\widetilde\alpha_j},
+                                 t^{\widetilde\alpha_j}\widetilde u_j}(y)\dd y.
+\]
+The coefficient $c(t)$ is unchanged. The change of variables has
+Jacobian one in absolute value, and $P_\sigma$ is an isometry, which
+proves the norm and regularity assertions. The full-scale limits
+exist by Lemma~\ref{lem:model_convergence} for the permuted data;
+passing to those limits gives the second identity.
+\end{proof}
+
+\begin{definition}[Auxiliary cutoff and localized symbol]\label{def:localized_symbol}
+Use $b=\widehat\B$ from Definition~\ref{def:bumps}, and put
+$\zeta=b/\int b$. This is a nonnegative even smooth probability
+density supported in $[-1,1]$. Define
+\[
+ \widetilde\Phi=\one_{[-5/2,5/2]}*\zeta_{(1/2)},\qquad
+ \widetilde\Psi=(\one_{[3/4,9/4]}+\one_{[-9/4,-3/4]})*\zeta_{(1/4)}.
+\]
+Then $\widetilde\Phi=1$ on $[-2,2]$, with support in $[-3,3]$,
+and $\widetilde\Psi=1$ on $[-2,-1]\cup[1,2]$, with support in
+$[-5/2,-1/2]\cup[1/2,5/2]$.
+For $i=1,2,3$, $t>0$ define
+\[
+ \chi_i(\eta)=\widetilde\Psi(\eta_i)
+          \prod_{j\ne i}\widetilde\Phi(\eta_j)\g(\eta_j)^{-1},
+ \qquad m_{i,t}(\eta)=m(D_t^{-1}\eta)\chi_i(\eta).
+\]
+Set $m_{i,t}=0$ near the origin, where the cutoff vanishes.
+\end{definition}
+
+\begin{lemma}[Calder\'on identity and three cones]\label{lem:calderon}
+For $\xi_i\ne0$,
+\[
+ \int_0^\infty\alpha_i\Psi(t^{\alpha_i}\xi_i)
+                 \h(t^{\alpha_i}\xi_i)^2\frac{\dd t}{t}=c_\Psi.
+\]
+For every $\xi\ne0$, putting $\eta=D_t\xi$ gives
+\begin{equation}\label{eq:cone_identity}
+ m(\xi)=c_\Psi^{-3}\sum_{i=1}^3\alpha_i
+     \int_0^\infty m(\xi)\Psi(\eta_i)\h(\eta_i)^2
+                          \prod_{j\ne i}\Phi(\eta_j)\frac{\dd t}{t}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+For the first formula substitute $v=t^{\alpha_i}|\xi_i|$ and use
+evenness: $\dd v/v=\alpha_i\dd t/t$.
+If $\xi_1\xi_2\xi_3\ne0$, multiply the three one-dimensional
+identities to obtain
+\[
+ m(\xi)=c_\Psi^{-3}\int_{(0,\infty)^3}m(\xi)
+      \prod_{j=1}^3\alpha_j\Psi(t_j^{\alpha_j}\xi_j)
+                                  \h(t_j^{\alpha_j}\xi_j)^2
+                          \prod_{j=1}^3\frac{\dd t_j}{t_j}.
+\]
+This integral is absolutely convergent, since its absolute integral
+is $|m(\xi)|c_\Psi^3$ before multiplication by $c_\Psi^{-3}$.
+Define the measurable regions
+\[
+ \mathcal C_i=\{(t_1,t_2,t_3)\in(0,\infty)^3:
+                      t_i<t_j\text{ for every }j\ne i\}.
+\]
+They are disjoint and cover the positive octant except for the null
+set contained in $\bigcup_{j<k}\{t_j=t_k\}$.
+For fixed $t_i=t$, integrate the other two scales over $(t,\infty)$.
+The substitution $v=s^{\alpha_j}|\xi_j|$ gives
+\[
+ \int_t^\infty\alpha_j\Psi(s^{\alpha_j}\xi_j)
+           \h(s^{\alpha_j}\xi_j)^2\frac{\dd s}{s}
+       =\int_{t^{\alpha_j}|\xi_j|}^\infty
+                \Psi(v)\h(v)^2\frac{\dd v}{v}
+       =\Phi(t^{\alpha_j}\xi_j).
+\]
+Summing over $i$ yields \eqref{eq:cone_identity} on this set.
+
+For a direct verification valid also on coordinate planes,
+differentiate the product $\prod_{j=1}^3\Phi(t^{\alpha_j}\xi_j)$.
+Each nonzero coordinate satisfies
+\[
+ -t\partial_t\Phi(t^{\alpha_j}\xi_j)
+       =\alpha_j\Psi(t^{\alpha_j}\xi_j)\h(t^{\alpha_j}\xi_j)^2;
+\]
+for a zero coordinate both sides vanish. The product is $c_\Psi^3$
+for all sufficiently small $t$ and is zero for all sufficiently
+large $t$, since at least one coordinate of $\xi$ is nonzero.
+Integrate its derivative and multiply by $c_\Psi^{-3}m(\xi)$.
+Every integrand is supported in a compact positive scale interval
+for each fixed nonzero $\xi$.
+The scale restriction is uniform on compact subsets away from zero:
+for such a set $K$, put
+\[
+ M_K=\max(1,\sup_{\xi\in K}|\xi|),\qquad
+ \delta_K=\inf_{\xi\in K}\max_j|\xi_j|>0,
+\]
+\[
+ a_K=\min_j M_K^{-1/\alpha_j},\qquad
+ b_K=\max_j(2/\delta_K)^{1/\alpha_j}.
+\]
+On a nonzero integrand, the active factor forces
+$t^{\alpha_i}|\xi_i|\ge1$, hence $t\ge a_K$.
+All three frequency factors force $t^{\alpha_j}|\xi_j|\le2$;
+choosing a coordinate with $|\xi_j|\ge\delta_K$ gives $t\le b_K$.
+This also justifies differentiation of each cone integral in $\xi$
+and proves its smoothness off the origin.
+\end{proof}
+
+\begin{lemma}[Uniform localized derivatives]\label{lem:symbol_derivatives}
+The symbol $m_{i,t}$ is smooth, supported in $[-3,3]^3$ and away
+from $\eta_i=0$, and for $|\beta|\le110$,
+\[
+ \sup_{i,t>0}\|\partial^\beta m_{i,t}\|_\infty\le C_{\alpha,\beta}M.
+\]
+It extends to a smooth function periodic with period $8$ in each
+coordinate by periodization, without overlap near the boundary of
+the fundamental cube $[-4,4]^3$.
+\end{lemma}
+\begin{proof}
+Smoothness and plateau properties of the auxiliary cutoffs follow by
+differentiating their convolutions with the compactly supported smooth
+density $\zeta$. Their supports have the stated margins.
+For $\eta\ne0$, the Leibniz rule and the coordinate chain rule give
+the full expansion
+\[
+ \partial_\eta^\beta m_{i,t}(\eta)
+ =\sum_{\gamma\le\beta}\binom{\beta}{\gamma}
+ t^{-\alpha\cdot\gamma}(\partial^\gamma m)(D_t^{-1}\eta)
+                  \partial^{\beta-\gamma}\chi_i(\eta).
+\]
+In a neighborhood of $\eta=0$ the cutoff and the zero-extended
+symbol vanish identically, so every derivative there is zero;
+no derivative of $m$ at the origin is used.
+On the support of the cutoff derivatives, $|\eta_i|\ge1/2$ and
+$\rho_\alpha(\eta)\ge(1/2)^{1/\alpha_i}$. The multiplier hypothesis
+and $\rho_\alpha(D_t^{-1}\eta)=t^{-1}\rho_\alpha(\eta)$ give
+\[
+ t^{-\alpha\cdot\gamma}|(\partial^\gamma m)(D_t^{-1}\eta)|
+ \le M\rho_\alpha(\eta)^{-\alpha\cdot\gamma}.
+\]
+All cutoff derivatives are bounded on the fixed compact support;
+division by the positive Gaussian causes no singularity there.
+Sum the finitely many terms to obtain the bound.
+The periodic extension is the locally finite sum
+\[
+ m_{i,t}^{\mathrm{per}}(\eta)
+       =\sum_{k\in\Z^3}m_{i,t}(\eta+8k).
+\]
+On $[-4,4]^3$ only the term $k=0$ can be nonzero. The compact
+support leaves a neighborhood of every cell boundary on which
+the adjacent terms vanish, so all derivatives match there.
+\end{proof}
+
+\begin{definition}[Fourier coefficients]\label{def:fourier_coefficients}
+For $\nu\in\Z^3$, put
+\[
+ a_i(t,\nu)=8^{-3}\int_{[-4,4]^3}m_{i,t}(\eta)
+                                   e^{-2\pi i\nu\cdot\eta/8}\dd\eta.
+\]
+\end{definition}
+
+\begin{lemma}[Fourier-series expansion and summability]\label{lem:fourier_series}
+There is $C_\alpha\ge1$ such that
+\begin{equation}\label{eq:coefficient_decay}
+ |a_i(t,\nu)|\le C_\alpha M(1+|\nu|)^{-110}
+\end{equation}
+for all $i,t,\nu$. Each coefficient is measurable in $t$ and, on
+$[-4,4]^3$, the uniformly absolutely convergent Fourier series gives
+\[
+ m_{i,t}(\eta)=\sum_{\nu\in\Z^3}a_i(t,\nu)e^{2\pi i\nu\cdot\eta/8}.
+\]
+For every $s>3$, $\sum_{\nu\in\Z^3}(1+|\nu|)^{-s}<\infty$.
+\end{lemma}
+\begin{proof}
+Integrate by parts using $(1-\Delta_\eta)^{55}$. Boundary terms
+vanish by the support margin, and
+\[
+ (1+\pi^2|\nu|^2/16)^{55}|a_i(t,\nu)|
+ \le8^{-3}\|(1-\Delta)^{55}m_{i,t}\|_{L^1([-4,4]^3)}.
+\]
+Lemma~\ref{lem:symbol_derivatives} bounds the right side by $CM$;
+this uses exactly $110$ derivatives. Measurability follows from
+measurability of the joint integrand and parameter integration.
+Lattice points in a ball of radius $2^{k+1}$ number at most
+$C2^{3k}$. Splitting into dyadic shells proves summability for $s>3$.
+Thus the Fourier series converges absolutely and uniformly. It has
+the same Fourier coefficients as the periodic symbol. Uniqueness
+of Fourier coefficients, for example by convergence of the product
+Fej\'er means of continuous periodic functions, identifies its sum
+with the symbol.
+\end{proof}
+
+\begin{theorem}[Cone decomposition of the form]\label{thm:cone}
+If $M>0$, choose $A_0=C_\alpha M>0$ large enough for
+\eqref{eq:coefficient_decay}, and put
+\[
+ w_i(\nu)=c_\Psi^{-3}\alpha_iA_0(1+|\nu|)^{-110},\qquad
+ c_{i,\nu}(t)=-\frac{a_i(t,\nu)}{A_0(1+|\nu|)^{-110}}.
+\]
+Then the coefficients $c_{i,\nu}$ are measurable with modulus at
+most one, and for Schwartz tuples
+\begin{equation}\label{eq:form_decomposition}
+ \Lambda_m(f)=\sum_{i=1}^3\sum_{\nu\in\Z^3}
+                  w_i(\nu)\Lambda^{(i)}_{\nu/8,c_{i,\nu}}(f).
+\end{equation}
+The expansion is absolutely convergent. If $M=0$, the form is zero.
+\end{theorem}
+\begin{proof}
+On the support of the $i$th integrand of \eqref{eq:cone_identity},
+the auxiliary cutoffs are one. Hence
+\[
+ m(\xi)\Psi(\eta_i)\h(\eta_i)^2\prod_{j\ne i}\Phi(\eta_j)
+ =m_{i,t}(\eta)\Psi(\eta_i)\h(\eta_i)^2
+                           \prod_{j\ne i}\g(\eta_j)\Phi(\eta_j).
+\]
+Insert the Fourier series of $m_{i,t}$. To verify the signs, use
+frequency variables $\zeta^{(j)}\in E_3$ for $f_j$, $j=1,2,3$,
+and set $\xi_j=-\zeta^{(j)}_j$.
+By \eqref{eq:frequency_form}, integration against $f_0$ produces
+$\widehat f_0(-\zeta^{(1)}-\zeta^{(2)}-\zeta^{(3)})$.
+The exceptional set $\xi=0$ is a null coordinate subspace of $E_9$,
+so the punctured cone identity applies almost everywhere in this integral.
+The two kinds of fiber kernel multipliers, evaluated at $-\eta_j$,
+are
+\begin{align*}
+ \widehat{\g*\varphi_{1,\nu_j/8}}(-\eta_j)
+    &=\g(\eta_j)\Phi(\eta_j)e^{2\pi i\nu_j\eta_j/8},\quad j\ne i,\\
+ \widehat{\h*\h*\psi_{1,\nu_i/8}}(-\eta_i)
+    &=-\h(\eta_i)^2\Psi(\eta_i)e^{2\pi i\nu_i\eta_i/8}.
+\end{align*}
+The second minus sign follows from $\widehat\h=-i\h$ and is
+absorbed into $c_{i,\nu}$. The remaining constants are exactly
+$w_i(\nu)$.
+
+For absolute convergence, the nonnegative scale integral
+\[
+ \int_0^\infty\Psi(t^{\alpha_i}\xi_i)\h(t^{\alpha_i}\xi_i)^2
+           \prod_{j\ne i}\g(t^{\alpha_j}\xi_j)\Phi(t^{\alpha_j}\xi_j)
+                                                \frac{\dd t}{t}
+\]
+is at most $c_\Psi^3/\alpha_i$ when $\xi_i\ne0$ and is zero when
+$\xi_i=0$. This uses $0\le\Phi\le c_\Psi$ and $0<\g\le1$.
+The product
+\[
+ |\widehat f_0(-\zeta^{(1)}-\zeta^{(2)}-\zeta^{(3)})|
+                         \prod_{j=1}^3|\widehat f_j(\zeta^{(j)})|
+\]
+is integrable in $E_9$, bounded in integral by
+$\|\widehat f_0\|_\infty\prod_{j=1}^3\|\widehat f_j\|_1$.
+Together with \eqref{eq:coefficient_decay} and lattice summability,
+these bounds justify Fubini between frequencies, scales, and modes.
+Apply Fourier inversion first with finitely many modes and compact
+scale intervals, then pass to the limit using these majorants.
+Lemma~\ref{lem:model_convergence} identifies each scale limit with
+its model form. This proves \eqref{eq:form_decomposition}.
+If $M=0$, the zeroth derivative bound makes $m=0$ almost everywhere.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:main}]
+Let $\beta_j=1/p_j$. The hypotheses give
+\[
+ \beta_0<\frac14,\qquad
+ \beta_1,\beta_2,\beta_3>\frac14,\qquad
+ \sum_{j=0}^3\beta_j=1.
+\]
+Fix an active coordinate $i$ and write $\{i,j,k\}=\{1,2,3\}$.
+The inequalities required by the extended model estimate are
+\[
+ \beta_i>\frac14,\qquad
+ \beta_i+\beta_j>\frac12,\qquad
+ \beta_i+\beta_k>\frac12,\qquad
+ \beta_j+\beta_k>\frac12>\frac14.
+\]
+Together with the condition on $\beta_0$ and the reciprocal sum,
+these are \eqref{eq:extended_region} after permutation.
+Lemmas~\ref{lem:permutation} and Theorem~\ref{thm:extended_model}
+therefore give
+\[
+ |\Lambda^{(i)}_{\nu/8,c_{i,\nu}}(f)|
+       \le C_{\alpha,p}U(\nu/8)^{100}\prod_{j=0}^3\|f_j\|_{p_j}.
+\]
+Since $U(\nu/8)\le C(1+|\nu|)$ and
+$w_i(\nu)\le C_\alpha M(1+|\nu|)^{-110}$, each term in
+\eqref{eq:form_decomposition} is bounded by
+\[
+ C_{\alpha,p}M(1+|\nu|)^{-10}\prod_{j=0}^3\|f_j\|_{p_j}.
+\]
+Sum using Lemma~\ref{lem:fourier_series}, with $s=10>3$.
+The case $M=0$ has already been handled.
+\end{proof}
+
+\end{document}
