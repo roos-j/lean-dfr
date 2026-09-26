@@ -958,3 +958,52 @@ task-3's imports `Auto.Twisted.*` are corrected to the module paths `DFR.Auto.Tw
 
 Task 4 records: `automation/Status-task4.md`, `automation/ErrorReport-task4.md`; folder
 `DFR/Auto/Reduction/`, main file `DFR/Auto/Reduction/Reduction.lean`.
+
+## 2026-09-25T21:44:44-04:00 - Task 4 continuation
+
+Main file `DFR/Auto/Reduction/Reduction.lean` (imports the three task modules). Proved and
+verified (`lake build DFR.Auto.Reduction.Reduction`, axioms `propext`, `Classical.choice`,
+`Quot.sound`): `Auto.simplexT` and the existence of the principal value
+(`Auto.tendsto_simplexTrunc`, `Auto.simplexT_eq`); the Littlewood-Paley bumps `Auto.lpPhi`,
+`Auto.lpPsi`, `Auto.lpPsiJ`, `Auto.hasSum_lpPsiJ`; `Auto.lpDelta`, `Auto.lpS`, `Auto.lpDeltaTilde`
+(Schwartz Fourier multipliers) with `Δ Δ̃ = Δ̃ Δ = Δ`; `Auto.simplexTj`, the truncations
+`Auto.simplexTrunc'` and `T_J f → T f`. Proof route: component bounds uniform in the scale
+truncation `J`, then Fatou (ErrorReport-task4). Scratch files live in the session scratchpad and
+are appended with a small script; next row: the partition `ℤ^3 = F_L ∪ F_ML ∪ F_MH ∪ F_H`.
+
+## 2026-09-25T22:38:36-04:00 - Task 4 continuation
+
+Sections 1, 2.1, 2.2 and the `thm:main_twist` bridge (Section 4) are complete in
+`DFR/Auto/Reduction/Reduction.lean`: `Auto.mainTwist` (operator form of Task 3's theorem),
+`Auto.dyadicSum_isAnisotropicMultiplier` (general dyadic symbol lemma, reused for ML),
+`Auto.dyadic_hyps_of_hasCompactSupport`, `Auto.kappaL`, `Auto.kernelLJ`,
+`Auto.regComp_L_eq_gammaOp`, `Auto.lowFreq_bound`. Next: Section 2.3 (ML), starting from
+`T^{ML,1}_J = ∑_j ∑_{k>0} T_j(Δ_{j+k} f_1, S_{2j+k-101} f_2, S_{3j+k-101} f_3)` via
+`Auto.hasSum_piece_mask`; the ML symbol is not compactly supported, so the dyadic hypotheses
+come from non-stationary phase (lines 411-418). Scratch workflow: the session script `step.sh`
+appends a scratch file only when it compiles and marks rows only after a successful module build.
+
+## 2026-09-25T23:37:29-04:00 - Task 4 continuation
+
+Sections 2.2 (low frequencies) and 2.3 (mixed ML, all three `n`) are complete:
+`Auto.lowFreq_bound`, `Auto.mlFreq_total_bound` (uniform in the scale truncation `J`); the ML symbol
+estimates come from the uniform non-stationary phase `Auto.nsp_decay` / `Auto.thetaL_decay`.
+Section 3 import `Auto.thm_smoothing` and the single-scale gain `Auto.single_scale_gain` (lem:gain,
+lines 460-463) are done. Next: Hölder in `j` (p = 1, see ErrorReport-task4) and the partial
+Littlewood-Paley square function in one coordinate, to be obtained fiberwise from lean-spherical's
+`Auto.MikhlinHormander.littlewoodPaley_of_mikhlin` on `Euclidean 1` with the cutoff `φ`
+(their band `k` is our `ψ_{k+1}`). Then `lem:loss` (shifted maximal functions, GHLR17 vector-valued
+bound), the extension of `T^{(k)}_J` to simple functions, and interpolation with Task 3's
+`Auto.Twisted.fourVertexMarcinkiewiczUniformMeasurable_volume_E3`.
+
+2026-09-26T01:24:08-04:00 (raw.md entry of the same time): /autoformalize continue Task 4 on main: prove `thm:main` of blueprints/main.tex faithfully and sorry-free by reduction to Tasks 1-3 (`Auto.smoothing_theorem5`, `Auto.mainTheorem`, `Auto.Twisted.thm_main`) in DFR/Auto/Reduction/Reduction.lean, reusable prerequisites directly in DFR/Auto/; work Status-task4.md rows in strict forward order, status-only updates; verify with lake env lean, module build, #print axioms; never commit blueprints/main.tex; no commit/push without explicit instruction.
+
+2026-09-26T06:39:06-04:00 (raw.md entry of the same time): formalize `thm:smoothing_2` here, generalizing CDR21 Theorem 5 (Task 1) only to monomial curves `(t^a, t^b)`, `a ≠ b` integers. Interpretation: the answer says "integers > 1", but MH,2 needs `(t, t^3)` (and MH,3 `(t, t^2)`), so the formalization takes positive integers `a, b ≥ 1`, `a ≠ b` (recorded in ErrorReport-task4.md). Reusable prerequisite file: DFR/Auto/MonomialSmoothing.lean.
+
+2026-09-26T06:40:56-04:00 (raw.md entry of the same time): user asks for an honest assessment of whether generalizing CDR21 Thm 5 to `(t^a, t^b)` is within reach; if not, a blueprint for `thm:smoothing_2` will be produced first. `thm:smoothing_2` proof work is paused pending that decision.
+
+2026-09-26T06:49:50-04:00 (raw.md entry of the same time) — SUPERSEDES the 2026-09-26 instruction to formalize `thm:smoothing_2`: do not prove `thm:smoothing_2`; state it faithfully as in blueprints/main.tex lines 205-221 (distinct positive integer monomials `t^{α_1}, t^{α_2}`) as a named `Prop` (`Auto.SmoothingTwo`) and prove `thm:main` from it as the only hypothesis. No other unproved parts (no sorry, no other hypotheses). Continue Task 4 in forward order.
+
+2026-09-26T08:23:42-04:00 (raw.md entry of the same time) — SUPERSEDES the 2026-09-26T06:49:50 instruction that `thm:smoothing_2` stays a hypothesis: (1) finish the current Task 4 work (MH region, `thm:main` from `Auto.SmoothingTwo`); (2) then autoformalize Task 1 from the new blueprint blueprints/task_1_smoothing_inequality_2.tex, reusing or overwriting the existing Task 1 work as appropriate (no backups needed; the only goal is that the smoothing inequality needed by Task 4, `Auto.SmoothingTwo`, is proved); (3) then finish `thm:main` true to the source with no extra assumptions (discharge the `SmoothingTwo` hypothesis).
+
+2026-09-26T10:39:43-04:00 (raw.md entry of the same time): commit and push the current work (explicit one-time authorization for this commit and push; blueprints/main.tex stays uncommitted); keep automation/Status-task1.md updated following the rows of the new blueprint blueprints/task_1_smoothing_inequality_2.tex; then continue (finish `thm:main` without hypotheses).
