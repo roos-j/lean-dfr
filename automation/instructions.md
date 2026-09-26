@@ -100,10 +100,7 @@ For direct source verification use lake env lean DFR/Auto/SmoothingIneq2D/Smooth
 
 ## Next step
 
-Assign a future proof agent Task 1 and have it read Theorem 5 and its prerequisites.
-Tasks 2 and 3 await blueprints. Task 4 additionally awaits verified completion
-of Tasks 1-3. Setup scaffolding is not theorem completion.
-
+Task 1 is complete: Auto.smoothing_theorem5 in DFR/Auto/SmoothingIneq2D/Smoothing2D.lean proves the exact source trilinear bound, with both time signs and the printed Sobolev half-exponents. All six permanent sources pass direct checks; lake build passes; the final transitive axiom audit contains only propext, Classical.choice, and Quot.sound. See Status.md for source mappings and verification evidence. The final proof commit and publication are authorized by the user. Pushing task-1 to https://github.com/roos-j/lean-dfr remains pending explicit destination confirmation required by automatic approval review; do not bypass that rejection. Tasks 2-3 await blueprints, and Task 4 also awaits their completion gate. Do not start another proof task without its assignment and source.
 ## LaTeX build artifacts
 
 User direction recorded 2026-09-10T09:48:56.6842063-04:00; exact prompt: [raw.md](raw.md).
@@ -135,6 +132,33 @@ After removing the Auto inclusion instructions, pause before continuing Task 1. 
 Recorded 2026-09-10T09:59:38.4628987-04:00 (recording time); exact prompt: [raw.md](raw.md).
 The user authorizes committing the pending instruction cleanup and Task 1 pause records. Task 1 remains paused; no push is requested.
 
+## Resume Task 1
+
+Recorded 2026-09-10T11:01:54.9581411-04:00 (recording time); exact prompt: [raw.md](raw.md).
+The user requests /autoformalize task 1. Resume Task 1 source audit and formalization in DFR/Auto/SmoothingIneq2D/Smoothing2D.lean. This supersedes the prior pause. No commit or push is requested.
+
+## Continue Task 1 to completion
+
+Recorded 2026-09-10T12:42:17.1154681-04:00 (recording time); exact prompt: [raw.md](raw.md).
+Continue autoformalizing Task 1 until every source target and prerequisite is completely proved and verified. Do not stop at supporting lemmas, partial progress, or build milestones. Existing source-fidelity, task boundaries, no-placeholder policy, and completion gate remain in force.
+
+Recorded 2026-09-10T12:44:37.8315626-04:00 (recording time); exact prompts: [raw.md](raw.md). The user requires a granular Status.md ledger whose rows correspond to actual source equations or identifiable unnumbered source steps. Do not invent proof steps or count implementation helpers as source milestones. Continue Task 1 through full completion after updating the ledger.
+
+Recorded 2026-09-10T12:45:58.7354373-04:00 (recording time); exact prompts: [raw.md](raw.md). The user reiterates logical forward reasoning order and requires rereading the instructions. Finish the earliest unfinished source argument and all its prerequisites before advancing. Maintain source-based ledger rows in dependency order; preserve already proved supporting lemmas without treating their existence as completion of an earlier missing source argument.
+
+2026-09-10T15:02:01.6771576-04:00 - User renews the instruction to complete Task 1 without stopping. In the context of the pending correction question, proceed with the documented corrected refinement; preserve the main theorem and record the actual proof and constants. Exact prompt in raw.md.
+
+2026-09-10T15:41:20.7697427-04:00 - The latest user instruction prohibits a separate fix commit and reiterates logical forward reasoning order, not source presentation order. Continue Task 1: close prerequisites before consumers and do not stop at acknowledgments. The two dyadic-volume proof errors are fixed and direct Lean verification passes. No further commit is authorized by the latest instruction.
+
+2026-09-10T18:09:12.2173105-04:00 - User requests committing the accumulated verified work, then continuing Task 1 until completion. This authorizes one progress commit and supersedes the earlier prohibition on further commits. Continue in logical forward reasoning order after committing; no push requested. Exact prompt in raw.md.
+
 2026-09-10T18:23:34.428125-04:00 - User corrects the erroneous root Auto layout. Relocate each branch's own task files into existing DFR/Auto directories and correct both vendored skill editions and task records. Apply only layout/instruction changes to main and Tasks 2-4; do not transfer Task 1 proof work. This correction supersedes conflicting earlier folder instructions.
 
 2026-09-10T18:25:27.198580-04:00 - User explicitly requests pushing the layout correction so the remote is current on every branch. Publish the branch-specific correction on main and task-1 through task-4, preserving each branch's own mathematical content. The erroneous repository-root Auto directory is removed after relocating its files.
+
+2026-09-10T18:27:16.5279448-04:00 - User resumes Task 1 through completion after the layout correction. Work only in DFR/Auto/SmoothingIneq2D and the shared automation records; preserve logical forward reasoning order. The earlier layout commits and pushes are complete; no additional Git publication is requested by this resumption.
+
+2026-09-11T06:41:05.8693067-04:00 - User explicitly requests committing and pushing the accumulated verified Task 1 work now, then continuing until Task 1 is fully complete, followed by a final commit and push. This supersedes earlier no-publication instructions. Publish only task-1; preserve other branches. Exclude the unfinished scratch proof from the progress commit. Exact prompt recorded in raw.md.
+
+
+2026-09-11T20:29:50.090032-04:00 - Clean up Lean-folder logs and unnecessary #print commands; fix warnings without disabling linters. Move the five prerequisite modules to DFR/Auto, overriding the old task-folder restriction. Preserve theorem statements and Lake configuration. No commit or push requested.

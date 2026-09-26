@@ -5,7 +5,7 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
 
 | Task | Target/source | Exclusive work folder | Main file | Owner | Readiness |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | DFR/Auto/SmoothingIneq2D/ | DFR/Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Paused by user (2026-09-10T09:58:47.5716059-04:00); source study incomplete |
+| 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | DFR/Auto/SmoothingIneq2D/ | DFR/Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Complete; Auto.smoothing_theorem5 verified with all prerequisites, full build, and allowed-axiom audit |
 | 2 | 3d smoothing inequality; user blueprint pending in blueprints/ | DFR/Auto/SmoothingIneq3D/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
 | 3 | Twisted; user blueprint pending in blueprints/ | DFR/Auto/Twisted/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
 | 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | DFR/Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
@@ -52,3 +52,10 @@ the Task 1 starter module are infrastructure only; all four proofs are not start
 ## Task 1 assignment
 
 2026-09-10T09:56:31.1092542-04:00 — Coordinator assigns Codex root task1-20260910-0955 exactly Task 1, trilinear smoothing inequality. Scope: DFR/Auto/SmoothingIneq2D/; main file Smoothing2D.lean; source arXiv:2008.10140v2, Theorem 5. Next unfinished step: read the exact theorem and full dependency proof, then record forward proof order. Completion requires faithful source coverage, direct verification of owned Auto sources, lake build for configured targets, and the allowed-axiom audit. The root agent maintains shared records serially.
+
+
+2026-09-10T11:01:54.9581411-04:00 - Coordinator resumes the existing Codex root task1-20260910-0955 assignment for exactly Task 1. Scope and completion gate above remain unchanged. Next: finish Theorem 5 and Section 3 source/dependency audit.
+
+2026-09-11T16:04:16.7487146-04:00 - Task 1 completion gate passed. Owner Codex root task1-20260910-0955 completed Theorem 5 and its source proof; see Status.md for direct checks, full build, and transitive axiom evidence. Tasks 2-3 remain blocked on blueprints; Task 4 remains blocked on their completion and its blueprint.
+
+2026-09-11T20:38:53.152569-04:00 - User-authorized Task 1 cleanup completed by Codex root. Shared prerequisites relocated to DFR/Auto/; the main file and all source targets are unchanged. Completion gate rechecked: direct source checks, configured build, and final theorem axiom audit pass.
