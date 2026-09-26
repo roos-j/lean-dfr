@@ -437,7 +437,7 @@ n/a | `prop:acyclic-implementation-order` | the implementation order itself, rea
 
 status | source item | Lean name | timestamp
 --- | --- | --- | ---
-not started | `new:exact-lean-target`, `theorem koszAdjoint (j : Fin 3) : KoszAdjoint j` | -- | 2026-09-25T06:51:43-04:00
+complete | `new:exact-lean-target`, `theorem koszAdjoint (j : Fin 3) : KoszAdjoint j` | `Auto.koszAdjoint` | 2026-09-25T20:31:04-04:00
 
 ### Reusable prerequisite: Plancherel for the integral Fourier transform on `L^1 ∩ L^2`
 
@@ -585,11 +585,12 @@ complete | `new:adjoint-basic`, the crude `L^r` bounds for `G` and `(I - P_R) G`
 complete | `new:compact-highpass`, `⟨h, G⟩ ≥ M^{-1} ‖H‖_2^2` | `Auto.norm_sub_sq_eq`, `Auto.highpass_energy` | 2026-09-25T18:02:45-04:00
 complete | `new:compact-highpass`, the tail bound for `1_{(B')^c} H` | `Auto.highpass_tail` | 2026-09-25T18:02:45-04:00
 complete | `new:compact-highpass`, the contradiction and the bound `C_1 μ^a N^3` | `Auto.integrable_fourier_integrand`, `Auto.fourier_sub_of_integrable`, `Auto.fourier_const_mul`, `Auto.integral_sq_le_of_eLpNorm_le`, `Auto.rpow_inv_two_mul_pow`, `Auto.integral_sq_le_box`, `Auto.compactHighpass` | 2026-09-25T18:15:23-04:00
-in progress | `new:compact-decaying-point`, interpolation with weight `60/61` on bounded finite-valued inputs | -- | 2026-09-25T18:15:23-04:00
-not started | `new:compact-decaying-point`, extension to all finite-norm inputs | -- | 2026-09-25T06:51:43-04:00
-not started | `new:global-decaying-point`, the exact input-cube decomposition | -- | 2026-09-25T06:51:43-04:00
-not started | `new:global-decaying-point`, the off-diagonal tail `B_2^tail μ^4 (|l| - 2)^{-2}` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:global-decaying-point`, discrete Young and Hoelder, the global bound | -- | 2026-09-25T06:51:43-04:00
-not started | `new:adjoint-all-exponents`, the convex completion exponents `τ`, `v_i` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:adjoint-all-exponents`, interpolation and extension to full `L^p` | -- | 2026-09-25T06:51:43-04:00
-not started | `new:exact-lean-target`, zero, infinite and finite-norm cases, `KoszAdjoint j` | -- | 2026-09-25T06:51:43-04:00
+complete | `new:compact-decaying-point`, interpolation with weight `60/61` on bounded finite-valued inputs | `Auto.adjVec`, `Auto.adjT`, `Auto.adjIn`, `Auto.Astar_adjIn`, `Auto.trilin_adjT`, `Auto.P_linear`, `Auto.hpAdj`, `Auto.trilin_hpAdj`, `Auto.hpAdj_ae_congr`, `Auto.integral_sq_sub_P_le`, `Auto.hpAdj_improving`, `Auto.hpAdj_bounded`, `Auto.cdpExp`, `Auto.compactDecaying` | 2026-09-25T18:43:04-04:00
+complete | `new:compact-decaying-point`, extension to all finite-norm inputs | `Auto.qz`, `Auto.norm_hpAdj_sub_le`, `Auto.allExponentsBdd`, `Auto.truncIn`, `Auto.allExponentsCont` | 2026-09-25T20:20:43-04:00
+complete | `new:global-decaying-point`, the exact input-cube decomposition | `Auto.boxIdx`, `Auto.boxRes`, `Auto.boxIdx_add_smul`, `Auto.offV`, `Auto.piece`, `Auto.prod_decomp`, `Auto.adjT_decomp`, `Auto.P_finset_sum`, `Auto.hpAdj_decomp`, `Auto.cornerVec`, `Auto.hpAdj_translate`, `Auto.simpleOn_piece_translate`, `Auto.piece_bound` | 2026-09-25T19:05:16-04:00
+complete | `new:global-decaying-point`, the off-diagonal tail `B_2^tail μ^4 (|l| - 2)^{-2}` | `Auto.tailKer`, `Auto.integral_tailKer_le`, `Auto.cubeDist`, `Auto.far_u_bound`, `Auto.weighted_tail` | 2026-09-25T19:17:42-04:00
+complete | `new:global-decaying-point`, discrete Young and Hoelder, the global bound | `Auto.sum_inv_one_add_sq_int_le`, `Auto.sq_norm_sum_le_weighted`, `Auto.sum_mul3_le_holder`, `Auto.sum_integral_boxRes_le`, `Auto.adjT_piece_support`, `Auto.hpAdj_piece_passive`, `Auto.offset_bound`, `Auto.eLpNorm_adjT_le`, `Auto.holder_cubes`, `Auto.coverSet`, `Auto.globalDecaying` | 2026-09-25T19:54:32-04:00
+complete | `new:adjoint-all-exponents`, the convex completion exponents `τ`, `v_i` | `Auto.slotExp`, `Auto.eLpNorm_hpAdj_crude`, `Auto.allExponentsSimple` | 2026-09-25T20:01:20-04:00
+complete | `new:adjoint-all-exponents`, interpolation and extension to full `L^p` | `Auto.allExponentsBdd`, `Auto.eLpNorm_adjT_crude`, `Auto.norm_adjT_le_adjT_norm`, `Auto.ae_lt_top_of_eLpNorm`, `Auto.adjT_truncIn_eventually`, `Auto.allExponentsCont` | 2026-09-25T20:20:43-04:00
+complete | `new:exact-lean-target`, zero, infinite and finite-norm cases, `KoszAdjoint j` | `Auto.Astar_congr`, `Auto.koszSlots`, `Auto.Astar_eq_adjT`, `Auto.sum_three_eq`, `Auto.prod_erase_eq`, `Auto.eq_zero_of_eLpNorm_eq_zero`, `Auto.koszAdjoint` | 2026-09-25T20:31:04-04:00
+complete | `thm:main` in the original formulation, with `KoszAdjoint` and `KoszSubunitScaleOne` discharged | `Auto.mainTheorem` | 2026-09-25T20:31:04-04:00

@@ -851,3 +851,21 @@ Proved and verified in `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` (build clean;
 `Auto.structured_uniformity`, `Auto.exists_section_freq`, `Auto.removeHigh_small`,
 `Auto.removeHigh_step`, `Auto.removeHighInputs`, `Auto.lowestEnergy`.  Next rows:
 `patch:energy-core` steps 1-5 (blueprint lines 2133 onward), then Sections 5-6.
+
+## 2026-09-25T18:43:29-04:00 - final theorem without hypotheses
+
+Raw prompts: `automation/raw.md` under the same timestamp.  After `Auto.KoszAdjoint j` is proved
+for every `j`, state and prove the final theorem of Task 2 (`thm:main`, currently
+`Auto.main_smoothing` with hypotheses `∀ j, KoszAdjoint j` and `∀ j, KoszSubunitScaleOne j`) in
+its original formulation with no extra hypotheses, discharging them by `Auto.koszAdjoint` and
+`Auto.koszSubunitScaleOne`.  The immediately preceding "commit and push now" found nothing new to
+commit (`d5fac09` already pushed).
+
+## 2026-09-25T20:31:12-04:00 - continuation: Task 2 complete
+
+`Auto.koszAdjoint (j : Fin 3) : KoszAdjoint j` and `Auto.mainTheorem` (the statement of
+`Auto.main_smoothing` with the hypotheses `∀ j, KoszAdjoint j` and `∀ j, KoszSubunitScaleOne j`
+removed) are proved in `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`; `lake build
+DFR.Auto.SmoothingIneq3D.Smoothing3D` succeeds, no `sorry`, and both theorems depend only on
+`propext`, `Classical.choice`, `Quot.sound`.  All Task 2 rows in `automation/Status.md` are
+complete.

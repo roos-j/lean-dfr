@@ -59128,4 +59128,2454 @@ theorem hpAdj_ae_congr {N : ℝ} (hN : 0 ≤ N) (R : ℝ) (j : Fin 3) {g g' : Fi
 
 end
 
+/-! ### `new:compact-decaying-point`: the two endpoints -/
+
+section
+open Filter Topology MeasureTheory
+
+theorem eLpNorm_two_eq_sqrt {u : E3 → ℂ} (hu : MemLp u 2) :
+    eLpNorm u 2 volume = ENNReal.ofReal (Real.sqrt (∫ x, ‖u x‖ ^ 2)) := by
+  rw [hu.eLpNorm_eq_integral_rpow_norm (by norm_num) (by simp)]
+  congr 1
+  simp only [ENNReal.toReal_ofNat]
+  rw [Real.sqrt_eq_rpow]
+  congr 1
+  · refine integral_congr_ae (Eventually.of_forall fun x => ?_)
+    simp only
+    rw [Real.rpow_two]
+  · norm_num
+
+theorem P_const_mul (R : ℝ) (j : Fin 3) (c : ℂ) (F : E3 → ℂ) :
+    P R j (fun x => c * F x) = fun x => c * P R j F x := by
+  funext x
+  simp only [P]
+  rw [← integral_const_mul]
+  congr 1; funext u; ring
+
+/-- **`I - P_R^{(j)}` is an `L²` contraction** on bounded box-supported functions. -/
+theorem integral_sq_sub_P_le {N C R : ℝ} (hN : 0 ≤ N) (hC : 0 ≤ C) (hR : 0 < R) (j : Fin 3)
+    {G : E3 → ℂ} (hGm : Measurable G) {B : ℝ} (hGB : ∀ x, ‖G x‖ ≤ B)
+    (hGs : ∀ x, x ∉ petBox C N → G x = 0) :
+    ∫ x, ‖G x - P R j G x‖ ^ 2 ≤ ∫ x, ‖G x‖ ^ 2 := by
+  have hB0 : 0 ≤ B := (norm_nonneg _).trans (hGB 0)
+  rcases eq_or_lt_of_le hB0 with hB | hB
+  · have hG0 : G = fun _ => 0 := funext fun x => norm_le_zero_iff.mp (hB ▸ hGB x)
+    subst hG0
+    simp [P]
+  set G' : E3 → ℂ := fun x => (B : ℂ)⁻¹ * G x with hG'def
+  have hG'1 : ∀ x, ‖G' x‖ ≤ 1 := fun x => by
+    rw [hG'def]; simp only
+    rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hB0, inv_mul_le_iff₀ hB,
+      mul_one]
+    exact hGB x
+  obtain ⟨E, _, hHE, hEG⟩ := highpass_energy hN hC hR j (G := G')
+    (measurable_const.mul hGm) hG'1
+    (fun x hx => by rw [hG'def]; simp only; rw [hGs x hx, mul_zero])
+  rw [hG'def, P_const_mul] at hHE
+  rw [hG'def] at hEG
+  have e1 : ∀ x, ‖(B : ℂ)⁻¹ * G x - (B : ℂ)⁻¹ * P R j G x‖ ^ 2
+      = (B ^ 2)⁻¹ * ‖G x - P R j G x‖ ^ 2 := fun x => by
+    rw [← mul_sub, norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hB0, mul_pow,
+      inv_pow]
+  have e2 : ∀ x, ‖(B : ℂ)⁻¹ * G x‖ ^ 2 = (B ^ 2)⁻¹ * ‖G x‖ ^ 2 := fun x => by
+    rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hB0, mul_pow, inv_pow]
+  simp_rw [e1] at hHE
+  simp_rw [e2] at hEG
+  rw [integral_const_mul] at hHE hEG
+  have h := hHE.trans hEG
+  have hB2 : 0 < (B ^ 2)⁻¹ := by positivity
+  exact le_of_mul_le_mul_left h hB2
+
+/-- The adjoint form vanishes off `B_N(C + 1)` when its slot `0` vanishes off `B_N(C)`. -/
+theorem adjT_eq_zero {N C : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
+    (hgs : ∀ x, x ∉ petBox C N → g 0 x = 0) {y : E3} (hy : y ∉ petBox (C + 1) N) :
+    adjT N j g y = 0 := by
+  rw [adjT]
+  have h0 : ∀ t ∈ Set.uIcc (0 : ℝ) N, ∏ k : Fin 3, g k (y + adjVec j k t) = 0 := by
+    intro t ht
+    rw [Set.uIcc_of_le hN.le] at ht
+    rw [Fin.prod_univ_three]
+    simp only [adjVec, if_true]
+    rw [hgs _ (fun hm => hy fun i => ?_), zero_mul, zero_mul]
+    have hi := hm i
+    have hNi : 0 ≤ N ^ expo i := pow_nonneg hN.le _
+    by_cases hij : i = j
+    · subst hij
+      have ht1 : 0 ≤ t ^ expo i := pow_nonneg ht.1 _
+      have ht2 : t ^ expo i ≤ N ^ expo i := pow_le_pow_left₀ ht.1 ht.2 _
+      simp only [curve, PiLp.add_apply, PiLp.neg_apply, PiLp.smul_apply, smul_eq_mul, basisVec,
+        PiLp.single_apply, if_true, mul_one] at hi
+      constructor <;> nlinarith [hi.1, hi.2]
+    · simp only [curve, PiLp.add_apply, PiLp.neg_apply, PiLp.smul_apply, smul_eq_mul, basisVec,
+        PiLp.single_apply, if_neg hij, mul_zero, neg_zero, add_zero] at hi
+      constructor <;> nlinarith [hi.1, hi.2]
+  rw [intervalIntegral.integral_congr h0]
+  simp
+
+theorem memLp_of_box {f : E3 → ℂ} (hf : Measurable f) {b : ℝ} (hb : ∀ x, ‖f x‖ ≤ b)
+    {C N : ℝ} (hfs : ∀ x, x ∉ petBox C N → f x = 0) (p : ℝ≥0∞) : MemLp f p volume := by
+  obtain ⟨R₀, hR₀⟩ := (isBounded_petBox C N).subset_closedBall (0 : E3)
+  exact memLp_of_bdd_of_ball hf hb (M := R₀) (fun x hx => by
+    refine hfs x fun h => ?_
+    have := hR₀ h
+    rw [Metric.mem_closedBall, dist_zero_right] at this
+    linarith) p
+
+theorem measurable_adjIn (j : Fin 3) {g : Fin 3 → E3 → ℂ} (hg : ∀ k, Measurable (g k)) (i : Fin 3) :
+    Measurable (adjIn j g i) := by
+  unfold adjIn
+  split_ifs
+  · exact Complex.continuous_conj.measurable.comp (hg 1)
+  · exact Complex.continuous_conj.measurable.comp (hg 2)
+  · exact measurable_const
+
+theorem eLpNorm_conj_eq (f : E3 → ℂ) (p : ℝ≥0∞) :
+    eLpNorm (fun x => conj (f x)) p volume = eLpNorm f p volume :=
+  eLpNorm_congr_norm_ae (Eventually.of_forall fun _ => RCLike.norm_conj _)
+
+theorem hpAdj_eLpNorm_le_adjT {N R C₀ : ℝ} (hN : 0 < N) (hR : 0 < R) (hC₀ : 0 ≤ C₀) (j : Fin 3)
+    {g : Fin 3 → E3 → ℂ} (hgm : ∀ k, Measurable (g k)) {b : Fin 3 → ℝ}
+    (hb : ∀ k x, ‖g k x‖ ≤ b k) (hgs : ∀ x, x ∉ petBox C₀ N → g 0 x = 0) :
+    eLpNorm (hpAdj N R j g) 2 volume ≤ eLpNorm (adjT N j g) 2 volume := by
+  have hGm := measurable_adjT hN.le j hgm
+  have hGB := norm_adjT_le hN j hb
+  have hGs : ∀ y, y ∉ petBox (C₀ + 1) N → adjT N j g y = 0 := fun y hy =>
+    adjT_eq_zero hN j hgs hy
+  have hG2 := memLp_of_box hGm hGB hGs 2
+  have hH2 : MemLp (hpAdj N R j g) 2 volume := hG2.sub (memLp_two_P hR j hGm hG2)
+  rw [eLpNorm_two_eq_sqrt hH2, eLpNorm_two_eq_sqrt hG2]
+  exact ENNReal.ofReal_le_ofReal (Real.sqrt_le_sqrt
+    (integral_sq_sub_P_le hN.le (by linarith) hR j hGm hGB hGs))
+
+/-- **The improving endpoint for `(I - P_R) A_N^{*j}`**: `‖hpAdj(g)‖₂ ≤ C N^{-1/20}
+‖g_0‖_6 ‖g_1‖_{40/7} ‖g_2‖_6` for bounded box-supported inputs (`patch:improving` composed with
+the `L²` contraction `I - P_R`). -/
+theorem hpAdj_improving (j : Fin 3) : ∃ C : ℝ, 0 ≤ C ∧ ∀ N R C₀ : ℝ, 0 < N → 0 < R → 0 ≤ C₀ →
+    ∀ g : Fin 3 → E3 → ℂ, (∀ k, Measurable (g k)) → (∀ k, ∃ b : ℝ, ∀ x, ‖g k x‖ ≤ b) →
+      (∀ k x, x ∉ petBox C₀ N → g k x = 0) →
+      eLpNorm (hpAdj N R j g) (ENNReal.ofReal 2) volume
+        ≤ ENNReal.ofReal (C * N ^ (-(1 : ℝ) / 20))
+          * ∏ k, eLpNorm (g k) (ENNReal.ofReal (![6, 40 / 7, 6] k)) volume := by
+  have h1 : j ≠ j + 1 := by fin_cases j <;> decide
+  have h2 : j + 2 ≠ j + 1 := by fin_cases j <;> decide
+  have h3 : j ≠ j + 2 := by fin_cases j <;> decide
+  obtain ⟨Ck, hCk, hK⟩ := kosz53_of_memLp h1 h2 h3
+  refine ⟨Ck.toReal, ENNReal.toReal_nonneg, ?_⟩
+  intro N R C₀ hN hR hC₀ g hgm hgb hgs
+  choose b hb using hgb
+  have hmem : ∀ k p, MemLp (g k) p volume := fun k p => memLp_of_box (hgm k) (hb k) (hgs k) p
+  have hconj : ∀ k p, MemLp (fun x => conj (g k x)) p volume := fun k p =>
+    memLp_of_box (f := fun x => conj (g k x)) (Complex.continuous_conj.measurable.comp (hgm k))
+      (fun x => by rw [RCLike.norm_conj]; exact hb k x)
+      (fun x hx => by rw [hgs k x hx, map_zero]) p
+  have hA1 : adjIn j g (j + 1) = fun x => conj (g 1 x) := by simp [adjIn]
+  have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h2]
+  have hk := hK N hN (g 0) (hgm 0) (adjIn j g) (measurable_adjIn j hgm) (hmem 0 _)
+    (by rw [hA1]; exact hconj 1 _) (by rw [hA2]; exact hconj 2 _)
+  rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq, Astar_adjIn] at hk
+  have e2 : ENNReal.ofReal 2 = 2 := ENNReal.ofReal_ofNat 2
+  calc eLpNorm (hpAdj N R j g) (ENNReal.ofReal 2) volume
+      = eLpNorm (hpAdj N R j g) 2 volume := by rw [e2]
+    _ ≤ eLpNorm (adjT N j g) 2 volume := hpAdj_eLpNorm_le_adjT hN hR hC₀ j hgm hb (hgs 0)
+    _ = eLpNorm (adjT N j g) (ENNReal.ofReal 2) volume := by rw [e2]
+    _ ≤ _ := hk
+    _ = _ := ?_
+  rw [Fin.prod_univ_three, ENNReal.ofReal_mul ENNReal.toReal_nonneg, ENNReal.ofReal_toReal hCk]
+  simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
+    Matrix.tail_cons]
+  ring
+
+theorem eLpNorm_const_mul_fun (c : ℂ) (f : E3 → ℂ) (p : ℝ≥0∞) :
+    eLpNorm (fun y => c * f y) p volume = ‖c‖ₑ * eLpNorm f p volume :=
+  eLpNorm_const_smul c f p volume
+
+theorem hpAdj_smul (N R : ℝ) (j : Fin 3) (c : Fin 3 → ℂ) (g : Fin 3 → E3 → ℂ) :
+    hpAdj N R j (fun k x => c k * g k x) = fun y => (∏ k, c k) * hpAdj N R j g y := by
+  have hA : adjT N j (fun k x => c k * g k x) = fun y => (∏ k, c k) * adjT N j g y := by
+    funext y
+    simp only [adjT, Finset.prod_mul_distrib]
+    rw [intervalIntegral.integral_const_mul]; ring
+  funext y
+  simp only [hpAdj]
+  rw [hA, P_const_mul]; ring
+
+theorem hpAdj_eq_zero_of_slot {N R : ℝ} (j : Fin 3) {g : Fin 3 → E3 → ℂ} {k : Fin 3}
+    (hk : g k = fun _ => 0) : hpAdj N R j g = fun _ => 0 := by
+  have hA : adjT N j g = fun _ => 0 := by
+    funext y
+    simp only [adjT]
+    rw [intervalIntegral.integral_congr (g := fun _ => (0 : ℂ)) fun t _ =>
+      Finset.prod_eq_zero (Finset.mem_univ k) (by rw [hk])]
+    simp
+  funext y
+  simp [hpAdj, hA, P]
+
+set_option maxHeartbeats 1000000 in
+-- The null-set modification, the scaling and the normalized bound share one context.
+/-- **The bounded endpoint for `(I - P_R) A_N^{*j}` in `L^∞` form**: from
+`Auto.compactHighpass` by removing null sets and scaling. -/
+theorem hpAdj_bounded (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
+    ∃ a K₀ C₁ : ℝ, 0 < a ∧ a < 1 ∧ 1 ≤ K₀ ∧ 1 ≤ C₁ ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K₀ * μ ^ (-K₀) ≤ N →
+        ∀ g : Fin 3 → E3 → ℂ, (∀ k, Measurable (g k)) → (∀ k, ∃ b : ℝ, ∀ x, ‖g k x‖ ≤ b) →
+          (∀ k x, x ∉ petBox C₀ N → g k x = 0) →
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j g) (ENNReal.ofReal 2) volume
+            ≤ ENNReal.ofReal (C₁ * μ ^ a * N ^ 3) * ∏ k, eLpNorm (g k) ⊤ volume := by
+  obtain ⟨a, K₀, C₁, ha0, ha1, hK₀, hC₁, hHP⟩ := compactHighpass j hC₀
+  refine ⟨a, K₀, C₁, ha0, ha1, hK₀, hC₁, ?_⟩
+  intro μ N hμ0 hμ1 hNK g hgm hgb hgs
+  have hμK : 1 ≤ μ ^ (-K₀) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN0 : 0 < N := by nlinarith
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  have hR : 0 < R := by positivity
+  choose b hb using hgb
+  have htop : ∀ k, eLpNorm (g k) ⊤ volume ≠ ⊤ := fun k =>
+    (memLp_of_box (hgm k) (hb k) (hgs k) ⊤).eLpNorm_ne_top
+  set β : Fin 3 → ℝ := fun k => (eLpNorm (g k) ⊤ volume).toReal with hβdef
+  have hβ0 : ∀ k, 0 ≤ β k := fun k => ENNReal.toReal_nonneg
+  have hae : ∀ k, ∀ᵐ x ∂(volume : Measure E3), ‖g k x‖ ≤ β k := fun k => by
+    filter_upwards [ae_le_eLpNormEssSup (f := g k) (μ := volume)] with x hx
+    rw [← eLpNorm_exponent_top] at hx
+    rw [hβdef]; simp only
+    rw [← ENNReal.ofReal_le_iff_le_toReal (htop k), ofReal_norm]
+    exact hx
+  -- the null-set modification
+  set g' : Fin 3 → E3 → ℂ := fun k x => if ‖g k x‖ ≤ β k then g k x else 0 with hg'def
+  have hg'm : ∀ k, Measurable (g' k) := fun k =>
+    Measurable.ite (measurableSet_le (hgm k).norm measurable_const) (hgm k) measurable_const
+  have hg'b : ∀ k x, ‖g' k x‖ ≤ β k := fun k x => by
+    rw [hg'def]; simp only; split_ifs with h
+    · exact h
+    · simpa using hβ0 k
+  have hg's : ∀ k x, x ∉ petBox C₀ N → g' k x = 0 := fun k x hx => by
+    rw [hg'def]; simp only [hgs k x hx]; simp
+  have hgg' : ∀ k, g k =ᵐ[volume] g' k := fun k => by
+    filter_upwards [hae k] with x hx
+    rw [hg'def]; simp only [if_pos hx]
+  rw [eLpNorm_congr_ae (hpAdj_ae_congr hN0.le R j hgg')]
+  by_cases hz : ∃ k, β k = 0
+  · obtain ⟨k, hk⟩ := hz
+    have h0 : g' k = fun _ => 0 := funext fun x => norm_le_zero_iff.mp (hk ▸ hg'b k x)
+    rw [hpAdj_eq_zero_of_slot j h0]
+    simp
+  push Not at hz
+  have hβpos : ∀ k, 0 < β k := fun k => lt_of_le_of_ne (hβ0 k) (hz k).symm
+  set g'' : Fin 3 → E3 → ℂ := fun k x => ((β k : ℂ))⁻¹ * g' k x with hg''def
+  have hg''1 : ∀ k x, ‖g'' k x‖ ≤ 1 := fun k x => by
+    rw [hg''def]; simp only
+    rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg (hβ0 k),
+      inv_mul_le_iff₀ (hβpos k), mul_one]
+    exact hg'b k x
+  have hg''m : ∀ k, Measurable (g'' k) := fun k => measurable_const.mul (hg'm k)
+  have hg''s : ∀ k x, x ∉ petBox C₀ N → g'' k x = 0 := fun k x hx => by
+    rw [hg''def]; simp only [hg's k x hx, mul_zero]
+  have hscale : g' = fun k x => (β k : ℂ) * g'' k x := by
+    funext k x
+    rw [hg''def]; simp only
+    rw [← mul_assoc, mul_inv_cancel₀ (by exact_mod_cast (hz k)), one_mul]
+  rw [hscale, hpAdj_smul]
+  -- the normalized bound
+  have hadj : ∀ i x, ‖adjIn j g'' i x‖ ≤ 1 := fun i x => by
+    unfold adjIn; split_ifs
+    · rw [RCLike.norm_conj]; exact hg''1 1 x
+    · rw [RCLike.norm_conj]; exact hg''1 2 x
+    · simp
+  have hadjs : ∀ i x, x ∉ petBox C₀ N → adjIn j g'' i x = 0 := fun i x hx => by
+    unfold adjIn; split_ifs
+    · simp [hg''s 1 x hx]
+    · simp [hg''s 2 x hx]
+    · rfl
+  have hI := hHP μ N hμ0 hμ1 hNK (g'' 0) (adjIn j g'') (hg''m 0) (measurable_adjIn j hg''m)
+    (hg''1 0) hadj (hg''s 0) hadjs
+  rw [Astar_adjIn] at hI
+  have hGm := measurable_adjT hN0.le j hg''m
+  have hG2 := memLp_of_box hGm (norm_adjT_le hN0 j hg''1)
+    (fun y hy => adjT_eq_zero hN0 j (hg''s 0) hy) 2
+  have hH2 : MemLp (hpAdj N R j g'') 2 volume := hG2.sub (memLp_two_P hR j hGm hG2)
+  have hb2 : eLpNorm (hpAdj N R j g'') 2 volume ≤ ENNReal.ofReal (C₁ * μ ^ a * N ^ 3) := by
+    rw [eLpNorm_two_eq_sqrt hH2]
+    refine ENNReal.ofReal_le_ofReal ?_
+    rw [Real.sqrt_le_left (by positivity)]
+    exact hI
+  have e2 : ENNReal.ofReal 2 = 2 := ENNReal.ofReal_ofNat 2
+  rw [e2]
+  rw [eLpNorm_const_mul_fun]
+  have hprod : ‖∏ k, (β k : ℂ)‖ₑ = ∏ k, eLpNorm (g k) ⊤ volume := by
+    rw [Fin.prod_univ_three, Fin.prod_univ_three, enorm_mul, enorm_mul]
+    have e : ∀ k, ‖(β k : ℂ)‖ₑ = eLpNorm (g k) ⊤ volume := fun k => by
+      rw [← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg (hβ0 k), hβdef]
+      exact ENNReal.ofReal_toReal (htop k)
+    rw [e 0, e 1, e 2]
+  rw [hprod, mul_comm]
+  exact mul_le_mul_of_nonneg_right hb2 bot_le
+
+end
+
+/-! ### `new:compact-decaying-point`: the interpolation -/
+
+section
+open Filter Topology MeasureTheory
+
+theorem SimpleOn.bounded {B : Set E3} {u : E3 → ℂ} (hu : SimpleOn B u) :
+    ∃ b : ℝ, ∀ x, ‖u x‖ ≤ b := by
+  obtain ⟨b, hb⟩ := (hu.2.1.image (fun z : ℂ => ‖z‖)).bddAbove
+  exact ⟨b, fun x => hb ⟨u x, ⟨x, rfl⟩, rfl⟩⟩
+
+theorem SimpleOn.eq_zero {B : Set E3} {u : E3 → ℂ} (hu : SimpleOn B u) {x : E3} (hx : x ∉ B) :
+    u x = 0 := by
+  by_contra h
+  exact hx (hu.2.2 h)
+
+/-- The exponents of `new:compact-decaying-point`: `1/u_0 = 10/61`, `1/u_b = 21/122`,
+`1/u_c = 10/61`. -/
+noncomputable def cdpExp : Fin 3 → ℝ := ![61 / 10, 122 / 21, 61 / 10]
+
+theorem N_rpow_cancel {N : ℝ} (hN : 0 < N) :
+    (N ^ (3 : ℕ)) ^ (1 / 61 : ℝ) * (N ^ (-(1 : ℝ) / 20)) ^ (60 / 61 : ℝ) = 1 := by
+  rw [← Real.rpow_natCast, ← Real.rpow_mul hN.le, ← Real.rpow_mul hN.le,
+    ← Real.rpow_add hN]
+  norm_num
+
+/-- **Theorem `new:compact-decaying-point`** on finite-valued inputs supported in `B_N(C₀)`:
+`‖(I - P_R^{(j)}) A_N^{*j}(g)‖₂ ≤ C₃ μ^{a₁} ∏ ‖g_i‖_{u_i}` with `R = N^{-j} μ^{-2}` and
+`(u_0, u_b, u_c) = (61/10, 122/21, 61/10)`, by `new:interpolation` with weight `60/61` on the
+improving endpoint and `1/61` on the bounded one; the powers of `N` cancel. -/
+theorem compactDecaying (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
+    ∃ a₁ K₀ C₃ : ℝ, 0 < a₁ ∧ a₁ < 1 ∧ 1 ≤ K₀ ∧ 0 ≤ C₃ ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K₀ * μ ^ (-K₀) ≤ N →
+        ∀ g : Fin 3 → E3 → ℂ, (∀ k, SimpleOn (petBox C₀ N) (g k)) →
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j g) (ENNReal.ofReal 2) volume
+            ≤ ENNReal.ofReal (C₃ * μ ^ a₁)
+              * ∏ k, eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume := by
+  obtain ⟨a, K₀, C₁, ha0, ha1, hK₀, hC₁, hbd⟩ := hpAdj_bounded j hC₀
+  obtain ⟨Ci, hCi, himp⟩ := hpAdj_improving j
+  refine ⟨a / 61, K₀, C₁ ^ (1 / 61 : ℝ) * Ci ^ (60 / 61 : ℝ), by positivity, by
+    rw [div_lt_one (by norm_num)]; linarith, hK₀, by positivity, ?_⟩
+  intro μ N hμ0 hμ1 hNK g hg
+  have hμK : 1 ≤ μ ^ (-K₀) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN0 : 0 < N := by nlinarith
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  have hR : 0 < R := by positivity
+  have hθ : (60 / 61 : ℝ) ∈ Set.Ioo (0 : ℝ) 1 := ⟨by norm_num, by norm_num⟩
+  have h := interpolate_trilin_simple (T := hpAdj N R j) (trilin_hpAdj hN0 hR j)
+    (fun g hg => measurable_hpAdj hN0.le j fun k => (hg k).1) (B := petBox C₀ N)
+    (p₀ := fun _ => 0) (p₁ := ![6, 40 / 7, 6]) (p := cdpExp) (q₀ := 2) (q₁ := 2) (q := 2)
+    (M₀ := C₁ * μ ^ a * N ^ 3) (M₁ := Ci * N ^ (-(1 : ℝ) / 20)) (θ := 60 / 61)
+    (fun _ => le_rfl) (fun i => by fin_cases i <;> norm_num)
+    (fun i => by fin_cases i <;> norm_num [cdpExp]) (by norm_num) (by norm_num) (by norm_num)
+    (by positivity) (by positivity) hθ
+    (fun i => by fin_cases i <;> norm_num [cdpExp]) (by norm_num)
+    (fun g hg => by
+      refine le_of_le_of_eq (hbd μ N hμ0 hμ1 hNK g (fun k => (hg k).1) (fun k => (hg k).bounded)
+        (fun k x hx => (hg k).eq_zero hx)) ?_
+      simp [eIn])
+    (fun g hg => by
+      refine le_of_le_of_eq (himp N R C₀ hN0 hR (by linarith) g (fun k => (hg k).1)
+        (fun k => (hg k).bounded) (fun k x hx => (hg k).eq_zero hx)) ?_
+      congr 1
+      refine Finset.prod_congr rfl fun i _ => ?_
+      fin_cases i <;> simp [eIn])
+    g hg
+  refine h.trans (le_of_eq ?_)
+  congr 2
+  rw [show (1 : ℝ) - 60 / 61 = 1 / 61 by norm_num,
+    Real.mul_rpow (by positivity) (by positivity), Real.mul_rpow (by positivity) (by positivity),
+    Real.mul_rpow (by positivity) (by positivity), ← Real.rpow_mul hμ0.le]
+  have hc := N_rpow_cancel hN0
+  calc C₁ ^ (1 / 61 : ℝ) * μ ^ (a * (1 / 61)) * (N ^ (3 : ℕ)) ^ (1 / 61 : ℝ)
+        * (Ci ^ (60 / 61 : ℝ) * (N ^ (-(1 : ℝ) / 20)) ^ (60 / 61 : ℝ))
+      = C₁ ^ (1 / 61 : ℝ) * Ci ^ (60 / 61 : ℝ) * μ ^ (a * (1 / 61))
+        * ((N ^ (3 : ℕ)) ^ (1 / 61 : ℝ) * (N ^ (-(1 : ℝ) / 20)) ^ (60 / 61 : ℝ)) := by ring
+    _ = C₁ ^ (1 / 61 : ℝ) * Ci ^ (60 / 61 : ℝ) * μ ^ (a / 61) := by
+        rw [hc, mul_one, mul_one_div]
+
+end
+
+/-! ### `new:global-decaying-point`: cubes and the exact input decomposition -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The index of the cube `Q_ν = D_N(ν + [0,1)^3)` containing a point. -/
+noncomputable def boxIdx (N : ℝ) (x : E3) : Fin 3 → ℤ := fun i => ⌊x i / N ^ expo i⌋
+
+theorem measurable_boxIdx (N : ℝ) : Measurable (boxIdx N) := by
+  refine measurable_pi_lambda _ fun i => ?_
+  have h : Measurable fun x : E3 => x i / N ^ expo i :=
+    ((EuclideanSpace.proj i).continuous.measurable).div_const _
+  have hfl : Measurable (Int.floor : ℝ → ℤ) := measurable_to_countable fun n => by
+    simpa only [Int.preimage_floor_singleton] using measurableSet_Ico
+  exact hfl.comp h
+
+/-- The restriction `1_{Q_ν} g`. -/
+noncomputable def boxRes (N : ℝ) (ν : Fin 3 → ℤ) (g : E3 → ℂ) : E3 → ℂ :=
+  fun x => if boxIdx N x = ν then g x else 0
+
+theorem measurable_boxRes (N : ℝ) (ν : Fin 3 → ℤ) {g : E3 → ℂ} (hg : Measurable g) :
+    Measurable (boxRes N ν g) :=
+  Measurable.ite (measurableSet_eq_fun (measurable_boxIdx N) measurable_const) hg
+    measurable_const
+
+theorem floor_add_mem {a b : ℝ} (hb0 : 0 ≤ b) (hb1 : b ≤ 1) :
+    ⌊a + b⌋ = ⌊a⌋ ∨ ⌊a + b⌋ = ⌊a⌋ + 1 := by
+  have h1 : ⌊a⌋ ≤ ⌊a + b⌋ := Int.floor_le_floor (by linarith)
+  have h2 : ⌊a + b⌋ ≤ ⌊a⌋ + 1 := by
+    rw [← Int.floor_add_one]; exact Int.floor_le_floor (by linarith)
+  omega
+
+/-- **Moving by at most one side length in one coordinate** changes the cube index by `0` or by
+`e_m`. -/
+theorem boxIdx_add_smul {N : ℝ} (hN : 0 < N) (z : E3) (m : Fin 3) {s : ℝ} (hs0 : 0 ≤ s)
+    (hs1 : s ≤ N ^ expo m) :
+    boxIdx N (z + s • basisVec m) = boxIdx N z
+      ∨ boxIdx N (z + s • basisVec m) = boxIdx N z + Pi.single m 1 := by
+  have hNm : 0 < N ^ expo m := pow_pos hN _
+  have hoff : ∀ i, i ≠ m → boxIdx N (z + s • basisVec m) i = boxIdx N z i := fun i hi => by
+    simp [boxIdx, basisVec_apply_ne hi]
+  have hm : boxIdx N (z + s • basisVec m) m = ⌊z m / N ^ expo m + s / N ^ expo m⌋ := by
+    simp only [boxIdx, PiLp.add_apply, PiLp.smul_apply, smul_eq_mul, basisVec_apply_self,
+      mul_one, add_div]
+  rcases floor_add_mem (a := z m / N ^ expo m) (div_nonneg hs0 hNm.le)
+    ((div_le_one hNm).mpr hs1) with h | h
+  · left
+    funext i
+    by_cases hi : i = m
+    · subst hi; rw [hm, h]; rfl
+    · exact hoff i hi
+  · right
+    funext i
+    by_cases hi : i = m
+    · subst hi; rw [hm, h]; simp [boxIdx]
+    · rw [hoff i hi]; simp [hi]
+
+/-- The offset `ε e_m` of a neighbouring cube. -/
+def offV (m : Fin 3) (ε : Fin 2) : Fin 3 → ℤ := ((ε : ℕ) : ℤ) • Pi.single m 1
+
+/-- The pieces `(g_{0,ν}, g_{b,ν+ε e_b}, g_{c,ν+ε' e_c})` of the exact input decomposition. -/
+noncomputable def piece (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2)
+    (g : Fin 3 → E3 → ℂ) : Fin 3 → E3 → ℂ :=
+  ![boxRes N ν (g 0), boxRes N (ν + offV (j + 1) ε) (g 1), boxRes N (ν + offV (j + 2) ε') (g 2)]
+
+theorem offV_zero (m : Fin 3) : offV m 0 = 0 := by simp [offV]
+
+theorem offV_one (m : Fin 3) : offV m 1 = Pi.single m 1 := by simp [offV]
+
+theorem adjVec_succ (j : Fin 3) (k : Fin 3) (hk : k ≠ 0) (t : ℝ) (y : E3) :
+    y + adjVec j k t = (y + adjVec j 0 t) + (t ^ expo (j + k)) • basisVec (j + k) := by
+  simp [adjVec, hk, curve, add_assoc]
+
+/-- **The exact input decomposition, pointwise**: for `t ∈ [0, N]`, the adjoint integrand is the
+sum over the cubes `ν ∈ S` (containing the support of `g_0`) and the offsets `ε, ε' ∈ {0, 1}` of
+the integrands of the pieces; exactly one term is nonzero. -/
+theorem prod_decomp {N : ℝ} (hN : 0 < N) (j : Fin 3) (g : Fin 3 → E3 → ℂ)
+    (S : Finset (Fin 3 → ℤ)) (hS : ∀ x, g 0 x ≠ 0 → boxIdx N x ∈ S) (y : E3) {t : ℝ}
+    (ht : t ∈ Set.Icc 0 N) :
+    ∏ k : Fin 3, g k (y + adjVec j k t)
+      = ∑ ε : Fin 2, ∑ ε' : Fin 2, ∑ ν ∈ S,
+          ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t) := by
+  simp only [Fin.prod_univ_three, piece, Matrix.cons_val_zero, Matrix.cons_val_one,
+    Matrix.cons_val_two, Matrix.head_cons, Matrix.tail_cons, boxRes, Fin.sum_univ_two, offV_zero,
+    offV_one]
+  set z := y + adjVec j 0 t with hz
+  have h1 := adjVec_succ j 1 (by decide) t y
+  have h2 := adjVec_succ j 2 (by decide) t y
+  rw [← hz] at h1 h2
+  set z1 := y + adjVec j 1 t with hz1
+  set z2 := y + adjVec j 2 t with hz2
+  have hs : ∀ m : Fin 3, 0 ≤ t ^ expo m ∧ t ^ expo m ≤ N ^ expo m := fun m =>
+    ⟨pow_nonneg ht.1 _, pow_le_pow_left₀ ht.1 ht.2 _⟩
+  have hb1 := boxIdx_add_smul hN z (j + 1) (hs _).1 (hs _).2
+  have hb2 := boxIdx_add_smul hN z (j + 2) (hs _).1 (hs _).2
+  rw [← h1] at hb1
+  rw [← h2] at hb2
+  have hne : ∀ m : Fin 3, ∀ ν : Fin 3 → ℤ, ν ≠ ν + Pi.single m 1 := fun m ν h => by
+    have := congrFun h m
+    simp at this
+  have hne' : ∀ m : Fin 3, ∀ ν : Fin 3 → ℤ, ν + Pi.single m 1 ≠ ν := fun m ν h =>
+    hne m ν h.symm
+  by_cases h0 : g 0 z = 0
+  · rw [h0, zero_mul, zero_mul]
+    simp
+  have hν : boxIdx N z ∈ S := hS z h0
+  have hsum : ∀ (c1 c2 : Fin 3 → ℤ),
+      (∑ ν ∈ S, (if boxIdx N z = ν then g 0 z else 0)
+        * (if boxIdx N z1 = ν + c1 then g 1 z1 else 0)
+        * (if boxIdx N z2 = ν + c2 then g 2 z2 else 0))
+      = (if boxIdx N z1 = boxIdx N z + c1 then g 1 z1 else 0) * g 0 z
+        * (if boxIdx N z2 = boxIdx N z + c2 then g 2 z2 else 0) := by
+    intro c1 c2
+    rw [Finset.sum_eq_single (boxIdx N z)]
+    · rw [if_pos rfl]; ring
+    · intro ν _ hν'
+      rw [if_neg (Ne.symm hν'), zero_mul, zero_mul]
+    · intro h; exact absurd hν h
+  rw [hsum, hsum, hsum, hsum]
+  rcases hb1 with e1 | e1 <;> rcases hb2 with e2 | e2 <;>
+    simp only [e1, e2, add_zero, hne, hne', if_true, if_false, zero_mul, mul_zero,
+      zero_add] <;> ring
+
+end
+
+/-! ### `new:global-decaying-point`: the decomposition of the adjoint -/
+
+section
+open Filter Topology MeasureTheory
+
+theorem bddMeasC_boxRes (N : ℝ) (ν : Fin 3 → ℤ) {g : E3 → ℂ} (hg : BddMeasC g) :
+    BddMeasC (boxRes N ν g) := by
+  obtain ⟨hgm, C, hC⟩ := hg
+  refine ⟨measurable_boxRes N ν hgm, max C 0, fun x => ?_⟩
+  unfold boxRes; split_ifs
+  · exact (hC x).trans (le_max_left _ _)
+  · simp
+
+theorem bddMeasC_piece (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2)
+    {g : Fin 3 → E3 → ℂ} (hg : ∀ k, BddMeasC (g k)) (k : Fin 3) :
+    BddMeasC (piece N j ν ε ε' g k) := by
+  fin_cases k
+  · exact bddMeasC_boxRes N ν (hg 0)
+  · exact bddMeasC_boxRes N _ (hg 1)
+  · exact bddMeasC_boxRes N _ (hg 2)
+
+theorem norm_boxRes_le (N : ℝ) (ν : Fin 3 → ℤ) (g : E3 → ℂ) (x : E3) :
+    ‖boxRes N ν g x‖ ≤ ‖g x‖ := by
+  unfold boxRes; split_ifs
+  · exact le_rfl
+  · simp
+
+theorem norm_piece_le (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2) (g : Fin 3 → E3 → ℂ)
+    (k : Fin 3) (x : E3) : ‖piece N j ν ε ε' g k x‖ ≤ ‖g k x‖ := by
+  fin_cases k
+  · exact norm_boxRes_le N ν (g 0) x
+  · exact norm_boxRes_le N _ (g 1) x
+  · exact norm_boxRes_le N _ (g 2) x
+
+theorem intervalIntegrable_prod_adjVec {j : Fin 3} {g : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, BddMeasC (g k)) (y : E3) (a b : ℝ) :
+    IntervalIntegrable (fun t => ∏ k : Fin 3, g k (y + adjVec j k t)) volume a b := by
+  choose hgm C hC using hg
+  refine intervalIntegrable_of_norm_le (C := ∏ k, C k)
+    (Finset.measurable_prod _ fun k _ =>
+      (hgm k).comp (measurable_const.add (continuous_adjVec j k).measurable)) (fun t => ?_) a b
+  rw [norm_prod]
+  exact Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => hC k _
+
+/-- **The exact input decomposition of the adjoint form.** -/
+theorem adjT_decomp {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, BddMeasC (g k)) (S : Finset (Fin 3 → ℤ))
+    (hS : ∀ x, g 0 x ≠ 0 → boxIdx N x ∈ S) :
+    adjT N j g = fun y => ∑ ε : Fin 2, ∑ ε' : Fin 2, ∑ ν ∈ S,
+      adjT N j (piece N j ν ε ε' g) y := by
+  funext y
+  simp only [adjT]
+  rw [intervalIntegral.integral_congr (g := fun t => ∑ ε : Fin 2, ∑ ε' : Fin 2, ∑ ν ∈ S,
+      ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t)) fun t ht => by
+    rw [Set.uIcc_of_le hN.le] at ht
+    exact prod_decomp hN j g S hS y ht]
+  choose hgm C hC using hg
+  set B : ℝ := ∏ k, max (C k) 0 with hBdef
+  have hpm : ∀ ν ε ε', Measurable fun t => ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t) :=
+    fun ν ε ε' => Finset.measurable_prod _ fun k _ =>
+      (bddMeasC_piece N j ν ε ε' (fun k => ⟨hgm k, C k, hC k⟩) k).1.comp
+        (measurable_const.add (continuous_adjVec j k).measurable)
+  have hpb : ∀ ν ε ε' t, ‖∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t)‖ ≤ B := by
+    intro ν ε ε' t
+    rw [norm_prod, hBdef]
+    refine Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => ?_
+    exact (norm_piece_le N j ν ε ε' g k _).trans ((hC k _).trans (le_max_left _ _))
+  have hB0 : 0 ≤ B := Finset.prod_nonneg fun k _ => le_max_right _ _
+  have hI3 : ∀ ε ε', IntervalIntegrable (fun t => ∑ ν ∈ S,
+      ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t)) volume 0 N := fun ε ε' =>
+    intervalIntegrable_of_norm_le (C := S.card * B) (Finset.measurable_sum _ fun ν _ => hpm ν ε ε')
+      (fun t => (norm_sum_le _ _).trans (by
+        rw [← nsmul_eq_mul, ← Finset.sum_const]; exact Finset.sum_le_sum fun ν _ => hpb ν ε ε' t))
+      0 N
+  have hI2 : ∀ ε, IntervalIntegrable (fun t => ∑ ε' : Fin 2, ∑ ν ∈ S,
+      ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t)) volume 0 N := fun ε =>
+    intervalIntegrable_of_norm_le (C := 2 * (S.card * B))
+      (Finset.measurable_sum _ fun ε' _ => Finset.measurable_sum _ fun ν _ => hpm ν ε ε')
+      (fun t => (norm_sum_le _ _).trans (by
+        refine (Finset.sum_le_sum fun ε' _ => (norm_sum_le _ _).trans
+          (Finset.sum_le_sum fun ν _ => hpb ν ε ε' t)).trans (le_of_eq ?_)
+        simp)) 0 N
+  rw [intervalIntegral.integral_finsetSum (s := Finset.univ)
+    (f := fun ε t => ∑ ε' : Fin 2, ∑ ν ∈ S, ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t))
+    fun ε _ => hI2 ε]
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun ε _ => ?_
+  rw [intervalIntegral.integral_finsetSum (s := Finset.univ)
+    (f := fun ε' t => ∑ ν ∈ S, ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t))
+    fun ε' _ => hI3 ε ε']
+  rw [Finset.mul_sum]
+  refine Finset.sum_congr rfl fun ε' _ => ?_
+  rw [intervalIntegral.integral_finsetSum (s := S)
+    (f := fun ν t => ∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t))
+    fun ν _ => intervalIntegrable_of_norm_le (hpm ν ε ε') (hpb ν ε ε') 0 N]
+  rw [Finset.mul_sum]
+
+/-- `P_R^{(j)}` commutes with finite sums of bounded measurable functions. -/
+theorem P_finset_sum {R : ℝ} (hR : 0 < R) (j : Fin 3) {ι : Type*} (s : Finset ι)
+    {F : ι → E3 → ℂ} (hF : ∀ i, BddMeasC (F i)) :
+    P R j (fun x => ∑ i ∈ s, F i x) = fun x => ∑ i ∈ s, P R j (F i) x := by
+  funext x
+  simp only [P, Finset.mul_sum]
+  exact integral_finsetSum _ fun i _ => integrable_projKernel_mul_bdd hR j (hF i) x
+
+theorem bddMeasC_finsetSum' {ι : Type*} (s : Finset ι) {F : ι → E3 → ℂ}
+    (hF : ∀ i, BddMeasC (F i)) : BddMeasC fun x => ∑ i ∈ s, F i x := by
+  choose hm C hC using hF
+  refine ⟨Finset.measurable_sum _ fun i _ => hm i, ∑ i ∈ s, C i, fun x => ?_⟩
+  exact (norm_sum_le _ _).trans (Finset.sum_le_sum fun i _ => hC i x)
+
+/-- **The exact input decomposition of `(I - P_R) A_N^{*j}`**, one sum per offset. -/
+theorem hpAdj_decomp {N R : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, BddMeasC (g k)) (S : Finset (Fin 3 → ℤ))
+    (hS : ∀ x, g 0 x ≠ 0 → boxIdx N x ∈ S) :
+    hpAdj N R j g = fun y => ∑ ε : Fin 2, ∑ ε' : Fin 2, ∑ ν ∈ S,
+      hpAdj N R j (piece N j ν ε ε' g) y := by
+  have hb : ∀ ν ε ε', BddMeasC (adjT N j (piece N j ν ε ε' g)) := fun ν ε ε' =>
+    bddMeasC_adjT hN j (bddMeasC_piece N j ν ε ε' hg)
+  have hP : P R j (adjT N j g) = fun y => ∑ ε : Fin 2, ∑ ε' : Fin 2, ∑ ν ∈ S,
+      P R j (adjT N j (piece N j ν ε ε' g)) y := by
+    rw [adjT_decomp hN j hg S hS, P_finset_sum hR j _ fun ε =>
+      bddMeasC_finsetSum' _ fun ε' => bddMeasC_finsetSum' _ fun ν => hb ν ε ε']
+    funext y
+    refine Finset.sum_congr rfl fun ε _ => ?_
+    rw [P_finset_sum hR j _ fun ε' => bddMeasC_finsetSum' _ fun ν => hb ν ε ε']
+    refine Finset.sum_congr rfl fun ε' _ => ?_
+    rw [P_finset_sum hR j _ fun ν => hb ν ε ε']
+  funext y
+  simp only [hpAdj]
+  rw [hP, adjT_decomp hN j hg S hS]
+  simp only [← Finset.sum_sub_distrib]
+
+end
+
+/-! ### `new:global-decaying-point`: translation and the bound for each piece -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The corner `D_N ν` of the cube `Q_ν`. -/
+noncomputable def cornerVec (N : ℝ) (ν : Fin 3 → ℤ) : E3 :=
+  ∑ i, ((ν i : ℝ) * N ^ expo i) • basisVec i
+
+theorem cornerVec_apply (N : ℝ) (ν : Fin 3 → ℤ) (m : Fin 3) :
+    cornerVec N ν m = (ν m : ℝ) * N ^ expo m := by
+  simp [cornerVec, basisVec_apply, Finset.sum_apply]
+
+theorem boxIdx_add_corner {N : ℝ} (hN : 0 < N) (x : E3) (ν : Fin 3 → ℤ) :
+    boxIdx N (x + cornerVec N ν) = boxIdx N x + ν := by
+  funext i
+  have hNi : 0 < N ^ expo i := pow_pos hN _
+  simp only [boxIdx, PiLp.add_apply, cornerVec_apply, Pi.add_apply, add_div,
+    mul_div_cancel_right₀ _ hNi.ne']
+  exact Int.floor_add_intCast _ _
+
+theorem adjT_translate (N : ℝ) (j : Fin 3) (g : Fin 3 → E3 → ℂ) (v : E3) :
+    adjT N j (fun k x => g k (x + v)) = fun y => adjT N j g (y + v) := by
+  funext y
+  simp only [adjT]
+  congr 2
+  funext t
+  refine Finset.prod_congr rfl fun k _ => ?_
+  congr 1; abel
+
+theorem P_translate (R : ℝ) (j : Fin 3) (F : E3 → ℂ) (v : E3) :
+    P R j (fun x => F (x + v)) = fun y => P R j F (y + v) := by
+  funext y
+  simp only [P]
+  congr 1; funext u; congr 2; abel
+
+theorem hpAdj_translate (N R : ℝ) (j : Fin 3) (g : Fin 3 → E3 → ℂ) (v : E3) :
+    hpAdj N R j (fun k x => g k (x + v)) = fun y => hpAdj N R j g (y + v) := by
+  funext y
+  simp only [hpAdj]
+  rw [adjT_translate, P_translate]
+
+theorem eLpNorm_translate {f : E3 → ℂ} (hf : Measurable f) (v : E3) (p : ℝ≥0∞) :
+    eLpNorm (fun x => f (x + v)) p volume = eLpNorm f p volume :=
+  eLpNorm_comp_add_right_of_aestronglyMeasurable hf.aestronglyMeasurable v p
+
+theorem offV_mem (m : Fin 3) (ε : Fin 2) (i : Fin 3) : 0 ≤ offV m ε i ∧ offV m ε i ≤ 1 := by
+  fin_cases ε <;> simp [offV, Pi.single_apply]; split_ifs <;> simp
+
+/-- A function vanishing off `Q_{ν + c}` with `0 ≤ c ≤ 1` has its translate by `-D_N ν`
+supported in `B_N(2)`. -/
+theorem mem_petBox_two {N : ℝ} (hN : 0 < N) {x : E3} {c : Fin 3 → ℤ} (hc : ∀ i, 0 ≤ c i ∧ c i ≤ 1)
+    (hx : boxIdx N x = c) : x ∈ petBox 2 N := by
+  intro i
+  have hNi : 0 < N ^ expo i := pow_pos hN _
+  have h := congrFun hx i
+  simp only [boxIdx] at h
+  have h1 := Int.floor_le (x i / N ^ expo i)
+  have h2 := Int.lt_floor_add_one (x i / N ^ expo i)
+  rw [h] at h1 h2
+  have hc0 : (0 : ℝ) ≤ c i := by exact_mod_cast (hc i).1
+  have hc1 : (c i : ℝ) ≤ 1 := by exact_mod_cast (hc i).2
+  rw [le_div_iff₀ hNi] at h1
+  rw [div_lt_iff₀ hNi] at h2
+  constructor <;> nlinarith
+
+theorem simpleOn_piece_translate {N : ℝ} (hN : 0 < N) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2)
+    {g : Fin 3 → E3 → ℂ} (hgm : ∀ k, Measurable (g k)) (hgr : ∀ k, (Set.range (g k)).Finite)
+    (k : Fin 3) :
+    SimpleOn (petBox 2 N) (fun x => piece N j ν ε ε' g k (x + cornerVec N ν)) := by
+  have hc : ∀ k : Fin 3, ∃ c : Fin 3 → ℤ, (∀ i, 0 ≤ c i ∧ c i ≤ 1) ∧
+      piece N j ν ε ε' g k = boxRes N (ν + c) (g k) := by
+    intro k
+    fin_cases k
+    · exact ⟨0, fun i => by simp, by simp [piece]⟩
+    · exact ⟨offV (j + 1) ε, offV_mem _ _, by simp [piece]⟩
+    · exact ⟨offV (j + 2) ε', offV_mem _ _, by simp [piece]⟩
+  obtain ⟨c, hc01, hck⟩ := hc k
+  rw [hck]
+  refine ⟨(measurable_boxRes N _ (hgm k)).comp (measurable_id.add_const _), ?_, ?_⟩
+  · refine ((hgr k).insert 0).subset ?_
+    rintro _ ⟨x, rfl⟩
+    unfold boxRes; beta_reduce; split_ifs
+    · exact Set.mem_insert_of_mem _ ⟨_, rfl⟩
+    · exact Set.mem_insert _ _
+  · intro x hx
+    simp only [Function.mem_support, boxRes] at hx
+    split_ifs at hx with h
+    · rw [boxIdx_add_corner hN, add_comm, add_left_cancel_iff] at h
+      exact mem_petBox_two hN hc01 h
+    · exact absurd rfl hx
+
+/-- **The compact decaying point for each piece** of the exact input decomposition. -/
+theorem piece_bound (j : Fin 3) :
+    ∃ a₁ K₀ C₃ : ℝ, 0 < a₁ ∧ a₁ < 1 ∧ 1 ≤ K₀ ∧ 0 ≤ C₃ ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K₀ * μ ^ (-K₀) ≤ N →
+        ∀ g : Fin 3 → E3 → ℂ, (∀ k, Measurable (g k)) → (∀ k, (Set.range (g k)).Finite) →
+        ∀ (ν : Fin 3 → ℤ) (ε ε' : Fin 2),
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j (piece N j ν ε ε' g))
+              (ENNReal.ofReal 2) volume
+            ≤ ENNReal.ofReal (C₃ * μ ^ a₁)
+              * ∏ k, eLpNorm (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume := by
+  obtain ⟨a₁, K₀, C₃, ha0, ha1, hK0, hC3, hcd⟩ := compactDecaying j (C₀ := 2) (by norm_num)
+  refine ⟨a₁, K₀, C₃, ha0, ha1, hK0, hC3, ?_⟩
+  intro μ N hμ0 hμ1 hNK g hgm hgr ν ε ε'
+  have hμK : 1 ≤ μ ^ (-K₀) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN0 : 0 < N := by nlinarith
+  set v := cornerVec N ν with hvdef
+  have h := hcd μ N hμ0 hμ1 hNK (fun k x => piece N j ν ε ε' g k (x + v))
+    (simpleOn_piece_translate hN0 j ν ε ε' hgm hgr)
+  rw [hpAdj_translate] at h
+  have hpm : ∀ k, Measurable (piece N j ν ε ε' g k) := fun k => by
+    fin_cases k
+    · exact measurable_boxRes N _ (hgm 0)
+    · exact measurable_boxRes N _ (hgm 1)
+    · exact measurable_boxRes N _ (hgm 2)
+  rw [eLpNorm_translate (measurable_hpAdj hN0.le j hpm)] at h
+  simp_rw [eLpNorm_translate (hpm _)] at h
+  exact h
+
+end
+
+/-! ### `new:global-decaying-point`: the off-diagonal tail -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The tail-weighted kernel `K̃(u) = (|u|/a) |K_R(u)| 1_{|u| ≥ a}`. -/
+noncomputable def tailKer (R a : ℝ) (u : ℝ) : ℝ :=
+  if a ≤ |u| then |u| / a * ‖projKernel R u‖ else 0
+
+theorem tailKer_nonneg {R a : ℝ} (ha : 0 < a) (u : ℝ) : 0 ≤ tailKer R a u := by
+  unfold tailKer; split_ifs <;> positivity
+
+theorem tailKer_le {R a : ℝ} (hR : 0 < R) (ha : 0 < a) (u : ℝ) :
+    tailKer R a u ≤ ((R * a) ^ 2)⁻¹ * ((1 + R * |u|) ^ 2 * ‖projKernel R u‖) := by
+  unfold tailKer
+  split_ifs with h
+  · have hx : 1 ≤ |u| / a := (one_le_div ha).mpr h
+    have h1 : |u| / a ≤ ((R * a) ^ 2)⁻¹ * (1 + R * |u|) ^ 2 := by
+      calc |u| / a ≤ (|u| / a) ^ 2 := by nlinarith
+        _ = (R * |u|) ^ 2 / (R * a) ^ 2 := by field_simp
+        _ ≤ (1 + R * |u|) ^ 2 / (R * a) ^ 2 := by
+            gcongr
+            linarith
+        _ = ((R * a) ^ 2)⁻¹ * (1 + R * |u|) ^ 2 := by ring
+    calc |u| / a * ‖projKernel R u‖
+        ≤ ((R * a) ^ 2)⁻¹ * (1 + R * |u|) ^ 2 * ‖projKernel R u‖ :=
+          mul_le_mul_of_nonneg_right h1 (norm_nonneg _)
+      _ = _ := by ring
+  · positivity
+
+theorem measurable_tailKer (R a : ℝ) : Measurable (tailKer R a) := by
+  unfold tailKer
+  exact Measurable.ite (measurableSet_le measurable_const continuous_abs.measurable)
+    ((continuous_abs.measurable.div_const _).mul (projKernel_continuous R).measurable.norm)
+    measurable_const
+
+theorem integrable_tailKer {R a : ℝ} (hR : 0 < R) (ha : 0 < a) : Integrable (tailKer R a) :=
+  ((integrable_projKernel_mom hR 2).const_mul _).mono' (measurable_tailKer R a).aestronglyMeasurable
+    (Eventually.of_forall fun u => by
+      rw [Real.norm_of_nonneg (tailKer_nonneg ha u)]; exact tailKer_le hR ha u)
+
+theorem integral_tailKer_le {R a : ℝ} (hR : 0 < R) (ha : 0 < a) :
+    ∫ u, tailKer R a u ≤ etaKerMom 2 / (R * a) ^ 2 := by
+  calc ∫ u, tailKer R a u ≤ ∫ u, ((R * a) ^ 2)⁻¹ * ((1 + R * |u|) ^ 2 * ‖projKernel R u‖) :=
+        integral_mono (integrable_tailKer hR ha) ((integrable_projKernel_mom hR 2).const_mul _)
+          (tailKer_le hR ha)
+    _ = etaKerMom 2 / (R * a) ^ 2 := by
+        rw [integral_const_mul, integral_projKernel_mom hR 2, inv_mul_eq_div]
+
+/-- The `j`-distance in cubes between a point and the cube column of `ν`. -/
+noncomputable def cubeDist (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) (y : E3) : ℝ :=
+  ((boxIdx N y j - ν j : ℤ) : ℝ)
+
+theorem measurable_cubeDist (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) :
+    Measurable (cubeDist N j ν) := by
+  have h : Measurable fun y => boxIdx N y j := (measurable_pi_apply j).comp (measurable_boxIdx N)
+  exact measurable_from_top.comp ((h.sub measurable_const))
+
+/-- The far-off-diagonal comparison: if `G(y - u e_j) ≠ 0` for a `G` living in the cube columns
+`ν_j, ν_j + 1`, and `y` is `ℓ ≥ 4` cubes away, then `1 ≤ (2/|ℓ|)(|u|/a)` and `|u| ≥ a`. -/
+theorem far_u_bound {N : ℝ} (hN : 0 < N) (j : Fin 3) (ν : Fin 3 → ℤ) {y : E3} {u : ℝ}
+    (hℓ : 4 ≤ |cubeDist N j ν y|)
+    (hu : boxIdx N (y - u • basisVec j) j = ν j ∨ boxIdx N (y - u • basisVec j) j = ν j + 1) :
+    N ^ expo j ≤ |u| ∧ 1 ≤ 2 / |cubeDist N j ν y| * (|u| / N ^ expo j) := by
+  set a := N ^ expo j with hadef
+  have ha : 0 < a := pow_pos hN _
+  set ℓ := cubeDist N j ν y with hℓdef
+  have hy1 := Int.floor_le (y j / a)
+  have hy2 := Int.lt_floor_add_one (y j / a)
+  have hz1 := Int.floor_le ((y j - u) / a)
+  have hz2 := Int.lt_floor_add_one ((y j - u) / a)
+  have hyl : (⌊y j / a⌋ : ℝ) = ν j + ℓ := by
+    rw [hℓdef, cubeDist, boxIdx]; push_cast; ring
+  have hzj : (y - u • basisVec j) j = y j - u := by
+    simp [basisVec_apply_self]
+  have hz : (⌊(y j - u) / a⌋ : ℝ) = ν j ∨ (⌊(y j - u) / a⌋ : ℝ) = ν j + 1 := by
+    simp only [boxIdx, hzj] at hu
+    rcases hu with h | h
+    · left; exact_mod_cast h
+    · right; exact_mod_cast h
+  have hdiv : y j / a - (y j - u) / a = u / a := by ring
+  have hbound : 2 * a ≤ |u| * (|ℓ| / 2) * (2 / |ℓ|) * 1 ∧ |ℓ| / 2 ≤ |u| / a := by
+    have hℓ0 : 0 < |ℓ| := by linarith
+    rw [hyl] at hy1 hy2
+    have key : |ℓ| / 2 ≤ |u| / a := by
+      rcases hz with h | h <;> rw [h] at hz1 hz2 <;>
+      rcases le_or_gt 0 ℓ with hl | hl
+      all_goals
+        first
+        | (rw [abs_of_nonneg hl] at hℓ ⊢
+           have : u / a ≤ |u| / a := div_le_div_of_nonneg_right (le_abs_self u) ha.le
+           linarith)
+        | (rw [abs_of_neg hl] at hℓ ⊢
+           have : -(u / a) ≤ |u| / a := by
+             rw [← neg_div]; exact div_le_div_of_nonneg_right (neg_le_abs u) ha.le
+           linarith)
+    refine ⟨?_, key⟩
+    have : |u| * (|ℓ| / 2) * (2 / |ℓ|) * 1 = |u| := by field_simp
+    rw [this]
+    rw [le_div_iff₀ ha] at key
+    nlinarith
+  obtain ⟨h1, h2⟩ := hbound
+  have hℓ0 : 0 < |ℓ| := by linarith
+  refine ⟨?_, ?_⟩
+  · have : |u| * (|ℓ| / 2) * (2 / |ℓ|) * 1 = |u| := by field_simp
+    rw [this] at h1; linarith
+  · rw [le_div_iff₀ ha] at h2
+    rw [div_mul_div_comm, le_div_iff₀ (by positivity)]
+    nlinarith
+
+set_option maxHeartbeats 1000000 in
+-- The near/far split, the far-field domination and Young's inequality share one context.
+/-- **`new:global-decaying-point`, the off-diagonal tail in weighted form**: for a bounded
+box-supported `G` living in the cube columns `ν_j, ν_j + 1` along `e_j`, with `H = (I - P_R) G`,
+`∫ (1 + ℓ²) |H|² ≤ 10 ‖H‖₂² + 5 (B^{tail}_2 (R N^{d_j})^{-2})² ‖G‖₂²`, `ℓ` the cube distance. -/
+theorem weighted_tail {N R C B : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3) (ν : Fin 3 → ℤ)
+    {G : E3 → ℂ} (hGm : Measurable G) (hGb : ∀ y, ‖G y‖ ≤ B)
+    (hGs : ∀ y, y ∉ petBox C N → G y = 0)
+    (hsupp : ∀ y, G y ≠ 0 → boxIdx N y j = ν j ∨ boxIdx N y j = ν j + 1) :
+    Integrable (fun y => (1 + cubeDist N j ν y ^ 2) * ‖G y - P R j G y‖ ^ 2) ∧
+    ∫ y, (1 + cubeDist N j ν y ^ 2) * ‖G y - P R j G y‖ ^ 2
+      ≤ 10 * (∫ y, ‖G y - P R j G y‖ ^ 2)
+        + 5 * (etaKerMom 2 / (R * N ^ expo j) ^ 2) ^ 2 * ∫ y, ‖G y‖ ^ 2 := by
+  set a := N ^ expo j with hadef
+  have ha : 0 < a := pow_pos hN _
+  have hG2 := memLp_of_box hGm hGb hGs 2
+  have hH2 : MemLp (fun y => G y - P R j G y) 2 volume := hG2.sub (memLp_two_P hR j hGm hG2)
+  have hHm : Measurable fun y => G y - P R j G y := hGm.sub (measurable_P j hGm)
+  set F : E3 → ℝ := fun y => ∫ u, tailKer R a u * ‖G (y - u • basisVec j)‖ with hFdef
+  -- integrability in `u`
+  have hGu : ∀ y, Measurable fun u : ℝ => G (y - u • basisVec j) := fun y =>
+    hGm.comp (measurable_const.sub (measurable_id.smul_const _))
+  have hKi : ∀ y, Integrable fun u => ‖projKernel R u‖ * ‖G (y - u • basisVec j)‖ := fun y =>
+    (projKernel_integrable hR).norm.mul_bdd (c := B) (hGu y).norm.aestronglyMeasurable
+      (Eventually.of_forall fun u => by rw [norm_norm]; exact hGb _)
+  have hTi : ∀ y, Integrable fun u => tailKer R a u * ‖G (y - u • basisVec j)‖ := fun y =>
+    (integrable_tailKer hR ha).mul_bdd (c := B) (hGu y).norm.aestronglyMeasurable
+      (Eventually.of_forall fun u => by rw [norm_norm]; exact hGb _)
+  have hF0 : ∀ y, 0 ≤ F y := fun y =>
+    integral_nonneg fun u => mul_nonneg (tailKer_nonneg ha u) (norm_nonneg _)
+  -- the pointwise bound
+  have hpt : ∀ y, (1 + cubeDist N j ν y ^ 2) * ‖G y - P R j G y‖ ^ 2
+      ≤ 10 * ‖G y - P R j G y‖ ^ 2 + 5 * F y ^ 2 := by
+    intro y
+    by_cases hℓ : |cubeDist N j ν y| ≤ 3
+    · have : cubeDist N j ν y ^ 2 ≤ 9 := by
+        have := sq_abs (cubeDist N j ν y); nlinarith [abs_nonneg (cubeDist N j ν y)]
+      have h5 : 0 ≤ 5 * F y ^ 2 := by positivity
+      nlinarith [sq_nonneg ‖G y - P R j G y‖]
+    push Not at hℓ
+    have hℓ4 : 4 ≤ |cubeDist N j ν y| := by
+      have h : (3 : ℝ) < |cubeDist N j ν y| := hℓ
+      simp only [cubeDist] at h ⊢
+      have h' : (3 : ℤ) < |boxIdx N y j - ν j| := by exact_mod_cast h
+      have : (4 : ℤ) ≤ |boxIdx N y j - ν j| := by omega
+      exact_mod_cast this
+    have hGy : G y = 0 := by
+      by_contra h
+      rcases hsupp y h with e | e
+      · simp [cubeDist, e] at hℓ4; norm_num at hℓ4
+      · simp [cubeDist, e] at hℓ4
+    rw [hGy, zero_sub, norm_neg]
+    have hPy : ‖P R j G y‖ ≤ 2 / |cubeDist N j ν y| * F y := by
+      rw [P]
+      refine (norm_integral_le_integral_norm _).trans ?_
+      rw [hFdef, ← integral_const_mul]
+      refine integral_mono (by simpa [norm_mul] using hKi y) ((hTi y).const_mul _) fun u => ?_
+      simp only [norm_mul]
+      by_cases hGu0 : G (y - u • basisVec j) = 0
+      · rw [hGu0]; simp
+      · obtain ⟨hua, h1⟩ := far_u_bound hN j ν hℓ4 (hsupp _ hGu0)
+        rw [← hadef] at hua h1
+        simp only [tailKer, if_pos hua]
+        have := mul_le_mul_of_nonneg_right h1 (mul_nonneg (norm_nonneg (projKernel R u))
+          (norm_nonneg (G (y - u • basisVec j))))
+        calc ‖projKernel R u‖ * ‖G (y - u • basisVec j)‖
+            ≤ (2 / |cubeDist N j ν y| * (|u| / a)) * (‖projKernel R u‖
+              * ‖G (y - u • basisVec j)‖) := by linarith
+          _ = _ := by ring
+    have hℓ0 : 0 < |cubeDist N j ν y| := by linarith
+    have hsq : ‖P R j G y‖ ^ 2 ≤ (2 / |cubeDist N j ν y| * F y) ^ 2 :=
+      pow_le_pow_left₀ (norm_nonneg _) hPy 2
+    have hw : (1 + cubeDist N j ν y ^ 2) * (2 / |cubeDist N j ν y|) ^ 2 ≤ 5 := by
+      rw [div_pow, ← sq_abs (cubeDist N j ν y)]
+      have hsq16 : 16 ≤ |cubeDist N j ν y| ^ 2 := by nlinarith
+      rw [mul_div_assoc', div_le_iff₀ (by positivity)]
+      nlinarith
+    calc (1 + cubeDist N j ν y ^ 2) * ‖P R j G y‖ ^ 2
+        ≤ (1 + cubeDist N j ν y ^ 2) * (2 / |cubeDist N j ν y| * F y) ^ 2 :=
+          mul_le_mul_of_nonneg_left hsq (by positivity)
+      _ = ((1 + cubeDist N j ν y ^ 2) * (2 / |cubeDist N j ν y|) ^ 2) * F y ^ 2 := by ring
+      _ ≤ 5 * F y ^ 2 := mul_le_mul_of_nonneg_right hw (sq_nonneg _)
+      _ ≤ 10 * ‖P R j G y‖ ^ 2 + 5 * F y ^ 2 := by nlinarith [sq_nonneg ‖P R j G y‖]
+  -- `F ∈ L²` by Young's inequality
+  set Fc : E3 → ℂ := fun y =>
+    ∫ u, ((tailKer R a u : ℝ) : ℂ) * ((‖G (y - u • basisVec j)‖ : ℝ) : ℂ) with hFcdef
+  have hFcF : ∀ y, Fc y = (F y : ℂ) := fun y => by
+    rw [hFcdef, hFdef]; simp only
+    rw [← integral_complex_ofReal]; push_cast; rfl
+  have hGn : Measurable fun x => ((‖G x‖ : ℝ) : ℂ) := Complex.measurable_ofReal.comp hGm.norm
+  have hY := eLpNorm_integral_smul_translate_le (μ := (volume : Measure E3)) (p := 2)
+    (by norm_num) (by simp) (Complex.measurable_ofReal.comp (measurable_tailKer R a)) hGn
+    (basisVec j)
+  have hK1 : eLpNorm (fun u => ((tailKer R a u : ℝ) : ℂ)) 1 volume
+      ≤ ENNReal.ofReal (etaKerMom 2 / (R * a) ^ 2) := by
+    rw [eLpNorm_one_eq_lintegral_enorm]
+    have e : ∫⁻ u, ‖((tailKer R a u : ℝ) : ℂ)‖ₑ = ENNReal.ofReal (∫ u, tailKer R a u) := by
+      rw [ofReal_integral_eq_lintegral_ofReal (integrable_tailKer hR ha)
+        (Eventually.of_forall fun u => tailKer_nonneg ha u)]
+      refine lintegral_congr fun u => ?_
+      rw [← ofReal_norm, Complex.norm_real, Real.norm_of_nonneg (tailKer_nonneg ha u)]
+    rw [e]
+    exact ENNReal.ofReal_le_ofReal (integral_tailKer_le hR ha)
+  have hGn2 : eLpNorm (fun x => ((‖G x‖ : ℝ) : ℂ)) 2 volume = eLpNorm G 2 volume :=
+    eLpNorm_congr_norm_ae (Eventually.of_forall fun x => by simp)
+  rw [hGn2] at hY
+  have hY2 : eLpNorm Fc 2 volume
+      ≤ ENNReal.ofReal (etaKerMom 2 / (R * a) ^ 2) * eLpNorm G 2 volume :=
+    hY.trans (mul_le_mul_of_nonneg_right hK1 bot_le)
+  have hFcm : Measurable Fc := by
+    have hj : Measurable fun q : E3 × ℝ => ((tailKer R a q.2 : ℝ) : ℂ)
+        * ((‖G (q.1 - q.2 • basisVec j)‖ : ℝ) : ℂ) :=
+      (Complex.measurable_ofReal.comp ((measurable_tailKer R a).comp measurable_snd)).mul
+        (Complex.measurable_ofReal.comp (hGm.comp (measurable_fst.sub
+          (measurable_snd.smul_const _))).norm)
+    exact (hj.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable
+  have hFc2 : MemLp Fc 2 volume :=
+    ⟨hFcm.aestronglyMeasurable, hY2.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
+      hG2.eLpNorm_lt_top)⟩
+  have hFsq := integral_sq_le_of_eLpNorm_le hFc2 hG2
+    (div_nonneg (etaKerMom_nonneg 2) (by positivity)) hY2
+  have hFF : ∫ y, ‖Fc y‖ ^ 2 = ∫ y, F y ^ 2 := by
+    refine integral_congr_ae (Eventually.of_forall fun y => ?_)
+    simp only
+    rw [hFcF, Complex.norm_real, Real.norm_of_nonneg (hF0 y)]
+  rw [hFF] at hFsq
+  -- integrate
+  have hHsq : Integrable fun y => ‖G y - P R j G y‖ ^ 2 := hH2.integrable_norm_pow (by norm_num)
+  have hFsqi : Integrable fun y => F y ^ 2 := by
+    have := hFc2.integrable_norm_pow (by norm_num : (2 : ℕ) ≠ 0)
+    refine this.congr (Eventually.of_forall fun y => ?_)
+    simp only
+    rw [hFcF, Complex.norm_real, Real.norm_of_nonneg (hF0 y)]
+  have hRHS : Integrable fun y => 10 * ‖G y - P R j G y‖ ^ 2 + 5 * F y ^ 2 :=
+    (hHsq.const_mul 10).add (hFsqi.const_mul 5)
+  have hLHSm : Measurable fun y => (1 + cubeDist N j ν y ^ 2) * ‖G y - P R j G y‖ ^ 2 :=
+    (measurable_const.add ((measurable_cubeDist N j ν).pow_const 2)).mul (hHm.norm.pow_const 2)
+  have hLHS : Integrable fun y => (1 + cubeDist N j ν y ^ 2) * ‖G y - P R j G y‖ ^ 2 :=
+    hRHS.mono' hLHSm.aestronglyMeasurable (Eventually.of_forall fun y => by
+      rw [Real.norm_of_nonneg (by positivity)]; exact hpt y)
+  refine ⟨hLHS, (integral_mono hLHS hRHS hpt).trans ?_⟩
+  rw [integral_add (hHsq.const_mul 10) (hFsqi.const_mul 5), integral_const_mul,
+    integral_const_mul]
+  have h5 : 5 * ∫ y, F y ^ 2 ≤ 5 * ((etaKerMom 2 / (R * a) ^ 2) ^ 2 * ∫ y, ‖G y‖ ^ 2) :=
+    mul_le_mul_of_nonneg_left hFsq (by norm_num)
+  linarith
+
+end
+
+/-! ### `new:global-decaying-point`: weights, Cauchy-Schwarz and discrete Hoelder -/
+
+section
+open Filter Topology MeasureTheory
+
+theorem inv_one_add_sq_le (n : ℕ) :
+    (1 + (n : ℝ) ^ 2)⁻¹ ≤ 3 * (1 / ((n : ℝ) + 1) - 1 / ((n : ℝ) + 2)) := by
+  have h : (1 : ℝ) / ((n : ℝ) + 1) - 1 / ((n : ℝ) + 2) = 1 / (((n : ℝ) + 1) * ((n : ℝ) + 2)) := by
+    field_simp; ring
+  rw [h, ← one_div, mul_one_div, div_le_div_iff₀ (by positivity) (by positivity)]
+  have : (0 : ℝ) ≤ (2 * n - 1) * (n - 1) := by
+    rcases Nat.eq_zero_or_pos n with h0 | h0
+    · subst h0; norm_num
+    · have : (1 : ℝ) ≤ n := by exact_mod_cast h0
+      nlinarith
+  nlinarith
+
+theorem sum_range_inv_one_add_sq_le (L : ℕ) :
+    ∑ n ∈ Finset.range L, (1 + (n : ℝ) ^ 2)⁻¹ ≤ 3 := by
+  have htel : ∑ n ∈ Finset.range L, 3 * (1 / ((n : ℝ) + 1) - 1 / (n + 2)) = 3 * (1 - 1 / (L + 1)) := by
+    induction L with
+    | zero => simp
+    | succ L ih =>
+      rw [Finset.sum_range_succ, ih]; push_cast; field_simp; ring
+  calc ∑ n ∈ Finset.range L, (1 + (n : ℝ) ^ 2)⁻¹
+      ≤ ∑ n ∈ Finset.range L, 3 * (1 / ((n : ℝ) + 1) - 1 / (n + 2)) :=
+        Finset.sum_le_sum fun n _ => inv_one_add_sq_le n
+    _ = 3 * (1 - 1 / (L + 1)) := htel
+    _ ≤ 3 := by
+        have : 0 ≤ 1 / ((L : ℝ) + 1) := by positivity
+        linarith
+
+/-- **The weights are summable uniformly**: for a finite set of integers,
+`∑_{m ∈ F} 1/(1 + (k - m)²) ≤ 6`. -/
+theorem sum_inv_one_add_sq_int_le (F : Finset ℤ) (k : ℤ) :
+    ∑ m ∈ F, (1 + ((k - m : ℤ) : ℝ) ^ 2)⁻¹ ≤ 6 := by
+  set L := (F.image fun m => (|k - m|).toNat).sup id + 1 with hL
+  have hmem : ∀ m ∈ F, (|k - m|).toNat < L := fun m hm => by
+    have : (|k - m|).toNat ≤ (F.image fun m => (|k - m|).toNat).sup id :=
+      Finset.le_sup (f := id) (Finset.mem_image_of_mem _ hm)
+    omega
+  have hsplit : ∑ m ∈ F, (1 + ((k - m : ℤ) : ℝ) ^ 2)⁻¹
+      = ∑ m ∈ F.filter (fun m => m ≤ k), (1 + ((k - m : ℤ) : ℝ) ^ 2)⁻¹
+        + ∑ m ∈ F.filter (fun m => ¬ m ≤ k), (1 + ((k - m : ℤ) : ℝ) ^ 2)⁻¹ :=
+    (Finset.sum_filter_add_sum_filter_not _ _ _).symm
+  have hpart : ∀ (P : ℤ → Prop) [DecidablePred P], (∀ m, P m → ∀ m', P m' →
+      (|k - m|).toNat = (|k - m'|).toNat → m = m') →
+      ∑ m ∈ F.filter P, (1 + ((k - m : ℤ) : ℝ) ^ 2)⁻¹ ≤ 3 := by
+    intro P _ hinj
+    have e : ∀ m, (1 + ((k - m : ℤ) : ℝ) ^ 2)⁻¹ = (1 + (((|k - m|).toNat : ℕ) : ℝ) ^ 2)⁻¹ := by
+      intro m
+      congr 2
+      have h1 : (((|k - m|).toNat : ℕ) : ℤ) = |k - m| := Int.toNat_of_nonneg (abs_nonneg _)
+      have h2 : (((|k - m|).toNat : ℕ) : ℝ) = ((|k - m| : ℤ) : ℝ) := by exact_mod_cast h1
+      rw [h2, Int.cast_abs, sq_abs]
+    simp_rw [e]
+    rw [← Finset.sum_image (f := fun n : ℕ => (1 + (n : ℝ) ^ 2)⁻¹)
+      (fun m hm m' hm' h => hinj m (Finset.mem_filter.mp hm).2 m' (Finset.mem_filter.mp hm').2 h)]
+    refine le_trans (Finset.sum_le_sum_of_subset_of_nonneg ?_ fun _ _ _ => by positivity)
+      (sum_range_inv_one_add_sq_le L)
+    intro n hn
+    obtain ⟨m, hm, rfl⟩ := Finset.mem_image.mp hn
+    exact Finset.mem_range.mpr (hmem m (Finset.mem_filter.mp hm).1)
+  rw [hsplit]
+  have h1 := hpart (fun m => m ≤ k) (fun m hm m' hm' h => by
+    have a1 : |k - m| = k - m := abs_of_nonneg (by omega)
+    have a2 : |k - m'| = k - m' := abs_of_nonneg (by omega)
+    rw [a1, a2] at h; omega)
+  have h2 := hpart (fun m => ¬ m ≤ k) (fun m hm m' hm' h => by
+    have a1 : |k - m| = m - k := by rw [abs_of_neg (by omega)]; ring
+    have a2 : |k - m'| = m' - k := by rw [abs_of_neg (by omega)]; ring
+    rw [a1, a2] at h; omega)
+  linarith
+
+/-- **Weighted Cauchy-Schwarz** for a finite sum whose nonzero terms lie in `T`. -/
+theorem sq_norm_sum_le_weighted {ι : Type*} (S T : Finset ι) (hTS : T ⊆ S) (a : ι → ℂ)
+    (w : ι → ℝ) (hw : ∀ i, 0 < w i) (hT : ∀ i ∈ S, a i ≠ 0 → i ∈ T) :
+    ‖∑ i ∈ S, a i‖ ^ 2 ≤ (∑ i ∈ T, (w i)⁻¹) * ∑ i ∈ S, w i * ‖a i‖ ^ 2 := by
+  have hST : ∑ i ∈ S, a i = ∑ i ∈ T, a i := by
+    refine (Finset.sum_subset hTS fun i hi hiT => ?_).symm
+    by_contra h; exact hiT (hT i hi h)
+  rw [hST]
+  have h1 : ‖∑ i ∈ T, a i‖ ≤ ∑ i ∈ T, Real.sqrt (w i)⁻¹ * (Real.sqrt (w i) * ‖a i‖) := by
+    refine (norm_sum_le _ _).trans (le_of_eq (Finset.sum_congr rfl fun i _ => ?_))
+    rw [← mul_assoc, ← Real.sqrt_mul (inv_nonneg.mpr (hw i).le), inv_mul_cancel₀ (hw i).ne',
+      Real.sqrt_one, one_mul]
+  have h2 := Finset.sum_mul_sq_le_sq_mul_sq T (fun i => Real.sqrt (w i)⁻¹)
+    (fun i => Real.sqrt (w i) * ‖a i‖)
+  have h3 : ∑ i ∈ T, (Real.sqrt (w i) * ‖a i‖) ^ 2 ≤ ∑ i ∈ S, w i * ‖a i‖ ^ 2 := by
+    refine le_trans (le_of_eq (Finset.sum_congr rfl fun i _ => ?_))
+      (Finset.sum_le_sum_of_subset_of_nonneg hTS fun i _ _ => by
+        have := hw i; positivity)
+    rw [mul_pow, Real.sq_sqrt (hw i).le]
+  have h4 : ∑ i ∈ T, Real.sqrt (w i)⁻¹ ^ 2 = ∑ i ∈ T, (w i)⁻¹ :=
+    Finset.sum_congr rfl fun i _ => Real.sq_sqrt (inv_nonneg.mpr (hw i).le)
+  rw [h4] at h2
+  calc ‖∑ i ∈ T, a i‖ ^ 2
+      ≤ (∑ i ∈ T, Real.sqrt (w i)⁻¹ * (Real.sqrt (w i) * ‖a i‖)) ^ 2 :=
+        pow_le_pow_left₀ (norm_nonneg _) h1 2
+    _ ≤ _ := h2
+    _ ≤ _ := mul_le_mul_of_nonneg_left h3 (Finset.sum_nonneg fun i _ => by
+        have := hw i; positivity)
+
+/-- **Discrete Hoelder for three factors**: `∑ x y z ≤ ‖x‖_p ‖y‖_q ‖z‖_r` for nonnegative
+sequences and `1/p + 1/q + 1/r = 1`, by the weighted arithmetic-geometric mean inequality. -/
+theorem sum_mul3_le_holder {ι : Type*} (S : Finset ι) {x y z : ι → ℝ} (hx : ∀ i, 0 ≤ x i)
+    (hy : ∀ i, 0 ≤ y i) (hz : ∀ i, 0 ≤ z i) {p q r : ℝ} (hp : 0 < p) (hq : 0 < q) (hr : 0 < r)
+    (hpqr : 1 / p + 1 / q + 1 / r = 1) :
+    ∑ i ∈ S, x i * y i * z i
+      ≤ (∑ i ∈ S, x i ^ p) ^ (1 / p) * (∑ i ∈ S, y i ^ q) ^ (1 / q)
+        * (∑ i ∈ S, z i ^ r) ^ (1 / r) := by
+  set X := ∑ i ∈ S, x i ^ p with hX
+  set Y := ∑ i ∈ S, y i ^ q with hY
+  set Z := ∑ i ∈ S, z i ^ r with hZ
+  have hX0 : 0 ≤ X := Finset.sum_nonneg fun i _ => Real.rpow_nonneg (hx i) _
+  have hY0 : 0 ≤ Y := Finset.sum_nonneg fun i _ => Real.rpow_nonneg (hy i) _
+  have hZ0 : 0 ≤ Z := Finset.sum_nonneg fun i _ => Real.rpow_nonneg (hz i) _
+  -- a vanishing norm forces a vanishing sequence
+  have hzero : ∀ {f : ι → ℝ} {s : ℝ}, 0 < s → (∀ i, 0 ≤ f i) → ∑ i ∈ S, f i ^ s = 0 →
+      ∀ i ∈ S, f i = 0 := fun {f s} hs hf h i hi => by
+    have := (Finset.sum_eq_zero_iff_of_nonneg fun i _ => Real.rpow_nonneg (hf i) s).mp h i hi
+    exact (Real.rpow_eq_zero (hf i) hs.ne').mp this
+  by_cases h0 : X = 0 ∨ Y = 0 ∨ Z = 0
+  · have hlhs : ∑ i ∈ S, x i * y i * z i = 0 := by
+      refine Finset.sum_eq_zero fun i hi => ?_
+      rcases h0 with h | h | h
+      · rw [hzero hp hx h i hi]; ring
+      · rw [hzero hq hy h i hi]; ring
+      · rw [hzero hr hz h i hi]; ring
+    rw [hlhs]; positivity
+  push Not at h0
+  obtain ⟨hXn, hYn, hZn⟩ := h0
+  have hXp : 0 < X := lt_of_le_of_ne hX0 (Ne.symm hXn)
+  have hYp : 0 < Y := lt_of_le_of_ne hY0 (Ne.symm hYn)
+  have hZp : 0 < Z := lt_of_le_of_ne hZ0 (Ne.symm hZn)
+  set A := X ^ (1 / p) with hA
+  set B := Y ^ (1 / q) with hB
+  set C := Z ^ (1 / r) with hC
+  have hA0 : 0 < A := Real.rpow_pos_of_pos hXp _
+  have hB0 : 0 < B := Real.rpow_pos_of_pos hYp _
+  have hC0 : 0 < C := Real.rpow_pos_of_pos hZp _
+  have hAp : A ^ p = X := by
+    rw [hA, ← Real.rpow_mul hX0, one_div, inv_mul_cancel₀ hp.ne', Real.rpow_one]
+  have hBq : B ^ q = Y := by
+    rw [hB, ← Real.rpow_mul hY0, one_div, inv_mul_cancel₀ hq.ne', Real.rpow_one]
+  have hCr : C ^ r = Z := by
+    rw [hC, ← Real.rpow_mul hZ0, one_div, inv_mul_cancel₀ hr.ne', Real.rpow_one]
+  -- the pointwise weighted AM-GM
+  have hpt : ∀ i, x i / A * (y i / B) * (z i / C)
+      ≤ 1 / p * (x i / A) ^ p + 1 / q * (y i / B) ^ q + 1 / r * (z i / C) ^ r := by
+    intro i
+    have ha := div_nonneg (hx i) hA0.le
+    have hb := div_nonneg (hy i) hB0.le
+    have hc := div_nonneg (hz i) hC0.le
+    have h := Real.geom_mean_le_arith_mean3_weighted (w₁ := 1 / p) (w₂ := 1 / q) (w₃ := 1 / r)
+      (p₁ := (x i / A) ^ p) (p₂ := (y i / B) ^ q) (p₃ := (z i / C) ^ r) (by positivity)
+      (by positivity) (by positivity) (Real.rpow_nonneg ha _) (Real.rpow_nonneg hb _)
+      (Real.rpow_nonneg hc _) hpqr
+    rwa [← Real.rpow_mul ha, ← Real.rpow_mul hb, ← Real.rpow_mul hc, mul_one_div_cancel hp.ne',
+      mul_one_div_cancel hq.ne', mul_one_div_cancel hr.ne', Real.rpow_one, Real.rpow_one,
+      Real.rpow_one] at h
+  have hsum : ∀ {f : ι → ℝ} {s D : ℝ}, (∀ i, 0 ≤ f i) → 0 < D → D ^ s = ∑ i ∈ S, f i ^ s →
+      ∑ i ∈ S, (f i / D) ^ s = 1 := fun {f s D} hf hD hDs => by
+    simp_rw [Real.div_rpow (hf _) hD.le]
+    rw [← Finset.sum_div, ← hDs, div_self (Real.rpow_pos_of_pos hD s).ne']
+  have htot : ∑ i ∈ S, x i / A * (y i / B) * (z i / C) ≤ 1 := by
+    calc ∑ i ∈ S, x i / A * (y i / B) * (z i / C)
+        ≤ ∑ i ∈ S, (1 / p * (x i / A) ^ p + 1 / q * (y i / B) ^ q + 1 / r * (z i / C) ^ r) :=
+          Finset.sum_le_sum fun i _ => hpt i
+      _ = 1 / p * ∑ i ∈ S, (x i / A) ^ p + 1 / q * ∑ i ∈ S, (y i / B) ^ q
+          + 1 / r * ∑ i ∈ S, (z i / C) ^ r := by
+          rw [Finset.sum_add_distrib, Finset.sum_add_distrib, Finset.mul_sum, Finset.mul_sum,
+            Finset.mul_sum]
+      _ = 1 := by
+          rw [hsum (f := x) hx hA0 (by rw [hAp]), hsum (f := y) hy hB0 (by rw [hBq]),
+            hsum (f := z) hz hC0 (by rw [hCr])]
+          linarith
+  have e : ∑ i ∈ S, x i * y i * z i = A * B * C * ∑ i ∈ S, x i / A * (y i / B) * (z i / C) := by
+    rw [Finset.mul_sum]
+    refine Finset.sum_congr rfl fun i _ => ?_
+    field_simp
+  rw [e]
+  calc A * B * C * ∑ i ∈ S, x i / A * (y i / B) * (z i / C) ≤ A * B * C * 1 :=
+        mul_le_mul_of_nonneg_left htot (by positivity)
+    _ = A * B * C := mul_one _
+
+/-- **The cubes partition the space**: `∑_{ν ∈ S} ∫ |1_{Q_{ν+c}} g|^u ≤ ∫ |g|^u`. -/
+theorem sum_integral_boxRes_le (N : ℝ) (S : Finset (Fin 3 → ℤ)) (c : Fin 3 → ℤ) {g : E3 → ℂ}
+    (hg : Measurable g) {u : ℝ} (hu : 0 < u) (hgi : Integrable fun x => ‖g x‖ ^ u) :
+    ∑ ν ∈ S, ∫ x, ‖boxRes N (ν + c) g x‖ ^ u ≤ ∫ x, ‖g x‖ ^ u := by
+  have hint : ∀ ν, Integrable fun x => ‖boxRes N (ν + c) g x‖ ^ u := fun ν =>
+    hgi.mono' ((measurable_boxRes N _ hg).norm.pow_const u).aestronglyMeasurable
+      (Eventually.of_forall fun x => by
+        rw [Real.norm_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
+        exact Real.rpow_le_rpow (norm_nonneg _) (norm_boxRes_le N _ g x) hu.le)
+  rw [← integral_finsetSum _ fun ν _ => hint ν]
+  refine integral_mono (integrable_finsetSum _ fun ν _ => hint ν) hgi fun x => ?_
+  have e : ∀ ν, ‖boxRes N (ν + c) g x‖ ^ u = if ν = boxIdx N x - c then ‖g x‖ ^ u else 0 := by
+    intro ν
+    unfold boxRes
+    by_cases h : boxIdx N x = ν + c
+    · rw [if_pos h, if_pos (by rw [h]; abel)]
+    · rw [if_neg h, if_neg (fun h' => h (by rw [h']; abel)), norm_zero,
+        Real.zero_rpow hu.ne']
+  simp only [e, Finset.sum_ite_eq']
+  split_ifs
+  · exact le_rfl
+  · exact Real.rpow_nonneg (norm_nonneg _) _
+
+end
+
+/-! ### `new:global-decaying-point`: supports of the pieces -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The adjoint of a piece lives in the cube column of `ν` along `e_j`, two cubes long. -/
+theorem adjT_piece_support {N : ℝ} (hN : 0 < N) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2)
+    (g : Fin 3 → E3 → ℂ) {y : E3} (hy : adjT N j (piece N j ν ε ε' g) y ≠ 0) :
+    (∀ i, i ≠ j → boxIdx N y i = ν i) ∧ (boxIdx N y j = ν j ∨ boxIdx N y j = ν j + 1) := by
+  have : ∃ t ∈ Set.Icc (0 : ℝ) N, boxIdx N (y + adjVec j 0 t) = ν := by
+    by_contra hcon
+    push Not at hcon
+    apply hy
+    rw [adjT]
+    rw [intervalIntegral.integral_congr (g := fun _ => (0 : ℂ)) fun t ht => by
+      rw [Set.uIcc_of_le hN.le] at ht
+      refine Finset.prod_eq_zero (Finset.mem_univ 0) ?_
+      simp [piece, boxRes, hcon t ht]]
+    simp
+  obtain ⟨t, ht, hν⟩ := this
+  have hs0 : 0 ≤ t ^ expo j := pow_nonneg ht.1 _
+  have hs1 : t ^ expo j ≤ N ^ expo j := pow_le_pow_left₀ ht.1 ht.2 _
+  have hy' : y = (y + adjVec j 0 t) + t ^ expo j • basisVec j := by
+    simp [adjVec, curve]
+  have hb := boxIdx_add_smul hN (y + adjVec j 0 t) j hs0 hs1
+  rw [← hy', hν] at hb
+  refine ⟨fun i hi => ?_, ?_⟩
+  · rcases hb with h | h
+    · rw [h]
+    · rw [h]; simp [Pi.single_apply, hi]
+  · rcases hb with h | h
+    · left; rw [h]
+    · right; rw [h]; simp
+
+/-- `P_R^{(j)}` preserves the cube row in the directions other than `e_j`. -/
+theorem P_passive {R N : ℝ} (j : Fin 3) {F : E3 → ℂ} {ν : Fin 3 → ℤ}
+    (hF : ∀ y, F y ≠ 0 → ∀ i, i ≠ j → boxIdx N y i = ν i) {y : E3}
+    (hy : P R j F y ≠ 0) : ∀ i, i ≠ j → boxIdx N y i = ν i := by
+  intro i hi
+  by_contra hne
+  apply hy
+  rw [P]
+  have h0 : ∀ u : ℝ, projKernel R u * F (y - u • basisVec j) = 0 := fun u => by
+    by_cases hFu : F (y - u • basisVec j) = 0
+    · rw [hFu, mul_zero]
+    · have := hF _ hFu i hi
+      simp [boxIdx, basisVec_apply_ne hi] at this
+      exact absurd this hne
+  simp [h0]
+
+theorem hpAdj_piece_passive {N R : ℝ} (hN : 0 < N) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2)
+    (g : Fin 3 → E3 → ℂ) {y : E3} (hy : hpAdj N R j (piece N j ν ε ε' g) y ≠ 0) :
+    ∀ i, i ≠ j → boxIdx N y i = ν i := by
+  have hG : ∀ y, adjT N j (piece N j ν ε ε' g) y ≠ 0 → ∀ i, i ≠ j → boxIdx N y i = ν i :=
+    fun y h => (adjT_piece_support hN j ν ε ε' g h).1
+  by_cases h1 : adjT N j (piece N j ν ε ε' g) y = 0
+  · have h2 : P R j (adjT N j (piece N j ν ε ε' g)) y ≠ 0 := by
+      intro h2; apply hy; simp [hpAdj, h1, h2]
+    exact P_passive j hG h2
+  · exact hG y h1
+
+end
+
+/-! ### `new:global-decaying-point`: one offset -/
+
+section
+open Filter Topology MeasureTheory
+
+theorem sum_inv_weight_le {N : ℝ} (j : Fin 3) (y : E3) (S : Finset (Fin 3 → ℤ)) :
+    ∑ ν ∈ S.filter (fun ν => ∀ i, i ≠ j → ν i = boxIdx N y i), (1 + cubeDist N j ν y ^ 2)⁻¹
+      ≤ 6 := by
+  set T := S.filter (fun ν => ∀ i, i ≠ j → ν i = boxIdx N y i) with hTdef
+  have hinj : Set.InjOn (fun ν : Fin 3 → ℤ => ν j) (T : Set (Fin 3 → ℤ)) := by
+    intro ν hν ν' hν' h
+    simp only [hTdef, Finset.coe_filter, Set.mem_setOf_eq] at hν hν'
+    funext i
+    by_cases hi : i = j
+    · subst hi; exact h
+    · rw [hν.2 i hi, hν'.2 i hi]
+  have e : ∑ ν ∈ T, (1 + cubeDist N j ν y ^ 2)⁻¹
+      = ∑ m ∈ T.image (fun ν => ν j), (1 + ((boxIdx N y j - m : ℤ) : ℝ) ^ 2)⁻¹ := by
+    rw [Finset.sum_image hinj]
+    rfl
+  rw [e]
+  exact sum_inv_one_add_sq_int_le _ _
+
+set_option maxHeartbeats 1000000 in
+-- The pointwise Cauchy-Schwarz and the integration share one context.
+/-- **`new:global-decaying-point`, one offset**: the pieces `H_ν` with passive-row supports and
+the weighted tail bounds satisfy `‖∑_ν H_ν‖₂² ≤ 6 (10 c² + 5 T²) ∑_ν Π_ν²`. -/
+theorem offset_bound {N : ℝ} (j : Fin 3) (S : Finset (Fin 3 → ℤ))
+    (H G : (Fin 3 → ℤ) → E3 → ℂ) (Pi : (Fin 3 → ℤ) → ℝ) {c₀ T : ℝ}
+    (hH2 : ∀ ν, MemLp (H ν) 2 volume)
+    (hpass : ∀ ν y, H ν y ≠ 0 → ∀ i, i ≠ j → boxIdx N y i = ν i)
+    (hw : ∀ ν, Integrable (fun y => (1 + cubeDist N j ν y ^ 2) * ‖H ν y‖ ^ 2) ∧
+      ∫ y, (1 + cubeDist N j ν y ^ 2) * ‖H ν y‖ ^ 2
+        ≤ 10 * (∫ y, ‖H ν y‖ ^ 2) + 5 * T ^ 2 * ∫ y, ‖G ν y‖ ^ 2)
+    (hHb : ∀ ν, ∫ y, ‖H ν y‖ ^ 2 ≤ c₀ ^ 2 * Pi ν ^ 2)
+    (hGb : ∀ ν, ∫ y, ‖G ν y‖ ^ 2 ≤ Pi ν ^ 2) :
+    ∫ y, ‖∑ ν ∈ S, H ν y‖ ^ 2 ≤ 6 * (10 * c₀ ^ 2 + 5 * T ^ 2) * ∑ ν ∈ S, Pi ν ^ 2 := by
+  have hwpos : ∀ ν y, 0 < 1 + cubeDist N j ν y ^ 2 := fun ν y => by positivity
+  have hpt : ∀ y, ‖∑ ν ∈ S, H ν y‖ ^ 2
+      ≤ 6 * ∑ ν ∈ S, (1 + cubeDist N j ν y ^ 2) * ‖H ν y‖ ^ 2 := by
+    intro y
+    have h := sq_norm_sum_le_weighted S (S.filter (fun ν => ∀ i, i ≠ j → ν i = boxIdx N y i))
+      (Finset.filter_subset _ _) (fun ν => H ν y) (fun ν => 1 + cubeDist N j ν y ^ 2)
+      (fun ν => hwpos ν y) (fun ν hν hne => Finset.mem_filter.mpr
+        ⟨hν, fun i hi => (hpass ν y hne i hi).symm⟩)
+    refine h.trans (mul_le_mul_of_nonneg_right (sum_inv_weight_le j y S)
+      (Finset.sum_nonneg fun ν _ => by have := hwpos ν y; positivity))
+  have hsum2 : MemLp (fun y => ∑ ν ∈ S, H ν y) 2 volume := by
+    have := memLp_finsetSum' S fun ν _ => hH2 ν
+    convert this using 1
+    funext y; simp [Finset.sum_apply]
+  have hLi : Integrable fun y => ‖∑ ν ∈ S, H ν y‖ ^ 2 := hsum2.integrable_norm_pow (by norm_num)
+  have hRi : Integrable fun y => 6 * ∑ ν ∈ S, (1 + cubeDist N j ν y ^ 2) * ‖H ν y‖ ^ 2 :=
+    (integrable_finsetSum _ fun ν _ => (hw ν).1).const_mul 6
+  refine (integral_mono hLi hRi hpt).trans ?_
+  rw [integral_const_mul, integral_finsetSum _ fun ν _ => (hw ν).1, mul_assoc,
+    Finset.mul_sum S (fun ν => Pi ν ^ 2) (10 * c₀ ^ 2 + 5 * T ^ 2)]
+  gcongr with ν hν
+  have h1 := (hw ν).2
+  have h2 := hHb ν
+  have h3 := hGb ν
+  have hT2 : 0 ≤ 5 * T ^ 2 := by positivity
+  nlinarith [mul_le_mul_of_nonneg_left h3 hT2]
+
+end
+
+/-! ### `new:global-decaying-point`: norms, the crude bound and Hoelder over the cubes -/
+
+section
+open Filter Topology MeasureTheory
+
+theorem toReal_eLpNorm_rpow {f : E3 → ℂ} {u : ℝ} (hu : 0 < u)
+    (hf : MemLp f (ENNReal.ofReal u) volume) :
+    (eLpNorm f (ENNReal.ofReal u) volume).toReal ^ u = ∫ x, ‖f x‖ ^ u := by
+  rw [hf.eLpNorm_eq_integral_rpow_norm (by simpa using hu) ENNReal.ofReal_ne_top,
+    ENNReal.toReal_ofReal hu.le,
+    ENNReal.toReal_ofReal (Real.rpow_nonneg (integral_nonneg fun x => by positivity) _)]
+  exact Real.rpow_inv_rpow (integral_nonneg fun x => by positivity) hu.ne'
+
+theorem cdpExp_zero : cdpExp 0 = 61 / 10 := by simp [cdpExp]
+theorem cdpExp_one : cdpExp 1 = 122 / 21 := by simp [cdpExp]
+theorem cdpExp_two : cdpExp 2 = 61 / 10 := by simp [cdpExp]
+
+theorem cdpExp_pos (k : Fin 3) : 0 < cdpExp k := by
+  fin_cases k
+  · rw [show ((⟨0, by norm_num⟩ : Fin 3)) = 0 from rfl, cdpExp_zero]; norm_num
+  · rw [show ((⟨1, by norm_num⟩ : Fin 3)) = 1 from rfl, cdpExp_one]; norm_num
+  · rw [show ((⟨2, by norm_num⟩ : Fin 3)) = 2 from rfl, cdpExp_two]; norm_num
+
+theorem measurable_piece (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2)
+    {g : Fin 3 → E3 → ℂ} (hg : ∀ k, Measurable (g k)) (k : Fin 3) :
+    Measurable (piece N j ν ε ε' g k) := by
+  fin_cases k
+  · exact measurable_boxRes N _ (hg 0)
+  · exact measurable_boxRes N _ (hg 1)
+  · exact measurable_boxRes N _ (hg 2)
+
+/-- The exponents of the adjoint slots: `g_0` at slot `j`, the inputs `1, 2` at `j + 1, j + 2`. -/
+noncomputable def adjExp (j : Fin 3) (i : Fin 3) : ℝ≥0∞ :=
+  if i = j then ENNReal.ofReal (cdpExp 0) else if i = j + 1 then ENNReal.ofReal (cdpExp 1)
+    else ENNReal.ofReal (cdpExp 2)
+
+theorem sum_inv_adjExp (j : Fin 3) : ∑ i, (adjExp j i)⁻¹ = (2 : ℝ≥0∞)⁻¹ := by
+  have e : ∑ i, (adjExp j i)⁻¹ = (ENNReal.ofReal (cdpExp 0))⁻¹ + (ENNReal.ofReal (cdpExp 1))⁻¹
+      + (ENNReal.ofReal (cdpExp 2))⁻¹ := by
+    fin_cases j <;> simp [adjExp, Fin.sum_univ_three] <;> ring
+  have i0 : (ENNReal.ofReal (61 / 10 : ℝ))⁻¹ = ENNReal.ofReal (10 / 61) := by
+    rw [← ENNReal.ofReal_inv_of_pos (by norm_num)]; norm_num
+  have i1 : (ENNReal.ofReal (122 / 21 : ℝ))⁻¹ = ENNReal.ofReal (21 / 122) := by
+    rw [← ENNReal.ofReal_inv_of_pos (by norm_num)]; norm_num
+  have i2 : (2 : ℝ≥0∞)⁻¹ = ENNReal.ofReal (1 / 2) := by
+    rw [one_div, ENNReal.ofReal_inv_of_pos (by norm_num), ENNReal.ofReal_ofNat]
+  rw [e, cdpExp_zero, cdpExp_one, cdpExp_two, i0, i1, i2,
+    ← ENNReal.ofReal_add (by norm_num : (0 : ℝ) ≤ 10 / 61) (by norm_num : (0 : ℝ) ≤ 21 / 122),
+    ← ENNReal.ofReal_add (by norm_num : (0 : ℝ) ≤ 10 / 61 + 21 / 122)
+      (by norm_num : (0 : ℝ) ≤ 10 / 61)]
+  norm_num
+
+/-- **The crude bound for the adjoint of a finite-valued input triple**:
+`‖adjT(g)‖₂ ≤ ∏ ‖g_k‖_{u_k}` (`new:adjoint-basic` with `∑ 1/u_k = 1/2`). -/
+theorem eLpNorm_adjT_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, Measurable (g k)) :
+    eLpNorm (adjT N j g) 2 volume ≤ ∏ k, eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume := by
+  have h := eLpNorm_Astar_le hN j (hg 0) (measurable_adjIn j hg) (r := 2) (by norm_num)
+    (by simp) (sum_inv_adjExp j)
+  rw [Astar_adjIn] at h
+  refine h.trans (le_of_eq ?_)
+  have h12 : j + 1 ≠ j + 2 := by fin_cases j <;> decide
+  have h1 : j + 1 ≠ j := by fin_cases j <;> decide
+  have h2 : j + 2 ≠ j := by fin_cases j <;> decide
+  rw [univ_erase_eq, Finset.prod_pair h12, Fin.prod_univ_three]
+  have hA1 : adjIn j g (j + 1) = fun x => conj (g 1 x) := by simp [adjIn]
+  have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h12.symm]
+  rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq]
+  simp only [adjExp, if_true, if_neg h1, if_neg h2, if_neg h12.symm]
+  ring
+
+/-- The cube offsets of the three slots of a piece. -/
+def pieceOff (j : Fin 3) (ε ε' : Fin 2) : Fin 3 → Fin 3 → ℤ :=
+  ![0, offV (j + 1) ε, offV (j + 2) ε']
+
+theorem piece_eq_boxRes (N : ℝ) (j : Fin 3) (ν : Fin 3 → ℤ) (ε ε' : Fin 2) (g : Fin 3 → E3 → ℂ)
+    (k : Fin 3) : piece N j ν ε ε' g k = boxRes N (ν + pieceOff j ε ε' k) (g k) := by
+  fin_cases k <;> simp [piece, pieceOff]
+
+/-- **Discrete Hoelder over the cubes**: `∑_ν (∏_k ‖g_{k,ν}‖_{u_k})² ≤ (∏_k ‖g_k‖_{u_k})²`,
+since `∑_k 2/u_k = 1` and the cubes of each slot are disjoint. -/
+theorem holder_cubes (N : ℝ) (S : Finset (Fin 3 → ℤ)) (j : Fin 3) (ε ε' : Fin 2)
+    {g : Fin 3 → E3 → ℂ} (hg : ∀ k, Measurable (g k))
+    (hgp : ∀ k, MemLp (g k) (ENNReal.ofReal (cdpExp k)) volume) :
+    ∑ ν ∈ S, (∏ k, (eLpNorm (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume).toReal) ^ 2
+      ≤ (∏ k, (eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume).toReal) ^ 2 := by
+  set L : Fin 3 → (Fin 3 → ℤ) → ℝ := fun k ν =>
+    (eLpNorm (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume).toReal with hLdef
+  set Lg : Fin 3 → ℝ := fun k => (eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume).toReal
+    with hLgdef
+  have hL0 : ∀ k ν, 0 ≤ L k ν := fun k ν => ENNReal.toReal_nonneg
+  have hLg0 : ∀ k, 0 ≤ Lg k := fun k => ENNReal.toReal_nonneg
+  have hpp : ∀ k ν, MemLp (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume := by
+    intro k ν
+    rw [piece_eq_boxRes]
+    exact (hgp k).mono (measurable_boxRes N _ (hg k)).aestronglyMeasurable
+      (Eventually.of_forall fun x => norm_boxRes_le N _ _ x)
+  -- `∑_ν L_k(ν)^{u_k} ≤ Lg_k^{u_k}`
+  have hpart : ∀ k, ∑ ν ∈ S, L k ν ^ cdpExp k ≤ Lg k ^ cdpExp k := by
+    intro k
+    have hu := cdpExp_pos k
+    simp only [hLdef, hLgdef]
+    rw [toReal_eLpNorm_rpow hu (hgp k)]
+    simp_rw [toReal_eLpNorm_rpow hu (hpp k _), piece_eq_boxRes]
+    have hgi : Integrable fun x => ‖g k x‖ ^ cdpExp k := by
+      have := (hgp k).integrable_norm_rpow (by simpa using hu) ENNReal.ofReal_ne_top
+      simpa [ENNReal.toReal_ofReal hu.le] using this
+    exact sum_integral_boxRes_le N S (pieceOff j ε ε' k) (hg k) hu hgi
+  -- the exponents `p_k = u_k / 2`
+  have hp : ∀ k, 0 < cdpExp k / 2 := fun k => by have := cdpExp_pos k; positivity
+  have hsum : 1 / (cdpExp 0 / 2) + 1 / (cdpExp 1 / 2) + 1 / (cdpExp 2 / 2) = 1 := by
+    rw [cdpExp_zero, cdpExp_one, cdpExp_two]; norm_num
+  have hsq : ∀ k ν, (L k ν ^ 2) ^ (cdpExp k / 2) = L k ν ^ cdpExp k := fun k ν => by
+    rw [← Real.rpow_natCast, ← Real.rpow_mul (hL0 k ν)]; congr 1; push_cast; ring
+  have hroot : ∀ k, (∑ ν ∈ S, L k ν ^ cdpExp k) ^ (1 / (cdpExp k / 2)) ≤ Lg k ^ 2 := fun k => by
+    have hu := cdpExp_pos k
+    calc (∑ ν ∈ S, L k ν ^ cdpExp k) ^ (1 / (cdpExp k / 2))
+        ≤ (Lg k ^ cdpExp k) ^ (1 / (cdpExp k / 2)) :=
+          Real.rpow_le_rpow (Finset.sum_nonneg fun ν _ => Real.rpow_nonneg (hL0 k ν) _)
+            (hpart k) (by positivity)
+      _ = Lg k ^ 2 := by
+          rw [← Real.rpow_mul (hLg0 k), show cdpExp k * (1 / (cdpExp k / 2)) = 2 by
+            field_simp]
+          exact_mod_cast Real.rpow_natCast (Lg k) 2
+  have hH := sum_mul3_le_holder S (x := fun ν => L 0 ν ^ 2) (y := fun ν => L 1 ν ^ 2)
+    (z := fun ν => L 2 ν ^ 2) (fun ν => sq_nonneg _) (fun ν => sq_nonneg _) (fun ν => sq_nonneg _)
+    (hp 0) (hp 1) (hp 2) hsum
+  simp_rw [hsq] at hH
+  calc ∑ ν ∈ S, (∏ k, L k ν) ^ 2 = ∑ ν ∈ S, L 0 ν ^ 2 * L 1 ν ^ 2 * L 2 ν ^ 2 := by
+        refine Finset.sum_congr rfl fun ν _ => ?_
+        rw [Fin.prod_univ_three]; ring
+    _ ≤ _ := hH
+    _ ≤ Lg 0 ^ 2 * Lg 1 ^ 2 * Lg 2 ^ 2 := by
+        gcongr
+        exacts [hroot 0, hroot 1, hroot 2]
+    _ = (∏ k, Lg k) ^ 2 := by rw [Fin.prod_univ_three]; ring
+
+end
+
+/-! ### `new:global-decaying-point`: the theorem -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The finitely many cubes meeting `B_N(C)`. -/
+noncomputable def coverSet (C : ℝ) : Finset (Fin 3 → ℤ) :=
+  Fintype.piFinset fun _ => Finset.Icc (-(⌈C⌉ + 1)) (⌈C⌉ + 1)
+
+theorem boxIdx_mem_coverSet {N C : ℝ} (hN : 0 < N) {x : E3} (hx : x ∈ petBox C N) :
+    boxIdx N x ∈ coverSet C := by
+  rw [coverSet, Fintype.mem_piFinset]
+  intro i
+  have hNi : 0 < N ^ expo i := pow_pos hN _
+  have hi := hx i
+  have h1 : -C ≤ x i / N ^ expo i := by rw [le_div_iff₀ hNi]; linarith [hi.1]
+  have h2 : x i / N ^ expo i ≤ C := by rw [div_le_iff₀ hNi]; linarith [hi.2]
+  have hf1 := Int.floor_le (x i / N ^ expo i)
+  have hf2 := Int.lt_floor_add_one (x i / N ^ expo i)
+  have hc := Int.le_ceil C
+  rw [Finset.mem_Icc]
+  simp only [boxIdx]
+  constructor
+  · have : (-(⌈C⌉ + 1 : ℤ) : ℝ) < (⌊x i / N ^ expo i⌋ : ℝ) + 1 := by push_cast; linarith
+    have : -(⌈C⌉ + 1) < ⌊x i / N ^ expo i⌋ + 1 := by exact_mod_cast this
+    omega
+  · have : (⌊x i / N ^ expo i⌋ : ℝ) ≤ ((⌈C⌉ + 1 : ℤ) : ℝ) := by push_cast; linarith
+    exact_mod_cast this
+
+theorem eLpNorm_add4_le {f₁ f₂ f₃ f₄ : E3 → ℂ} (h₁ : Measurable f₁) (h₂ : Measurable f₂)
+    (h₃ : Measurable f₃) (h₄ : Measurable f₄) :
+    eLpNorm (fun y => f₁ y + f₂ y + (f₃ y + f₄ y)) 2 volume
+      ≤ eLpNorm f₁ 2 volume + eLpNorm f₂ 2 volume + (eLpNorm f₃ 2 volume
+        + eLpNorm f₄ 2 volume) := by
+  have e : (fun y => f₁ y + f₂ y + (f₃ y + f₄ y)) = (f₁ + f₂) + (f₃ + f₄) := rfl
+  rw [e]
+  refine (eLpNorm_add_le (h₁.add h₂).aestronglyMeasurable (h₃.add h₄).aestronglyMeasurable
+    (by norm_num)).trans (add_le_add ?_ ?_)
+  · exact eLpNorm_add_le h₁.aestronglyMeasurable h₂.aestronglyMeasurable (by norm_num)
+  · exact eLpNorm_add_le h₃.aestronglyMeasurable h₄.aestronglyMeasurable (by norm_num)
+
+set_option maxHeartbeats 4000000 in
+-- The decomposition, the four offsets and all constants share one context.
+/-- **Theorem `new:global-decaying-point`** (global decaying `L²` estimate) on finite-valued inputs
+of bounded support: `‖(I - P_R^{(j)}) A_N^{*j}(g)‖₂ ≤ C₄ μ^{a₁} ∏ ‖g_i‖_{u_i}` with no support
+restriction, `R = N^{-j} μ^{-2}`.  The inputs are decomposed along the cubes `Q_ν`
+(`Auto.hpAdj_decomp`); each piece obeys the compact bound after translation
+(`Auto.piece_bound`) and the weighted tail bound (`Auto.weighted_tail`); the weighted
+Cauchy-Schwarz inequality with the summable weights `(1 + ℓ²)⁻¹` and discrete Hoelder over the
+cubes (`Auto.offset_bound`, `Auto.holder_cubes`) sum the pieces. -/
+theorem globalDecaying (j : Fin 3) :
+    ∃ a₁ K₀ C₄ : ℝ, 0 < a₁ ∧ a₁ < 1 ∧ 1 ≤ K₀ ∧ 0 ≤ C₄ ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K₀ * μ ^ (-K₀) ≤ N →
+        ∀ (C : ℝ) (g : Fin 3 → E3 → ℂ), 0 ≤ C → (∀ k, SimpleOn (petBox C N) (g k)) →
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j g) (ENNReal.ofReal 2) volume
+            ≤ ENNReal.ofReal (C₄ * μ ^ a₁)
+              * ∏ k, eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume := by
+  obtain ⟨a₁, K₀, C₃, ha0, ha1, hK0, hC3, hpb⟩ := piece_bound j
+  set T0 := etaKerMom 2 with hT0def
+  have hT0 : 0 ≤ T0 := etaKerMom_nonneg 2
+  set D := 6 * (10 * C₃ ^ 2 + 5 * T0 ^ 2) with hDdef
+  have hD : 0 ≤ D := by positivity
+  refine ⟨a₁, K₀, 4 * Real.sqrt D, ha0, ha1, hK0, by positivity, ?_⟩
+  intro μ N hμ0 hμ1 hNK C g hC hg
+  have hμK : 1 ≤ μ ^ (-K₀) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN0 : 0 < N := by nlinarith
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  have hR : 0 < R := by positivity
+  have hgm : ∀ k, Measurable (g k) := fun k => (hg k).1
+  have hgr : ∀ k, (Set.range (g k)).Finite := fun k => (hg k).2.1
+  choose b hb using fun k => (hg k).bounded
+  have hgs : ∀ k x, x ∉ petBox C N → g k x = 0 := fun k x hx => (hg k).eq_zero hx
+  have hgB : ∀ k, BddMeasC (g k) := fun k => ⟨hgm k, b k, hb k⟩
+  have hgp : ∀ k, MemLp (g k) (ENNReal.ofReal (cdpExp k)) volume := fun k =>
+    memLp_of_box (hgm k) (hb k) (hgs k) _
+  set S := coverSet C with hSdef
+  have hS : ∀ x, g 0 x ≠ 0 → boxIdx N x ∈ S := fun x hx =>
+    boxIdx_mem_coverSet hN0 (by by_contra h; exact hx (hgs 0 x h))
+  -- the real norms
+  set Lg : Fin 3 → ℝ := fun k => (eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume).toReal
+    with hLgdef
+  have hLg0 : ∀ k, 0 ≤ Lg k := fun k => ENNReal.toReal_nonneg
+  have hRN : R * N ^ expo j = (μ ^ 2)⁻¹ := by
+    rw [hRdef]; field_simp
+  set Tt := etaKerMom 2 / (R * N ^ expo j) ^ 2 with hTtdef
+  have hTt : Tt = T0 * μ ^ 4 := by
+    rw [hTtdef, hRN, hT0def]; field_simp
+  have hμ8 : μ ^ 8 ≤ (μ ^ a₁) ^ 2 := by
+    rw [← Real.rpow_natCast, ← Real.rpow_natCast (μ ^ a₁), ← Real.rpow_mul hμ0.le]
+    exact Real.rpow_le_rpow_of_exponent_ge hμ0 hμ1 (by push_cast; linarith)
+  -- one offset
+  have hoff : ∀ ε ε' : Fin 2,
+      eLpNorm (fun y => ∑ ν ∈ S, hpAdj N R j (piece N j ν ε ε' g) y) 2 volume
+        ≤ ENNReal.ofReal (Real.sqrt D * μ ^ a₁ * ∏ k, Lg k) := by
+    intro ε ε'
+    set L : (Fin 3 → ℤ) → Fin 3 → ℝ := fun ν k =>
+      (eLpNorm (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume).toReal with hLdef
+    have hpm : ∀ ν k, Measurable (piece N j ν ε ε' g k) := fun ν =>
+      measurable_piece N j ν ε ε' hgm
+    have hpbd : ∀ ν k x, ‖piece N j ν ε ε' g k x‖ ≤ b k := fun ν k x =>
+      (norm_piece_le N j ν ε ε' g k x).trans (hb k x)
+    have hps : ∀ ν k x, x ∉ petBox C N → piece N j ν ε ε' g k x = 0 := fun ν k x hx => by
+      rw [piece_eq_boxRes]; unfold boxRes; split_ifs
+      · exact hgs k x hx
+      · rfl
+    have hpfin : ∀ ν k, eLpNorm (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume ≠ ⊤ :=
+      fun ν k => (memLp_of_box (hpm ν k) (hpbd ν k) (hps ν k) _).eLpNorm_ne_top
+    have hprodL : ∀ ν, ∏ k, eLpNorm (piece N j ν ε ε' g k) (ENNReal.ofReal (cdpExp k)) volume
+        = ENNReal.ofReal (∏ k, L ν k) := fun ν => by
+      rw [ENNReal.ofReal_prod_of_nonneg fun k _ => ENNReal.toReal_nonneg]
+      exact Finset.prod_congr rfl fun k _ => (ENNReal.ofReal_toReal (hpfin ν k)).symm
+    have hGm : ∀ ν, Measurable (adjT N j (piece N j ν ε ε' g)) := fun ν =>
+      measurable_adjT hN0.le j (hpm ν)
+    have hGb : ∀ ν y, ‖adjT N j (piece N j ν ε ε' g) y‖ ≤ ∏ k, b k := fun ν =>
+      norm_adjT_le hN0 j (hpbd ν)
+    have hGs : ∀ ν y, y ∉ petBox (C + 1) N → adjT N j (piece N j ν ε ε' g) y = 0 := fun ν y hy =>
+      adjT_eq_zero hN0 j (hps ν 0) hy
+    have hG2 : ∀ ν, MemLp (adjT N j (piece N j ν ε ε' g)) 2 volume := fun ν =>
+      memLp_of_box (hGm ν) (hGb ν) (hGs ν) 2
+    have hH2 : ∀ ν, MemLp (hpAdj N R j (piece N j ν ε ε' g)) 2 volume := fun ν =>
+      (hG2 ν).sub (memLp_two_P hR j (hGm ν) (hG2 ν))
+    -- the compact bound per piece
+    have hLnn : ∀ ν, 0 ≤ ∏ k, L ν k := fun ν => Finset.prod_nonneg fun k _ => ENNReal.toReal_nonneg
+    have hcμ : 0 ≤ C₃ * μ ^ a₁ := mul_nonneg hC3 (Real.rpow_pos_of_pos hμ0 a₁).le
+    have hHb : ∀ ν, ∫ y, ‖hpAdj N R j (piece N j ν ε ε' g) y‖ ^ 2
+        ≤ (C₃ * μ ^ a₁) ^ 2 * (∏ k, L ν k) ^ 2 := fun ν => by
+      have h := hpb μ N hμ0 hμ1 hNK g hgm hgr ν ε ε'
+      rw [hprodL ν, ← ENNReal.ofReal_mul hcμ] at h
+      have e2 : ENNReal.ofReal 2 = 2 := ENNReal.ofReal_ofNat 2
+      rw [e2, eLpNorm_two_eq_sqrt (hH2 ν),
+        ENNReal.ofReal_le_ofReal_iff (mul_nonneg hcμ (hLnn ν))] at h
+      rw [← mul_pow]
+      exact (Real.sqrt_le_left (mul_nonneg hcμ (hLnn ν))).mp h
+    -- the crude bound per piece
+    have hGb2 : ∀ ν, ∫ y, ‖adjT N j (piece N j ν ε ε' g) y‖ ^ 2 ≤ (∏ k, L ν k) ^ 2 := fun ν => by
+      have h := eLpNorm_adjT_le hN0 j (hpm ν)
+      rw [hprodL, eLpNorm_two_eq_sqrt (hG2 ν),
+        ENNReal.ofReal_le_ofReal_iff (Finset.prod_nonneg fun k _ => ENNReal.toReal_nonneg)] at h
+      exact (Real.sqrt_le_left (Finset.prod_nonneg fun k _ => ENNReal.toReal_nonneg)).mp h
+    -- the weighted tail per piece
+    have hw := fun ν => weighted_tail hN0 hR j ν (hGm ν) (hGb ν) (hGs ν)
+      (fun y hy => (adjT_piece_support hN0 j ν ε ε' g hy).2)
+    have hsum := offset_bound (N := N) j S (fun ν => hpAdj N R j (piece N j ν ε ε' g))
+      (fun ν => adjT N j (piece N j ν ε ε' g)) (fun ν => ∏ k, L ν k) (c₀ := C₃ * μ ^ a₁)
+      (T := Tt) hH2 (fun ν y hy => hpAdj_piece_passive hN0 j ν ε ε' g hy) hw hHb hGb2
+    have hhold := holder_cubes N S j ε ε' hgm hgp
+    have hbound : ∫ y, ‖∑ ν ∈ S, hpAdj N R j (piece N j ν ε ε' g) y‖ ^ 2
+        ≤ (Real.sqrt D * μ ^ a₁ * ∏ k, Lg k) ^ 2 := by
+      refine hsum.trans ?_
+      have hTt2 : Tt ^ 2 ≤ T0 ^ 2 * (μ ^ a₁) ^ 2 := by
+        rw [hTt, mul_pow, ← pow_mul]
+        exact mul_le_mul_of_nonneg_left hμ8 (sq_nonneg _)
+      have hcoef : 6 * (10 * (C₃ * μ ^ a₁) ^ 2 + 5 * Tt ^ 2) ≤ D * (μ ^ a₁) ^ 2 := by
+        rw [hDdef]; nlinarith
+      calc 6 * (10 * (C₃ * μ ^ a₁) ^ 2 + 5 * Tt ^ 2) * ∑ ν ∈ S, (∏ k, L ν k) ^ 2
+          ≤ D * (μ ^ a₁) ^ 2 * (∏ k, Lg k) ^ 2 := by
+            refine mul_le_mul hcoef hhold (Finset.sum_nonneg fun ν _ => sq_nonneg _)
+              (by positivity)
+        _ = (Real.sqrt D * μ ^ a₁ * ∏ k, Lg k) ^ 2 := by
+            rw [mul_pow, mul_pow, Real.sq_sqrt hD]
+    have hsum2 : MemLp (fun y => ∑ ν ∈ S, hpAdj N R j (piece N j ν ε ε' g) y) 2 volume := by
+      have := memLp_finsetSum' S fun ν _ => hH2 ν
+      convert this using 1
+      funext y; simp [Finset.sum_apply]
+    have hnn : 0 ≤ Real.sqrt D * μ ^ a₁ * ∏ k, Lg k :=
+      mul_nonneg (mul_nonneg (Real.sqrt_nonneg _) (Real.rpow_pos_of_pos hμ0 a₁).le)
+        (Finset.prod_nonneg fun k _ => hLg0 k)
+    rw [eLpNorm_two_eq_sqrt hsum2]
+    exact ENNReal.ofReal_le_ofReal ((Real.sqrt_le_left hnn).mpr hbound)
+  -- the four offsets
+  rw [hpAdj_decomp hN0 hR j hgB S hS]
+  simp only [Fin.sum_univ_two]
+  have hmeas : ∀ ε ε' : Fin 2, Measurable fun y => ∑ ν ∈ S, hpAdj N R j (piece N j ν ε ε' g) y :=
+    fun ε ε' => Finset.measurable_sum _ fun ν _ =>
+      measurable_hpAdj hN0.le j (measurable_piece N j ν ε ε' hgm)
+  rw [ENNReal.ofReal_ofNat]
+  refine (eLpNorm_add4_le (hmeas 0 0) (hmeas 0 1) (hmeas 1 0) (hmeas 1 1)).trans ?_
+  refine (add_le_add (add_le_add (hoff 0 0) (hoff 0 1)) (add_le_add (hoff 1 0) (hoff 1 1))).trans
+    (le_of_eq ?_)
+  have hprod : ∏ k, eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume
+      = ENNReal.ofReal (∏ k, Lg k) := by
+    rw [ENNReal.ofReal_prod_of_nonneg fun k _ => hLg0 k]
+    exact Finset.prod_congr rfl fun k _ => (ENNReal.ofReal_toReal (hgp k).eLpNorm_ne_top).symm
+  have hpos : 0 ≤ Real.sqrt D * μ ^ a₁ * ∏ k, Lg k := by
+    have := Real.rpow_pos_of_pos hμ0 a₁
+    exact mul_nonneg (by positivity) (Finset.prod_nonneg fun k _ => hLg0 k)
+  rw [hprod, ← ENNReal.ofReal_mul (by have := Real.rpow_pos_of_pos hμ0 a₁; positivity),
+    ← ENNReal.ofReal_add hpos hpos,
+    ← ENNReal.ofReal_add (add_nonneg hpos hpos) (add_nonneg hpos hpos)]
+  congr 1
+  ring
+
+end
+
+/-! ### `new:adjoint-all-exponents`: the convex completion and the interpolation -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The exponents of the adjoint slots for slot exponents `e`: `e 0` at `j`, `e 1` at `j + 1`,
+`e 2` at `j + 2`. -/
+noncomputable def slotExp (j : Fin 3) (e : Fin 3 → ℝ) (i : Fin 3) : ℝ≥0∞ :=
+  if i = j then ENNReal.ofReal (e 0) else if i = j + 1 then ENNReal.ofReal (e 1)
+    else ENNReal.ofReal (e 2)
+
+theorem sum_inv_slotExp (j : Fin 3) {e : Fin 3 → ℝ} (he : ∀ k, 0 < e k) :
+    ∑ i, (slotExp j e i)⁻¹ = ENNReal.ofReal (∑ k, (e k)⁻¹) := by
+  have h : ∑ i, (slotExp j e i)⁻¹ = (ENNReal.ofReal (e 0))⁻¹ + (ENNReal.ofReal (e 1))⁻¹
+      + (ENNReal.ofReal (e 2))⁻¹ := by
+    fin_cases j <;> simp [slotExp, Fin.sum_univ_three] <;> ring
+  rw [h, Fin.sum_univ_three, ← ENNReal.ofReal_inv_of_pos (he 0),
+    ← ENNReal.ofReal_inv_of_pos (he 1), ← ENNReal.ofReal_inv_of_pos (he 2),
+    ← ENNReal.ofReal_add (inv_nonneg.mpr (he 0).le) (inv_nonneg.mpr (he 1).le),
+    ← ENNReal.ofReal_add (add_nonneg (inv_nonneg.mpr (he 0).le) (inv_nonneg.mpr (he 1).le))
+      (inv_nonneg.mpr (he 2).le)]
+
+/-- **The crude endpoint for `hpAdj`** (`new:adjoint-basic`) with slot exponents `e`,
+`∑ 1/e_k = 1/r`, `1 ≤ r < ∞`. -/
+theorem eLpNorm_hpAdj_crude {N R : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3)
+    {g : Fin 3 → E3 → ℂ} (hg : ∀ k, Measurable (g k)) {e : Fin 3 → ℝ} (he : ∀ k, 0 < e k)
+    {r : ℝ} (hr1 : 1 ≤ r) (hsum : ∑ k, (e k)⁻¹ = r⁻¹) :
+    eLpNorm (hpAdj N R j g) (ENNReal.ofReal r) volume
+      ≤ ENNReal.ofReal (1 + etaKerL1) * ∏ k, eLpNorm (g k) (ENNReal.ofReal (e k)) volume := by
+  have hr0 : 0 < r := by linarith
+  have hsE : ∑ i, (slotExp j e i)⁻¹ = (ENNReal.ofReal r)⁻¹ := by
+    rw [sum_inv_slotExp j he, hsum, ENNReal.ofReal_inv_of_pos hr0]
+  have h := eLpNorm_Astar_sub_P_le hN hR j (hg 0) (measurable_adjIn j hg)
+    (r := ENNReal.ofReal r) (by simpa using hr1) ENNReal.ofReal_ne_top hsE
+  rw [Astar_adjIn] at h
+  refine le_of_le_of_eq h ?_
+  have h12 : j + 1 ≠ j + 2 := by fin_cases j <;> decide
+  have h1 : j + 1 ≠ j := by fin_cases j <;> decide
+  have h2 : j + 2 ≠ j := by fin_cases j <;> decide
+  rw [univ_erase_eq, Finset.prod_pair h12, Fin.prod_univ_three]
+  have hA1 : adjIn j g (j + 1) = fun x => conj (g 1 x) := by simp [adjIn]
+  have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h12.symm]
+  rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq,
+    ENNReal.ofReal_add zero_le_one etaKerL1_nonneg, ENNReal.ofReal_one]
+  simp only [slotExp, if_true, if_neg h1, if_neg h2, if_neg h12.symm]
+  ring
+
+set_option maxHeartbeats 2000000 in
+-- The convex completion exponents and the interpolation share one context.
+/-- **Theorem `new:adjoint-all-exponents`** on finite-valued inputs of bounded support.  For slot
+exponents `a_k ∈ (0, 1)` with `σ = ∑ a_k < 1` there are `c ∈ (0, 1)` and `K, C ≥ 1` such that
+`‖(I - P_R^{(j)}) A_N^{*j}(g)‖_{1/σ} ≤ C μ^c ∏ ‖g_k‖_{1/a_k}` for `0 < μ ≤ 1`, `N ≥ K μ^{-K}`.
+Interpolate the crude bound at `v_k = (a_k - τ ρ_k)/(1 - τ)` with the global decaying point at
+`ρ_k = 1/u_k`, weight `τ = min(1/2, 1 - σ, min_k a_k/(2 ρ_k))` on the latter. -/
+theorem allExponentsSimple (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k)
+    (hσ : ∑ k, a k < 1) :
+    ∃ c K C : ℝ, 0 < c ∧ c < 1 ∧ 1 ≤ K ∧ 1 ≤ C ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K * μ ^ (-K) ≤ N →
+        ∀ (Cb : ℝ) (g : Fin 3 → E3 → ℂ), 0 ≤ Cb → (∀ k, SimpleOn (petBox Cb N) (g k)) →
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j g) (ENNReal.ofReal (∑ k, a k)⁻¹) volume
+            ≤ ENNReal.ofReal (C * μ ^ c)
+              * ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
+  obtain ⟨a₁, K₀, C₄, ha₁0, ha₁1, hK₀, hC₄, hgd⟩ := globalDecaying j
+  set σ := ∑ k, a k with hσdef
+  have hσ0 : 0 < σ := Finset.sum_pos (fun k _ => ha0 k) Finset.univ_nonempty
+  set ρ : Fin 3 → ℝ := fun k => (cdpExp k)⁻¹ with hρdef
+  have hρ0 : ∀ k, 0 < ρ k := fun k => inv_pos.mpr (cdpExp_pos k)
+  have hρsum : ∑ k, ρ k = 1 / 2 := by
+    rw [hρdef, Fin.sum_univ_three]
+    rw [cdpExp_zero, cdpExp_one, cdpExp_two]; norm_num
+  set m := min (a 0 / (2 * ρ 0)) (min (a 1 / (2 * ρ 1)) (a 2 / (2 * ρ 2))) with hmdef
+  have hm0 : 0 < m := lt_min (div_pos (ha0 0) (by linarith [hρ0 0]))
+    (lt_min (div_pos (ha0 1) (by linarith [hρ0 1])) (div_pos (ha0 2) (by linarith [hρ0 2])))
+  have hmk : ∀ k, m ≤ a k / (2 * ρ k) := fun k => by
+    fin_cases k
+    · exact min_le_left _ _
+    · exact (min_le_right _ _).trans (min_le_left _ _)
+    · exact (min_le_right _ _).trans (min_le_right _ _)
+  set τ := min (1 / 2) (min (1 - σ) m) with hτdef
+  have hτ0 : 0 < τ := lt_min (by norm_num) (lt_min (by linarith) hm0)
+  have hτh : τ ≤ 1 / 2 := min_le_left _ _
+  have hτσ : τ ≤ 1 - σ := (min_le_right _ _).trans (min_le_left _ _)
+  have hτm : τ ≤ m := (min_le_right _ _).trans (min_le_right _ _)
+  have hτρ : ∀ k, τ * ρ k ≤ a k / 2 := fun k => by
+    have h := hτm.trans (hmk k)
+    rw [le_div_iff₀ (by linarith [hρ0 k])] at h
+    linarith
+  set v : Fin 3 → ℝ := fun k => (a k - τ * ρ k) / (1 - τ) with hvdef
+  have hv0 : ∀ k, 0 < v k := fun k => div_pos (by linarith [hτρ k, ha0 k]) (by linarith)
+  have hvsum : ∑ k, v k = (σ - τ / 2) / (1 - τ) := by
+    rw [hvdef, ← Finset.sum_div, Finset.sum_sub_distrib, ← Finset.mul_sum, hρsum]
+    ring
+  set r := (∑ k, v k)⁻¹ with hrdef
+  have hvs0 : 0 < ∑ k, v k := Finset.sum_pos (fun k _ => hv0 k) Finset.univ_nonempty
+  have hr1 : 1 ≤ r := by
+    rw [hrdef, one_le_inv₀ hvs0, hvsum, div_le_one (by linarith)]
+    linarith
+  set C₀ := (1 + etaKerL1) ^ (1 - τ) * C₄ ^ τ with hC₀def
+  have hB0 := etaKerL1_nonneg
+  refine ⟨a₁ * τ, K₀, max 1 C₀, by positivity, ?_, hK₀, le_max_left _ _, ?_⟩
+  · calc a₁ * τ ≤ a₁ * (1 / 2) := mul_le_mul_of_nonneg_left hτh ha₁0.le
+      _ < 1 := by linarith
+  intro μ N hμ0 hμ1 hNK Cb g hCb hg
+  have hμK : 1 ≤ μ ^ (-K₀) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN0 : 0 < N := by nlinarith
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  have hR : 0 < R := by positivity
+  have hθ : τ ∈ Set.Ioo (0 : ℝ) 1 := ⟨hτ0, by linarith⟩
+  have h1τ : 1 - τ ≠ 0 := by linarith
+  have h1τ' : (1 - τ) ≠ 0 := h1τ
+  have h := interpolate_trilin_simple (T := hpAdj N R j) (trilin_hpAdj hN0 hR j)
+    (fun g hg => measurable_hpAdj hN0.le j fun k => (hg k).1) (B := petBox Cb N)
+    (p₀ := fun k => (v k)⁻¹) (p₁ := cdpExp) (p := fun k => (a k)⁻¹) (q₀ := r) (q₁ := 2)
+    (q := σ⁻¹) (M₀ := 1 + etaKerL1) (M₁ := C₄ * μ ^ a₁) (θ := τ)
+    (fun k => (inv_pos.mpr (hv0 k)).le) (fun k => (cdpExp_pos k).le)
+    (fun k => inv_pos.mpr (ha0 k)) (by linarith) (by norm_num) (inv_pos.mpr hσ0)
+    (by linarith) (mul_nonneg hC₄ (Real.rpow_pos_of_pos hμ0 _).le) hθ
+    (fun k => by
+      simp only [inv_inv, hvdef, hρdef]
+      field_simp
+      ring)
+    (by rw [inv_inv, hrdef, inv_inv, hvsum, hσdef]; field_simp; ring)
+    (fun g hg => by
+      have e : ∀ k : Fin 3, eIn ((v k)⁻¹) = ENNReal.ofReal (v k)⁻¹ := fun k => by
+        simp [eIn, (hv0 k).ne']
+      simp only [e]
+      exact eLpNorm_hpAdj_crude hN0 hR j (fun k => (hg k).1) (fun k => inv_pos.mpr (hv0 k)) hr1
+        (by simp only [inv_inv, hrdef]))
+    (fun g hg => by
+      have e : ∀ k : Fin 3, eIn (cdpExp k) = ENNReal.ofReal (cdpExp k) := fun k => by
+        simp [eIn, (cdpExp_pos k).ne']
+      simp only [e]
+      exact hgd μ N hμ0 hμ1 hNK Cb g hCb hg)
+    g hg
+  refine h.trans (mul_le_mul_of_nonneg_right (ENNReal.ofReal_le_ofReal ?_) bot_le)
+  rw [Real.mul_rpow hC₄ (Real.rpow_pos_of_pos hμ0 _).le, ← Real.rpow_mul hμ0.le]
+  have hμc : 0 < μ ^ (a₁ * τ) := Real.rpow_pos_of_pos hμ0 _
+  calc (1 + etaKerL1) ^ (1 - τ) * (C₄ ^ τ * μ ^ (a₁ * τ)) = C₀ * μ ^ (a₁ * τ) := by
+        rw [hC₀def]; ring
+    _ ≤ max 1 C₀ * μ ^ (a₁ * τ) := mul_le_mul_of_nonneg_right (le_max_right _ _) hμc.le
+
+end
+
+/-! ### `new:adjoint-all-exponents`: bounded inputs of bounded support -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- Quantization of a real number toward zero on the grid `ℤ/n`. -/
+noncomputable def tq (n : ℕ) (t : ℝ) : ℝ :=
+  if 0 ≤ t then (⌊n * t⌋ : ℝ) / n else -((⌊n * (-t)⌋ : ℝ) / n)
+
+theorem abs_tq_le (n : ℕ) (t : ℝ) : |tq n t| ≤ |t| := by
+  unfold tq
+  rcases Nat.eq_zero_or_pos n with h0 | hn
+  · subst h0; simp
+  have hn' : (0 : ℝ) < n := by exact_mod_cast hn
+  split_ifs with ht
+  · have h1 := Int.floor_le ((n : ℝ) * t)
+    have h2 : (0 : ℝ) ≤ ⌊(n : ℝ) * t⌋ := by exact_mod_cast Int.floor_nonneg.mpr (by positivity)
+    rw [abs_of_nonneg (div_nonneg h2 hn'.le), abs_of_nonneg ht, div_le_iff₀ hn']
+    linarith
+  · push Not at ht
+    have h1 := Int.floor_le ((n : ℝ) * (-t))
+    have h2 : (0 : ℝ) ≤ ⌊(n : ℝ) * (-t)⌋ := by
+      exact_mod_cast Int.floor_nonneg.mpr (by nlinarith)
+    rw [abs_neg, abs_of_nonneg (div_nonneg h2 hn'.le), abs_of_neg ht, div_le_iff₀ hn']
+    linarith
+
+theorem abs_tq_sub_le {n : ℕ} (hn : 0 < n) (t : ℝ) : |tq n t - t| ≤ 1 / n := by
+  have hn' : (0 : ℝ) < n := by exact_mod_cast hn
+  have key : ∀ s : ℝ, |(⌊(n : ℝ) * s⌋ : ℝ) / n - s| ≤ 1 / n := fun s => by
+    have h1 := Int.floor_le ((n : ℝ) * s)
+    have h2 := Int.lt_floor_add_one ((n : ℝ) * s)
+    have e : (⌊(n : ℝ) * s⌋ : ℝ) / n - s = ((⌊(n : ℝ) * s⌋ : ℝ) - n * s) / n := by
+      field_simp
+    rw [e, abs_div, abs_of_pos hn', div_le_div_iff_of_pos_right hn', abs_le]
+    constructor <;> linarith
+  unfold tq
+  split_ifs with ht
+  · exact key t
+  · have h := key (-t)
+    rw [show -((⌊(n : ℝ) * -t⌋ : ℝ) / n) - t = -((⌊(n : ℝ) * -t⌋ : ℝ) / n - -t) by ring, abs_neg]
+    exact h
+
+/-- Quantization of a complex number toward zero. -/
+noncomputable def qz (n : ℕ) (z : ℂ) : ℂ := ⟨tq n z.re, tq n z.im⟩
+
+theorem norm_qz_le (n : ℕ) (z : ℂ) : ‖qz n z‖ ≤ ‖z‖ := by
+  rw [← sq_le_sq₀ (norm_nonneg _) (norm_nonneg _), ← Complex.normSq_eq_norm_sq,
+    ← Complex.normSq_eq_norm_sq, Complex.normSq_apply, Complex.normSq_apply]
+  simp only [qz]
+  have h1 := abs_tq_le n z.re
+  have h2 := abs_tq_le n z.im
+  nlinarith [sq_abs (tq n z.re), sq_abs z.re, sq_abs (tq n z.im), sq_abs z.im,
+    abs_nonneg (tq n z.re), abs_nonneg (tq n z.im)]
+
+theorem norm_qz_sub_le {n : ℕ} (hn : 0 < n) (z : ℂ) : ‖qz n z - z‖ ≤ 2 / n := by
+  refine (Complex.norm_le_abs_re_add_abs_im _).trans ?_
+  simp only [qz, Complex.sub_re, Complex.sub_im]
+  have h1 := abs_tq_sub_le hn z.re
+  have h2 := abs_tq_sub_le hn z.im
+  have : (2 : ℝ) / n = 1 / n + 1 / n := by ring
+  linarith
+
+theorem qz_zero (n : ℕ) : qz n 0 = 0 := by
+  apply Complex.ext <;> simp [qz, tq]
+
+theorem measurable_tq (n : ℕ) : Measurable (tq n) := by
+  have hfl : Measurable (Int.floor : ℝ → ℤ) := measurable_to_countable fun m => by
+    simpa only [Int.preimage_floor_singleton] using measurableSet_Ico
+  unfold tq
+  refine Measurable.ite (measurableSet_le measurable_const measurable_id) ?_ ?_
+  · exact (((measurable_of_countable (Int.cast : ℤ → ℝ)).comp (hfl.comp (measurable_const.mul measurable_id))).div_const _)
+  · exact (((measurable_of_countable (Int.cast : ℤ → ℝ)).comp (hfl.comp (measurable_const.mul measurable_id.neg))).div_const
+      _).neg
+
+theorem measurable_qz (n : ℕ) : Measurable (qz n) := by
+  have h : qz n = fun z => (tq n z.re : ℂ) + (tq n z.im : ℂ) * Complex.I := by
+    funext z; apply Complex.ext <;> simp [qz]
+  rw [h]
+  exact (Complex.measurable_ofReal.comp ((measurable_tq n).comp Complex.measurable_re)).add
+    ((Complex.measurable_ofReal.comp ((measurable_tq n).comp Complex.measurable_im)).mul_const _)
+
+theorem tq_mem {n : ℕ} {b t : ℝ} (ht : |t| ≤ b) :
+    tq n t ∈ (fun k : ℤ => (k : ℝ) / n) '' Set.Icc (-⌈n * b⌉) ⌈n * b⌉ := by
+  have hn : (0 : ℝ) ≤ n := by positivity
+  have hb : 0 ≤ b := (abs_nonneg t).trans ht
+  have hc := Int.le_ceil ((n : ℝ) * b)
+  unfold tq
+  split_ifs with h0
+  · refine ⟨⌊(n : ℝ) * t⌋, ⟨?_, ?_⟩, rfl⟩
+    · have : (0 : ℤ) ≤ ⌊(n : ℝ) * t⌋ := Int.floor_nonneg.mpr (by positivity)
+      have : (0 : ℤ) ≤ ⌈(n : ℝ) * b⌉ := Int.ceil_nonneg (by positivity)
+      omega
+    · have h1 := Int.floor_le ((n : ℝ) * t)
+      have h2 : (n : ℝ) * t ≤ n * b := mul_le_mul_of_nonneg_left
+        ((le_abs_self t).trans ht) hn
+      have : ((⌊(n : ℝ) * t⌋ : ℤ) : ℝ) ≤ (⌈(n : ℝ) * b⌉ : ℝ) := by linarith
+      exact_mod_cast this
+  · push Not at h0
+    refine ⟨-⌊(n : ℝ) * (-t)⌋, ⟨?_, ?_⟩, by push_cast; ring⟩
+    · have h1 := Int.floor_le ((n : ℝ) * (-t))
+      have h2 : (n : ℝ) * (-t) ≤ n * b := mul_le_mul_of_nonneg_left
+        ((neg_le_abs t).trans ht) hn
+      have : ((⌊(n : ℝ) * (-t)⌋ : ℤ) : ℝ) ≤ (⌈(n : ℝ) * b⌉ : ℝ) := by linarith
+      have : ⌊(n : ℝ) * (-t)⌋ ≤ ⌈(n : ℝ) * b⌉ := by exact_mod_cast this
+      omega
+    · have : (0 : ℤ) ≤ ⌊(n : ℝ) * (-t)⌋ := Int.floor_nonneg.mpr (by nlinarith)
+      have : (0 : ℤ) ≤ ⌈(n : ℝ) * b⌉ := Int.ceil_nonneg (by positivity)
+      omega
+
+/-- The quantization of a bounded function has finitely many values. -/
+theorem finite_range_qz (n : ℕ) {h : E3 → ℂ} {b : ℝ} (hb : ∀ x, ‖h x‖ ≤ b) :
+    (Set.range fun x => qz n (h x)).Finite := by
+  set F := (fun k : ℤ => (k : ℝ) / n) '' Set.Icc (-⌈n * b⌉) ⌈n * b⌉ with hF
+  have hFfin : F.Finite := (Set.finite_Icc _ _).image _
+  have hsub : (Set.range fun x => qz n (h x)) ⊆ (fun p : ℝ × ℝ => (⟨p.1, p.2⟩ : ℂ)) '' (F ×ˢ F) := by
+    rintro _ ⟨x, rfl⟩
+    refine ⟨(tq n (h x).re, tq n (h x).im), ⟨tq_mem ?_, tq_mem ?_⟩, rfl⟩
+    · exact (Complex.abs_re_le_norm _).trans (hb x)
+    · exact (Complex.abs_im_le_norm _).trans (hb x)
+  exact ((hFfin.prod hFfin).image _).subset hsub
+
+theorem norm_prod3_sub_le {a b : Fin 3 → ℂ} {B ε : ℝ} (ha : ∀ k, ‖a k‖ ≤ B) (hb : ∀ k, ‖b k‖ ≤ B)
+    (hab : ∀ k, ‖a k - b k‖ ≤ ε) : ‖∏ k, a k - ∏ k, b k‖ ≤ 3 * B ^ 2 * ε := by
+  rw [Fin.prod_univ_three, Fin.prod_univ_three]
+  have e : a 0 * a 1 * a 2 - b 0 * b 1 * b 2
+      = (a 0 - b 0) * a 1 * a 2 + b 0 * (a 1 - b 1) * a 2 + b 0 * b 1 * (a 2 - b 2) := by ring
+  have hB : 0 ≤ B := (norm_nonneg _).trans (ha 0)
+  have hε : 0 ≤ ε := (norm_nonneg _).trans (hab 0)
+  rw [e]
+  refine (norm_add_le _ _).trans ((add_le_add (norm_add_le _ _) le_rfl).trans ?_)
+  simp only [norm_mul]
+  have h1 : ‖a 0 - b 0‖ * ‖a 1‖ * ‖a 2‖ ≤ ε * B * B := by gcongr <;> simp_all
+  have h2 : ‖b 0‖ * ‖a 1 - b 1‖ * ‖a 2‖ ≤ B * ε * B := by gcongr <;> simp_all
+  have h3 : ‖b 0‖ * ‖b 1‖ * ‖a 2 - b 2‖ ≤ B * B * ε := by gcongr <;> simp_all
+  nlinarith
+
+/-- **Stability of the adjoint form** under uniformly close bounded inputs. -/
+theorem norm_adjT_sub_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g g' : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, Measurable (g k)) (hg' : ∀ k, Measurable (g' k)) {B ε : ℝ}
+    (hgB : ∀ k x, ‖g k x‖ ≤ B) (hg'B : ∀ k x, ‖g' k x‖ ≤ B)
+    (hd : ∀ k x, ‖g k x - g' k x‖ ≤ ε) (y : E3) :
+    ‖adjT N j g y - adjT N j g' y‖ ≤ 3 * B ^ 2 * ε := by
+  have hI := intervalIntegrable_prod_adjVec (j := j) (fun k => ⟨hg k, B, hgB k⟩) y 0 N
+  have hI' := intervalIntegrable_prod_adjVec (j := j) (fun k => ⟨hg' k, B, hg'B k⟩) y 0 N
+  rw [adjT, adjT, ← mul_sub, ← intervalIntegral.integral_sub hI hI', norm_mul, norm_inv,
+    Complex.norm_real, Real.norm_of_nonneg hN.le, inv_mul_le_iff₀ hN]
+  have h := intervalIntegral.norm_integral_le_of_norm_le_const (a := 0) (b := N)
+    (C := 3 * B ^ 2 * ε) (f := fun t => ∏ k : Fin 3, g k (y + adjVec j k t)
+      - ∏ k : Fin 3, g' k (y + adjVec j k t))
+    fun t _ => norm_prod3_sub_le (fun k => hgB k _) (fun k => hg'B k _) (fun k => hd k _)
+  rw [sub_zero, abs_of_pos hN] at h
+  linarith
+
+/-- **Stability of the smoothing** under uniformly close bounded inputs. -/
+theorem norm_P_sub_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {F F' : E3 → ℂ} (hF : BddMeasC F)
+    (hF' : BddMeasC F') {ε : ℝ} (hd : ∀ x, ‖F x - F' x‖ ≤ ε) (y : E3) :
+    ‖P R j F y - P R j F' y‖ ≤ etaKerL1 * ε := by
+  simp only [P]
+  rw [← integral_sub (integrable_projKernel_mul_bdd hR j hF y)
+    (integrable_projKernel_mul_bdd hR j hF' y)]
+  have hε : 0 ≤ ε := (norm_nonneg _).trans (hd 0)
+  refine (norm_integral_le_of_norm_le ((projKernel_integrable hR).norm.mul_const ε)
+    (Eventually.of_forall fun u => ?_)).trans (le_of_eq ?_)
+  · rw [← mul_sub, norm_mul]
+    exact mul_le_mul_of_nonneg_left (hd _) (norm_nonneg _)
+  · rw [integral_mul_const, projKernel_L1 hR]
+
+theorem norm_hpAdj_sub_le {N R : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3)
+    {g g' : Fin 3 → E3 → ℂ} (hg : ∀ k, Measurable (g k)) (hg' : ∀ k, Measurable (g' k))
+    {B ε : ℝ} (hgB : ∀ k x, ‖g k x‖ ≤ B) (hg'B : ∀ k x, ‖g' k x‖ ≤ B)
+    (hd : ∀ k x, ‖g k x - g' k x‖ ≤ ε) (y : E3) :
+    ‖hpAdj N R j g y - hpAdj N R j g' y‖ ≤ (1 + etaKerL1) * (3 * B ^ 2 * ε) := by
+  have hA := norm_adjT_sub_le hN j hg hg' hgB hg'B hd
+  have hbA : BddMeasC (adjT N j g) := bddMeasC_adjT hN j fun k => ⟨hg k, B, hgB k⟩
+  have hbA' : BddMeasC (adjT N j g') := bddMeasC_adjT hN j fun k => ⟨hg' k, B, hg'B k⟩
+  have hP := norm_P_sub_le hR j hbA hbA' hA y
+  simp only [hpAdj]
+  have e : adjT N j g y - P R j (adjT N j g) y - (adjT N j g' y - P R j (adjT N j g') y)
+      = (adjT N j g y - adjT N j g' y) - (P R j (adjT N j g) y - P R j (adjT N j g') y) := by
+    ring
+  rw [e]
+  refine (norm_sub_le _ _).trans ?_
+  have := hA y
+  linarith
+
+set_option maxHeartbeats 1000000 in
+-- The quantization, the stability and Fatou's lemma share one context.
+/-- **`new:adjoint-all-exponents` for bounded inputs of bounded support**: quantize toward zero
+(`|s_n| ≤ |g|`, `s_n → g` uniformly), apply `Auto.allExponentsSimple`, and pass to the limit by
+Fatou's lemma, the outputs converging everywhere. -/
+theorem allExponentsBdd (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) (hσ : ∑ k, a k < 1) :
+    ∃ c K C : ℝ, 0 < c ∧ c < 1 ∧ 1 ≤ K ∧ 1 ≤ C ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K * μ ^ (-K) ≤ N →
+        ∀ (Cb : ℝ) (g : Fin 3 → E3 → ℂ), 0 ≤ Cb → (∀ k, Measurable (g k)) →
+          (∀ k, ∃ b : ℝ, ∀ x, ‖g k x‖ ≤ b) → (∀ k x, x ∉ petBox Cb N → g k x = 0) →
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j g) (ENNReal.ofReal (∑ k, a k)⁻¹) volume
+            ≤ ENNReal.ofReal (C * μ ^ c)
+              * ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
+  obtain ⟨c, K, C, hc0, hc1, hK, hC, hsimp⟩ := allExponentsSimple j ha0 hσ
+  refine ⟨c, K, C, hc0, hc1, hK, hC, ?_⟩
+  intro μ N hμ0 hμ1 hNK Cb g hCb hgm hgb hgs
+  have hμK : 1 ≤ μ ^ (-K) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN0 : 0 < N := by nlinarith
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  have hR : 0 < R := by positivity
+  choose b hb using hgb
+  set B := max (max (b 0) (b 1)) (max (b 2) 0) with hBdef
+  have hgB : ∀ k x, ‖g k x‖ ≤ B := fun k x => by
+    fin_cases k
+    · exact (hb 0 x).trans ((le_max_left _ _).trans (le_max_left _ _))
+    · exact (hb 1 x).trans ((le_max_right _ _).trans (le_max_left _ _))
+    · exact (hb 2 x).trans ((le_max_left _ _).trans (le_max_right _ _))
+  set s : ℕ → Fin 3 → E3 → ℂ := fun n k x => qz (n + 1) (g k x) with hsdef
+  have hsm : ∀ n k, Measurable (s n k) := fun n k => (measurable_qz _).comp (hgm k)
+  have hsB : ∀ n k x, ‖s n k x‖ ≤ B := fun n k x => (norm_qz_le _ _).trans (hgB k x)
+  have hsimpOn : ∀ n k, SimpleOn (petBox Cb N) (s n k) := fun n k =>
+    ⟨hsm n k, finite_range_qz _ (hgB k), fun x hx => by
+      by_contra h
+      exact hx (by simp only [hsdef, hgs k x h, qz_zero])⟩
+  have hbound : ∀ n, eLpNorm (hpAdj N R j (s n)) (ENNReal.ofReal (∑ k, a k)⁻¹) volume
+      ≤ ENNReal.ofReal (C * μ ^ c) * ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
+    intro n
+    refine (hsimp μ N hμ0 hμ1 hNK Cb (s n) hCb (hsimpOn n)).trans ?_
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod' fun k _ => ?_) bot_le
+    exact eLpNorm_mono fun x => norm_qz_le _ _
+  have hconv : ∀ y, Tendsto (fun n => hpAdj N R j (s n) y) atTop (𝓝 (hpAdj N R j g y)) := by
+    intro y
+    rw [tendsto_iff_norm_sub_tendsto_zero]
+    have h : Tendsto (fun n : ℕ => 1 / ((n : ℝ) + 1)) atTop (𝓝 0) :=
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    have hlim : Tendsto (fun n : ℕ => (1 + etaKerL1) * (3 * B ^ 2 * (2 * (1 / ((n : ℝ) + 1)))))
+        atTop (𝓝 0) := by
+      have := ((h.const_mul 2).const_mul (3 * B ^ 2)).const_mul (1 + etaKerL1)
+      simpa using this
+    refine squeeze_zero (fun n => norm_nonneg _) (fun n => ?_) hlim
+    have hd : ∀ k x, ‖s n k x - g k x‖ ≤ 2 * (1 / ((n : ℝ) + 1)) := fun k x => by
+      have := norm_qz_sub_le (Nat.succ_pos n) (g k x)
+      rw [mul_one_div]
+      simpa using this
+    exact norm_hpAdj_sub_le hN0 hR j (hsm n) hgm (hsB n) hgB hd y
+  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3))
+    (p := ENNReal.ofReal (∑ k, a k)⁻¹)
+    (fun n => (measurable_hpAdj hN0.le j (hsm n)).aestronglyMeasurable) (hpAdj N R j g)
+    (Eventually.of_forall hconv)
+  exact hfatou.trans (Filter.liminf_le_of_frequently_le' (Frequently.of_forall hbound))
+
+end
+
+/-! ### `new:adjoint-all-exponents`: extension to continuous inputs -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The crude bound for `adjT` with slot exponents `e`, `∑ 1/e_k = 1/r`. -/
+theorem eLpNorm_adjT_crude {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, Measurable (g k)) {e : Fin 3 → ℝ} (he : ∀ k, 0 < e k) {r : ℝ} (hr1 : 1 ≤ r)
+    (hsum : ∑ k, (e k)⁻¹ = r⁻¹) :
+    eLpNorm (adjT N j g) (ENNReal.ofReal r) volume
+      ≤ ∏ k, eLpNorm (g k) (ENNReal.ofReal (e k)) volume := by
+  have hr0 : 0 < r := by linarith
+  have hsE : ∑ i, (slotExp j e i)⁻¹ = (ENNReal.ofReal r)⁻¹ := by
+    rw [sum_inv_slotExp j he, hsum, ENNReal.ofReal_inv_of_pos hr0]
+  have h := eLpNorm_Astar_le hN j (hg 0) (measurable_adjIn j hg) (r := ENNReal.ofReal r)
+    (by simpa using hr1) ENNReal.ofReal_ne_top hsE
+  rw [Astar_adjIn] at h
+  refine le_of_le_of_eq h ?_
+  have h12 : j + 1 ≠ j + 2 := by fin_cases j <;> decide
+  have h1 : j + 1 ≠ j := by fin_cases j <;> decide
+  have h2 : j + 2 ≠ j := by fin_cases j <;> decide
+  rw [univ_erase_eq, Finset.prod_pair h12, Fin.prod_univ_three]
+  have hA1 : adjIn j g (j + 1) = fun x => conj (g 1 x) := by simp [adjIn]
+  have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h12.symm]
+  rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq]
+  simp only [slotExp, if_true, if_neg h1, if_neg h2, if_neg h12.symm]
+  ring
+
+/-- The adjoint of the moduli dominates the adjoint. -/
+theorem norm_adjT_le_adjT_norm {N : ℝ} (hN : 0 ≤ N) (j : Fin 3) {g h : Fin 3 → E3 → ℂ}
+    (hhc : ∀ k, Continuous (h k)) (hgh : ∀ k x, ‖g k x‖ ≤ ‖h k x‖) (y : E3) :
+    ‖adjT N j g y‖ ≤ ‖adjT N j (fun k x => ((‖h k x‖ : ℝ) : ℂ)) y‖ := by
+  have hreal : adjT N j (fun k x => ((‖h k x‖ : ℝ) : ℂ)) y
+      = (((N : ℝ)⁻¹ * ∫ t in (0 : ℝ)..N, ∏ k : Fin 3, ‖h k (y + adjVec j k t)‖ : ℝ) : ℂ) := by
+    simp only [adjT, Complex.ofReal_mul, Complex.ofReal_inv, ← intervalIntegral.integral_ofReal,
+      Complex.ofReal_prod]
+  have hI0 : 0 ≤ ∫ t in (0 : ℝ)..N, ∏ k : Fin 3, ‖h k (y + adjVec j k t)‖ :=
+    intervalIntegral.integral_nonneg hN fun t _ => Finset.prod_nonneg fun k _ => norm_nonneg _
+  rw [hreal, Complex.norm_real, Real.norm_of_nonneg (by positivity), adjT, norm_mul, norm_inv,
+    Complex.norm_real, Real.norm_of_nonneg hN]
+  refine mul_le_mul_of_nonneg_left ?_ (inv_nonneg.mpr hN)
+  refine intervalIntegral.norm_integral_le_of_norm_le hN (Eventually.of_forall fun t _ => ?_) ?_
+  · rw [norm_prod]
+    exact Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => hgh k _
+  · exact (continuous_finsetProd _ fun k _ => ((hhc k).comp
+      (continuous_const.add (continuous_adjVec j k))).norm).intervalIntegrable _ _
+
+/-- A function with finite `L^q` norm (`0 < q < ∞`) is finite almost everywhere. -/
+theorem ae_lt_top_of_eLpNorm {Φ : E3 → ℝ≥0∞} (hΦ : Measurable Φ) {q : ℝ} (hq : 0 < q)
+    (h : eLpNorm Φ (ENNReal.ofReal q) volume < ⊤) : ∀ᵐ y ∂(volume : Measure E3), Φ y < ⊤ := by
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hq) ENNReal.ofReal_ne_top,
+    ENNReal.toReal_ofReal hq.le] at h
+  have hI : ∫⁻ y, ‖Φ y‖ₑ ^ q ≠ ⊤ := by
+    intro hc
+    rw [hc, ENNReal.top_rpow_of_pos (by positivity)] at h
+    exact lt_irrefl _ h
+  have hae := ae_lt_top' ((hΦ.enorm.pow_const q).aemeasurable) hI
+  filter_upwards [hae] with y hy
+  simp only [enorm_eq_self] at hy
+  exact (ENNReal.rpow_lt_top_iff_of_pos hq).mp hy
+
+/-- The truncation of an input at radius and height `n`. -/
+noncomputable def truncIn (n : ℕ) (f : E3 → ℂ) : E3 → ℂ :=
+  fun x => if ‖x‖ ≤ n ∧ ‖f x‖ ≤ n then f x else 0
+
+theorem norm_truncIn_le (n : ℕ) (f : E3 → ℂ) (x : E3) : ‖truncIn n f x‖ ≤ ‖f x‖ := by
+  unfold truncIn; split_ifs
+  · exact le_rfl
+  · simp
+
+theorem measurable_truncIn (n : ℕ) {f : E3 → ℂ} (hf : Measurable f) :
+    Measurable (truncIn n f) := by
+  unfold truncIn
+  exact Measurable.ite ((measurableSet_le measurable_norm measurable_const).inter
+    (measurableSet_le hf.norm measurable_const)) hf measurable_const
+
+/-- **Eventual equality of the adjoint** under truncation of continuous inputs. -/
+theorem adjT_truncIn_eventually {N : ℝ} (hN : 0 ≤ N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
+    (hg : ∀ k, Continuous (g k)) (z : E3) :
+    ∀ᶠ n : ℕ in atTop, adjT N j (fun k => truncIn n (g k)) z = adjT N j g z := by
+  have hb : ∀ k, ∃ M : ℝ, ∀ t ∈ Set.Icc (0 : ℝ) N,
+      ‖z + adjVec j k t‖ ≤ M ∧ ‖g k (z + adjVec j k t)‖ ≤ M := fun k => by
+    have hc1 : Continuous fun t => ‖z + adjVec j k t‖ :=
+      (continuous_const.add (continuous_adjVec j k)).norm
+    have hc2 : Continuous fun t => ‖g k (z + adjVec j k t)‖ :=
+      ((hg k).comp (continuous_const.add (continuous_adjVec j k))).norm
+    obtain ⟨M1, hM1⟩ := isCompact_Icc.exists_bound_of_continuousOn hc1.continuousOn
+    obtain ⟨M2, hM2⟩ := isCompact_Icc.exists_bound_of_continuousOn hc2.continuousOn
+    refine ⟨max M1 M2, fun t ht => ⟨?_, ?_⟩⟩
+    · have := hM1 t ht; rw [Real.norm_of_nonneg (norm_nonneg _)] at this
+      exact this.trans (le_max_left _ _)
+    · have := hM2 t ht; rw [Real.norm_of_nonneg (norm_nonneg _)] at this
+      exact this.trans (le_max_right _ _)
+  choose M hM using hb
+  obtain ⟨n0, hn0⟩ := exists_nat_ge (max (M 0) (max (M 1) (M 2)))
+  filter_upwards [eventually_ge_atTop n0] with n hn
+  have hMn : ∀ k, M k ≤ n := fun k => by
+    have hk : M k ≤ max (M 0) (max (M 1) (M 2)) := by
+      fin_cases k
+      · exact le_max_left _ _
+      · exact (le_max_left _ _).trans (le_max_right _ _)
+      · exact (le_max_right _ _).trans (le_max_right _ _)
+    have : (n0 : ℝ) ≤ n := by exact_mod_cast hn
+    linarith
+  simp only [adjT]
+  congr 1
+  refine intervalIntegral.integral_congr fun t ht => ?_
+  rw [Set.uIcc_of_le hN] at ht
+  refine Finset.prod_congr rfl fun k _ => ?_
+  simp only [truncIn]
+  rw [if_pos ⟨(hM k t ht).1.trans (hMn k), (hM k t ht).2.trans (hMn k)⟩]
+
+theorem norm_truncIn_le_nat (n : ℕ) (f : E3 → ℂ) (x : E3) : ‖truncIn n f x‖ ≤ n := by
+  unfold truncIn; split_ifs with h
+  · exact h.2
+  · simp
+
+set_option maxHeartbeats 4000000 in
+-- The truncation, the domination of the smoothing and Fatou's lemma share one context.
+/-- **`new:adjoint-all-exponents`, extension to continuous inputs of finite norm.**  Truncate the
+inputs (`|g_n| ≤ |g|`, bounded support), apply `Auto.allExponentsBdd`, and pass to the limit by
+Fatou's lemma: the adjoint is eventually unchanged at every point, and the smoothing converges
+almost everywhere by dominated convergence, the kernel integral of the adjoint of the moduli being
+finite almost everywhere (Minkowski and the crude bound). -/
+theorem allExponentsCont (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) (hσ : ∑ k, a k < 1) :
+    ∃ c K C : ℝ, 0 < c ∧ c < 1 ∧ 1 ≤ K ∧ 1 ≤ C ∧
+      ∀ μ N : ℝ, 0 < μ → μ ≤ 1 → K * μ ^ (-K) ≤ N →
+        ∀ g : Fin 3 → E3 → ℂ, (∀ k, Continuous (g k)) →
+          (∀ k, MemLp (g k) (ENNReal.ofReal (a k)⁻¹) volume) →
+          eLpNorm (hpAdj N ((N ^ expo j)⁻¹ * (μ ^ 2)⁻¹) j g) (ENNReal.ofReal (∑ k, a k)⁻¹) volume
+            ≤ ENNReal.ofReal (C * μ ^ c)
+              * ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
+  obtain ⟨c, K, C, hc0, hc1, hK, hC, hbdd⟩ := allExponentsBdd j ha0 hσ
+  refine ⟨c, K, C, hc0, hc1, hK, hC, ?_⟩
+  intro μ N hμ0 hμ1 hNK g hgc hgp
+  have hμK : 1 ≤ μ ^ (-K) := Real.one_le_rpow_of_pos_of_le_one_of_nonpos hμ0 hμ1 (by linarith)
+  have hN1 : 1 ≤ N := by nlinarith
+  have hN0 : 0 < N := by linarith
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  have hR : 0 < R := by positivity
+  set σ := ∑ k, a k with hσdef
+  have hσ0 : 0 < σ := Finset.sum_pos (fun k _ => ha0 k) Finset.univ_nonempty
+  set q := σ⁻¹ with hqdef
+  have hq1 : 1 ≤ q := by rw [hqdef]; exact one_le_inv₀ hσ0 |>.mpr hσ.le
+  have hgm : ∀ k, Measurable (g k) := fun k => (hgc k).measurable
+  set gn : ℕ → Fin 3 → E3 → ℂ := fun n k => truncIn n (g k) with hgndef
+  have hgnm : ∀ n k, Measurable (gn n k) := fun n k => measurable_truncIn n (hgm k)
+  -- the bound for each truncation
+  have hbound : ∀ n, eLpNorm (hpAdj N R j (gn n)) (ENNReal.ofReal q) volume
+      ≤ ENNReal.ofReal (C * μ ^ c) * ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
+    intro n
+    have hs : ∀ k x, x ∉ petBox n N → gn n k x = 0 := fun k x hx => by
+      simp only [hgndef, truncIn]
+      rw [if_neg]
+      rintro ⟨h1, -⟩
+      apply hx
+      intro i
+      have hi := PiLp.norm_apply_le x i
+      rw [Real.norm_eq_abs] at hi
+      have hNi : (1 : ℝ) ≤ N ^ expo i := one_le_pow₀ hN1
+      have hn0 : (0 : ℝ) ≤ n := by positivity
+      constructor <;> nlinarith [abs_le.mp (hi.trans h1)]
+    have hbn : ∀ k, ∃ b : ℝ, ∀ x, ‖gn n k x‖ ≤ b := fun k =>
+      ⟨(n : ℝ), fun x => norm_truncIn_le_nat n (g k) x⟩
+    refine (hbdd μ N hμ0 hμ1 hNK n (gn n) (by positivity) (hgnm n) hbn hs).trans ?_
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod' fun k _ => ?_) bot_le
+    exact eLpNorm_mono fun x => norm_truncIn_le n (g k) x
+  -- the adjoint of the moduli
+  set A : E3 → ℂ := adjT N j (fun k x => ((‖g k x‖ : ℝ) : ℂ)) with hAdef
+  have hAm : Measurable A := measurable_adjT hN0.le j fun k =>
+    Complex.measurable_ofReal.comp (hgm k).norm
+  have hAq : eLpNorm A (ENNReal.ofReal q) volume < ⊤ := by
+    have h := eLpNorm_adjT_crude hN0 j (g := fun k x => ((‖g k x‖ : ℝ) : ℂ))
+      (fun k => Complex.measurable_ofReal.comp (hgm k).norm) (e := fun k => (a k)⁻¹)
+      (fun k => inv_pos.mpr (ha0 k)) hq1 (by simp only [inv_inv, hqdef, hσdef])
+    refine h.trans_lt (ENNReal.prod_lt_top fun k _ => ?_)
+    rw [eLpNorm_congr_norm_ae (Eventually.of_forall fun x => by simp) (g := g k)]
+    exact (hgp k).eLpNorm_lt_top
+  -- the kernel integral of `A` is finite almost everywhere
+  set Φ : E3 → ℝ≥0∞ := fun y => ∫⁻ u, ‖projKernel R u * A (y - u • basisVec j)‖ₑ with hΦdef
+  have hFm : Measurable (Function.uncurry fun (u : ℝ) (y : E3) =>
+      ‖projKernel R u * A (y - u • basisVec j)‖ₑ) :=
+    (((projKernel_continuous R).measurable.comp measurable_fst).mul
+      (hAm.comp (measurable_snd.sub (measurable_fst.smul measurable_const)))).enorm
+  have hΦm : Measurable Φ := by
+    have h := hFm.comp (measurable_snd.prodMk measurable_fst)
+    exact h.lintegral_prod_right'
+  have hΦq : eLpNorm Φ (ENNReal.ofReal q) volume < ⊤ := by
+    have h := eLpNorm_lintegral_le (μ := (volume : Measure E3)) (ν := (volume : Measure ℝ))
+      (by simpa using hq1) ENNReal.ofReal_ne_top hFm
+    have hsec : ∀ u : ℝ, eLpNorm (fun y => ‖projKernel R u * A (y - u • basisVec j)‖ₑ)
+        (ENNReal.ofReal q) volume = ‖projKernel R u‖ₑ * eLpNorm A (ENNReal.ofReal q) volume := by
+      intro u
+      rw [eLpNorm_enorm]
+      have h1 : (fun y => projKernel R u * A (y - u • basisVec j))
+          = projKernel R u • fun y => A (y + -(u • basisVec j)) := by
+        funext y; simp [sub_eq_add_neg]
+      rw [h1, eLpNorm_const_smul, eLpNorm_comp_add_right_of_aestronglyMeasurable
+        hAm.aestronglyMeasurable]
+    simp_rw [hsec] at h
+    rw [lintegral_mul_const _ (projKernel_continuous R).measurable.enorm] at h
+    refine h.trans_lt (ENNReal.mul_lt_top ?_ hAq)
+    rw [← eLpNorm_one_eq_lintegral_enorm, eLpNorm_projKernel hR]
+    exact ENNReal.ofReal_lt_top
+  have hΦfin := ae_lt_top_of_eLpNorm hΦm (by linarith) hΦq
+  -- convergence almost everywhere
+  have hconv : ∀ᵐ y ∂(volume : Measure E3),
+      Tendsto (fun n => hpAdj N R j (gn n) y) atTop (𝓝 (hpAdj N R j g y)) := by
+    filter_upwards [hΦfin] with y hy
+    simp only [hpAdj]
+    refine Tendsto.sub ?_ ?_
+    · exact tendsto_nhds_of_eventually_eq (adjT_truncIn_eventually hN0.le j hgc y)
+    · simp only [P]
+      refine tendsto_integral_of_dominated_convergence
+        (fun u => ‖projKernel R u‖ * ‖A (y - u • basisVec j)‖) (fun n => ?_) ?_ (fun n => ?_) ?_
+      · exact ((projKernel_continuous R).measurable.mul ((measurable_adjT hN0.le j (hgnm n)).comp
+          (measurable_const.sub (measurable_id.smul_const _)))).aestronglyMeasurable
+      · refine ⟨((projKernel_continuous R).measurable.norm.mul
+          (hAm.comp (measurable_const.sub (measurable_id.smul_const _))).norm).aestronglyMeasurable,
+          ?_⟩
+        rw [hasFiniteIntegral_iff_enorm]
+        have e : ∫⁻ u, ‖‖projKernel R u‖ * ‖A (y - u • basisVec j)‖‖ₑ = Φ y := by
+          rw [hΦdef]; simp only
+          refine lintegral_congr fun u => ?_
+          rw [← norm_mul, enorm_norm]
+        rw [e]; exact hy
+      · refine Eventually.of_forall fun u => ?_
+        rw [norm_mul]
+        exact mul_le_mul_of_nonneg_left (norm_adjT_le_adjT_norm hN0.le j hgc
+          (fun k x => norm_truncIn_le n (g k) x) _) (norm_nonneg _)
+      · refine Eventually.of_forall fun u => ?_
+        exact tendsto_nhds_of_eventually_eq ((adjT_truncIn_eventually hN0.le j hgc
+          (y - u • basisVec j)).mono fun n hn => by rw [hn])
+  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3))
+    (p := ENNReal.ofReal q)
+    (fun n => (measurable_hpAdj hN0.le j (hgnm n)).aestronglyMeasurable) (hpAdj N R j g) hconv
+  exact hfatou.trans (Filter.liminf_le_of_frequently_le' (Frequently.of_forall hbound))
+
+end
+
+/-! ### `new:exact-lean-target` and the unconditional `thm:main` -/
+
+section
+open Filter Topology MeasureTheory
+
+/-- The adjoint does not see its `j`-th input. -/
+theorem Astar_congr {N : ℝ} {j : Fin 3} {f0 : E3 → ℂ} {f f' : Fin 3 → E3 → ℂ}
+    (h : ∀ i, i ≠ j → f i = f' i) : Astar N j f0 f = Astar N j f0 f' := by
+  funext y
+  simp only [Astar]
+  congr 1
+  refine intervalIntegral.integral_congr fun t _ => ?_
+  simp only [adjShift]
+  congr 1
+  exact Finset.prod_congr rfl fun i hi => by rw [h i (Finset.ne_of_mem_erase hi)]
+
+/-- The slot inputs realizing `A_N^{*j}(f₀, f)`. -/
+noncomputable def koszSlots (j : Fin 3) (f0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ) : Fin 3 → E3 → ℂ :=
+  ![f0, fun x => conj (f (j + 1) x), fun x => conj (f (j + 2) x)]
+
+theorem Astar_eq_adjT (N : ℝ) (j : Fin 3) (f0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ) :
+    Astar N j f0 f = adjT N j (koszSlots j f0 f) := by
+  rw [← Astar_adjIn]
+  have h12 : j + 1 ≠ j + 2 := by fin_cases j <;> decide
+  have h1 : j + 1 ≠ j := by fin_cases j <;> decide
+  have h2 : j + 2 ≠ j := by fin_cases j <;> decide
+  refine Astar_congr fun i hi => ?_
+  have hi' : i = j + 1 ∨ i = j + 2 := by fin_cases j <;> fin_cases i <;> simp_all
+  rcases hi' with rfl | rfl
+  · funext x; simp [adjIn, koszSlots]
+  · funext x; simp [adjIn, koszSlots, h12.symm]
+
+theorem sum_three_eq (j : Fin 3) (α : Fin 3 → ℝ) : ∑ i, α i = α j + α (j + 1) + α (j + 2) := by
+  fin_cases j <;> simp [Fin.sum_univ_three] <;> ring
+
+theorem prod_erase_eq (j : Fin 3) (F : Fin 3 → ℝ≥0∞) :
+    ∏ i ∈ Finset.univ.erase j, F i = F (j + 1) * F (j + 2) := by
+  have h12 : j + 1 ≠ j + 2 := by fin_cases j <;> decide
+  rw [univ_erase_eq, Finset.prod_pair h12]
+
+/-- A continuous function of zero `L^p` norm (`p ≠ 0`) vanishes identically. -/
+theorem eq_zero_of_eLpNorm_eq_zero {f : E3 → ℂ} (hf : Continuous f) {p : ℝ≥0∞} (hp : p ≠ 0)
+    (h : eLpNorm f p volume = 0) : f = 0 := by
+  have hae : f =ᵐ[volume] 0 := (eLpNorm_eq_zero_iff hf.aestronglyMeasurable hp).mp h
+  exact (hf.ae_eq_iff_eq volume continuous_const).mp hae
+
+theorem hpAdj_eq_zero_of_slot_zero {N R : ℝ} (j : Fin 3) {g : Fin 3 → E3 → ℂ} {k : Fin 3}
+    (hk : g k = 0) : hpAdj N R j g = fun _ => 0 :=
+  hpAdj_eq_zero_of_slot j (k := k) (by rw [hk]; rfl)
+
+set_option maxHeartbeats 2000000 in
+-- The case analysis on the norms and the reduction to `Auto.allExponentsCont` share one context.
+/-- **Corollary `new:exact-lean-target`: the proposition `Auto.KoszAdjoint j` holds.**  If a used
+input has zero norm it vanishes (continuity) and so does the left side; if one has infinite norm
+and none vanishes the right side is infinite; otherwise `Auto.allExponentsCont` applies to the slot
+inputs `(f₀, conj f_{j+1}, conj f_{j+2})`, with output exponent `1/(α₀ + α_{j+1} + α_{j+2}) =
+1/(1 - α_j)`. -/
+theorem koszAdjoint (j : Fin 3) : KoszAdjoint j := by
+  intro α₀ α hα₀ hα hsum
+  set a : Fin 3 → ℝ := ![α₀, α (j + 1), α (j + 2)] with hadef
+  have ha0 : ∀ k, 0 < a k := fun k => by
+    fin_cases k
+    · exact hα₀.1
+    · exact (hα _).1
+    · exact (hα _).1
+  have hsa : ∑ k, a k = 1 - α j := by
+    rw [Fin.sum_univ_three]
+    simp only [hadef, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two,
+      Matrix.head_cons, Matrix.tail_cons]
+    rw [sum_three_eq j α] at hsum
+    linarith
+  have hσ : ∑ k, a k < 1 := by rw [hsa]; linarith [(hα j).1]
+  obtain ⟨c, K, C, hc0, hc1, hK, hC, hcont⟩ := allExponentsCont j ha0 hσ
+  refine ⟨c, K, C, ⟨hc0, hc1⟩, hK, hC, ?_⟩
+  intro μ N hμ hNK f₀ f hf₀ hf
+  set R := (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ with hRdef
+  set g := koszSlots j f₀ f with hgdef
+  have hLHS : (fun y => Astar N j f₀ f y - P R j (Astar N j f₀ f) y) = hpAdj N R j g := by
+    rw [Astar_eq_adjT]; rfl
+  rw [hLHS, ← hsa]
+  have hgc : ∀ k, Continuous (g k) := fun k => by
+    fin_cases k
+    · exact hf₀
+    · exact Complex.continuous_conj.comp (hf _)
+    · exact Complex.continuous_conj.comp (hf _)
+  have hnorm : ∀ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume
+      = ![eLpNorm f₀ (ENNReal.ofReal α₀⁻¹) volume,
+          eLpNorm (f (j + 1)) (ENNReal.ofReal (α (j + 1))⁻¹) volume,
+          eLpNorm (f (j + 2)) (ENNReal.ofReal (α (j + 2))⁻¹) volume] k := fun k => by
+    fin_cases k
+    · rfl
+    · exact eLpNorm_conj_eq _ _
+    · exact eLpNorm_conj_eq _ _
+  have hRHS : eLpNorm f₀ (ENNReal.ofReal α₀⁻¹) volume
+      * ∏ i ∈ Finset.univ.erase j, eLpNorm (f i) (ENNReal.ofReal (α i)⁻¹) volume
+      = ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
+    rw [prod_erase_eq, Fin.prod_univ_three, hnorm 0, hnorm 1, hnorm 2]
+    simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.cons_val_two, Matrix.head_cons,
+      Matrix.tail_cons]
+    ring
+  rw [hRHS]
+  have hp : ∀ k, ENNReal.ofReal (a k)⁻¹ ≠ 0 := fun k => by
+    simpa using inv_pos.mpr (ha0 k)
+  by_cases hz : ∃ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume = 0
+  · obtain ⟨k, hk⟩ := hz
+    rw [hpAdj_eq_zero_of_slot_zero j (eq_zero_of_eLpNorm_eq_zero (hgc k) (hp k) hk)]
+    simp
+  push Not at hz
+  by_cases hfin : ∀ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume < ⊤
+  · exact hcont μ N hμ.1 hμ.2 hNK g hgc fun k =>
+      ⟨(hgc k).aestronglyMeasurable, hfin k⟩
+  push Not at hfin
+  obtain ⟨k, hk⟩ := hfin
+  have htop : ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume = ⊤ := by
+    rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ k), top_le_iff.mp hk]
+    exact ENNReal.top_mul (Finset.prod_ne_zero_iff.mpr fun i _ => hz i)
+  rw [htop, ENNReal.mul_top (by
+    have : 0 < C * μ ^ c := mul_pos (by linarith) (Real.rpow_pos_of_pos hμ.1 _)
+    simpa using this)]
+  exact le_top
+
+/-- **Blueprint `thm:main`, unconditionally**: the requested smoothing theorem with no imported
+hypotheses.  For `ψ ∈ C¹` supported in `[a, b]` with `‖ψ'‖_{L¹} ≤ M`, the weighted average
+`𝒜_ψ(f₁, f₂, f₃)` obeys a `λ^{-δ}` gain as soon as one of the `f`'s has Fourier support in
+`{|ξ_j| ≥ λ}`.  The two former imports are discharged by `Auto.koszAdjoint` and
+`Auto.koszSubunitScaleOne`. -/
+theorem mainTheorem {a bb : ℝ} (ha : 0 < a) (hab : a < bb)
+    {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : ∀ i, 1 < pv i)
+    (hsum : ∑ i, (pv i)⁻¹ = p⁻¹) :
+    ∃ δ C : ℝ, δ ∈ Set.Ioo (0 : ℝ) 1 ∧ 0 < C ∧
+      ∀ (ψ ψ' : ℝ → ℝ) (M : ℝ), (∀ t, HasDerivAt ψ (ψ' t) t) → Continuous ψ' →
+        Function.support ψ ⊆ Set.Icc a bb → 0 ≤ M →
+        (∫⁻ t, ‖ψ' t‖ₑ ∂volume) ≤ ENNReal.ofReal M →
+        ∀ lam : ℝ, 1 ≤ lam → ∀ f : Fin 3 → E3 → ℂ, (∀ i, Nice (f i)) →
+        (∃ j : Fin 3, Function.support (𝓕 (f j)) ⊆ {ξ : E3 | lam ≤ |ξ j|}) →
+        eLpNorm (Apsi ψ f) (ENNReal.ofReal p) volume
+          ≤ ENNReal.ofReal (C * max 1 M * lam ^ (-δ))
+            * ∏ i, eLpNorm (f i) (ENNReal.ofReal (pv i)) volume :=
+  main_smoothing (fun j => koszAdjoint j) (fun j => koszSubunitScaleOne j) ha hab hp hpv hsum
+
+end
+
 end Auto

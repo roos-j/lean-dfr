@@ -1766,3 +1766,30 @@ Step 4 is not needed: with passive coordinates the frozen correlation is itself 
 `ℝ³`, so the induction hypothesis applies to it directly and gives the full-space energy of the
 translate `g_i(· - P_i(a) e_i)`, whose Fourier modulus is that of `g_i`
 (`Auto.norm_fourier_comp_sub`).  Status: conventions recorded.
+
+## 2026-09-25T18:44:00-04:00 - `new:compact-decaying-point`: Lean conventions and the order of the extensions
+
+`Auto.compactDecaying` states the compact decaying point for the trilinear form `Auto.hpAdj`
+(`(I - P_R) A_N^{*j}` with the conjugations of the `b, c` inputs undone, `b = j+1`, `c = j+2`),
+on finite-valued inputs supported in `B_N(C₀)` (`Auto.SimpleOn`), as `new:interpolation` requires.
+The bounded endpoint is used in `L^∞` form (`Auto.hpAdj_bounded`, null sets removed by
+`Auto.hpAdj_ae_congr`).  The extension to all finite-norm inputs (row "extension to all
+finite-norm inputs") is postponed: `new:global-decaying-point` and the interpolation of
+`new:adjoint-all-exponents` consume only finite-valued bounded-support inputs, and the single
+approximation argument is performed once, for the final estimate.  Status: order change recorded.
+
+## 2026-09-25T19:55:00-04:00 - `new:global-decaying-point`: the summation of the pieces
+
+`Auto.globalDecaying` follows the exact input decomposition of lines 2470-2483 (cubes
+`Auto.boxIdx`, pieces `Auto.piece`, `Auto.hpAdj_decomp`), the translated compact estimate
+(`Auto.piece_bound`, with `C₀ = 2`) and the crude bound for each piece.  The off-diagonal summation
+is organized differently from the output-box discrete Young inequality of lines 2500-2527, to keep
+every sum finite: the input cubes form a finite set, and at each output point the weighted
+Cauchy-Schwarz inequality `|∑_ν H_ν|² ≤ (∑_ν (1 + ℓ_ν²)⁻¹) ∑_ν (1 + ℓ_ν²)|H_ν|²` is used, `ℓ_ν` the
+cube distance along `e_j`; the weight sum is at most `6` (`Auto.sum_inv_one_add_sq_int_le`), and
+`∫ (1 + ℓ²)|H_ν|² ≤ 10 ‖H_ν‖₂² + 5 (B^{tail}_2 μ^4)² ‖G_ν‖₂²` (`Auto.weighted_tail`) replaces the
+sum over output boxes of the blueprint's tail bounds `B^{tail}_2 μ^4 (|ℓ| - 2)^{-2} a_ν`.  Discrete
+Hoelder with exponents `u_i / 2` and the disjointness of the cubes (`Auto.holder_cubes`) then give
+the product of the global norms, as in the blueprint.  The statement is for finite-valued inputs of
+bounded support; the extension to all finite-norm inputs is performed once for the final
+estimate.  Status: equivalent argument recorded.
