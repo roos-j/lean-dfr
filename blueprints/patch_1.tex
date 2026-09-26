@@ -1,0 +1,744 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.05in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{mathrsfs}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[nameinlink,capitalise,noabbrev]{cleveref}
+
+\hypersetup{colorlinks=true,linkcolor=blue!45!black,citecolor=blue!45!black,urlcolor=blue!45!black}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\abs}[1]{\left|#1\right|}
+\newcommand{\set}[1]{\left\{#1\right\}}
+\newcommand{\indices}{\{1,2,3\}}
+\newcommand{\Idx}{\{0,1,2,3\}}
+
+\title{Formalization blueprint, patch 1\\
+  \large The specialized real flow and its Jacobian\\
+  \normalsize (replaces the proof of \texttt{lem:real-flow-jacobian}, lines 1889--1895)}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Scope of this patch}
+
+This document replaces exactly one proof of the main blueprint: the four-sentence
+proof of \texttt{lem:real-flow-jacobian} occupying lines 1889--1895.  It also
+corrects the statement of that lemma, which is false as written for one of the
+three possible terminal indices (see \cref{rem:statement-correction}).
+
+\textbf{Assumed as already available} (unchanged, quoted from the main blueprint):
+\texttt{def:real-lift} (the six-dimensional lift $\Gamma_1,\Gamma_2,\Gamma_3$ and
+the constants $D=6$, $D^\ast=10$, $D'=4$), \texttt{lem:fibre-separation}
+(puncturing a fibre to separate a new parameter from finitely many old ones), and
+\texttt{lem:lossless-refinements} (the refinement tower is lossless).
+Nothing else from the main blueprint is used.
+
+\textbf{Delivered here}: the four items the complaint names.
+\begin{enumerate}[label=(\alph*)]
+  \item \emph{Which density at which move.}  \cref{def:itinerary,lem:tower} give a
+    move-by-move table: the fibre of the $\ell$-th move has measure at least a
+    fixed power of $2$ times $\alpha_{w_{\ell-1}}N$, where $w_{\ell-1}$ is the
+    label of the set the flow is \emph{leaving}, not the one it is entering.
+  \item \emph{The six signs.}  \cref{def:flow}: the displacement of the move
+    $E_a\to E_b$ is $\Gamma_a(t)-\Gamma_b(t)$ with the convention
+    $\Gamma_0\equiv 0$, so the sign is $+$ on the block being left and $-$ on the
+    block being entered.
+  \item \emph{Six moves over sixty stages.}  \cref{lem:levels}: the level drops by
+    one exactly at the moves $E_a\to E_b$ with $a<b$; there are at most three such
+    moves, so a tower started at level $60$ terminates at level $57>0$.  The
+    number $60=10D$ is a generous over-estimate, not a count of moves.
+  \item \emph{Block lower triangular versus block diagonal.}  \cref{lem:parity}
+    shows that a flow all of whose moves touch $E_0$ exists \emph{only} when the
+    terminal index is $1$ or $3$, and that in those two cases the derivative is
+    block \emph{diagonal}.  For terminal index $2$ a move between two nonzero
+    labels is forced, and the derivative is then block lower triangular but not
+    diagonal (\cref{lem:jacobian}).  Lower triangularity is therefore the correct
+    uniform statement, and it is proved, not asserted.
+\end{enumerate}
+
+Throughout, every numerical constant is an explicit integer power of $2$, as
+promised in \texttt{thm:main}.
+
+\section{Notation recalled}
+\label{sec:notation}
+
+Fix $N>0$.  Write $\R^6=\R^1\times\R^2\times\R^3$ and call the three factors
+\emph{coordinate blocks} $1,2,3$; block $i$ has $d_i$ coordinates, where
+\[
+  (d_1,d_2,d_3)=(1,2,3),\qquad D=d_1+d_2+d_3=6,\qquad
+  D^\ast=\sum_{i=1}^3\frac{d_i(d_i+1)}2=1+3+6=10 .
+\]
+As in \texttt{def:real-lift},
+\[
+  \Gamma_i(t)=\bigl(0,\dots,0,\,t,t^2,\dots,t^{d_i},\,0,\dots,0\bigr)\in\R^6,
+\]
+the nonzero entries occupying block $i$.  We extend the notation by
+\begin{equation}
+  \label{eq:gamma-zero}
+  \Gamma_0(t):=0\in\R^6 \qquad (t\in\R),
+\end{equation}
+which is what makes the move formulas below uniform in the four labels
+$\Idx$.
+
+Let $E_0,E_1,E_2,E_3\subseteq\R^6$ have finite measure, put
+\[
+  K=\int_{\R^6}\one_{E_0}\,\mathcal L_N(\one_{E_1},\one_{E_2},\one_{E_3}),
+  \qquad
+  \alpha_i=\frac{K}{\abs{E_i}}\in(0,1] \quad(i\in\Idx),
+\]
+and assume $K>0$.  Set
+\begin{equation}
+  \label{eq:c-constants}
+  c_{r,i}:=2^{-(4(r-1)+i+1)}\qquad (r\in\N,\ i\in\Idx),
+\end{equation}
+so that a full stage costs the factor $2^{-4}$ of
+\texttt{lem:lossless-refinements}.
+
+\begin{definition}[Refinements and incidence functions]
+  \label{def:refinements}
+  Put $E_i^0:=E_i$ for $i\in\Idx$.  For $r\geq1$ define, for $x\in\R^6$,
+  \[
+    H_0^r(x):=\frac1N\,\Bigl|\set{t\in[0,N]:\ x-\Gamma_i(t)\in E_i^{r-1}\ \text{for } i=1,2,3}\Bigr|,
+  \]
+  and, for $i\in\indices$,
+  \[
+    H_i^r(x):=\frac1N\,\Bigl|\set{t\in[0,N]:\
+      x+\Gamma_i(t)\in E_0^{r},\quad
+      x+\Gamma_i(t)-\Gamma_{i'}(t)\in E_{i'}^{\rho(i,i',r)}\ \ (i'\in\indices\setminus\{i\})}\Bigr|,
+  \]
+  where
+  \[
+    \rho(i,i',r):=\begin{cases} r,& i'<i,\\ r-1,& i'>i.\end{cases}
+  \]
+  Then set
+  \[
+    E_0^r:=\set{x\in E_0^{r-1}: H_0^r(x)\geq c_{r,0}\alpha_0},
+    \qquad
+    E_i^r:=\set{x\in E_i^{r-1}: H_i^r(x)\geq c_{r,i}\alpha_i}\ \ (i\in\indices).
+  \]
+  The definitions are read in the order $E_0^r,E_1^r,E_2^r,E_3^r$, so every set
+  occurring on the right-hand side has already been defined.
+\end{definition}
+
+\begin{remark}
+  $H_0^r$ is the forward incidence and $H_i^r$ is the $i$-th adjoint incidence of
+  \texttt{lem:lossless-refinements}; \cref{def:refinements} is that lemma's
+  tower written out for $k=3$.  All the sets are measurable: $H^r_\bullet$ is
+  measurable by Fubini applied to the (measurable) set of pairs $(x,t)$ satisfying
+  the stated membership conditions, and the sets are superlevel sets of these
+  functions intersected with previously constructed measurable sets.
+\end{remark}
+
+\begin{lemma}[Nonemptiness]
+  \label{lem:nonempty}
+  If $K>0$, then for every $r\geq0$ and every $i\in\Idx$ the set $E_i^r$ is
+  nonempty; in fact $\abs{E_i^r}\geq c_{r,i}\,\abs{E_i}$.
+\end{lemma}
+
+\begin{proof}
+  This is \texttt{lem:lossless-refinements} applied with $k=3$: that lemma gives
+  $\langle \one_{E_i^r},H_i^r\rangle\geq c_{r,i}K$, hence in particular
+  $\abs{E_i^r}\geq c_{r,i}K/\|H^r_i\|_\infty\geq c_{r,i}K/1= c_{r,i}K>0$ because
+  $0\leq H^r_i\leq1$ pointwise.  Since $\alpha_i\abs{E_i}=K$, this is the stated
+  bound.
+\end{proof}
+
+\section{One move}
+\label{sec:move}
+
+\begin{lemma}[Transition lemma]
+  \label{lem:transition}
+  Let $r\geq1$, let $a\in\Idx$ and let $x\in E_a^r$.  Define
+  \[
+    T_a^r(x):=
+    \begin{cases}
+      \set{t\in[0,N]:\ x-\Gamma_{i'}(t)\in E_{i'}^{r-1}\ \forall\, i'\in\indices}, & a=0,\\[2pt]
+      \set{t\in[0,N]:\ x+\Gamma_a(t)\in E_0^r,\ \ x+\Gamma_a(t)-\Gamma_{i'}(t)\in E_{i'}^{\rho(a,i',r)}\ \forall\, i'\neq a}, & a\in\indices.
+    \end{cases}
+  \]
+  Then
+  \begin{equation}
+    \label{eq:fibre-lower}
+    \abs{T_a^r(x)}\geq c_{r,a}\,\alpha_a\,N ,
+  \end{equation}
+  and for every $t\in T_a^r(x)$ and every $b\in\Idx\setminus\{a\}$,
+  \begin{equation}
+    \label{eq:move}
+    x+\Gamma_a(t)-\Gamma_b(t)\ \in\ E_b^{\,r-\one[a<b]},
+  \end{equation}
+  where $\one[a<b]\in\{0,1\}$ and $\Gamma_0\equiv0$ as in \eqref{eq:gamma-zero}.
+\end{lemma}
+
+\begin{proof}
+  \eqref{eq:fibre-lower} is the definition of $E_a^r$ read backwards:
+  $x\in E_a^r$ says $H_a^r(x)\geq c_{r,a}\alpha_a$, and $N H^r_a(x)=\abs{T^r_a(x)}$.
+
+  For \eqref{eq:move} there are three cases.
+  \emph{(i) $a=0$, $b\in\indices$.}  Then $\Gamma_a=0$ and the displacement is
+  $-\Gamma_b(t)$; membership in $E_b^{r-1}$ is part of the definition of
+  $T_0^r(x)$, and $\one[0<b]=1$.
+  \emph{(ii) $a\in\indices$, $b=0$.}  The displacement is $+\Gamma_a(t)$ and
+  $x+\Gamma_a(t)\in E_0^r$ is part of the definition of $T^r_a(x)$; $\one[a<0]=0$.
+  \emph{(iii) $a,b\in\indices$, $a\neq b$.}  The displacement is
+  $\Gamma_a(t)-\Gamma_b(t)$ and membership in $E_b^{\rho(a,b,r)}$ is part of the
+  definition; $\rho(a,b,r)=r-\one[a<b]$ by inspection.
+\end{proof}
+
+\begin{remark}[Which density]
+  \label{rem:which-density}
+  \eqref{eq:fibre-lower} is the point the original proof left implicit.  The
+  measure of the fibre is governed by $\alpha_a$, the density attached to the set
+  the flow is \emph{leaving}.  The label of the set being entered plays no role in
+  the size of the fibre; it only decides whether a level is consumed.
+\end{remark}
+
+\section{Itineraries}
+\label{sec:itineraries}
+
+\begin{definition}[Itinerary]
+  \label{def:itinerary}
+  An \emph{itinerary} is a word $w=(w_0,w_1,\dots,w_6)\in\Idx^{7}$ with
+  $w_{\ell-1}\neq w_\ell$ for $1\leq\ell\leq6$.  Move $\ell$ is the pair
+  $(w_{\ell-1},w_\ell)$ and carries the parameter $t_\ell$.  We say move $\ell$
+  \emph{touches} block $i\in\indices$ if $i\in\{w_{\ell-1},w_\ell\}$, and we write
+  \[
+    n_i(w):=\#\set{\ell\in\{1,\dots,6\}:\ \text{move }\ell\text{ touches } i}.
+  \]
+  The itinerary is \emph{admissible} if there is a partition
+  $\{1,\dots,6\}=B_1\sqcup B_2\sqcup B_3$ with $\#B_i=d_i$ such that
+  \begin{enumerate}[label=(\roman*)]
+    \item every move touching block $i$ has its parameter in $B_i$ or in $B_{i'}$
+      for some $i'$ occurring \emph{earlier} in the visiting order defined below;
+    \item $B_i$ consists exactly of the parameters of the moves touching $i$,
+      except that if $i$ is entered by a move $(a,i)$ with $a\in\indices$ then
+      that move's parameter belongs to $B_a$.
+  \end{enumerate}
+  The \emph{visiting order} of $w$ is the order in which the labels
+  $1,2,3$ first occur in $w$.
+\end{definition}
+
+\begin{lemma}[Parity constraint]
+  \label{lem:parity}
+  For every itinerary $w$ and every $i\in\indices$,
+  \[
+    n_i(w)=2\,\#\set{\ell\in\{0,\dots,6\}: w_\ell=i}-\one[w_0=i]-\one[w_6=i],
+  \]
+  hence
+  \[
+    n_i(w)\equiv \one[w_0=i]+\one[w_6=i] \pmod 2 .
+  \]
+  Consequently, if every move of $w$ touches $E_0$ (equivalently
+  $0\in\{w_{\ell-1},w_\ell\}$ for all $\ell$, equivalently $n_i(w)=\#B_i$ for all
+  $i$), then $\#B_i=d_i$ for $i=1,2,3$ forces $\{w_0,w_6\}=\{1,3\}$.
+\end{lemma}
+
+\begin{proof}
+  Regard $w$ as a walk of length $6$ on the vertex set $\Idx$.  Each
+  occurrence of the letter $i$ at an interior position $1\le \ell\le 5$ is
+  incident to exactly two moves, and an occurrence at position $0$ or $6$ is
+  incident to exactly one.  Since $w_{\ell-1}\neq w_\ell$, no move touches $i$
+  twice, so summing incidences counts each touching move once; this is the
+  displayed identity, and the congruence follows.
+
+  If every move touches $E_0$ then no move has both endpoints nonzero, so by
+  \cref{def:itinerary}(ii) $\#B_i=n_i(w)$.  Requiring $\#B_i=d_i$ and using
+  $(d_1,d_2,d_3)=(1,2,3)\equiv(1,0,1)\pmod2$, the congruence gives
+  $\one[w_0=i]+\one[w_6=i]\equiv1$ for $i\in\{1,3\}$ and $\equiv0$ for $i=2$.
+  Since $w_0\neq w_6$ would otherwise be forced to coincide, the only solution is
+  $\{w_0,w_6\}=\{1,3\}$.
+\end{proof}
+
+\begin{definition}[The three itineraries]
+  \label{def:three-itineraries}
+  For $j'\in\indices$ define $w^{(j')}$ and the partition $B_1,B_2,B_3$ by
+  \[
+    \begin{array}{lll}
+      j'=3: & w^{(3)}=(1,0,2,0,3,0,3), & B_1=\{1\},\ B_2=\{2,3\},\ B_3=\{4,5,6\};\\[2pt]
+      j'=1: & w^{(1)}=(3,0,2,0,3,0,1), & B_3=\{1,4,5\},\ B_2=\{2,3\},\ B_1=\{6\};\\[2pt]
+      j'=2: & w^{(2)}=(1,3,0,3,2,0,2), & B_1=\{1\},\ B_3=\{2,3,4\},\ B_2=\{5,6\}.
+    \end{array}
+  \]
+\end{definition}
+
+\begin{lemma}
+  \label{lem:itineraries-admissible}
+  Each $w^{(j')}$ of \cref{def:three-itineraries} is an admissible itinerary
+  ending at $w_6=j'$, with $\#B_i=d_i$ for $i=1,2,3$.  For $j'\in\{1,3\}$ every
+  move touches $E_0$; for $j'=2$ exactly two moves, namely moves $1$ and $4$, have
+  both endpoints nonzero.
+\end{lemma}
+
+\begin{proof}
+  Direct inspection of the six moves of each word.  For $w^{(3)}$ the moves are
+  \[
+    1\to0,\quad 0\to2,\quad 2\to0,\quad 0\to3,\quad 3\to0,\quad 0\to3,
+  \]
+  touching blocks $1;2,2;3,3,3$ respectively, so $n_1=1,n_2=2,n_3=3$ and
+  $B_i$ is as displayed.  For $w^{(1)}$ the moves are
+  $3\to0,\ 0\to2,\ 2\to0,\ 0\to3,\ 3\to0,\ 0\to1$, touching
+  $3;2,2;3,3;1$, giving $B_3=\{1,4,5\}$, $B_2=\{2,3\}$, $B_1=\{6\}$.
+  For $w^{(2)}$ the moves are
+  $1\to3,\ 3\to0,\ 0\to3,\ 3\to2,\ 2\to0,\ 0\to2$; moves $1$ and $4$ have both
+  endpoints nonzero.  Move $1$ touches blocks $1$ and $3$ and its parameter is
+  assigned to $B_1$ (the block being left); move $4$ touches blocks $3$ and $2$
+  and its parameter is assigned to $B_3$.  This gives $B_1=\{1\}$,
+  $B_3=\{2,3,4\}$, $B_2=\{5,6\}$, of sizes $1,3,2=d_1,d_3,d_2$, and the visiting
+  order is $1,3,2$, so \cref{def:itinerary}(i) holds.
+\end{proof}
+
+\begin{lemma}[Level bookkeeping]
+  \label{lem:levels}
+  Let $w$ be one of the itineraries of \cref{def:three-itineraries} and set
+  $r_0:=60$.  Define $r_0=:\lambda_0$ and
+  $\lambda_\ell:=\lambda_{\ell-1}-\one[w_{\ell-1}<w_\ell]$.  Then
+  \[
+    \begin{array}{ll}
+      w^{(3)}: & (\lambda_0,\dots,\lambda_6)=(60,60,59,59,58,58,57),\\
+      w^{(1)}: & (\lambda_0,\dots,\lambda_6)=(60,60,59,59,58,58,57),\\
+      w^{(2)}: & (\lambda_0,\dots,\lambda_6)=(60,59,59,58,58,58,57).
+    \end{array}
+  \]
+  In particular $\lambda_6=57\geq1$ and $\lambda_\ell\geq 57$ throughout, so
+  $c_{\lambda_\ell,i}\geq2^{-(4\cdot59+4)}=2^{-240}$ for all $\ell$ and all
+  $i\in\Idx$.
+\end{lemma}
+
+\begin{proof}
+  Immediate from the move lists in the proof of
+  \cref{lem:itineraries-admissible} and the monotonicity of
+  $r\mapsto c_{r,i}$ in \eqref{eq:c-constants}.  A level is consumed exactly at
+  the moves $a\to b$ with $a<b$, of which there are three in each word.  The
+  choice $r_0=10D=60$ is a convenient over-estimate; any $r_0\geq4$ would do.
+\end{proof}
+
+\begin{remark}
+  This is the answer to ``how six moves distribute over sixty stages'': they do
+  not.  Six moves consume three stages.  The depth $60$ is chosen so that the
+  terminal level is positive with room to spare, and the only quantitative role of
+  the depth is through the uniform lower bound $c_{\lambda_\ell,i}\geq2^{-240}$.
+\end{remark}
+
+\section{The parameter tower and the flow}
+\label{sec:tower}
+
+Fix $j'\in\indices$, write $w:=w^{(j')}$, $B_1,B_2,B_3$ and
+$(\lambda_\ell)_{\ell=0}^6$ as above, and set $c_\ast:=2^{-240}$.
+
+\begin{definition}[Tower and flow]
+  \label{def:flow}
+  Fix $z\in E_{w_0}^{\lambda_0}$ (nonempty by \cref{lem:nonempty}).  Define
+  inductively, for $\mathbf t=(t_1,\dots,t_6)$,
+  \[
+    x_0(\mathbf t):=z,\qquad
+    x_\ell(t_1,\dots,t_\ell):=x_{\ell-1}(t_1,\dots,t_{\ell-1})
+      +\Gamma_{w_{\ell-1}}(t_\ell)-\Gamma_{w_\ell}(t_\ell),
+  \]
+  and
+  \[
+    I_\ell(t_1,\dots,t_{\ell-1}):=T^{\lambda_{\ell-1}}_{w_{\ell-1}}
+      \bigl(x_{\ell-1}(t_1,\dots,t_{\ell-1})\bigr)\subseteq[0,N],
+  \]
+  with $T^r_a(\cdot)$ as in \cref{lem:transition}.  Put
+  \[
+    \mathbf P:=\set{\mathbf t\in[0,N]^6:\ t_\ell\in I_\ell(t_1,\dots,t_{\ell-1})\ \text{for }\ell=1,\dots,6},
+    \qquad \Phi(\mathbf t):=x_6(\mathbf t).
+  \]
+  Explicitly,
+  \begin{equation}
+    \label{eq:flow-explicit}
+    \Phi(\mathbf t)=z+\sum_{\ell=1}^{6}\bigl(\Gamma_{w_{\ell-1}}(t_\ell)-\Gamma_{w_\ell}(t_\ell)\bigr).
+  \end{equation}
+\end{definition}
+
+\begin{lemma}[The tower is well formed]
+  \label{lem:tower}
+  $\mathbf P$ is measurable, each $x_\ell$ is a polynomial map, and for every
+  $\ell\in\{1,\dots,6\}$ and every $(t_1,\dots,t_{\ell-1})$ with
+  $t_m\in I_m$ for $m<\ell$:
+  \begin{enumerate}[label=(\roman*)]
+    \item $x_{\ell-1}(t_1,\dots,t_{\ell-1})\in E_{w_{\ell-1}}^{\lambda_{\ell-1}}$;
+    \item $\abs{I_\ell(t_1,\dots,t_{\ell-1})}\geq c_\ast\,\alpha_{w_{\ell-1}}N$.
+  \end{enumerate}
+  In particular $\Phi(\mathbf P)\subseteq E_{j'}^{57}\subseteq E_{j'}$, and the
+  six fibre densities are, in order,
+  \[
+    \begin{array}{ll}
+      w^{(3)}: & (\alpha_1,\alpha_0,\alpha_2,\alpha_0,\alpha_3,\alpha_0),\\
+      w^{(1)}: & (\alpha_3,\alpha_0,\alpha_2,\alpha_0,\alpha_3,\alpha_0),\\
+      w^{(2)}: & (\alpha_1,\alpha_3,\alpha_0,\alpha_3,\alpha_2,\alpha_0).
+    \end{array}
+  \]
+\end{lemma}
+
+\begin{proof}
+  Induction on $\ell$.  For $\ell=1$, (i) is the choice of $z$.  Assume (i) for
+  $\ell$.  Then \cref{lem:transition} applied with $a=w_{\ell-1}$,
+  $r=\lambda_{\ell-1}$, $x=x_{\ell-1}$ gives
+  $\abs{I_\ell}\geq c_{\lambda_{\ell-1},w_{\ell-1}}\alpha_{w_{\ell-1}}N
+  \geq c_\ast\alpha_{w_{\ell-1}}N$ by \cref{lem:levels}, which is (ii); and
+  \eqref{eq:move} with $b=w_\ell$ gives
+  $x_\ell\in E_{w_\ell}^{\lambda_{\ell-1}-\one[w_{\ell-1}<w_\ell]}
+  =E_{w_\ell}^{\lambda_\ell}$, which is (i) for $\ell+1$.
+
+  Measurability: each $x_\ell$ is a polynomial in $(t_1,\dots,t_\ell)$, so the
+  set $\{(t_1,\dots,t_\ell): t_\ell\in I_\ell(t_1,\dots,t_{\ell-1})\}$ is the
+  preimage of a measurable set under a measurable map composed with the
+  membership conditions of \cref{lem:transition}; $\mathbf P$ is the intersection
+  of six such sets.  The density table is read off from the move lists in
+  \cref{lem:itineraries-admissible} together with
+  \cref{rem:which-density}.  Finally $w_6=j'$ and $\lambda_6=57$.
+\end{proof}
+
+\section{The Jacobian}
+\label{sec:jacobian}
+
+\begin{lemma}[Block structure and determinant]
+  \label{lem:jacobian}
+  Let $\Phi$ be as in \eqref{eq:flow-explicit} for $w=w^{(j')}$.  Order the six
+  coordinates of $\R^6$ by blocks and the six parameters by
+  $B_{\pi(1)},B_{\pi(2)},B_{\pi(3)}$, where $\pi$ is the visiting order of $w$.
+  Then $D\Phi(\mathbf t)$ is block lower triangular with respect to this ordering,
+  its diagonal blocks are the derivatives of
+  \[
+    \Phi_1(u)=\pm u,\qquad
+    \Phi_2(u,v)=\pm(u-v,\,u^2-v^2),\qquad
+    \Phi_3(a,b,c)=\pm(a-b+c,\,a^2-b^2+c^2,\,a^3-b^3+c^3),
+  \]
+  where the arguments of $\Phi_i$ are the parameters of $B_i$ listed in
+  increasing order and the global signs are irrelevant.  Consequently
+  \begin{equation}
+    \label{eq:det}
+    \abs{\det D\Phi(\mathbf t)}=12\,\abs{u-v}\,\abs{a-b}\,\abs{a-c}\,\abs{b-c},
+  \end{equation}
+  where $\{u,v\}=B_2$ and $\{a,b,c\}=B_3$.
+  Moreover, for $j'\in\{1,3\}$ the matrix is block \emph{diagonal}, while for
+  $j'=2$ it is not: the block-$3$ rows depend on the parameter $t_1\in B_1$ and
+  the block-$2$ rows depend on the parameter $t_4\in B_3$.
+\end{lemma}
+
+\begin{proof}
+  By \eqref{eq:gamma-zero} the summand of \eqref{eq:flow-explicit} indexed by
+  $\ell$ is supported in coordinate blocks $w_{\ell-1}$ and $w_\ell$ (those that
+  are nonzero).  Hence the block-$i$ component of $\Phi$ depends only on the
+  parameters of the moves touching $i$, i.e. on $t_\ell$ for $\ell\in B_i$
+  together with, by \cref{def:itinerary}(ii), at most one further parameter
+  $t_{\ell_0}$ belonging to a block visited strictly earlier.  This is exactly
+  block lower triangularity.  If every move touches $E_0$ there is no such
+  $t_{\ell_0}$ and the matrix is block diagonal; by
+  \cref{lem:itineraries-admissible} this happens precisely for $j'\in\{1,3\}$,
+  and by \cref{lem:parity} no admissible itinerary with $j'=2$ can have this
+  property.
+
+  It remains to identify the diagonal blocks, i.e. the dependence of the block-$i$
+  component on the parameters of $B_i$.  Each $\ell\in B_i$ contributes
+  $+\Gamma_i(t_\ell)$ if $w_{\ell-1}=i$ (the move leaves block $i$) and
+  $-\Gamma_i(t_\ell)$ if $w_\ell=i$ (the move enters block $i$).  Within a block
+  the moves alternate between leaving and entering, so the signs alternate.  Since
+  $\Gamma_i(t)=(t,t^2,\dots,t^{d_i})$ on block $i$, the diagonal block is
+  \[
+    (t_{\ell_1},\dots,t_{\ell_{d_i}})\longmapsto
+    \pm\Bigl(\sum_{m=1}^{d_i}(-1)^{m-1}t_{\ell_m},\ \dots,\
+    \sum_{m=1}^{d_i}(-1)^{m-1}t_{\ell_m}^{d_i}\Bigr),
+  \]
+  which for $d_i=1,2,3$ is $\Phi_1,\Phi_2,\Phi_3$ as displayed.  (For $w^{(2)}$,
+  block $3$ is entered by move $1$, so the alternation of the three $B_3$-moves
+  $2,3,4$ starts with ``leave'': signs $+,-,+$.  For $w^{(3)}$, block $3$ is
+  entered by move $4$, so the signs of moves $4,5,6$ are $-,+,-$.  Both give
+  $\Phi_3$ up to the global sign.)
+
+  For the determinant, $\det D\Phi=\prod_i\det D\Phi_i$ by triangularity.  We have
+  $\abs{\det D\Phi_1}=1$;
+  \[
+    D\Phi_2(u,v)=\pm\begin{pmatrix}1&-1\\2u&-2v\end{pmatrix},
+    \qquad \abs{\det D\Phi_2}=2\abs{u-v};
+  \]
+  and the columns of $D\Phi_3(a,b,c)$ are $(1,2a,3a^2)^{\mathsf T}$,
+  $-(1,2b,3b^2)^{\mathsf T}$, $(1,2c,3c^2)^{\mathsf T}$, so that
+  \[
+    \abs{\det D\Phi_3}
+    =1\cdot2\cdot3\cdot\abs{\det\bigl(x_i^{m-1}\bigr)_{m,i}}
+    =6\,\abs{a-b}\,\abs{a-c}\,\abs{b-c}
+  \]
+  by the Vandermonde determinant.  Multiplying gives \eqref{eq:det}.
+\end{proof}
+
+\begin{lemma}[Multiplicity]
+  \label{lem:multiplicity}
+  Let $\mathbf P^{\circ}:=\set{\mathbf t\in\mathbf P: \det D\Phi(\mathbf t)\neq0}$ and,
+  with $B_3=\{\ell_1<\ell_2<\ell_3\}$,
+  \[
+    \mathbf P^{+}:=\mathbf P^\circ\cap\set{t_{\ell_1}<t_{\ell_3}},\qquad
+    \mathbf P^{-}:=\mathbf P^\circ\cap\set{t_{\ell_1}>t_{\ell_3}} .
+  \]
+  Then $\mathbf P^\circ=\mathbf P^+\sqcup\mathbf P^-$ and $\Phi$ is injective on
+  each of $\mathbf P^+$ and $\mathbf P^-$.  In particular every point of
+  $\R^6$ has at most $2$ preimages in $\mathbf P^\circ$, so a fortiori at most
+  $12$, and
+  \begin{equation}
+    \label{eq:area}
+    \abs{\Phi(\mathbf P)}\ \geq\ \frac12\int_{\mathbf P}\abs{\det D\Phi(\mathbf t)}\dd\mathbf t .
+  \end{equation}
+\end{lemma}
+
+\begin{proof}
+  By \eqref{eq:det}, $\mathbf t\in\mathbf P^\circ$ iff $u\neq v$ and $a,b,c$ are
+  pairwise distinct, so $\mathbf P^\circ$ is the disjoint union of
+  $\mathbf P^{\pm}$.
+
+  Injectivity.  Let $y=\Phi(\mathbf t)$ with $\mathbf t\in\mathbf P^\circ$.  We
+  recover $\mathbf t$ block by block in the visiting order, using lower
+  triangularity: when we come to block $i$, all parameters of earlier blocks are
+  already known, so the block-$i$ component of $y$ determines the value of the
+  diagonal map $\Phi_i$ at the parameters of $B_i$.
+  \begin{itemize}
+    \item $d=1$: $\Phi_1(u)=\pm u$ determines $u$.
+    \item $d=2$: from $s_1=u-v\neq0$ and $s_2=u^2-v^2$ we get $u+v=s_2/s_1$, hence
+      $u$ and $v$.
+    \item $d=3$: put $s_1=a-b+c$, $s_2=a^2-b^2+c^2$, $s_3=a^3-b^3+c^3$, and
+      $U=a+c$, $V=ac$.  Then
+      \[
+        b=U-s_1,\qquad V=s_1U-\tfrac{s_1^2+s_2}{2},\qquad
+        s_3=\tfrac32(s_2-s_1^2)U+s_1^3 .
+      \]
+      A direct computation gives $s_2-s_1^2=-2(a-b)(b-c)$, which is nonzero on
+      $\mathbf P^\circ$.  Hence $U$ is determined by the third identity, then $V$,
+      then $b$, and $\{a,c\}$ is the root set of $X^2-UX+V$.  The two roots are
+      distinct (else $a=c$ and $\det D\Phi=0$), so exactly one of the two
+      orderings satisfies $a<c$ and exactly one satisfies $a>c$.
+  \end{itemize}
+  Thus $\Phi$ is injective on $\mathbf P^{+}$ and on $\mathbf P^{-}$.
+
+  For \eqref{eq:area}, apply the change-of-variables formula for a $C^1$ map that
+  is injective on a measurable set, separately on $\mathbf P^{+}$ and
+  $\mathbf P^{-}$:
+  \[
+    \int_{\mathbf P^{\pm}}\abs{\det D\Phi}=\abs{\Phi(\mathbf P^{\pm})}
+    \leq\abs{\Phi(\mathbf P)} .
+  \]
+  Adding the two and noting $\int_{\mathbf P}\abs{\det D\Phi}
+  =\int_{\mathbf P^\circ}\abs{\det D\Phi}$, since the integrand vanishes off
+  $\mathbf P^\circ$, gives \eqref{eq:area}.
+\end{proof}
+
+\begin{remark}
+  \label{rem:verify-s2s1}
+  The identity $s_2-s_1^2=-2(a-b)(b-c)$ used above is elementary:
+  $(a-b+c)^2=a^2+b^2+c^2-2ab+2ac-2bc$, so
+  $s_2-s_1^2=-2b^2+2ab-2ac+2bc=-2(b-a)(b-c)$.  It is what makes the
+  case distinction in the original proof (``if the coefficient of $U$ vanishes,
+  the Jacobian vanishes'') an identity rather than an appeal.
+\end{remark}
+
+\section{Corrected statement and proof}
+\label{sec:assembly}
+
+\begin{lemma}[Specialized real flow and its Jacobian; corrected form of \texttt{lem:real-flow-jacobian}]
+  \label{lem:real-flow-jacobian-fixed}
+  Assume $K>0$ and let $\alpha_i=K/\abs{E_i}$ for $i\in\Idx$.  Fix
+  $j'\in\indices$.  Let $w=w^{(j')}$ be the itinerary of
+  \cref{def:three-itineraries} and let
+  $(\mathbf P,\Phi)$ be the tower and flow of \cref{def:flow}, built on the
+  refinements of \cref{def:refinements} taken to depth $60$.  Then:
+  \begin{enumerate}[label=(\roman*)]
+    \item $\mathbf P\subseteq[0,N]^6$ is measurable and its fibres satisfy
+      $\abs{I_\ell}\geq 2^{-240}\alpha_{w_{\ell-1}}N$ for $\ell=1,\dots,6$, the
+      six labels $w_0,\dots,w_5$ being those of \cref{lem:tower};
+    \item $\Phi(\mathbf P)\subseteq E_{j'}$;
+    \item $D\Phi$ is block lower triangular, with diagonal blocks the derivatives
+      of $\Phi_1,\Phi_2,\Phi_3$ of \cref{lem:jacobian}, and
+      \[
+        \abs{\det D\Phi(\mathbf t)}=12\,\abs{u-v}\,\abs{a-b}\,\abs{a-c}\,\abs{b-c};
+      \]
+      for $j'\in\{1,3\}$ the matrix is in fact block diagonal, and for $j'=2$ it is
+      not;
+    \item every point of $\R^6$ has at most $2$ preimages under
+      $\Phi|_{\mathbf P^\circ}$, hence at most $12$; and
+      $\abs{E_{j'}}\geq\frac12\int_{\mathbf P}\abs{\det D\Phi}$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{proof}
+  (i) is \cref{lem:tower}(ii) with $c_\ast=2^{-240}$ from \cref{lem:levels},
+  together with the measurability statement of \cref{lem:tower}.  (ii) is the last
+  assertion of \cref{lem:tower}.  (iii) is \cref{lem:jacobian}.  (iv) is
+  \cref{lem:multiplicity} combined with (ii).
+\end{proof}
+
+\begin{remark}[What was corrected]
+  \label{rem:statement-correction}
+  The original statement asserts that for \emph{every} pair of distinct
+  $j,j'\in\indices$ the seven labels may be taken to be $(1,0,2,0,3,0,3)$ ``after
+  the harmless relabelling that sends $j$ to the distinguished slot and $j'$ to
+  the terminal slot''.  That relabelling is not harmless: the degrees
+  $(d_1,d_2,d_3)=(1,2,3)$ are attached to the coordinates, not to the function
+  slots, and $\mathcal L_N$ has no symmetry exchanging two slots of different
+  degree.  \cref{lem:parity} shows that the word $(1,0,2,0,3,0,3)$ and every other
+  word all of whose moves touch $E_0$ can terminate only at an index of odd
+  degree, i.e. at $1$ or $3$.  For $j'=2$ one must use a word with a move between
+  two nonzero labels, and then the derivative is block lower triangular but not
+  block diagonal.  This is why the conclusion of the lemma must be stated with
+  lower triangularity.
+
+  The starting index is genuinely free: the word may begin at any label, and the
+  downstream use in \texttt{prop:restricted-improving-vertex} needs only that the
+  \emph{terminal} set is $E_{j'}$.  There, the index $j$ carrying the exponent
+  $S=30$ enters solely through the inequality $\alpha_j^{30}\leq\alpha_j^{10}$,
+  valid because $\alpha_j\leq1$, so it may be any index distinct from $j'$.  Hence
+  \cref{lem:real-flow-jacobian-fixed} still supplies all six ordered pairs
+  $(j,j')$ required downstream.
+\end{remark}
+
+\section{The integrated form used downstream}
+\label{sec:integrated}
+
+The next lemma is the only consequence of
+\cref{lem:real-flow-jacobian-fixed} used in
+\texttt{prop:restricted-improving-vertex}; we include it because the exponent
+$10$ is precisely the bookkeeping the original proof left unexplained.
+
+\begin{lemma}
+  \label{lem:integrated}
+  In the situation of \cref{lem:real-flow-jacobian-fixed},
+  \[
+    \abs{E_{j'}}\ \geq\ 2^{-2455}\bigl(\alpha_0\alpha_1\alpha_2\alpha_3N\bigr)^{10}.
+  \]
+\end{lemma}
+
+\begin{proof}
+  We integrate $\abs{\det D\Phi}$ over $\mathbf P$ in the order
+  $t_6,t_5,\dots,t_1$, i.e. innermost variable first, and use \eqref{eq:det}.
+
+  Fix $\ell$ and suppose $t_1,\dots,t_{\ell-1}$ are fixed.  Let
+  $m_\ell$ denote the number of Vandermonde factors in \eqref{eq:det} that involve
+  $t_\ell$ and a variable $t_{\ell'}$ with $\ell'<\ell$; by \eqref{eq:det} the
+  factors pair variables lying in the same $B_i$, so
+  \[
+    m_\ell=\#\set{\ell'\in B_{i(\ell)}:\ \ell'<\ell},
+  \]
+  where $i(\ell)$ is the block with $\ell\in B_{i(\ell)}$, and in particular
+  $m_\ell\leq2$.  Every Vandermonde factor is counted exactly once in this way,
+  and $\sum_\ell(m_\ell+1)=6+3=\ldots$ more precisely
+  \[
+    \sum_{\ell=1}^{6}(m_\ell+1)=\sum_{i=1}^{3}\sum_{m=1}^{d_i}m
+    =\sum_{i=1}^3\frac{d_i(d_i+1)}2=D^\ast=10 .
+  \]
+  All factors involving $t_\ell$ and a \emph{later} variable are integrated
+  before $t_\ell$, so at the $\ell$-th step the integrand contains exactly the
+  $m_\ell$ factors $\abs{t_\ell-t_{\ell'}}$, $\ell'<\ell$, in block $i(\ell)$,
+  times a quantity independent of $t_\ell$.
+
+  By \cref{lem:tower}(ii), $\abs{I_\ell}\geq c_\ast\alpha_{w_{\ell-1}}N$.  Apply
+  \texttt{lem:fibre-separation} to $E=I_\ell$ with $a=c_\ast\alpha_{w_{\ell-1}}$
+  and the $m_\ell\leq2$ points $u_{\ell'}=t_{\ell'}$: it produces
+  $I_\ell'\subseteq I_\ell$ with
+  \[
+    \abs{I'_\ell}\geq\tfrac12 c_\ast\alpha_{w_{\ell-1}}N,\qquad
+    \abs{t_\ell-t_{\ell'}}\geq\tfrac{1}{4m_\ell}c_\ast\alpha_{w_{\ell-1}}N
+    \geq 2^{-3}c_\ast\alpha_{w_{\ell-1}}N \quad(t_\ell\in I'_\ell).
+  \]
+  Hence
+  \[
+    \int_{I_\ell}\ \prod_{\substack{\ell'\in B_{i(\ell)}\\ \ell'<\ell}}\abs{t_\ell-t_{\ell'}}\dd t_\ell
+    \ \geq\ 2^{-1}\bigl(2^{-3}\bigr)^{m_\ell}
+    \bigl(c_\ast\alpha_{w_{\ell-1}}N\bigr)^{m_\ell+1}
+    \ \geq\ 2^{-9}\bigl(c_\ast\alpha_{w_{\ell-1}}N\bigr)^{m_\ell+1}.
+  \]
+  Multiplying the six steps and using $\sum_\ell(m_\ell+1)=10$,
+  \[
+    \int_{\mathbf P}\abs{\det D\Phi}
+    \ \geq\ 12\cdot2^{-54}c_\ast^{10}\,N^{10}
+    \prod_{\ell=1}^{6}\alpha_{w_{\ell-1}}^{\,m_\ell+1}
+    \ \geq\ 2^{-54}\,2^{-2400}\,N^{10}\prod_{i\in\Idx}\alpha_i^{\,e_i},
+  \]
+  where $e_i:=\sum_{\ell:\,w_{\ell-1}=i}(m_\ell+1)$ and $\sum_ie_i=10$.  Since
+  $0<\alpha_i\leq1$ and $e_i\leq10$ we have
+  $\alpha_i^{e_i}\geq\alpha_i^{10}$, whence
+  \[
+    \int_{\mathbf P}\abs{\det D\Phi}\ \geq\ 2^{-2454}\bigl(\alpha_0\alpha_1\alpha_2\alpha_3N\bigr)^{10}.
+  \]
+  Now apply \eqref{eq:area} and \cref{lem:real-flow-jacobian-fixed}(ii).
+\end{proof}
+
+\begin{remark}[The three bookkeepings, explicitly]
+  For $w^{(3)}=(1,0,2,0,3,0,3)$ one has $B_1=\{1\}$, $B_2=\{2,3\}$,
+  $B_3=\{4,5,6\}$, so $(m_1,\dots,m_6)=(0,0,1,0,1,2)$ and
+  $(m_\ell+1)_\ell=(1,1,2,1,2,3)$, summing to $10$; the leaving labels are
+  $(1,0,2,0,3,0)$, so $(e_0,e_1,e_2,e_3)=(1+1+3,\,1,\,2,\,2)=(5,1,2,2)$.
+  For $w^{(2)}=(1,3,0,3,2,0,2)$ one has $B_1=\{1\}$, $B_3=\{2,3,4\}$,
+  $B_2=\{5,6\}$, so $(m_\ell+1)_\ell=(1,1,2,3,1,2)$, again summing to $10$, and
+  the leaving labels are $(1,3,0,3,2,0)$, giving
+  $(e_0,e_1,e_2,e_3)=(2+2,\,1,\,1,\,1+3)=(4,1,1,4)$.  In both cases every
+  $e_i\leq10$, which is all the proof uses.
+\end{remark}
+
+\section{Formalization notes}
+\label{sec:lean}
+
+\begin{enumerate}[label=\textbf{L\arabic*.}]
+  \item \textbf{Index type.}  Use \texttt{Fin 4} for $\Idx$ with the
+    linear order inherited from \texttt{Fin}, so that $\one[a<b]$ in
+    \eqref{eq:move} is decidable and the level recursion
+    $\lambda_\ell=\lambda_{\ell-1}-\one[w_{\ell-1}<w_\ell]$ is definitional.
+    Define $\Gamma:\texttt{Fin 4}\to\R\to\R^6$ with $\Gamma\,0=0$; this single
+    convention removes the three-case split in \cref{lem:transition}.
+  \item \textbf{Itineraries as data.}  An itinerary is a
+    \texttt{w : Fin 7 -> Fin 4} together with a proof of
+    \texttt{forall l, w l.succ <> w l.castSucc} and the block assignment
+    \texttt{B : Fin 6 -> Fin 3}.  \cref{def:three-itineraries} then supplies three
+    explicit terms; \cref{lem:itineraries-admissible} and \cref{lem:levels} are
+    \texttt{decide}-style finite checks.
+  \item \textbf{The tower.}  Define $x_\ell$ and $I_\ell$ by recursion on
+    \texttt{Fin 7}.  The invariant of \cref{lem:tower} is a single
+    \texttt{Nat.rec} statement combining (i) and (ii); it is the only induction in
+    the patch.  Measurability of $\mathbf P$ follows from measurability of the
+    graph $\{(x,t): x-\Gamma_i(t)\in E_i\}$, which is the preimage of a measurable
+    set under the continuous map $(x,t)\mapsto x-\Gamma_i(t)$, together with
+    \texttt{MeasureTheory.measurable\_measure\_prodMk\_left}-style Fubini for the
+    fibre-measure functions $H^r_\bullet$.
+  \item \textbf{Determinants.}  \cref{lem:jacobian} reduces to
+    \texttt{Matrix.det\_vandermonde} after pulling the constants $1,2,3$ out of
+    the columns (\texttt{Matrix.det\_updateColumn\_smul} or
+    \texttt{Matrix.det\_mul} with a diagonal matrix) and absorbing the alternating
+    signs into the columns.  Block triangularity is
+    \texttt{Matrix.det\_of\_lowerTriangular} applied to the $3\times3$ block
+    matrix, or, more cheaply, \texttt{Matrix.det\_fromBlocks\_zero\_of\_...}~applied
+    twice.
+  \item \textbf{Change of variables.}  \eqref{eq:area} needs only the injective
+    case of the change-of-variables theorem for $C^1$ maps on measurable sets, in
+    \texttt{Mathlib/MeasureTheory/Function/Jacobian.lean}.  Splitting
+    $\mathbf P^\circ$ into the two pieces $\{t_{\ell_1}<t_{\ell_3}\}$ and
+    $\{t_{\ell_1}>t_{\ell_3}\}$ is deliberate: it avoids any area formula with
+    multiplicity, and avoids the appeal to a bound on the number of preimages as a
+    primitive.  (I have not verified the current Mathlib names for the
+    change-of-variables lemmas; they should be checked against the version in use.)
+  \item \textbf{Constants.}  Keep $c_\ast=2^{-240}$, $2^{-9}$ per step and
+    $2^{-2454}$ as literals of the form \texttt{(2:R)\^{}(-(240:Z))}; every
+    inequality used is monotonicity of \texttt{zpow} in the exponent for a base in
+    $(0,1]$, so no real-analytic input is needed for the constant bookkeeping.
+  \item \textbf{What is \emph{not} needed.}  No real-algebraic geometry, no
+    Vinogradov mean value theorem, no sublevel-set estimate, and no maximal
+    principle.  The only nontrivial analytic inputs are Fubini, the injective
+    change of variables, and \texttt{lem:fibre-separation}.
+\end{enumerate}
+
+\end{document}

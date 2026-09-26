@@ -6,7 +6,7 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
 | Task | Target/source | Exclusive work folder | Main file | Owner | Readiness |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | DFR/Auto/SmoothingIneq2D/ | DFR/Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Complete; Auto.smoothing_theorem5 verified with all prerequisites, full build, and allowed-axiom audit |
-| 2 | 3d smoothing inequality; user blueprint pending in blueprints/ | DFR/Auto/SmoothingIneq3D/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
+| 2 | 3d smoothing inequality, [blueprints/task_2_smoothingineq3d_blueprint.tex](../blueprints/task_2_smoothingineq3d_blueprint.tex) | DFR/Auto/SmoothingIneq3D/ | DFR/Auto/SmoothingIneq3D/Smoothing3D.lean | Claude session task2-20260911-1213 | Complete; Auto.mainTheorem (`thm:main`, no hypotheses) verified with Auto.koszAdjoint, lake build, and allowed-axiom audit |
 | 3 | Twisted; user blueprint pending in blueprints/ | DFR/Auto/Twisted/ | Select from blueprint within folder | Unassigned | Blocked: blueprint missing |
 | 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | DFR/Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
 
@@ -59,3 +59,34 @@ the Task 1 starter module are infrastructure only; all four proofs are not start
 2026-09-11T16:04:16.7487146-04:00 - Task 1 completion gate passed. Owner Codex root task1-20260910-0955 completed Theorem 5 and its source proof; see Status.md for direct checks, full build, and transitive axiom evidence. Tasks 2-3 remain blocked on blueprints; Task 4 remains blocked on their completion and its blueprint.
 
 2026-09-11T20:38:53.152569-04:00 - User-authorized Task 1 cleanup completed by Codex root. Shared prerequisites relocated to DFR/Auto/; the main file and all source targets are unchanged. Completion gate rechecked: direct source checks, configured build, and final theorem axiom audit pass.
+## Task 2 assignment
+
+2026-09-11T12:14:59-04:00 — Coordinator assigns Claude session task2-20260911-1213 exactly Task 2, the 3d trilinear Sobolev smoothing estimate. Scope: DFR/Auto/SmoothingIneq3D/; main file Smoothing3D.lean; source blueprints/task_2_smoothingineq3d_blueprint.tex, target `thm:main`. Next unfinished step: the elementary conventions of blueprint Section 2, in the forward order recorded in Status.md. Completion requires faithful coverage of the blueprint's proved steps, direct verification of the owned Auto source with `lake env lean`, `lake build` for configured targets, and the allowed-axiom audit.
+
+Open scope question referred to the user (see Status.md and ErrorReport.md): the blueprint designates `thm:kosz-adjoint`, the scale-one input behind `thm:kosz-subunit`, and `thm:quasi-interpolation` as imported analytic modules carrying citations instead of proofs (Remark `rem:formalization-boundary`). The completion gate forbids unproved bridges, so these three imports must either be proved in Lean or explicitly carried as hypotheses of the main theorem.
+
+## Task 2 completion gate: user-authorized exception for the blueprint's imports
+
+2026-09-11T16:46:20-04:00 — The user resolves the scope question recorded above. The three
+modules that blueprints/task_2_smoothingineq3d_blueprint.tex imports by citation rather than
+proof (`thm:kosz-adjoint`, the scale-one estimate behind `thm:kosz-subunit`, and
+`thm:quasi-interpolation`) are to be stated as named Props and threaded as explicit hypotheses
+through every downstream result, including the target `thm:main`. Task 2 therefore completes with
+`thm:main` proved conditionally on exactly those three named imports.
+
+Everything else in the gate stands: no sorry, no admit, no added axioms, no weakened targets and
+no placeholders; owned sources pass direct `lake env lean`; the configured project passes
+`lake build`; and `#print axioms` on the exported results shows only a subset of propext,
+Classical.choice and Quot.sound. The imports must be visible in the statement of `thm:main`
+rather than hidden in a definition.
+
+## Task 2 source change: the imports become proof obligations
+
+2026-09-11T18:44:08-04:00 — The operative blueprint for Task 2 is now
+blueprints/task_2_smoothingineq3d_blueprint_updated.tex. Its
+`prop:no-imported-analytic-declarations` requires that `thm:kosz-adjoint`, `thm:kosz-subunit`
+and `thm:quasi-interpolation` be proved internally rather than assumed. The gate exception
+recorded on 2026-09-11T16:46:20-04:00, which permitted carrying them as hypotheses, is therefore
+withdrawn by the source itself. The original completion gate applies in full: all targets proved,
+no sorry, no added axioms, `#print axioms` showing only propext, Classical.choice and Quot.sound,
+owned sources passing `lake env lean`, and the configured project passing `lake build`.

@@ -1,0 +1,561 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[hidelinks]{hyperref}
+\usepackage{microtype}
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{corollary}[lemma]{Corollary}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\emergencystretch=2em
+\title{Targeted Lean 4 blueprint\\\large Repairs to the three blocked spots at lines 2084--2086}
+\author{}
+\date{}
+\begin{document}
+\maketitle
+This document concerns only the blocked proof in
+\path{task_2_smoothingineq3d_blueprint_updated.tex}.
+Declaration names below are proposed project names, not claims about
+existing Mathlib identifiers. This is a mathematical blueprint; no Lean
+compiler has checked it.
+
+Sections~1 and~2 give independently usable local repairs. For the merged
+repair, use Section~3 instead of the entire old stopping-time proof: its
+measurable-set refinements do not require either spatial dyadic resolution
+or principal cubes. It also replaces the overly general lemma statement
+by the actual monomial instance. The supplied replacement fragment covers
+the old lemma and its immediate corollary (original lines 2069--2136), and
+leaves the rest of the blueprint unchanged.
+
+\section{Spot 1: a finite dyadic tree cannot resolve arbitrary simple inputs}
+\textbf{Blocked sentence.} ``Inside each enlargement take the finite dyadic
+tree resolving all level sets of the three nonnegative simple inputs.''
+
+For a local repair retaining a spatial-tree argument, first take
+nonnegative bounded inputs supported in a bounded half-open root cube $R$.
+For its depth-$n$ dyadic partition $\mathcal D_n(R)$ define
+\[
+ f_{i,n}=\sum_{Q\in\mathcal D_n(R)}
+       \left(|Q|^{-1}\int_Q f_i\right)\mathbf1_Q,
+\]
+extended by zero outside $R$. The finite tree of generations $0,\ldots,n$
+resolves the level sets of $f_{i,n}$, not of $f_i$. The approximation depth
+$n$ must remain an explicit parameter.
+
+\paragraph{Lean proof obligations.}
+\texttt{dyadicApprox\_basic}: prove finite range, measurability,
+nonnegativity, support in $R$, and $\|f_{i,n}\|_\infty\leq\|f_i\|_\infty$.
+
+\texttt{dyadicApprox\_tendsto\_L1}: prove
+$\|f_{i,n}-f_i\|_1\to0$. Averaging is an $L^1$-contraction. Approximate
+$f_i$ in $L^1(R)$ by a continuous function on $\overline R$, and use uniform
+continuity to obtain uniform convergence of its dyadic averages. For
+$1\leq p<\infty$, boundedness also gives
+\[
+ \|f_{i,n}-f_i\|_p^p\leq
+ (2\|f_i\|_\infty)^{p-1}\|f_{i,n}-f_i\|_1\longrightarrow0.
+\]
+Handle the zero bound separately.
+
+\texttt{translationAverage\_tendsto\_L1\_of\_boundedApprox}: for a normalized
+positive translation average, the telescoping expansion and the trivial
+$L^1\times L^\infty\times L^\infty\to L^1$ bounds give
+\[
+ \|T_1(f_{1,n},f_{2,n},f_{3,n})-T_1(f_1,f_2,f_3)\|_1
+ \leq\sum_i\|f_{i,n}-f_i\|_1\prod_{a\ne i}\|f_a\|_\infty.
+\]
+Hence the outputs converge in $L^1$ and have an almost-everywhere
+convergent subsequence, independently of any subunit bound.
+
+\texttt{dyadic\_bound\_passes\_to\_bounded\_inputs}: if the finite-tree bound
+has a constant independent of $n$, apply Fatou to the $q$-th powers along
+that subsequence, and use the input $L^{q_i}$ convergence. The dyadic
+averages need not be monotone. Only the subsequent extension using
+\[
+ f_i^{(K)}=\mathbf1_{[-K,K)^3}\min(f_i,K)
+\]
+is monotone, and permits monotone convergence in the inputs, positive
+average, and $q$-th power.
+
+\section{Spot 2: principal cubes, averages, and the correct packing quantity}
+\textbf{Blocked sentence.} ``Call $Q$ principal ... if its local
+$L^{r_i}$-mass is more than twice the sum of the masses of its strict
+descendants.''
+
+Fix a finite dyadic tree. Explicitly supply exponents $s_i>1$ for the
+three original inputs and distinguish them from the adjoint exponents
+indexed by $0,j',k$. Define
+\[
+ M_i(Q)=\int_Q f_i^{s_i},\qquad a_i(Q)=M_i(Q)/|Q|.
+\]
+Make the root principal. For a principal $P$, take as stopping children
+the maximal proper descendants satisfying
+$\exists i,\ a_i(Q)>6a_i(P)$. Recursively declare those children principal.
+For a selected child set
+\[
+ \operatorname{colour}(P,Q)=\min\{i:a_i(Q)>6a_i(P)\}.
+\]
+Here descendants are searched in the specified finite tree; sums are over
+selected stopping children, not all descendants.
+
+\paragraph{Lean proof obligations.}
+\texttt{stopChildren\_pairwise\_disjoint}: use dyadic nested-or-disjoint
+geometry and maximality. \texttt{principal\_family\_laminar}: prove only
+nested-or-disjoint, not that the entire family is a chain.
+
+\texttt{stopChildren\_volume\_le\_half}: for each colour $i$, disjointness
+and the defining threshold give
+\[
+ 6a_i(P)\sum_{\operatorname{colour}(P,Q)=i}|Q|
+ \leq\sum_{\operatorname{colour}(P,Q)=i}M_i(Q)\leq M_i(P).
+\]
+If $a_i(P)>0$, divide to obtain $|P|/6$. If $a_i(P)=0$, there are no
+children of that colour. Summing the three colour bounds gives
+\[
+ \sum_{Q\in\operatorname{Stop}(P)}|Q|\leq |P|/2.
+\]
+
+\texttt{principal\_good\_regions}: define
+$E_P=P\setminus\bigcup_{Q\in\operatorname{Stop}(P)}Q$.
+Prove $|E_P|\geq|P|/2$, pairwise disjointness of the $E_P$, and
+$\sum_{P\subseteq R}|P|\leq2|R|$ for principal cubes. If the inputs are
+resolved at the terminal generation, then
+$f_i^{s_i}\leq6a_i(P)$ almost everywhere on $E_P$; otherwise a terminal
+cube would qualify and lie under a maximal qualifying descendant.
+
+Recursion terminates by decreasing remaining dyadic depth. Comparisons
+and finite maximal selection may be classical/noncomputable.
+\textbf{Do not infer a mass contraction.} All of $M_i(P)$ may be carried
+by one small stopping child. The proved contraction is for Lebesgue
+volume, and does not establish the old $2^{-m}$ analytic remainder.
+
+\section{Spot 3: replace the unspecified cycles by an explicit monomial proof}
+\textbf{Blocked sentence.} ``Iterate this operation cyclically through the
+three inputs. After $m$ cycles, expansion by positivity gives ...''
+
+Delete the asserted absorption inequality and the formulas for $d_m$ and
+$q_{i,m}$. They do not follow from the local repairs in Sections~1--2.
+Moreover, the abstract adjoint-gain implication as stated is false; a
+verification is provided at the end. The replacement below proves the
+actual monomial endpoint with $q=8/9$ and preserves the distinguished
+$L^2$ input.
+
+The source PDF, p.~79, states (6.24) and attributes it to Corollary~5.3,
+but does not provide the proposed cube recursion or exponent formulas.
+The replacement instead adapts the explicit measurable refinements of
+Section~5.3 and the parameter-tower/Jacobian mechanism of Sections~5.4
+and~5.6. It is a new three-set specialization of that mechanism, fully
+specified here.
+
+% Targeted replacement for the old lemma and immediate corollary,
+% original source lines 2069--2136. The historical lemma label is retained
+% for reference compatibility; its statement is deliberately specialized.
+% This is a mathematical Lean 4 blueprint, not compiler-checked Lean code.
+
+\begin{lemma}[Three-set restricted estimate for the upper-half monomial average]
+\label{lem:three-set-restricted-upper-half}
+Let $I=(1/2,1)$, $\gamma_i(t)=t^i e_i$ for $i\in\{1,2,3\}$, and
+\[
+ T(f_1,f_2,f_3)(x)=2\int_I\prod_{i=1}^3 f_i(x+\gamma_i(t))\,dt.
+\]
+For $d\in\{2,3\}$ put $\ell=5-d$. For measurable sets of finite measure,
+\[
+ K:=\int_{\mathbb R^3}T(\mathbf1_{E_1},\mathbf1_{E_2},\mathbf1_{E_3})(x)\,dx
+ \leq 16|E_1|^{1/2}|E_d|^{1/2}|E_\ell|^{1/4}.
+ \tag{R}
+\]
+\end{lemma}
+
+\begin{proof}
+This is a three-set specialization of the measurable-refinement and real
+parameter-flow mechanism in Kosz et al., Section~5.3, Lemma~5.14, and
+Section~5.6. The specific flow and constants below are derived here; they
+are not a transcription of the assertion surrounding equation~(6.24).
+
+\paragraph{Incidence and the exact deletion identity.}
+Work first with Borel representatives. Changes on null sets do not change
+any incidence integral, by translation invariance and Tonelli. For a tuple
+$F=(F_1,F_2,F_3)$ define
+\[
+ \mathcal K(F)=2\int_I\int_{\mathbb R^3}
+       \prod_{i=1}^3\mathbf1_{F_i}(x+\gamma_i(t))\,dx\,dt,
+\]
+\[
+ H_i[F](y)=2\int_I\prod_{a\ne i}
+ \mathbf1_{F_a}\bigl(y-\gamma_i(t)+\gamma_a(t)\bigr)\,dt.
+\]
+The functions $H_i[F]$ are measurable and lie in $[0,1]$. Translation in
+$x$ gives the identity
+\[
+ \mathcal K(F)=\int_{F_i}H_i[F](y)\,dy.                 \tag{D1}
+\]
+These $H_i$ are two-factor fibre-incidence functions, not the three-input
+adjoints of the original blueprint.
+
+If $K=0$, (R) is immediate. Otherwise $0<|E_i|<\infty$ for every $i$ and
+\[
+ \alpha_i=K/|E_i|\in(0,1].
+\]
+For $F_i\subseteq E_i$ and $c>0$, replace only $F_i$ by
+\[
+ F_i'=\{y\in F_i:H_i[F](y)\geq c\alpha_i\}.
+\]
+Keep the other two sets unchanged. Equation (D1) proves
+\[
+ \mathcal K(F)-\mathcal K(F')
+ =\int_{F_i\setminus F_i'}H_i[F]
+ \leq c\alpha_i|E_i|=cK.                             \tag{D2}
+\]
+In Lean, prove (D1) as \texttt{incidence\_eq\_fibreIntegral} and (D2) as
+\texttt{refine\_one\_loss}. The reference mass $K$ and the $\alpha_i$
+remain those of the original sets at every stage.
+
+\paragraph{Exactly three updates.}
+Let $F^{(0)}=(E_1,E_2,E_3)$. Define successively
+\[
+ F^{(1)}_1=\{y\in E_1:H_1[F^{(0)}](y)\geq\alpha_1/2\},
+ \qquad F^{(1)}_a=E_a\quad(a\ne1),
+\]
+\[
+ F^{(2)}_d=\{y\in F^{(1)}_d:H_d[F^{(1)}](y)\geq\alpha_d/4\},
+ \qquad F^{(2)}_a=F^{(1)}_a\quad(a\ne d),
+\]
+\[
+ F^{(3)}_1=\{y\in F^{(2)}_1:H_1[F^{(2)}](y)\geq\alpha_1/8\},
+ \qquad F^{(3)}_a=F^{(2)}_a\quad(a\ne1).
+\]
+Thus the update order is $1,d,1$, with thresholds $1/2,1/4,1/8$.
+Three applications of (D2) give
+\[
+ \mathcal K(F^{(1)})\geq K/2,\qquad
+ \mathcal K(F^{(2)})\geq K/4,\qquad
+ \mathcal K(F^{(3)})\geq K/8.                        \tag{D3}
+\]
+In particular $F^{(3)}_1$ is nonempty. Choose $z\in F^{(3)}_1$ once.
+This is a finite choice of a point, not measurable selection of a family.
+
+\paragraph{Explicit tower and routing.}
+Define
+\[
+ U=\{u\in I:\ \forall a\ne1,\
+       z-\gamma_1(u)+\gamma_a(u)\in F^{(2)}_a\}.
+\]
+For every real $u$ set $y_1(u)=z-\gamma_1(u)+\gamma_d(u)$ and define
+\[
+ V(u)=\{v\in I:\ \forall a\ne d,\
+       y_1(u)-\gamma_d(v)+\gamma_a(v)\in F^{(1)}_a\}.
+\]
+For every real pair $(u,v)$ set $y_2(u,v)=y_1(u)-\gamma_d(v)+\gamma_1(v)$ and define
+\[
+ W(u,v)=\{w\in I:\ \forall a\ne1,\
+       y_2(u,v)-\gamma_1(w)+\gamma_a(w)\in E_a\}.
+\]
+The three threshold definitions, read in reverse chronological order,
+prove
+\[
+ |U|\geq\alpha_1/16,\qquad
+ |V(u)|\geq\alpha_d/8,\qquad
+ |W(u,v)|\geq\alpha_1/4.                            \tag{T1}
+\]
+The $V$ bound is for $u\in U$, and the $W$ bound is for $u\in U$, $v\in V(u)$. The factor $2$ in the definition of $H_i$ accounts for these denominators.
+The memberships used are precisely
+\[
+ z\in F^{(3)}_1
+ \longmapsto y_1\in F^{(2)}_d
+ \longmapsto y_2\in F^{(1)}_1
+ \longmapsto \Phi(u,v,w)\in E_\ell.
+\]
+Remove a single interval from the middle fibre:
+\[
+ V'(u)=V(u)\cap\{v:|u-v|\geq\alpha_d/32\}.
+\]
+The removed interval has length $\alpha_d/16$, so $|V'(u)|\geq\alpha_d/16$.
+Now set
+\[
+ \mathcal P=\{(u,v,w)\in I^3:\ u\in U,\ v\in V'(u),\ w\in W(u,v)\}.
+\]
+All sets are given by explicit measurable predicates. Tonelli and (T1)
+yield
+\[
+ |\mathcal P|\geq 2^{-10}\alpha_1^2\alpha_d.         \tag{T2}
+\]
+Prove this as \texttt{three\_step\_tower}. No stopping cubes, height
+induction, or unidentified coordinate choices occur.
+
+\paragraph{The polynomial flow.}
+Put
+\[
+ \Phi(u,v,w)=z-\gamma_1(u)+\gamma_d(u)
+                -\gamma_d(v)+\gamma_1(v)
+                -\gamma_1(w)+\gamma_\ell(w).
+\]
+The routing above proves $\Phi(\mathcal P)\subseteq E_\ell$. In coordinate
+order $(1,d,\ell)$,
+\[
+ \Phi(u,v,w)
+ =\bigl(z_1-u+v-w,\ z_d+u^d-v^d,\ z_\ell+w^\ell\bigr).
+\]
+Its absolute Jacobian is
+\[
+ |\det D\Phi|=
+ \begin{cases}
+  6w^2|u-v|,&d=2,\\
+  6w(u+v)|u-v|,&d=3.
+ \end{cases}                                                    \tag{J1}
+\]
+Since $u,v,w\in I$, both expressions are at least $|u-v|$ and consequently
+at least $\alpha_d/32$ on $\mathcal P$.
+
+The map is injective on $\Omega=\{(u,v,w)\in I^3:u\ne v\}$. Indeed its
+$\ell$-coordinate determines $w>0$. Its first coordinate then determines
+$h=u-v\ne0$. If $d=2$, its $d$-coordinate minus $z_d$, divided by $h$, determines $u+v$.
+If $d=3$, it determines $c=(u^3-v^3)/(u-v)$, and
+\[
+ 4c=3(u+v)^2+h^2
+\]
+determines $u+v>0$. In either case $u$ and $v$ follow from their sum and
+difference. This avoids a general polynomial fibre-counting theorem.
+
+Prove \texttt{three\_step\_flow\_injective} and
+\texttt{three\_step\_flow\_jacobian} by the two cases $d=2,3$.
+The map is polynomial, $C^1$, and has nonzero determinant on the open set
+$\Omega$. The injective change-of-variables inequality gives
+\[
+ |E_\ell|\geq\int_{\mathcal P}|\det D\Phi|
+ \geq 2^{-15}\alpha_1^2\alpha_d^2.                 \tag{J2}
+\]
+One may apply the change-of-variables theorem with the target integrand
+$\mathbf1_{E_\ell}$; no separate measurable-image lemma for
+$\Phi(\mathcal P)$ is needed. Substituting $\alpha_i=K/|E_i|$ gives
+\[
+ K^4\leq2^{15}|E_1|^2|E_d|^2|E_\ell|.
+\]
+Taking fourth roots and using $2^{15/4}\leq16$ proves (R).
+\end{proof}
+
+\begin{lemma}[Strong $L^1$ bound from the restricted three-set bound]
+\label{lem:three-set-strong-upper-half}
+Fix a distinguished input $j$. Choose
+\[
+ (d,a,\ell)=
+ \begin{cases}
+  (2,2,3),&j=1,\\
+  (2,1,3),&j=2,\\
+  (3,1,2),&j=3.
+ \end{cases}
+\]
+Thus $\{j,a\}=\{1,d\}$. There is a constant $C_1>0$ such that, for all measurable inputs with finite displayed norms,
+\[
+ \|T(f_1,f_2,f_3)\|_1
+ \leq C_1\|f_j\|_2\|f_a\|_{8/3}\|f_\ell\|_4.       \tag{S}
+\]
+\end{lemma}
+
+\begin{proof}
+It is enough to consider nonnegative functions. Let
+$\Lambda(f)=\int T(f)$ and set
+\[
+ v_1=v_d=\tfrac12,\quad v_\ell=\tfrac14,
+ \qquad b_j=\tfrac12,\quad b_a=\tfrac38,\quad b_\ell=\tfrac14,
+ \qquad p_i=1/b_i.
+\]
+The preceding lemma gives the restricted form bound at $v$. The elementary
+bounds $\Lambda(\mathbf1_E)\leq |E_i|$ give the bounds at the three standard
+vectors $e_i$. The target lies strictly inside their tetrahedron:
+\[
+ b=\tfrac12v+\tfrac14 e_j+\tfrac18e_a+\tfrac18e_\ell.
+\]
+Here is a direct finite-level summation proof, so this step need not rely
+on a general restricted-weak-type interpolation statement.
+
+Put $\eta=1/64$. For every $\sigma\in\{-1,1\}^3$, $c=b+\eta\sigma$ is in
+the same tetrahedron. Explicit barycentric coefficients are
+\[
+ \tau=4\Bigl(\sum_i c_i-1\Bigr),\qquad
+ \lambda_i=c_i-\tau v_i.
+\]
+They satisfy $\tau>0$, $\lambda_i>0$, and $\tau+\sum_i\lambda_i=1$.
+For example, uniformly over the signs and the three choices of $j$,
+$\tau\geq5/16$ and $\lambda_i\geq3/64$. These are eight rational checks
+for each $j$. Taking the weighted geometric mean of the four restricted
+bounds proves
+\[
+ \Lambda(\mathbf1_{E_1},\mathbf1_{E_2},\mathbf1_{E_3})
+ \leq16\prod_i|E_i|^{b_i+\eta\sigma_i}.             \tag{S1}
+\]
+Zero-measure sets are handled before any division or logarithm.
+
+For finite-valued, finite-measure-support, nonnegative inputs with
+$\|f_i\|_{p_i}=1$, use the value-level sets
+\[
+ E_{i,n}=\{x:2^n\leq f_i(x)<2^{n+1}\},\qquad n\in\mathbb Z.
+\]
+Only finitely many such sets are nonempty and
+$|E_{i,n}|\leq2^{-p_i n}$. For each triple $(n_1,n_2,n_3)$ choose
+$\sigma_i=1$ if $n_i\geq0$, and $\sigma_i=-1$ otherwise.
+Since all exponents in (S1) are positive,
+\[
+ 2^{n_1+n_2+n_3}\Lambda(\mathbf1_{E_{1,n_1}},
+     \mathbf1_{E_{2,n_2}},\mathbf1_{E_{3,n_3}})
+ \leq16\prod_i2^{-\eta p_i|n_i|}.                  \tag{S2}
+\]
+Dominate $f_i$ by $\sum_n2^{n+1}\mathbf1_{E_{i,n}}$, expand the positive
+trilinear form, and sum (S2). A possible finite constant is
+\[
+ C_1=128\prod_{i=1}^3
+       \frac{1+2^{-\eta p_i}}{1-2^{-\eta p_i}}.
+\]
+Rescale to remove normalization; a zero input norm is handled separately.
+Monotone simple approximation and spatial truncation extend (S) to all
+nonnegative inputs. For this passage define the positive average by nonnegative
+integration, and convert to real-valued functions only after proving finiteness.
+For complex inputs use $|T(f)|\leq T(|f|)$.
+This proof uses dyadic \emph{values}, not dyadic spatial resolution of sets.
+The proposed Lean declaration is
+\texttt{restricted\_form\_interior\_strong}.
+\end{proof}
+
+\begin{lemma}[Subunit bound for the actual monomial system]
+\label{lem:adjoint-gain-to-subunit}
+For each $j\in\{1,2,3\}$ and all measurable inputs with finite displayed norms, the upper-half monomial average at scale one
+satisfies
+\[
+ \|\widetilde A_1(f_1,f_2,f_3)\|_{8/9}
+ \leq C_j\prod_{i=1}^3\|f_i\|_{p_i},               \tag{Q}
+\]
+where
+\[
+ (p_1,p_2,p_3)=
+ \begin{cases}
+ (2,8/3,4),&j=1,\\
+ (8/3,2,4),&j=2,\\
+ (8/3,4,2),&j=3.
+ \end{cases}
+\]
+In particular $p_j=2$, every $p_i>1$, and
+$\sum_i1/p_i=9/8=1/q$ for $q=8/9\in(1/2,1)$.
+The historical label is retained only for compatibility: no implication
+for arbitrary polynomial translation averages is asserted.
+\end{lemma}
+
+\begin{proof}
+Let $q=8/9$ and use the strong $L^1$ bound (S). Partition $\mathbb R^3$
+into $Q_z=z+[0,1)^3$, $z\in\mathbb Z^3$, and set
+$R_z=z+[0,2)^3$ and $f_{i,z}=f_i\mathbf1_{R_z}$. For $x\in Q_z$ and
+$t\in I$, every $x+t^i e_i$ lies in $R_z$, so
+\[
+ \mathbf1_{Q_z}T(f)=\mathbf1_{Q_z}T(f_{1,z},f_{2,z},f_{3,z}).
+\]
+For $g\geq0$ and $|Q_z|=1$, ordinary H\"older (or concavity of the
+$q$-th power on a probability space) gives
+$\int_{Q_z}g^q\leq(\int_{Q_z}g)^q$.
+With $M_{i,z}=\int_{R_z}|f_i|^{p_i}$, (S) therefore implies
+\[
+ \int_{Q_z}|T(f)|^q\leq C_1^q\prod_iM_{i,z}^{q/p_i}.
+\]
+Sum over $z$. Discrete H\"older has exponents $p_i/q>1$, whose reciprocals
+sum to one. Also every point belongs to at most eight of the sets $R_z$.
+Consequently
+\begin{align*}
+ \int_{\mathbb R^3}|T(f)|^q
+ &\leq C_1^q\sum_z\prod_iM_{i,z}^{q/p_i}\\
+ &\leq C_1^q\prod_i\Bigl(\sum_zM_{i,z}\Bigr)^{q/p_i}\\
+ &\leq 8C_1^q\prod_i\|f_i\|_{p_i}^{q}.
+\end{align*}
+Thus $C_j=8^{1/q}C_1$ is admissible. In Lean, prove the discrete H\"older
+step first for finite sets of $z$, and then pass to the countable sum by
+monotone convergence. Proposed declarations are
+\texttt{local\_L1\_to\_balanced\_subunit} and
+\texttt{monomial\_subunit\_upperHalf}.
+There is no absorption remainder and no use of duality for $L^q$.
+\end{proof}
+
+\begin{corollary}[Internal subunit endpoint]
+\label{cor:kosz-subunit-internal}
+For each distinguished input $j$, the subunit endpoint required in the
+blueprint holds for the full monomial averages, without assuming
+(6.24) or deducing a quasi-Banach estimate from an unspecified adjoint gain.
+One can take $B=9/8$ and $(b_i)=(1/p_i)$ as in (Q).
+\end{corollary}
+
+\begin{proof}
+Apply (Q). The anisotropic scaling and the upper-half to full-average
+dyadic summation already given in the proof of
+\texttt{thm:kosz-subunit} apply unchanged: $\sum_i1/p_i=1/q$ cancels the
+scaling powers, and
+\[
+ \sum_{n\geq0}2^{-(n+1)q}=\frac1{2^q-1}<\infty.
+\]
+Thus the full-average constant can be taken as
+$C_j(2^q-1)^{-1/q}$ and then enlarged to a dyadic constant as before.
+The proof dependency is now: three measurable refinements, fibre
+separation, the explicit injective flow, change of variables, finite
+value-level summation, and fixed-scale cube localization. In particular,
+Corollary~5.3 is not used as an abstract bridge across $q=1$.
+\end{proof}
+
+\subsection*{Why the abstract implication must be removed}
+The obstruction is to the generic lemma, not to the monomial estimate just
+proved. Consider the equal-linear corner averages
+\[
+ B_N(f)(x)=N^{-1}\int_0^N\prod_{i=1}^3 f_i(x+t e_i)\,dt.
+\]
+They meet the stated polynomial-degree restriction. For their positive
+$j$-adjoint $S_N$, one has
+\[
+ \|S_N(g_0,g_a,g_b)\|_2\leq N^{-3/4}
+        \|g_0\|_4\|g_a\|_4\|g_b\|_4.             \tag{C1}
+\]
+To verify this, the four-dimensional Loomis--Whitney inequality, which
+follows by repeated H\"older, gives
+\[
+ \int_{\mathbb R^4}h_0(x)\prod_{i=1}^3 h_i(x+t e_i)\,dx\,dt
+ \leq\prod_{i=0}^3\|h_i\|_3.
+\]
+An explicit unit-determinant reduction to coordinate projections is
+$x=(-z_1,-z_2,-z_3)$, $t=z_0+z_1+z_2+z_3$; each of the four factors then
+omits its corresponding $z_i$, and its remaining three-dimensional linear
+change of variables also has absolute determinant one. Restricting $t$
+and dualizing gives
+$\|S_N(g)\|_{3/2}\leq N^{-1}\prod_i\|g_i\|_3$.
+Parameter H\"older on the probability interval gives
+\[
+ S_N(g)\leq S_N(g_0^{4/3},g_a^{4/3},g_b^{4/3})^{3/4},
+\]
+which proves (C1). Thus all three adjoint input exponents are $4$, their
+reciprocal sum is $3/4=1/(4/3)$, and the scale gain is strictly positive.
+
+Nevertheless, no balanced subunit estimate can hold for $B_1$. Put
+\[
+ E_\delta=\{x\in[-2,2]^3:0\leq x_1+x_2+x_3\leq\delta\},
+ \quad f_i=\mathbf1_{E_\delta},\quad 0<\delta<1/8.
+\]
+Then $|E_\delta|\leq16\delta$. On the fixed cube
+$U=[-1/4,-1/8]^3$, the common condition for the three translated indicators
+is $0\leq x_1+x_2+x_3+t\leq\delta$; the corresponding interval lies in
+$(0,1)$ and has length $\delta$. Hence $B_1(f)=\delta$ on $U$.
+An estimate with $B=\sum_i1/q_i=1/q>1$ would force
+\[
+ \delta |U|^{1/q}\leq C(16\delta)^B
+\]
+for every small $\delta$, which is impossible. This explains why a correct
+repair uses the actual monomial geometry rather than filling in an
+abstract recursion from the adjoint gain alone.
+
+\subsection*{Source and formalization boundary}
+Source: D.~Kosz, M.~Mirek, S.~Peluse, R.~Wan, J.~Wright,
+\emph{The multilinear circle method and a question of Bergelson},
+arXiv:2411.09478v4, supplied PDF. Relevant locations: pp.~68--69
+(measurable refinements and Lemma~5.14), pp.~69--70 (parameter towers),
+pp.~72--74 (real change of variables and separation), and p.~79,
+equation~(6.24).
+
+The analytic dependencies still to implement in Lean are ordinary Tonelli
+and translation invariance, measurable parameter integration, injective
+$C^1$ change of variables, monotone approximation, H\"older, and geometric
+series. The new flow's injectivity and Jacobian, the three updates, the
+barycentric coefficients, and the final summation are specified above;
+none is an unnamed stopping-time or quasi-Banach interpolation oracle.
+\end{document}

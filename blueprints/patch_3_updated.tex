@@ -1,0 +1,1862 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern,microtype}
+\usepackage[margin=0.85in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools,mathrsfs}
+\usepackage{array,enumitem,xcolor}
+\usepackage{hyperref}
+\usepackage{aliascnt}
+\usepackage[nameinlink,capitalise,noabbrev]{cleveref}
+\usepackage{fancyhdr}
+\hypersetup{colorlinks=true,linkcolor=blue!40!black,citecolor=blue!40!black,
+  urlcolor=blue!40!black,pdftitle={Standalone Lean 4 blueprint: lines 2183 and 2193},
+  pdfauthor={}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\setlength{\headheight}{14pt}
+\setlength{\emergencystretch}{2em}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{Standalone Lean 4 blueprint}
+\rhead{Lines 2183 and 2193}
+\cfoot{\thepage}
+\newtheorem{theorem}{Theorem}[section]
+\newaliascnt{proposition}{theorem}
+\newtheorem{proposition}[proposition]{Proposition}
+\aliascntresetthe{proposition}
+\newaliascnt{lemma}{theorem}
+\newtheorem{lemma}[lemma]{Lemma}
+\aliascntresetthe{lemma}
+\newaliascnt{corollary}{theorem}
+\newtheorem{corollary}[corollary]{Corollary}
+\aliascntresetthe{corollary}
+\theoremstyle{definition}
+\newaliascnt{definition}{theorem}
+\newtheorem{definition}[definition]{Definition}
+\aliascntresetthe{definition}
+\newaliascnt{remark}{theorem}
+\newtheorem{remark}[remark]{Remark}
+\aliascntresetthe{remark}
+\newcommand{\ee}[1]{\mathrm e\!\left(#1\right)}
+\newcommand{\pid}[1]{\nolinkurl{#1}}
+\begin{document}
+\begin{center}
+{\LARGE\bfseries Fej\'er--Gowers cube patch}\\[7pt]
+{\large A standalone Lean 4 mathematical blueprint}\\[5pt]
+{\normalsize Original lines 2183 and 2193 of \texttt{lem:fejer-vdc}}\\[8pt]
+{\small The real monomial system $t,t^2,t^3$: proof and necessary dependency closure}
+\end{center}
+\vspace{0.4em}
+\setcounter{tocdepth}{2}
+\tableofcontents
+\clearpage
+\section*{Scope, mathematical changes, and proof status}
+\addcontentsline{toc}{section}{Scope and replacement map}
+This standalone mathematical blueprint addresses only the two blocked passages at original
+lines 2183 and 2193, inside \pid{lem:fejer-vdc} in
+\pid{task_2_smoothingineq3d_blueprint_updated.tex}.
+The completed repairs at lines 2084 and 2086 are outside its scope and must remain unchanged.
+No subunit-endpoint proof or replacement of those earlier passages is included.
+Line numbers identify the original upload; use theorem labels to locate the passages in a
+manuscript that already contains earlier edits.
+
+\paragraph{Line 2183: the unproved assertion.}
+The blocked sentence says that repeated van der Corput and Cauchy--Schwarz bound
+``every polynomial average obtained from the monomials $t,t^2,t^3$'' by a finite power of the
+local uniformity norm of a selected input, with a boundary error.
+It does not specify a polynomial state or prove that the selected input survives in the
+configuration needed by the terminal estimate.
+
+\paragraph{Line 2193: the missing removal and cube induction.}
+The blocked paragraph says that ``Cauchy--Schwarz removes'' each unselected factor and that
+an induction ``gives exactly the cube product.''
+It does not identify the block removed at each step, give the induction invariant, or derive
+the final configuration to which \pid{cfgHeadInt_cube} applies.
+
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{.20\linewidth}>{\raggedright\arraybackslash}p{.72\linewidth}}
+\hline
+Primary blocker & Replacement \\
+\hline
+2183: unrestricted assertion & Retain the scalar van der Corput lemma.  Replace the
+unqualified assertion about all generated configurations by the actual monomial conclusion,
+proved through an independent real inverse module.\\
+2193: asserted cube endpoint & Explicit coordinate-doubling states, a protected-factor
+polynomial invariant, and, for the public every-input conclusion, an explicitly expanded
+order-two cube.\\
+\hline
+\end{tabular}
+\end{center}
+
+\paragraph{Necessary dependent changes, not additional blockers.}
+The repair includes the affected \pid{lem:pet-reduction} and the inverse-theorem proof because
+they use the missing implication.  The every-input local-uniformity result has $s_*=2$;
+the public inverse theorem is rebuilt from the same independently proved positive-energy
+theorem, rather than used circularly to supply its own premise.
+The old unrestricted \pid{lem:degree-lowering-zero} is removed from this proof path.
+These supporting arguments are included here, so the document does not require an earlier
+terminal patch or a separate unproved input-producing certificate.
+
+\paragraph{What changes in mathematical scope.}
+The last assertion of the old Fej\'er lemma is not retained as a theorem about arbitrary
+generated configurations.  Its needed consequence for $(t,t^2,t^3)$ is proved below, with
+the original every-$j$ quantifier and physical-scale bounds.  This is an explicit statement
+repair, not a proof of the old, more general wording.
+
+\paragraph{Sources versus added derivations.}
+The source is the supplied version of Kosz--Mirek--Peluse--Wan--Wright \cite{KoszEtAl}.
+The real inverse module follows its organization: highest-degree uniformity control;
+conditional degree lowering and the major-arc induction; lowest-degree inverse information;
+then the general-index reduction.  The protected-leading-coefficient PET invariant, the
+quantitative coordinate-doubling lemmas, and the final low-frequency-to-$U^2$ bridge are
+added derivations in this blueprint.  They are not attributed verbatim to the paper.
+In particular, we do not invoke the integer statement of its reference [63] as a theorem over
+$\mathbb R$, and do not assume the paper's Theorem 4.30 in order to prove our own inverse theorem.
+
+\paragraph{Lean boundary.}
+This is a proposed mathematical proof blueprint, not a compiler-checked Lean library.
+Project declaration names below are proposed names unless the user has already supplied them.
+The existing \pid{fejer_vdc'}, \pid{locUnifPow}, and \pid{cfgHeadInt_cube} are retained.
+Their precise Lean binders were not supplied; the document specifies mathematical inputs
+and proof obligations, not invented API signatures.  No inverse theorem, PET certificate,
+or uniformity estimate is added as a hypothesis to a public conclusion.
+
+\paragraph{Background library.}
+The analytic background is Lebesgue integration, Fubini--Tonelli, Cauchy--Schwarz and H\"older,
+standard convergence theorems, translation and dilation changes of variables,
+elementary polynomial algebra and calculus, and Plancherel.  These are library prerequisites,
+not new analytic assumptions specific to this problem.  The nonstandard consequences used
+in the repair are developed below.
+
+\section{Conventions and quantitative bookkeeping}\label{patch:conventions}
+We use $\ee u=\exp(2\pi i u)$, $\langle f,g\rangle=\int f\overline g$, and
+$\widehat f(\xi)=\int f(x)\ee{-x\cdot\xi}\,dx$.  Write $\mathcal C$ for complex conjugation.
+For $N>0$,
+\[
+ A_N(f_1,f_2,f_3)(x)=\frac1N\int_0^N\prod_{i=1}^3f_i(x+t^ie_i)\,dt.
+\]
+and $\Lambda_N=\langle A_N(f_1,f_2,f_3),f_0\rangle$.
+The notation $\|f\|_p$ denotes the Lebesgue $L^p$ norm.
+Fix an even real smooth cutoff $\eta$ with
+$\mathbf1_{[-1/4,1/4]}\leq\eta\leq\mathbf1_{(-1/2,1/2)}$.
+The operator $P_L^{(j)}$ has multiplier $\eta(\xi_j/L)$.
+
+Work first with Borel representatives, pointwise bounded by the stated bounds and zero off
+the stated boxes.  Almost-everywhere versions follow at the end: for a null set $E$ and any
+measurable translation $v(t)$,
+\[
+ \int\!\int\mathbf1_E(x+v(t))\,dx\,dt=0
+\]
+by translation invariance and Tonelli.  The same argument handles any finite number of shift
+parameters.  Thus changing representatives does not change any correlation or cube integral.
+All auxiliary phase functions can be chosen Borel after discarding the standard Fubini null
+sets.
+
+\subsection{A precise meaning for the power losses}
+For an integer $c\geq1$, set
+\[
+ \ell_c(\delta)=c^{-1}\delta^c,\qquad u_c(\delta)=c\delta^{-c}
+ \qquad(0<\delta\leq1).
+\]
+An assertion below of the form $X\geq\delta^{O(1)}S$ means that the proof returns an integer
+$c$, depending only on the fixed degrees, support/coefficient budgets, and any fixed cube order,
+with $X\geq\ell_c(\delta)S$.  Similarly $X\leq\delta^{-O(1)}S$ returns $c$ with
+$X\leq u_c(\delta)S$.  It never means that the exponent may depend on a function, a selected
+section, $N$, or the numerical value of $\delta$.
+
+For implementation, retain the returned integers rather than using asymptotic notation.
+The following rules suffice to compose every budget in the proof.
+\begin{lemma}[Budget arithmetic and popularity]\label{patch:budgets}
+Finite sums, products, quotients with a positive lower bound, and fixed natural powers of
+power-controlled positive quantities are power-controlled.  A fixed positive root of a
+power lower bound is again a power lower bound.  If a finite measure space has measure at most
+$M$, $0\leq F\leq B$, and $\int F\geq a>0$, then
+\[
+ E=\{F\geq a/(2M)\}\quad\hbox{satisfies}\quad \mu(E)\geq a/(2B).
+\]
+Removing a set of measure at most $a/(2B)$ loses at most half the lower bound.  A partition
+into $K$ measurable cells has a cell carrying at least $1/K$ of a nonnegative total mass.
+\end{lemma}
+\begin{proof}
+For upper bounds choose, for example, an integer at least both the new coefficient and the
+new exponent.  For a product of $u_a$ and $u_b$ it suffices to take
+$c\geq\max(ab,a+b)$; for a product of $\ell_a$ and $\ell_b$ the same choice works.
+For $r$-th powers take $c\geq\max(a^r,ra)$.  Bound $X/Y$ using an upper bound for $X$
+and a positive lower bound for $Y$, or the reverse for a lower bound.  Round all constants
+upward by the Archimedean property.  Since $0<\delta\leq1$, increasing a lower-bound exponent
+weakens it and increasing an upper-bound exponent enlarges it.  These observations also
+handle roots and rational fixed exponents.
+For popularity, the integral on $E^c$ is at most $a/2$, whereas the integral on $E$ is at most
+$B\mu(E)$.  The remaining assertions follow from integral monotonicity and a finite sum.
+\end{proof}
+
+Whenever a proof chooses a finer parameter, it uses these explicit recipes:
+\[
+ \text{discarded measure}\leq\frac{\text{retained mass}}{4\,\text{integrand bound}},
+ \qquad
+ \text{phase error}\leq\frac{\text{retained mass}}{4\,\text{integration-volume bound}}.
+\]
+For a phase perturbation use $|\ee u-\ee v|\leq2\pi|u-v|$.
+A bounded interval of frequencies of length $2M$ can be partitioned into at most
+$1+\lceil2M/\tau\rceil$ cells of width $\tau$.  All such counts below are power-controlled.
+The iteration counts are bounded independently of $\delta$ before these recipes are applied.
+
+\paragraph{Scale convention in the inverse module.}
+For $1\leq d_1<\cdots<d_k\leq3$, write $D_r=\sum_{i\leq r}d_i$, $D_0=0$ and $D=D_k$.
+A budgeted support box has sides $[-u_c(\delta)N^{d_i},u_c(\delta)N^{d_i}]$.
+A polynomial $P_i$ is admissible with budget $c$ when
+\[
+ \deg P_i=d_i,\qquad
+ \ell_c(\delta)\leq|\operatorname{lc}P_i|\leq u_c(\delta),\qquad
+ |[t^r]P_i|\leq u_c(\delta)N^{d_i-r}\quad(0\leq r<d_i).
+\]
+These are the paper's admissibility and enlarged-support hypotheses, with a single integer
+budget enlarged as needed.  Setting $t=Nu$ and $x_i=N^{d_i}y_i$ reduces all coefficient,
+volume, and sublevel estimates to bounded parameter intervals with power-controlled
+constants.  This change has determinant $N^D$; the powers of $N$ in subsequent statements
+are therefore exact, not part of the budget.
+
+
+\section{An independent real inverse module}\label{sec:internal-kosz-adjoint}
+The source organization is \cite[\S\S4.2--4.5]{KoszEtAl}.  The public every-input uniformity
+lemma is \emph{not} a premise of this section.  The only polynomial uniformity estimate used
+inside the section is the highest-active-degree estimate proved below, including its
+parameter-shifted version.  We work with all increasing degree lists contained in $\{1,2,3\}$,
+not just the list $(1,2,3)$: shorter lists and lower coefficients are needed by the slicing argument.
+
+\subsection{Fej\'er measures and the existing cube quantity}
+\begin{definition}[Fej\'er differences and local uniformity]\label{def:local-uniformity}
+For $H>0$ let $\kappa_H(h)=H^{-1}(1-|h|/H)_+$.
+For $v\in\mathbb R^3$ use the manuscript's difference
+$\Delta_{h;v}f(x)=f(x+hv)\overline{f(x)}$.
+The existing quantity is
+\[
+ \mathcal U^s_{j,H}(f)^{2^s}
+ =N^{-6}\int_{\mathbb R^3}\int_{\mathbb R^s}
+       \Delta_{h_1;e_j}\cdots\Delta_{h_s;e_j}f(x)
+           \prod_i\kappa_H(h_i)\,d\mathbf h\,dx.
+\]
+In particular this definition is not replaced by a global Gowers norm or by Fourier energy.
+\end{definition}
+For calculations let
+\[
+ C_s(f;x,\mathbf h)=\prod_{\omega\in\{0,1\}^s}
+       \mathcal C^{|\omega|}f\bigl(x+(\omega\cdot\mathbf h)e_j\bigr),
+ \qquad C_0(f;x)=f(x).
+\]
+Then
+\begin{equation}\label{patch:cube-succ}
+ C_{s+1}(f;x,\mathbf h,h)=C_s(f;x,\mathbf h)
+                                  \overline{C_s(f;x+he_j,\mathbf h)}.
+\end{equation}
+For the manuscript's difference convention the displayed parity cube is globally conjugated
+when $s$ is odd.  Its integrated Fej\'er power is real, so the two conventions give the same
+quantity.  This is a convention bridge only; retain the definition and convention used by
+\pid{locUnifPow} and \pid{cfgHeadInt_cube}.
+
+In ambient dimension $n$, with an explicit positive spatial normalizer $V$, write
+\[
+ Q_{s,H,V}^{j}(f)=V^{-1}\operatorname{Re}\int\!\int C_s(f;x,\mathbf h)
+                                   \prod_i\kappa_H(h_i)\,d\mathbf h\,dx.
+\]
+The notation with unequal radii, $Q_{\mathbf L,V}^{j}$, means the same expression with
+$\prod_i\kappa_{L_i}(h_i)$.  These are proof-local normalizations.  The public order-$s$
+quantity is exactly $Q_{s,H,N^6}^{j}$, not $Q_{s,H,|B_N|}^{j}$.
+Define $T_{H,j}u(x)=H^{-1}\int_0^H u(x+te_j)\,dt$.
+
+\begin{lemma}[Squares, positivity, and appending a coordinate]\label{patch:fejer-squares}
+The difference of two independent uniform variables in $[0,H]$ has density $\kappa_H$.
+Consequently
+\[
+ \int\!\int u(x)\overline{u(x+he_j)}\kappa_H(h)\,dh\,dx
+       =\|T_{H,j}u\|_2^2.
+\]
+For $s\geq1$, every order-$s$ cube power above is real and nonnegative.  If $|f|\leq1$ and $f$ is supported in a
+rectangular box of volume $V$, then $0\leq Q_{s,H,V}^{j}(f)\leq1$.
+If the box has $j$-th side length $S$, then
+\begin{equation}\label{patch:raise-order}
+ \bigl(Q_{s,H,V}^{j}(f)\bigr)^2
+       \leq(1+H/S)Q_{s+1,H,V}^{j}(f).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Expand the square of $T_{H,j}u$, use translation in $x$, and apply Fubini.  The density of
+$a-b$ for $a,b\in[0,H]$ is $H^{-2}|[0,H]\cap([0,H]-h)|=\kappa_H(h)$.
+Apply this identity to $u=C_{s-1}(f;\cdot,\mathbf h)$ for the last difference.  It proves
+reality and positivity before any comparison of kernels is made.  The zero vertex gives
+$|C_s(f;x,\mathbf h)|\leq\mathbf1_B(x)$, so the upper bound is one.
+For \eqref{patch:raise-order}, $u=C_s$ is supported in $B$, its full integral is unchanged
+by $T_{H,j}$, and $T_{H,j}u$ is supported in a box of volume $V(1+H/S)$.
+Thus $|\int u|^2\leq V(1+H/S)\|T_{H,j}u\|_2^2$.  Average over the first $s$ increments,
+apply Jensen, and use \eqref{patch:cube-succ}.  The same argument applies to translated
+support boxes.  Translation and conjugation of $f$ preserve every integrated cube power.
+\end{proof}
+
+\begin{lemma}[Fej\'er van der Corput]\label{lem:fejer-vdc}
+Let $I$ have length $N>0$, $0<H\leq N/4$, and $F$ be measurable and $1$-bounded.  Then
+\[
+ \left|\frac1N\int_I F(t)\,dt\right|^2
+ \leq4\int\kappa_H(h)
+       \left|\frac1N\int_{I\cap(I-h)}F(t+h)\overline{F(t)}\,dt\right|\,dh
+       +\frac{8H}{N}.
+\]
+\end{lemma}
+\begin{proof}
+Put $W=\mathbf1_IF$ and $S(u)=H^{-1}\int_0^H W(u+a)\,da$.
+Then $\int S=\int_I F$ and $S$ is supported in an interval of length $N+H$.
+Cauchy--Schwarz followed by square expansion gives the stronger upper bound
+$(1+H/N)\int\kappa_H(h)|N^{-1}\int_{I\cap(I-h)}F(t+h)\overline{F(t)}\,dt|\,dh$.
+Use $1+H/N\leq2$.  The displayed version is therefore valid; it is the existing
+\pid{fejer_vdc'} interface.  The plus sign before $8H/N$ is explicit.
+\end{proof}
+No unrestricted polynomial-to-uniformity assertion is included in this scalar lemma.
+
+\begin{lemma}[Signed integrated removal]\label{patch:signed-vdc}
+Let $I$ have length $N>0$ and $0<H\leq N/4$.  Suppose $V>0$, $\int|g|^2\leq V$, and $\int|F(x,t)|^2\,dx\leq V$ for the relevant
+parameter values.  Assume joint measurability and the integrability supplied, in applications,
+by bounded factors and their finite-support envelopes.  Set
+$A=V^{-1}\int g(x)\mathbb E_{t\in I}F(x,t)\,dx$.  Then
+\begin{equation}\label{patch:signed-vdc-eq}
+ |A|^2\leq2\operatorname{Re}\int\kappa_H(h)
+      \frac1V\int\mathbb E_{t\in I}F(x,t)\overline{F(x,t+h)}\,dx\,dh
+      +2H/N.
+\end{equation}
+\end{lemma}
+\begin{proof}
+First remove exactly $g$, which is independent of $t$, by Cauchy--Schwarz in $x$:
+$|A|^2\leq V^{-1}\int|\mathbb E_I F(x,t)|^2dx$.
+Apply the window construction in the preceding proof with $x$ retained and integrate in $x$.
+It gives $(1+H/N)$ times the real part of the averaged cut-off correlation.  This whole
+averaged correlation is nonnegative because it came from an integrated square.
+Its replacement of $I\cap(I-h)$ by $I$ costs at most $|h|/N$: indeed
+$\int|F(x,t)\overline{F(x,t+h)}|dx\leq V$ by Cauchy--Schwarz.
+Bound $1+H/N$ by two and average $|h|\leq H$.
+This proves \eqref{patch:signed-vdc-eq}.  In particular, it is not obtained by deleting an
+absolute value from \pid{fejer_vdc'}.
+\end{proof}
+
+\subsection{The elementary coordinate-removal induction}
+\begin{lemma}[Cylinder Cauchy--Schwarz, with its state]\label{patch:cylinder}
+Let $z$ be an auxiliary probability-space variable and $b_i$ independent probability-space
+variables, $1\leq i\leq r$.  Let $v(z,\mathbf b)$ and $u_i(z,\mathbf b)$ be jointly measurable and $1$-bounded,
+with $u_i$ independent of $b_i$.  Then
+\[
+ \left|\mathbb E_{z,\mathbf b}v(z,\mathbf b)\prod_{i=1}^r u_i(z,\mathbf b)\right|^{2^r}
+ \leq\mathbb E_{z,\mathbf b^0,\mathbf b^1}
+       \prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}v(z,\mathbf b^\omega).
+\]
+The right-hand side is real and nonnegative.  The same statement for finite nonprobability
+spaces follows by writing every normalization factor explicitly.
+\end{lemma}
+\begin{proof}
+After $a$ steps use independent pairs $b_i^0,b_i^1$ for $i\leq a$ and one variable $b_i$
+for $i>a$.  Define
+\[
+ v_a=\prod_{\omega\in\{0,1\}^a}\mathcal C^{|\omega|}v(z,\mathbf b^\omega),
+ \qquad
+ u_{i,a}=\prod_{\omega\in\{0,1\}^a}\mathcal C^{|\omega|}u_i(z,\mathbf b^\omega)
+ \quad(i>a),
+\]
+and $J_a=\mathbb E[v_a\prod_{i>a}u_{i,a}]$.
+At step $a+1$ the removed block is exactly $u_{a+1,a}$.
+It is independent of the only variable being doubled, $b_{a+1}$.
+Write the average as an outer average of this block times the inner $b_{a+1}$ average.
+Cauchy--Schwarz in all the outer variables and expansion of the inner square yield
+$|J_a|^2\leq J_{a+1}$.  The new $J_{a+1}$ is nonnegative because it is that square average.
+The finite-product equivalence $\{0,1\}^{a+1}\simeq\{0,1\}^a\times\{0,1\}$ proves
+that the expanded factors are precisely the displayed next state; the new bit toggles
+conjugation.  Induct on $a=0,\ldots,r-1$.  The auxiliary variable $z$ is never doubled.
+\end{proof}
+This is the reusable, fully specified Gowers--Cauchy--Schwarz induction used below.
+It does not claim that a polynomial family is already a cube.
+
+\subsection{Scalar polynomial oscillation and coefficient separation}
+\begin{lemma}[Real polynomial oscillation]\label{lem:real-polynomial-oscillation}
+For $1\leq d\leq3$ there is $C_d\geq1$ such that
+\[
+ \left|N^{-1}\int_0^N\ee{\sum_{r=1}^d a_rt^r}\,dt\right|
+ \leq C_d\min\{1,(\max_r|a_r|N^r)^{-1/d}\}.
+\]
+When $\max_r|a_r|N^r=0$, interpret the minimum as one; in Lean use a separate zero case,
+not a negative real power of zero.  Hence a lower bound $0<\varepsilon\leq1$ for this average bounds every nonconstant coefficient
+by $|a_r|N^r\leq (C_d/\varepsilon)^d$.
+\end{lemma}
+\begin{proof}
+Scale to $N=1$.  For a real polynomial $p$ of degree at most $d-1$ with a coefficient of
+modulus at least $A$, a measurable sublevel set $E\subseteq[0,1]$ on which $|p|\leq\theta$
+has length at most $C_d(\theta/A)^{1/(d-1)}$ when $d\geq2$.
+To see this, choose $d$ points in $E$ with mutual separations at least $|E|/(2d)$ by successively
+removing intervals about the previously chosen points (or use $d$ separated quantile blocks).
+Lagrange interpolation then bounds every coefficient by $C_d\theta|E|^{-(d-1)}$.
+Null sets and degree-zero polynomials are handled separately.
+Apply this to $p=P'$ and $A=\max|a_r|$.  Split $[0,1]$ at the finitely many roots of
+$P''$, $P'-\theta$, and $P'+\theta$.  On each remaining interval where $|P'|\geq\theta$,
+$P'$ is monotone; integration by parts in $\ee{P}/(2\pi iP')$ bounds the integral by
+$C_d/\theta$.  The total number of intervals is bounded in terms of $d$.
+Choose $\theta=A^{1/d}$ when $A\geq1$.  The sublevel contribution and the integration-by-parts
+contribution are both $O_d(A^{-1/d})$.  For $d=1$ integrate the exponential directly;
+for $A<1$ use the bound one.  Scale back.
+\end{proof}
+
+\begin{lemma}[Distinct degrees give a triangular frequency bound]\label{patch:triangular}
+For admissible $P_1,\ldots,P_k$, if
+$|\mathbb E_{t\in[0,N]}\ee{\sum_i\xi_iP_i(t)}|\geq\delta^{O(1)}$, then
+$\sum_iN^{d_i}|\xi_i|\leq\delta^{-O(1)}$.
+\end{lemma}
+\begin{proof}
+Write $a_r=[t^r]\sum_i\xi_iP_i(t)$ and $z_i=N^{d_i}|\xi_i|$.
+The preceding lemma bounds every $N^r|a_r|$ by a power of $\delta^{-1}$.
+Starting at $i=k$ and descending, use the exact identity
+\[
+ \xi_i\operatorname{lc}(P_i)=a_{d_i}-\sum_{u>i}\xi_u[t^{d_i}]P_u.
+\]
+Consequently $z_i\leq u_c(\delta)\{M+u_c(\delta)\sum_{u>i}z_u\}$ for a known power bound $M$.
+There are at most three steps.  Apply \cref{patch:budgets} to this explicit recursion.
+\end{proof}
+
+
+\subsection{The protected highest-degree PET producer}\label{patch:pet-producer}
+This subsection supplies, rather than assumes, the polynomial input producer needed inside the
+real inverse proof.  It is deliberately a highest-\emph{active}-degree result.  General selected
+indices will be handled later by the independent slicing argument.
+
+\subsubsection{Symbolic state and a leading-coefficient invariant}
+Use $t$ for the averaging variable and $\mathbf h=(h_1,\ldots,h_r)$ for formal indeterminates.
+Polynomials are elements of $(\mathbb R[\mathbf h])^n[t]$; degrees in this subsection are degrees
+in $t$, \emph{before} evaluating the $h_i$.  A normal state consists of a finite ordered list
+\[
+ Q_1,\ldots,Q_L,\qquad Q_i(0,\mathbf h)=0,
+\]
+of nonzero distinct vector polynomials, with $Q_1$ of maximum degree, together with a bounded
+function block $g_i$ for each $Q_i$ and a spatial block $g_0$.
+A block is a finite list of translated/conjugated input factors.  Multiplicities are retained.
+The distinguished block $g_1$ is required to contain \emph{one} translated or conjugated copy
+of the protected input $f$, not a product containing $f$.
+
+Fix the protected input's original degree $D\in\{2,3\}$, leading scalar coefficient $a\ne0$,
+and coordinate $e_m$.  Retain the following invariant for $Q_1$ and for every nonzero
+$Q_1-Q_i$, including $Q_0=0$:
+\begin{equation}\label{patch:lead-invariant}
+ \operatorname{lc}_t R=a\,p_R(\mathbf h)e_m,
+ \quad p_R\in\mathbb Z[\mathbf h]\setminus\{0\},
+ \quad p_R\text{ multilinear and homogeneous of degree }D-\deg_t R.
+\end{equation}
+Only the leading coefficients have this form.  The full polynomials may contain lower
+coefficients in any active coordinate and with arbitrary admissible real values.
+
+Initially the input polynomials are $P_i(t)e_i$ with increasing degrees and protected index $m$.
+Then \eqref{patch:lead-invariant} holds with $p_R=1$ for the head and its differences with
+lower-degree inputs.  It also holds for the shifted family
+\begin{equation}\label{patch:initial-shift-family}
+ P_i(t+\omega\cdot\mathbf h)e_i-P_i(\omega\cdot\mathbf h)e_i,
+       \qquad \omega\in\{0,1\}^{r_0},\quad r_0\leq4,
+\end{equation}
+when the protected head is the highest input with $\omega=(1,\ldots,1)$.
+For two shifts of that input, their difference has degree $D-1$ and leading coefficient
+$aD[(\mathbf1-\omega)\cdot\mathbf h]e_m$; differences with lower inputs still have degree $D$.
+Repeated normalized polynomials among nuisance blocks are grouped.  Since $D\geq2$, the
+protected head has no duplicate in this initial family.
+
+\begin{lemma}[A labelled update preserves the protected head]\label{patch:pet-update}
+Suppose the current head degree is $d\geq2$.  For a pivot $p\in\{1,\ldots,L\}$ introduce one
+fresh indeterminate $u$ and form the ordered children
+\[
+ Q_i(t+u)-Q_p(t),\quad Q_i(t)-Q_p(t)\qquad(1\leq i\leq L),
+\]
+putting the shifted head first.  Subtract each child's constant term in $t$, absorb that
+constant as a translation of its function, collect zero polynomials in the new spatial block,
+and multiply the function lists attached to identical remaining polynomials.
+If the shifted head has maximum degree, the new state is normal, its head block is a
+singleton of origin $f$, and \eqref{patch:lead-invariant} is preserved.
+\end{lemma}
+\begin{proof}
+Let $\delta_u Q_1=Q_1(t+u)-Q_1(t)$.  Its degree is $d-1$ and leading coefficient
+$d u\operatorname{lc}_tQ_1$.  For every $i$, compare the new head with an unshifted child:
+\[
+ [Q_1(t+u)-Q_p(t)]-[Q_i(t)-Q_p(t)]
+       =\delta_uQ_1+(Q_1-Q_i).
+\]
+If the degrees of the two summands differ, take the larger.  If they agree, the leading
+coefficient is the sum of an old polynomial in $\mathbf h$ and $du$ times another nonzero
+old polynomial.  It cannot vanish because $u$ is a fresh indeterminate.  The sum is still
+$a$ times a nonzero integer multilinear polynomial with the asserted homogeneous degree.
+For a shifted child the difference is simply $(Q_1-Q_i)(t+u)$, whose leading coefficient is
+unchanged.  Apply the first calculation with $i=p$ to the new head itself.
+Subtracting constants does not change these nonconstant leading terms.
+In particular the head differs nontrivially from every other child, and is nonconstant even
+when $p=1$.  Therefore grouping never multiplies another factor into the protected head.
+The shifted child conjugates its function, whereas an unshifted child retains its conjugation
+flag.  Translation by its constant term preserves origin and singleton status.
+\end{proof}
+If all integer polynomials in the invariant have coefficient $\ell^1$-norm at most $M$,
+the proof gives the bound $(D+1)M$ after an update.  Initially one can take
+$M=1+2Dr_0$.  These are numerical bounds independent of the values of the real lower coefficients.
+
+\subsubsection{The pivot is specified, and termination has a uniform bound}
+Let $w_q$ count distinct leading coefficients of degree-$q$ polynomials in the normal state.
+Order $(w_D,\ldots,w_1)$ lexicographically.  Stop when every degree is at most one.
+Otherwise let $d=\deg_tQ_1$ and let $l$ be the minimum degree present.  Choose the first
+index in the ordered list satisfying the relevant case:
+\[
+ \begin{array}{ll}
+ l<d:&\deg Q_p=l;\\
+ l=d,\ w_d>1:&\operatorname{lc}Q_p\ne\operatorname{lc}Q_1;\\
+ l=d,\ w_d=1:&p=1.
+ \end{array}
+\]
+For the first two cases the head retains maximum degree; for the third it has degree $d-1$
+and every child has degree at most $d-1$.  For the selected degree $l$, the new leading
+classes are the nonzero differences with the pivot leading coefficient.  Thus
+\[
+ w'_q=w_q\ (q>l),\qquad w'_l=w_l-1,\qquad 0\leq w'_q\leq2L\ (q<l).
+\]
+The type strictly decreases and the new length is at most $2L$.
+The argument is in the formal polynomial ring; numerical exceptional parameter values do
+not change the choice of pivot.
+
+For an actual uniform iteration bound define $B(w,L)$ by well-founded recursion on the type,
+with its value a function of the length budget $L$:
+\[
+ B(w,L)=0\quad\hbox{at a linear type},\qquad
+ B(w,L)=1+\max_{w'\in\mathscr C(w,L)}B(w',2L)\quad\hbox{otherwise},
+\]
+where $\mathscr C(w,L)$ is the finite set of types with the preceding displayed bounds for
+the chosen $l$.  Each $w'<w$, so this is a well-founded definition.  The usual induction
+proves that it bounds the execution on every family of length at most $L$ and type $w$.
+If the initial length is at most $L_0\leq3\cdot2^4$, take the finite maximum of $B(w,L_0)$
+over $0\leq w_q\leq L_0$.  Call it $R_0$.  The terminal length is at most $L_1=2^{R_0}L_0$.
+This proves uniform complexity, not merely termination of each individual execution.
+
+\paragraph{Full coefficient and translation bounds.}
+For a fixed spatial coordinate $i$, retain a bound $M N^{d_i-q}$ for the coefficient of
+$t^q$ of every current polynomial and constant-translation record; coefficients with
+$q>d_i$ remain zero.  A shift $t\mapsto t+u$, $|u|\leq H\leq N$, transforms that
+coefficient into $\sum_{v\geq q}\binom vq c_v u^{v-q}$, whose modulus is at most
+$2^{d_i}M N^{d_i-q}$.  Subtracting the pivot multiplies this bound by at most two.
+Adding a constant translation to a function record adds two such bounds at $q=0$.
+Induction for the at most $R_0$ steps gives a fixed numerical multiple of the initial budget.
+This proves every support-envelope and coefficient upper bound used by the analytic execution.
+
+\paragraph{Lean state.}
+Use an outer polynomial in $t$ with coefficients in a multivariate polynomial ring in the
+shift variables.  A factor carries its origin index, conjugation flag, and constant-translation
+polynomial.  Normalization groups \emph{function lists}; it does not discard duplicate factors.
+The head list has length one.  Polynomial equality can be handled classically; computability
+of comparisons between arbitrary real coefficients is not asserted.  The termination proof
+uses the lexicographic well-founded relation, not an incorrect induction on maximum degree alone.
+
+\subsubsection{The analytic update, with no assumed cube}
+For fixed old shifts let
+\[
+ A=V^{-1}\int g_0(x)\mathbb E_{t\in[0,N]}
+                   \prod_{i=1}^L g_i(x+Q_i(t))\,dx,
+\]
+where every block is $1$-bounded and has $L^2$ norm squared at most $V$.
+Apply \cref{patch:signed-vdc} with $g=g_0$ and the remaining product as $F$.
+Then translate $x$ by $-Q_p(t)$ in the correlation on its right side.
+The two children of a factor $(g_i,Q_i)$ are exactly
+\[
+ (\overline{g_i},Q_i(t+u)-Q_p(t)),\qquad(g_i,Q_i(t)-Q_p(t)).
+\]
+Normalize constants as in \cref{patch:pet-update}.  The old spatial block was removed by the
+Cauchy--Schwarz inequality; constant children form the new spatial block.  This proves
+\begin{equation}\label{patch:pet-analytic-step}
+ |A(\mathbf h)|^2\leq2\operatorname{Re}\mathbb E_{u\sim\kappa_H}
+                       A'(\mathbf h,u)+2H/N.
+\end{equation}
+A product block is dominated by any one of its factors, so all required $L^2$ and $L^1$
+bounds remain at most $V$.  The shifted head is a translated/conjugated copy of $f$.
+Every joint integral is measurable; no numerical shift is selected during this symbolic recursion.
+
+\subsubsection{The affine endpoint: removal order and cube invariant}
+At a formal linear state, \eqref{patch:lead-invariant} says that the head slope and its differences
+with every other slope are multiples of $e_m$.  Hence all the slopes are multiples of $e_m$.
+Include the spatial block as a nuisance of slope zero, list all nuisances in their inherited
+order $0,\ldots,s-1$, and place the protected block last, at index $s$.
+For fixed old shifts the quantity has the exact form
+\[
+ A_0=V^{-1}\int\mathbb E_{t\in[0,N]}\prod_{i=0}^{s}g_i(x+a_it e_m)\,dx,
+ \qquad g_s=\hbox{one translate/conjugate of }f.
+\]
+For $r\leq i\leq s$ define
+\begin{align}
+ G_{i,0}(x)&=g_i(x),\notag\\
+ G_{i,r+1}(x;\mathbf u,u_r)&=G_{i,r}(x;\mathbf u)
+     \overline{G_{i,r}(x+(a_i-a_r)u_re_m;\mathbf u)},\label{patch:affine-block}\\
+ A_r(\mathbf u)&=V^{-1}\int\mathbb E_t
+           \prod_{i=r}^sG_{i,r}(x+a_it e_m;\mathbf u)\,dx.\notag
+\end{align}
+Induction using a new Boolean bit proves the invariant
+\begin{equation}\label{patch:affine-cube-invariant}
+ G_{i,r}(x;\mathbf u)=\prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}
+        g_i\left(x+\sum_{\nu<r}\omega_\nu(a_i-a_\nu)u_\nu e_m\right).
+\end{equation}
+At step $r$ translate by $-a_rt e_m$ and remove \emph{exactly} $G_{r,r}$ by
+\cref{patch:signed-vdc}.  It is independent of $t$ after that translation.
+Equation \eqref{patch:affine-block} identifies the resulting correlation with $A_{r+1}$, so
+\[
+ |A_r|^2\leq2\operatorname{Re}\mathbb E_{u_r\sim\kappa_H}A_{r+1}+2H/N.
+\]
+The zero vertex bounds $|G_{i,r}|$ by $|g_i|$, and $|A_r|\leq1$.
+At $r=s$ translate away $a_st e_m$; the parameter average disappears and the result is
+\begin{equation}\label{patch:affine-terminal}
+ A_s(\mathbf u)=V^{-1}\int
+     \prod_{\omega\in\{0,1\}^s}\mathcal C^{|\omega|}
+         g_s\left(x+\sum_{\nu<s}\omega_\nu(a_s-a_\nu)u_\nu e_m\right)dx.
+\end{equation}
+Translation/conjugation invariance identifies its integrated power with that of $f$.
+The raw cube in \eqref{patch:affine-terminal} makes sense even at a parameter where a slope
+difference evaluates to zero.  We only require nonzero gaps later, for changing variables.
+Thus no exceptional set is hidden in the analytic recursion.
+
+\begin{lemma}[Explicit accumulation of the removal losses]\label{patch:cs-loss}
+Suppose a chain of $T$ such steps has $|A_r|\leq1$, probability shift measures, and error
+$2H/N$ at each step.  If its final signed average is a nonnegative cube power $Q\leq1$, then
+\[
+ |A_0|^{2^T}\leq c_T\bigl(Q+T H/N\bigr),\qquad c_T=2^{2^T-1}.
+\]
+The same assertion holds with all earlier shift parameters retained and averaged.
+\end{lemma}
+\begin{proof}
+Set $M_r=\mathbb E|A_r|$ except at the last stage, where use $Q=\operatorname{Re}\mathbb E A_T$.
+Jensen gives $M_r^2\leq2M_{r+1}+2H/N$, with $Q$ in the last line.
+For $\phi(x)=x^2/2$, $x,y\in[0,1]$ imply
+$|\phi(x)-\phi(y)|\leq|x-y|$.  Inductively
+$\phi^{\circ r}(M_0)\leq M_r+rH/N$, and at the last stage use $Q$.
+For a completely scalar induction, split into $\phi^{\circ r}(M_0)\leq M_r$ or its reverse
+and use $(x^2-y^2)/2=(x-y)(x+y)/2$ on $[0,1]$.
+Since $\phi^{\circ T}(x)=x^{2^T}/c_T$, the result follows.
+The last signed average is essential; it is not replaced by absolute cube correlations.
+\end{proof}
+
+\subsubsection{Real sublevel exclusion and the common-scale cube}
+At the terminal stage every head gap, including the gap with the spatial slope zero, has form
+\[
+ a\,p_i(\mathbf h),\qquad p_i\in\mathbb Z[\mathbf h]\setminus\{0\},
+\]
+where $p_i$ is multilinear homogeneous of degree $D-1\leq2$, with a coefficient bound fixed
+by the recursion above.  All old parameter shifts have the same radius $H$.
+
+\begin{lemma}[The sublevel estimate actually needed here]\label{patch:multiaffine-sublevel}
+Let $p\ne0$ be a multilinear integer polynomial of degree at most two.  If the coordinates
+of $u$ are independently distributed with density $\kappa_1$, then, for $0<\varepsilon<1$,
+\[
+ \Pr\{|p(u)|\leq\varepsilon\}\leq4\sqrt\varepsilon.
+\]
+\end{lemma}
+\begin{proof}
+A nonzero constant has modulus at least one.  For a nonconstant linear polynomial, fix all
+but a coordinate with a nonzero integer coefficient.  The sublevel interval has length at
+most $2\varepsilon$, and $\kappa_1\leq1$.
+If a quadratic term is present, write $p=A(u')u_r+B(u')$ where $A$ is linear and has a
+nonzero integer coefficient.  The probability $|A|\leq\sqrt\varepsilon$ is at most
+$2\sqrt\varepsilon$ by the linear case.  On its complement, the conditional sublevel
+probability in $u_r$ is at most $2\varepsilon/|A|\leq2\sqrt\varepsilon$.
+Integrate the remaining probability variables.  No dimension-dependent inverse theorem is used.
+\end{proof}
+
+Let $T_0$ bound the total number of parameter and affine removals; for example use
+$T_0=4+R_0+L_1$.  If the original normalized lower bound is $\lambda\leq1$, choose
+\[
+ H/N=\min\{1/32,\lambda^{2^{T_0}}/(4T_0c_{T_0})\}>0.
+\]
+Take $\lambda$ to be the fixed lower bound returned from the input budget, rather than
+the measured value of the particular correlation.  This choice of $H/N$ has both a power
+lower bound and a power upper bound by the budget rules.  The loss lemma gives an averaged raw
+terminal cube at least $\kappa=\lambda^{2^{T_0}}/(2c_{T_0})$ after harmless weakening.
+For $s$ terminal gaps, take $\varepsilon=(\kappa/(16s))^2$.
+Homogeneity gives $p_i(Hu)=H^{D-1}p_i(u)$.
+By \cref{patch:multiaffine-sublevel}, the union of all bad gap sets has probability at most
+$\kappa/4$.  Since the raw cube is between zero and one, there are old shifts outside this
+union with raw cube at least $\kappa/2$.  At those shifts
+\[
+ |a|H^{D-1}\varepsilon\leq |a p_i(\mathbf h)|
+       \leq |a|H^{D-1}M_1,
+\]
+where $M_1$ is the integer coefficient $\ell^1$ bound.
+Changing the new affine increments by $z_i=a p_i(\mathbf h)u_i$ therefore produces
+Fej\'er radii $L_i=|a p_i(\mathbf h)|H$ with
+\begin{equation}\label{patch:pet-physical-radii}
+ \delta^{O(1)}N^D\leq L_i\leq\delta^{-O(1)}N^D.
+\end{equation}
+Here $D$ is the protected polynomial degree, not the sum of ambient degrees.
+
+\begin{lemma}[Mixed radii to one radius, with positivity before comparison]\label{patch:uniformize}
+Suppose $f$ is $1$-bounded on a box of volume $V$ and $j$-th side length $S$.
+If $L_i>0$ and $L\geq2\max_iL_i$, then
+\[
+ (Q_{\mathbf L,V}^{j}(f))^2
+ \leq\left(1+\frac LS\right)\prod_i\frac{2L}{L_i}\ Q_{s+1,L,V}^{j}(f).
+\]
+\end{lemma}
+\begin{proof}
+For fixed $z_1,\ldots,z_s$ put $u_z=C_s(f;\cdot,z)$.
+The zero vertex supports $u_z$ on the original box, so
+\[
+ |V^{-1}\!\int u_z|^2\leq(1+L/S)\,P(z),\qquad
+ P(z)=V^{-1}\|T_{L,j}u_z\|_2^2\geq0.
+\]
+Since $L_i\leq L/2$, pointwise
+$\kappa_{L_i}(z_i)\leq(2L/L_i)\kappa_L(z_i)$.
+Apply this comparison only to the nonnegative $P$, after Jensen in the first display.
+Square expansion of $P$ appends one cube coordinate by \eqref{patch:cube-succ}; all $s+1$
+increments now have the same Fej\'er density.  This proves the identity and inequality claimed.
+\end{proof}
+Choose a deterministic $L=u_C(\delta)N^D$ exceeding twice the upper bounds in
+\eqref{patch:pet-physical-radii} and comparable, up to a power of $\delta$, to the protected
+support side length.  Every factor in \cref{patch:uniformize} is power-controlled.
+If needed, pad the resulting order to a single fixed order using \eqref{patch:raise-order}.
+This proves highest-active-degree uniformity control with polynomial losses, including the
+shifted families \eqref{patch:initial-shift-family}; its protected factor is still the original $f$.
+
+\subsubsection{Polynomial phases: the four initial steps are also explicit}
+Suppose the correlation also contains $\ee{p_x(t)}$, with $p_x$ a measurable-in-$x$ polynomial
+in $t$ of degree at most three.  Its coefficients need not be bounded.
+Before any polynomial-dependent translation of $x$, apply \cref{patch:signed-vdc} four times,
+retaining $x$ as a fixed outer variable.  After $r$ steps the parameter-dependent part is
+\[
+ \prod_{i=1}^{m}\prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}
+     f_i(x-P_i(t+\omega\cdot\mathbf h)e_i)\;
+ \ee{\sum_{\omega\in\{0,1\}^r}(-1)^{|\omega|}p_x(t+\omega\cdot\mathbf h)}.
+\]
+The initial step removes the original spatial factor.  At later steps use the indicator of
+a fixed enlarged spatial box: the zero-shift vertex supports the integrand there for
+$t\in[0,N]$.  Polynomial coefficient bounds and $4H\leq N/8$ give a single power-controlled
+volume for this box.  The indicator is removed by the same Cauchy--Schwarz step.
+At $r=4$ the phase is identically one, by the fourth finite-difference identity for cubics.
+Normalize the constant terms of the remaining polynomial shifts and run the preceding PET
+producer, retaining all four old shift variables in its averages and sublevel exclusions.
+
+There is one degenerate initial case to treat separately.  If the highest active degree is
+one, there is only one active input.  After the four steps, translating $x$ by its affine
+$P_1(t)$ removes $t$ and gives the raw order-four cube of $f_1$ with increments
+$\operatorname{lc}(P_1)h_i e_1$ directly.  Keep the signed average at this last step.
+Its radius is $|\operatorname{lc}(P_1)|H>0$ and is comparable to $N$ up to powers of $\delta$.
+Uniformize and pad as above.  Do \emph{not} group these equal-slope head copies and call the
+result a singleton head.
+
+\begin{proposition}[Highest-active-input control, also with measurable polynomial phases]
+\label{patch:highest-control}
+Fix an increasing degree list in $\{1,2,3\}$, a support/coefficient budget, and a number of
+active inputs $m\geq1$.  A power lower bound for
+\[
+ \left|\int f_0(x)\mathbb E_{t\in[0,N]}
+           \prod_{i=1}^{m}f_i(x-P_i(t)e_i)\,\ee{p_x(t)}\,dx\right|
+\]
+with $1$-bounded inputs, admissible polynomials, budgeted support, and $\deg_t p_x\leq3$
+implies a power lower bound for a fixed-order directional uniformity norm of $f_m$,
+at a radius comparable to $N^{d_m}$ up to fixed powers of $\delta$.
+The order and all budgets are independent of the measurable phase coefficients and of the
+input functions.  Passive coordinates, if present, remain outer integration variables.
+\end{proposition}
+\begin{proof}
+The four phase steps, the normal-state update with invariant \eqref{patch:lead-invariant},
+the explicit pivot recursion, \eqref{patch:affine-terminal}, the loss lemma, the sublevel
+exclusion, and \cref{patch:uniformize} give the result.  Each ingredient has been proved above.
+The degree-one branch is the direct cube calculation just given.  Dividing by the chosen
+spatial volume and finally converting to the stated box normalization costs only a budgeted
+factor; the exact ambient factor remains $N^{\sum d_i}$.
+\end{proof}
+\paragraph{Lean nodes.}
+\mbox{}\par
+{\small\raggedright
+\pid{NormalPETState}; \pid{ProtectedLeadingInvariant}; \pid{petUpdate_protected};
+\pid{petPivot_type_decreases}; \pid{petIteration_bound}; \pid{petStep_signed};
+\pid{affineBlock_cube}; \pid{csChain_power_bound}; \pid{multiaffine_sublevel};
+\pid{mixedCube_uniformize}; \pid{phaseStrip_four}; \pid{highestActive_uniformity}.
+\par}
+The proposition is not an extra hypothesis in any later theorem.
+
+
+\subsection{Fourier selection and the two difference lemmas}\label{patch:auxiliary-differences}
+These are the real versions of the preparation tools in \cite[\S4.5.1]{KoszEtAl}.
+Their Cauchy--Schwarz steps are expanded here using \cref{patch:cylinder}.
+For a scalar function supported on an interval $J$ of length $S>0$, define the paired cube
+\[
+ D_{a,b}^{r}f(x)=\prod_{\omega\in\{0,1\}^r}\mathcal C^{|\omega|}
+       f\left(x+\sum_{i=1}^r[\omega_i a_i+(1-\omega_i)b_i]\right),
+ \quad a,b\in[0,H]^r.
+\]
+After translation in $x$, averaging this expression over $a,b$ is the same as averaging
+$C_r$ against $r$ independent Fej\'er densities.  All scalar normalizers in this subsection
+are written as $S$; changing to a larger interval costs its explicit length ratio.
+
+\begin{lemma}[One-dimensional $U^2$ inverse estimate and measurable frequencies]
+\label{patch:u2-fourier-selection}
+If $|f|\leq1$ and $f$ is supported in $J$, then
+\[
+ Q_{2,H,S}(f)\leq H^{-2}\|\widehat f\|_\infty^2.
+\]
+For a jointly measurable bounded family with uniformly bounded support, a power lower bound
+for these powers on a measurable set of parameters gives a measurable choice of frequencies
+with Fourier coefficients of power size.  A finite frequency set is not assumed.
+\end{lemma}
+\begin{proof}
+Put $g_a(x)=f(x)\overline{f(x+a)}$.  By \cref{patch:fejer-squares},
+$SQ_{2,H,S}=\int\kappa_H(a)\|T_Hg_a\|_2^2da$.
+Use $\kappa_H\leq H^{-1}$ against this nonnegative integrand and apply Plancherel in $x$.
+For each $\xi$, a second Plancherel identity, this time in $a$, gives
+\[
+ \int|\widehat{g_a}(\xi)|^2da
+    =\int|\widehat f(\zeta+\xi)|^2|\widehat f(\zeta)|^2d\zeta
+    \leq\|\widehat f\|_\infty^2\|f\|_2^2.
+\]
+The multiplier of $T_H$ is the Fourier transform of $H^{-1}\mathbf1_{[0,H]}$, whose squared
+$L^2$ norm is $H^{-1}$.  Hence $SQ_2\leq H^{-2}\|\widehat f\|_\infty^2\|f\|_2^2$;
+use $\|f\|_2^2\leq S$.
+For selection enumerate $\mathbb Q$.  The Fourier transform of each integrable section is
+continuous in frequency, and its value at each rational is measurable in the parameter by
+Fubini.  Where the supremum exceeds a threshold $a$, choose the first rational at which the
+modulus exceeds $a/2$.  The disjoint least-index sets are measurable and cover the required
+parameter set.  Outside it use zero.  Popularity supplies a uniform positive threshold
+before selection.  This proves the claimed jointly measurable choice and does not infer a
+uniform finite set from continuity alone.
+\end{proof}
+
+\begin{lemma}[Dual--difference interchange, explicit cylinder proof]\label{patch:dual-difference}
+Let $F(x)=\mathbb E_tF_t(x)$, where the $F_t$ are jointly measurable, $1$-bounded and supported
+in a common interval $J$.  Let $E\subseteq[0,H]^{2r}$ and $\varphi(a,b)$ be measurable, $r\geq1$.
+Put
+\[
+ \theta=\mathbb E_{a,b\in[0,H]^r}\mathbf1_E(a,b)
+           \left|S^{-1}\int D_{a,b}^{r}F(x)\ee{\varphi(a,b)x}\,dx\right|^2.
+\]
+Write $J_r=J-[0,rH]$, $T=|J_r|/S$, and
+\[
+ \Box^r E=\{(a,b,c): (a,b^\omega)\in E\text{ for every }\omega\in\{0,1\}^r\},
+ \quad b_i^\omega=(1-\omega_i)b_i+\omega_i c_i.
+\]
+Then, with $G_{b,c}(x)=\mathbb E_tD_{c,b}^{r}F_t(x)$ and
+$\psi(a,b,c)=\sum_\omega(-1)^{|\omega|}\varphi(a,b^\omega)$,
+\begin{equation}\label{patch:dual-diff-bound}
+ \mathbb E_{a,b,c}\mathbf1_{\Box^r E}
+       \left|S^{-1}\int G_{b,c}(x)\ee{\psi(a,b,c)x}\,dx\right|^2
+ \geq\theta^{2^r}T^{-2(2^r-1)}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Expand the square defining $\theta$ using two spatial variables $x,z$ and expand every copy
+of $F$ using independent parameters $t_{\omega,0},t_{\omega,1}$.
+The vertex $\omega=0$ contributes
+\[
+ v=\mathbf1_E(a,b)F_{t_{0,0}}(x+\textstyle\sum b_i)
+       \overline{F_{t_{0,1}}(z+\textstyle\sum b_i)}\,
+       \ee{\varphi(a,b)(x-z)}.
+\]
+Partition the other Boolean vertices by their first nonzero coordinate:
+$\Omega_i=\{\omega:\omega_1=\cdots=\omega_{i-1}=0,\ \omega_i=1\}$.
+The product of their two spatial factors for $\omega\in\Omega_i$ is a $1$-bounded nuisance
+$u_i$ independent of $b_i$.  Normalize $x,z$ on $J_r$, and normalize all parameter variables
+by their probability measures.  The initial average is $\theta/T^2$.
+Apply \cref{patch:cylinder}, doubling $b_1,\ldots,b_r$ in that order.
+At stage $i$ it removes exactly the block indexed by $\Omega_i$ and hence all its unused
+$t$ parameters.  The only parameters surviving at the endpoint are $t_{0,0},t_{0,1}$.
+The indicator becomes the product over all corners, namely $\mathbf1_{\Box^r E}$;
+the phase becomes $\ee{\psi(x-z)}$; the two function products become
+$D_{c,b}^{r}F_{t_{0,0}}(x)$ and its conjugate at $z$.
+Integrating $t_{0,0},t_{0,1},x,z$ is exactly the squared coefficient of $G_{b,c}$.
+The support remains in $J_r$, so these spatial integrals may be written over $\mathbb R$.
+Multiply the cylinder inequality by $T^2$ to obtain \eqref{patch:dual-diff-bound}.
+\end{proof}
+
+\begin{lemma}[Removal of missing-coordinate phases]\label{patch:missing-phase}
+Let $f$ be as above and let $\varphi_i(a,b)$ be independent of $b_i$, $1\leq i\leq r$.
+If
+\[
+ \theta=\mathbb E_{a,b}
+       \left|S^{-1}\int D_{a,b}^{r}f(x)\ee{(\sum_i\varphi_i(a,b))x}\,dx\right|^2,
+\]
+then
+\begin{equation}\label{patch:missing-phase-bound}
+ Q_{r+1,H,S}(f)\geq
+       \frac{\theta^{2^r}}{T^{2(2^r-1)}(1+H/S)},\qquad T=(S+rH)/S.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Expand the square using $x,z\in J_r$.
+Use as head $v=f(x+\sum b_i)\overline{f(z+\sum b_i)}$.
+For nuisance $u_i$, multiply the vertex factors indexed by $\Omega_i$ from the preceding
+proof by $\ee{\varphi_i(a,b)(x-z)}$.  This block is independent of $b_i$.
+The same cylinder induction gives
+\[
+ R:=\mathbb E_{b,c}\left|S^{-1}\int D_{c,b}^{r}f(x)\,dx\right|^2
+       \geq\theta^{2^r}T^{-2(2^r-1)}.
+\]
+For each $b,c$, $u=D_{c,b}^{r}f$ is supported in a translate of $J$, by its zero vertex.
+Its full integral equals $\int T_Hu$, and the latter function has support length at most $S+H$.
+Thus $|S^{-1}\int u|^2\leq(1+H/S)S^{-1}\|T_Hu\|_2^2$.
+Average in $b,c$ and expand this last square.  It is exactly the paired cube with $r+1$
+uniform pairs in $[0,H]$, hence $Q_{r+1,H,S}$.  This proves \eqref{patch:missing-phase-bound}.
+\end{proof}
+These two lemmas are useful even when the support/shift ratios are large: the displayed
+ratios are then retained and bounded by the budget rules.  No comparison of complex
+integrands by positive kernels is implicit.
+
+\begin{lemma}[A measurable dummy phase with a small exceptional set]\label{patch:dummy-phase}
+For $r\geq1$, $H,M>0$, and $0<\epsilon<1$, there is a finite-valued measurable function
+$\Phi(a,b)$ on $[0,H]^{2r}$ such that its alternating sum
+$\Psi(a,b,c)=\sum_\omega(-1)^{|\omega|}\Phi(a,b^\omega)$ satisfies $|\Psi|>M$ except on
+a set of relative measure at most $\epsilon$ in $[0,H]^{3r}$.
+\end{lemma}
+\begin{proof}
+Choose $n$ with $r2^{-n}\leq\epsilon$ and partition each $[0,H]$ into $2^n$ half-open
+intervals, with the final endpoint assigned to the last cell.
+Enumerate the resulting $r$-dimensional cells by distinct nonnegative integers $\iota$.
+On a cell of the $b$ variable put $\Phi(a,b)=2M\,2^{\iota(b)}$.
+Except when some $b_i,c_i$ are in the same one-dimensional cell, the $2^r$ corners $b^\omega$
+are in distinct cells.  A signed sum of distinct powers of two has absolute value at least
+one: its largest term exceeds the sum of all smaller possible terms.
+Thus $|\Psi|\geq2M$ there.  The union of the $r$ bad coordinate events has relative measure
+at most $r2^{-n}$.  Boundaries are null.  This grid resolves the purpose-built function
+$\Phi$, not the level sets of an arbitrary input.  The possibly enormous phase values are
+permitted: later phase mappings are arbitrary measurable functions, and their exponentials
+still have modulus one.
+\end{proof}
+
+\subsection{Conditional degree lowering with all hypotheses exposed}\label{patch:conditional-dl}
+Let $\mathbb R^0$ be a point with measure one.  For fixed $k,l,m$ with $1\leq m\leq l\leq k$,
+define $\mathsf{MA}(m,l)$ to be the following budgeted assertion.  For every input budget
+there is an output budget such that, for admissible $P_i$, $1$-bounded $g_0,\ldots,g_{m-1}$
+on $\mathbb R^{m-1}$, measurable $\zeta_m,\ldots,\zeta_l$, and fixed
+$\theta_{l+1},\ldots,\theta_k$, a power lower bound for
+\begin{equation}\label{patch:ma-correlation}
+ \left|\int g_0(y)\mathbb E_t\prod_{i<m}g_i(y-P_i(t)e_i)
+       \ee{\sum_{i=m}^l\zeta_i(y)P_i(t)+\sum_{i>l}\theta_iP_i(t)}\,dy\right|
+\end{equation}
+in units of $N^{D_{m-1}}$ implies that the canonical set
+\begin{equation}\label{patch:ma-set}
+ Y=\left\{y\text{ in the support envelope}:\
+      \sum_{i=m}^lN^{d_i}|\zeta_i(y)|+\sum_{i>l}N^{d_i}|\theta_i|
+                           \leq u_C(\delta)\right\}
+\end{equation}
+has measure at least $\ell_C(\delta)N^{D_{m-1}}$.
+There is no bound on the phase mappings before this conclusion.  In the real case no
+integer denominator occurs.  The output budget is independent of the phase values.
+
+\begin{lemma}[Conditional structured degree lowering]\label{patch:conditional-degree}
+Assume the theorem $\mathsf{MA}(m,l)$ for every budget.  For $s\geq3$ and admissible data set
+\begin{align*}
+ F(x)&=\mathbb E_t f_0(x+P_m(t)e_m)
+           \prod_{i<m}f_i(x-P_i(t)e_i+P_m(t)e_m)\\
+ &\hspace{13mm}\cdot
+ \ee{\sum_{i=m+1}^l\xi_i(x+P_m(t)e_m)P_i(t)+\sum_{i>l}\eta_iP_i(t)}.
+\end{align*}
+Here the $f_i$ are $1$-bounded with budgeted support, the $\xi_i$ are measurable, and the
+$\eta_i$ are fixed.  If $H$ is comparable to $N^{d_m}$ up to budgeted powers and the
+order-$s$ uniformity norm of $F$ in direction $e_m$ is power-large, then its order-$(s-1)$
+norm at the \emph{same} $H$ is power-large.  Enlarge the support normalizer to contain $F$;
+its volume ratio is explicitly power-controlled.
+\end{lemma}
+\begin{proof}
+Write $r=s-2$, $x=(y,z)$ with $y=x_{<m}$ and $z=x_m$.
+The following steps specify every selection and every use of the assumed major-arc theorem.
+
+\paragraph{1. Fourier coefficients on popular sections.}
+Expand the first $r$ paired differences in the order-$s$ power.  Fubini identifies the
+remainder with a one-dimensional $U^2$ power on each $y$ section.
+Use \cref{patch:budgets,patch:u2-fourier-selection}.  There is a measurable power-large set
+of $y$ and, on each such section, a measurable power-large set $E_y\subseteq[0,H]^{2r}$
+on which
+\[
+ \left|S^{-1}\int D_{a,b}^{r}F_y(z)\ee{\varphi_y(a,b)z}\,dz\right|\geq\delta^{O(1)}.
+\]
+Here $S$ is the length of one fixed enlarged section interval $J$, comparable to $N^{d_m}$
+up to powers.  The frequency $\varphi_y(a,b)$ is the least-rational selection described above,
+so it is jointly measurable.  Translated supports of the differences are all contained in
+$J-[0,rH]$ after one further budgeted enlargement if necessary.
+
+\paragraph{2. Interchange the average and the differences.}
+Write $F_y=\mathbb E_tF_{t,y}$ and apply \cref{patch:dual-difference} on each good $y$.
+Define
+\[
+ G_{y,b,c}(z)=\mathbb E_tD_{c,b}^{r}F_{t,y}(z),\qquad
+ \psi_y(a,b,c)=\sum_\omega(-1)^{|\omega|}\varphi_y(a,b^\omega).
+\]
+Popularity gives a canonical measurable set $Z$ of pairs $(y,k)$, $k=(a,b,c)$, on which
+$(a,b^\omega)\in E_y$ for every corner and
+$|\int G_{y,b,c}(z)\ee{\psi_y(k)z}dz|\geq\delta^{O(1)}N^{d_m}$.
+The measure of $Z$ is power-large in the units $N^{D_{m-1}}H^{3r}$.
+
+\paragraph{3. Interchange the section and cube parameters.}
+Fubini and popularity produce a measurable set $K\subseteq[0,H]^{3r}$ of power-large relative
+measure such that each $k\in K$ has a power-large section $Z_k$ in the $y$ variables.
+Every later set can be defined by explicit thresholds on these joint measurable functions;
+no arbitrary sectionwise choice of a set is made.
+
+\paragraph{4. Extend by a dummy phase.}
+On $Z$ retain $\psi_y(k)$.  Off $Z$ replace it by the phase $\Psi(k)$ from
+\cref{patch:dummy-phase}.  Denote the result by $\psi_y^*(k)$.
+Choose its threshold $M$ larger than the frequency bound returned in Step 5, and its exceptional
+relative measure smaller than one quarter of the power mass used in Step 6.
+These choices are legitimate: Step 5's constants do not depend on phase values.
+The modified phase is not asserted to be a cube derivative off $Z$.
+For every $k\in K$,
+\[
+ \int\left|\int G_{y,b,c}(z)\ee{\psi_y^*(k)z}dz\right|dy
+                    \geq\delta^{O(1)}N^{D_m}.
+\]
+
+\paragraph{5. Apply precisely $\mathsf{MA}(m,l)$.}
+Choose a measurable unit phase in $y$ to turn the inner coefficient into its modulus.
+Expand $G$, distribute the paired derivative over the factors, and set the new spatial
+variable equal to $x+P_m(t)e_m$.  The fixed $\eta$ phase cancels because $r\geq1$.
+The resulting integral is
+\[
+ \int f'_0(x)\mathbb E_t\prod_{i<m}D_{c,b}^{r}f_i(x-P_i(t)e_i)
+           \ee{\sum_{i=m}^l\zeta'_i(x)P_i(t)}\,dx,
+\]
+where
+\[
+ \zeta'_m(y,z)=-\psi_y^*(k),\qquad
+ \zeta'_i(x)=\sum_\omega(-1)^{|\omega|}\xi_i(x+\textstyle\sum_j b_j^\omega e_m)
+       \quad(i>m),
+\]
+and $f'_0$ is the product of the chosen $y$ phase, $D_{c,b}^{r}f_0(x)$, and
+$\ee{\psi_y^*(k)x_m}$.  It is $1$-bounded and supported in a budgeted box.
+Fix a $z$ section carrying a power-large correlation.  This is exactly
+\eqref{patch:ma-correlation}, in $m-1$ variables, with the same $(m,l)$ and zero fixed higher
+phase.  The assumed $\mathsf{MA}(m,l)$ yields a power-large set of $y$ on which
+$|\psi_y^*(k)|\leq u_{C_6}(\delta)N^{-d_m}$.
+Take as this set the full threshold set.  It is jointly measurable in $(y,k)$, whether or
+not the intermediate selected $z$ depends measurably on $k$.
+
+\paragraph{6. Recover the original cube phase.}
+Choose the dummy threshold in Step 4 greater than $u_{C_6}(\delta)N^{-d_m}$.
+Outside its small exceptional set in $k$, every low-frequency point just obtained lies in
+$Z$, where $\psi_y^*=\psi_y$.
+Removing the exceptional set and applying Fubini/popularity again leaves power-many $y$,
+each with power-many $k=(a,b,c)$ for which the original alternating sum is small and all
+corners belong to $E_y$.  All losses are bounded by the explicit discard rule in
+\cref{patch:budgets}.
+
+\paragraph{7. Quantize and partition the nonzero vertices.}
+Partition the interval of possible $\psi_y(k)$ values into cells of width $\tau N^{-d_m}$.
+Choose a common cell carrying power mass, with center $\zeta$; the number of cells is
+power-controlled.  Choose $\tau>0$ small enough that
+$2\pi(\sup_{z\in J-[0,rH]}|z|)\tau N^{-d_m}$ is at most a quarter of the normalized Fourier
+coefficient lower bound in Step 1.  This choice is made before the loss from selecting a cell.
+For $\Omega_i=\{\omega:\omega_{<i}=0,\omega_i=1\}$ define
+\[
+ \alpha_1=\zeta-\sum_{\omega\in\Omega_1}(-1)^{|\omega|}\varphi_y(a,b^\omega),
+ \qquad
+ \alpha_i=-\sum_{\omega\in\Omega_i}(-1)^{|\omega|}\varphi_y(a,b^\omega)\ (i>1).
+\]
+Each $\alpha_i$ is independent of $b_i$, and on the retained set
+\[
+ \left|\varphi_y(a,b)-\sum_i\alpha_i(y,a,b,c)\right|
+       =|\psi_y(a,b,c)-\zeta|\leq\tau N^{-d_m}.
+\]
+This is an exact partition of all nonzero Boolean vertices, not an asserted separation of
+variables.
+
+\paragraph{8. Remove the phases and integrate.}
+For each good $y$, fix one $c$ for which the retained $(a,b)$ section has power-large measure.
+On it, replacing the Fourier phase in Step 1 by $\sum_i\alpha_i$ loses at most a quarter of
+its lower bound, by the choice of $\tau$ and $|\ee u-\ee v|\leq2\pi|u-v|$.
+Enlarge the average to all $(a,b)$ only after taking the squared modulus, which is nonnegative.
+Apply \cref{patch:missing-phase}.  Since $r+1=s-1$, it gives a power lower bound for the
+order-$(s-1)$ norm of $F_y$ at the same $H$.
+There is no need to choose $c$ measurably: the resulting norm inequality is an intrinsic
+measurable statement about $F_y$ and holds for every good $y$.
+Integrate over the already measurable good set of $y$.  Section normalization ratios,
+shift/support ratios, and the fixed roots involved are all handled by \cref{patch:budgets}.
+\end{proof}
+\paragraph{Dependency warning built into the implementation.}
+\pid{conditionalDegreeLowering} is a theorem with an internal premise
+\pid{MajorArcProperty m l}; it is proved \emph{before} the major-arc induction.
+The next subsection supplies that premise by induction.  The final every-input theorem
+will have no such premise.
+
+
+\subsection{The major-arc induction is noncircular}\label{patch:major-induction}
+\begin{theorem}[Real major-arc property]\label{patch:major-arc}
+For every increasing degree list contained in $\{1,2,3\}$ and every $1\leq m\leq l\leq k$,
+the property $\mathsf{MA}(m,l)$ defined in \eqref{patch:ma-correlation}--\eqref{patch:ma-set}
+holds.  All output budgets depend only on the input budget and the degree list.
+\end{theorem}
+\begin{proof}
+Fix $k,l$ and induct on $m=1,\ldots,l$, with the induction hypothesis quantified over
+\emph{every} support/coefficient/correlation budget.
+
+\paragraph{Base $m=1$.}
+The space $\mathbb R^0$ has one point and measure one.  Since $|g_0(0)|\leq1$, a lower
+bound for \eqref{patch:ma-correlation} gives the same lower bound for the scalar exponential
+average.  Apply \cref{patch:triangular}.  The canonical set in \eqref{patch:ma-set} is the
+whole point space after increasing its budget, and its measure is one.
+
+\paragraph{Induction step: replace the last active input by its exact adjoint.}
+Suppose $\mathsf{MA}(m,l)$ is proved, and consider the correlation for $\mathsf{MA}(m+1,l)$:
+\[
+ \Gamma=\int g_0(x)\mathbb E_t\prod_{i\leq m}g_i(x-P_i(t)e_i)\,
+          \ee{p_x(t)}\,dx,\qquad
+ p_x(t)=\sum_{i=m+1}^l\zeta_i(x)P_i(t)+\sum_{i>l}\theta_iP_i(t).
+\]
+Here $x\in\mathbb R^m$.  Define, with all conjugations shown,
+\begin{equation}\label{patch:ma-adjoint}
+ F(y)=\mathbb E_t\overline{g_0(y+P_m(t)e_m)}
+     \prod_{i<m}\overline{g_i(y+P_m(t)e_m-P_i(t)e_i)}\,
+               \ee{-p_{y+P_m(t)e_m}(t)}.
+\end{equation}
+Translation in $x$ gives $\Gamma=\langle g_m,F\rangle$.
+If the $g_i$ have squared $L^2$ norms bounded by $V$, then
+\[
+ \|F\|_2^2\geq |\Gamma|^2/V.
+\]
+The function $F$ is $1$-bounded and is supported in a fixed enlarged box, because its first
+factor is a translate of $g_0$.  Replacing $g_m$ by $F$ in $\Gamma$ produces exactly
+$\langle F,F\rangle=\|F\|_2^2$.  Thus the replaced correlation remains power-large in
+units $N^{D_m}$.
+
+\paragraph{Obtain uniformity, using only the smaller major-arc property.}
+The phase in the replaced correlation is still $p_x(t)$, a polynomial in $t$ of degree at
+most three with measurable coefficients.  Apply \cref{patch:highest-control}, whose proof
+is independent of every major-arc assertion.  It gives power-large order-$S_0$ uniformity
+of $F$ in direction $e_m$, at a radius $H$ comparable to $N^{d_m}$ up to powers.
+The order $S_0$ is bounded independently of all functions and parameters; pad it to a fixed
+order if necessary using \eqref{patch:raise-order}.
+The function \eqref{patch:ma-adjoint} has exactly the form in
+\cref{patch:conditional-degree}, with conjugated $g_i$, mappings $\xi_i=-\zeta_i$, and
+constants $\eta_i=-\theta_i$.
+Use the induction hypothesis $\mathsf{MA}(m,l)$ in that conditional lemma, and lower the
+order $S_0-2$ times, at the same $H$.  If $S_0=2$ there is no lowering step.
+This obtains a power-large directional $U^2$ power of $F$.
+
+\paragraph{Fourier-select and expose the smaller pattern.}
+By Fubini, popularity, and \cref{patch:u2-fourier-selection}, there is a measurable mapping
+$\lambda:\mathbb R^{m-1}\to\mathbb R$ such that
+\[
+ \int\left|\int F(y,z)\ee{\lambda(y)z}\,dz\right|dy
+                      \geq\delta^{O(1)}N^{D_m}.
+\]
+Take a measurable scalar $c(y)$ of modulus at most one that turns the inner coefficient
+into its modulus.  Expand $F$ and put the new variable $x$ equal to the old variable plus
+$P_m(t)e_m$.  The resulting power-large scalar is exactly
+\begin{equation}\label{patch:ma-smaller-pattern}
+ \int \overline{g_0(x)}c(x_{<m})\ee{\lambda(x_{<m})x_m}
+ \mathbb E_t\prod_{i<m}\overline{g_i(x-P_i(t)e_i)}
+ \ee{-\lambda(x_{<m})P_m(t)-p_x(t)}\,dx.
+\end{equation}
+The $x_m$ integration is restricted by $g_0$ to an interval of power-controlled length
+in units $N^{d_m}$.  Each section has absolute value at most a power-controlled multiple
+of $N^{D_{m-1}}$.  Since the integral of the absolute values of the sections is at least
+the modulus of \eqref{patch:ma-smaller-pattern}, popularity gives a measurable set $Z_m$
+of $x_m$ values with measure at least $\delta^{O(1)}N^{d_m}$, on every one of which the
+section correlation is at least $\delta^{O(1)}N^{D_{m-1}}$.
+Use a fixed threshold for all these sections; do not feed their individual sizes into the
+induction hypothesis.
+
+For each $z\in Z_m$, the section of \eqref{patch:ma-smaller-pattern} is an
+$\mathsf{MA}(m,l)$ correlation, with variable phases
+\[
+ -\lambda(y),\quad -\zeta_{m+1}(y,z),\ldots,-\zeta_l(y,z)
+\]
+and fixed higher phases $-\theta_i$.
+Apply the induction hypothesis with one common budget.  Drop the nonnegative term
+$N^{d_m}|\lambda(y)|$ from its conclusion.  It follows that the section of the canonical set
+\[
+ Y=\left\{(y,z)\text{ in the enlarged box}:\
+       \sum_{i=m+1}^lN^{d_i}|\zeta_i(y,z)|+
+       \sum_{i>l}N^{d_i}|\theta_i|\leq u_C(\delta)\right\}
+\]
+has measure at least $\delta^{O(1)}N^{D_{m-1}}$ for each $z\in Z_m$.
+This set is jointly measurable, with no sectionwise set-selection issue.
+Fubini yields $|Y|\geq\delta^{O(1)}N^{D_m}$, which is $\mathsf{MA}(m+1,l)$.
+
+All losses in a step are products, fixed powers, or finite-order applications of the budget
+rules.  Choose the input scale threshold large enough that every invoked theorem is
+applicable.  There are at most $k-1\leq2$ induction steps, although each step invokes the
+previously bounded number of degree-lowering iterations.  This proves the claimed uniform
+structural budgets.
+\end{proof}
+
+The dependency at stage $m$ is precisely
+\[
+ \mathsf{MA}(m,l)
+ \ \Longrightarrow\ \mathsf{ConditionalDL}(m,l)
+ \ \Longrightarrow\ \mathsf{MA}(m+1,l),
+\]
+with highest-active uniformity proved before this induction.  In particular, neither the
+conclusion at $m+1$ nor the final inverse theorem is used as an induction hypothesis.
+
+\begin{corollary}[Unconditional degree lowering for structured adjoints]
+\label{patch:structured-degree}
+Let $2\leq l\leq k\leq3$ and fix admissible polynomials and bounded, budget-supported inputs.
+Let $F_l$ be the $l$-th adjoint of the modulated average with active inputs $1,\ldots,l$
+and a fixed phase $\ee{\sum_{i>l}\zeta_iP_i(t)}$.  If its directional order-$s$ norm,
+$s\geq3$, is power-large at $H\asymp\delta^{O(1)}N^{d_l}$, then its order-$(s-1)$ norm
+at the same $H$ is power-large, with uniform budgets.
+\end{corollary}
+\begin{proof}
+Keep the passive coordinates $x_{>l}$ fixed.  The active $l$-variable function is exactly
+the function in \cref{patch:conditional-degree} with $m=l$ and fixed higher phase,
+up to the explicitly harmless conjugations.  Popularity first restricts to passive sections
+with power-large order-$s$ power.  Apply that lemma using the now proved
+$\mathsf{MA}(l,l)$, with the same budgets on all selected sections, and integrate the
+resulting nonnegative order-$(s-1)$ powers.  The passive-section volume has its exact factor
+$N^{D-D_l}$; support ratios are handled by \cref{patch:budgets}.
+\end{proof}
+This corollary is the structured statement corresponding to \cite[Lemma 4.70]{KoszEtAl}.
+It makes no assertion that a generic function with large high-order uniformity has large
+low-frequency energy or admits degree lowering.
+\paragraph{Lean nodes.}
+\mbox{}\par
+{\small\raggedright
+\pid{majorArc_zeroDim}; \pid{majorArc_successor}; \pid{majorArc_real};
+\pid{modulatedAdjoint_identity}; \pid{structuredAdjoint_degreeLowering}.
+\par}
+The major-arc induction hypothesis must quantify over budgets; specializing its budget
+before the induction would prevent its use on the enlarged supports.
+
+
+\subsection{Remove the higher inputs, then prove lowest-input energy}
+\label{patch:lowest-inverse}
+For this subsection write a modulated correlation without inner-product notation as
+\[
+ \Gamma_l(g_0;f_1,\ldots,f_l;\zeta_{>l})
+ =\int g_0(x)\mathbb E_t\prod_{i\leq l}f_i(x-P_i(t)e_i)
+                   \ee{\sum_{i>l}\zeta_iP_i(t)}\,dx.
+\]
+The output factor is $g_0$, not its conjugate.  This convention eliminates implicit
+conjugations in the identities below; the original four-linear form corresponds to
+$g_0=\overline{f_0}$.
+
+\begin{lemma}[Backward elimination of higher inputs]\label{patch:remove-high-inputs}
+For an increasing degree list in $\{1,2,3\}$, a power-large unmodulated correlation
+$\Gamma_k(g_0;f_1,\ldots,f_k)$ produces a fixed frequency vector $\zeta_{>1}$ and a
+measurable $g'_0$ with $|g'_0|\leq|g_0|$ such that
+\[
+ |\Gamma_1(g'_0;f_1;\zeta_{>1})|\geq\delta^{O(1)}N^D.
+\]
+All inputs are $1$-bounded with budgeted support and admissible polynomials.
+\end{lemma}
+\begin{proof}
+Induct backwards on $l=k,k-1,\ldots,2$ while retaining the original $f_1,\ldots,f_l$ and
+one fixed vector $\zeta_{>l}$.  The base is the assumed correlation.
+Suppose $\Gamma_l$ is power-large.  Define
+\[
+ F_l(y)=\mathbb E_t\overline{g_{0,l}(y+P_l(t)e_l)}
+          \prod_{i<l}\overline{f_i(y+P_l(t)e_l-P_i(t)e_i)}
+                           \ee{-\sum_{i>l}\zeta_iP_i(t)}.
+\]
+Then $\Gamma_l=\langle f_l,F_l\rangle$.  As in \eqref{patch:ma-adjoint}, replacing $f_l$
+by $F_l$ gives a power-large correlation equal to $\|F_l\|_2^2$.
+Apply \cref{patch:highest-control}, followed by \cref{patch:structured-degree} a bounded
+number of times, to obtain power-large directional $U^2$ of $F_l$ at a radius comparable
+to $N^{d_l}$ up to powers.
+
+\paragraph{Measurable section frequencies.}
+Let $y=x_{<l}$, $z=x_l$, and $w=x_{>l}$.
+By \cref{patch:u2-fourier-selection} and popularity there is a measurable set
+$Z\subseteq\{(y,w)\}$ of measure at least $\delta^{O(1)}N^{D-d_l}$ and a measurable
+frequency $\lambda(y,w)$ for which
+\begin{equation}\label{patch:high-section-coeff}
+ \left|\int F_l(y,z,w)\ee{\lambda(y,w)z}\,dz\right|
+                                  \geq\delta^{O(1)}N^{d_l}\qquad((y,w)\in Z).
+\end{equation}
+Popularity in $w$ gives a measurable set $W$ of measure at least
+$\delta^{O(1)}N^{D-D_l}$ such that each $Z_w$ has measure at least
+$\delta^{O(1)}N^{D_{l-1}}$.
+Extend $\lambda$ off $Z$ by a fixed real number $\lambda_{\rm dummy}$ whose modulus is
+larger than the major-arc bound used in the next paragraph.  This is permitted because that
+bound is independent of the input phase values.  No Fourier-coefficient assertion is made
+for the extended values off $Z$.
+
+\paragraph{Use $\mathsf{MA}(l,l)$ to keep the selected frequencies small.}
+For each $w\in W$, the integral over $y$ of the absolute coefficient with this extended
+frequency is power-large.  Dualize by a measurable phase in $y$, expand $F_l$, and translate
+by $P_l(t)e_l$.  This gives a power-large integral in $(y,z)$ with the $l-1$ active inputs
+$\overline{f_i}$, the variable coefficient $-\lambda(y,w)$ of $P_l(t)$, and fixed coefficients
+$-\zeta_i$ for $i>l$.
+Select a $z$ section carrying a power-large correlation and apply the already proved
+$\mathsf{MA}(l,l)$.  Its output budget is the same for every $w$.
+In particular, the canonical set of $y$ with
+\[
+ N^{d_l}|\lambda(y,w)|+\sum_{i>l}N^{d_i}|\zeta_i|\leq u_C(\delta)
+\]
+is power-large.  Choose $|\lambda_{\rm dummy}|>u_C(\delta)N^{-d_l}$.
+Every point of this canonical set must lie in $Z_w$, so the original estimate
+\eqref{patch:high-section-coeff} holds there.  The full set of these $(y,w)$ is jointly
+measurable, is power-large, and has $|\lambda(y,w)|\leq u_C(\delta)N^{-d_l}$.
+This dummy-value step prevents the major-arc theorem from returning unrelated points on
+which no useful Fourier coefficient was obtained.
+
+\paragraph{Make the frequency constant.}
+Partition that bounded frequency interval into cells of width $\tau N^{-d_l}$.
+Choose $\tau>0$ so that changing $\lambda$ by at most $\tau N^{-d_l}$ changes the coefficient
+in \eqref{patch:high-section-coeff} by at most one quarter of its lower bound.
+Indeed $F_l$ is $1$-bounded and its $z$ support has length and absolute location bounded
+by $u_c(\delta)N^{d_l}$; integrate
+$|\ee{\lambda z}-\ee{\lambda_0 z}|\leq2\pi|\lambda-\lambda_0||z|$.
+The chosen $\tau$ is a power of $\delta$ before the cell selection.
+There are power-many cells, so a common center $\lambda_0$ works on a measurable set of
+$(y,w)$ of power-large measure.  The coefficient at $\lambda_0$ is still pointwise power-large
+on that set.  Choose a measurable $c(y,w)$, zero off that set and of modulus one on it,
+such that
+\[
+ \int c(y,w)\int F_l(y,z,w)\ee{\lambda_0z}\,dz\,dy\,dw
+\]
+is nonnegative and power-large.
+Expand $F_l$, translate by $P_l(t)e_l$, and conjugate the entire scalar integral.
+The result is exactly $\Gamma_{l-1}$, with
+\[
+ g_{0,l-1}(x)=g_{0,l}(x)\overline{c(x_{\{l\}^c})}\ee{-\lambda_0x_l},
+ \qquad \zeta_l=\lambda_0,
+\]
+and with the earlier fixed $\zeta_{>l}$ unchanged.  Thus
+$|g_{0,l-1}|\leq|g_{0,l}|$, the support does not enlarge, and the remaining lower inputs are
+still the original $f_i$, not modified products.
+There are at most two backward steps.  All budget choices are explicit applications of
+\cref{patch:budgets}, so the iteration yields the stated conclusion.
+\end{proof}
+The inequality $|g'_0|\leq|g_0|$ is the form needed here.  The paper states a modulus-equality
+version in Lemma 4.71; no such stronger equality is needed or asserted in this patch.
+
+\begin{theorem}[Lowest-input positive Fourier energy]\label{patch:lowest-energy}
+Fix the increasing degree list and an input budget.  There is a structural integer $C$ such
+that a power-large correlation $\Gamma_k$ as above, for $N\geq u_C(\delta)$, implies
+\[
+ \left\langle f_1,P_{L}^{(1)}f_1\right\rangle
+       =\int\eta(\xi_1/L)|\widehat f_1(\xi)|^2\,d\xi
+       \geq\ell_C(\delta)N^D,
+       \qquad L=u_C(\delta)N^{-d_1}.
+\]
+The energy is real and nonnegative.  The theorem holds for every increasing sublist of
+$\{1,2,3\}$, including lists of length one whose sole degree is two or three.
+\end{theorem}
+\begin{proof}
+For $k\geq2$, apply \cref{patch:remove-high-inputs}.  For $k=1$ begin with the original
+correlation.  Set
+\[
+ T f_1(x)=\mathbb E_t f_1(x-P_1(t)e_1)\ee{\sum_{i>1}\zeta_iP_i(t)}.
+\]
+Cauchy--Schwarz with the supported output factor gives
+$\|Tf_1\|_2^2\geq\delta^{O(1)}N^D$.
+Plancherel in all spatial variables gives
+\[
+ \|Tf_1\|_2^2=\int |m(\xi_1)|^2|\widehat f_1(\xi)|^2\,d\xi,
+ \qquad m(v)=\mathbb E_t\ee{-vP_1(t)+\sum_{i>1}\zeta_iP_i(t)}.
+\]
+We have $|m|\leq1$ and $\|f_1\|_2^2\leq u_c(\delta)N^D$ for a known budget.
+Choose a power-small $\varepsilon>0$ so that
+$\varepsilon^2\|f_1\|_2^2$ is at most one quarter of the lower bound for $\|Tf_1\|_2^2$.
+By \cref{patch:triangular}, $|m(v)|\geq\varepsilon$ implies
+$|v|\leq R=u_{C'}(\delta)N^{-d_1}$.
+Thus the Fourier energy in $|\xi_1|\leq R$ is power-large.
+Choose $L\geq4R$.  The cutoff equals one on this band and is nonnegative elsewhere, so
+\[
+ \langle f_1,P_L^{(1)}f_1\rangle\geq
+          \int_{|\xi_1|\leq R}|\widehat f_1(\xi)|^2d\xi
+                              \geq\delta^{O(1)}N^D.
+\]
+Choose a single integer $C$ dominating the threshold, radius coefficient and exponent,
+and lower-bound coefficient and exponent, so that $L=u_C(\delta)N^{-d_1}$ still has its
+plateau on the same band.  This proves the exact statement.
+\end{proof}
+This last step uses the source's modulated-linear-average and scalar-oscillation argument,
+but full Plancherel avoids an unnecessary final sectionwise choice of Fourier data.
+
+\subsection{General selected indices: quantitative freezing and slicing}
+\label{patch:all-indices}
+The next theorem is the independent substitute for the source's Theorem 4.30 needed by the
+public monomial wrappers.  Its proof is given here rather than taken as an axiom.
+
+\begin{theorem}[Every-input positive energy, independently proved]
+\label{patch:energy-core}
+Fix an increasing list $1\leq d_1<\cdots<d_k\leq3$ and an integer input budget $c\geq1$.
+There exists an integer $C\geq c$ such that the following holds for $0<\delta\leq1$ and
+$N\geq u_C(\delta)$.  Suppose that all $P_i$ are admissible with budget $c$, the functions
+$g_0,f_1,\ldots,f_k$ are $1$-bounded and supported in the budget-$c$ box, and
+\[
+ |\Gamma_k(g_0;f_1,\ldots,f_k)|\geq\ell_c(\delta)N^D.
+\]
+Then, for every $j\in\{1,\ldots,k\}$,
+\begin{equation}\label{patch:all-energy}
+ \left\langle f_j,P_{L_j}^{(j)}f_j\right\rangle
+      \geq\ell_C(\delta)N^D,
+       \qquad L_j=u_C(\delta)N^{-d_j}.
+\end{equation}
+\end{theorem}
+\begin{proof}
+Induct on $k$, with the statement quantified over all increasing degree lists and all input
+budgets.  For $k=1$, or for $j=1$ at any $k$, use \cref{patch:lowest-energy}.
+Suppose $k\geq2$ and $j>1$.
+
+\paragraph{1. Replace the first input, and smooth that adjoint.}
+Define its exact adjoint
+\[
+ F_1(y)=\mathbb E_t\overline{g_0(y+P_1(t)e_1)}
+                  \prod_{i>1}\overline{f_i(y+P_1(t)e_1-P_i(t)e_i)}.
+\]
+The original scalar is $\langle f_1,F_1\rangle$.  Its size gives
+$\|F_1\|_2^2\geq\delta^{O(1)}N^D$, and replacing $f_1$ by $F_1$ produces this positive
+correlation.  All its inputs, including $F_1$, are $1$-bounded and supported in a budgeted
+enlargement.  Apply \cref{patch:lowest-energy} to this new correlation to obtain
+\[
+ \langle F_1,P_{L_1}^{(1)}F_1\rangle\geq\kappa N^D,
+ \qquad L_1=\delta^{-O(1)}N^{-d_1},\quad\kappa=\delta^{O(1)}.
+\]
+Set $G=P_{L_1}^{(1)}F_1$.  The adjoint identity gives the same lower bound for the
+correlation with first input $G$ and other inputs the original $f_2,\ldots,f_k$.
+The scalar is real by self-adjointness, but only its modulus will be used.
+
+Let $M=\max(1,\|\check\eta\|_1)$ and $M_1=\| (\check\eta)'\|_1$.
+The one-coordinate convolution representation gives
+\[
+ \|G\|_\infty\leq M,\qquad \|\partial_1G\|_\infty\leq M_1L_1.
+\]
+For bounded measurable $F_1$, differentiate the integrable smooth kernel; this justifies the
+derivative bound and the one-variable Lipschitz estimate on every Borel section.
+The output factor $g_0$ retains finite support even though $G$ itself need not have compact
+support in coordinate one.
+
+\paragraph{2. Freeze on one of finitely many equal intervals.}
+Admissibility bounds $|P_1'(t)|\leq u_{c'}(\delta)N^{d_1-1}$ on $[0,N]$.
+Partition $[0,N]$ into $K$ equal intervals $[a,a+n]$ with $n=N/K$.
+On such an interval,
+\[
+ |G(x-P_1(t)e_1)-G(x-P_1(a)e_1)|
+ \leq M_1L_1u_{c'}(\delta)N^{d_1-1}n
+ \leq u_{c''}(\delta)/K.
+\]
+After integrating against $g_0$ and the other bounded factors, the total normalized
+correlation error is at most $u_{c'''}(\delta)N^D/K$.
+Choose
+\[
+ K=\max\{1,\lceil 4u_{c'''}(\delta)/\kappa\rceil\}.
+\]
+This is power-bounded above, and ensures error at most $\kappa N^D/4$.
+The full average is the average of these $K$ normalized local averages.  Hence at least one
+frozen interval has scalar modulus at least $\kappa N^D/2$.
+Choose the first such interval in this finite family.  No discarded remainder interval is needed.
+
+\paragraph{3. Expose the lower-dimensional polynomial family.}
+For that $a$, put
+\[
+ Q_i(u)=P_i(a+u)-P_i(a),\qquad
+ f_i^a(x)=f_i(x-P_i(a)e_i)\quad(i\geq2),
+\]
+\[
+ g_0^a(x)=M^{-1}g_0(x)G(x-P_1(a)e_1).
+\]
+The frozen normalized correlation, divided by $M$, is exactly
+\begin{equation}\label{patch:frozen-correlation}
+ \int g_0^a(x)\mathbb E_{u\in[0,n]}
+               \prod_{i=2}^k f_i^a(x-Q_i(u)e_i)\,dx.
+\end{equation}
+It is power-large in units $N^D$, and all its displayed functions are $1$-bounded.
+The $Q_i$ have degrees $d_i$ and the same leading coefficients as $P_i$.
+By the binomial formula and $0\leq a\leq N$, their degree-$r$ coefficients are bounded by
+$u_{c'}(\delta)N^{d_i-r}$, hence by
+$u_{c'}(\delta)K^{d_i-r}n^{d_i-r}$.
+Since $K$ is power-bounded, these are admissible coefficients at scale $n$ with one new
+structural budget.  The translated supports are contained in boxes with sides bounded by
+$u_{c'}(\delta)N^{d_i}=u_{c'}(\delta)K^{d_i}n^{d_i}$ and therefore satisfy the same kind
+of enlarged-support hypothesis at scale $n$.
+
+\paragraph{4. Obtain a measurable set of large sections.}
+For $v=x_1$, let $B(v)$ be the integral in the remaining coordinates in
+\eqref{patch:frozen-correlation}.  It is measurable by Fubini, vanishes unless $v$ lies in
+the original coordinate-one support interval, and
+$|B(v)|\leq u_{c'}(\delta)N^{D-d_1}$.
+Since $\int|B(v)|dv\geq|\int B(v)dv|\geq\delta^{O(1)}N^D$, popularity produces a
+canonical measurable set $X_1$ of measure at least $\delta^{O(1)}N^{d_1}$ on which
+\[
+ |B(v)|\geq\delta^{O(1)}N^{D-d_1}\geq\delta^{O(1)}n^{D-d_1}.
+\]
+All hypotheses of the $(k-1)$-dimensional induction theorem now hold with the increasing
+list $(d_2,\ldots,d_k)$ and one common input budget, independent of $v\in X_1$.
+This includes lists starting with degree two or three, not only lists starting with one.
+Because $n=N/K$ and $K\leq u_{c'}(\delta)$, choosing the original threshold $N$ larger
+by the product of the two known budget bounds ensures the required lower threshold for $n$.
+
+\paragraph{5. Apply the induction hypothesis and integrate positive energies.}
+The induction hypothesis gives, for every $v\in X_1$, a lower bound
+$\delta^{O(1)}n^{D-d_1}$ for the positive energy of the section of $f_j^a$ at the same
+radius $L'=u_{C'}(\delta)n^{-d_j}$.  Translation by $P_j(a)e_j$ does not change its
+coordinate-one section and preserves the directional Fourier energy in the remaining
+coordinates.  Thus this is also the section energy of the original $f_j$.
+Since $n=N/K$ and $K$ is power-bounded, the lower bound is
+$\delta^{O(1)}N^{D-d_1}$.
+Integrate over $X_1$ and use nonnegativity on its complement.  This gives
+\[
+ \langle f_j,P_{L'}^{(j)}f_j\rangle\geq\delta^{O(1)}N^D,
+ \qquad L'\leq u_{C''}(\delta)N^{-d_j}.
+\]
+The radius is common to all sections; no varying-radius integral is being identified with
+one projection.
+Finally choose $L_j=u_C(\delta)N^{-d_j}\geq2L'$.  On the support of
+$\eta(\xi_j/L')$, the larger cutoff equals one, so
+$\eta(\xi_j/L_j)\geq\eta(\xi_j/L')$ pointwise.
+The positive energy therefore only increases.  A common maximum of the finitely many
+budgets handles all $j$, thresholds, and the degree-list induction.
+This proves \eqref{patch:all-energy}.
+\end{proof}
+
+\paragraph{Why this is not the old circular proof.}
+\Cref{patch:energy-core} uses the independently proved \cref{patch:lowest-energy}, the
+adjoint identities, freezing, and lower-dimensional instances of itself.
+It does not use the public \pid{lem:pet-reduction}, the old \pid{lem:degree-lowering-zero},
+or the public \pid{thm:real-inverse}.  The only PET premise used in proving
+\cref{patch:lowest-energy} was proved explicitly in \cref{patch:pet-producer}.
+\paragraph{Lean nodes.}
+\mbox{}\par
+{\small\raggedright
+\pid{higherInput_eliminate}; \pid{lowestInput_positiveEnergy};
+\pid{projectedAdjoint_lipschitz}; \pid{freeze_parameter_interval};
+\pid{shiftedPolynomial_admissible}; \pid{largeSection_set};
+\pid{positiveEnergy_slice}; \pid{real_everyInput_positiveEnergy}.
+\par}
+
+
+\section{The public every-input conclusion and its actual cube}
+\label{patch:public-completion}
+We now return to exactly the monomial system and normalizer of the original manuscript.
+Fix a support parameter $C_0\geq1$, enlarge it to an integer if necessary, and put
+\[
+ B_N=I_N(C_0)=[-C_0N,C_0N]\times[-C_0N^2,C_0N^2]\times[-C_0N^3,C_0N^3],
+ \qquad\beta=(2C_0)^3,
+\]
+so that $|B_N|=\beta N^6$.
+
+\begin{corollary}[Independent monomial projected energy]\label{patch:monomial-energy}
+There are integers $a,b\geq1$, depending only on $C_0$ and the fixed cutoff, such that if
+$0<\delta\leq1$, $N\geq a\delta^{-a}$, all four $f_i$ are $1$-bounded and supported in
+$B_N$, and $|\Lambda_N(f_0,f_1,f_2,f_3)|\geq\delta N^6$, then, for every $j\in\{1,2,3\}$,
+\begin{equation}\label{patch:projected-energy}
+ E_{L_j}(f_j):=N^{-6}\|P_{L_j}^{(j)}f_j\|_2^2
+       \geq a^{-1}\delta^a,
+       \qquad L_j=b\delta^{-b}N^{-j}.
+\end{equation}
+\end{corollary}
+\begin{proof}
+Use \cref{patch:energy-core} with $P_i(t)=-t^i$, $g_0=\overline{f_0}$, and a fixed
+input budget $c\geq\max(1,\lceil C_0\rceil)$.
+The input support and admissibility conditions hold for every $0<\delta\leq1$, and
+$\delta\geq\ell_c(\delta)$.  The minus sign matches the source-style translation
+$x-P_i(t)e_i=x+t^ie_i$ exactly.
+Let $C$ be the returned output budget.  The positive energy at
+$L_0=C\delta^{-C}N^{-j}$ is at least $C^{-1}\delta^C N^6$.
+Set $a=C$ and $b=2C$.  Then $L_j\geq2L_0$ and
+\[
+ |\eta(\xi_j/L_j)|^2\geq\eta(\xi_j/L_0)
+\]
+pointwise: wherever the right side is nonzero the left side equals one.
+Plancherel yields \eqref{patch:projected-energy}.  No source theorem is a new hypothesis
+here; \cref{patch:energy-core} was proved in the preceding section.
+\end{proof}
+
+\begin{lemma}[Low-frequency energy constructs the order-two cube]
+\label{patch:energy-to-u2}
+Let $f$ be $1$-bounded and supported in $B_N$, let $L>0$ satisfy $LN^j\geq1$, and put
+$H=1/(8L)$.  With the \emph{existing} local-uniformity definition,
+\begin{equation}\label{patch:energy-u2-quantitative}
+ \mathcal U^2_{j,H}(f)^4
+   =\operatorname{locUnifPow}(f;j,H,2)
+   \geq\frac{E_L(f)^2}{32\beta}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+Write $Q_s=Q_{s,H,N^6}^j(f)$, so $Q_s$ is the public, not the support-volume-normalized,
+power.  Define $T_Hu(x)=H^{-1}\int_0^H u(x+te_j)dt$.
+By \cref{patch:fejer-squares},
+\begin{equation}\label{patch:public-u1}
+ Q_1=N^{-6}\|T_Hf\|_2^2.
+\end{equation}
+The multiplier of $T_H$ is $m_H(v)=H^{-1}\int_0^H\ee{vt}dt$.
+For $|v|\leq L/2$, the elementary exponential estimate gives
+\[
+ |m_H(v)-1|\leq H^{-1}\int_0^H2\pi|v|t\,dt
+                  =\pi H|v|\leq\pi/16<1/4.
+\]
+In particular $|m_H(v)|\geq1/2$ there.  Outside that band $\eta(v/L)=0$.
+Thus $|\eta(v/L)|^2\leq4|m_H(v)|^2$ for every $v$; Plancherel and
+\eqref{patch:public-u1} imply
+\begin{equation}\label{patch:public-energy-u1}
+ Q_1\geq E_L(f)/4.
+\end{equation}
+
+For each real $z$ put
+\[
+ g_z(x)=f(x)\overline{f(x+ze_j)},\qquad c(z)=\int g_z(x)dx.
+\]
+The zero vertex $f(x)$ supports $g_z$ in $B_N$.
+If $S=2C_0N^j$ is its $j$-th side length, $T_Hg_z$ is supported in a box of volume
+$V_H=\beta N^6(1+H/S)$.  Its integral equals $c(z)$, so
+\begin{equation}\label{patch:public-support-cs}
+ |c(z)|^2\leq V_H\|T_Hg_z\|_2^2.
+\end{equation}
+Expanding this square and the definition of $g_z$ gives the literal identity
+\begin{align}
+ \|T_Hg_z\|_2^2
+ &=\int\kappa_H(w)\int g_z(x)\overline{g_z(x+we_j)}\,dx\,dw\notag\\
+ &=\int\kappa_H(w)\int
+ f(x)\overline{f(x+ze_j)}\overline{f(x+we_j)}
+                  f(x+(z+w)e_j)\,dx\,dw.\label{patch:public-literal-cube}
+\end{align}
+Consequently
+\begin{equation}\label{patch:public-u2-squares}
+ Q_2=N^{-6}\int\kappa_H(z)\|T_Hg_z\|_2^2\,dz.
+\end{equation}
+Jensen for the probability measure $\kappa_H(z)dz$, followed by
+\eqref{patch:public-support-cs}, now yields
+\[
+ Q_1^2=\left|N^{-6}\int\kappa_H(z)c(z)dz\right|^2
+ \leq N^{-12}\int\kappa_H(z)|c(z)|^2dz
+ \leq (V_H/N^6)Q_2.
+\]
+Since $LN^j\geq1$, $H\leq N^j/8\leq S$ and $V_H/N^6\leq2\beta$.
+Combine this with \eqref{patch:public-energy-u1} to obtain
+$Q_2\geq E_L(f)^2/(32\beta)$.
+All integrals are absolutely integrable by boundedness, finite support, and compactly supported
+shift measures.  In particular, the argument has not identified a $U^2$ power with the
+first-order Fourier energy; the intervening support Cauchy--Schwarz step is indispensable.
+\end{proof}
+
+\paragraph{Exact data supplied to \texttt{cfgHeadInt\_cube}.}
+Use order two and the four atoms indexed by $\omega\in\{0,1\}^2$:
+\[
+ \begin{array}{c|c|c|c}
+ \omega &\text{origin function}&\text{translation}&\text{conjugation flag}\\\hline
+ (0,0)&f&0&0\\
+ (1,0)&f&ze_j&1\\
+ (0,1)&f&we_j&1\\
+ (1,1)&f&(z+w)e_j&0
+ \end{array}
+\]
+The base variable is $x\in\mathbb R^3$, its normalizer is $N^{-6}$, both increment measures
+are independently $\kappa_H(t)dt$, and the amplitude is exactly one.
+Equation \eqref{patch:public-literal-cube} proves equality with these four atoms;
+\eqref{patch:public-u2-squares} integrates the remaining Fej\'er coordinate.
+Only after this equality is proved does one invoke the existing \pid{cfgHeadInt_cube}.
+There is no residual $t$, no additional selected-input certificate, and no product hidden
+in the origin function.  The bound $32\beta$ stays outside the configuration.
+
+\begin{lemma}[Every-input local uniformity for the monomial average]
+\label{lem:pet-reduction}
+For every fixed $C_0\geq1$, there are $s_*,C_*\in\mathbb N$ with $s_*=2$, $C_*\geq2$,
+and $c_*>0$, such that the following holds.  If $0<\delta\leq1$, $N\geq C_*\delta^{-C_*}$,
+all four $f_i$ are $1$-bounded and supported in $I_N(C_0)$, and
+$|\Lambda_N(f_0,f_1,f_2,f_3)|\geq\delta N^6$, then for every $j\in\{1,2,3\}$ there exists
+\[
+ c_*\delta^{C_*}N^j\leq H_j\leq\delta^{-C_*}N^j
+\]
+with $\mathcal U^{s_*}_{j,H_j}(f_j)\geq c_*\delta^{C_*}$.
+\end{lemma}
+\begin{proof}
+Let $a,b$ be the integers from \cref{patch:monomial-energy} and choose explicitly
+\[
+ H_j=\frac{\delta^b}{8b}N^j,
+ \quad C_*\geq\max(a,b,2),
+ \quad0<c_*\leq\min\left\{\frac1{8b},(32\beta a^2)^{-1/4},1\right\}.
+\]
+The scale threshold implies $N\geq a\delta^{-a}$, so
+\cref{patch:monomial-energy,patch:energy-to-u2} give
+\[
+ \operatorname{locUnifPow}(f_j;j,H_j,2)
+       \geq\frac{\delta^{2a}}{32\beta a^2},\qquad
+ \mathcal U^2_{j,H_j}(f_j)
+       \geq(32\beta a^2)^{-1/4}\delta^{a/2}
+       \geq c_*\delta^{C_*}.
+\]
+Here $L_jN^j=b\delta^{-b}\geq1$ verifies the scale hypothesis in the bridge.
+Since $0<\delta\leq1$ and $C_*\geq b$, the displayed radius satisfies both requested
+bounds.  There is one common $C_*,c_*$ for all three inputs.
+In Lean prove the fourth-power inequality first and apply nonnegative-root monotonicity
+only once, at the end.
+\end{proof}
+The old label is retained for reference compatibility, but the proof no longer says that an
+unspecified every-input PET recursion terminates in the desired cube.  Its every-input
+conclusion is the conclusion actually needed by the manuscript, now with an explicit order.
+
+\begin{theorem}[Specialized real inverse theorem]\label{thm:real-inverse}
+For each $C_0\geq1$ there is an integer $C\geq1$ such that if $0<\delta\leq1$,
+$N\geq C\delta^{-C}$, the four functions are $1$-bounded and supported in $I_N(C_0)$,
+and $|\Lambda_N(f_0,f_1,f_2,f_3)|\geq\delta N^6$, then for every $j$ there is a
+$1$-bounded function $h_j$, supported in $I_N(C_0)$, for which
+\[
+ |\langle f_j,P_L^{(j)}h_j\rangle|\geq C^{-1}\delta^C N^6,
+                   \qquad L=C\delta^{-C}N^{-j}.
+\]
+One may take $h_j=f_j$.
+\end{theorem}
+\begin{proof}
+Use \cref{patch:monomial-energy}, not \cref{lem:pet-reduction}.
+Let $L_0=b\delta^{-b}N^{-j}$ and choose an integer $C\geq\max(a,2b,1)$.
+Then $L\geq2L_0$ and the cutoff plateau gives
+$\eta(\xi_j/L)\geq|\eta(\xi_j/L_0)|^2$ for every $\xi$.
+Plancherel and positivity imply
+\[
+ \langle f_j,P_L^{(j)}f_j\rangle
+       \geq\|P_{L_0}^{(j)}f_j\|_2^2
+       \geq a^{-1}\delta^aN^6
+       \geq C^{-1}\delta^CN^6.
+\]
+This real nonnegative scalar has the same modulus.  The witness $h_j=f_j$ already has
+exactly the required boundedness and support.  There is no kernel-tail or phase-selection
+step and no use of the old degree-lowering lemma.
+\end{proof}
+
+\paragraph{The deleted degree-lowering assertion.}
+The original \pid{lem:degree-lowering-zero} and its proof are not part of the replacement.
+Its proposed argument applied degree lowering to a generic selected input and identified a
+$U^2$ expression with the wrong Fourier energy.  Here degree lowering is used only for the
+structured adjoints in \cref{patch:conditional-degree,patch:structured-degree}; positive
+low-frequency energy is proved subsequently by the scalar oscillatory multiplier argument.
+Both public conclusions are downstream of that same independently proved energy theorem.
+
+\paragraph{Lean nodes for the public wrappers.}
+\mbox{}\par
+{\small\raggedright
+\pid{monomial_positiveEnergy}; \pid{projection_energy_le_four_u1};
+\pid{u1_sq_le_support_mul_u2}; \pid{energy_to_locUnifPow_two};
+\pid{everyInput_localUniformity}; \pid{realInverse_from_positiveEnergy}.
+\par}
+The hypotheses of \pid{everyInput_localUniformity} must be exactly those in the public
+lemma, with no \pid{SourceInverse}, \pid{MajorArcProperty}, or terminal-state argument.
+
+
+\section{Implementation order and application to the original file}
+\label{patch:implementation}
+\subsection{Acyclic implementation order}
+The following table is a topological order of the retained proof arguments.  A row refers to
+the mathematical results above, not to a proposed axiom with that name.
+\begin{center}\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{.06\linewidth}>{\raggedright\arraybackslash}p{.47\linewidth}>{\raggedright\arraybackslash}p{.35\linewidth}}
+\hline
+Stage & Declarations to implement & Earlier mathematical dependencies \\\hline
+1 & Budget arithmetic; measurability; Fej\'er square identity and cube recursion & Background measure theory and finite products \\
+2 & Signed integrated VdC; cylinder-CS state; scalar oscillation and triangular coefficient bound & Stage 1; scalar calculus \\
+3 & Protected leading invariant; specified PET pivot; uniform termination; affine block cube; sublevel exclusion and uniformization & Stages 1 and 2 \\
+4 & $U^2$/Fourier selection; dual--difference interchange; missing-coordinate phase removal; dummy phase & Stages 1 and 2; Plancherel \\
+5 & Conditional structured degree lowering, as an implication from $\mathsf{MA}(m,l)$ & Stage 4 \\
+6 & Base and successor major-arc induction; unconditional structured-adjoint lowering & Stages 2--5; smaller $m$ in the induction \\
+7 & Backward elimination of higher inputs; lowest-input positive energy & Stages 3, 4 and 6 \\
+8 & Projected-adjoint Lipschitz bound; short-interval freezing; lower-dimensional slicing; every-input positive energy & Stage 7 and smaller ambient dimension \\
+9 & Monomial energy specialization; concrete two-dimensional cube; every-input local uniformity; public inverse theorem & Stages 1 and 8 \\\hline
+\end{tabular}
+\end{center}
+There are two distinct inductions in Stages 6--8: first the number $m-1$ of functions in a
+major-arc correlation, and only later the ambient dimension in the all-input energy theorem.
+They are not interchangeable.  The backward elimination in Stage 7 is a separate finite
+induction on the number of remaining active inputs.
+
+\subsection{Representation details that matter in Lean}
+The polynomial state must retain the following data: the ordered normal polynomial list;
+a list of origin-labelled, translated/conjugated factors for each block; the current spatial
+block; a marked singleton protected block; its original degree and leading coefficient;
+the formal nonzero integer polynomials witnessing \eqref{patch:lead-invariant}; and numerical
+length, coefficient, support and loss budgets.  A Boolean conjugation flag is enough.
+For the ambient space one may use the project's existing Euclidean/product-measure model.
+No particular Mathlib constructor or unprovided project field name is presumed.
+Use the proof-local $Q_{s,H,V}^j$ in each ambient dimension $1,2,3$ (and the explicitly
+trivial point measure for dimension zero).  The public dimension-three specialization
+has normalizer $N^6$ and is identified with the existing \pid{locUnifPow}.
+At a polynomial update embed the old shift-variable ring into the new ring and introduce
+one genuinely fresh final variable.  Coefficient extraction in that variable is what proves
+noncancellation in \cref{patch:pet-update}.
+
+The essential equalities are \eqref{patch:cube-succ},
+\eqref{patch:affine-cube-invariant},
+\eqref{patch:affine-terminal}, the four-step phase identity, the cylinder states in
+\cref{patch:cylinder}, the exact adjoints \eqref{patch:ma-adjoint} and
+\eqref{patch:ma-smaller-pattern}, the frozen identity \eqref{patch:frozen-correlation},
+and the literal four-factor identity \eqref{patch:public-literal-cube}.
+Each must be established as an equality before invoking an analytic inequality.
+
+Use lists or finite indexed products with multiplicity for factors.  A finite set of
+polynomials is suitable for counting leading-coefficient classes, but is not a replacement
+for the factor list.  Grouping equal polynomial arguments multiplies their attached functions;
+it does not discard an atom.  The invariant proves that no such grouping alters the protected
+singleton before the terminal stage.
+
+Use explicit real integrals of nonnegative quantities when applying monotonicity, Jensen,
+or a kernel bound.  Complex cube integrals first become square averages by
+\cref{patch:fejer-squares}.  The support normalizer $V$, section normalizer $S$, and public
+normalizer $N^6$ should be separate arguments, with separate conversion lemmas.
+For a positive Fourier-energy pairing, store its real part in Lean and prove that its
+imaginary part is zero before using real inequalities.  Prove fourth-power bounds before taking fourth roots.  Treat zero norms,
+zero polynomial oscillation coefficients, and null sections in their stated separate branches.
+
+\subsection{Scoped replacement map}
+Apply these instructions to the \emph{current} manuscript, preserving all previously completed
+repairs outside this scope.  Use unique theorem and subsection labels rather than shifted
+line numbers.  This deliverable is a standalone blueprint, not a replacement for the entire
+manuscript; it does not include the earlier combined diff or application script.
+
+\paragraph{Primary edits: original lines 2183 and 2193.}
+Inside \pid{lem:fejer-vdc}, retain the scalar inequality and its existing Lean proof
+\pid{fejer_vdc'}.  Delete only the unrestricted last assertion and its unsupported final
+proof paragraph.  The scalar statement reproduced in this document recalls that interface;
+it does not ask for a second formalization of the already proved inequality.
+Separate the new signed integrated removal lemma, coordinate-removal induction, and
+polynomial arguments into their own precisely scoped declarations.
+
+\paragraph{Retain the existing definitions and bridge.}
+Keep \pid{def:local-uniformity}, \pid{locUnifPow}, and \pid{cfgHeadInt_cube}.
+Their definitions are recalled here so the blueprint can be read independently.
+When integrating the proof, reuse these declarations rather than duplicating them.
+The proof-local normalizer $V$ and lower-dimensional cube quantities are auxiliary;
+the public quantity still has normalizer $N^6$.
+Likewise, retain a single implementation of the degree-at-most-three scalar oscillation
+result used here, rather than introducing duplicate theorem names.
+
+\paragraph{Necessary dependent edits: the PET and inverse proof path.}
+Insert the conventions and independent inverse-module arguments before their public
+wrappers, in the topological order above.  Within the existing
+\pid{sec:internal-kosz-adjoint}, replace the proof and title of \pid{lem:pet-reduction}
+by the every-input local-uniformity result in \cref{lem:pet-reduction}.
+Its proof uses the positive-energy theorem and explicit order-two cube, not an assumed
+every-input terminal configuration.  Replace the proof of \pid{thm:real-inverse}
+by the separate positive-energy wrapper in \cref{thm:real-inverse}.
+
+Remove the old \pid{lem:degree-lowering-zero} from this replaced proof path.
+The structured degree-lowering declarations proved here have explicit adjoint hypotheses;
+they are not substitutes for a generic degree-lowering rule on arbitrary selected inputs.
+Check any remaining callers in the actual Lean project against those hypotheses rather
+than silently reusing the old assertion.
+
+The existing labels \pid{sec:internal-kosz-adjoint}, \pid{def:local-uniformity},
+\pid{lem:fejer-vdc}, \pid{lem:real-polynomial-oscillation}, \pid{lem:pet-reduction},
+and \pid{thm:real-inverse} can be retained, once each, for reference compatibility.
+Retaining a LaTeX label does not retain the old unrestricted mathematical claim.
+The Hahn--Banach subsection and later callers continue to use the public inverse conclusion;
+they are not rewritten in this scope revision.
+
+\paragraph{Implementation map, sources, and protected earlier work.}
+Update only the inverse-theorem portion of the manuscript's closing dependency map to use
+the order above.  Add the relevant source locators from Sections 4.2--4.5 of the supplied
+paper without removing bibliography information needed elsewhere.
+Leave the completed subunit repair, its public wrapper, its constants, and its dependency-map
+entries unchanged.  No part of the earlier stopping-time/subunit proof is replaced by this
+document, and no other manuscript assertions are audited here.
+
+\subsection{What counts as fully discharged in the Lean project}
+The exported theorem types must have the original monomial input hypotheses, with no extra
+certificate asserting the hard conclusion.  A theorem of type
+$\texttt{SourceInverse}\to\texttt{EveryInputUniformity}$ does not discharge the public result.
+
+After implementation, build the Lean project, inspect the exported theorem types, and audit
+their transitive axiom dependencies:
+\begin{verbatim}
+#print everyInput_localUniformity
+#print axioms everyInput_localUniformity
+#print axioms realInverse_from_positiveEnergy
+\end{verbatim}
+These are proposed exported names; use the project's actual names.
+No \pid{sorryAx} or additional analytic axiom should occur.  Report Lean's standard logical
+axioms separately.  The official manual explains the audit command \cite{LeanValidation}.
+Typesetting and reference checks are not a Lean compilation; none is claimed here.
+
+\begin{thebibliography}{9}
+\bibitem{KoszEtAl}
+D.~Kosz, M.~Mirek, S.~Peluse, R.~Wan, and J.~Wright,
+\emph{The multilinear circle method and a question of Bergelson},
+supplied arXiv:2411.09478v4 PDF (105 pages).
+The source organization used here is Sections 4.2--4.5.
+The mathematical adaptations and additional derivations are identified in the text.
+\bibitem{LeanValidation}
+Lean Language Reference, \emph{Validating a Lean Proof}, official online manual,
+accessed 15 September 2026.  The \texttt{\#print axioms} command and its interpretation.
+\end{thebibliography}
+\end{document}

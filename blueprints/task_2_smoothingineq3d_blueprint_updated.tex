@@ -1,0 +1,2626 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.05in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{mathrsfs}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[nameinlink,capitalise,noabbrev]{cleveref}
+
+\hypersetup{
+	colorlinks=true,
+	linkcolor=blue!45!black,
+	citecolor=blue!45!black,
+	urlcolor=blue!45!black,
+	pdftitle={A formalization blueprint for a trilinear Sobolev smoothing estimate},
+	pdfauthor={OpenAI}
+}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlist[enumerate]{leftmargin=2.4em,itemsep=0.3em,topsep=0.3em}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Cplx}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Sch}{\mathcal{S}}
+\newcommand{\supp}{\operatorname{supp}}
+\newcommand{\Dyad}{\operatorname{Dyad}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\B}{\mathcal{B}}
+\newcommand{\e}{\mathrm{e}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\ip}[2]{\left\langle #1,#2\right\rangle}
+\newcommand{\norm}[2]{\left\lVert #1\right\rVert_{#2}}
+\newcommand{\Cst}[2]{C_{\ref{#1},#2}}
+\newcommand{\Exp}[2]{\delta_{\ref{#1},#2}}
+\newcommand{\Gam}[2]{\gamma_{\ref{#1},#2}}
+\newcommand{\Thr}[2]{K_{\ref{#1},#2}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\abs}[1]{\left|#1\right|}
+\newcommand{\set}[1]{\left\{#1\right\}}
+\newcommand{\indices}{\{1,2,3\}}
+
+\DeclareMathOperator*{\esssup}{ess\,sup}
+
+\title{A Formalization Blueprint for a Trilinear Sobolev Smoothing Estimate\\
+	\large The real monomial case extracted from Kosz--Mirek--Peluse--Wan--Wright}
+\author{}
+\date{}
+
+\begin{document}
+	\maketitle
+	
+	\begin{abstract}
+		Let
+		\[
+		\A_{\psi}(f_1,f_2,f_3)(x)
+		=
+		\int_{\R}\psi(t)\prod_{n=1}^{3}f_n(x+t^n e_n)\dd t.
+		\]
+		This document proves the requested high-frequency decay estimate for \(\A_\psi\).  The proof isolates, in exact specialized form, the only two non-elementary real-variable inputs needed from Kosz, Mirek, Peluse, Wan, and Wright: their adjoint high-frequency estimate and their subunit \(L^q\)-improving endpoint.  Every subsequent step is proved in full.  In particular, the integer case, canonical fractions, rational major arcs, Ionescu--Wainger theory, and all number-theoretic parameter bookkeeping are absent.
+	\end{abstract}
+	
+	\tableofcontents
+	
+	\section{Main theorem and proof architecture}
+	
+	Throughout this document, \(e_1,e_2,e_3\) are the standard basis vectors of \(\R^3\).  The Fourier-transform convention is fixed in \cref{def:fourier}.  The condition
+	\[
+	\supp(\widehat f_j)\subseteq\set{\xi\in\R^3:\abs{\xi_j}\geq\lambda}
+	\]
+	therefore refers to the \(j\)-th coordinate of the full Fourier variable \(\xi=(\xi_1,\xi_2,\xi_3)\).
+	
+	\begin{theorem}[Requested smoothing theorem]\label{thm:main}
+		Let \(a,b\in(0,\infty)\) satisfy \(a<b\).  Let \(\psi\in C^1(\R)\) satisfy \(\supp(\psi)\subseteq[a,b]\), and set
+		\[
+		M=\norm{\psi'}{L^1(\R)}.
+		\]
+		Let \(p\in[1,\infty)\) and let \(p_1,p_2,p_3\in(1,\infty)\) satisfy
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=\frac1p.
+		\]
+		There are constants
+		\[
+		\Exp{thm:main}{a,b,M,p,p_1,p_2,p_3}>0
+		\]
+		and
+		\[
+		\Cst{thm:main}{a,b,M,p,p_1,p_2,p_3}>0
+		\]
+		with the following property.  Let \(\lambda\geq1\), let \(f_1,f_2,f_3\in\Sch(\R^3)\), and suppose that for at least one \(j\in\indices\),
+		\[
+		\supp(\widehat f_j)\subseteq\set{\xi\in\R^3:\abs{\xi_j}\geq\lambda}.
+		\]
+		Then
+		\[
+		\norm{\A_\psi(f_1,f_2,f_3)}{L^p(\R^3)}
+		\leq
+		\Cst{thm:main}{a,b,M,p,p_1,p_2,p_3}
+		\lambda^{-\Exp{thm:main}{a,b,M,p,p_1,p_2,p_3}}
+		\prod_{n=1}^{3}\norm{f_n}{L^{p_n}(\R^3)}.
+		\]
+		The constants are defined explicitly in \cref{def:main-constants}.  Every numerical factor used in their definition is an integer power of \(2\).
+	\end{theorem}
+	
+	The proof of \cref{thm:main} appears in \cref{sec:main-proof}.  The logical dependencies are as follows.
+	
+	\begin{enumerate}
+		\item \Cref{thm:kosz-adjoint} is the real, nontruncated, monomial specialization of Theorem~6.13 of Kosz--Mirek--Peluse--Wan--Wright.
+		\item \Cref{thm:kosz-subunit} is the real, nontruncated, monomial specialization of the subunit estimate used in equation~(6.24) of that paper, obtained there from Corollary~5.3.
+		\item \Cref{thm:quasi-interpolation} is the fixed-operator specialization of the quasi-Banach multilinear interpolation theorem of Grafakos--Masty\l o.
+		\item \Cref{prop:normalized-banach,prop:normalized-endpoint} reconstruct the final proof of the real Sobolev smoothing theorem at the normalized scale.
+		\item \Cref{prop:primitive-smoothing} removes the normalized scale by anisotropic dilation.
+		\item \Cref{lem:weighted-primitive-identity} removes the smooth weight by an exact fundamental-theorem-of-calculus identity.
+	\end{enumerate}
+	
+	\section{Conventions and elementary lemmas}
+	
+	\begin{definition}[Dyadic envelope]\label{def:dyadic-envelope}
+		For \(s\in[0,\infty)\), define
+		\[
+		\Dyad(s)=2^{\left\lceil\log_2(\max\{1,s\})\right\rceil}.
+		\]
+		Thus \(\Dyad(s)\) is an integer power of \(2\), and
+		\[
+		\max\{1,s\}\leq\Dyad(s)<2\max\{1,s\}.
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		The first assertion follows from the definition.  Let \(u=\max\{1,s\}\).  The defining property of the ceiling function gives
+		\[
+		\log_2 u\leq\left\lceil\log_2 u\right\rceil<\log_2 u+1.
+		\]
+		Exponentiation with base \(2\) gives the two displayed inequalities.
+	\end{proof}
+	
+	\begin{definition}[Fourier transform]\label{def:fourier}
+		For \(f\in\Sch(\R^3)\), define
+		\[
+		\widehat f(\xi)=\F f(\xi)=\int_{\R^3}f(x)\e^{-2\pi i x\cdot\xi}\dd x.
+		\]
+		For a tempered distribution \(u\), the notation \(\supp(\widehat u)\) means the distributional support of \(\F u\).
+	\end{definition}
+	
+	\begin{definition}[Normalized, upper-half, and unnormalized monomial averages]\label{def:averages}
+		Let \(N>0\), let \(r>0\), and let \(f_1,f_2,f_3\in\Sch(\R^3)\).  Define
+		\[
+		A_N(f_1,f_2,f_3)(x)
+		=
+		\frac1N\int_0^N\prod_{n=1}^{3}f_n(x+t^n e_n)\dd t.
+		\]
+		Define the upper-half average
+		\[
+		\widetilde A_N(f_1,f_2,f_3)(x)
+		=
+		\frac2N\int_{N/2}^{N}\prod_{n=1}^{3}f_n(x+t^n e_n)\dd t.
+		\]
+		Define
+		\[
+		B_r(f_1,f_2,f_3)(x)
+		=
+		\int_0^r\prod_{n=1}^{3}f_n(x+t^n e_n)\dd t.
+		\]
+		Consequently,
+		\[
+		B_r=rA_r,
+		\]
+		and
+		\[
+		A_N
+		=
+		\frac12\widetilde A_N+\frac12 A_{N/2}
+		\]
+		as an identity of trilinear operators.
+	\end{definition}
+	
+	\begin{definition}[Anisotropic dilation]\label{def:dilation}
+		For \(\rho>0\), define the linear map \(D_\rho:\R^3\to\R^3\) by
+		\[
+		D_\rho(x_1,x_2,x_3)=(\rho x_1,\rho^2x_2,\rho^3x_3).
+		\]
+		Its determinant is
+		\[
+		\det D_\rho=\rho^6.
+		\]
+		For a function \(f:\R^3\to\Cplx\), define
+		\[
+		S_\rho f=f\circ D_\rho^{-1}.
+		\]
+	\end{definition}
+	
+	\begin{lemma}[Anisotropic scaling identities]\label{lem:scaling}
+		Let \(\rho,r>0\), let \(s\in(0,\infty)\), and let \(f,f_1,f_2,f_3\in\Sch(\R^3)\).  Then the following statements hold.
+		
+		First,
+		\[
+		\norm{S_\rho f}{L^s(\R^3)}=\rho^{6/s}\norm{f}{L^s(\R^3)}.
+		\]
+		
+		Second,
+		\[
+		A_{\rho r}(S_\rho f_1,S_\rho f_2,S_\rho f_3)(D_\rho x)
+		=
+		\frac1r B_r(f_1,f_2,f_3)(x).
+		\]
+		
+		Third,
+		\[
+		\widetilde A_{\rho r}(S_\rho f_1,S_\rho f_2,S_\rho f_3)(D_\rho x)
+		=
+		\widetilde A_r(f_1,f_2,f_3)(x).
+		\]
+		
+		Fourth,
+		\[
+		\widehat{S_\rho f}(\xi)=\rho^6\widehat f(D_\rho\xi).
+		\]
+		
+		Fifth, if \(j\in\indices\) and \(\lambda>0\) satisfy
+		\[
+		\supp(\widehat f)\subseteq\set{\xi\in\R^3:\abs{\xi_j}\geq\lambda},
+		\]
+		then
+		\[
+		\supp(\widehat{S_\rho f})
+		\subseteq
+		\set{\xi\in\R^3:\abs{\xi_j}\geq\rho^{-j}\lambda}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		For the first statement, start from the definition in \cref{def:dilation}:
+		\[
+		\norm{S_\rho f}{L^s}^s
+		=
+		\int_{\R^3}\abs{f(D_\rho^{-1}x)}^s\dd x.
+		\]
+		Substitute \(x=D_\rho y\).  Since \(\dd x=\rho^6\dd y\),
+		\[
+		\norm{S_\rho f}{L^s}^s
+		=
+		\rho^6\int_{\R^3}\abs{f(y)}^s\dd y.
+		\]
+		Taking the \(s\)-th root gives the first statement.
+		
+		For the second statement, use \(D_\rho(t^n e_n)=(\rho t)^n e_n\).  The definition in \cref{def:averages} gives
+		\[
+		A_{\rho r}(S_\rho f_1,S_\rho f_2,S_\rho f_3)(D_\rho x)
+		=
+		\frac1{\rho r}\int_0^{\rho r}\prod_{n=1}^{3}f_n\bigl(x+(u/\rho)^n e_n\bigr)\dd u.
+		\]
+		Substitute \(u=\rho t\).  The resulting expression is \(r^{-1}B_r(f_1,f_2,f_3)(x)\).
+		
+		For the third statement, use the definition of \(\widetilde A_{\rho r}\) and substitute \(u=\rho t\).  Since
+		\[
+		D_\rho^{-1}\bigl(D_\rho x+u^n e_n\bigr)
+		=
+		x+(u/\rho)^n e_n,
+		\]
+		one obtains
+		\[
+		\widetilde A_{\rho r}(S_\rho f_1,S_\rho f_2,S_\rho f_3)(D_\rho x)
+		=
+		\frac2r\int_{r/2}^{r}\prod_{n=1}^{3}f_n(x+t^n e_n)\dd t,
+		\]
+		which is the required identity.
+		
+		For the fourth statement, substitute \(y=D_\rho x\) in the Fourier integral:
+		\[
+		\widehat{S_\rho f}(\xi)
+		=
+		\rho^6\int_{\R^3}f(x)\e^{-2\pi i x\cdot D_\rho\xi}\dd x
+		=
+		\rho^6\widehat f(D_\rho\xi).
+		\]
+		
+		For the fifth statement, let \(\xi\in\R^3\) satisfy
+		\[
+		\abs{\xi_j}<\rho^{-j}\lambda.
+		\]
+		Then
+		\[
+		\abs{(D_\rho\xi)_j}=\rho^j\abs{\xi_j}<\lambda.
+		\]
+		The support hypothesis implies \(\widehat f(D_\rho\xi)=0\).  The fourth statement therefore implies \(\widehat{S_\rho f}(\xi)=0\).  Hence \(\widehat{S_\rho f}\) vanishes on the open set \(\set{\xi:\abs{\xi_j}<\rho^{-j}\lambda}\), which is equivalent to the asserted support inclusion.
+	\end{proof}
+	
+	\begin{lemma}[Trivial H\"older estimate]\label{lem:trivial-holder}
+		Let \(p\in[1,\infty)\) and let \(p_1,p_2,p_3\in[1,\infty]\) satisfy
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=\frac1p.
+		\]
+		Then, for every \(N,r>0\) and every triple of Schwartz functions,
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^p}
+		\leq
+		\prod_{n=1}^{3}\norm{f_n}{L^{p_n}},
+		\]
+		and
+		\[
+		\norm{B_r(f_1,f_2,f_3)}{L^p}
+		\leq
+		r\prod_{n=1}^{3}\norm{f_n}{L^{p_n}}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		For every fixed \(t\), H\"older's inequality and translation invariance of Lebesgue measure give
+		\[
+		\norm{\prod_{n=1}^{3}f_n(\,\cdot+t^n e_n)}{L^p}
+		\leq
+		\prod_{n=1}^{3}\norm{f_n}{L^{p_n}}.
+		\]
+		Minkowski's integral inequality, followed by integration over \([0,N]\) or \([0,r]\), gives the two conclusions.
+	\end{proof}
+	
+	\begin{lemma}[Subadditivity of a subunit power]\label{lem:subunit-power}
+		Let \(q\in(0,1]\).  For every integer \(M\geq1\) and every collection \(z_0,\ldots,z_{M-1}\in\Cplx\),
+		\[
+		\abs{\sum_{m=0}^{M-1}z_m}^{q}
+		\leq
+		\sum_{m=0}^{M-1}\abs{z_m}^{q}.
+		\]
+		Consequently, for measurable functions \(F_0,\ldots,F_{M-1}\) on \(\R^3\) for which the quantities on the right-hand side below are finite,
+		\[
+		\norm{\sum_{m=0}^{M-1}F_m}{L^q}^{q}
+		\leq
+		\sum_{m=0}^{M-1}\norm{F_m}{L^q}^{q}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		It suffices first to prove that
+		\[
+		(u+v)^q\leq u^q+v^q
+		\]
+		for all \(u,v\geq0\).  If \(v=0\), equality holds.  Assume \(v>0\), set \(x=u/v\), and define
+		\[
+		h(x)=1+x^q-(1+x)^q
+		\]
+		for \(x\geq0\).  One has \(h(0)=0\).  If \(q=1\), then \(h\) is identically zero.  If \(q<1\), then for \(x>0\),
+		\[
+		h'(x)=q\bigl(x^{q-1}-(1+x)^{q-1}\bigr)\geq0,
+		\]
+		because \(q-1<0\) and \(x<1+x\).  Hence \(h(x)\geq0\), which proves the two-term inequality.
+		
+		The finite scalar inequality follows by induction on \(M\), using the triangle inequality before applying the two-term inequality.  Apply the scalar inequality pointwise to the functions \(F_m\), and integrate over \(\R^3\), to obtain the asserted quasi-norm inequality.
+	\end{proof}
+	
+	\begin{lemma}[Dyadic decomposition of the normalized average]\label{lem:dyadic-decomposition}
+		Let \(N>0\), let \(M\geq1\) be an integer, and let \(f_1,f_2,f_3\in\Sch(\R^3)\).  Then
+		\[
+		A_N(f_1,f_2,f_3)
+		=
+		\sum_{m=0}^{M-1}2^{-m-1}\widetilde A_{2^{-m}N}(f_1,f_2,f_3)
+		+
+		2^{-M}A_{2^{-M}N}(f_1,f_2,f_3).
+		\]
+		Moreover, for every \(x\in\R^3\),
+		\[
+		A_N(f_1,f_2,f_3)(x)
+		=
+		\lim_{M\to\infty}
+		\sum_{m=0}^{M-1}2^{-m-1}\widetilde A_{2^{-m}N}(f_1,f_2,f_3)(x).
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		The one-step identity in \cref{def:averages} is
+		\[
+		A_L
+		=
+		\frac12\widetilde A_L+\frac12A_{L/2}
+		\]
+		for every \(L>0\).  The finite identity follows by induction on \(M\).  The case \(M=1\) is the one-step identity with \(L=N\).  Assume the identity holds for an integer \(M\geq1\).  Apply the one-step identity with \(L=2^{-M}N\) to the last term.  Then
+		\[
+		2^{-M}A_{2^{-M}N}
+		=
+		2^{-M-1}\widetilde A_{2^{-M}N}
+		+
+		2^{-M-1}A_{2^{-M-1}N},
+		\]
+		which is the identity with \(M+1\) in place of \(M\).
+		
+		Fix \(x\in\R^3\), and define
+		\[
+		F_x(t)=\prod_{n=1}^{3}f_n(x+t^n e_n).
+		\]
+		The function \(F_x\) is continuous at \(0\).  Hence
+		\[
+		\abs{A_L(f_1,f_2,f_3)(x)-F_x(0)}
+		\leq
+		\sup_{0\leq t\leq L}\abs{F_x(t)-F_x(0)}
+		\]
+		tends to \(0\) as \(L\) tends to \(0\) through positive values.  Therefore the sequence
+		\[
+		A_{2^{-M}N}(f_1,f_2,f_3)(x)
+		\]
+		is bounded.  Multiplication by \(2^{-M}\) shows that the remainder in the finite identity tends to \(0\).  This proves the pointwise limit.
+	\end{proof}
+	
+	\begin{lemma}[Boundary values of the cutoff]\label{lem:cutoff-boundary}
+		Let \(a,b\in\R\) satisfy \(a<b\).  If \(\psi\in C^1(\R)\) and \(\supp(\psi)\subseteq[a,b]\), then
+		\[
+		\psi(a)=\psi(b)=0.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		The support assumption gives \(\psi(t)=0\) for every \(t<a\) and every \(t>b\).  Continuity at \(a\) and at \(b\) gives the two equalities.
+	\end{proof}
+	
+	\begin{lemma}[Weighted primitive identity]\label{lem:weighted-primitive-identity}
+		Let \(0<a<b\), let \(\psi\in C^1(\R)\) satisfy \(\supp(\psi)\subseteq[a,b]\), and let \(f_1,f_2,f_3\in\Sch(\R^3)\).  Then, for every \(x\in\R^3\),
+		\[
+		\A_\psi(f_1,f_2,f_3)(x)
+		=
+		-\int_a^b\psi'(u)\bigl(B_u(f_1,f_2,f_3)(x)-B_a(f_1,f_2,f_3)(x)\bigr)\dd u.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Fix \(x\in\R^3\), and define
+		\[
+		F_x(t)=\prod_{n=1}^{3}f_n(x+t^n e_n).
+		\]
+		By \cref{lem:cutoff-boundary} and the fundamental theorem of calculus,
+		\[
+		\psi(t)=-\int_t^b\psi'(u)\dd u
+		\]
+		for every \(t\in[a,b]\).  Since the functions are Schwartz and the parameter interval is compact, the function
+		\[
+		(t,u)\longmapsto\one_{\{a\leq t\leq u\leq b\}}\psi'(u)F_x(t)
+		\]
+		is absolutely integrable on \([a,b]^2\).  Fubini's theorem therefore gives
+		\[
+		\int_a^b\psi(t)F_x(t)\dd t
+		=
+		-\int_a^b\psi'(u)\int_a^uF_x(t)\dd t\dd u.
+		\]
+		By \cref{def:averages},
+		\[
+		\int_a^uF_x(t)\dd t=B_u(f_1,f_2,f_3)(x)-B_a(f_1,f_2,f_3)(x).
+		\]
+		Substitution proves the identity.
+	\end{proof}
+	
+	\section{The exact real-variable inputs extracted from the paper}
+	
+	The next definition uses the same type of cutoff as Kosz--Mirek--Peluse--Wan--Wright.  No rational frequency set occurs in the real case.
+	
+	\begin{definition}[One-coordinate low-frequency projection]\label{def:projection}
+		Fix once and for all a real-valued, even function \(\eta\in C_c^\infty(\R)\) satisfying
+		\[
+		\one_{[-1/4,1/4]}\leq\eta\leq\one_{(-1/2,1/2)}.
+		\]
+		For \(R>0\) and \(j\in\indices\), define \(P_R^{(j)}\) on Schwartz functions by
+		\[
+		\widehat{P_R^{(j)}f}(\xi)=\eta(\xi_j/R)\widehat f(\xi).
+		\]
+		Define
+		\[
+		Q_R^{(j)}=I-P_{4R}^{(j)}.
+		\]
+		Finally, define the dyadic constant
+		\[
+		\Cst{def:projection}{\eta}=\Dyad\bigl(1+\norm{\check\eta}{L^1(\R)}\bigr).
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		This is a definition.  The inverse Fourier transform \(\check\eta\) is a Schwartz function, so its \(L^1\)-norm is finite.
+	\end{proof}
+	
+	\begin{lemma}[Basic properties of the projections]\label{lem:projection-properties}
+		Let \(R>0\), let \(j\in\indices\), and let \(s\in[1,\infty]\).  Then
+		\[
+		\norm{P_R^{(j)}f}{L^s(\R^3)}
+		\leq
+		\norm{\check\eta}{L^1(\R)}\norm{f}{L^s(\R^3)},
+		\]
+		and
+		\[
+		\norm{Q_R^{(j)}f}{L^s(\R^3)}
+		\leq
+		\Cst{def:projection}{\eta}\norm{f}{L^s(\R^3)}.
+		\]
+		Moreover, the following support and adjointness statements hold.
+		
+		If
+		\[
+		\supp(\widehat f)\subseteq\set{\xi:\abs{\xi_j}\geq R},
+		\]
+		then
+		\[
+		P_R^{(j)}f=0.
+		\]
+		
+		If
+		\[
+		\supp(\widehat f)\subseteq\set{\xi:\abs{\xi_j}\geq2R},
+		\]
+		then
+		\[
+		Q_R^{(j)}f=f.
+		\]
+		
+		For all \(f,g\in\Sch(\R^3)\),
+		\[
+		\ip{P_R^{(j)}f}{g}_{L^2}
+		=
+		\ip{f}{P_R^{(j)}g}_{L^2}.
+		\]
+		
+		For every tempered distribution \(f\),
+		\[
+		\supp\bigl(\widehat{Q_R^{(j)}f}\bigr)
+		\subseteq
+		\set{\xi:\abs{\xi_j}\geq R}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		The operator \(P_R^{(j)}\) is convolution in the \(j\)-th coordinate with the kernel
+		\[
+		k_R(u)=R\check\eta(Ru).
+		\]
+		The substitution \(v=Ru\) gives \(\norm{k_R}{L^1}=\norm{\check\eta}{L^1}\).  Minkowski's convolution inequality proves the first estimate.  The triangle inequality and \cref{def:projection} prove the second estimate.
+		
+		The multiplier of \(P_R^{(j)}\) is supported where
+		\[
+		\abs{\xi_j/R}<\frac12.
+		\]
+		It therefore vanishes on the support of \(\widehat f\) under the first support hypothesis, so \(P_R^{(j)}f=0\).
+		
+		The multiplier of \(P_{4R}^{(j)}\) is supported where
+		\[
+		\abs{\xi_j/(4R)}<\frac12,
+		\]
+		which is the set \(\abs{\xi_j}<2R\).  Therefore \(P_{4R}^{(j)}f=0\) under the second support hypothesis, and hence \(Q_R^{(j)}f=f\).
+		
+		Because \(\eta\) is real-valued, the Fourier multiplier of \(P_R^{(j)}\) is real-valued.  Plancherel's theorem therefore gives
+		\[
+		\ip{P_R^{(j)}f}{g}_{L^2}
+		=
+		\int_{\R^3}\eta(\xi_j/R)\widehat f(\xi)\overline{\widehat g(\xi)}\dd\xi
+		=
+		\ip{f}{P_R^{(j)}g}_{L^2}.
+		\]
+		
+		The multiplier of \(Q_R^{(j)}\) is
+		\[
+		1-\eta(\xi_j/(4R)).
+		\]
+		It vanishes when \(\abs{\xi_j/(4R)}\leq1/4\), namely when \(\abs{\xi_j}\leq R\).  This proves the final support inclusion.
+	\end{proof}
+	
+	\begin{definition}[Four-linear form and adjoints]\label{def:adjoint}
+		Let \(N>0\).  For Schwartz functions \(f_0,f_1,f_2,f_3\), define
+		\[
+		\Lambda_N(f_0,f_1,f_2,f_3)=\ip{A_N(f_1,f_2,f_3)}{f_0}_{L^2}.
+		\]
+		Fix \(j\in\indices\).  For a family \((g_i)_{i\in\{0,1,2,3\}\setminus\{j\}}\) of Schwartz functions, define
+		\[
+		A_N^{*j}\bigl((g_i)_{i\neq j}\bigr)(y)
+		=
+		\frac1N\int_0^N g_0(y-t^j e_j)
+		\prod_{\substack{i\in\indices\\i\neq j}}
+		\overline{g_i(y-t^j e_j+t^i e_i)}\dd t.
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		This is a definition.  The subscript on the product explicitly excludes \(j\).
+	\end{proof}
+	
+	\begin{lemma}[Adjoint identity]\label{lem:adjoint-identity}
+		Let \(N>0\), let \(j\in\indices\), and let \(f_0,f_1,f_2,f_3\in\Sch(\R^3)\).  Then
+		\[
+		\Lambda_N(f_0,f_1,f_2,f_3)
+		=
+		\ip{f_j}{A_N^{*j}((f_i)_{i\neq j})}_{L^2}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Expand the left-hand side by \cref{def:averages,def:adjoint}.  The resulting integral is absolutely convergent.  For each fixed \(t\), make the translation \(y=x+t^j e_j\).  The Jacobian is \(1\).  The resulting integrand is
+		\[
+		f_j(y)\overline{f_0(y-t^j e_j)}
+		\prod_{\substack{i\in\indices\\i\neq j}}f_i(y-t^j e_j+t^i e_i).
+		\]
+		This is exactly the integrand obtained by expanding the right-hand side and conjugating the expression in \cref{def:adjoint}.  Fubini's theorem completes the proof.
+	\end{proof}
+	
+	\begin{theorem}[Kosz et al.: specialized adjoint high-frequency estimate]\label{thm:kosz-adjoint}
+		Fix \(j\in\indices\).  Let
+		\[
+		\boldsymbol\alpha=(\alpha_0,\alpha_1,\alpha_2,\alpha_3)\in(0,1)^4
+		\]
+		satisfy
+		\[
+		\alpha_0+\alpha_1+\alpha_2+\alpha_3=1.
+		\]
+		For \(i\in\{0,1,2,3\}\), set \(r_i=\alpha_i^{-1}\), and set
+		\[
+		r_j^\star=(1-\alpha_j)^{-1}.
+		\]
+		There exist constants
+		\[
+		c_{\ref{thm:kosz-adjoint},\boldsymbol\alpha,j}\in(0,1),
+		\]
+		\[
+		\Thr{thm:kosz-adjoint}{\boldsymbol\alpha,j}\in\set{2^m:m\in\mathbb Z_{\geq0}},
+		\]
+		and
+		\[
+		\Cst{thm:kosz-adjoint}{\boldsymbol\alpha,j}\in\set{2^m:m\in\mathbb Z_{\geq0}}
+		\]
+		such that the following holds.  Let \(\mu\in(0,1]\), let
+		\[
+		N\geq\Thr{thm:kosz-adjoint}{\boldsymbol\alpha,j}
+		\mu^{-\Thr{thm:kosz-adjoint}{\boldsymbol\alpha,j}},
+		\]
+		and set
+		\[
+		R=N^{-j}\mu^{-2}.
+		\]
+		Then, for every Schwartz family
+		\[
+		(g_i)_{i\in\{0,1,2,3\}\setminus\{j\}},
+		\]
+		\[
+		\norm{(I-P_R^{(j)})A_N^{*j}((g_i)_{i\neq j})}{L^{r_j^\star}(\R^3)}
+		\leq
+		\Cst{thm:kosz-adjoint}{\boldsymbol\alpha,j}
+		\mu^{c_{\ref{thm:kosz-adjoint},\boldsymbol\alpha,j}}
+		\prod_{i\neq j}\norm{g_i}{L^{r_i}(\R^3)}.
+		\]
+	\end{theorem}
+	
+	\begin{proof}
+		This is Theorem~6.13 of Kosz--Mirek--Peluse--Wan--Wright \cite[Theorem~6.13]{KoszEtAl}, specialized as follows.
+		
+		Take the ambient field to be \(\R\), take \(k=3\), take the polynomial mapping
+		\[
+		(P_1(t),P_2(t),P_3(t))=(-t,-t^2,-t^3),
+		\]
+		and use the nontruncated averages.  Their definition then gives exactly the averages in \cref{def:averages}.  Their output exponent is \(r_j^\star\) because
+		\[
+		\sum_{i\neq j}\frac1{r_i}=1-\alpha_j=\frac1{r_j^\star}<1.
+		\]
+		Choose their projection-width exponent \(C=2\).
+		
+		In the real case their canonical-frequency set is \(\{0\}\), so their projection \(\Pi_\R^j[\leq\mu^{-2},\leq N^{-j}\mu^{-2}]\) is exactly the one-coordinate multiplier \(P_R^{(j)}\) from \cref{def:projection}; the first projection parameter has no effect.  This reduction is recorded explicitly in \cite[Remark~6.9(i)]{KoszEtAl}.  Round the reciprocal of their decay constant, their scale threshold, and their implicit norm constant upward with \(\Dyad\) from \cref{def:dyadic-envelope}.  This produces the three named constants in the statement without changing the estimate.
+	\end{proof}
+	
+	\begin{theorem}[Kosz et al.: specialized subunit improving endpoint]\label{thm:kosz-subunit}
+		For every \(j\in\indices\), there are numbers
+		\[
+		b_{1,\ref{thm:kosz-subunit},j},
+		\quad
+		b_{2,\ref{thm:kosz-subunit},j},
+		\quad
+		b_{3,\ref{thm:kosz-subunit},j}
+		\in(0,1)
+		\]
+		and a constant
+		\[
+		\Cst{thm:kosz-subunit}{j}\in\set{2^m:m\in\mathbb Z_{\geq0}}
+		\]
+		with the following properties.  Define
+		\[
+		B_{\ref{thm:kosz-subunit},j}
+		=
+		\sum_{i=1}^{3}b_{i,\ref{thm:kosz-subunit},j}.
+		\]
+		Then
+		\[
+		b_{j,\ref{thm:kosz-subunit},j}=\frac12,
+		\]
+		\[
+		1<B_{\ref{thm:kosz-subunit},j}<2,
+		\]
+		and, for every \(N>0\) and every Schwartz triple,
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^{1/B_{\ref{thm:kosz-subunit},j}}(\R^3)}
+		\leq
+		\Cst{thm:kosz-subunit}{j}
+		\prod_{i=1}^{3}
+		\norm{f_i}{L^{1/b_{i,\ref{thm:kosz-subunit},j}}(\R^3)}.
+		\]
+		The output exponent \(1/B_{\ref{thm:kosz-subunit},j}\) lies in \((1/2,1)\).
+	\end{theorem}
+	
+	\begin{proof}
+		Fix \(j\in\indices\).  Equation~(6.24) in Kosz--Mirek--Peluse--Wan--Wright, obtained there from Corollary~5.3, permits the output exponent to be chosen strictly below and arbitrarily close to \(1\) \cite[Corollary~5.3 and equation~(6.24)]{KoszEtAl}.  Choose one such exponent
+		\[
+		q\in(1/2,1).
+		\]
+		The cited estimate supplies exponents
+		\[
+		q_1,q_2,q_3\in(1,\infty)
+		\]
+		with
+		\[
+		q_j=2
+		\]
+		and
+		\[
+		\frac1{q_1}+\frac1{q_2}+\frac1{q_3}=\frac1q,
+		\]
+		together with a constant
+		\[
+		\widetilde C_{\ref{thm:kosz-subunit},j}>0
+		\]
+		such that the upper-half average at scale \(1\) satisfies
+		\[
+		\norm{\widetilde A_1(f_1,f_2,f_3)}{L^q}
+		\leq
+		\widetilde C_{\ref{thm:kosz-subunit},j}
+		\prod_{i=1}^{3}\norm{f_i}{L^{q_i}}.
+		\]
+		This is exactly the real, \(k=3\), polynomial specialization of the cited equation, with
+		\[
+		(P_1(t),P_2(t),P_3(t))=(-t,-t^2,-t^3).
+		\]
+		
+		For \(i\in\indices\), define
+		\[
+		b_{i,\ref{thm:kosz-subunit},j}=\frac1{q_i}.
+		\]
+		Then each displayed number lies in \((0,1)\), the distinguished value is \(1/2\), and
+		\[
+		B_{\ref{thm:kosz-subunit},j}=\frac1q\in(1,2).
+		\]
+		Define
+		\[
+		\Cst{thm:kosz-subunit}{j}
+		=
+		64\Dyad\bigl(\widetilde C_{\ref{thm:kosz-subunit},j}\bigr).
+		\]
+		This constant is an integer power of \(2\).
+		
+		We first transfer the upper-half estimate from scale \(1\) to an arbitrary scale \(N>0\).  Define
+		\[
+		\rho=N^{-1}
+		\]
+		and
+		\[
+		g_i=S_\rho f_i
+		\]
+		for \(i\in\indices\).  The third identity in \cref{lem:scaling}, applied with \(r=N\), gives
+		\[
+		\widetilde A_1(g_1,g_2,g_3)(D_\rho x)
+		=
+		\widetilde A_N(f_1,f_2,f_3)(x).
+		\]
+		Taking the \(L^q\) quasi-norm, applying the scale-one estimate, and using the first identity in \cref{lem:scaling} gives
+		\[
+		\norm{\widetilde A_N(f_1,f_2,f_3)}{L^q}
+		\leq
+		\widetilde C_{\ref{thm:kosz-subunit},j}
+		\rho^{-6/q}
+		\prod_{i=1}^{3}\rho^{6/q_i}\norm{f_i}{L^{q_i}}.
+		\]
+		The exponent relation gives
+		\[
+		-\frac6q+\sum_{i=1}^{3}\frac6{q_i}=0.
+		\]
+		Consequently,
+		\[
+		\norm{\widetilde A_N(f_1,f_2,f_3)}{L^q}
+		\leq
+		\widetilde C_{\ref{thm:kosz-subunit},j}
+		\prod_{i=1}^{3}\norm{f_i}{L^{q_i}}
+		\]
+		for every \(N>0\).
+		
+		For an integer \(M\geq1\), define
+		\[
+		F_M
+		=
+		\sum_{m=0}^{M-1}2^{-m-1}\widetilde A_{2^{-m}N}(f_1,f_2,f_3).
+		\]
+		By \cref{lem:dyadic-decomposition}, \(F_M(x)\) tends pointwise to \(A_N(f_1,f_2,f_3)(x)\).  By Fatou's lemma and \cref{lem:subunit-power},
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^q}^{q}
+		\leq
+		\liminf_{M\to\infty}
+		\norm{F_M}{L^q}^{q}
+		\]
+		and
+		\[
+		\norm{F_M}{L^q}^{q}
+		\leq
+		\sum_{m=0}^{M-1}2^{-q(m+1)}
+		\norm{\widetilde A_{2^{-m}N}(f_1,f_2,f_3)}{L^q}^{q}.
+		\]
+		The uniform upper-half estimate therefore gives
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^q}^{q}
+		\leq
+		\frac{\widetilde C_{\ref{thm:kosz-subunit},j}^{q}}{2^q-1}
+		\prod_{i=1}^{3}\norm{f_i}{L^{q_i}}^{q}.
+		\]
+		Since \(q>1/2\),
+		\[
+		2^q-1>2^{1/2}-1.
+		\]
+		Moreover,
+		\[
+		(1+2^{-3})^2=1+2^{-2}+2^{-6}<2,
+		\]
+		so
+		\[
+		2^{1/2}-1>2^{-3}.
+		\]
+		Consequently,
+		\[
+		(2^q-1)^{-1/q}<8^{1/q}<64.
+		\]
+		Taking the \(q\)-th root and using the definition of \(\Cst{thm:kosz-subunit}{j}\) proves the asserted estimate.
+	\end{proof}
+	
+	\begin{theorem}[Quasi-Banach multilinear interpolation]\label{thm:quasi-interpolation}
+		Let \((X,\mu_X)\) and \((Y,\mu_Y)\) be sigma-finite measure spaces.  Let \(T\) be a trilinear operator defined on a dense common subspace of the six input spaces below.  For \(\ell\in\{0,1\}\), let
+		\[
+		p_{1,\ell},p_{2,\ell},p_{3,\ell},q_\ell\in(0,\infty).
+		\]
+		Assume that there are constants \(M_0,M_1>0\) such that
+		\[
+		\norm{T(f_1,f_2,f_3)}{L^{q_\ell}(Y)}
+		\leq
+		M_\ell\prod_{i=1}^{3}\norm{f_i}{L^{p_{i,\ell}}(X)}
+		\]
+		for \(\ell=0\) and for \(\ell=1\).  Let \(\theta\in(0,1)\), and define \(p_1,p_2,p_3,q\in(0,\infty)\) by
+		\[
+		\frac1{p_i}=\frac{1-\theta}{p_{i,0}}+\frac\theta{p_{i,1}}
+		\]
+		for \(i\in\indices\), and
+		\[
+		\frac1q=\frac{1-\theta}{q_0}+\frac\theta{q_1}.
+		\]
+		Then \(T\) extends to a bounded trilinear operator with
+		\[
+		\norm{T(f_1,f_2,f_3)}{L^q(Y)}
+		\leq
+		M_0^{1-\theta}M_1^\theta
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}(X)}.
+		\]
+	\end{theorem}
+	
+	\begin{proof}
+		This is Theorem~3.2 of Grafakos--Masty\l o \cite[Theorem~3.2]{GrafakosMastylo}, specialized to Lebesgue spaces and to a constant analytic family.  For every \(s\in(0,\infty)\), the space \(L^s\) is a maximal quasi-Banach lattice and is \(s\)-convex with convexity constant \(1\).  The Calder\'on product identity
+		\[
+		(L^{u_0})^{1-\theta}(L^{u_1})^\theta=L^u
+		\]
+		holds with equality of quasi-norms when
+		\[
+		\frac1u=\frac{1-\theta}{u_0}+\frac\theta{u_1}.
+		\]
+		Substituting these facts into that theorem gives exactly the displayed estimate.
+	\end{proof}
+	
+	\section{Normalized smoothing at scale \(N\)}
+	
+	\subsection{The Banach-output case}
+	
+	\begin{proposition}[Normalized smoothing when \(p>1\)]\label{prop:normalized-banach}
+		Let \(p\in(1,\infty)\), let \(p_1,p_2,p_3\in(1,\infty)\), and assume
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=\frac1p.
+		\]
+		Fix \(j\in\indices\), and write
+		\[
+		\mathbf p=(p_1,p_2,p_3).
+		\]
+		There are constants
+		\[
+		\Gam{prop:normalized-banach}{p,\mathbf p,j}\in(0,1)
+		\]
+		and
+		\[
+		\Cst{prop:normalized-banach}{p,\mathbf p,j}\in\set{2^m:m\in\mathbb Z_{\geq0}}
+		\]
+		such that the following holds.  Let \(N>0\), let \(\mu\in(0,1]\), and set
+		\[
+		R=N^{-j}\mu^{-2}.
+		\]
+		If \(f_1,f_2,f_3\in\Sch(\R^3)\) and
+		\[
+		\supp(\widehat f_j)\subseteq\set{\xi:\abs{\xi_j}\geq R},
+		\]
+		then
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^p}
+		\leq
+		\Cst{prop:normalized-banach}{p,\mathbf p,j}
+		\bigl(\mu^{\Gam{prop:normalized-banach}{p,\mathbf p,j}}
+		+N^{-\Gam{prop:normalized-banach}{p,\mathbf p,j}}\bigr)
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		Define
+		\[
+		\alpha_0=1-\frac1p,
+		\]
+		and, for \(i\in\indices\), define
+		\[
+		\alpha_i=\frac1{p_i}.
+		\]
+		Because \(p>1\), one has \(\alpha_0\in(0,1)\).  Because each \(p_i>1\), one has \(\alpha_i\in(0,1)\).  The exponent relation gives
+		\[
+		\alpha_0+\alpha_1+\alpha_2+\alpha_3=1.
+		\]
+		Set
+		\[
+		\boldsymbol\alpha=(\alpha_0,\alpha_1,\alpha_2,\alpha_3).
+		\]
+		Abbreviate
+		\[
+		c=c_{\ref{thm:kosz-adjoint},\boldsymbol\alpha,j},
+		\]
+		\[
+		K=\Thr{thm:kosz-adjoint}{\boldsymbol\alpha,j},
+		\]
+		and
+		\[
+		C_A=\Cst{thm:kosz-adjoint}{\boldsymbol\alpha,j}.
+		\]
+		Define
+		\[
+		\Gam{prop:normalized-banach}{p,\mathbf p,j}=\frac cK.
+		\]
+		Because \(c\in(0,1)\) and \(K\geq1\), this number belongs to \((0,1)\).  Define
+		\[
+		\Cst{prop:normalized-banach}{p,\mathbf p,j}
+		=
+		4C_AK.
+		\]
+		This is an integer power of \(2\).
+		
+		Assume first that
+		\[
+		N\geq K\mu^{-K}.
+		\]
+		Let \(h\in\Sch(\R^3)\).  By \cref{lem:adjoint-identity},
+		\[
+		\ip{A_N(f_1,f_2,f_3)}{h}
+		=
+		\ip{f_j}{A_N^{*j}((g_i)_{i\neq j})},
+		\]
+		where \(g_0=h\) and \(g_i=f_i\) for \(i\in\indices\setminus\{j\}\).  The support assumption and the support of \(\eta\) imply
+		\[
+		P_R^{(j)}f_j=0.
+		\]
+		Since \(P_R^{(j)}\) is self-adjoint on Schwartz functions, the preceding identity becomes
+		\[
+		\ip{A_N(f_1,f_2,f_3)}{h}
+		=
+		\ip{f_j}{(I-P_R^{(j)})A_N^{*j}((g_i)_{i\neq j})}.
+		\]
+		Apply H\"older's inequality with exponents \(p_j\) and \(p_j'\).  Then apply \cref{thm:kosz-adjoint} with the explicitly defined vector \(\boldsymbol\alpha\).  Since
+		\[
+		(1-\alpha_j)^{-1}=p_j',
+		\]
+		one obtains
+		\[
+		\abs{\ip{A_N(f_1,f_2,f_3)}{h}}
+		\leq
+		C_A\mu^c
+		\norm{h}{L^{p'}}
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		Duality between \(L^p\) and \(L^{p'}\) gives
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^p}
+		\leq
+		C_A\mu^c
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		Because \(\Gam{prop:normalized-banach}{p,\mathbf p,j}=c/K\leq c\) and \(\mu\in(0,1]\),
+		\[
+		\mu^c\leq\mu^{\Gam{prop:normalized-banach}{p,\mathbf p,j}}.
+		\]
+		This proves the desired estimate in the first case.
+		
+		Assume next that \(N\geq K\) and
+		\[
+		N<K\mu^{-K}.
+		\]
+		Define
+		\[
+		\nu=(K/N)^{1/K}.
+		\]
+		Then \(\nu\in(0,1]\),
+		\[
+		N=K\nu^{-K},
+		\]
+		and \(\nu>\mu\).  Consequently,
+		\[
+		N^{-j}\nu^{-2}<N^{-j}\mu^{-2}=R.
+		\]
+		The assumed support condition for \(f_j\) therefore implies the support condition needed in the first case with \(\nu\) in place of \(\mu\).  The first-case estimate gives
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^p}
+		\leq
+		C_A\nu^c
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		By the definitions of \(\nu\) and \(\Gam{prop:normalized-banach}{p,\mathbf p,j}\),
+		\[
+		\nu^c=K^{\Gam{prop:normalized-banach}{p,\mathbf p,j}}
+		N^{-\Gam{prop:normalized-banach}{p,\mathbf p,j}}.
+		\]
+		Since \(\Gam{prop:normalized-banach}{p,\mathbf p,j}\leq1\),
+		\[
+		K^{\Gam{prop:normalized-banach}{p,\mathbf p,j}}\leq K.
+		\]
+		Thus the desired estimate follows from the definition of \(\Cst{prop:normalized-banach}{p,\mathbf p,j}\).
+		
+		Finally, assume \(0<N<K\).  By \cref{lem:trivial-holder},
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^p}
+		\leq
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		Because \(N<K\) and \(\Gam{prop:normalized-banach}{p,\mathbf p,j}>0\),
+		\[
+		1<K^{\Gam{prop:normalized-banach}{p,\mathbf p,j}}
+		N^{-\Gam{prop:normalized-banach}{p,\mathbf p,j}}
+		\leq
+		K N^{-\Gam{prop:normalized-banach}{p,\mathbf p,j}}.
+		\]
+		The definition of \(\Cst{prop:normalized-banach}{p,\mathbf p,j}\) again gives the conclusion.
+	\end{proof}
+	
+	\subsection{The endpoint \(p=1\)}
+	
+	\begin{lemma}[Explicit interpolation geometry at the endpoint]\label{lem:endpoint-geometry}
+		Fix \(j\in\indices\).  Let \(a_1,a_2,a_3\in(0,1)\) satisfy
+		\[
+		a_1+a_2+a_3=1.
+		\]
+		Define
+		\[
+		\mathbf a=(a_1,a_2,a_3).
+		\]
+		For \(i\in\indices\), set
+		\[
+		b_i=b_{i,\ref{thm:kosz-subunit},j}.
+		\]
+		Define
+		\[
+		\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}
+		=
+		\frac14
+		\min_{i\in\indices}
+		\set{
+			1,
+			\frac{a_i}{b_i},
+			\frac{1-a_i}{1-b_i}
+		}.
+		\]
+		Set
+		\[
+		\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}
+		=1-\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}.
+		\]
+		For \(i\in\indices\), define
+		\[
+		c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}
+		=
+		\frac{a_i-\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}b_i}
+		{\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}}.
+		\]
+		Then
+		\[
+		0<\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}\leq\frac14,
+		\]
+		\[
+		\frac12\leq\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}<1,
+		\]
+		and
+		\[
+		0<c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}<1
+		\]
+		for every \(i\in\indices\).  Moreover,
+		\[
+		\sum_{i=1}^{3}c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}<1,
+		\]
+		and
+		\[
+		a_i
+		=
+		\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}b_i
+		+
+		\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}
+		c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}
+		\]
+		for every \(i\in\indices\).
+	\end{lemma}
+	
+	\begin{proof}
+		Every number inside the minimum is strictly positive.  Hence \(\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}>0\).  The presence of \(1\) in the minimum gives \(\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}\leq1/4\), and therefore \(\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}\geq1-1/4>1/2\).  The strict inequality \(\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}<1\) follows from \(\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}>0\).
+		
+		For each \(i\), the definition of \(\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}\) gives
+		\[
+		\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}b_i
+		\leq
+		\frac14 a_i<a_i.
+		\]
+		Thus the numerator defining \(c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}\) is positive, and so \(c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}>0\).
+		
+		The same definition gives
+		\[
+		\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}(1-b_i)
+		\leq
+		\frac14(1-a_i)<1-a_i.
+		\]
+		Rearranging yields
+		\[
+		a_i-\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}b_i
+		<
+		1-\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}
+		=
+		\theta_{\ref{lem:endpoint-geometry},\mathbf a,j}.
+		\]
+		Division by the positive denominator proves \(c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}<1\).
+		
+		Let
+		\[
+		B=\sum_{i=1}^{3}b_i.
+		\]
+		By \cref{thm:kosz-subunit}, \(B>1\).  Summing the definitions of the \(c_i\) gives
+		\[
+		\sum_{i=1}^{3}c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}
+		=
+		\frac{1-\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}B}
+		{1-\tau_{\ref{lem:endpoint-geometry},\mathbf a,j}}.
+		\]
+		Since \(B>1\), the numerator is strictly smaller than the denominator.  This proves the strict inequality for the sum.  The final displayed identity is a direct rearrangement of the definition of each \(c_i\).
+	\end{proof}
+	
+	\begin{proposition}[Normalized smoothing when \(p=1\)]\label{prop:normalized-endpoint}
+		Let \(p_1,p_2,p_3\in(1,\infty)\) satisfy
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=1.
+		\]
+		Fix \(j\in\indices\), and write \(\mathbf p=(p_1,p_2,p_3)\).  There are constants
+		\[
+		\Gam{prop:normalized-endpoint}{\mathbf p,j}\in(0,1)
+		\]
+		and
+		\[
+		\Cst{prop:normalized-endpoint}{\mathbf p,j}\in\set{2^m:m\in\mathbb Z_{\geq0}}
+		\]
+		such that the following holds.  Let \(N>0\), let \(\mu\in(0,1]\), and set
+		\[
+		R=N^{-j}\mu^{-2}.
+		\]
+		If \(f_1,f_2,f_3\in\Sch(\R^3)\) and
+		\[
+		\supp(\widehat f_j)\subseteq\set{\xi:\abs{\xi_j}\geq2R},
+		\]
+		then
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^1}
+		\leq
+		\Cst{prop:normalized-endpoint}{\mathbf p,j}
+		\bigl(\mu^{\Gam{prop:normalized-endpoint}{\mathbf p,j}}
+		+N^{-\Gam{prop:normalized-endpoint}{\mathbf p,j}}\bigr)
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		For \(i\in\indices\), set
+		\[
+		a_i=\frac1{p_i}.
+		\]
+		Let \(\mathbf a=(a_1,a_2,a_3)\).  Apply \cref{lem:endpoint-geometry} with this \(\mathbf a\) and the fixed \(j\).  Abbreviate
+		\[
+		\tau=\tau_{\ref{lem:endpoint-geometry},\mathbf a,j},
+		\]
+		\[
+		\theta=\theta_{\ref{lem:endpoint-geometry},\mathbf a,j},
+		\]
+		and
+		\[
+		c_i=c_{i,\ref{lem:endpoint-geometry},\mathbf a,j}.
+		\]
+		Define
+		\[
+		s_i=c_i^{-1}
+		\]
+		for \(i\in\indices\), and define \(s\in(1,\infty)\) by
+		\[
+		\frac1s=c_1+c_2+c_3.
+		\]
+		The inequality in \cref{lem:endpoint-geometry} gives \(s>1\).
+		
+		Apply \cref{prop:normalized-banach} to the exponents \(s,s_1,s_2,s_3\) and to the same index \(j\).  Abbreviate
+		\[
+		\gamma_B=\Gam{prop:normalized-banach}{s,(s_1,s_2,s_3),j}
+		\]
+		and
+		\[
+		C_B=\Cst{prop:normalized-banach}{s,(s_1,s_2,s_3),j}.
+		\]
+		Define
+		\[
+		\Gam{prop:normalized-endpoint}{\mathbf p,j}=\theta\gamma_B.
+		\]
+		This number belongs to \((0,1)\).
+		
+		Define the trilinear operator
+		\[
+		T_{N,\mu,j}(g_1,g_2,g_3)
+		=
+		A_N(g_1,\ldots,g_{j-1},Q_R^{(j)}g_j,g_{j+1},\ldots,g_3).
+		\]
+		By \cref{lem:projection-properties}, the Fourier transform of \(Q_R^{(j)}g_j\) is supported where \(\abs{\xi_j}\geq R\).  Therefore \cref{prop:normalized-banach}, with all parameters explicitly instantiated as above, gives
+		\[
+		\norm{T_{N,\mu,j}(g_1,g_2,g_3)}{L^s}
+		\leq
+		C_B\bigl(\mu^{\gamma_B}+N^{-\gamma_B}\bigr)
+		\prod_{i=1}^{3}\norm{g_i}{L^{s_i}}.
+		\]
+		
+		For \(i\in\indices\), set
+		\[
+		b_i=b_{i,\ref{thm:kosz-subunit},j}.
+		\]
+		Set
+		\[
+		q_i=b_i^{-1}
+		\]
+		and
+		\[
+		q=\left(\sum_{i=1}^{3}b_i\right)^{-1}.
+		\]
+		By \cref{thm:kosz-subunit}, \(q\in(0,1)\).  Apply \cref{thm:kosz-subunit} and then \cref{lem:projection-properties}.  One obtains
+		\[
+		\norm{T_{N,\mu,j}(g_1,g_2,g_3)}{L^q}
+		\leq
+		\Cst{thm:kosz-subunit}{j}\Cst{def:projection}{\eta}
+		\prod_{i=1}^{3}\norm{g_i}{L^{q_i}}.
+		\]
+		
+		Apply \cref{thm:quasi-interpolation} with endpoint \(0\) equal to the preceding \(L^q\) estimate, endpoint \(1\) equal to the \(L^s\) estimate, and interpolation parameter \(\theta\).  By the last identity in \cref{lem:endpoint-geometry},
+		\[
+		\frac1{p_i}=\frac\tau{q_i}+\frac\theta{s_i}
+		\]
+		for every \(i\in\indices\).  Also,
+		\[
+		\frac\tau q+\frac\theta s
+		=
+		\tau\sum_{i=1}^{3}b_i+\theta\sum_{i=1}^{3}c_i
+		=
+		\sum_{i=1}^{3}a_i
+		=
+		1.
+		\]
+		Thus the interpolated output space is \(L^1\), and
+		\[
+		\norm{T_{N,\mu,j}(g_1,g_2,g_3)}{L^1}
+		\leq
+		C_0^\tau C_B^\theta
+		\bigl(\mu^{\gamma_B}+N^{-\gamma_B}\bigr)^\theta
+		\prod_{i=1}^{3}\norm{g_i}{L^{p_i}},
+		\]
+		where
+		\[
+		C_0=\Cst{thm:kosz-subunit}{j}\Cst{def:projection}{\eta}.
+		\]
+		Since \(0<\theta<1\), \cref{lem:subunit-power} with \(q=\theta\) gives
+		\[
+		(u+v)^\theta\leq u^\theta+v^\theta
+		\]
+		for all \(u,v\geq0\).  Therefore
+		\[
+		\bigl(\mu^{\gamma_B}+N^{-\gamma_B}\bigr)^\theta
+		\leq
+		\mu^{\theta\gamma_B}+N^{-\theta\gamma_B}.
+		\]
+		Define
+		\[
+		\Cst{prop:normalized-endpoint}{\mathbf p,j}
+		=
+		4\Dyad(C_0^\tau C_B^\theta).
+		\]
+		This is an integer power of \(2\), and the preceding estimates give
+		\[
+		\norm{T_{N,\mu,j}(g_1,g_2,g_3)}{L^1}
+		\leq
+		\Cst{prop:normalized-endpoint}{\mathbf p,j}
+		\bigl(\mu^{\Gam{prop:normalized-endpoint}{\mathbf p,j}}
+		+N^{-\Gam{prop:normalized-endpoint}{\mathbf p,j}}\bigr)
+		\prod_{i=1}^{3}\norm{g_i}{L^{p_i}}.
+		\]
+		
+		It remains to identify \(T_{N,\mu,j}(f_1,f_2,f_3)\) with the original average.  The assumed support condition and \cref{lem:projection-properties} give
+		\[
+		Q_R^{(j)}f_j=f_j.
+		\]
+		Substituting \(g_i=f_i\) proves the proposition.
+	\end{proof}
+	
+	\begin{definition}[Unified normalized constants]\label{def:normalized-constants}
+		Let \(p\in[1,\infty)\), let \(p_1,p_2,p_3\in(1,\infty)\) satisfy
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=\frac1p,
+		\]
+		and fix \(j\in\indices\).  Write \(\mathbf p=(p_1,p_2,p_3)\).
+		
+		If \(p>1\), define
+		\[
+		\Gam{def:normalized-constants}{p,\mathbf p,j}
+		=
+		\Gam{prop:normalized-banach}{p,\mathbf p,j}
+		\]
+		and
+		\[
+		\Cst{def:normalized-constants}{p,\mathbf p,j}
+		=
+		\Cst{prop:normalized-banach}{p,\mathbf p,j}.
+		\]
+		
+		If \(p=1\), define
+		\[
+		\Gam{def:normalized-constants}{p,\mathbf p,j}
+		=
+		\Gam{prop:normalized-endpoint}{\mathbf p,j}
+		\]
+		and
+		\[
+		\Cst{def:normalized-constants}{p,\mathbf p,j}
+		=
+		\Cst{prop:normalized-endpoint}{\mathbf p,j}.
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		This is a definition by disjoint alternatives.  Every \(p\in[1,\infty)\) satisfies exactly one of \(p=1\) and \(p>1\).
+	\end{proof}
+	
+	\begin{corollary}[Unified normalized smoothing]\label{cor:normalized-smoothing}
+		Under the hypotheses and notation of \cref{def:normalized-constants}, let \(N>0\), let \(\mu\in(0,1]\), and set
+		\[
+		R=N^{-j}\mu^{-2}.
+		\]
+		If
+		\[
+		\supp(\widehat f_j)\subseteq\set{\xi:\abs{\xi_j}\geq2R},
+		\]
+		then
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^p}
+		\leq
+		\Cst{def:normalized-constants}{p,\mathbf p,j}
+		\bigl(\mu^{\Gam{def:normalized-constants}{p,\mathbf p,j}}
+		+N^{-\Gam{def:normalized-constants}{p,\mathbf p,j}}\bigr)
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+	\end{corollary}
+	
+	\begin{proof}
+		If \(p=1\), this is exactly \cref{prop:normalized-endpoint}.  If \(p>1\), the support hypothesis here is stronger than the support hypothesis in \cref{prop:normalized-banach}; apply that proposition.  The definitions in \cref{def:normalized-constants} identify the constants in both cases.
+	\end{proof}
+	
+	\section{Removal of the scale}
+	
+	\begin{proposition}[Uniform smoothing for the primitives]\label{prop:primitive-smoothing}
+		Let \(0<a<b\), let \(p\in[1,\infty)\), and let \(p_1,p_2,p_3\in(1,\infty)\) satisfy
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=\frac1p.
+		\]
+		Fix \(j\in\indices\), and write \(\mathbf p=(p_1,p_2,p_3)\).  Define
+		\[
+		\Exp{prop:primitive-smoothing}{a,b,p,\mathbf p,j}
+		=
+		\frac12\Gam{def:normalized-constants}{p,\mathbf p,j}.
+		\]
+		Define
+		\[
+		\Cst{prop:primitive-smoothing}{a,b,p,\mathbf p,j}
+		=
+		4b\Cst{def:normalized-constants}{p,\mathbf p,j}
+		a^{-j\Exp{prop:primitive-smoothing}{a,b,p,\mathbf p,j}}.
+		\]
+		Then, for every \(r\in[a,b]\), every \(\lambda\geq1\), and every Schwartz triple satisfying
+		\[
+		\supp(\widehat f_j)\subseteq\set{\xi:\abs{\xi_j}\geq\lambda},
+		\]
+		one has
+		\[
+		\norm{B_r(f_1,f_2,f_3)}{L^p}
+		\leq
+		\Cst{prop:primitive-smoothing}{a,b,p,\mathbf p,j}
+		\lambda^{-\Exp{prop:primitive-smoothing}{a,b,p,\mathbf p,j}}
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		Abbreviate
+		\[
+		\gamma=\Gam{def:normalized-constants}{p,\mathbf p,j},
+		\]
+		\[
+		\delta=\Exp{prop:primitive-smoothing}{a,b,p,\mathbf p,j}=\frac\gamma2,
+		\]
+		and
+		\[
+		C_N=\Cst{def:normalized-constants}{p,\mathbf p,j}.
+		\]
+		
+		Assume first that
+		\[
+		\lambda a^j\geq4.
+		\]
+		Define
+		\[
+		\mu=2(\lambda a^j)^{-1/2}.
+		\]
+		The assumed inequality gives \(\mu\in(0,1]\).  Fix \(\rho>0\), and set
+		\[
+		g_i=S_\rho f_i
+		\]
+		for \(i\in\indices\).  By \cref{lem:scaling},
+		\[
+		\supp(\widehat g_j)
+		\subseteq
+		\set{\xi:\abs{\xi_j}\geq\rho^{-j}\lambda}.
+		\]
+		For the normalized average at scale \(N=\rho r\), the frequency radius in \cref{cor:normalized-smoothing} is
+		\[
+		2N^{-j}\mu^{-2}
+		=
+		2\rho^{-j}r^{-j}\frac{\lambda a^j}{4}
+		=
+		\frac12\rho^{-j}\lambda\left(\frac ar\right)^j.
+		\]
+		Since \(r\geq a\),
+		\[
+		2N^{-j}\mu^{-2}\leq\frac12\rho^{-j}\lambda<\rho^{-j}\lambda.
+		\]
+		Thus the support hypothesis of \cref{cor:normalized-smoothing} holds for the triple \((g_1,g_2,g_3)\).
+		
+		Apply \cref{cor:normalized-smoothing} with \(N=\rho r\), with the fixed \(j\), and with the explicitly chosen \(\mu\).  Then use the first two identities in \cref{lem:scaling}.  Since
+		\[
+		\frac1{p_1}+\frac1{p_2}+\frac1{p_3}=\frac1p,
+		\]
+		the factors \(\rho^{6/p}\) cancel, and one obtains
+		\[
+		\frac1r\norm{B_r(f_1,f_2,f_3)}{L^p}
+		\leq
+		C_N\bigl(\mu^\gamma+(\rho r)^{-\gamma}\bigr)
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		This inequality holds for every sufficiently large \(\rho\).  Letting \(\rho\to\infty\) yields
+		\[
+		\norm{B_r(f_1,f_2,f_3)}{L^p}
+		\leq
+		rC_N\mu^\gamma
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		By the definition of \(\mu\),
+		\[
+		\mu^\gamma=2^\gamma a^{-j\delta}\lambda^{-\delta}.
+		\]
+		Since \(\gamma<1\), one has \(2^\gamma\leq2\).  Since \(r\leq b\),
+		\[
+		\norm{B_r(f_1,f_2,f_3)}{L^p}
+		\leq
+		2bC_Na^{-j\delta}\lambda^{-\delta}
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		The constant in the statement is larger by a factor \(2\), so the desired estimate follows in this case.
+		
+		Assume now that
+		\[
+		\lambda a^j<4.
+		\]
+		By \cref{lem:trivial-holder},
+		\[
+		\norm{B_r(f_1,f_2,f_3)}{L^p}
+		\leq
+		b\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		The inequality \(\lambda a^j<4\) implies
+		\[
+		1<4^\delta a^{-j\delta}\lambda^{-\delta}.
+		\]
+		Because \(\delta<1\), one has \(4^\delta\leq4\).  Since \(C_N\geq1\),
+		\[
+		b
+		\leq
+		4bC_Na^{-j\delta}\lambda^{-\delta}.
+		\]
+		This is the stated estimate.
+	\end{proof}
+	
+	\section{Proof of the requested theorem}\label{sec:main-proof}
+	
+	\begin{definition}[Final constants]\label{def:main-constants}
+		Assume the hypotheses of \cref{thm:main}, and write \(\mathbf p=(p_1,p_2,p_3)\).  For \(j\in\indices\), define
+		\[
+		\delta_j=\Exp{prop:primitive-smoothing}{a,b,p,\mathbf p,j}
+		\]
+		and
+		\[
+		C_j=\Cst{prop:primitive-smoothing}{a,b,p,\mathbf p,j}.
+		\]
+		Define
+		\[
+		\Exp{thm:main}{a,b,M,p,p_1,p_2,p_3}
+		=
+		\min_{j\in\indices}\delta_j.
+		\]
+		Define
+		\[
+		\Cst{thm:main}{a,b,M,p,p_1,p_2,p_3}
+		=
+		2\max\{1,M\}\max_{j\in\indices}C_j.
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		This is a definition.  Every \(\delta_j\) is positive by \cref{prop:primitive-smoothing}, so their finite minimum is positive.  Every \(C_j\) is positive.  The only numerical factor introduced here is \(2\).
+	\end{proof}
+	
+	\begin{proof}[Proof of \cref{thm:main}]
+		Let \(j\in\indices\) be an index for which
+		\[
+		\supp(\widehat f_j)\subseteq\set{\xi:\abs{\xi_j}\geq\lambda}.
+		\]
+		If \(M=0\), then \(\psi'=0\) almost everywhere.  Since \(\psi\in C^1(\R)\), the function \(\psi\) is constant.  Since \(\supp(\psi)\subseteq[a,b]\), that constant is \(0\).  Hence \(\A_\psi(f_1,f_2,f_3)=0\), and the conclusion follows.
+		
+		Assume \(M>0\).  Apply \cref{lem:weighted-primitive-identity}.  Minkowski's integral inequality is valid because \(p\geq1\).  It gives
+		\[
+		\norm{\A_\psi(f_1,f_2,f_3)}{L^p}
+		\leq
+		\int_a^b\abs{\psi'(u)}
+		\bigl(
+		\norm{B_u(f_1,f_2,f_3)}{L^p}
+		+
+		\norm{B_a(f_1,f_2,f_3)}{L^p}
+		\bigr)\dd u.
+		\]
+		Apply \cref{prop:primitive-smoothing} first with \(r=u\) and then with \(r=a\), using the fixed index \(j\) in both applications.  The result is
+		\[
+		\norm{\A_\psi(f_1,f_2,f_3)}{L^p}
+		\leq
+		2MC_j\lambda^{-\delta_j}
+		\prod_{i=1}^{3}\norm{f_i}{L^{p_i}}.
+		\]
+		By \cref{def:main-constants},
+		\[
+		\Exp{thm:main}{a,b,M,p,p_1,p_2,p_3}\leq\delta_j.
+		\]
+		Since \(\lambda\geq1\),
+		\[
+		\lambda^{-\delta_j}
+		\leq
+		\lambda^{-\Exp{thm:main}{a,b,M,p,p_1,p_2,p_3}}.
+		\]
+		Also, \(M\leq\max\{1,M\}\) and \(C_j\leq\max_{k\in\indices}C_k\).  Substituting these inequalities gives exactly the estimate stated in \cref{thm:main}.
+	\end{proof}
+	
+	\section{Executive summary and deviations from the source paper}
+	
+	\begin{proposition}[What was removed]\label{prop:removed-material}
+		The proof above uses no integer or number-theoretic ingredient.  More precisely, none of the following objects or arguments occurs in any proved step after \cref{thm:kosz-adjoint,thm:kosz-subunit}: rational approximation, canonical fractions, major arcs centered at nonzero rational points, Ionescu--Wainger multiplier estimates, sampling from \(\R\) to \(\mathbb Z\), Vinogradov mean-value estimates, congruence decompositions, or denominator bookkeeping.
+	\end{proposition}
+	
+	\begin{proof}
+		Inspect the definitions and proofs from \cref{sec:main-proof} backward through \cref{def:projection}.  Every frequency projection is the single Euclidean multiplier \(P_R^{(j)}\), every change of scale is the explicit dilation \(D_\rho\), and every remaining argument uses only Fourier support, H\"older's inequality, Minkowski's inequality, Fubini's theorem, duality for \(L^p\) with \(p>1\), and the cited quasi-Banach interpolation theorem.  The only two analytic estimates imported from Kosz et al. were stated directly over \(\R\) for the fixed monomials.  Therefore none of the listed integer constructions is present.
+	\end{proof}
+	
+	\begin{proposition}[Largest simplifications]\label{prop:simplifications}
+		Relative to the proof of the general theorem in Kosz et al., the present argument makes the following three principal simplifications.
+		
+		First, the real major-frequency set is \(\{0\}\), so every source projection becomes the ordinary one-coordinate convolution operator in \cref{def:projection}.
+		
+		Second, the anisotropic identity in \cref{lem:scaling} removes the scale \(N\) completely: after applying normalized smoothing at scale \(\rho r\), the term \((\rho r)^{-\gamma}\) disappears as \(\rho\to\infty\).
+		
+		Third, the arbitrary \(C^1\) weight is not inserted into the source circle-method proof.  It is removed afterward by the exact identity in \cref{lem:weighted-primitive-identity}, which costs only the factor \(2\norm{\psi'}{L^1}\).
+	\end{proposition}
+	
+	\begin{proof}
+		The first assertion is the specialization explained in the proof of \cref{thm:kosz-adjoint}.  The second assertion is exactly the argument in the first case of \cref{prop:primitive-smoothing}.  The third assertion is the proof of \cref{thm:main}.  Each assertion therefore follows from a previously proved result.
+	\end{proof}
+	
+	\begin{remark}[Formalization boundary]\label{rem:formalization-boundary}
+		A formalization can treat \cref{thm:kosz-adjoint,thm:kosz-subunit,thm:quasi-interpolation} as three imported analytic modules.  After those modules, every step is reducible to standard measure theory, Fourier-transform scaling, support calculus for multipliers, elementary real inequalities, and Banach-space duality.  In particular, the proof after \cref{thm:quasi-interpolation} contains no appeal to an unnamed estimate and no use of asymptotic notation.
+	\end{remark}
+	
+	\begin{proof}
+		This is a dependency statement.  The claim follows by reading the explicit citations in every proof from \cref{prop:normalized-banach} through \cref{thm:main}.
+	\end{proof}
+	
+	\section{Expanded dependency closure for the recalled results}\label{sec:expanded-closure}
+	
+	\begin{proposition}[No imported analytic declarations]\label{prop:no-imported-analytic-declarations}
+		In the expanded blueprint, the declarations
+		\[
+		\cref{thm:kosz-adjoint,thm:kosz-subunit,thm:quasi-interpolation}
+		\]
+		are not axioms, hypotheses, opaque constants, or foreign theorem declarations.  Their citation paragraphs identify the statements in the literature; their proof terms are to be built from the internal results in
+		\[
+		\cref{sec:internal-gm,sec:internal-kosz-improving,sec:internal-kosz-adjoint}
+		\]
+		below.  In particular, a Lean file generated from this document must contain no declaration of any of those three results preceded by \texttt{axiom}, and no proof may contain \texttt{sorry} or \texttt{by exact imported\_theorem} at those nodes.
+	\end{proposition}
+	
+	\begin{proof}
+		The internal proof of \cref{thm:quasi-interpolation} is completed in \cref{thm:gm-internal}.  The real monomial improving argument and duality prove Corollary~5.3 in \cref{cor:kosz-53-internal}; its quasi-Banach consequence, which is the precise input used in \cref{thm:kosz-subunit}, is proved in \cref{cor:kosz-subunit-internal}.  Finally, the inverse theorem, the Hahn--Banach decomposition, the compactly supported estimate, and support removal culminate in \cref{thm:kosz-613-internal}, whose conclusion is exactly \cref{thm:kosz-adjoint}.  Thus every edge entering one of the three displayed declarations comes from a theorem proved in this document.  The earlier modularity remarks describe how one may package the proof, but they do not alter this stronger dependency policy for the expanded blueprint.
+	\end{proof}
+	
+	\section{Internal proof of Grafakos--Masty\l o, Theorem~3.2}\label{sec:internal-gm}
+	
+	This section proves the exact Lebesgue-space specialization stated in \cref{thm:quasi-interpolation}.  It is deliberately independent of the abstract theory of quasi-Banach lattices.
+	
+	\begin{lemma}[Scalar strip inequality]\label{lem:scalar-strip}
+		Let \(0<\theta<1\), let \(s>0\), and let \(H\) be continuous on the closed strip
+		\[
+		\overline{\mathbb S}=\set{z\in\Cplx:0\leq\Re z\leq1},
+		\]
+		analytic in its interior, and of admissible growth
+		\[
+		\abs{H(z)}\leq \exp(C\exp(c\abs{\Im z}))
+		\quad\text{for some }c<\pi.
+		\]
+		Define
+		\[
+		w_{0,\theta}(t)=
+		\frac{\sin(\pi\theta)}{2\bigl(\cosh(\pi t)-\cos(\pi\theta)\bigr)},
+		\qquad
+		w_{1,\theta}(t)=
+		\frac{\sin(\pi\theta)}{2\bigl(\cosh(\pi t)+\cos(\pi\theta)\bigr)}.
+		\]
+		Then
+		\[
+		\int_\R w_{0,\theta}=1-\theta,
+		\qquad
+		\int_\R w_{1,\theta}=\theta,
+		\]
+		and, on writing
+		\[
+		\dd\nu_0(t)=\frac{w_{0,\theta}(t)}{1-\theta}\dd t,
+		\qquad
+		\dd\nu_1(t)=\frac{w_{1,\theta}(t)}{\theta}\dd t,
+		\]
+		one has
+		\[
+		\abs{H(\theta)}
+		\leq
+		\left(\int_\R\abs{H(it)}^s\dd\nu_0(t)\right)^{(1-\theta)/s}
+		\left(\int_\R\abs{H(1+it)}^s\dd\nu_1(t)\right)^{\theta/s}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		For \(\eps>0\), the function
+		\[
+		u_\eps(z)=\log\bigl(\abs{H(z)}+\eps\bigr)
+		\]
+		is subharmonic in the open strip.  Integrate the sub-mean inequality on the rectangle cut out by
+		\(0<\Re z<1\) and \(\abs{\Im z}<R\).  Its harmonic measure is obtained by separation of variables.  Let \(R\to\infty\).  The horizontal sides contribute zero because \(c<\pi\).  The two vertical-side densities are exactly \(w_{0,\theta}\) and \(w_{1,\theta}\).  Hence
+		\[
+		u_\eps(\theta)
+		\leq
+		\int_\R u_\eps(it)w_{0,\theta}(t)\dd t
+		+
+		\int_\R u_\eps(1+it)w_{1,\theta}(t)\dd t.
+		\]
+		Applying the same identity to the constant harmonic functions \(1\) and \(\Re z\) gives the two displayed masses.  Divide each density by its mass and apply Jensen's inequality for the concave function \(\log\) to \((\abs{H}+\eps)^s\).  Exponentiating and then using monotone convergence as \(\eps\downarrow0\) proves the result.  This proof uses only the Poisson formula for a rectangle, the maximum principle, and monotone convergence, all available over the completed complex numbers and Lebesgue measure.
+	\end{proof}
+	
+	\begin{lemma}[Lebesgue-space strip argument]\label{lem:lebesgue-strip}
+		Assume the hypotheses of \cref{thm:quasi-interpolation}, but initially take each \(f_i\) to be a finite-valued simple function belonging to the common domain of \(T\).  Then
+		\[
+		\norm{T(f_1,f_2,f_3)}{L^q(Y)}
+		\leq
+		M_0^{1-\theta}M_1^\theta
+		\prod_{i=1}^3\norm{f_i}{L^{p_i}(X)}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		The two endpoint estimates first extend \(T\), by completion, from the common dense domain to each endpoint product.  On the intersection of all six input spaces the two extensions agree: approximate simultaneously in the sum of the six input quasi-norms and use the endpoint estimates term by term.  Hence \(T\) is defined consistently on finite-valued simple functions of finite support.
+		
+		By trilinearity and homogeneity it is enough to suppose
+		\(\norm{f_i}{L^{p_i}}=1\) for every \(i\).  Put
+		\[
+		a_i(z)=p_i\left(\frac{1-z}{p_{i,0}}+\frac{z}{p_{i,1}}\right)
+		\]
+		and, with \(\operatorname{ph}(0)=0\) and
+		\(\operatorname{ph}(w)=w/\abs w\) for \(w\neq0\), define
+		\[
+		F_i(z,x)=\operatorname{ph}(f_i(x))
+		\exp\bigl(a_i(z)\log\abs{f_i(x)}\bigr)
+		\]
+		on \(\set{f_i\neq0}\), and set it equal to zero elsewhere.  Because \(f_i\) is finite-valued and simple, \(z\mapsto F_i(z)\) is a finite sum of vectors with entire scalar coefficients.  Moreover,
+		\[
+		F_i(\theta)=f_i,
+		\qquad
+		\norm{F_i(\ell+it)}{L^{p_{i,\ell}}}=1
+		\quad(\ell=0,1;t\in\R).
+		\]
+		
+		Expand \(T(F_1(z),F_2(z),F_3(z))\) as a finite sum and choose measurable representatives for the finitely many output functions that occur.  For almost every \(y\),
+		\[
+		H_y(z)=T(F_1(z),F_2(z),F_3(z))(y)
+		\]
+		is entire and has exponential growth, so \cref{lem:scalar-strip} applies.  Choose once and for all
+		\[
+		0<s<\min\set{q_0,q_1}.
+		\]
+		It gives
+		\[
+		\abs{H_y(\theta)}\leq G_0(y)^{1-\theta}G_1(y)^\theta,
+		\qquad
+		G_\ell(y)=
+		\left(\int_\R\abs{H_y(\ell+it)}^s\dd\nu_\ell(t)\right)^{1/s}.
+		\]
+		
+		The exponent identity for \(q\), followed by ordinary H\"older applied to the \(q\)-th power, is valid even when \(q<1\) and yields
+		\[
+		\norm{G_0^{1-\theta}G_1^\theta}{L^q}
+		\leq
+		\norm{G_0}{L^{q_0}}^{1-\theta}
+		\norm{G_1}{L^{q_1}}^\theta.
+		\]
+		Since \(q_\ell/s>1\), Minkowski's integral inequality in \(L^{q_\ell/s}\) gives
+		\[
+		\norm{G_\ell}{L^{q_\ell}}^s
+		=
+		\left\|
+		\int_\R\abs{H_{\cdot}(\ell+it)}^s\dd\nu_\ell(t)
+		\right\|_{L^{q_\ell/s}}
+		\leq
+		\int_\R
+		\norm{H_{\cdot}(\ell+it)}{L^{q_\ell}}^s
+		\dd\nu_\ell(t)
+		\leq M_\ell^s.
+		\]
+		Combining the last three displays proves the normalized assertion, and rescaling the three inputs proves the stated inequality.
+	\end{proof}
+	
+	\begin{theorem}[Internal proof certificate for Theorem~3.2]\label{thm:gm-internal}
+		The conclusion of \cref{thm:quasi-interpolation} follows from \cref{lem:scalar-strip,lem:lebesgue-strip}; no quasi-Banach interpolation result is assumed.
+	\end{theorem}
+	
+	\begin{proof}
+		On a sigma-finite measure space, truncate first in space and then in value to approximate every \(L^{p_i}\) function by finite-valued simple functions.  Choose the approximants in the stated common dense domain.  The estimate in \cref{lem:lebesgue-strip} is uniform.  If \(f_i^{(n)}\to f_i\) in \(L^{p_i}\), trilinearity expands the difference of two outputs into three terms.  The quasi-triangle inequality after raising to the power
+		\(\min\{1,q\}\) shows that the outputs are Cauchy in \(L^q\).  Completeness gives a limit independent of the approximation, and Fatou's lemma preserves the constant.  This constructs the extension and proves exactly the estimate in \cref{thm:quasi-interpolation}.
+	\end{proof}
+	
+	\section{Internal proof of Kosz et al., Corollary~5.3}\label{sec:internal-kosz-improving}
+	
+	Only the real monomial system of the present blueprint is needed.  Thus the proof below uses an ordinary change of variables and a Vandermonde determinant; no Vinogradov mean-value theorem or arithmetic lifting is involved.
+	
+	\begin{definition}[The six-dimensional lift]\label{def:real-lift}
+		Write
+		\[
+		\R^6=\R\times\R^2\times\R^3
+		\]
+		and define
+		\[
+		\Gamma_1(t)=(t;0,0;0,0,0),\qquad
+		\Gamma_2(t)=(0;t,t^2;0,0,0),
+		\]
+		\[
+		\Gamma_3(t)=(0;0,0;t,t^2,t^3).
+		\]
+		For functions on \(\R^6\), put
+		\[
+		\mathcal L_N(F_1,F_2,F_3)(x)
+		=
+		\frac1N\int_0^N\prod_{i=1}^3F_i(x-\Gamma_i(t))\dd t.
+		\]
+		Set
+		\[
+		D=1+2+3=6,\qquad
+		D^\ast=1+3+6=10,\qquad D'=D^\ast-D=4.
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		This is a definition.  The three summands in \(D^\ast\) are
+		\(d_i(d_i+1)/2\) for \(d_i=1,2,3\).  Replacing every \(\Gamma_i\) by
+		\(-\Gamma_i\) conjugates \(\mathcal L_N\) by reflection and hence does not change any norm.
+	\end{proof}
+	
+	\begin{lemma}[Separation inside a measurable fibre]\label{lem:fibre-separation}
+		Let \(E\subseteq[0,N]\) be measurable with \(\abs E\geq aN\), where \(0<a\leq1\), and let \(u_1,\ldots,u_m\in[0,N]\).  There is a measurable \(E'\subseteq E\) such that
+		\[
+		\abs{E'}\geq\frac{aN}{2},
+		\qquad
+		\abs{v-u_\ell}\geq\frac{aN}{4m}
+		\quad(v\in E',\,1\leq\ell\leq m).
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Remove from \(E\) the \(m\) intervals
+		\[
+		\left(u_\ell-\frac{aN}{4m},u_\ell+\frac{aN}{4m}\right).
+		\]
+		Their union has measure at most \(aN/2\).  The remainder has the asserted measure and separation.  The case \(m=0\) is immediate.
+	\end{proof}
+	
+	\begin{lemma}[Lossless refinements]\label{lem:lossless-refinements}
+		Let \(E_0,E_1,E_2,E_3\subseteq\R^6\) have finite measure and put
+		\[
+		K=\int_{\R^6}\one_{E_0}(x)\mathcal L_N(\one_{E_1},\one_{E_2},\one_{E_3})(x)\dd x,
+		\qquad
+		\alpha_i=\frac{K}{\abs{E_i}}.
+		\]
+		If \(K>0\), then for every fixed \(r\in\N\) one can form nested measurable refinements
+		\(E_i^r\subseteq\cdots\subseteq E_i^0=E_i\) such that every forward or adjoint incidence used at the \(s\)-th stage is pointwise at least
+		\[
+		2^{-4s}\alpha_i,
+		\]
+		and the total incidence remaining after that stage is at least \(2^{-4s}K\).
+	\end{lemma}
+	
+	\begin{proof}
+		At one stage, suppose that a nonnegative incidence function \(H_i\) on \(E_i^{s-1}\) has integral at least \(\kappa K\).  Delete the set on which
+		\(H_i<(\kappa/2)\alpha_i\).  Its contribution is less than
+		\[
+		(\kappa/2)\alpha_i\abs{E_i}=(\kappa/2)K,
+		\]
+		so at least \((\kappa/2)K\) remains.  Apply this operation successively to the forward operator and to its three adjoints.  Fubini and the adjoint identity show that the incidence integral before each deletion is the one retained at the preceding deletion.  Thus a full stage costs at most a factor \(2^4\).  Induction on \(s\) proves both assertions.  This is a finite induction over measurable sets, so no maximal principle or choice of a limiting refinement is required.
+	\end{proof}
+	
+	\begin{lemma}[Specialized real flow and its Jacobian]\label{lem:real-flow-jacobian}
+		Fix two distinct indices \(j,j'\in\indices\).  The refinements from
+		\cref{lem:lossless-refinements}, taken to depth \(60\), generate a measurable parameter tower
+		\[
+		\mathbf P=\set{\mathbf t=(t_1,\ldots,t_6):
+			t_\ell\in I_\ell(t_1,\ldots,t_{\ell-1})\subseteq[0,N]}
+		\]
+		and a polynomial flow \(\Phi:\mathbf P\to\R^6\) with the following properties.
+		Every fibre \(I_\ell\) has measure bounded below by a fixed constant times
+		\(\alpha_{\iota_\ell}N\), where the successive set labels are the seven entries
+		\[
+		(1,0,2,0,3,0,3)
+		\]
+		after the harmless relabelling that sends \(j\) to the distinguished slot and \(j'\) to the terminal slot.  The image of \(\Phi\) lies in the terminal refinement.  Its derivative is block lower triangular, and its diagonal blocks are the derivatives of
+		\[
+		\Phi_1(u)=-u,
+		\qquad
+		\Phi_2(u,v)=(u-v,u^2-v^2),
+		\]
+		\[
+		\Phi_3(a,b,c)=
+		-\bigl(a-b+c,a^2-b^2+c^2,a^3-b^3+c^3\bigr).
+		\]
+		Consequently
+		\[
+		\abs{\det D\Phi(\mathbf t)}
+		=
+		12\abs{u-v}\abs{a-b}\abs{a-c}\abs{b-c}.
+		\]
+		A noncritical value of \(\Phi\) has at most \(12\) preimages.
+	\end{lemma}
+	
+	\begin{proof}
+		Start at a point of a nonempty depth-\(60\) refinement.  A pointwise lower bound furnished by \cref{lem:lossless-refinements} says that the set of parameters carrying that point to the next required refinement has measure at least a fixed multiple of \(\alpha_iN\).  Apply Fubini after every move.  The parity pattern for degrees \(1,2,3\) is precisely
+		\[
+		(1)\mid(0,2)\mid(0,3,0,3);
+		\]
+		the initial entry labels the starting set and the six subsequent moves supply
+		\(t_1,\ldots,t_6\).  Expanding the translations gives the three displayed moment blocks plus terms in a block depending only on earlier blocks.  Hence the derivative is block lower triangular.
+		
+		The \(1\)-block has determinant \(-1\).  Direct expansion gives
+		\[
+		\abs{\det D\Phi_2(u,v)}=2\abs{u-v}
+		\]
+		and the Vandermonde determinant gives
+		\[
+		\abs{\det D\Phi_3(a,b,c)}
+		=6\abs{a-b}\abs{a-c}\abs{b-c}.
+		\]
+		Multiplication proves the Jacobian formula.
+		
+		For completeness, bounded multiplicity can be checked without invoking a real-algebraic geometry theorem.  The first block determines \(u\).  The two equations in the second block determine the unordered pair in that block away from \(u=v\).  In the third block put
+		\[
+		s_1=a-b+c,\quad s_2=a^2-b^2+c^2,\quad
+		s_3=a^3-b^3+c^3.
+		\]
+		If \(U=a+c\) and \(V=ac\), then
+		\[
+		b=U-s_1,\qquad
+		V=s_1U-\frac{s_1^2+s_2}{2},
+		\]
+		and
+		\[
+		s_3=\frac32(s_2-s_1^2)U+s_1^3.
+		\]
+		If the coefficient of \(U\) vanishes, the Jacobian vanishes; otherwise \(U,V\) are determined and \(a,c\) are the two roots of
+		\(X^2-UX+V\).  Thus this block has at most two orderings.  The earlier-block perturbations are already determined when a later block is solved.  Allowing the finitely many choices of orientations used to relabel \(j,j'\) gives the uniform bound \(12\).
+	\end{proof}
+	
+	\begin{proposition}[Restricted improving vertex]\label{prop:restricted-improving-vertex}
+		Fix distinct \(j,j'\in\indices\), and let \(k\) be the remaining index.  Then
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^{6/5,\infty}(\R^3)}
+		\leq C N^{-1/10}
+		\norm{f_j}{L^{2,1}}
+		\norm{f_{j'}}{L^{60/11,1}}
+		\norm{f_k}{L^{6,1}}.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		First work with the lifted operator and indicator functions.  Apply
+		\cref{lem:lossless-refinements,lem:real-flow-jacobian}.  At each integration in a moment block, apply \cref{lem:fibre-separation} to discard half of the fibre and to separate the new parameter from the preceding parameters of that block.  Successive integration of the Jacobian then gives
+		\[
+		\int_{\mathbf P}\abs{\det D\Phi(\mathbf t)}\dd\mathbf t
+		\geq
+		c\bigl(\alpha_0\alpha_1\alpha_2\alpha_3N\bigr)^{10}.
+		\]
+		The exponent \(10=1+3+6\) is the sum of the numbers of Vandermonde factors plus the fibre-measure factor in the three blocks.  The area formula and the multiplicity bound in
+		\cref{lem:real-flow-jacobian} therefore imply
+		\[
+		\abs{E_{j'}}
+		\geq c\bigl(\alpha_0\alpha_1\alpha_2\alpha_3N\bigr)^{10}.
+		\]
+		Because \(0<\alpha_i\leq1\), this stronger symmetric inequality implies, with
+		\(s_1=s_2=s_3=10\) and \(S=30\),
+		\[
+		K^{60}
+		\leq
+		CN^{-10}\abs{E_0}^{10}\abs{E_j}^{30}
+		\abs{E_{j'}}^{11}\abs{E_k}^{10}.
+		\]
+		Taking the sixtieth root is exactly the restricted weak estimate
+		\[
+		\mathcal L_N:
+		L^{2,1}\times L^{60/11,1}\times L^{6,1}
+		\longrightarrow L^{6/5,\infty}
+		\]
+		with norm at most \(CN^{-1/6}\).
+		
+		It remains to descend from \(\R^6\) to \(\R^3\).  Write a point in each block as its lower coordinates and its last coordinate.  Lift a function \(g\) on \(\R^3\) by composing it with the three last-coordinate projections and multiplying by the indicators
+		\[
+		[-N,N]\quad\text{and}\quad[-N,N]\times[-N^2,N^2]
+		\]
+		in the unused coordinates of the degree-two and degree-three blocks.  The product of their measures is comparable to \(N^{D'}=N^4\).  On the corresponding inner boxes, the lifted average equals the original average.  Consequently, if \(1/p=17/20\) and \(1/q=5/6\),
+		\[
+		N^{4/q}\norm{A_N(g_1,g_2,g_3)}{L^{q,\infty}}
+		\leq
+		CN^{-1/6}N^{4/p}\prod_i\norm{g_i}{L^{p_i,1}}.
+		\]
+		Since
+		\[
+		-\frac16+4\left(\frac1p-\frac1q\right)=-\frac1{10},
+		\]
+		the asserted estimate follows.  Truncation and monotone convergence remove the finite-measure restriction on the sets.
+	\end{proof}
+	
+	\begin{lemma}[Finite multilinear Marcinkiewicz interpolation]\label{lem:finite-marcinkiewicz}
+		Let a trilinear operator have restricted weak estimates at finitely many exponent vectors
+		\[
+		v=(1/p_1,1/p_2,1/p_3,1-1/q)
+		\]
+		with respective constants \(C_v\).  At every point in the relative interior of their convex hull it has the corresponding strong estimate, with a constant bounded by a finite product of powers of the \(C_v\).
+	\end{lemma}
+	
+	\begin{proof}
+		For nonnegative finite simple inputs, write
+		\[
+		f_i=\sum_{n\in\mathbb Z}2^n\one_{E_{i,n}},
+		\]
+		where the sets in each sum are disjoint and only finitely many are nonempty.  Expand by trilinearity.  Split the lattice of triples \((n_1,n_2,n_3)\) into finitely many cones according to which endpoint linear functional is largest.  On each cone use that endpoint's distribution estimate, and sum first along its extremal ray.  If the target vector is in the relative interior, every resulting ratio is \(2^{-\varepsilon |m|}\) for some \(\varepsilon>0\), hence every sum is geometric.  The remaining sums are
+		\[
+		\sum_n2^{np_i}\abs{E_{i,n}},
+		\]
+		which are bounded by fixed multiples of \(\norm{f_i}{L^{p_i}}^{p_i}\).  Applying the same argument to real and imaginary parts and then passing to monotone limits proves the claim.  In Lean the cone split is a finite disjunction of rational linear inequalities, and the summations reduce to the geometric-series lemma; thus this lemma introduces no analytic oracle.
+	\end{proof}
+	
+	\begin{theorem}[Strong real improving estimate]\label{thm:strong-real-improving}
+		Fix distinct \(j,j'\in\indices\), with \(k\) the remaining index.  Then
+		\[
+		\norm{A_N(f_1,f_2,f_3)}{L^{6/5}}
+		\leq
+		CN^{-1/20}
+		\norm{f_j}{L^2}
+		\norm{f_{j'}}{L^{40/7}}
+		\norm{f_k}{L^6}.
+		\]
+	\end{theorem}
+	
+	\begin{proof}
+		Associate to \cref{prop:restricted-improving-vertex} the exponent vector
+		\[
+		v=\left(\frac1{p_1},\frac1{p_2},\frac1{p_3},1-\frac56\right),
+		\]
+		where its \(j,j',k\) coordinates are respectively
+		\[
+		\frac12,\qquad\frac{11}{60},\qquad\frac16.
+		\]
+		The four trivial bounds have exponent vectors
+		\[
+		e_1,\ e_2,\ e_3,\ e_4
+		\]
+		in \(\R^4\): the first three follow from Fubini and
+		\(L^1\times L^\infty\times L^\infty\to L^1\), and the last from
+		\(L^\infty\times L^\infty\times L^\infty\to L^\infty\).
+		Take weight \(1/2\) on \(v\), weight \(1/4\) on \(e_j\), and weight
+		\(1/12\) on each of the other three trivial vertices.  All weights are positive and sum to one.  The resulting coordinates are
+		\[
+		\frac12,\qquad\frac7{40},\qquad\frac16,\qquad\frac16.
+		\]
+		Thus \cref{lem:finite-marcinkiewicz} gives the displayed strong estimate.  Only the improving vertex carries an \(N\)-power, so its exponent \(-1/10\) is multiplied by \(1/2\), giving \(-1/20\).
+	\end{proof}
+	
+	\begin{corollary}[Internal proof of Kosz et al., Corollary~5.3]\label{cor:kosz-53-internal}
+		Fix \(j\in\indices\), choose \(j'\in\indices\setminus\{j\}\), and let \(k\) be the remaining index.  Then
+		\[
+		\norm{A_N^{*j}((g_i)_{i\neq j})}{L^2}
+		\leq
+		CN^{-1/20}
+		\norm{g_0}{L^6}
+		\norm{g_{j'}}{L^{40/7}}
+		\norm{g_k}{L^6}.
+		\]
+		In the notation of Corollary~5.3 one may take
+		\[
+		r_0=6,\qquad r_{j'}=\frac{40}{7},\qquad r_k=6,
+		\qquad r=\frac{120}{61}.
+		\]
+		In particular \(1<r<2\) and
+		\[
+		\frac1{r_0}+\frac1{r_{j'}}+\frac1{r_k}
+		=\frac1r,\qquad
+		6\left(\frac1r-\frac12\right)=\frac1{20}.
+		\]
+	\end{corollary}
+	
+	\begin{proof}
+		Pair the output of \cref{thm:strong-real-improving} with \(g_0\), use
+		\cref{lem:adjoint-identity}, and take the supremum over
+		\(\norm{f_j}{L^2}=1\).  The conjugate exponent of \(6/5\) is \(6\), so the three input exponents of the adjoint are exactly those displayed.  The two arithmetic identities follow after putting all fractions over the denominator \(120\).  This is precisely the real \(k=3\) monomial instance of Corollary~5.3, now proved rather than assumed.
+	\end{proof}
+	
+	\begin{lemma}[Quasi-Banach consequence of an adjoint gain]\label{lem:adjoint-gain-to-subunit}
+		Let \(T_N\) be a positive trilinear translation average with parameter in a bounded interval and polynomial translations of degrees at most \(3\).  Suppose that, for one input index \(j\), one adjoint obeys an \(L^2\)-improving estimate with a strictly positive scale gain, all its input exponents being strictly between \(1\) and \(\infty\).  Then there are
+		\[
+		1<q_1,q_2,q_3<\infty,\qquad q_j=2,\qquad \frac12<q<1,
+		\qquad \sum_{i=1}^3\frac1{q_i}=\frac1q,
+		\]
+		such that
+		\[
+		\norm{T_N(f_1,f_2,f_3)}{L^q}
+		\leq C\prod_{i=1}^3\norm{f_i}{L^{q_i}}
+		\]
+		uniformly in \(N\).
+	\end{lemma}
+	
+	\begin{proof}
+		We include the finite stopping-time argument because it is the step that passes through the nonlocally convex range.  Anisotropic dilation reduces to \(N=1\).  Partition \(\R^3\) into unit cubes and replace each by its fixed finite enlargement containing every translate that occurs for \(0\leq t\leq1\).  Inside each enlargement take the finite dyadic tree resolving all level sets of the three nonnegative simple inputs.
+		
+		For a finite family \(\mathcal Q\) of cubes, call \(Q\) principal for the \(i\)-th input if its local \(L^{r_i}\)-mass is more than twice the sum of the masses of its strict descendants.  The principal cubes are nested, and the nonprincipal children have total mass at most one half of the parent.  On a principal cube apply the assumed adjoint estimate; on a nonprincipal child use the trivial \(L^1\times L^\infty\times L^\infty\to L^1\) estimate in the coordinate selected by that child.  Iterate this operation cyclically through the three inputs.  After \(m\) cycles, expansion by positivity gives
+		\[
+		\int \abs{T_1(f_1,f_2,f_3)}^{q_m}
+		\leq
+		C_m\prod_{i=1}^3
+		\left(\int\abs{f_i}^{q_{i,m}}\right)^{q_m/q_{i,m}}
+		+
+		2^{-m}\int \abs{T_1(f_1,f_2,f_3)}^{q_m},
+		\]
+		Replacing the gain by \(\min\{\varepsilon,1\}\), assume \(0<\varepsilon\leq1\), and set
+		\[
+		d_m=\frac{m\varepsilon}{2(1+m\varepsilon)},\qquad
+		\frac1{q_m}=1+d_m,\qquad
+		\frac1{q_{j,m}}=\frac12,
+		\qquad
+		\frac1{q_{i,m}}=\frac14+\frac{d_m}{2}\quad(i\neq j).
+		\]
+		Thus \(q_{j,m}=2\), every \(q_{i,m}>1\), and
+		\[
+		\frac1{q_m}=\sum_i\frac1{q_{i,m}},
+		\qquad
+		1-\frac1{q_m}=-d_m.
+		\]
+		Here \(\varepsilon>0\) is the scale gain in the adjoint estimate.  These formulas follow by induction: a principal step contributes the adjoint exponent vector and \(\varepsilon\), a nonprincipal step contributes the appropriate trivial vertex, and division by the total accumulated weight gives the displayed fractions.  The equality \(q_{j,m}=2\) is preserved by always selecting the \(j\)-vertex with coefficient one half.  Every coefficient is rational when the given exponents and \(\varepsilon\) are rational.
+		
+		Choose any \(m\geq1\).  Then
+		\[
+		0<d_m<\frac12,
+		\]
+		so \(1/2<q_m<1\).  Move the last term to the left.  Discrete H\"older sums the principal cubes because the displayed reciprocal identity is exact; the geometric decay of nonprincipal descendants sums the other terms.  Approximation removes the simplicity assumption.
+		
+		For Lean, the stopping collection is a finite tree while the inputs are simple.  The induction is on its height, the absorption is the inequality
+		\((1-2^{-m})X\leq Y\), and passage to general inputs uses monotone convergence.  Thus the argument does not appeal to duality of \(L^q\), which would be invalid for \(q<1\).
+	\end{proof}
+	
+	\begin{corollary}[Internal subunit endpoint]\label{cor:kosz-subunit-internal}
+		For each \(j\in\indices\), the exponents and constant asserted in
+		\cref{thm:kosz-subunit} exist, and its estimate holds without assuming equation~(6.24) or Corollary~5.3.
+	\end{corollary}
+	
+	\begin{proof}
+		Apply \cref{lem:adjoint-gain-to-subunit} to the positive operator obtained by inserting absolute values in \(A_N\), using the strictly positive gain \(1/20\) from
+		\cref{cor:kosz-53-internal}.  Domination by the positive operator gives the same estimate for complex inputs.  Put
+		\[
+		b_{i,\ref{thm:kosz-subunit},j}=\frac1{q_i},
+		\qquad
+		B_{\ref{thm:kosz-subunit},j}=\frac1q.
+		\]
+		Then \(b_j=1/2\), \(1<B<2\), and the scale-one upper-half estimate required in the existing proof of \cref{thm:kosz-subunit} follows.  The scaling and dyadic decomposition already written in that proof give the full average at every \(N>0\).  Enlarging its constant by \(\Dyad\) gives the named dyadic constant.  Hence the citation in the earlier proof is replaced by a proof term built from
+		\cref{def:real-lift,lem:fibre-separation,lem:lossless-refinements,lem:real-flow-jacobian,lem:finite-marcinkiewicz,lem:adjoint-gain-to-subunit}.
+	\end{proof}
+	
+	\section{Internal proof of Kosz et al., Theorem~6.13}\label{sec:internal-kosz-adjoint}
+	
+	We again prove only the real system \((t,t^2,t^3)\).  In this setting the major-frequency set consists of the origin, so the inverse theorem ends with an ordinary one-coordinate Fourier cutoff.
+	
+	\subsection{The inverse theorem in the real monomial case}
+	
+	\begin{definition}[Fej\'er differences and local uniformity]\label{def:local-uniformity}
+		For \(H>0\), let
+		\[
+		\kappa_H(h)=H^{-1}\left(1-\frac{\abs h}{H}\right)_+.
+		\]
+		For \(v\in\R^3\), define
+		\[
+		\Delta_{h;v}f(x)=f(x+hv)\overline{f(x)}.
+		\]
+		If \(f\) is supported in an anisotropic box of volume comparable to \(N^6\), define
+		\[
+		\mathcal U^s_{j,H}(f)^{2^s}
+		=
+		N^{-6}\int_{\R^3}\int_{\R^s}
+		\Delta_{h_1;e_j}\cdots\Delta_{h_s;e_j}f(x)
+		\prod_{\ell=1}^s\kappa_H(h_\ell)\dd\mathbf h\dd x.
+		\]
+	\end{definition}
+	
+	\begin{proof}
+		The Fej\'er kernel is nonnegative and has integral one.  Repeatedly expanding
+		\(\Delta_{h;v}\) shows that the last integrand is
+		\[
+		\prod_{\omega\in\{0,1\}^s}
+		\mathcal C^{\abs\omega}
+		f\bigl(x+(\omega\cdot\mathbf h)e_j\bigr).
+		\]
+		Pairing every vertex with its opposite and applying Cauchy--Schwarz shows that its integral is real and nonnegative.  Thus the displayed nonnegative \(2^s\)-th root is well defined.
+	\end{proof}
+	
+	\begin{lemma}[Fej\'er van der Corput and Gowers--Cauchy--Schwarz]\label{lem:fejer-vdc}
+		Let \(I\) be an interval of length \(N\), let \(0<H\leq N/4\), and let \(F\) be measurable with \(\abs F\leq1\).  Then
+		\[
+		\left|\frac1N\int_I F(t)\dd t\right|^2
+		\leq
+		4\int_\R\kappa_H(h)
+		\left|\frac1N\int_{I\cap(I-h)}F(t+h)\overline{F(t)}\dd t\right|\dd h
+		\frac{8H}{N}.
+		\]
+		Repeated use of this inequality followed by Cauchy--Schwarz in all variables except a selected function bounds every polynomial average obtained from the monomials \(t,t^2,t^3\) by a finite power of a local uniformity norm of that selected function, plus a boundary error.
+	\end{lemma}
+	
+	\begin{proof}
+		Write the average of \(F\) as the average of
+		\[
+		\frac1H\int_0^H F(t+h)\dd h
+		\]
+		up to the two boundary intervals, whose total normalized contribution is at most \(2H/N\).  Apply Cauchy--Schwarz, expand the square, and change variables from the two shift variables to their difference.  The density of that difference is \(\kappa_H\), which proves the displayed inequality after \((a+b)^2\leq2a^2+2b^2\).
+		
+		For the last assertion, expand one copy of the average and its conjugate after each application.  Translations preserve Lebesgue measure, every unselected factor has modulus at most one, and Cauchy--Schwarz removes it.  An induction on the number of applications gives exactly the cube product in \cref{def:local-uniformity}.  All boundary terms are bounded by a geometric multiple of \(H/N\).  This is the Gowers--Cauchy--Schwarz argument, here proved by the stated finite induction.
+	\end{proof}
+	
+	\begin{lemma}[Real polynomial oscillation]\label{lem:real-polynomial-oscillation}
+		For every \(d\in\N\) there is \(C_d\geq1\) such that, if
+		\(P(t)=\sum_{m=1}^d a_mt^m\), then
+		\[
+		\left|\frac1N\int_0^N\e^{2\pi iP(t)}\dd t\right|
+		\leq
+		C_d\min\left\{1,
+		\left(\max_{1\leq m\leq d}\abs{a_m}N^m\right)^{-1/d}\right\}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Scale to \(N=1\) and let \(A=\max_m\abs{a_m}\).  Equivalence of norms on the finite-dimensional space of polynomials gives an order \(1\leq r\leq d\) and a subdivision into at most \(C_d\) intervals on each of which
+		\(\abs{P^{(r)}}\geq c_dA\), with \(P^{(r)}\) monotone after at most \(d\) further subdivisions.  For \(r=1\), split where \(\abs{P'}\leq A^{1/d}\); the elementary sublevel estimate for a polynomial gives measure at most \(C_dA^{-1/d}\), while integration by parts on the complement gives the same bound.  Induction on \(r\), applying this argument to \(P'\), proves the estimate.  If \(A\leq1\), use the trivial bound \(1\).  Scaling back replaces \(a_m\) by \(a_mN^m\).
+	\end{proof}
+	
+	\begin{lemma}[PET reduction for \(t,t^2,t^3\)]\label{lem:pet-reduction}
+		There are integers \(s_\ast,C_\ast\geq1\) with the following property.  Let
+		\[
+		I_N(C)=
+		[-CN,CN]\times[-CN^2,CN^2]\times[-CN^3,CN^3],
+		\]
+		let \(f_0,f_1,f_2,f_3\) be \(1\)-bounded and supported in \(I_N(C)\), and suppose
+		\[
+		\abs{\Lambda_N(f_0,f_1,f_2,f_3)}\geq\delta N^6.
+		\]
+		If \(N\geq C_\ast\delta^{-C_\ast}\), then for every \(j\in\indices\) there is
+		\[
+		H_j\in[c\delta^{C_\ast}N^j,C\delta^{-C_\ast}N^j]
+		\]
+		such that
+		\[
+		\mathcal U^{s_\ast}_{j,H_j}(f_j)\geq c\delta^{C_\ast}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		We record the terminating induction, since this is the combinatorial core of the real inverse theorem.  To a finite family of nonconstant polynomials attach its weight
+		\[
+		(w_3,w_2,w_1),
+		\]
+		where \(w_d\) is the number of distinct leading-coefficient classes of degree \(d\).  Order these triples lexicographically from degree \(3\) downward.  Choose a polynomial of largest degree and apply \cref{lem:fejer-vdc}; translate so that this polynomial becomes zero.  Every other polynomial \(Q\) is replaced by
+		\[
+		Q(t+h)-P(t)
+		\quad\text{and}\quad
+		Q(t)-P(t).
+		\]
+		If \(Q\) has the same leading coefficient as \(P\), its degree drops; otherwise the number of top-degree leading classes drops after the selected factor is removed by Cauchy--Schwarz.  Thus the weight decreases in the well-founded lexicographic order after finitely many repetitions.  Starting with
+		\[
+		\set{t,t^2,t^3},
+		\]
+		the resulting primitive recursion terminates at linear polynomials.  A final Cauchy--Schwarz produces the cube defining
+		\(\mathcal U^{s_\ast}\), for the finite integer \(s_\ast\) returned by that recursion.
+		
+		At each use of van der Corput take
+		\(H=c\delta^{C}N\) in the current normalized parameter.  The boundary error in
+		\cref{lem:fejer-vdc} is then at most half the current lower bound after enlarging \(C\).  Pigeonholing the difference variable loses only a fixed power of \(\delta\).  Under the change from a degree-\(j\) translation to its \(j\)-th coordinate, its physical size is comparable to \(N^j\), with another fixed power of \(\delta\).  Induction over the finite weight set therefore gives the displayed range for \(H_j\) and the asserted power lower bound.  All recurrences are inequalities between natural powers of \(\delta\); in Lean they can be implemented by primitive recursion on the weight triple.
+	\end{proof}
+	
+	\begin{lemma}[Degree lowering and the zero major frequency]\label{lem:degree-lowering-zero}
+		Under the hypotheses of \cref{lem:pet-reduction}, a lower bound
+		\[
+		\mathcal U^{s+1}_{j,H}(f_j)\geq\rho
+		\qquad(s\geq2)
+		\]
+		implies, after changing \(H\) by factors in
+		\([c\rho^CN^j,C\rho^{-C}N^j]\),
+		\[
+		\mathcal U^s_{j,H'}(f_j)\geq c\rho^C.
+		\]
+		After iteration to \(s=2\), there is
+		\[
+		L\leq C\rho^{-C}N^{-j}
+		\]
+		such that
+		\[
+		\norm{P_L^{(j)}f_j}{L^1(I_N(C'))}\geq c\rho^CN^6.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Expand the \((s+1)\)-st difference and use Fubini to select the last difference \(h\) on a set of Fej\'er measure at least \(c\rho^C\).  Fourier transform in the \(j\)-th coordinate.  If the selected partial frequency has
+		\(\abs\xi>C\rho^{-C}N^{-j}\), the remaining parameter integral contains a polynomial phase whose highest surviving coefficient has normalized size greater than \(C\rho^{-C}\).  The bound in \cref{lem:real-polynomial-oscillation} makes its contribution less than half the assumed lower bound.  Thus a set carrying a fixed proportion of the uniformity mass has
+		\[
+		\abs\xi\leq C\rho^{-C}N^{-j}.
+		\]
+		On this set the phase varies by at most a fixed small constant when
+		\(\abs h\leq c\rho^CN^j\); absorb it into one cube vertex and apply
+		Gowers--Cauchy--Schwarz from \cref{lem:fejer-vdc}.  This removes the last difference and proves the first implication.
+		
+		Iteration is finite.  For \(s=2\), Plancherel and the identity
+		\[
+		\widehat{\kappa_H}(\xi)
+		=
+		\left(\frac{\sin(\pi H\xi)}{\pi H\xi}\right)^2
+		\]
+		identify the local \(U^2\) expression with a nonnegative weighted partial-frequency energy.  The preceding major-frequency restriction puts a fixed portion of that energy in
+		\(\abs{\xi_j}\leq L/4\), where the multiplier defining \(P_L^{(j)}\) equals one.  Cauchy--Schwarz on the support box turns the resulting \(L^2\) lower bound into the displayed \(L^1\) lower bound.  Notice that \cref{lem:real-polynomial-oscillation} forces the frequency itself to be close to \(0\); there are no rational translates in the real case.
+	\end{proof}
+	
+	\begin{theorem}[Specialized real inverse theorem]\label{thm:real-inverse}
+		For each \(C_0\geq1\) there is \(C\geq1\) such that the following holds.  If \(0<\delta\leq1\),
+		\(N\geq C\delta^{-C}\), the four functions \(f_i\) are \(1\)-bounded and supported in \(I_N(C_0)\), and
+		\[
+		\abs{\Lambda_N(f_0,f_1,f_2,f_3)}\geq\delta N^6,
+		\]
+		then for every \(j\in\indices\) there is a \(1\)-bounded function \(h_j\), supported in \(I_N(C_1)\), for which
+		\[
+		\abs{\ip{f_j}{P_L^{(j)}h_j}_{L^2}}
+		\geq C^{-1}\delta^CN^6,
+		\qquad
+		L=C\delta^{-C}N^{-j}.
+		\]
+	\end{theorem}
+	
+	\begin{proof}
+		Apply \cref{lem:pet-reduction} and then apply
+		\cref{lem:degree-lowering-zero} \(s_\ast-2\) times.  Enlarge all powers and constants to a single integer \(C\).  Let
+		\[
+		h_j(x)=
+		\one_{I_N(C_1)}(x)
+		\operatorname{ph}\bigl(P_L^{(j)}f_j(x)\bigr).
+		\]
+		Self-adjointness of the even multiplier and the fact that it equals one on the smaller frequency interval give
+		\[
+		\abs{\ip{f_j}{P_L^{(j)}h_j}}
+		=
+		\abs{\ip{P_L^{(j)}f_j}{h_j}}
+		\geq
+		c\delta^CN^6,
+		\]
+		after enlarging \(I_N(C_1)\) to absorb the rapidly decreasing kernel tail.  The tail is bounded by integrating
+		\(L(1+L\abs u)^{-20}\) outside the enlarged interval.  This proves the theorem using only the preceding internal lemmas.
+	\end{proof}
+	
+	\subsection{Hahn--Banach structure and compact \(L^2\) decay}
+	
+	\begin{lemma}[Hahn--Banach decomposition]\label{lem:hb-decomposition}
+		Let \(G\in L^2(X)\), \(A,B>0\), and \(\Phi\subseteq L^2(X)\).  Suppose that every
+		\(f\in L^2\cap L^\infty\) satisfying \(\norm f{L^\infty}\leq1\) and
+		\(\abs{\ip fG}>A\) has
+		\(\abs{\ip f\phi}>B\) for some \(\phi\in\Phi\).  Then \(G\) belongs to the closed convex hull of
+		\[
+		\set{\lambda\phi:\phi\in\Phi,\abs\lambda\leq A/B}
+		\cup
+		\set{E:\norm E{L^1}\leq A}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		If not, geometric Hahn--Banach separation in the real Hilbert space underlying
+		\(L^2(X;\Cplx)\) gives \(f\in L^2\) such that
+		\[
+		\Re\ip fG>1,\qquad
+		\sup_{v\in V}\Re\ip fv\leq1.
+		\]
+		Testing the second inequality on every \(E\) with \(\norm E{L^1}\leq A\) gives
+		\(A\norm f{L^\infty}\leq1\); testing all complex phases of
+		\(\lambda\phi\) gives
+		\((A/B)\abs{\ip f\phi}\leq1\).  Thus \(g=Af\) is \(1\)-bounded,
+		\(\abs{\ip gG}>A\), and
+		\(\abs{\ip g\phi}\leq B\) for every \(\phi\), a contradiction.
+	\end{proof}
+	
+	\begin{proposition}[Real structural decomposition]\label{prop:real-structural-decomposition}
+		Fix \(j\in\indices\).  There is \(C\geq1\) such that, whenever
+		\(0<\delta_0\leq1\), \(N\geq C\delta_0^{-C}\), and the inputs of
+		\[
+		G=A_N^{*j}((g_i)_{i\neq j})
+		\]
+		are \(1\)-bounded and supported in \(I_N(C_0)\), one can write \(G=F+E\), where
+		\[
+		\supp(\mathcal F_jF)
+		\subseteq
+		\set{\xi_j:\abs{\xi_j}\leq C\delta_0^{-C}N^{-j}},
+		\]
+		\[
+		\norm F{L^\infty}\leq C\delta_0^{-C},
+		\qquad
+		\norm F{L^1}\leq C\delta_0^{-C}N^6,
+		\qquad
+		\norm E{L^1}\leq C\delta_0N^6.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		Apply \cref{thm:real-inverse} to the pairing \(\ip fG\), which equals the four-linear form by \cref{lem:adjoint-identity}.  In
+		\cref{lem:hb-decomposition} take
+		\[
+		A=c\delta_0N^6,\qquad
+		B=c'\delta_0^CN^6,
+		\]
+		and
+		\[
+		\Phi=\set{P_L^{(j)}h:\norm h{L^\infty}\leq1,\
+			\supp h\subseteq I_N(C_1)}.
+		\]
+		Every element of the first part of the convex hull has partial Fourier support in the displayed interval.  Since the convolution kernel of \(P_L^{(j)}\) has \(L^1\)-norm independent of \(L\), its \(L^\infty\)-norm is bounded by a constant and its \(L^1\)-norm by \(CN^6\).  Multiplication by
+		\(A/B\leq C\delta_0^{-C}\) gives the two bounds for \(F\); the second part gives the bound for \(E\).
+		
+		Choose a sequence of finite convex combinations converging to \(G\) in \(L^2\).  The two parts are bounded in \(L^2\) by interpolation between their stated \(L^1\) and \(L^\infty\) bounds.  Weak compactness gives limits \(F,E\); lower semicontinuity preserves the norm bounds and closedness of a Fourier support condition in \(L^2\) preserves the support.  Their sum is \(G\).
+	\end{proof}
+	
+	\begin{lemma}[Projection kernel and off-diagonal decay]\label{lem:projection-off-diagonal}
+		If \(K_R=\mathcal F_\R^{-1}(\eta(\cdot/R))\), then for every \(m\in\N\)
+		\[
+		\abs{K_R(u)}\leq C_mR(1+R\abs u)^{-m}.
+		\]
+		Hence \(P_R^{(j)}\) is bounded on every \(L^p\), \(1\leq p\leq\infty\), uniformly in \(R\), and if two \(x_j\)-slabs \(I,J\) are separated by \(d\), then
+		\[
+		\norm{\one_JP_R^{(j)}(\one_If)}{L^p}
+		\leq
+		C_m(1+Rd)^{-m}\norm{\one_If}{L^p}.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Fourier scaling gives \(K_R(u)=R\check\eta(Ru)\).  Integrating by parts \(m\) times in the inverse Fourier integral and using that \(\eta\) is smooth and compactly supported proves the first estimate.  Young's convolution inequality proves uniform \(L^p\)-boundedness.  Restricting the kernel to \(\abs u\geq d\), integrating its displayed majorant, and applying Young again proves the last estimate.
+	\end{proof}
+	
+	\begin{proposition}[Compactly supported high-pass estimate]\label{prop:compact-high-pass}
+		Fix \(j\in\indices\).  There are \(c>0\) and \(K\geq1\) such that, if
+		\(0<\mu\leq1\), \(N\geq K\mu^{-K}\), \(R=N^{-j}\mu^{-2}\), and the three inputs of \(A_N^{*j}\) are \(1\)-bounded and supported in \(I_N(C_0)\), then
+		\[
+		\norm{(I-P_R^{(j)})A_N^{*j}((g_i)_{i\neq j})}{L^2}
+		\leq C\mu^cN^3.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		Let \(C_1\) be the exponent in
+		\cref{prop:real-structural-decomposition} and choose
+		\(\gamma>0\) with \(\gamma C_1<1\).  Apply that proposition with
+		\(\delta_0=\mu^\gamma\).  After increasing \(K\), its low-frequency support lies in
+		\(\abs{\xi_j}\leq R/4\); hence
+		\[
+		(I-P_R^{(j)})F=0.
+		\]
+		Put \(H=(I-P_R^{(j)})E=(I-P_R^{(j)})G\).
+		
+		Choose an even integer \(p_0>2(C_1+1)\) and put
+		\(p_0'=p_0/(p_0-1)\).  From the \(L^1\) bound for \(E\), the
+		\(L^\infty\) bounds for \(F\) and \(G\), and interpolation,
+		\[
+		\norm E{L^{p_0'}}
+		\leq C\delta_0^{1-(C_1+1)/p_0}N^{6/p_0'}
+		\leq C\delta_0^{1/2}N^{6/p_0'}.
+		\]
+		By \cref{lem:projection-off-diagonal}, the same bound holds for \(H\).
+		On the other hand, \(G\) is bounded by one and supported in a box of volume \(CN^6\), so
+		\[
+		\norm H{L^{p_0}}\leq CN^{6/p_0}.
+		\]
+		Interpolate these two linear norm estimates at weight \(1/2\), using
+		\(1/p_0+1/p_0'=1\).  This gives
+		\[
+		\norm H{L^2}\leq C\delta_0^{1/4}N^3
+		=C\mu^{\gamma/4}N^3.
+		\]
+		For \(\mu\) above the fixed small cutoff used in the support comparison, enlarge \(C\) and use the crude \(L^2\) estimate.  This proves the proposition.
+	\end{proof}
+	
+	\subsection{Interpolation, removal of support, and the full exponent range}
+	
+	\begin{proposition}[A decaying point on the \(L^2\) hyperplane]\label{prop:l2-decaying-point}
+		Fix \(j\in\indices\), choose \(j'\neq j\), and let \(k\) be the remaining input index.  Under the scale condition of \cref{prop:compact-high-pass}, there are exponents
+		\[
+		\frac1{u_0}=\frac{10}{61},\qquad
+		\frac1{u_{j'}}=\frac{21}{122},\qquad
+		\frac1{u_k}=\frac{10}{61},
+		\qquad
+		\frac1{u_0}+\frac1{u_{j'}}+\frac1{u_k}=\frac12,
+		\]
+		and \(c>0\) such that, for inputs supported in \(I_N(C_0)\),
+		\[
+		\norm{(I-P_R^{(j)})A_N^{*j}((g_i)_{i\neq j})}{L^2}
+		\leq C\mu^c
+		\norm{g_0}{L^{u_0}}
+		\norm{g_{j'}}{L^{u_{j'}}}
+		\norm{g_k}{L^{u_k}}.
+		\]
+	\end{proposition}
+	
+	\begin{proof}
+		By \cref{cor:kosz-53-internal} and the \(L^2\)-boundedness of the projection,
+		\[
+		\norm{(I-P_R^{(j)})A_N^{*j}(g)}{L^2}
+		\leq
+		CN^{-1/20}\norm{g_0}{L^6}
+		\norm{g_{j'}}{L^{40/7}}\norm{g_k}{L^6}.
+		\]
+		Interpolate this estimate with \cref{prop:compact-high-pass} by
+		\cref{thm:gm-internal}, taking
+		\[
+		\theta=\frac{r}{2}=\frac{60}{61},
+		\qquad r=\frac{120}{61}.
+		\]
+		The power of \(N\) cancels exactly:
+		\[
+		3(1-\theta)-\frac{\theta}{20}=0.
+		\]
+		The three reciprocal input exponents are
+		\[
+		\frac{\theta}{6}=\frac{10}{61},\qquad
+		\frac{7\theta}{40}=\frac{21}{122},\qquad
+		\frac{\theta}{6}=\frac{10}{61},
+		\]
+		whose sum is \(1/2\).  The remaining \(\mu\)-power is positive.
+	\end{proof}
+	
+	\begin{lemma}[Support removal]\label{lem:support-removal}
+		Suppose a translation average followed by \(I-P_R^{(j)}\) obeys a compact-support estimate as in \cref{prop:l2-decaying-point} at exponents whose reciprocals sum to \(1/2\).  Then it obeys the same estimate, with a changed constant and half the decay exponent, for arbitrary inputs in those spaces.
+	\end{lemma}
+	
+	\begin{proof}
+		Partition \(\R^3\) into the anisotropic boxes
+		\[
+		Q_m=\prod_{\ell=1}^3
+		[m_\ell N^\ell,(m_\ell+1)N^\ell),
+		\qquad m\in\mathbb Z^3.
+		\]
+		During \(0\leq t\leq N\), a translated point can move only to one of a fixed number of neighbouring boxes.  Expand every input as
+		\(\sum_m\one_{Q_m}g_i\).  For terms whose three box indices have a common neighbour, translate that neighbour to the origin and apply the compact estimate.  Discrete H\"older, with the reciprocal sum \(1/2\), gives the product of the three global input norms.
+		
+		For the remaining terms, only the projection can connect the output slab to the input slab in the \(j\)-th coordinate.  Apply
+		\cref{lem:projection-off-diagonal} with \(m=20\).  Summing
+		\((1+\abs n)^{-20}\) over slab separations gives a finite constant.  Split at separation \(\mu^{-1}\): the near part uses the compact estimate, and the far part gains \(\mu^{10}\) from the kernel.  Taking the smaller of the two gains and using discrete H\"older proves the claim.  Approximate arbitrary inputs by finite box sums and pass to the limit.
+	\end{proof}
+	
+	\begin{lemma}[Convex completion of the exponent range]\label{lem:convex-exponent-completion}
+		Let \(\beta_1,\beta_2,\beta_3\in(0,1)\) have sum \(\sigma<1\).  There are
+		\(\tau\in(0,1)\), a vector \(u\in(0,1)^3\) with \(\sum u_i=1/2\), and a vector
+		\(v\in[0,1]^3\) with \(\sum v_i\leq1\), such that
+		\[
+		\beta_i=\tau u_i+(1-\tau)v_i
+		\]
+		for every \(i\), and
+		\[
+		\sigma=\frac{\tau}{2}+(1-\tau)\sum_i v_i.
+		\]
+	\end{lemma}
+	
+	\begin{proof}
+		Choose any \(u\in(0,1)^3\) of sum \(1/2\).  Since every \(\beta_i>0\) and \(\sigma<1\), a sufficiently small rational
+		\(\tau>0\) makes
+		\[
+		v_i=\frac{\beta_i-\tau u_i}{1-\tau}
+		\]
+		belong to \([0,1]\) and makes its sum at most \(1\).  Summing the defining identities proves the last display.
+	\end{proof}
+	
+	\begin{theorem}[Internal proof of Kosz et al., Theorem~6.13]\label{thm:kosz-613-internal}
+		The estimate in \cref{thm:kosz-adjoint} holds with proof term assembled from the internal results of this section.
+	\end{theorem}
+	
+	\begin{proof}
+		First let the desired reciprocal input exponents sum to \(1/2\).  The vector in
+		\cref{prop:l2-decaying-point} is an interior point of that simplex.  Given any other interior point, write it as
+		\[
+		\tau u+(1-\tau)v
+		\]
+		with \(\tau>0\), where \(u\) is the decaying point and \(v\) lies in the closed simplex.  At \(v\), Plancherel, Minkowski, and H\"older give the nondecaying \(L^2\) bound.  Apply \cref{thm:gm-internal}; a positive power of \(\mu\) remains.  Then apply
+		\cref{lem:support-removal}.
+		
+		Now let the target reciprocals be
+		\[
+		\beta_i=\frac1{r_i}\quad(i\neq j),\qquad
+		\sigma=\sum_{i\neq j}\beta_i
+		=\frac1{r_j^\star}<1.
+		\]
+		Use \cref{lem:convex-exponent-completion}.  The point \(u\) has the decaying
+		\(L^2\) estimate just proved.  At \(v\), Minkowski and H\"older give
+		\[
+		A_N^{*j}: \prod_{i\neq j}L^{1/v_i}
+		\longrightarrow L^{1/\sum v_i},
+		\]
+		with the conventions \(1/0=\infty\); \cref{lem:projection-off-diagonal} gives the same bound after \(I-P_R^{(j)}\).  Interpolate these two bounds using
+		\cref{thm:gm-internal}.  The input reciprocals become \(\beta_i\), the output reciprocal becomes \(\sigma\), and the decay is still a positive power of \(\mu\).
+		
+		Collect the finitely many constants produced above.  Round the scale threshold and norm constant upward with \(\Dyad\), and decrease the decay exponent if necessary so that it lies in \((0,1)\).  The assumption
+		\[
+		N\geq
+		\Thr{thm:kosz-adjoint}{\boldsymbol\alpha,j}
+		\mu^{-\Thr{thm:kosz-adjoint}{\boldsymbol\alpha,j}}
+		\]
+		then implies every scale condition used in
+		\cref{thm:real-inverse,prop:real-structural-decomposition,prop:compact-high-pass}.
+		With \(R=N^{-j}\mu^{-2}\), the resulting estimate is word for word the conclusion of
+		\cref{thm:kosz-adjoint}.  Thus Theorem~6.13 is not an axiom of the expanded blueprint.
+	\end{proof}
+	
+	\section{Lean dependency map for the added proof layer}\label{sec:lean-dependency-map}
+	
+	\begin{proposition}[Acyclic implementation order]\label{prop:acyclic-implementation-order}
+		The added results can be implemented in Lean in the following order, without a forward theorem reference:
+		\begin{enumerate}
+			\item scalar harmonic measure, simple functions, and
+			\cref{lem:scalar-strip,lem:lebesgue-strip};
+			\item measurable refinements, the real flow, the area formula, and
+			\cref{prop:restricted-improving-vertex};
+			\item finite Marcinkiewicz interpolation, duality, and
+			\cref{cor:kosz-53-internal,cor:kosz-subunit-internal};
+			\item Fej\'er differences, PET recursion, polynomial oscillation, degree lowering, and
+			\cref{thm:real-inverse};
+			\item Hahn--Banach separation, projection kernels, compact decay, support removal, and
+			\cref{thm:kosz-613-internal};
+			\item the already written normalized smoothing and main-proof sections.
+		\end{enumerate}
+	\end{proposition}
+	
+	\begin{proof}
+		Each item uses only earlier items in the list and elementary results already proved in the unchanged part of the blueprint.  The only apparent forward references are from the original citation paragraphs to their internal proof certificates; when generating Lean, place each internal proof immediately before the public declaration and use it as that declaration's value.  Citations remain comments or docstrings.  This topological reordering changes no mathematical statement and introduces no hypothesis.
+	\end{proof}
+	
+	\begin{thebibliography}{9}
+		
+		\bibitem{KoszEtAl}
+		D.~Kosz, M.~Mirek, S.~Peluse, R.~Wan, and J.~Wright,
+		\emph{The multilinear circle method and a question of Bergelson},
+		arXiv:2411.09478.
+		The inputs used here are Theorem~6.13, Corollary~5.3, equation~(6.24), and the real-case projection observation in Remark~6.9(i).
+		
+		\bibitem{GrafakosMastylo}
+		L.~Grafakos and M.~Masty\l o,
+		\emph{Analytic families of multilinear operators},
+		Nonlinear Analysis \textbf{107} (2014), 47--62.
+		The interpolation input used here is Theorem~3.2.
+		
+	\end{thebibliography}
+	
+\end{document}
