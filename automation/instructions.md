@@ -304,10 +304,10 @@ files `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` and the reusable prerequisites
 
 ## Patch for a blocked item, 2026-09-13T21:15:28-04:00
 
-The user directed: "Use patch_1.tex in the folder blueprints as a blueprint to solve the block at
+The user directed: "Use task_2_patch_1.tex in the folder blueprints as a blueprint to solve the block at
 line 1890."  Raw prompt: see `automation/raw.md` under the same timestamp.
 
-Operative effect: `blueprints/patch_1.tex` becomes an additional authorized blueprint source,
+Operative effect: `blueprints/task_2_patch_1.tex` becomes an additional authorized blueprint source,
 alongside `blueprints/task_2_smoothingineq3d_blueprint_updated.tex`, and is to be used to unblock
 the blocked item whose text begins at line 1890 of the updated blueprint.  That line is the first
 line of the proof of `lem:real-flow-jacobian` (Specialized real flow and its Jacobian, stated from
@@ -315,12 +315,12 @@ line 1857), which is recorded as blocked in `automation/ErrorReport.md` under
 2026-09-12T17:55:40-04:00.  Priority: this item takes precedence over the forward-order sweep once
 the patch is readable.
 
-State at the time of recording: `blueprints/patch_1.tex` exists but is zero bytes, so it carries no
+State at the time of recording: `blueprints/task_2_patch_1.tex` exists but is zero bytes, so it carries no
 mathematics yet.  Work continues in forward order until it has content.
 
 ### Patch content, recorded 2026-09-13T21:28:34-04:00
 
-`blueprints/patch_1.tex` now has content (744 lines).  It replaces the proof of
+`blueprints/task_2_patch_1.tex` now has content (744 lines).  It replaces the proof of
 `lem:real-flow-jacobian` at lines 1889--1895 of the main blueprint and corrects that lemma's
 statement.  Its sections are: notation recalled; `def:refinements` and `lem:nonempty` (the explicit
 depth-`r` tower with `c_{r,i} = 2^{-(4(r-1)+i+1)}`); `lem:transition` (one move, with the fibre
@@ -358,7 +358,7 @@ timestamp.
 Operative effect: lift the pause of 2026-09-14T00:05:00-04:00 and continue proof work.  The user
 did not mention the recurring job, so none is recreated; work proceeds in the foreground until
 directed otherwise.  Scope is unchanged: Task 2 from
-`blueprints/task_2_smoothingineq3d_blueprint_updated.tex` and `blueprints/patch_1.tex`, owned files
+`blueprints/task_2_smoothingineq3d_blueprint_updated.tex` and `blueprints/task_2_patch_1.tex`, owned files
 `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` and the reusable prerequisites `DFR/Auto/HirschmanLemma.lean`
 and `DFR/Auto/SteinInterpolation.lean`.  The next unfinished ledger row is patch 1 `lem:integrated`
 for the words `w^(1)` and `w^(2)`.
@@ -385,9 +385,9 @@ immediately without waiting for the next firing.
 
 ## 2026-09-14T15:06:25-04:00
 
-`blueprints/patch_2.tex` (561 lines, user-supplied) is authorized as an additional blueprint
+`blueprints/task_2_patch_2.tex` (561 lines, user-supplied) is authorized as an additional blueprint
 source, alongside `blueprints/task_2_smoothingineq3d_blueprint_updated.tex` and
-`blueprints/patch_1.tex`.  It supplies the repair for the three blocked rows of
+`blueprints/task_2_patch_1.tex`.  It supplies the repair for the three blocked rows of
 `lem:adjoint-gain-to-subunit` and `cor:kosz-subunit-internal` (the principal/nonprincipal cube
 selection, the cyclic stopping-time iteration, and the corollary depending on them).  Its Section 3
 is a merged replacement for the blocked proof and its corollary; use it in place of the old
@@ -426,8 +426,8 @@ later patch sources and the nod convention of 2026-09-14T15:54:14-04:00 and
 2026-09-14T16:06:27-04:00.  It is session-only and auto-expires after seven days.
 
 Scope is unchanged: Task 2 from `blueprints/task_2_smoothingineq3d_blueprint_updated.tex` with
-`blueprints/patch_1.tex` and `blueprints/patch_2.tex`, owned files
-`DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`, `DFR/Auto/SmoothingIneq3D/VanDerCorput.lean` and the
+`blueprints/task_2_patch_1.tex` and `blueprints/task_2_patch_2.tex`, owned files
+`DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`, `DFR/Auto/VanDerCorput.lean` and the
 reusable prerequisites `DFR/Auto/HirschmanLemma.lean` and `DFR/Auto/SteinInterpolation.lean`.  The
 next unfinished ledger row is `lem:pet-reduction`, the PET recursion for the system `t, t^2, t^3`
 (`automation/Status.md` line 389): carry the unimodular-factor bridge of `Auto.unitPhase` through
@@ -448,7 +448,7 @@ recorded under the pause of 2026-09-12T20:25:48-04:00 as extended on 2026-09-15T
 No Lean file was edited in this session: `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` is exactly as
 it was left at 2026-09-14T23:52:39-04:00 (1403 declarations, 21839 lines, `lake build` clean).
 Scope is unchanged: Task 2 from `blueprints/task_2_smoothingineq3d_blueprint_updated.tex` with
-`blueprints/patch_1.tex` and `blueprints/patch_2.tex`.  The next unfinished ledger row remains
+`blueprints/task_2_patch_1.tex` and `blueprints/task_2_patch_2.tex`.  The next unfinished ledger row remains
 `lem:pet-reduction`, the PET recursion for the system `t, t^2, t^3` (`automation/Status.md`
 line 389).
 
@@ -492,8 +492,8 @@ standing continuation instruction text.  Session-only, auto-expires after seven 
 continues immediately without waiting for the first firing.
 
 Scope is unchanged: Task 2 from `blueprints/task_2_smoothingineq3d_blueprint_updated.tex` with
-`blueprints/patch_1.tex` and `blueprints/patch_2.tex`, owned files
-`DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`, `DFR/Auto/SmoothingIneq3D/VanDerCorput.lean` and the
+`blueprints/task_2_patch_1.tex` and `blueprints/task_2_patch_2.tex`, owned files
+`DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`, `DFR/Auto/VanDerCorput.lean` and the
 reusable prerequisites `DFR/Auto/HirschmanLemma.lean` and `DFR/Auto/SteinInterpolation.lean`.  The
 next unfinished ledger row is `lem:pet-reduction`, the PET recursion for the system `t, t^2, t^3`
 (`automation/Status.md` line 389), to be implemented along the headed-functional plan recorded
@@ -554,14 +554,14 @@ with the following rows.  Raw prompt: see `automation/raw.md` under the same tim
 
 Operative effect: `lem:pet-reduction` stays blocked and is not to be worked around or invented; work
 proceeds down the ledger from `lem:degree-lowering-zero` (row 372).  When the patch arrives it is
-authorized as an additional blueprint source in the manner of `blueprints/patch_1.tex` and
-`blueprints/patch_2.tex`, and the blocked row is resumed with priority.
+authorized as an additional blueprint source in the manner of `blueprints/task_2_patch_1.tex` and
+`blueprints/task_2_patch_2.tex`, and the blocked row is resumed with priority.
 
 ## Patch 3 authorized, 2026-09-15T15:43:29-04:00
 
-`blueprints/patch_3.tex` (302 lines, 19433 bytes, MD5 3d738eee36f537a6cf68489418b269ab) is authorized
+`blueprints/task_2_patch_3.tex` (302 lines, 19433 bytes, MD5 3d738eee36f537a6cf68489418b269ab) is authorized
 as an additional blueprint source alongside `task_2_smoothingineq3d_blueprint_updated.tex`,
-`patch_1.tex` and `patch_2.tex`.  Raw prompt: see `automation/raw.md` under the same timestamp.
+`task_2_patch_1.tex` and `task_2_patch_2.tex`.  Raw prompt: see `automation/raw.md` under the same timestamp.
 
 It is a targeted replacement for the two blocked spots recorded on 2026-09-15T15:07:51-04:00:
 blueprint line 2183 (the unrestricted last assertion of `lem:fejer-vdc`) and line 2193 (its
@@ -590,15 +590,15 @@ is not abandoned -- what is proved stays, and the remaining nodes (`cs_remove_sl
 steps 4 to 6) resume when the further patch arrives.  Work moves to `lem:degree-lowering-zero`
 (rows 372 and 373) and then `thm:real-inverse` (row 374).
 
-## 2026-09-15T22:05:00-04:00 - `blueprints/patch_3_updated.tex` supersedes `blueprints/patch_3.tex`
+## 2026-09-15T22:05:00-04:00 - `blueprints/task_2_patch_3_updated.tex` supersedes `blueprints/task_2_patch_3.tex`
 
-The user directed: "Ok, I have a new patch, namely patch_3_updated.tex in blueprints folder, that
-should substitute patch_3.tex.  Formalize that to solve the original block spots at lines 2183 and
+The user directed: "Ok, I have a new patch, namely task_2_patch_3_updated.tex in blueprints folder, that
+should substitute task_2_patch_3.tex.  Formalize that to solve the original block spots at lines 2183 and
 2193.  It probably will cause some changes at rows 371, 372, 373, 374."
 
-Operative effect: `blueprints/patch_3_updated.tex` (1862 lines, 101841 bytes, MD5 8190ab6c754a2619b45f6cfcab5e2007)
-is authorized as a blueprint source **in place of** `blueprints/patch_3.tex`, which is now
-superseded and must not be used.  `patch_1.tex` and `patch_2.tex` remain authorized.
+Operative effect: `blueprints/task_2_patch_3_updated.tex` (1862 lines, 101841 bytes, MD5 8190ab6c754a2619b45f6cfcab5e2007)
+is authorized as a blueprint source **in place of** `blueprints/task_2_patch_3.tex`, which is now
+superseded and must not be used.  `task_2_patch_1.tex` and `task_2_patch_2.tex` remain authorized.
 Raw prompt: see `automation/raw.md` under the same timestamp.
 
 ## 2026-09-16T12:00:00-04:00 - verification procedure: one elaboration per tick
@@ -647,9 +647,9 @@ text.  It is session-only and auto-expires after seven days.  Proof work continu
 without waiting for the first firing.
 
 Scope is unchanged: Task 2 from `blueprints/task_2_smoothingineq3d_blueprint_updated.tex` with
-`blueprints/patch_1.tex`, `blueprints/patch_2.tex` and `blueprints/patch_3_updated.tex`
-(`patch_3.tex` superseded), owned files `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`,
-`DFR/Auto/SmoothingIneq3D/VanDerCorput.lean` and the reusable prerequisites
+`blueprints/task_2_patch_1.tex`, `blueprints/task_2_patch_2.tex` and `blueprints/task_2_patch_3_updated.tex`
+(`task_2_patch_3.tex` superseded), owned files `DFR/Auto/SmoothingIneq3D/Smoothing3D.lean`,
+`DFR/Auto/VanDerCorput.lean` and the reusable prerequisites
 `DFR/Auto/HirschmanLemma.lean` and `DFR/Auto/SteinInterpolation.lean`.  The next unfinished ledger
 row is `patch:uniformize` (`automation/Status.md` line 396), whose one remaining step is averaging
 the zero-vertex bound `Auto.sq_norm_avg_le_enlarged` over the cube against the mixed weight.
@@ -753,7 +753,7 @@ Claude and Codex editions -- carry the same new Status.md rules).
   completed one by one.  No free text status updates.  The former Historical log was purged; it
   survives in Git history at commit `11c07cf`.  Continuation notes live here, discrepancies in
   `ErrorReport.md`.
-- Target: complete `Auto.KoszAdjoint` following `blueprints/koszAdjoint_blueprint.tex`, tracked in
+- Target: complete `Auto.KoszAdjoint` following `blueprints/task_2_koszAdjoint_blueprint.tex`, tracked in
   a new section of Status.md.  Owned folder unchanged: `DFR/Auto/SmoothingIneq3D/`.
 - A recurring 15-minute cron job re-invokes `/autoformalize` on this target.
 - Commits authorized: exactly one commit and push after the skill fix (this entry), then one commit
@@ -761,7 +761,7 @@ Claude and Codex editions -- carry the same new Status.md rules).
 
 Continuation note carried over from the purged log (2026-09-24T13:38:49-04:00): the pigeonhole
 step "`0 <= F <= 1`, mean `>= kappa`, `mu(B) <= kappa/4` gives a point off `B` with `F >= kappa/2`"
-(`patch_3_updated.tex` line 668, part of `patch:highest-control`) hung the elaborator twice without
+(`task_2_patch_3_updated.tex` line 668, part of `patch:highest-control`) hung the elaborator twice without
 a diagnostic.  Bisect it under `set_option maxHeartbeats 40000` with the body replaced by `sorry`
 and the `have`s reintroduced one at a time, rather than rewriting it.
 
@@ -933,3 +933,28 @@ loop until Task 3 is completely finished. A follow-up instruction
 the existing `DFR/Auto/Twisted/*Scratch.lean` and `*Candidate.lean` files
 before developing new proofs. Task 3 is the active assigned task; all work
 stays in `DFR/Auto/Twisted/`.
+
+## Merge Tasks 1-3 into main; start Task 4
+
+Recorded 2026-09-25T21:17:51-04:00 (recording time); exact prompt: [raw.md](raw.md).
+The user reports Tasks 1, 2 and 3 complete and directs, on `main`:
+
+- Merge the task-1, task-2 and task-3 branches into `main`, resolving conflicts by the project's
+  intentions. Per-task records are renamed: `Status-task1.md` ... `Status-task3.md` and
+  `ErrorReport-task1.md` ... `ErrorReport-task3.md` (Task 3's `StatusLog.md` becomes
+  `StatusLog-task3.md`). The shared `Status.md` / `ErrorReport.md` no longer exist.
+- Reusable modules created in the tasks live directly in `DFR/Auto/` (`VanDerCorput.lean` moved
+  there from `DFR/Auto/SmoothingIneq3D/`).
+- Blueprint files coming from a task branch are prefixed with the task number (`task_2_...`).
+- Commit and push `main`.
+- Then /autoformalize Task 4, the reduction, following `blueprints/main.tex` (the paper draft).
+  `blueprints/main.tex` must never be committed (it is in `.gitignore`).
+- Keep a recurring 15-minute job until the first theorem of `blueprints/main.tex`
+  (`thm:main`) is completely proved, true to the source, and sorry free.
+
+Merge decisions: the collaborator's placeholder `my_theorem ... sorry` in `DFR/Theorems.lean`
+(task-2 "test commit") is dropped; macOS `.DS_Store` files from task-3 are dropped and ignored;
+task-3's imports `Auto.Twisted.*` are corrected to the module paths `DFR.Auto.Twisted.*`.
+
+Task 4 records: `automation/Status-task4.md`, `automation/ErrorReport-task4.md`; folder
+`DFR/Auto/Reduction/`, main file `DFR/Auto/Reduction/Reduction.lean`.

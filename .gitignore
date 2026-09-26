@@ -52,3 +52,5 @@ _minted*/
 
 # Keep .tex, .bib, and source PDFs trackable.
 *.zip
+main.tex
+.DS_Store

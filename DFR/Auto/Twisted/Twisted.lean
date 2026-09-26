@@ -48,6 +48,8 @@ open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv RealInne
 
 noncomputable section
 
+namespace Twisted
+
 /-- The source's `E_3`, equipped with Euclidean norm and Lebesgue measure. -/
 abbrev E3 := EuclideanSpace ℝ (Fin 3)
 
@@ -180,7 +182,6 @@ later in the twisted form.  The remaining product-space/fibre integration part
 of the source lemma is developed next, before the pairing lemma is started.
 -/
 
-namespace Twisted
 
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary

@@ -359,12 +359,12 @@ proved | **`lem:fejer-vdc` on a fixed interval: replacing `I ∩ (I - h)` by `I`
 proved | `lem:fejer-vdc`, the nested Fejér average of the iterated Fejér differences: measurable in any parameter, nonnegative, at most one | `Auto.rdiff`, `Auto.measurable_rdiff`, `Auto.norm_rdiff_le`, `Auto.vdcAvg`, `Auto.measurable_vdcAvg`, `Auto.vdcAvg_nonneg`, `Auto.vdcAvg_le_one`
 proved | `lem:fejer-vdc`, Cauchy-Schwarz against the kernel, and iterating it to move a power of two inside | `Auto.integrable_fejer`, `Auto.add_pow_le_two_pow_mul`, `Auto.sq_integral_fejer_le`, `Auto.pow_integral_fejer_le`
 proved | **`lem:fejer-vdc`, the Gowers-Cauchy-Schwarz step**: iterating `Auto.fejer_vdc'` `s` times, with the powers moved inside the successive kernel averages, bounds the `2^s`-th power of the normalized average by `A_s` times the nested Fejer average of depth `s` plus `B_s sum_i H_i / N` | `Auto.pow_two_pow_le_mul`, **`Auto.exists_vdc_iterate`**
-proved | **`lem:real-polynomial-oscillation`**, the oscillation bound for real polynomials, via the reusable prerequisite van der Corput's lemma in DFR/Auto/SmoothingIneq3D/VanDerCorput.lean | `Auto.oscPoly`, `Auto.oscPoly_coeff`, `Auto.oscPoly_natDegree_le`, `Auto.oscPoly_eval`, **`Auto.real_polynomial_oscillation`**
+proved | **`lem:real-polynomial-oscillation`**, the oscillation bound for real polynomials, via the reusable prerequisite van der Corput's lemma in DFR/Auto/VanDerCorput.lean | `Auto.oscPoly`, `Auto.oscPoly_coeff`, `Auto.oscPoly_natDegree_le`, `Auto.oscPoly_eval`, **`Auto.real_polynomial_oscillation`**
 superseded | **`lem:pet-reduction`** (new statement: every-input local uniformity for the monomial average) | `Auto.locUnif`, `Auto.petBox`, `Auto.petStep`, `Auto.petWeight`, `Auto.petWeight_step_lt`, `Auto.petStep_terminates`, `Auto.cfgProd`, `Auto.cfgAvg`, `Auto.cfgInt`, `Auto.cfgInt_translSub`, `Auto.cfgInt_cons`, `Auto.sq_norm_cfgHeadInt_le`, `Auto.cfgHeadInt_merge`, **`Auto.cfgHeadInt_cube`** (retained by the patch), `Auto.Lambda_eq_cfgHeadInt`, `Auto.cfgPair`, `Auto.cfgL2_le_innerSq`, `Auto.ofReal_integral_sq_norm_innerAvg`, `Auto.norm_cfgPairIntegral_sub_cfgCapPair_le`
 removed | `lem:degree-lowering-zero` | (off path) `Auto.locUnifPow_succ_split`, `Auto.exists_shift_locUnifPow_ge`, `Auto.fejerHat`, `Auto.fourier_fejer`, `Auto.integrable_fejerHat`, `Auto.fourier_fejerHat`, `Auto.autocorr`, `Auto.fourier_autocorr`, `Auto.integral_fourier_mul_comm`, `Auto.integral_fejer_autocorr` -- all proved and all still valid; the Plancherel group is reusable at the patch's stage 4
 open | **`thm:real-inverse`**, the specialized real inverse theorem | (off path) `Auto.phaseCutoff`, `Auto.integral_phaseCutoff_mul`, `Auto.norm_integral_phaseCutoff_mul`, `Auto.exists_phase_witness`, `Auto.exists_real_inverse_witness` -- proved and still valid, but the new proof does not need them.  `Auto.P_self_adjoint`, weakened to measurable second argument for them, stays useful
 
-#### Part V (bis) -- the replacement proof path of `blueprints/patch_3_updated.tex`
+#### Part V (bis) -- the replacement proof path of `blueprints/task_2_patch_3_updated.tex`
 
 status | stage | source item | Lean name
 --- | --- | --- | ---
@@ -431,7 +431,7 @@ status | source item | reason
 n/a | `prop:removed-material`, `prop:simplifications`, `prop:no-imported-analytic-declarations` | metatheoretic commentary on the blueprint, not mathematical content
 n/a | `prop:acyclic-implementation-order` | the implementation order itself, realized by this ledger
 
-## Task 2: `Auto.KoszAdjoint` from `blueprints/koszAdjoint_blueprint.tex`, in forward reasoning order
+## Task 2: `Auto.KoszAdjoint` from `blueprints/task_2_koszAdjoint_blueprint.tex`, in forward reasoning order
 
 ### Overview
 

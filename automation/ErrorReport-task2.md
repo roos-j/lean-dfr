@@ -677,7 +677,7 @@ lemma's range.  Nothing in the statement had to be weakened.
 
 ## 2026-09-13T21:28:34-04:00 - Patch 1 resolves the block in `lem:real-flow-jacobian`
 
-The user supplied `blueprints/patch_1.tex`, a 744-line document that replaces the four-sentence
+The user supplied `blueprints/task_2_patch_1.tex`, a 744-line document that replaces the four-sentence
 proof at lines 1889--1895 of the main blueprint and corrects the lemma's statement.  It answers
 each of the four items of the entry of 2026-09-12T17:55:40-04:00, and it is authorized as a
 blueprint source alongside `blueprints/task_2_smoothingineq3d_blueprint_updated.tex`.
@@ -760,7 +760,7 @@ both maps satisfy.
 
 ## 2026-09-14T15:17:45-04:00 - `lem:adjoint-gain-to-subunit`: the three blocked rows are resolved by patch 2, and the blueprint's abstract implication is false
 
-`blueprints/patch_2.tex` (user-supplied, authorized 2026-09-14T15:17:45-04:00) resolves the block recorded on
+`blueprints/task_2_patch_2.tex` (user-supplied, authorized 2026-09-14T15:17:45-04:00) resolves the block recorded on
 2026-09-13T15:23:28-04:00.  It confirms the two readings flagged there and adds a third, decisive
 point that the entry did not reach.
 
@@ -1014,8 +1014,8 @@ the identification cannot be read off from termination alone; it needs the concr
 
 **Assessment.**  The step is standard PET/Gowers and there is no reason to think it false; the gap
 is that the concrete endpoint bookkeeping is not supplied.  This is the same shape as the two
-earlier blocked items, which were resolved by user-supplied `blueprints/patch_1.tex` and
-`blueprints/patch_2.tex`.  If the assembly reaches the endpoint and the identification cannot be
+earlier blocked items, which were resolved by user-supplied `blueprints/task_2_patch_1.tex` and
+`blueprints/task_2_patch_2.tex`.  If the assembly reaches the endpoint and the identification cannot be
 derived from the material present, the honest outcome is to report and request a patch for this
 step rather than to invent the bookkeeping.
 
@@ -1123,7 +1123,7 @@ how `lem:pet-reduction` is established, followed by the Part VI rows.
 
 ## 2026-09-15T15:43:29-04:00 - Patch 3 arrives: the terminal step is supplied, the every-`j` input producer is not
 
-`blueprints/patch_3.tex` replaces blueprint lines 2183 and 2193, the two spots recorded as blocked
+`blueprints/task_2_patch_3.tex` replaces blueprint lines 2183 and 2193, the two spots recorded as blocked
 on 2026-09-15T15:07:51-04:00.  It answers the request in full for the step that was asked about, and
 it also narrows the claim that can be made, which is recorded here so the row's status is not
 overstated later.
@@ -1213,13 +1213,13 @@ them, so no other proof was resting on a false lemma.  Re-verified after the fix
 warning, and `#print axioms` on the affected declarations gives exactly
 `[propext, Classical.choice, Quot.sound]`.
 
-## 2026-09-15T22:05:00-04:00 -- `blueprints/patch_3_updated.tex` supersedes `patch_3.tex`, and
+## 2026-09-15T22:05:00-04:00 -- `blueprints/task_2_patch_3_updated.tex` supersedes `task_2_patch_3.tex`, and
 ## deletes `lem:degree-lowering-zero`
 
-The user supplied `blueprints/patch_3_updated.tex` (1862 lines, MD5
-8190ab6c754a2619b45f6cfcab5e2007) to replace `blueprints/patch_3.tex` and repair the original
+The user supplied `blueprints/task_2_patch_3_updated.tex` (1862 lines, MD5
+8190ab6c754a2619b45f6cfcab5e2007) to replace `blueprints/task_2_patch_3.tex` and repair the original
 blocked passages at blueprint lines 2183 and 2193.  Recorded in `automation/instructions.md` at the
-same timestamp.  `patch_3.tex` is superseded and is not to be used.
+same timestamp.  `task_2_patch_3.tex` is superseded and is not to be used.
 
 **The two blockers, as the new patch names them.**  Line 2183 asserted, without proof, that repeated
 van der Corput and Cauchy-Schwarz bound *every* polynomial average generated from `t, t^2, t^3` by a
@@ -1260,7 +1260,7 @@ confined to the inverse-theorem portion, exactly as the patch's own scoped repla
 
 ## 2026-09-16T01:05:00-04:00 -- Plancherel is not a library prerequisite in this Lean environment
 
-`blueprints/patch_3_updated.tex` lists, under "Background library", "Lebesgue integration,
+`blueprints/task_2_patch_3_updated.tex` lists, under "Background library", "Lebesgue integration,
 Fubini-Tonelli, Cauchy-Schwarz and Hoelder, standard convergence theorems, translation and dilation
 changes of variables, elementary polynomial algebra and calculus, and Plancherel", and says these
 "are library prerequisites, not new analytic assumptions specific to this problem".
@@ -1474,7 +1474,7 @@ impression, and it is the one status value that stops work.
 
 **What I got wrong.**  At 01:05 I recorded that the remaining work on row 393 was "mostly design,
 not proof", that "the design is uncomfortably underdetermined", and that no consumer existed to pin
-it down.  I repeated that to the user.  It was wrong: `patch_3_updated.tex` contains a paragraph
+it down.  I repeated that to the user.  It was wrong: `task_2_patch_3_updated.tex` contains a paragraph
 headed "Lean state" (line 540) that specifies the representation directly -- factor fields, the
 outer polynomial ring, the singleton head list, classical polynomial equality, and the instruction
 to use a lexicographic well-founded relation for termination -- and a "Lean nodes" list (line 764)
@@ -1550,7 +1550,7 @@ trick used for the same reason: giving an intermediate `have hre : Integrable fu
 hcI.re` an explicit type annotation forces `Complex.re` rather than `RCLike.re` in the subsequent
 goal.
 
-## 2026-09-18T11:51:17-04:00 - three wording and convention points in `blueprints/patch_3_updated.tex`
+## 2026-09-18T11:51:17-04:00 - three wording and convention points in `blueprints/task_2_patch_3_updated.tex`
 
 Recorded here rather than only in `automation/Status.md`, correcting a gap in this session's
 record-keeping: the skill directs *convention differences* and departures from the source's literal
@@ -1616,7 +1616,7 @@ need not re-derive it.
 
 ## 2026-09-25T07:00:11-04:00 - `new:integral-plancherel`: proof route replaced by verified Mathlib reuse
 
-Source: `blueprints/koszAdjoint_blueprint.tex`, Theorem `new:integral-plancherel` (lines 386-417),
+Source: `blueprints/task_2_koszAdjoint_blueprint.tex`, Theorem `new:integral-plancherel` (lines 386-417),
 proved there from `new:approximate-identity` and `new:translation-continuity`.  The Lean proof in
 `DFR/Auto/IntegralPlancherel.lean` instead identifies the integral transform with Mathlib's `L^2`
 Fourier isometry `MeasureTheory.Lp.fourierTransformₗᵢ`, by testing both against smooth compactly
@@ -1626,7 +1626,7 @@ blueprint and is therefore not on the formalized dependency path.  Resolved.
 
 ## 2026-09-25T08:14:07-04:00 - `new:interpolation`: Stein's analytic-family route instead of duality
 
-Source: `blueprints/koszAdjoint_blueprint.tex`, Lemma `new:interpolation` (lines 497-539),
+Source: `blueprints/task_2_koszAdjoint_blueprint.tex`, Lemma `new:interpolation` (lines 497-539),
 proved there by pairing with analytic families of simple tests and `new:three-lines`, then
 `new:duality`.  The Lean proof (`Auto.interpolate_trilin_simple`) applies the existing Stein
 interpolation theorem `Auto.eLpNorm_le_of_analyticFamily` directly to the output family, whose
@@ -1666,7 +1666,7 @@ stays `u(δ) N^6`.  No statement changes; resolved.
 
 ## 2026-09-25T11:38:12-04:00 - `patch:highest-control`: one output budget for both the radius and the lower bound
 
-Source: `blueprints/koszAdjoint_blueprint.tex`, Proposition `patch:highest-control` (lines
+Source: `blueprints/task_2_koszAdjoint_blueprint.tex`, Proposition `patch:highest-control` (lines
 1406-1424): "There are integers `s_0 ≥ 2` and `C ≥ c` ... at the deterministic radius
 `H = u_C(δ) N^{d_m}`, `Q ≥ ℓ_C(δ)`."  With the same `C` for the radius and the lower bound
 the proof does not give the assertion: `patch:uniformize` loses `∏ 2L/L_i`, so at radius

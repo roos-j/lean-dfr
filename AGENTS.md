@@ -1,8 +1,8 @@
 # Repository agent instructions
 
 Read [automation/instructions.md](automation/instructions.md), then
-[automation/tasks.md](automation/tasks.md), [automation/Status.md](automation/Status.md),
-and [automation/ErrorReport.md](automation/ErrorReport.md) before working.
+[automation/tasks.md](automation/tasks.md), and the status ledger and error report of your task,
+`automation/Status-taskN.md` and `automation/ErrorReport-taskN.md` (N = 1, 2, 3, 4), before working.
 
 Read and follow [.codex/skills/autoformalize/SKILL.md](.codex/skills/autoformalize/SKILL.md)
 for Codex. If absent, use ~/.codex/skills/autoformalize/SKILL.md (or

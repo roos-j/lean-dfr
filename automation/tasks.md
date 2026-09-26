@@ -1,14 +1,15 @@
 # Autoformalization tasks
 
 This is the authoritative task assignment and readiness registry.
-Proof progress and verification evidence belong in [Status.md](Status.md).
+Proof progress and verification evidence belong in the per-task ledgers
+`Status-task1.md` ... `Status-task4.md`; discrepancies in `ErrorReport-task1.md` ... `ErrorReport-task4.md`.
 
 | Task | Target/source | Exclusive work folder | Main file | Owner | Readiness |
 | --- | --- | --- | --- | --- | --- |
 | 1 | Trilinear smoothing inequality, Theorem 5, [arXiv:2008.10140](https://arxiv.org/abs/2008.10140) | DFR/Auto/SmoothingIneq2D/ | DFR/Auto/SmoothingIneq2D/Smoothing2D.lean | Codex root task1-20260910-0955 | Complete; Auto.smoothing_theorem5 verified with all prerequisites, full build, and allowed-axiom audit |
 | 2 | 3d smoothing inequality, [blueprints/task_2_smoothingineq3d_blueprint.tex](../blueprints/task_2_smoothingineq3d_blueprint.tex) | DFR/Auto/SmoothingIneq3D/ | DFR/Auto/SmoothingIneq3D/Smoothing3D.lean | Claude session task2-20260911-1213 | Complete; Auto.mainTheorem (`thm:main`, no hypotheses) verified with Auto.koszAdjoint, lake build, and allowed-axiom audit |
 | 3 | Twisted; `blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main` | DFR/Auto/Twisted/ | DFR/Auto/Twisted/Twisted.lean | Claude root task3-20260911-1842 | Complete; Auto.Twisted.thm_main verified (unconditional) |
-| 4 | Reduction: use Tasks 1-3 to prove the main theorem; user blueprint pending in blueprints/ | DFR/Auto/Reduction/ | Select from blueprint within folder | Unassigned | Blocked: Tasks 1-3 incomplete and blueprint missing |
+| 4 | Reduction: `thm:main` of `blueprints/main.tex` (paper draft, kept out of git) from Tasks 1-3 | DFR/Auto/Reduction/ | DFR/Auto/Reduction/Reduction.lean | Claude session task4-20260925-2118 | Active (2026-09-25T21:17:51-04:00) |
 
 ## Assignment protocol
 
@@ -25,7 +26,7 @@ Proof progress and verification evidence belong in [Status.md](Status.md).
    using worker reports. Cross-task changes require reassignment/coordination;
    do not edit another task or place new prerequisites directly in DFR/Auto/.
 5. On handoff, record the actual declarations, source mappings, checks, remaining
-   obligations, and next step in Status.md; update owner/readiness here.
+   obligations, and next step in the task's Status-taskN.md; update owner/readiness here.
    Never treat an absent or disconnected agent as evidence its task is complete.
 
 ## Completion gate
@@ -36,7 +37,7 @@ and #print axioms on the exported results shows only a subset of propext,
 Classical.choice, and Quot.sound. No sorryAx, additional axioms, unproved bridges,
 weakened targets, or placeholders may underlie a completed task. Record the
 exported module/declaration names, exact source/version, build result, axiom
-output, and local verification timestamp in Status.md.
+output, and local verification timestamp in the task's Status-taskN.md.
 
 Before assigning Task 4, the coordinator must verify all three prerequisite
 tasks against this evidence and current source, mark each complete, confirm the
@@ -104,3 +105,13 @@ Theorem `thm:main`. The paused checkpoint's unverified selected-atom scale-tail
 bridge was re-checked and audited before new work began. Next unfinished step:
 finish Section 8's `lem:fiber_cz` good-part bounds and assemble the one-fiber
 weak extension `lem:one_fiber`. Completion criteria are unchanged.
+
+## Task 4 assignment
+
+2026-09-25T21:17:51-04:00 — The user reports Tasks 1-3 complete and merges them into `main`;
+the completion gate is rechecked on the merged tree (all three task modules build together,
+exported theorems `Auto.smoothing_theorem5`, `Auto.mainTheorem`, `Auto.Twisted.thm_main`).
+The user assigns Task 4 to Claude session task4-20260925-2118. Scope: `DFR/Auto/Reduction/`
+(plus reusable prerequisites directly in `DFR/Auto/`); main file
+`DFR/Auto/Reduction/Reduction.lean`; source `blueprints/main.tex`, target Theorem `thm:main`
+(the first theorem). Ledger `Status-task4.md`, discrepancies `ErrorReport-task4.md`.

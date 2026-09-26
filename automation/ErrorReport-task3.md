@@ -280,3 +280,11 @@ is Lebesgue measure on `E3`.  What remains to close the chain downstream is to
 weaken `FourVertexMarcinkiewiczUniform` to carry these two hypotheses, or to
 supply them at each use site; that is an edit to statements already in the
 corpus rather than new mathematics.
+
+2026-09-25T21:27:35-04:00 - Merge into `main`: `DFR/Auto/Twisted/Twisted.lean` declared `Auto.E3`, which
+`DFR/Auto/SmoothingIneq3D/Smoothing3D.lean` (Task 2) also declares, so the two tasks could not be
+imported together (needed by Task 4). The opening block of `Twisted.lean` (`E3`, `E4`,
+`Anisotropy`) now sits inside `namespace Auto.Twisted` like the rest of the development; the Lean
+names become `Auto.Twisted.E3`, `Auto.Twisted.Anisotropy`, with unchanged definitions. The
+section modules imported `Auto.Twisted.*`, which is not a module path in this repository; they now
+import `DFR.Auto.Twisted.*`. No statement changed.

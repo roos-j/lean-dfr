@@ -37,7 +37,7 @@ import Mathlib.MeasureTheory.Integral.DominatedConvergence
 import Mathlib.MeasureTheory.Function.LocallyIntegrable
 import DFR.Auto.IntegralPlancherel
 import DFR.Auto.SteinInterpolation
-import DFR.Auto.SmoothingIneq3D.VanDerCorput
+import DFR.Auto.VanDerCorput
 
 /-!
 # A trilinear Sobolev smoothing estimate in three dimensions
@@ -16840,7 +16840,7 @@ theorem strong_real_improving :
 
 /-! ## Patch 2: the subunit endpoint for the monomial system
 
-`blueprints/patch_2.tex` replaces the blocked stopping-time proof of `lem:adjoint-gain-to-subunit`
+`blueprints/task_2_patch_2.tex` replaces the blocked stopping-time proof of `lem:adjoint-gain-to-subunit`
 by a direct argument for the actual monomial average, and shows that the abstract implication the
 blueprint asserts is false; see `automation/ErrorReport.md`.
 
@@ -19673,7 +19673,7 @@ theorem exists_vdc_iterate : ∀ s : ℕ, ∃ A B : ℝ, 0 ≤ A ∧ 0 ≤ B ∧
 `norm(N^{-1} int_0^N exp(2 pi i P(t)) dt) <= C_d min(1, (max_m abs(a_m) N^m)^{-1/d})`."
 
 The reusable prerequisite `Auto.exists_polynomial_oscillation_bound`, proved in
-DFR/Auto/SmoothingIneq3D/VanDerCorput.lean, is the normalized case `N = 1` with the phase `exp(i
+DFR/Auto/VanDerCorput.lean, is the normalized case `N = 1` with the phase `exp(i
 f)`.  The two remaining steps are the substitution `t = N s`, which replaces `a_m` by `a_m N^m`,
 and the factor `2 pi`, which only rescales the largest coefficient by a fixed amount. -/
 
@@ -24761,7 +24761,7 @@ theorem norm_locUnifPow_fdiff_le {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) 
 
 /-! ## Patch 3: the slope blocks
 
-`blueprints/patch_3.tex` replaces the blocked last assertion of `lem:fejer-vdc` by a terminal
+`blueprints/task_2_patch_3.tex` replaces the blocked last assertion of `lem:fejer-vdc` by a terminal
 configuration theorem, and its first step is to name the object the induction carries.  For an
 affine configuration with slopes `a i`, the block attached to input `i` after `r` removals is
 defined by the recursion of the patch's (eq:blocksucc):
@@ -25298,7 +25298,7 @@ theorem integrable_of_bdd_support {c N M : ℝ} {W : ℝ → ℂ} (hWm : Measura
 -- UNPARKED 2026-09-16.  `integral_windowAvg` -- the patch's `int_R S_u du = int_I F_t dt` -- is
 -- proved at the end of this file, together with its Fubini hypothesis
 -- `Auto.integrable_shift_prod_line`.  It is the one-dimensional twin of `Auto.integral_winAvg` and
--- belongs to `patch:signed-vdc` of `blueprints/patch_3_updated.tex`.
+-- belongs to `patch:signed-vdc` of `blueprints/task_2_patch_3_updated.tex`.
 
 
 
@@ -26146,7 +26146,7 @@ theorem integral_projKernel_tail_le {R d : ℝ} (hR : 0 < R) (hd : 0 ≤ d) (m :
     _ = etaKerMom m := integral_projKernel_mom hR m
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 1: the Fejer square identity
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 1: the Fejer square identity
 
 `patch:fejer-squares` states
 
@@ -26172,7 +26172,7 @@ theorem norm_winAvg_sq {H : ℝ} (hH : 0 < H) (v : E3) (f : E3 → ℂ) (x : E3)
   rw [winAvg, norm_mul, mul_pow, norm_inv, Complex.norm_real, Real.norm_of_nonneg hH.le, inv_pow]
 
 open MeasureTheory in
-/-- **The Fejer square identity**, patch_3_updated `patch:fejer-squares`:
+/-- **The Fejer square identity**, task_2_patch_3_updated `patch:fejer-squares`:
 the Fejer average of the paired integral is the `L^2` norm of the window average. -/
 theorem integral_fejer_pairAvg_eq_sq {H : ℝ} (hH : 0 < H) (v : E3) {f : E3 → ℂ} (hf : Nice f) :
     (∫ h : ℝ, fejer H h • pairAvg v f h)
@@ -26226,7 +26226,7 @@ theorem locUnifPow_zero {N H : ℝ} (j : Fin 3) (f : E3 → ℂ) :
   simp [MeasureTheory.Measure.real, hu]
 
 open MeasureTheory in
-/-- **`patch:public-u1`** of `blueprints/patch_3_updated.tex`: the order-one local uniformity power
+/-- **`patch:public-u1`** of `blueprints/task_2_patch_3_updated.tex`: the order-one local uniformity power
 is the normalized `L^2` norm of the window average, `Q_1 = N^{-6} ‖T_H f‖_2^2`.
 
 This is `Auto.integral_fejer_pairAvg_eq_sq` read through `Auto.locUnifPow`; the order-one cube is
@@ -26248,7 +26248,7 @@ theorem locUnifPow_one_eq {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3) {f
 
 
 open MeasureTheory in
-/-- **`patch:public-u2-squares`** of `blueprints/patch_3_updated.tex`:
+/-- **`patch:public-u2-squares`** of `blueprints/task_2_patch_3_updated.tex`:
 `Q_2 = N^{-6} ∫ kappa_H(z) ‖T_H g_z‖_2^2 dz`, where `g_z` is the one-difference function
 `Auto.fdiff (basisVec j) z f`.
 
@@ -26324,7 +26324,7 @@ theorem winWidth_le {H : ℝ} (hH : 0 ≤ H) (j i : Fin 3) : winWidth H j i ≤ 
   · exact hH
 
 /-- `I_N(C)` widened by `H` on the lower side of the `j`-th coordinate.  This is where
-`T_{H,e_j} u` lives when `u` lives in `I_N(C)`; patch_3_updated `patch:energy-to-u2`, where its
+`T_{H,e_j} u` lives when `u` lives in `I_N(C)`; task_2_patch_3_updated `patch:energy-to-u2`, where its
 volume is the `V_H = |B_N| (1 + H/S)` of the support Cauchy-Schwarz. -/
 def petBoxWin (C N H : ℝ) (j : Fin 3) : Set E3 :=
   {x | ∀ i : Fin 3,
@@ -26536,7 +26536,7 @@ theorem sq_re_locUnifPow_zero_le {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN :
         field_simp
 
 open MeasureTheory in
-/-- **`patch:raise-order`** of `blueprints/patch_3_updated.tex`, at every order:
+/-- **`patch:raise-order`** of `blueprints/task_2_patch_3_updated.tex`, at every order:
 
     (Q_s)^2 <= (1 + H/S) Q_{s+1},
 
@@ -26729,7 +26729,7 @@ theorem im_locUnifPow_succ {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f : E
   rw [locUnifPow_succ_eq hH j s hf hf1, hcast, hint, ← Complex.ofReal_mul, Complex.ofReal_im]
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 1: budget arithmetic and popularity
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 1: budget arithmetic and popularity
 
 `patch:budgets` fixes what the patch's `delta^{O(1)}` notation means -- a returned integer `c`, never
 an asymptotic statement -- and records the composition rules that let every budget in the proof be
@@ -27106,7 +27106,7 @@ theorem re_locUnifPow_mem_range {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN : 
       (norm_locUnifPow_le_box hH hC hN j (s + 1) hf hf1 hsupp)⟩
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 2: signed integrated removal
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 2: signed integrated removal
 
 `patch:signed-vdc` is the van der Corput step with the spatial variable retained, so that what comes
 out is a *real part* of an averaged correlation rather than its modulus -- the patch is explicit
@@ -27626,7 +27626,7 @@ theorem integral_fejer_abs_le {H : ℝ} (hH : 0 < H) : (∫ h : ℝ, fejer H h *
     _ = H := by rw [integral_mul_const, integral_fejer hH, one_mul]
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 2: the cylinder Cauchy-Schwarz
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 2: the cylinder Cauchy-Schwarz
 
 `patch:cylinder` is the reusable Gowers-Cauchy-Schwarz induction, stated *with its state*: after `a`
 steps the variables `b_1, ..., b_a` have been doubled into pairs `b_i^0, b_i^1`, and the running
@@ -29331,7 +29331,7 @@ theorem sq_norm_signed_vdc {α : Type*} [MeasurableSpace α] {μ : Measure α} [
           + 2 * H / N := by rw [hscalar]
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 2: the triangular frequency bound
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 2: the triangular frequency bound
 
 `patch:triangular` descends through the degrees: with `a_r` the coefficients of the combined phase
 and `z_i = N^{d_i} |xi_i|`, the exact identity
@@ -29671,7 +29671,7 @@ theorem sum_le_of_oscillation_ge (D : ℕ) (hD : 1 ≤ D) : ∃ C : ℝ, 1 ≤ C
   exact sum_triangular_le hN hLo hM0 hHi0 d P ξ hdeg hmono hlc hcoeff hM
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 3: the labelled PET update
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 3: the labelled PET update
 
 `patch:pet-update` is a statement about a symbolic state -- an ordered list of vector polynomials
 with function blocks and a leading-coefficient invariant.  Its proof rests on three purely
@@ -30819,7 +30819,7 @@ theorem petUpdate_invariant_diff_highDeg {r n : ℕ} {a : ℝ} (ha : a ≠ 0) {m
     rw [hcoeff, hlead, hR]
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 3: accumulation of the removal losses
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 3: accumulation of the removal losses
 
 `patch:cs-loss` is a scalar statement: a chain of `T` Cauchy-Schwarz steps, each squaring and
 losing `2H/N`, ends at a nonnegative cube power `Q`, and the accumulated loss is `c_T (Q + T H/N)`
@@ -30922,7 +30922,7 @@ theorem csLoss {T : ℕ} {M : ℕ → ℝ} {δ Q : ℝ} (hδ : 0 ≤ δ)
   linarith
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 3: the sublevel estimate
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 3: the sublevel estimate
 
 `patch:multiaffine-sublevel` bounds `Pr{|p(u)| <= eps}` by `4 sqrt eps` for a nonzero multilinear
 integer polynomial of degree at most two, the coordinates of `u` independent with density
@@ -31662,7 +31662,7 @@ theorem monTerm_pair {n : ℕ} (k l : Fin n) (u : Fin n → ℝ) :
 
 
 
-/-! ## `blueprints/patch_3_updated.tex`, stage 3: mixed radii to one radius
+/-! ## `blueprints/task_2_patch_3_updated.tex`, stage 3: mixed radii to one radius
 
 `patch:uniformize` rests on one pointwise comparison: "Since `L_i <= L/2`, pointwise
 `kappa_{L_i}(z_i) <= (2L/L_i) kappa_L(z_i)`", applied "only to the nonnegative `P`, after Jensen".
@@ -32625,7 +32625,7 @@ theorem sq_re_locUnifPowMixed_le {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN :
             rw [← hsplitR, hgoal]
 
 open MeasureTheory in
-/-- **`patch:uniformize` of `blueprints/patch_3_updated.tex`** (Mixed radii to one radius, with
+/-- **`patch:uniformize` of `blueprints/task_2_patch_3_updated.tex`** (Mixed radii to one radius, with
 positivity before comparison), in the file's normalization:
 
     (Q^j_{Lv,V}(f))^2 <= (1 + L/S) prod_i (2L/L_i) Q^j_{s+1,L,V}(f),
@@ -35097,7 +35097,7 @@ theorem petStateClasses_update_at_pivot {r n : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Patch 3: admissible polynomial shifts
 
-The scale convention of `blueprints/patch_3_updated.tex` (lines 206-213).  A shift `P` is
+The scale convention of `blueprints/task_2_patch_3_updated.tex` (lines 206-213).  A shift `P` is
 admissible with budget `c` when its degree is the prescribed `d`, its leading coefficient lies
 between the two budgets, and each lower coefficient is bounded by the upper budget scaled by the
 matching power of `N`:
@@ -35159,7 +35159,7 @@ The quantity `patch:highest-control` assumes a power lower bound for,
     int f_0(x) E_{t in [0,N]} prod_{i=1}^m f_i(x - P_i(t) e_i) e(p_x(t)) dx,
 
 with the phase `e(u) = exp(2 pi i u)` carried by `Auto.expPhase` from
-`DFR/Auto/SmoothingIneq3D/VanDerCorput.lean`.
+`DFR/Auto/VanDerCorput.lean`.
 
 Each input has its *own* coordinate direction `e_i`, unlike `Auto.shiftProd`, whose factors all lie
 along one direction because they have already been reduced to it.  The assignment is therefore a
@@ -37874,7 +37874,7 @@ theorem sq_re_gapScaled_le_locUnifPow {C N L H : ℝ} (hL : 0 < L) (hC : 0 ≤ C
   exact sq_re_locUnifPowMixed_le_scaled hL hC hN j hLS
     (fun l => mul_pos (hc l) hH) hhalf hf hf1 hsupp
 
-/-! ## Blueprint `koszAdjoint_blueprint.tex`, Section 2: analytic facts
+/-! ## Blueprint `task_2_koszAdjoint_blueprint.tex`, Section 2: analytic facts
 
 The integral inequalities of `new:integral-inequalities`, for measurable (not only continuous)
 inputs, as used by the adjoint estimate. -/

@@ -41,7 +41,7 @@ locally integrable function is determined almost everywhere by its integrals aga
   University Press, 1971, Chapter I, Theorem 2.3.
 * L. Grafakos, *Classical Fourier Analysis*, 3rd ed., Graduate Texts in Mathematics 249, Springer,
   2014, Theorem 2.2.14.
-* The blueprint `blueprints/koszAdjoint_blueprint.tex`, Theorem `new:integral-plancherel`.
+* The blueprint `blueprints/task_2_koszAdjoint_blueprint.tex`, Theorem `new:integral-plancherel`.
 -/
 
 open MeasureTheory SchwartzMap FourierTransform Complex

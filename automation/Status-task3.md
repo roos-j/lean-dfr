@@ -20,8 +20,8 @@ quotes without proof; these are carried as hypotheses by design.
 Lean file: DFR/Auto/Twisted/ConventionsAndMainStatement/ConventionsAndMainStatement.lean
 
 ### Definitions
-\label{def:anisotropy}: Completed (Lean: Auto.Anisotropy) (2026-09-12T14:22-0700)
-\label{def:multiplier}: Completed (Lean: Auto.Anisotropy.IsAnisotropicMultiplier) (2026-09-12T14:22-0700)
+\label{def:anisotropy}: Completed (Lean: Auto.Twisted.Anisotropy) (2026-09-12T14:22-0700)
+\label{def:multiplier}: Completed (Lean: Auto.Twisted.Anisotropy.IsAnisotropicMultiplier) (2026-09-12T14:22-0700)
 
 ### Theorems
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_integrable) (2026-09-12T14:22-0700)
