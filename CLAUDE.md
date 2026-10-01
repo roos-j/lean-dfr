@@ -1,7 +1,7 @@
 # Claude repository instructions
 
 Read and follow AGENTS.md, automation/instructions.md, automation/tasks.md,
-automation/Status.md, and automation/ErrorReport.md.
+and the task's automation/Status-taskN.md and automation/ErrorReport-taskN.md.
 Use .claude/skills/autoformalize/SKILL.md for the Claude edition of /autoformalize.
 Current user instructions override repository instructions; local automation
 instructions override generic skill guidance. Obtain exactly one task assignment

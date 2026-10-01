@@ -30,11 +30,11 @@ import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
-import Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
-import Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
-import Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
-import Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
-import Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
+import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
+import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
+import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
+import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
+import DFR.Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
 
 universe u
 

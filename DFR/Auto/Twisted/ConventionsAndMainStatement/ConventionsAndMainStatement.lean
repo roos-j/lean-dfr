@@ -30,7 +30,7 @@ import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
-import Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
+import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
 
 universe u
 
@@ -54,6 +54,8 @@ open Auto.Spherical.PowerWeights
 open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
 
 noncomputable section
+
+namespace Twisted
 
 /-- Positive integral coordinate weights for the anisotropic dilations in
 Definition `def:anisotropy` of the Task 3 blueprint. -/
@@ -109,8 +111,6 @@ theorem IsAnisotropicMultiplier.norm_le_all {α : Anisotropy} {M : ℝ} {m : E3 
   · exact h.norm_le hξ
 
 end Anisotropy
-
-namespace Twisted
 
 /-- The derivative in one of the three distinguished coordinate directions. -/
 def coordinateDeriv (i : Fin 3) (f : Schwartz3) : Schwartz3 :=

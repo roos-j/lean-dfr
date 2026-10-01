@@ -1,0 +1,1466 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[margin=27mm]{geometry}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\R}{\mathbb R}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\ind}{\mathbf 1}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\dist}{dist}
+\newtheorem*{targettheorem}{Target theorem}
+\newtheorem{lemma}{Lemma}[section]
+\newtheorem{proposition}[lemma]{Proposition}
+
+\setlength{\emergencystretch}{2em}
+\allowdisplaybreaks
+
+\title{Bilinear smoothing along distinct monomials\\[4pt]
+\large A formalization blueprint using the Christ--Durcik--Roos method}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{targettheorem}
+Let $\alpha_1,\alpha_2$ be distinct positive integers and let
+$0<a<b<\infty$. There exist constants
+\[
+C=C(a,b,\alpha_1,\alpha_2)<\infty,
+\qquad \delta>0,
+\]
+such that, for every $\psi\in C^1(\R)$ supported in $[a,b]$, every
+$\lambda\geq1$, and every $g_1,g_2\in\mathcal S(\R^2)$ satisfying
+\[
+\supp\widehat g_j\subseteq\{\xi\in\R^2:|\xi_j|\geq\lambda\}
+\quad\text{for at least one }j\in\{1,2\},
+\]
+the operator
+\[
+\mathcal A_\psi(g_1,g_2)(x,y)
+=\int_{\R}\psi(t)g_1(x+t^{\alpha_1},y)
+                    g_2(x,y+t^{\alpha_2})\,dt
+\]
+satisfies
+\[
+\|\mathcal A_\psi(g_1,g_2)\|_1
+\leq C\bigl(\|\psi\|_\infty+\|\psi'\|_1\bigr)
+\lambda^{-\delta}\|g_1\|_2\|g_2\|_2.
+\tag{T}\label{eq:target}
+\]
+The exponent can be chosen independently of $\psi$. The proof below gives,
+without attempting optimization, the universal choice
+\[
+\delta=\frac{1}{2\,935\,296}.
+\]
+\end{targettheorem}
+
+The argument follows the Christ--Durcik--Roos method, with a modified flow.
+The monomial extension is discussed in their paper~\cite{CDR}. Below, the
+structural decomposition, sublevel estimate, local analytic estimate,
+interpolation, globalization, and $C^1$-cutoff reduction are proved.
+Neither the Christ--Durcik--Roos smoothing theorem nor a general
+sublevel-set theorem is used as a black box.
+
+\section{Framework and elementary Fourier facts}
+
+We first work with a real number $r>1$, an interval
+\[
+I=[A,B]\subset(0,\infty),
+\]
+and
+\[
+Q(t)=t^r,\qquad q(t)=Q'(t)=rt^{r-1},\qquad
+\Gamma(t)=(-t,Q(t)).
+\]
+On a fixed neighborhood of $I$, the functions $q$ and $q'$ have positive
+lower bounds, and all derivatives of $Q$ have finite upper bounds.
+
+Define
+\[
+T_\psi(f_1,f_2)(x,y)
+=\int_I\psi(t)f_1(x+t,y)f_2(x,y+Q(t))\,dt.
+\tag{1.1}\label{eq:normalized-operator}
+\]
+All unspecified constants below may depend on $r,I$, fixed auxiliary smooth
+functions, and the size of a fixed spatial localization region. They do not
+depend on the frequency parameter or the functions being estimated.
+
+We use the Fourier transform
+\[
+\widehat f(\xi)=\int f(x)e^{-2\pi i x\cdot\xi}\,dx.
+\]
+The foundational results used are Fubini--Tonelli, H\"older and
+Cauchy--Schwarz, convergence theorems for Lebesgue integrals, density in
+$L^p$, Fourier inversion and Plancherel, elementary differential calculus,
+the inverse function theorem, change of variables, and the maximum-modulus
+principle. The $L^2$ Fourier theory in mathlib is documented
+in~\cite{mathlib-fourier}; the maximum-modulus principle is documented
+in~\cite{mathlib-maximum}.
+
+\subsection{The elementary \texorpdfstring{$L^2\times L^2\to L^1$}{L2 x L2 to L1} bound}
+
+For arbitrary $\psi\in L^1(I)$, translation invariance and Cauchy--Schwarz give
+\[
+\|T_\psi(f_1,f_2)\|_1
+\leq\int_I|\psi(t)|
+\|f_1(\cdot+(t,0))f_2(\cdot+(0,Q(t)))\|_1\,dt
+\leq\|\psi\|_1\|f_1\|_2\|f_2\|_2.
+\tag{1.2}\label{eq:trivial}
+\]
+Consequently, $T_\psi$ extends continuously to $L^2\times L^2$, and
+subsequent $L^2$-approximation arguments are justified by
+\eqref{eq:trivial}.
+
+\subsection{Smooth frequency cutoffs}
+
+If $\vartheta\in C_c^\infty(\R)$, the multiplier $\vartheta(\xi/L)$ has
+convolution kernel
+\[
+K_L(s)=L\check\vartheta(Ls).
+\]
+Integration by parts in the inverse Fourier integral gives
+\[
+|K_L(s)|\leq C_NL(1+L|s|)^{-N}.
+\tag{1.3}\label{eq:kernel-decay}
+\]
+Scaling therefore gives
+\[
+\|K_L\|_1\leq C,\qquad
+\|K_L'\|_1\leq CL,\qquad
+\int |s||K_L(s)|\,ds\leq CL^{-1}.
+\tag{1.4}\label{eq:kernel-norms}
+\]
+These estimates also hold for convolution in just one coordinate of $\R^2$.
+
+The bound
+\[
+\|K*f\|_p\leq\|K\|_1\|f\|_p,\qquad 1\leq p\leq\infty,
+\tag{1.5}\label{eq:young-l1}
+\]
+follows, for finite $p$, by applying Jensen's inequality to the probability
+measure $|K(s)|\,ds/\|K\|_1$, then integrating in $x$. The case $p=\infty$
+is immediate; when $\|K\|_1=0$ the assertion is trivial.
+
+\subsection{An autocorrelation identity}
+
+For $f\in L^2(\R)$, put
+\[
+D_sf(x)=f(x+s)\overline{f(x)}
+\]
+and
+\[
+\mathcal U_R(f)
+=\int_{\R}\int_{|\xi|\leq R}
+|\widehat{D_sf}(\xi)|^2\,d\xi\,ds.
+\]
+Then
+\[
+\mathcal U_R(f)
+=\iint_{|\xi-\eta|\leq R}
+|\widehat f(\xi)|^2|\widehat f(\eta)|^2\,d\xi\,d\eta.
+\tag{1.6}\label{eq:autocorrelation}
+\]
+In particular,
+\[
+\mathcal U_R(f)
+\leq\|f\|_2^2
+\sup_{\substack{J\subset\R\\ |J|=2R}}
+\int_J|\widehat f(\xi)|^2\,d\xi.
+\tag{1.7}\label{eq:autocorrelation-bound}
+\]
+For Schwartz functions, Fourier inversion gives
+\[
+\widehat{D_sf}(\xi)
+=\int e^{2\pi i s\eta}
+\widehat f(\eta)\overline{\widehat f(\eta-\xi)}\,d\eta.
+\]
+Plancherel in $s$, followed by a change of variables, proves
+\eqref{eq:autocorrelation}.
+
+For general $L^2$ functions, approximate by Schwartz functions. The required
+continuity follows from
+\[
+\|D_sf-D_sg\|_{L^2(ds\,dx)}
+\leq\|f-g\|_2\bigl(\|f\|_2+\|g\|_2\bigr),
+\]
+which is obtained by expanding the difference and applying Fubini.
+Thus \eqref{eq:autocorrelation} passes to the limit.
+
+We will also use the direct Fubini identity
+\[
+\int_{\R}\|D_sf\|_2^2\,ds=\|f\|_2^4.
+\tag{1.8}\label{eq:autocorrelation-total}
+\]
+
+\section{The frequency decomposition}
+
+This is the structural part of the Christ--Durcik--Roos argument. The
+following construction proves exactly the properties needed later.
+
+\begin{lemma}\label{lem:decomposition}
+Let $R\geq1$, $0<\rho<1$, and
+$f\in L^2(\R)\cap L^\infty(\R)$. There is a decomposition
+\[
+f=f_\sharp+f_\flat
+\]
+such that
+\[
+|\widehat{f_\sharp}|\leq|\widehat f|,
+\qquad |\widehat{f_\flat}|\leq|\widehat f|,
+\tag{2.1}\label{eq:decomp-domination}
+\]
+and
+\[
+\sup_{|J|=2R}\int_J|\widehat{f_\flat}|^2
+\leq\rho\|f\|_2^2.
+\tag{2.2}\label{eq:decomp-flat}
+\]
+Moreover,
+\[
+f_\sharp(x)=\sum_{\nu=1}^Nh_\nu(x)e^{2\pi i\omega_\nu x},
+\qquad N\leq C\rho^{-1},
+\tag{2.3}\label{eq:decomp-sharp}
+\]
+where
+\[
+\supp\widehat h_\nu\subseteq[-R,R],\qquad
+\|\partial_x^kh_\nu\|_\infty\leq C_kR^k\|f\|_\infty.
+\tag{2.4}\label{eq:decomp-amplitudes}
+\]
+Every nonzero summand can be chosen with
+\[
+\dist\bigl(\omega_\nu,\supp\widehat f\bigr)\leq R.
+\tag{2.5}\label{eq:decomp-centers}
+\]
+\end{lemma}
+
+\begin{proof}
+Choose a nonnegative $\vartheta\in C_c^\infty((-1,1))$ satisfying
+\[
+\sum_{n\in\Z}\vartheta(u-n)=1.
+\]
+Such a function is obtained by dividing a nonnegative bump, positive on
+$[-3/4,3/4]$, by the sum of its integer translates.
+
+Write $E=\|f\|_2^2$. The case $E=0$ is immediate. Declare $n\in\Z$ to be
+selected when
+\[
+\int_{(n-4)R}^{(n+4)R}|\widehat f(\xi)|^2\,d\xi>\rho E.
+\]
+Each point belongs to at most nine of these intervals, so there are at most
+$9\rho^{-1}$ selected integers.
+
+Define
+\[
+\widehat{f_\sharp}(\xi)
+=\sum_{n\ \mathrm{selected}}
+\vartheta(\xi/R-n)\widehat f(\xi),
+\]
+and set $f_\flat=f-f_\sharp$. The multipliers defining the two parts lie
+between zero and one, proving \eqref{eq:decomp-domination}.
+
+Let $J$ have length $2R$. If an unselected multiplier is nonzero somewhere
+on $J$, then $J$ is contained in its corresponding interval
+$[(n-4)R,(n+4)R]$. Hence
+\[
+\int_J|\widehat{f_\flat}|^2\leq\rho E.
+\]
+If no unselected multiplier is nonzero on $J$, the integral is zero. This
+proves \eqref{eq:decomp-flat}.
+
+For a selected $n$, define
+\[
+h_n(x)=e^{-2\pi i nRx}\bigl[\vartheta(D/R-n)f\bigr](x).
+\]
+Its Fourier support lies in $[-R,R]$. Its convolution representation,
+followed by differentiation of the fixed Schwartz kernel, proves
+\eqref{eq:decomp-amplitudes}. Discarding zero summands gives
+\eqref{eq:decomp-centers}.
+\end{proof}
+
+Two consequences require explicit attention. First,
+\eqref{eq:autocorrelation-bound} and \eqref{eq:decomp-flat} give
+\[
+\mathcal U_R(f_\flat)\leq\rho\|f\|_2^4.
+\tag{2.6}\label{eq:flat-correlation}
+\]
+Second, suppose $\chi$ is a spatial cutoff whose Fourier transform has
+$L^1$ norm at most $C$. For every interval $J$ of length $2R$, the
+convolution formula and the triangle inequality in $L^2(J)$ give
+\[
+\|\ind_J\widehat{\chi f_\flat}\|_2
+\leq\int |\widehat\chi(\eta)|
+\|\ind_{J-\eta}\widehat{f_\flat}\|_2\,d\eta
+\leq C\rho^{1/2}\|f\|_2.
+\]
+If also $|\chi|\leq1$, then
+\[
+\mathcal U_R(\chi f_\flat)\leq C\rho\|f\|_2^4.
+\tag{2.7}\label{eq:localized-flat-correlation}
+\]
+The constant is unchanged by translating or dilating a fixed cutoff.
+
+The construction can be performed measurably on fibers of a function on
+$\R^2$: all selection conditions are measurable integrals. Enumerate the
+selected integers using the fixed ordering $0,1,-1,2,-2,\ldots$, and pad
+the expansion with zero summands. This produces measurable frequency
+functions in the passive coordinate.
+
+\section{The modified flow and the sublevel estimate}
+
+\begin{lemma}\label{lem:sublevel}
+Fix a bounded spatial box $D\subset\R^2$ and $c_0>0$. Let
+$\alpha,\beta:\R^2\to\R$ be measurable. Suppose either
+\[
+|\alpha(z)|\geq c_0\quad\text{for all }z,
+\]
+or
+\[
+|\beta(z)|\geq c_0\quad\text{for all }z.
+\]
+Then, for $0<\varepsilon\leq1$,
+\[
+\left|\left\{(x,y,t)\in D\times I:
+|\alpha(x+t,y)-q(t)\beta(x,y+Q(t))|\leq\varepsilon
+\right\}\right|
+\leq C\varepsilon^\kappa,
+\qquad\kappa=\frac1{39}.
+\tag{3.1}\label{eq:sublevel}
+\]
+\end{lemma}
+
+We prove this in three steps.
+
+\subsection{The vector field and its quantitative nondegeneracy}
+
+For $\mathbf t=(t_1,t_2,t_3)$, define
+\[
+\theta_1(\mathbf t)=-t_1+t_2-t_3,
+\]
+\[
+\theta_2(\mathbf t)=Q(t_1)-Q(t_2)+Q(t_3),
+\]
+and
+\[
+\nu(\mathbf t)=\frac{q(t_2)}{q(t_1)q(t_3)}.
+\tag{3.2}\label{eq:flow-coordinates}
+\]
+The appropriate vector field is
+\[
+V=\nabla\theta_1\times\nabla\theta_2.
+\]
+Explicitly,
+\[
+V=\bigl(q(t_3)-q(t_2)\bigr)\partial_{t_1}
+ +\bigl(q(t_3)-q(t_1)\bigr)\partial_{t_2}
+ +\bigl(q(t_2)-q(t_1)\bigr)\partial_{t_3}.
+\tag{3.3}\label{eq:vector-field}
+\]
+By construction,
+\[
+V\theta_1=V\theta_2=0.
+\tag{3.4}\label{eq:flow-invariants}
+\]
+Because $q(t)=rt^{r-1}$,
+\[
+V\nu=(r-1)\nu\left(
+\frac{q(t_2)-q(t_3)}{t_1}
++\frac{q(t_3)-q(t_1)}{t_2}
++\frac{q(t_1)-q(t_2)}{t_3}\right).
+\tag{3.5}\label{eq:flow-derivative}
+\]
+We claim that
+\[
+|V\nu(\mathbf t)|\geq
+c\prod_{1\leq i<j\leq3}|t_i-t_j|,
+\qquad\mathbf t\in I^3.
+\tag{3.6}\label{eq:flow-nondegeneracy}
+\]
+To prove it, set $p=r-1>0$ and $u_i=t_i^p$. Up to sign, the parenthesis
+in \eqref{eq:flow-derivative} is the determinant with rows
+\[
+(1,q(t_i),t_i^{-1}),\qquad i=1,2,3.
+\]
+Since $q(t_i)=ru_i$ and $t_i^{-1}=u_i^{-1/p}$, its absolute value is
+\[
+r\left|\det\bigl[(1,u_i,u_i^{-1/p})\bigr]_{i=1}^3\right|.
+\]
+For distinct $u_i$, let $P$ be the quadratic polynomial interpolating
+$F(u)=u^{-1/p}$ at the three points. Two applications of Rolle's theorem
+show that the leading coefficient of $P$ is $F''(u_*)/2$ for some
+intermediate $u_*$. Since
+\[
+F''(u)=\frac1p\left(\frac1p+1\right)u^{-1/p-2}>0,
+\]
+this coefficient is bounded below on the relevant compact interval.
+Subtracting the constant and linear parts of $P$ in the determinant gives
+\[
+\left|\det\bigl[(1,u_i,F(u_i))\bigr]_{i=1}^3\right|
+\geq c\prod_{i<j}|u_i-u_j|.
+\]
+The derivative of $t\mapsto t^p$ has a positive lower bound on $I$, so
+\[
+|u_i-u_j|\geq c|t_i-t_j|.
+\]
+Finally, $\nu$ has a positive lower bound on $I^3$. This proves
+\eqref{eq:flow-nondegeneracy}, including coincident points, where the
+right-hand side is zero.
+
+Thus the map
+\[
+H(\mathbf t)=\bigl(\theta_1(\mathbf t),\theta_2(\mathbf t),\nu(\mathbf t)\bigr)
+\tag{3.7}\label{eq:flow-map}
+\]
+satisfies
+\[
+|\det DH(\mathbf t)|=|V\nu(\mathbf t)|
+\geq c\prod_{i<j}|t_i-t_j|.
+\tag{3.8}\label{eq:jacobian-bound}
+\]
+This is the flow calculation needed for the monomial extension. Where
+$V\nu\neq0$, the time-rescaled field
+\[
+W=\frac{V}{V\nu}
+\]
+satisfies
+\[
+W\theta_1=W\theta_2=0,\qquad W\nu=1.
+\]
+Consequently, in the coordinates $H$, its local flow is simply translation
+in the third coordinate. No explicit solution of the original
+differential equation is required.
+
+\subsection{A sublevel estimate in the flow coordinates}
+
+For every real number $a_0$ with $|a_0|\geq c_0$, every measurable
+$b:\R^2\to\R$, and every $z_0\in\R^2$, we have
+\[
+\left|\left\{\mathbf t\in I^3:
+|a_0\nu(\mathbf t)-b(z_0+(\theta_1(\mathbf t),\theta_2(\mathbf t)))|
+\leq\varepsilon\right\}\right|
+\leq C\varepsilon^{1/13}.
+\tag{3.9}\label{eq:coordinate-sublevel}
+\]
+Here are the quantitative details.
+
+Fix $0<\eta<1$. The set where some $|t_i-t_j|<\eta$ has measure at most
+$C\eta$. On its complement,
+\[
+|\det DH|\geq c\eta^3.
+\tag{3.10}\label{eq:good-jacobian}
+\]
+The first and second derivatives of $H$ are uniformly bounded on a fixed
+neighborhood of $I^3$. Cover $I^3$ by cubes of side length $c_1\eta^3$,
+with $c_1>0$ sufficiently small. There are at most $C\eta^{-9}$ such cubes.
+
+Consider a cube meeting the complement of the exceptional set, and choose
+such a point $\mathbf t_0$ in it. The cofactor formula and
+\eqref{eq:good-jacobian} give
+\[
+\|(DH(\mathbf t_0))^{-1}\|\leq C\eta^{-3}.
+\]
+By the bound on the second derivatives and the choice of $c_1$,
+\[
+\sup_{\mathbf t\text{ in the cube}}
+\|DH(\mathbf t)-DH(\mathbf t_0)\|
+\leq\frac12\|(DH(\mathbf t_0))^{-1}\|^{-1}.
+\]
+Integrating derivatives along line segments shows that $H$ is injective
+on the cube.
+
+For a measurable subset $E$ of its good part, change of variables
+therefore gives
+\[
+|E|\leq C\eta^{-3}|H(E)|.
+\]
+The image $H(I^3)$ lies in a fixed bounded box. In the image coordinates
+$(u,v)\in\R^2\times\R$, the sublevel condition is
+\[
+|a_0v-b(z_0+u)|\leq\varepsilon.
+\]
+For every $u$, the permitted $v$-set has length at most
+$2\varepsilon/c_0$. Fubini gives image measure at most $C\varepsilon$.
+
+Summing over the cubes yields
+\[
+|\text{sublevel set}|\leq C\eta+C\varepsilon\eta^{-12}.
+\]
+Taking $\eta=\varepsilon^{1/13}$ proves
+\eqref{eq:coordinate-sublevel} (the endpoint $\varepsilon=1$ follows by
+increasing the constant).
+
+Measurable functions can first be replaced by Borel representatives. The
+changes of variables above then establish all required measurability
+statements; changes on null sets do not affect the original
+three-dimensional sublevel set.
+
+\subsection{Three successive relations}
+
+After the measure-preserving substitution $z=(x+t,y)$, it suffices to
+estimate
+\[
+E=\{(z,t)\in D_0\times I:
+|\alpha(z)-q(t)\beta(z+\Gamma(t))|\leq\varepsilon\},
+\tag{3.11}\label{eq:incidence-set}
+\]
+where $D_0$ is a fixed bounded box.
+
+Assume first that $|\alpha|\geq c_0$. Write $\mu=|E|$, and suppose
+$\mu>0$. Define
+\[
+d_A(z)=\int_I\ind_E(z,t)\,dt,\qquad
+ d_B(w)=\int_I\ind_E(w-\Gamma(t),t)\,dt.
+\]
+Their supports lie in fixed bounded boxes of measures $M_A,M_B$.
+
+The portion of $E$ where
+\[
+d_A(z)<\frac{\mu}{4M_A}
+\]
+has measure at most $\mu/4$. The portion where
+\[
+d_B(z+\Gamma(t))<\frac{\mu}{4M_B}
+\]
+also has measure at most $\mu/4$, by translation in $z$. Hence
+\[
+\int_Ed_A(z)d_B(z+\Gamma(t))\,dz\,dt\geq c\mu^3.
+\tag{3.12}\label{eq:three-edge-count}
+\]
+For $z_0\in D_0$, let $\mathcal A(z_0)\subset I^3$ consist of the triples
+for which
+\[
+(z_0,t_1)\in E,
+\]
+\[
+(z_0+\Gamma(t_1)-\Gamma(t_2),t_2)\in E,
+\]
+and
+\[
+(z_0+\Gamma(t_1)-\Gamma(t_2),t_3)\in E.
+\]
+Fubini and the substitution $z=z_0+\Gamma(t_1)-\Gamma(t_2)$ give the exact
+identity
+\[
+\int_{D_0}|\mathcal A(z_0)|\,dz_0
+=\int_Ed_A(z)d_B(z+\Gamma(t))\,dz\,dt.
+\]
+Thus some $z_0$ satisfies
+\[
+|\mathcal A(z_0)|\geq c\mu^3.
+\tag{3.13}\label{eq:large-fiber}
+\]
+For a triple in $\mathcal A(z_0)$, the three defining inequalities, and the
+upper and lower bounds on $q$, imply
+\[
+\left|\alpha(z_0)\frac{q(t_2)}{q(t_1)q(t_3)}
+-\beta\bigl(z_0+\Gamma(t_1)-\Gamma(t_2)+\Gamma(t_3)\bigr)\right|
+\leq C\varepsilon.
+\tag{3.14}\label{eq:three-relations}
+\]
+Indeed, solve the first relation for the first value of $\beta$, substitute
+in the second, and then substitute in the third. All three error
+coefficients are bounded because $q$ is bounded above and below.
+
+Applying \eqref{eq:coordinate-sublevel} to \eqref{eq:three-relations} gives
+\[
+\mu^3\leq C\varepsilon^{1/13}.
+\]
+If $C\varepsilon>1$, the same inequality follows from the bounded volume
+of $I^3$, after adjusting the constant. This proves \eqref{eq:sublevel}
+with $\kappa=1/39$ when $|\alpha|\geq c_0$.
+
+If instead $|\beta|\geq c_0$, change variables $w=z+\Gamma(t)$ and divide
+the defining inequality by $q(t)$. This interchanges $\alpha,\beta$,
+replaces $\Gamma$ by $-\Gamma$, and replaces $q$ by $q^{-1}$. The new
+alternating-coordinate map is $-(\theta_1,\theta_2)$, and the new scalar
+coordinate is $\nu^{-1}$. Its corresponding derivative is
+\[
+V(\nu^{-1})=-\nu^{-2}V\nu,
+\]
+so the same determinant lower bound and proof apply. This completes the
+proof of Lemma~\ref{lem:sublevel}.\qed
+
+\section{A positive \texorpdfstring{$L^p$}{Lp}-improving bound}
+
+We next prove the auxiliary estimate
+\[
+\|T_\psi(f_1,f_2)\|_1
+\leq C\|\psi\|_\infty
+\|f_1\|_{12/7}\|f_2\|_{12/7}.
+\tag{4.1}\label{eq:improving}
+\]
+Let $\mu$ be the measure on $\Gamma(I)$ obtained by pushing forward $dt$,
+and let $\widetilde\mu$ be its reflection.
+
+The measure $\mu*\widetilde\mu$ is the pushforward of $ds\,dt$ under
+\[
+(s,t)\longmapsto\Gamma(s)-\Gamma(t).
+\]
+Off the diagonal, this map is injective. Indeed, its first coordinate
+fixes $t-s$; for fixed nonzero $t-s$, the second coordinate is strictly
+monotone in $s$, since $q$ is strictly increasing.
+
+Its Jacobian has absolute value
+\[
+|q(t)-q(s)|\asymp|t-s|.
+\]
+Consequently, $\mu*\widetilde\mu$ has a density $k$, and change of variables
+gives
+\[
+\int_{\R^2}|k(w)|^{3/2}\,dw
+=\int_{I^2}|q(t)-q(s)|^{-1/2}\,ds\,dt<\infty.
+\tag{4.2}\label{eq:difference-density}
+\]
+We use the convolution inequality
+\[
+\|u*v\|_3\leq\|u\|_{3/2}\|v\|_{3/2}.
+\tag{4.3}\label{eq:young-special}
+\]
+For completeness, H\"older with three exponents equal to three, applied to
+\[
+|u(x-y)v(y)|
+=\bigl(|u(x-y)v(y)|^{1/2}\bigr)
+|u(x-y)|^{1/2}|v(y)|^{1/2},
+\]
+gives
+\[
+|u*v(x)|^3
+\leq\bigl(|u|^{3/2}*|v|^{3/2}\bigr)(x)
+\|u\|_{3/2}^{3/2}\|v\|_{3/2}^{3/2}.
+\]
+Integration proves \eqref{eq:young-special}.
+
+It follows that
+\[
+\|\mu*f\|_2^2=\langle k*f,f\rangle
+\leq\|k*f\|_3\|f\|_{3/2}
+\leq C\|f\|_{3/2}^2.
+\tag{4.4}\label{eq:curve-convolution}
+\]
+The same holds for $\widetilde\mu$.
+
+For nonnegative $F,G$, write
+\[
+B(F,G)=\int_{\R^2}\int_IF(z)G(z+\Gamma(t))\,dt\,dz.
+\]
+Equation~\eqref{eq:curve-convolution} and its adjoint give
+\[
+B(F,G)\leq C\|F\|_{3/2}\|G\|_2,\qquad
+B(F,G)\leq C\|F\|_2\|G\|_{3/2}.
+\]
+Cauchy--Schwarz in $(z,t)$, using
+\[
+F(z)G(z+\Gamma(t))
+=\bigl(F(z)^{8/7}G(z+\Gamma(t))^{6/7}\bigr)^{1/2}
+ \bigl(F(z)^{6/7}G(z+\Gamma(t))^{8/7}\bigr)^{1/2},
+\]
+therefore gives
+\[
+B(F,G)\leq C\|F\|_{12/7}\|G\|_{12/7}.
+\]
+Finally, the substitution $z=(x+t,y)$ in the absolute-value bound for
+$T_\psi$ proves \eqref{eq:improving}.
+
+\section{The local correlation estimate}
+
+Fix $\chi\in C_c^\infty(\R^2)$, and write
+\[
+T_{\mathrm{loc}}(f_1,f_2)=\chi T_\psi(f_1,f_2).
+\]
+For this section and the next, assume
+\[
+\|\psi\|_{C^{20}}:=\max_{0\leq k\leq20}\|\psi^{(k)}\|_\infty\leq1.
+\tag{5.1}\label{eq:smooth-cutoff-normalization}
+\]
+
+\begin{lemma}\label{lem:local-correlation}
+Let $0<h\leq1$, $L\geq h^{-1}$, $K\geq1$, and $0<\rho<1$. For $j=1,2$,
+suppose that $v_{j,m}$, $m\in\Z^2$, is supported in a cube of side $Ch$
+centered at $hm$, and
+\[
+\|v_{j,m}\|_\infty\leq B_j,\qquad
+\|\partial_jv_{j,m}\|_\infty\leq B_jL.
+\tag{5.2}\label{eq:local-derivatives}
+\]
+Assume also
+\[
+\int_{\R}\|v_{j,m}\|_{L^2(dx_j)}^4\,dx_{3-j}\leq Ch^3.
+\tag{5.3}\label{eq:local-fiber-energy}
+\]
+Suppose that, for at least one $j$,
+\[
+\int_{\R}\mathcal U_{K/h}
+\bigl(v_{j,m}(\cdot,x_{3-j})\bigr)\,dx_{3-j}
+\leq C\rho h^3\quad\text{for every }m.
+\tag{5.4}\label{eq:local-uniformity}
+\]
+Then
+\[
+\left\|T_{\mathrm{loc}}\left(\sum_m v_{1,m},\sum_n v_{2,n}\right)\right\|_1
+\leq C\left[B_1B_2L^{1/2}h+(\rho+h+K^{-1})^{1/4}\right].
+\tag{5.5}\label{eq:local-correlation-bound}
+\]
+Only indices whose cubes meet a fixed bounded region can contribute, so
+the relevant sums are finite.
+\end{lemma}
+
+\begin{proof}
+\textit{Spatial geometry.}
+Call $(m,n)$ compatible when its contribution can be nonzero.
+Compatibility implies
+\[
+hn=hm+\Gamma(t)+O(h)\quad\text{for some }t\in I.
+\tag{5.6}\label{eq:compatible-pairs}
+\]
+There are $O(h^{-2})$ relevant indices in each family.
+
+For fixed $m$, a $t$-interval of length $h$ permits only $O(1)$ values of
+$n$, because $\Gamma$ is Lipschitz on $I$. The same assertion holds with
+$m,n$ interchanged. Hence the number of compatible pairs is $O(h^{-3})$.
+
+For every compatible pair choose a reference point with parameter
+$\bar t_{mn}\in I$, and put
+\[
+q_{mn}=q(\bar t_{mn}).
+\]
+The complete $(x,y,t)$-support of that pair lies in a cube of side $Ch$.
+In particular, its $(x,y)$-projection has area $O(h^2)$.
+
+\medskip
+\noindent\textit{Squaring and replacing $Q$ by its tangent.}
+Write
+\[
+T_{mn}=T_{\mathrm{loc}}(v_{1,m},v_{2,n}).
+\]
+Insert a smooth cutoff equal to one on the pair's support and supported
+in a cube of side $Ch$. Its derivatives of order $k$ are $O(h^{-k})$.
+
+Cauchy--Schwarz in $(x,y)$, followed by writing the second time variable
+as $t+s$, expresses $\|T_{mn}\|_1^2$ as at most $Ch^2$ times the absolute
+value of an integral of
+\[
+D_s^{(1)}v_{1,m}(x+t,y)
+\]
+times
+\[
+v_{2,n}(x,y+Q(t+s))\overline{v_{2,n}(x,y+Q(t))}
+\]
+against a smooth amplitude supported where
+\[
+|s|+|t-\bar t_{mn}|+|x-\bar x|+|y-\bar y|\leq Ch.
+\]
+Here and below,
+\[
+D_s^{(j)}v(z)=v(z+se_j)\overline{v(z)}.
+\]
+Taylor's formula gives
+\[
+Q(t+s)-Q(t)=q_{mn}s+O(h^2)
+\]
+and
+\[
+Q(t)=Q(\bar t_{mn})+q_{mn}(t-\bar t_{mn})+O(h^2).
+\]
+Using \eqref{eq:local-derivatives}, the product can therefore be replaced by
+\[
+D_{q_{mn}s}^{(2)}v_{2,n}
+\bigl(x,y+Q(\bar t_{mn})+q_{mn}(t-\bar t_{mn})\bigr)
+\]
+with pointwise error at most $CB_1^2B_2^2Lh^2$ after multiplication by the
+first factor.
+
+The four-dimensional integration region has measure $O(h^4)$. Including
+the outside factor $h^2$, the error in $\|T_{mn}\|_1^2$ is at most
+\[
+CB_1^2B_2^2Lh^8.
+\]
+After taking square roots and summing over $O(h^{-3})$ pairs, its
+contribution is
+\[
+CB_1B_2L^{1/2}h.
+\tag{5.7}\label{eq:tangent-error}
+\]
+
+\medskip
+\noindent\textit{Continuous Fourier expansion.}
+Define
+\[
+a_{j,m}(s,k)=h^{-2}\widehat{D_s^{(j)}v_{j,m}}(k/h),
+\qquad k\in\R^2.
+\tag{5.8}\label{eq:correlation-fourier}
+\]
+Thus the inverse Fourier expansion uses the phase $e^{2\pi i k\cdot z/h}$.
+
+For a fixed $s$, the Fourier kernel of the remaining integral is bounded by
+\[
+Ch^3\bigl(1+|k+\ell|+|k_1+q_{mn}\ell_2|\bigr)^{-12}.
+\tag{5.9}\label{eq:fourier-kernel}
+\]
+Indeed, after replacing $Q$ by its tangent, the phase is linear in
+$(x,y,t)$. Rescale the support to a fixed cube and integrate by parts
+using $(1-\Delta)^6$. Assumption~\eqref{eq:smooth-cutoff-normalization}
+supplies the required twelve derivatives.
+
+Set
+\[
+w(u)=(1+|u|)^{-10}.
+\]
+Integrating the kernel in $\ell$, and using
+\[
+k_1+q\ell_2=(k_1-qk_2)+q(k_2+\ell_2),
+\]
+gives a row bound $Ch^3w(k_1-qk_2)$. The analogous column bound holds in
+$k$. Cauchy--Schwarz with the nonnegative kernel therefore bounds the
+remaining integral by
+\[
+Ch^3
+\left(\int|a_{1,m}(s,k)|^2w(k_1-q_{mn}k_2)\,dk\right)^{1/2}
+\left(\int|a_{2,n}(q_{mn}s,k)|^2w(k_1-q_{mn}k_2)\,dk\right)^{1/2}.
+\tag{5.10}\label{eq:weighted-correlation}
+\]
+The Fourier manipulations are valid first after truncating the Fourier
+variables. Passage to the limit follows from Plancherel: the original
+bilinear integral is continuous in the two $L^2$ functions by
+Cauchy--Schwarz at each $t$, while \eqref{eq:fourier-kernel} gives a bounded
+$L^2$ kernel form.
+
+Apply Cauchy--Schwarz in $s$, change variables $q_{mn}s\mapsto s$ in the
+second factor, and then apply H\"older to the pair sum with exponents
+$4,4,2$. Because there are $O(h^{-3})$ pairs, the remaining contribution
+is at most
+\[
+Ch(H_1H_2)^{1/4},
+\tag{5.11}\label{eq:correlation-sum}
+\]
+where
+\[
+H_j=\sum_{(m,n)\ \mathrm{compatible}}
+\int_{\R}\int_{\R^2}|a_{j,m_j}(s,k)|^2
+w(k_1-q_{mn}k_2)\,dk\,ds,
+\]
+with $m_1=m$ and $m_2=n$.
+
+\medskip
+\noindent\textit{Counting the possible slopes.}
+Put
+\[
+G_j=\sum_m\int\!\!\int|a_{j,m}(s,k)|^2\,dk\,ds.
+\]
+Plancherel, \eqref{eq:autocorrelation-total}, and
+\eqref{eq:local-fiber-energy} imply
+\[
+G_j=h^{-2}\sum_m\int\|v_{j,m}\|_{L^2(dx_j)}^4\,dx_{3-j}
+\leq Ch^{-1}.
+\tag{5.12}\label{eq:total-fourier-energy}
+\]
+For fixed $m_j$, the reference parameters of compatible partners have
+bounded multiplicity in every interval of length $h$. Since $q'$ is
+bounded below, for $k_2\neq0$,
+\[
+\sum_{\text{partners}}w(k_1-q_{mn}k_2)
+\leq C\bigl(1+h^{-1}|k_2|^{-1}\bigr).
+\tag{5.13}\label{eq:slope-count}
+\]
+To verify this, the parameters satisfying
+\[
+|k_1-q(t)k_2|\leq U
+\]
+lie in an interval of length at most $CU/|k_2|$. Count the reference
+parameters in this interval and sum over $U=2^d$, $d\geq0$, with weights
+$2^{-10d}$.
+
+For $j=2$, \eqref{eq:slope-count} applies directly when $|k_2|>K$. For
+$j=1$, if $|k_1|>K$, either $|k_2|\geq c|k_1|$, when
+\eqref{eq:slope-count} applies, or
+\[
+|k_1-q(t)k_2|\geq c|k_1|
+\]
+throughout $I$. In the latter case the trivial count $O(h^{-1})$ and the
+decay of $w$ give the same bound. Thus, for either $j$,
+\[
+\sum_{\text{partners}}w(k_1-q_{mn}k_2)
+\leq C(1+h^{-1}K^{-1})\quad\text{when }|k_j|>K.
+\tag{5.14}\label{eq:high-slope-count}
+\]
+For $|k_j|\leq K$, the trivial bound is $Ch^{-1}$.
+
+Let
+\[
+L_j=\sum_m\int\!\!\int_{|k_j|\leq K}|a_{j,m}(s,k)|^2\,dk\,ds.
+\]
+For the family satisfying \eqref{eq:local-uniformity}, partial Plancherel
+gives
+\[
+L_j\leq C\rho h^{-1}.
+\tag{5.15}\label{eq:low-fourier-energy}
+\]
+Combining \eqref{eq:total-fourier-energy}--\eqref{eq:low-fourier-energy},
+\[
+H_j\leq Ch^{-2}(\rho+h+K^{-1})
+\]
+for that family. For the other family, the trivial partner count gives
+\[
+H_{3-j}\leq Ch^{-2}.
+\]
+Substitute these bounds in \eqref{eq:correlation-sum}, and add
+\eqref{eq:tangent-error}. This proves \eqref{eq:local-correlation-bound}.
+\end{proof}
+
+\section{Local smoothing for bounded, frequency-localized inputs}
+
+We now prove the local estimate from which the $L^2$ theorem will follow.
+
+\begin{proposition}\label{prop:local-smoothing}
+Fix $0<c_1<C_1<\infty$. Suppose
+\[
+\supp\widehat f_j\subseteq\{|\xi_j|\leq C_1L\},\qquad j=1,2,
+\]
+and, for at least one $j$,
+\[
+\supp\widehat f_j\subseteq\{c_1L\leq|\xi_j|\leq C_1L\}.
+\]
+Then, for $L\geq1$,
+\[
+\|T_{\mathrm{loc}}(f_1,f_2)\|_1
+\leq C\|\psi\|_{C^{20}}L^{-\sigma}
+\|f_1\|_\infty\|f_2\|_\infty,
+\qquad\sigma=\frac{\kappa}{256}.
+\tag{6.1}\label{eq:local-smoothing}
+\]
+\end{proposition}
+
+\begin{proof}
+\textit{Localization preserving the frequency restriction.}
+Normalize the two $L^\infty$ norms and $\|\psi\|_{C^{20}}$ to be at most
+one; zero inputs or cutoff give an immediate conclusion.
+
+Choose smooth product cutoffs $\eta_m,\chi_m$, at spatial scale $h$, such
+that
+\[
+\sum_m\eta_m=1,\qquad0\leq\chi_m\leq1,\qquad
+\chi_m=1\text{ on }\supp\eta_m,
+\]
+with uniformly bounded overlap and derivative bounds $Ch^{-k}$. They can
+be constructed from the partition used in Lemma~\ref{lem:decomposition}.
+
+For each $j$, choose a smooth multiplier $P_j$, acting in coordinate $j$,
+equal to one on the Fourier support of $f_j$. Its support is a slightly
+larger ball, or a slightly larger annulus for the designated high-frequency
+input. Put
+\[
+u_{j,m}=P_j(\eta_mf_j),\qquad
+\widetilde f_j=\sum_m\chi_mu_{j,m}.
+\tag{6.2}\label{eq:spatial-localization}
+\]
+The commutator identity
+\[
+\eta_mP_jf_j-P_j(\eta_mf_j)
+=\int K_{j,L}(s)\bigl(\eta_m(z)-\eta_m(z-se_j)\bigr)
+f_j(z-se_j)\,ds
+\]
+and \eqref{eq:kernel-norms} give
+\[
+\|f_j-\widetilde f_j\|_\infty\leq C(Lh)^{-1}.
+\tag{6.3}\label{eq:commutator-error}
+\]
+Only boundedly many $\chi_m$ are nonzero at a given point. Also,
+\[
+\|\widetilde f_j\|_\infty\leq C.
+\tag{6.4}\label{eq:localized-boundedness}
+\]
+Each $u_{j,m}$ has passive-coordinate support of length $Ch$, and
+\[
+\|u_{j,m}\|_\infty\leq C,\qquad
+\|u_{j,m}\|_{L^2(dx_j)}^2\leq Ch.
+\tag{6.5}\label{eq:localized-input-bounds}
+\]
+Apply Lemma~\ref{lem:decomposition} on each active-coordinate fiber, with
+parameters
+\[
+R=K/h,\qquad\rho.
+\]
+Define
+\[
+v_{j,m,\sharp}=\chi_mu_{j,m,\sharp},\qquad
+v_{j,m,\flat}=\chi_mu_{j,m,\flat}.
+\]
+Then
+\[
+\widetilde f_j=f_{j,\sharp}+f_{j,\flat},
+\]
+where each term is the sum over $m$.
+
+By \eqref{eq:decomp-domination}, \eqref{eq:localized-flat-correlation}, and
+\eqref{eq:localized-input-bounds},
+\[
+\int\|v_{j,m,\sharp}\|_{L^2(dx_j)}^4\,dx_{3-j}
++\int\|v_{j,m,\flat}\|_{L^2(dx_j)}^4\,dx_{3-j}\leq Ch^3,
+\tag{6.6}\label{eq:decomposed-fiber-energy}
+\]
+and
+\[
+\int\mathcal U_R\bigl(v_{j,m,\flat}(\cdot,x_{3-j})\bigr)\,dx_{3-j}
+\leq C\rho h^3.
+\tag{6.7}\label{eq:decomposed-uniformity}
+\]
+Assume $R\leq cL$, with $c>0$ sufficiently small depending only on the
+fixed frequency annulus. All nonzero frequency centers have magnitude at
+most $CL$, and those for the designated high-frequency input have
+magnitude at least $cL$.
+
+The component bounds in Lemma~\ref{lem:decomposition} consequently imply
+\[
+\|v_{j,m,\sharp}\|_\infty+\|v_{j,m,\flat}\|_\infty\leq C\rho^{-1},
+\]
+and
+\[
+\|\partial_jv_{j,m,\sharp}\|_\infty
++\|\partial_jv_{j,m,\flat}\|_\infty\leq C\rho^{-1}L.
+\tag{6.8}\label{eq:decomposed-derivatives}
+\]
+
+\medskip
+\noindent\textit{The terms containing a flat part.}
+By bilinearity, $T_{\mathrm{loc}}(\widetilde f_1,\widetilde f_2)$ is the sum
+of
+\[
+T_{\mathrm{loc}}(f_{1,\flat},\widetilde f_2),\qquad
+T_{\mathrm{loc}}(f_{1,\sharp},f_{2,\flat}),\qquad
+T_{\mathrm{loc}}(f_{1,\sharp},f_{2,\sharp}).
+\]
+Lemma~\ref{lem:local-correlation}, together with
+\eqref{eq:decomposed-fiber-energy}--\eqref{eq:decomposed-derivatives},
+bounds the first two terms by
+\[
+C\left[\rho^{-2}L^{1/2}h+(\rho+h+K^{-1})^{1/4}\right].
+\tag{6.9}\label{eq:flat-terms}
+\]
+The replacement errors in \eqref{eq:commutator-error} contribute at most
+\[
+C(Lh)^{-1},
+\tag{6.10}\label{eq:operator-localization-error}
+\]
+using \eqref{eq:localized-boundedness}, boundedness of the original inputs,
+and the fixed compact support of $\chi(x,y)\psi(t)$.
+
+\medskip
+\noindent\textit{An elementary nonstationary estimate.}
+If $H\in C_c^1(J)$, $\phi\in C^2(J)$, and $\phi'$ is monotone, then, for
+every $S>0$,
+\[
+\left|\int e^{2\pi i\phi(t)}H(t)\,dt\right|
+\leq\int_{|\phi'(t)|\leq2S}|H(t)|\,dt
++\frac{C}{S}\bigl(\|H'\|_1+\|H\|_\infty\bigr).
+\tag{6.11}\label{eq:nonstationary}
+\]
+To prove this, choose a smooth cutoff $\zeta$ equal to one on $[-1,1]$
+and supported in $[-2,2]$. Separate the factor $\zeta(\phi'/S)$. For the
+complement, integrate by parts using
+\[
+b(u)=\frac{1-\zeta(u/S)}{u},
+\]
+with $b(0)=0$. One has
+\[
+\|b\|_\infty\leq CS^{-1},\qquad
+\int_{\R}|b'(u)|\,du\leq CS^{-1}.
+\]
+Monotonicity of $\phi'$ implies
+\[
+\int_J|b'(\phi'(t))\phi''(t)|\,dt\leq CS^{-1}.
+\]
+The integration-by-parts formula now gives \eqref{eq:nonstationary}.
+
+\medskip
+\noindent\textit{The sharp--sharp term.}
+There are at most $C\rho^{-2}$ pairs of component indices. For each such
+pair, the contribution is bounded by a sum over compatible spatial cubes
+of integrals
+\[
+\iint\left|\int
+ e^{2\pi i(\omega_{1,m}(y)t+\omega_{2,n}(x)Q(t))}
+ H_{mn}(x,y,t)\,dt\right|\,dx\,dy.
+\tag{6.12}\label{eq:sharp-oscillatory}
+\]
+The factors independent of $t$ have been removed inside the absolute value.
+
+The amplitudes satisfy
+\[
+\|H_{mn}(x,y,\cdot)\|_\infty\leq C,\qquad
+\|\partial_tH_{mn}(x,y,\cdot)\|_1\leq CRh.
+\tag{6.13}\label{eq:sharp-amplitude}
+\]
+Only derivatives in the active coordinate are taken here. The frequency
+functions are merely measurable in their passive coordinates, but those
+coordinates remain fixed during differentiation in $t$.
+
+The derivative of the phase is
+\[
+\omega_{1,m}(y)+q(t)\omega_{2,n}(x),
+\]
+which is monotone in $t$. Since $Rh=K\geq1$, \eqref{eq:nonstationary}, the
+$O(h^2)$ spatial projection of each pair, and the $O(h^{-3})$ pair count
+show that the nonstationary contributions total at most
+\[
+CR/S.
+\tag{6.14}\label{eq:sharp-nonstationary}
+\]
+It remains to estimate the stationary contributions. Partition each
+family of spatial cubes into finitely many classes so that cubes within
+a class are disjoint. For example, using sufficiently large fixed residue
+classes of $m\in\Z^2$ accomplishes this.
+
+For fixed classes and fixed component indices, define measurable
+functions on the input planes by assigning
+\[
+\alpha(u,y)=L^{-1}\omega_{1,m}(y)
+\]
+on the first-family cube indexed by $m$, and
+\[
+\beta(x,v)=-L^{-1}\omega_{2,n}(x)
+\]
+on the second-family cube indexed by $n$.
+
+There is at most one possible index at each point. For the designated
+high-frequency input, the assigned function has absolute value bounded
+below by a fixed positive constant. Extend it outside the cubes with a
+fixed nonzero value. Zero padded components may likewise be assigned a
+high-frequency center without changing their value.
+
+The stationary condition is now
+\[
+|\alpha(x+t,y)-q(t)\beta(x,y+Q(t))|\leq2S/L.
+\]
+At each $(x,y,t)$, disjointness permits at most one pair of cubes.
+Lemma~\ref{lem:sublevel} therefore bounds the stationary contributions by
+\[
+C(S/L)^\kappa.
+\tag{6.15}\label{eq:sharp-stationary}
+\]
+Combining \eqref{eq:sharp-nonstationary}, \eqref{eq:sharp-stationary}, and
+the component count,
+\[
+\|T_{\mathrm{loc}}(f_{1,\sharp},f_{2,\sharp})\|_1
+\leq C\rho^{-2}\bigl(R/S+(S/L)^\kappa\bigr).
+\tag{6.16}\label{eq:sharp-terms}
+\]
+
+\medskip
+\noindent\textit{Choosing all parameters.}
+The estimates obtained so far give
+\[
+\|T_{\mathrm{loc}}(f_1,f_2)\|_1
+\leq C\left[
+(Lh)^{-1}+\rho^{-2}L^{1/2}h
++(\rho+h+K^{-1})^{1/4}
++\rho^{-2}\bigl(R/S+(S/L)^\kappa\bigr)\right].
+\tag{6.17}\label{eq:all-local-errors}
+\]
+Choose
+\[
+h=L^{-3/4},\qquad K=L^{1/16},\qquad R=K/h=L^{13/16},
+\]
+\[
+S=L^{7/8},\qquad\rho=L^{-\kappa/64}.
+\tag{6.18}\label{eq:parameters}
+\]
+For sufficiently large $L$, all previous restrictions hold. The powers
+occurring on the right of \eqref{eq:all-local-errors} are bounded by a
+constant times the sum of
+\[
+L^{-1/4},\qquad L^{-1/4+\kappa/32},\qquad
+L^{-\kappa/256},\qquad L^{-3/16},
+\]
+and
+\[
+L^{-1/64},\qquad L^{-1/16+\kappa/32},\qquad L^{-3\kappa/32}.
+\]
+Since $\kappa=1/39$, every term is at most $CL^{-\kappa/256}$.
+
+The remaining bounded range of $L$ follows by the trivial localized
+$L^\infty\times L^\infty\to L^1$ estimate, enlarging the constant.
+Restoring the normalized factors proves Proposition~\ref{prop:local-smoothing}.
+\end{proof}
+
+\section{From the local bounded-input estimate to global \texorpdfstring{$L^2$}{L2} smoothing}
+
+\subsection{Local \texorpdfstring{$L^2$}{L2} interpolation}
+
+Let $P_1,P_2$ be fixed smooth frequency cutoffs at scale $L$, with one
+annular and the other supported in a ball. Define
+\[
+S_L(u,v)=\chi T_\psi(P_1u,P_2v).
+\]
+Proposition~\ref{prop:local-smoothing} and \eqref{eq:young-l1} give
+\[
+\|S_L(u,v)\|_1
+\leq C\|\psi\|_{C^{20}}L^{-\sigma}\|u\|_\infty\|v\|_\infty.
+\tag{7.1}\label{eq:interpolation-upper}
+\]
+Equation~\eqref{eq:improving} and \eqref{eq:young-l1} give
+\[
+\|S_L(u,v)\|_1
+\leq C\|\psi\|_{C^{20}}\|u\|_{12/7}\|v\|_{12/7}.
+\tag{7.2}\label{eq:interpolation-lower}
+\]
+We prove the required interpolation directly. Set
+\[
+p_0=12/7,\qquad\theta=1-p_0/2=1/7.
+\]
+Normalize $\|u\|_2=\|v\|_2=1$, initially with $u,v$ simple and compactly
+supported. On their nonzero sets define
+\[
+u_z=\frac{u}{|u|}|u|^{(2/p_0)(1-z)},\qquad
+v_z=\frac{v}{|v|}|v|^{(2/p_0)(1-z)},
+\]
+and set these functions to zero elsewhere. For any $w\in L^\infty$ of
+norm at most one, the function
+\[
+F(z)=\int S_L(u_z,v_z)w
+\]
+is analytic and bounded on the strip $0\leq\operatorname{Re}z\leq1$.
+On its two boundaries,
+\[
+|F(it)|\leq C\|\psi\|_{C^{20}},
+\]
+\[
+|F(1+it)|\leq C\|\psi\|_{C^{20}}L^{-\sigma}.
+\]
+The three-lines bound used here follows from the maximum-modulus
+principle: divide $F(z)$ by $M_0^{1-z}M_1^z$, multiply by
+$e^{\varepsilon z^2-\varepsilon}$, apply the maximum-modulus principle on
+sufficiently tall rectangles, and let $\varepsilon\downarrow0$. The
+horizontal sides tend to zero because of
+$e^{-\varepsilon(\operatorname{Im}z)^2}$, while the vertical sides are
+bounded by one. The maximum-modulus principle itself is available in
+mathlib~\cite{mathlib-maximum}.
+
+Since $u_\theta=u$ and $v_\theta=v$, taking the supremum over $w$ proves
+\[
+\|\chi T_\psi(P_1u,P_2v)\|_1
+\leq C\|\psi\|_{C^{20}}L^{-\sigma/7}\|u\|_2\|v\|_2.
+\tag{7.3}\label{eq:local-l2}
+\]
+Density and \eqref{eq:trivial} extend the estimate to arbitrary $L^2$ inputs.
+
+\subsection{Globalization}
+
+Let $Q_p=p+[0,1)^2$, $p\in\Z^2$, and let $\chi_q$ be translates of a
+fixed smooth function equal to one on $Q_q$. Translation invariance makes
+the constant in \eqref{eq:local-l2} uniform in $q$.
+
+Suppose $f_j=P_jf_j$, with the prescribed ball or annular Fourier supports.
+Write
+\[
+f_j=\sum_{p\in\Z^2}f_j\ind_{Q_p}.
+\]
+For any $N$, the kernel bound \eqref{eq:kernel-decay} gives
+\[
+\left\|\ind_{q+[-C,C]^2}P_j(f_j\ind_{Q_p})\right\|_2
+\leq C_N(1+|p-q|)^{-N}\|f_j\ind_{Q_p}\|_2.
+\tag{7.4}\label{eq:spatial-tail}
+\]
+To see this, the operator does not alter the passive coordinate, so
+sufficiently separated passive intervals give zero. For separated active
+intervals, \eqref{eq:kernel-decay}, followed by Cauchy--Schwarz on the unit
+input interval, gives the stated decay. For nearby cubes, use the $L^2$
+multiplier bound.
+
+The elementary bound \eqref{eq:trivial}, localized to the region containing
+all evaluations contributing to $\chi_qT_\psi$, gives
+\[
+\|\chi_qT_\psi(P_1(f_1\ind_{Q_p}),P_2(f_2\ind_{Q_s}))\|_1
+\leq C\|\psi\|_{C^{20}}
+(1+|p-q|)^{-8}(1+|s-q|)^{-8}
+\|f_1\ind_{Q_p}\|_2\|f_2\ind_{Q_s}\|_2.
+\tag{7.5}\label{eq:globalization-trivial}
+\]
+The same expression satisfies \eqref{eq:local-l2}, without the
+spatial-decay factors. Taking the geometric mean of the two bounds yields
+\[
+C\|\psi\|_{C^{20}}L^{-\sigma/14}
+(1+|p-q|)^{-4}(1+|s-q|)^{-4}
+\|f_1\ind_{Q_p}\|_2\|f_2\ind_{Q_s}\|_2.
+\tag{7.6}\label{eq:globalization-geometric}
+\]
+The sequence $(1+|p|)^{-4}$ belongs to $\ell^1(\Z^2)$. Sum
+\eqref{eq:globalization-geometric} in $p,s,q$, apply Cauchy--Schwarz in $q$,
+and use the discrete version of \eqref{eq:young-l1}. Since
+\[
+\sum_p\|f_j\ind_{Q_p}\|_2^2=\|f_j\|_2^2,
+\]
+we obtain
+\[
+\|T_\psi(f_1,f_2)\|_1
+\leq C\|\psi\|_{C^{20}}L^{-s}\|f_1\|_2\|f_2\|_2,
+\qquad s=\frac{\sigma}{14}=\frac1{139\,776}.
+\tag{7.7}\label{eq:global-annular}
+\]
+Finite spatial sums suffice initially; passage to the full sums follows
+from $L^2$ convergence and \eqref{eq:trivial}.
+
+\section{The high-frequency tail, the \texorpdfstring{$C^1$}{C1} cutoff, and the original monomials}
+
+\subsection{Removing the upper frequency restriction}
+
+Choose $\varphi\in C_c^\infty(\R)$, equal to one on $[-1,1]$ and supported
+in $[-2,2]$. Let $S_k^{(j)}$ be the multiplier
+$\varphi(2^{-k}\xi_j)$, and put
+\[
+\Delta_k^{(j)}=S_k^{(j)}-S_{k-1}^{(j)}.
+\]
+The telescoping identity is
+\[
+T_\psi(f_1,f_2)
+=\sum_{k\in\Z}T_\psi(\Delta_k^{(1)}f_1,S_k^{(2)}f_2)
++\sum_{k\in\Z}T_\psi(S_{k-1}^{(1)}f_1,\Delta_k^{(2)}f_2).
+\tag{8.1}\label{eq:telescoping}
+\]
+Suppose one input has active Fourier support in
+$\{|\xi_j|\geq\Lambda\}$, with $\Lambda\geq1$. Both summands vanish unless
+$2^k\geq c\Lambda$. Each surviving term has one annular input at scale
+$2^k$, while the other has active frequencies bounded by $C2^k$.
+
+Apply \eqref{eq:global-annular}, use the uniform $L^2$ multiplier bounds,
+and sum the geometric series. The finitely many possible scales below
+one are covered by \eqref{eq:trivial}. This proves
+\[
+\|T_\psi(f_1,f_2)\|_1
+\leq C\|\psi\|_{C^{20}}\Lambda^{-s}\|f_1\|_2\|f_2\|_2.
+\tag{8.2}\label{eq:smooth-high-tail}
+\]
+The identity \eqref{eq:telescoping} follows first for finite telescoping
+sums. Its upper endpoint converges in $L^1$ by \eqref{eq:trivial} and
+$L^2$ convergence of $S_k^{(j)}f_j$. Its lower endpoint is zero because
+of the high-frequency hypothesis.
+
+\subsection{Reducing the cutoff requirement to \texorpdfstring{$C^1$}{C1}}
+
+Now let $\psi\in C^1(\R)$ be supported in $I$. Choose a fixed nonnegative
+smooth mollifier $\zeta$, supported in $[-1,1]$, with integral one. Put
+\[
+\psi_h=\psi*\zeta_h.
+\]
+For sufficiently small $h$, all $\psi_h$ are supported in one fixed
+compact interval contained in $(0,\infty)$.
+
+Differentiation of the mollifier gives
+\[
+\|\psi_h\|_{C^{20}}\leq Ch^{-20}\|\psi\|_\infty.
+\tag{8.3}\label{eq:mollified-cutoff}
+\]
+The fundamental theorem of calculus and Fubini give
+\[
+\|\psi-\psi_h\|_1\leq Ch\|\psi'\|_1.
+\tag{8.4}\label{eq:mollification-error}
+\]
+Apply \eqref{eq:smooth-high-tail} to $\psi_h$ and \eqref{eq:trivial} to
+$\psi-\psi_h$. We obtain
+\[
+\|T_\psi(f_1,f_2)\|_1
+\leq C\left(h^{-20}\Lambda^{-s}\|\psi\|_\infty
++h\|\psi'\|_1\right)\|f_1\|_2\|f_2\|_2.
+\]
+Choose
+\[
+h=c\Lambda^{-s/21},
+\]
+where $c>0$ is a fixed sufficiently small constant determined by $I$.
+Then
+\[
+\|T_\psi(f_1,f_2)\|_1
+\leq C\bigl(\|\psi\|_\infty+\|\psi'\|_1\bigr)
+\Lambda^{-s/21}\|f_1\|_2\|f_2\|_2.
+\tag{8.5}\label{eq:c1-smoothing}
+\]
+Thus the normalized curve $(t,t^r)$ satisfies the required theorem with
+\[
+\delta=\frac{s}{21}
+=\frac{1}{39\cdot256\cdot14\cdot21}
+=\frac{1}{2\,935\,296}.
+\tag{8.6}\label{eq:final-exponent}
+\]
+
+\subsection{Returning to arbitrary distinct monomials}
+
+Interchanging the two coordinates and the two inputs preserves all norms
+and the active-frequency hypothesis. We may therefore assume
+\[
+\alpha_1=m<n=\alpha_2.
+\]
+Set
+\[
+u=t^m,\qquad r=n/m>1.
+\]
+The original operator becomes
+\[
+\int_{a^m}^{b^m}\widetilde\psi(u)
+ g_1(x+u,y)g_2(x,y+u^r)\,du,
+\]
+where
+\[
+\widetilde\psi(u)=\frac1m u^{1/m-1}\psi(u^{1/m}).
+\tag{8.7}\label{eq:changed-cutoff}
+\]
+On the fixed interval $[a^m,b^m]$, the weight and its derivative are
+bounded. The chain rule and the substitution $u=t^m$ give
+\[
+\|\widetilde\psi\|_\infty+\|\widetilde\psi'\|_1
+\leq C_{a,b,m}\bigl(\|\psi\|_\infty+\|\psi'\|_1\bigr).
+\tag{8.8}\label{eq:changed-cutoff-bound}
+\]
+No spatial variable is changed, so the Fourier-support hypothesis and the
+input $L^2$ norms are unchanged. Applying \eqref{eq:c1-smoothing} proves
+\eqref{eq:target}.
+
+In the original parameter coordinates, the modified flow is therefore
+described by
+\[
+\theta_1(\mathbf t)=-t_1^m+t_2^m-t_3^m,\qquad
+\theta_2(\mathbf t)=t_1^n-t_2^n+t_3^n,
+\]
+\[
+h(t)=\frac nm t^{n-m},\qquad
+\nu(\mathbf t)=\frac{h(t_2)}{h(t_1)h(t_3)},
+\]
+and
+\[
+V=\nabla\theta_1\times\nabla\theta_2.
+\]
+The coordinate substitution $u_i=t_i^m$ converts this field, up to a
+positive time-rescaling factor, into \eqref{eq:vector-field}.
+
+The distinct-exponent assumption is used quantitatively in the positive
+lower bound for $q'$ and in the determinant estimate
+\eqref{eq:flow-nondegeneracy}. The cutoff dependence is handled separately
+by \eqref{eq:mollified-cutoff}--\eqref{eq:c1-smoothing}, so neither the decay
+exponent nor the implicit constant needs any additional dependence on the
+particular cutoff $\psi$ beyond the displayed factor
+$\|\psi\|_\infty+\|\psi'\|_1$.
+
+\begin{thebibliography}{9}
+\raggedright
+
+\bibitem{CDR}
+M.~Christ, P.~Durcik, and J.~Roos,
+\emph{arXiv:2008.10140}.
+\url{https://arxiv.org/abs/2008.10140}.
+
+\bibitem{mathlib-fourier}
+The mathlib community,
+\emph{Mathlib.Analysis.Fourier.LpSpace}.
+\url{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Analysis/Fourier/LpSpace.html}.
+
+\bibitem{mathlib-maximum}
+The mathlib community,
+\emph{Mathlib.Analysis.Complex.AbsMax}.
+\url{https://leanprover-community.github.io/mathlib4_docs/Mathlib/Analysis/Complex/AbsMax.html}.
+
+\end{thebibliography}
+
+\end{document}

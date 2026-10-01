@@ -30,9 +30,9 @@ import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
-import Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
-import Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
-import Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
+import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
+import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
+import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
 
 universe u
 
@@ -57,6 +57,8 @@ open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal R
 
 noncomputable section
 
+namespace Twisted
+
 namespace Anisotropy
 
 theorem homogeneousDimension_pos (α : Anisotropy) : 0 < α.homogeneousDimension := by
@@ -65,8 +67,6 @@ theorem homogeneousDimension_pos (α : Anisotropy) : 0 < α.homogeneousDimension
     (Finset.single_le_sum (fun i _ ↦ Nat.zero_le _) (Finset.mem_univ 0))
 
 end Anisotropy
-
-namespace Twisted
 
 local instance : (volume : Measure (E3 × FrequencyRemainder)).IsAddHaarMeasure :=
   Measure.prod.instIsAddHaarMeasure volume volume

@@ -30,8 +30,8 @@ import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
-import Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
-import Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
+import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
+import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
 
 universe u
 
@@ -56,14 +56,14 @@ open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal R
 
 noncomputable section
 
+namespace Twisted
+
 namespace Anisotropy
 
 /-- The homogeneous dimension `A` in Definition `def:anisotropy`. -/
 def homogeneousDimension (α : Anisotropy) : ℕ := ∑ i, α.weight i
 
 end Anisotropy
-
-namespace Twisted
 
 local instance : (volume : Measure (E3 × FrequencyRemainder)).IsAddHaarMeasure :=
   Measure.prod.instIsAddHaarMeasure volume volume

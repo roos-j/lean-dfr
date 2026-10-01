@@ -54,13 +54,13 @@ open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal R
 
 noncomputable section
 
+namespace Twisted
+
 /-- The source's `E_3`, equipped with Euclidean norm and Lebesgue measure. -/
 abbrev E3 := EuclideanSpace ℝ (Fin 3)
 
 /-- The four scalar coordinates used in the Gaussian superposition estimate. -/
 abbrev E4 := EuclideanSpace ℝ (Fin 4)
-
-namespace Twisted
 
 /-- Complex Schwartz test functions on the source space `E_3`. -/
 abbrev Schwartz3 := SchwartzMap E3 ℂ

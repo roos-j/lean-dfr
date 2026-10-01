@@ -30,13 +30,13 @@ import LeanSpherical.Auto.HardyLittlewoodMaximal
 import LeanSpherical.Auto.Spherical.PowerWeights
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
-import Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
-import Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
-import Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
-import Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
-import Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
-import Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
-import Auto.Twisted.FiberwiseCalderonZygmundDecomposition.FiberwiseCalderonZygmundDecomposition
+import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
+import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
+import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
+import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
+import DFR.Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
+import DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
+import DFR.Auto.Twisted.FiberwiseCalderonZygmundDecomposition.FiberwiseCalderonZygmundDecomposition
 
 universe u
 
@@ -60,6 +60,8 @@ open Auto.Spherical.PowerWeights
 open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
 
 noncomputable section
+
+namespace Twisted
 
 namespace Anisotropy
 
@@ -118,8 +120,6 @@ theorem radius_dilate (α : Anisotropy) {t : ℝ} (ht : 0 < t) (x : E3) :
   rw [Real.pow_rpow_inv_natCast ht.le (Nat.ne_of_gt (α.weight_pos i))]
 
 end Anisotropy
-
-namespace Twisted
 
 local instance : (volume : Measure (E3 × FrequencyRemainder)).IsAddHaarMeasure :=
   Measure.prod.instIsAddHaarMeasure volume volume
