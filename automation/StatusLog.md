@@ -4924,3 +4924,139 @@ this repository — the remaining build warnings all come from the pinned
 `fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite`,
 `fourVertexMarcinkiewicz_of_measurable` and `ext_maximal_strong_type` each
 still depend only on `[propext, Classical.choice, Quot.sound]`.
+
+## Twisted.lean dissolved into the eight per-section modules
+
+2026-09-18T20:25:00-07:00 — User direction: move the development out of
+`DFR/Auto/Twisted/Twisted.lean` into the eight existing per-section modules,
+one blueprint section per module, each section's formalization entirely in its
+own file, and introduce `namespace Auto` and `namespace Twisted` only once per
+file instead of the 475 open/close pairs the single module used.
+
+`Twisted.lean` held 109 091 lines and 4 102 top-level declarations.  Its
+declaration order is a strict topological order — no declaration refers to a
+later one — but that order is *not* the blueprint's section order, so a
+contiguous split was not possible: Section 7 material sits between Section 6
+anchors, Section 8 definitions precede most of Section 7, and the proof of
+`thm:main` is the last declaration in the file.
+
+### How each declaration was assigned
+
+The eight modules form an import chain, so every dependency has to point at
+the same module or an earlier one.  Each blueprint label's Lean name from
+Status.md pins that declaration to its own section; every other declaration
+was assigned to the *earliest* module in the chain whose pinned results need
+it, which is exactly the rule that makes the chain acyclic: if `d₁` uses `d₂`,
+then everything that needs `d₁` needs `d₂`, so `d₂`'s module cannot come after
+`d₁`'s.  Declarations no pinned result reaches — 1 065 of them, the leftovers
+of abandoned proof routes — went to the module of their neighbours in the
+original file, clipped below by their own dependencies.  Within a module the
+original relative order is preserved, so it is still a valid topological order.
+
+### The two placements the blueprint itself forces
+
+Pinning every label to its own section is impossible, and the obstruction is
+in the source, not the Lean:
+
+  * `thm:main` is *stated* in Section 1 and *proved* at the end of Section 8,
+    from `lem:permutation`, `lem:fourier_series` and `thm:extended_model`.  A
+    Lean theorem cannot be separated from its proof, so `thm_main`,
+    `anisotropicParaproduct_unconditional` and
+    `anisotropicParaproduct_of_interpolation` are in the Section 8 module.
+    Section 1's module keeps `def:anisotropy`, `def:multiplier` and
+    `lem:pairing`.
+  * `def:fiber_maximal` is defined in Section 7 but already used by Section 6's
+    `ext:maximal` and `thm:initial_model`, so `coordinateDyadicBallMaximal` is
+    in the Section 6 module.
+
+Section 1's `lem:pairing` also needs Section 2's `def:schwartz`, which is why
+the chain runs `FunctionSpacesAndFixedBumps`, `ConventionsAndMainStatement`,
+then Sections 3-8 in blueprint order rather than 1-8.  The forced import graph
+was computed from the pinned anchors and checked to be acyclic before any file
+was written.
+
+### Four mechanical hazards, and what was done about them
+
+A split changes what each declaration can see, so three classes of reference
+that a single module hides had to be handled explicitly.  Each was found by
+compiling, not by inspection:
+
+  * **Global environment extensions.**  A `@[simp]` lemma changes elaboration
+    in every module that imports it.  Left in the module its *name* is used
+    from, `coordinateSplitEquiv_apply` landed after Section 4, and seven
+    Section 4 proofs failed because `coordinateSplitEquiv i p` no longer
+    reduced.  All 149 `@[simp]` lemmas, instances and dot-notation namespace
+    members are therefore placed in the earliest module that can host them,
+    reproducing the single module's simp set downstream.
+  * **Generalized field notation.**  A declaration named `R.f` is reached as
+    `h.f` on an `h : R` and leaves no textual `R.f` to find.  The 10 such
+    declarations — `IsAnisotropicMultiplier.*` and `FaceOrientation.*` — needed
+    their own dependency pass.
+  * **`private` does not cross modules.**  Of 23 private helpers, two had users
+    that landed in a different module (`standardFrequencyBump_apply`, used from
+    Section 8, and `scratchLp_line_dyadicBallMaximal_measurable`, used from
+    Section 7).  Both lost the `private` modifier; nothing else changed, and no
+    recorded name is private.
+  * **`local instance` does not cross modules either.**  The four anonymous
+    local instances are re-declared in every module whose contents can state
+    them.
+
+### What is unchanged
+
+Every declaration keeps its statement, its proof and its fully qualified name,
+so `automation/Status.md` needed no name changes.  The move was done by
+transcription, not editing: the multiset of source lines belonging to the 4 102
+declarations is identical before and after, checked mechanically.  The only
+textual edits are the four dropped `private`/added-header lines above, the
+per-module headers, imports, docstrings and the single namespace and `open`
+prelude each file now has.
+
+### Verification after the move
+
+Compiled in chain order with
+`LEAN_PATH=$PWD/DFR:$LEAN_PATH lean -o <module>.olean <module>.lean`:
+all eight section modules and the top-level `Auto.Twisted` elaborate with
+**zero errors and zero warnings**.  The same 14 informational
+`Try this: ring_nf` messages that the single module emitted are emitted by the
+split modules, and no others — checked by recompiling the preserved copy of
+`Twisted.lean` for a baseline.  `lake build` completes (3343 jobs).  Zero
+`sorry`, zero `admit`, no new `axiom`.
+
+`#print axioms` through `import Auto.Twisted` gives
+`[propext, Classical.choice, Quot.sound]` for `thm_main`,
+`anisotropicParaproduct_unconditional`,
+`anisotropicParaproduct_of_interpolation`, `lem_pairing_integrable`,
+`lem_pairing_eq_frequencyForm`, `thm_cone`, `lem_permutation`,
+`lem_calderon_cone_identity`, `lem_symbol_derivatives`,
+`lem_fourier_series_coefficient_decay`, `exists_abs_ModelFullForm_le_extended`,
+`ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded`,
+`fourVertexMarcinkiewiczUniformMeasurable_of_sigmaFinite`,
+`fourVertexMarcinkiewicz_of_measurable`, `ext_maximal_strong_type`,
+`ext_maximal_fiber_strong_type`,
+`exists_uniform_initialModelFullForm_bound_weight100`,
+`gaussianSuperposition_domination`,
+`fullCubeTreeEstimate_of_boundedContinuous`,
+`stoppingTree_localModel_bound_of_energyBounds`,
+`cubeBracketAverage_le_treeLocalSize_product_of_mem_closure`,
+`coordinateDyadicBallMaximal` and
+`Auto.Anisotropy.IsAnisotropicMultiplier`.
+
+Of the 78 Lean names Status.md records against a blueprint label, 74 are in
+their own section's module; the four exceptions are the `thm:main` triple and
+`def:fiber_maximal` described above.  Resulting sizes:
+
+| module | declarations | lines |
+| --- | --- | --- |
+| `FunctionSpacesAndFixedBumps` (S2) | 97 | 1 233 |
+| `ConventionsAndMainStatement` (S1) | 126 | 1 706 |
+| `DyadicGeometryAndLocalSizes` (S3) | 187 | 2 313 |
+| `CubicalTelescopingWithBoundaryTerms` (S4) | 635 | 14 173 |
+| `TheModelFormAndItsLocalization` (S5) | 116 | 2 229 |
+| `StoppingTimeAndTheInitialExponentRange` (S6) | 874 | 22 606 |
+| `FiberwiseCalderonZygmundDecomposition` (S7) | 1 288 | 40 154 |
+| `ConeDecompositionMultiplierTheorem` (S8) | 775 | 20 125 |
+
+Note for future readers: some Status.md entries write `Auto.foo` where the
+declaration is really `Auto.Twisted.foo` (for instance
+`Auto.gaussianSuperposition_domination`).  That imprecision predates this move
+and was left alone; the namespaces themselves are unchanged.

@@ -180,3 +180,33 @@ loop until Task 3 is completely finished. A follow-up instruction
 the existing `DFR/Auto/Twisted/*Scratch.lean` and `*Candidate.lean` files
 before developing new proofs. Task 3 is the active assigned task; all work
 stays in `DFR/Auto/Twisted/`.
+
+## Dissolve Twisted.lean into the per-section modules
+
+Recorded 2026-09-18T20:25:00-07:00; exact prompt: [raw.md](raw.md).
+The user directs that the development in `DFR/Auto/Twisted/Twisted.lean` be
+moved into the eight existing per-section modules under
+`DFR/Auto/Twisted/<Section>/`, one blueprint section per module, so that each
+section's formalization lives entirely in that section's file. `Twisted.lean`
+opened and closed `namespace Auto` and `namespace Twisted` 475 times; the
+section modules must not, and introduce each namespace exactly once.
+
+Two placements are forced by Lean's acyclic imports and are documented in
+Status.md, because the blueprint itself has the same two inversions:
+
+- `thm:main` is *stated* in Section 1 but *proved* at the end of Section 8, so
+  `thm_main`, `anisotropicParaproduct_unconditional` and
+  `anisotropicParaproduct_of_interpolation` live in the Section 8 module.
+  Section 1's own module keeps `def:anisotropy`, `def:multiplier` and
+  `lem:pairing`.
+- `def:fiber_maximal` (`coordinateDyadicBallMaximal`) is defined in Section 7
+  but already used by Section 6's `ext:maximal` and `thm:initial_model`, so it
+  lives in the Section 6 module.
+
+Because `lem:pairing` needs Section 2's Schwartz class, the modules import one
+another in the order `FunctionSpacesAndFixedBumps`,
+`ConventionsAndMainStatement`, then Sections 3-8 in blueprint order. Every
+declaration keeps its fully qualified name, so `automation/Status.md` stays
+valid. Declarations that extend the global environment (`@[simp]` lemmas,
+instances, dot-notation namespace members) are placed in the earliest module
+that can host them, so that the monolith's simp set is reproduced downstream.
