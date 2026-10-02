@@ -7,12 +7,37 @@ Entry shape: `\label{Manuscript label}: [Status] (Lean: [lean name]) (timestamp)
 Definitions use `Todo` / `Completed`; theorems use `Todo` /
 `Statement completed` / `Proof completed`.
 
-The development itself is `DFR/Auto/Twisted/Twisted.lean`, which is sorry-free
-and whose declarations audit to `propext, Classical.choice, Quot.sound` only.
-Per-section modules restate that section's labelled results in the
-blueprint's wording; the top-level module is `DFR/Auto/Twisted.lean`.
+The development lives in the eight per-section modules listed below: each one
+carries its section's labelled definitions and theorems, the auxiliary
+development they rest on, and the section's results restated in the blueprint's
+wording.  The former single module `DFR/Auto/Twisted/Twisted.lean` has been
+dissolved into them and no longer exists.  The top-level module is
+`DFR/Auto/Twisted.lean`.  Everything is sorry-free and audits to
+`propext, Classical.choice, Quot.sound` only, and every declaration kept its
+fully qualified name, so the Lean names recorded below are unchanged.
 
-Every Lean name below has been confirmed to elaborate against the corpus.
+Because Lean's imports must be acyclic, the modules import one another in the
+order `FunctionSpacesAndFixedBumps`, `ConventionsAndMainStatement`, then
+Sections 3-8 in blueprint order: Section 1's `lem:pairing` needs Section 2's
+Schwartz class.  Two labelled results therefore sit in a module other than
+their own section's, in both cases because the blueprint has the same
+inversion:
+
+- `thm:main` is stated in Section 1 and proved at the end of Section 8, so
+  `thm_main` and its two proofs live in the Section 8 module.  Section 1's
+  module keeps `def:anisotropy`, `def:multiplier` and `lem:pairing`.
+- `def:fiber_maximal` is defined in Section 7 but already used by Section 6's
+  `ext:maximal` and `thm:initial_model`, so `coordinateDyadicBallMaximal`
+  lives in the Section 6 module.
+
+Declarations that extend the global environment -- `@[simp]` lemmas, instances
+and dot-notation namespace members -- are placed in the earliest module that
+can host them, so that the former single module's simp set is reproduced in
+every later module.
+
+Every Lean name below has been confirmed to elaborate against the corpus, and
+all eight modules plus the top-level `Auto.Twisted` were recompiled after the
+move with zero errors and zero warnings; see `StatusLog.md`.
 `External` marks the two `exttheorem` environments, which the manuscript
 quotes without proof; these are carried as hypotheses by design.
 
@@ -26,7 +51,7 @@ Lean file: DFR/Auto/Twisted/ConventionsAndMainStatement/ConventionsAndMainStatem
 ### Theorems
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_integrable) (2026-09-12T14:22-0700)
 \label{lem:pairing}: Proof completed (Lean: Auto.Twisted.lem_pairing_eq_frequencyForm) (2026-09-12T14:22-0700)
-\label{thm:main}: Proof completed (Lean: Auto.Twisted.thm_main, Auto.Twisted.anisotropicParaproduct_unconditional, Auto.Twisted.anisotropicParaproduct_of_interpolation). Now unconditional: ext:interpolation is proved, so thm_main carries no hypothesis beyond the exponent conditions. (2026-09-18T09:30-0700)
+\label{thm:main}: Proof completed (Lean: Auto.Twisted.thm_main, Auto.Twisted.anisotropicParaproduct_unconditional, Auto.Twisted.anisotropicParaproduct_of_interpolation; carried by the Section 8 module, where the blueprint proves it). Now unconditional: ext:interpolation is proved, so thm_main carries no hypothesis beyond the exponent conditions. (2026-09-18T09:30-0700)
 
 `thm:main` is proved from `ext:interpolation` alone, which is the manuscript's
 own single external input.  The chain is:
@@ -126,7 +151,7 @@ one-dimensional ones applied to each fiber, together with the repository's
 Lean file: DFR/Auto/Twisted/FiberwiseCalderonZygmundDecomposition/FiberwiseCalderonZygmundDecomposition.lean
 
 ### Definitions
-\label{def:fiber_maximal}: Completed (Lean: Auto.coordinateDyadicBallMaximal) (2026-09-12T14:22-0700)
+\label{def:fiber_maximal}: Completed (Lean: Auto.coordinateDyadicBallMaximal; carried by the Section 6 module, which already uses it) (2026-09-12T14:22-0700)
 \label{def:weak_norm}: Completed (Lean: Auto.Twisted.weakNorm) (2026-09-12T14:22-0700)
 
 ### Theorems

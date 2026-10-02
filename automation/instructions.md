@@ -1007,3 +1007,33 @@ bound), the extension of `T^{(k)}_J` to simple functions, and interpolation with
 2026-09-26T08:23:42-04:00 (raw.md entry of the same time) — SUPERSEDES the 2026-09-26T06:49:50 instruction that `thm:smoothing_2` stays a hypothesis: (1) finish the current Task 4 work (MH region, `thm:main` from `Auto.SmoothingTwo`); (2) then autoformalize Task 1 from the new blueprint blueprints/task_1_smoothing_inequality_2.tex, reusing or overwriting the existing Task 1 work as appropriate (no backups needed; the only goal is that the smoothing inequality needed by Task 4, `Auto.SmoothingTwo`, is proved); (3) then finish `thm:main` true to the source with no extra assumptions (discharge the `SmoothingTwo` hypothesis).
 
 2026-09-26T10:39:43-04:00 (raw.md entry of the same time): commit and push the current work (explicit one-time authorization for this commit and push; blueprints/main.tex stays uncommitted); keep automation/Status-task1.md updated following the rows of the new blueprint blueprints/task_1_smoothing_inequality_2.tex; then continue (finish `thm:main` without hypotheses).
+
+## Dissolve Twisted.lean into the per-section modules (task-3)
+
+Recorded 2026-09-18T20:25:00-07:00; exact prompt: [raw.md](raw.md).
+The development in `DFR/Auto/Twisted/Twisted.lean` was moved into the eight
+existing per-section modules under `DFR/Auto/Twisted/<Section>/`, one blueprint
+section per module, so that each section's formalization lives entirely in that
+section's file. `Twisted.lean` opened and closed `namespace Auto` and
+`namespace Twisted` 475 times; the section modules introduce each exactly once.
+`Twisted.lean` no longer exists.
+
+Two placements are forced by Lean's acyclic imports, in both cases because the
+blueprint has the same inversion; see `Status-task3.md` and `StatusLog-task3.md`:
+
+- `thm:main` is stated in Section 1 but proved at the end of Section 8, so
+  `thm_main`, `anisotropicParaproduct_unconditional` and
+  `anisotropicParaproduct_of_interpolation` live in the Section 8 module.
+- `def:fiber_maximal` (`coordinateDyadicBallMaximal`) is defined in Section 7
+  but already used by Section 6, so it lives in the Section 6 module.
+
+Because Section 1's `lem:pairing` needs Section 2's Schwartz class, the modules
+import one another in the order `FunctionSpacesAndFixedBumps`,
+`ConventionsAndMainStatement`, then Sections 3-8 in blueprint order. Every
+declaration keeps its fully qualified name. Declarations that extend the global
+environment (`@[simp]` lemmas, instances, dot-notation namespace members) are
+placed in the earliest module that can host them, so the former single module's
+simp set is reproduced downstream.
+
+Merged with main on 2026-10-01: the module paths are `DFR.Auto.Twisted.*` and
+`namespace Twisted` wraps the whole development, both as main requires.
