@@ -1007,3 +1007,125 @@ bound), the extension of `T^{(k)}_J` to simple functions, and interpolation with
 2026-09-26T08:23:42-04:00 (raw.md entry of the same time) — SUPERSEDES the 2026-09-26T06:49:50 instruction that `thm:smoothing_2` stays a hypothesis: (1) finish the current Task 4 work (MH region, `thm:main` from `Auto.SmoothingTwo`); (2) then autoformalize Task 1 from the new blueprint blueprints/task_1_smoothing_inequality_2.tex, reusing or overwriting the existing Task 1 work as appropriate (no backups needed; the only goal is that the smoothing inequality needed by Task 4, `Auto.SmoothingTwo`, is proved); (3) then finish `thm:main` true to the source with no extra assumptions (discharge the `SmoothingTwo` hypothesis).
 
 2026-09-26T10:39:43-04:00 (raw.md entry of the same time): commit and push the current work (explicit one-time authorization for this commit and push; blueprints/main.tex stays uncommitted); keep automation/Status-task1.md updated following the rows of the new blueprint blueprints/task_1_smoothing_inequality_2.tex; then continue (finish `thm:main` without hypotheses).
+
+## CDR: Theorems 1-4 of arXiv:2008.10140 (started 2026-10-01T07:11:11-04:00)
+
+Raw prompts: `automation/raw.md`, entries of 2026-10-01T07:05, 07:09, 07:10 (recording time
+2026-10-01T07:11:11-04:00). Distilled:
+
+- Source: M. Christ, P. Durcik, J. Roos, *Trilinear smoothing inequalities and a variant of the
+  triangular Hilbert transform*, arXiv:2008.10140v2 (TeX source `cdr.tex`, 2377 lines, dated
+  November 13, 2020). Targets: its Theorems 1-4 (`thm:singint`, `thm:anisotp`, `thm:maxfct`,
+  `thm:patterns`) and every prerequisite needed for them. Theorem 5 (`mainresult`) is already
+  proved (`Auto.smoothing_theorem5`, DFR/Auto/SmoothingIneq2D/Smoothing2D.lean) and is reused.
+  The remarks of Sections 5.2-5.3 (bilinear Hilbert transform with curvature, Stein-Wainger) and
+  the remark after Theorem 2 (general `[t]^α`) are not targets.
+- Folder: the user's "Auto/CDR" is `DFR/Auto/CDR/` (the repository's canonical generated-source
+  directory is `DFR/Auto/`; no root `Auto/`). All CDR work goes there, except justified
+  reusable prerequisites (directly in `DFR/Auto/`) and generalizations of existing developments.
+- Reuse the existing development as much as possible. General prerequisites may be generalized so
+  that they serve both CDR and their original DFR purpose; existing developments may be modified
+  for generality, but every existing DFR result must keep building with its statement intact.
+- Records: ledger `automation/Status-cdr.md` (the user's "status-cdr.md", existing capitalization
+  convention), discrepancies `automation/ErrorReport-cdr.md`; continuation notes here.
+- Namespace `Auto` (subnamespace `Auto.CDR` to avoid clashes with the Task 4 names of the 3D
+  development, following the Task 3 precedent `Auto.Twisted`). Header: the repository's existing
+  convention (copyright block naming Joris Roos, Apache 2.0, generation notice inside the block,
+  plain `import`s); the Lean module system is not used anywhere in this repository and its
+  imported modules are not `module`s, so the skill's `module`/`public import` header is not
+  applied (decision recorded 2026-10-01T07:11:11-04:00).
+- Files (source-section split, standing exception): one file per top-level source section that
+  is needed, named after it: `DFR/Auto/CDR/Sec2PreliminaryReductions.lean` (Section 2:
+  Theorems 1 and 3 from Theorems 2 and 5), `DFR/Auto/CDR/Sec4SmoothCase*.lean` (Section 4:
+  Theorem 2; split at its subsections 4.1-4.5 if it exceeds 10,000 lines),
+  `DFR/Auto/CDR/Sec5Applications.lean` (Section 5.1: Theorem 4), and the top-level
+  `DFR/Auto/CDR.lean` importing them with the four main theorem statements' summary. Section 3 is
+  Theorem 5, already formalized. Split justification: the source's own sections; each is a
+  separate proof (Theorem 4 needs only Theorem 5; Theorem 2 is independent of Theorem 5).
+- Build: `lake env lean <file>` and `lake build DFR.Auto.CDR.<Module>`; `lake build` for the
+  configured targets; `#print axioms` on every completed target (only `propext`,
+  `Classical.choice`, `Quot.sound`). Keep Auto out of lakefile.toml (standing policy).
+- No commits or pushes unless the user explicitly instructs it.
+- Recurring wake-up job `111cc24c` (`7,22,37,52 * * * *`, session-only, expires after 7 days).
+
+### CDR continuation note, 2026-10-01T08:39:35-04:00
+
+Theorem 4 is complete: `Auto.CDR.thm_patterns` in `DFR/Auto/CDR/Sec5Applications.lean` (2978 lines;
+`lake build DFR.Auto.CDR.Sec5Applications` clean, no warnings; axioms `propext`, `Classical.choice`,
+`Quot.sound`). Scratch workflow: `lake env lean` on session-scratchpad files importing the built
+module, assembled by a small merge script; Python edits must write with `newline='\n'` (the
+repository uses LF). Next ledger rows: Section 2 shared part (principal value of `T`, the 2D partial
+Littlewood-Paley operators), then the shifted maximal function bounds (`eqn:shiftedmaxfct-basic`),
+then Theorem 3 (Section 2.6), then Section 4 (Theorem 2), then Theorem 1.
+
+### CDR continuation note, 2026-10-01T10:29:38-04:00
+
+Theorem 3 is complete: `Auto.CDR.thm_maxfct` in `DFR/Auto/CDR/Sec2PreliminaryReductions.lean`
+(about 3300 lines; `lake build DFR.Auto.CDR.Sec2PreliminaryReductions` clean, no warnings; axioms
+`propext`, `Classical.choice`, `Quot.sound`). The prerequisite `DFR/Auto/BilinearInterpolation.lean`
+was extended by appending `Auto.bilinear_interpolation` (existing declarations untouched,
+`DFR.Auto.SmoothingIneq2D.Smoothing2D` rebuilt). Reusable for Theorem 1: `enorm_Mj_lpD_le` (stated
+for the bump of `M_j`; `T_j` needs the same argument with `ψ(2^j t)/t`), `eLpNorm_tsum_le`,
+`eLpNorm_mul_le_holder`, `exists_measurable_argmax`, `sum_Mj_piece_L1`. Next: Section 4
+(Theorem 2), then Theorem 1.
+
+### CDR Section 4 plan (Theorem 2), 2026-10-01T10:55:00-04:00
+
+Section 4 (`sec:anisotp`, Theorem 2) is expected to exceed 10,000 lines (the analogous 3D
+development `DFR/Auto/Twisted/Twisted.lean` has about 109,000), so it is split at its subsection
+boundaries, in forward logical order:
+`DFR/Auto/CDR/Sec4SmoothCase1ConeDecomposition.lean` (§4.1: definitions of `g`, `h`, dyadic
+rectangles, trees, `Ω_𝒬`, `θ`, `𝓜_𝒬`, the model forms, and the cone decomposition),
+`DFR/Auto/CDR/Sec4SmoothCase3Telescoping.lean` (§4.3: `lemma:telescoping`, proved before it is used),
+`DFR/Auto/CDR/Sec4SmoothCase2TreeEstimate.lean` (§4.2: `prop:tree`),
+`DFR/Auto/CDR/Sec4SmoothCase4CombiningTrees.lean` (§4.4),
+`DFR/Auto/CDR/Sec4SmoothCase5FiberwiseCZ.lean` (§4.5), and
+`DFR/Auto/CDR/Sec4SmoothCase.lean` (Theorem 2 from `prop:twisted`, end of §4.1). The 2D development
+reuses the one-dimensional Gaussian and kernel layer of `DFR/Auto/Twisted/Twisted.lean`
+(`Auto.Twisted.gaussian`, `gaussianAt`, `scalarD`, `scalar_oneDim_telescoping`, bracket-kernel
+dominations); the 3D boxes and forms there are specific to `Fin 3` and are not reused.
+Reusable prerequisite for the interpolation in §4.5: `DFR/Auto/BilinearMarcinkiewicz.lean`
+(bilinear Marcinkiewicz interpolation with quasi-Banach target, four-corner form).
+
+### CDR Theorem 1 plan, 2026-10-01T12:12:29-04:00
+
+Section 2 grows past what one file comfortably holds next to the Theorem 3 material (the existing
+`DFR/Auto/CDR/Sec2PreliminaryReductions.lean`, about 3300 lines, covering §2.1, §2.2, §2.6). The
+Theorem 1 material is split at the source's subsection boundaries, in forward logical order:
+`DFR/Auto/CDR/Sec2PreliminaryReductions1LittlewoodPaley.lean` (§2.1: square-function bounds for the
+partial Littlewood-Paley operators, `ψ̃`, `T = ∑_j T_j`, the frequency decomposition),
+`DFR/Auto/CDR/Sec2PreliminaryReductions3HighFrequencies.lean` (§2.3: `T_j`, the `L^2` gain
+`eqn:HHT0`, `lem:shiftedmaxfct` for `T_j`, `T^{(k)}`, `T^H`),
+`DFR/Auto/CDR/Sec2PreliminaryReductions4LowFrequencies.lean` (§2.4) and
+`DFR/Auto/CDR/Sec2PreliminaryReductions5MixedFrequencies.lean` (§2.5), both using Theorem 2.
+§4.4 limiting argument (localized forms to the model operator) is in
+`DFR/Auto/CDR/Sec4SmoothCase4CombiningTreesLimit.lean` (part of §4.4, separated so that it can be
+developed independently of the stopping-time argument in `Sec4SmoothCase4CombiningTrees.lean`).
+Reuse: the 1D Littlewood-Paley and Mikhlin theorems of the dependency `lean_spherical`
+(`Auto.MikhlinHormander.littlewoodPaley_of_mikhlin`); the vector-valued fixed-scale shifted average
+bound is added to the existing prerequisite `DFR/Auto/ShiftedMaximalFunction.lean` (route change
+recorded in `automation/ErrorReport-cdr.md`).
+
+### CDR file additions, 2026-10-01T14:05:00-04:00
+
+`DFR/Auto/CDR/Sec4SmoothCaseConeDecomposition.lean` (§4.1 cone decomposition, `Tm`, `ModelBound`,
+`thm_anisotp_of_modelBound`; imported after the §4.2-4.5 files because it uses them only through the
+`ModelBound` interface) and `DFR/Auto/CDR/Sec4SmoothCase.lean` (model bounds in the full range and
+Theorem 2). For Theorem 1: `DFR/Auto/CDR/Sec2PreliminaryReductions1Decomposition.lean` (§2.1 and
+eqn:thtc: the principal value, `T = ∑_j T_j`, the frequency decomposition and its Fourier form,
+and the assembly of Theorem 1; placed after the §2.3-2.5 files in the import order because it
+combines them).
+
+### CDR completion note, 2026-10-01T16:55:00-04:00
+
+All targets are proved: Theorem 1 `Auto.CDR.thm_singint` (with the principal value `pvT`), Theorem 2
+`Auto.CDR.thm_anisotp`, Theorem 3 `Auto.CDR.thm_maxfct`, Theorem 4 `Auto.CDR.thm_patterns`. By user
+decision (2026-10-01) there is no `DFR/Auto/CDR.lean`; the modules containing the four theorems are
+imported from the top-level `DFR.lean` (with a CDR comment), so the default `lake build` covers them. `lake build DFR.Auto.CDR DFR.Auto.SchwartzRegularization
+DFR.Auto.SmoothingIneq2D.Smoothing2D DFR.Auto.Twisted.Twisted DFR.Auto.SmoothingIneq3D.Smoothing3D` and the
+default `lake build` succeed; every target depends only on `propext`, `Classical.choice`, `Quot.sound`;
+no `sorry`. Prerequisites extended: `DFR/Auto/BilinearInterpolation.lean` (appended
+`bilinear_interpolation`), `DFR/Auto/BilinearMarcinkiewicz.lean` (new; auxiliary names in
+`Auto.BilMarc`, uniform form `bilinear_marcinkiewicz_uniform`), `DFR/Auto/ShiftedMaximalFunction.lean` (new;
+vector-valued fixed-scale bound). The recurring wake-up job `111cc24c` was deleted. Nothing is
+committed.

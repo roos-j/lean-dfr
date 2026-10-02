@@ -329,5 +329,364 @@ theorem smoothing_bilinear_interpolation {X Y Z : Type*}
         rw [he]
         ring
 
+/-! ### General bilinear Riesz–Thorin interpolation
+
+The second input is deformed by `g_z = (g/|g|) |g|^{a(z)}` with the affine exponent
+`a(z) = α (1 - z) + β z`, where `α = q/q₀` and `β = q/q₁` (with `q/∞ = 0`). -/
+
+/-- The coefficient map of the general deformation of the second input:
+`c ↦ (c/|c|) |c|^{α (1 - z) + β z}`, sending zero to zero. -/
+def bilinearInterpCoeff (α β : ℝ) (z c : ℂ) : ℂ :=
+  if c = 0 then 0 else
+    c / (‖c‖ : ℂ) * Complex.exp (((α : ℂ) * (1 - z) + (β : ℂ) * z) * (Real.log ‖c‖ : ℂ))
+
+/-- The deformation coefficient vanishes at zero. -/
+@[simp] theorem bilinearInterpCoeff_zero (α β : ℝ) (z : ℂ) : bilinearInterpCoeff α β z 0 = 0 := by
+  simp [bilinearInterpCoeff]
+
+/-- The modulus of the deformation coefficient at a nonzero value. -/
+theorem bilinearInterpCoeff_norm (α β : ℝ) {c : ℂ} (hc : c ≠ 0) (z : ℂ) :
+    ‖bilinearInterpCoeff α β z c‖ =
+      Real.exp ((α * (1 - z.re) + β * z.re) * Real.log ‖c‖) := by
+  have hn : 0 < ‖c‖ := norm_pos_iff.mpr hc
+  simp only [bilinearInterpCoeff, if_neg hc, norm_mul, norm_div, Complex.norm_real,
+    Real.norm_eq_abs, abs_of_nonneg (norm_nonneg c), div_self hn.ne', one_mul, Complex.norm_exp]
+  congr 1
+  simp [Complex.mul_re]
+
+/-- The modulus of the deformation coefficient is `|c|^{Re a(z)}` (or zero). -/
+theorem bilinearInterpCoeff_norm_le (α β : ℝ) (z c : ℂ) :
+    ‖bilinearInterpCoeff α β z c‖ ≤ ‖c‖ ^ (α * (1 - z.re) + β * z.re) := by
+  by_cases hc : c = 0
+  · simp only [hc, bilinearInterpCoeff_zero, norm_zero]
+    exact Real.rpow_nonneg le_rfl _
+  · rw [bilinearInterpCoeff_norm α β hc, Real.rpow_def_of_pos (norm_pos_iff.mpr hc), mul_comm]
+
+/-- At an interpolation point where `a(θ) = 1`, the deformation is the identity. -/
+theorem bilinearInterpCoeff_at {α β θ : ℝ} (h : α * (1 - θ) + β * θ = 1) (c : ℂ) :
+    bilinearInterpCoeff α β (θ : ℂ) c = c := by
+  by_cases hc : c = 0
+  · simp [hc]
+  · have hn : 0 < ‖c‖ := norm_pos_iff.mpr hc
+    have h' : (α : ℂ) * (1 - (θ : ℂ)) + (β : ℂ) * (θ : ℂ) = 1 := by exact_mod_cast h
+    simp only [bilinearInterpCoeff, if_neg hc, h', one_mul]
+    rw [← Complex.ofReal_exp, Real.exp_log hn]
+    exact div_mul_cancel₀ _ (by exact_mod_cast hn.ne')
+
+/-- The deformation coefficient is entire in `z`. -/
+theorem bilinearInterpCoeff_differentiable (α β : ℝ) (c : ℂ) :
+    Differentiable ℂ (fun z => bilinearInterpCoeff α β z c) := by
+  by_cases hc : c = 0
+  · simp [hc]
+  · simp only [bilinearInterpCoeff, if_neg hc]
+    fun_prop
+
+/-- A uniform bound for the deformation coefficient on the closed strip. -/
+theorem bilinearInterpCoeff_bound {α β : ℝ} (hα : 0 ≤ α) (hβ : 0 ≤ β) (c : ℂ) {z : ℂ}
+    (hz : z ∈ verticalClosedStrip 0 1) :
+    ‖bilinearInterpCoeff α β z c‖ ≤ Real.exp ((α + β) * |Real.log ‖c‖|) := by
+  by_cases hc : c = 0
+  · simp only [hc, bilinearInterpCoeff_zero, norm_zero]
+    positivity
+  · rw [bilinearInterpCoeff_norm α β hc]
+    apply Real.exp_le_exp.mpr
+    have hz' : 0 ≤ z.re ∧ z.re ≤ 1 := hz
+    have ha : 0 ≤ α * (1 - z.re) + β * z.re := by nlinarith
+    have hb : α * (1 - z.re) + β * z.re ≤ α + β := by nlinarith
+    exact (mul_le_mul_of_nonneg_left (le_abs_self _) ha).trans
+      (mul_le_mul_of_nonneg_right hb (abs_nonneg _))
+
+/-- The general deformation of a simple second input. -/
+def bilinearInterpInput {Y : Type*} [MeasurableSpace Y] (α β : ℝ)
+    (g : SimpleFunc Y ℂ) (z : ℂ) : SimpleFunc Y ℂ :=
+  g.map (bilinearInterpCoeff α β z)
+
+/-- The deformed input of an integrable simple function is integrable. -/
+theorem bilinearInterpInput_integrable {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    (α β : ℝ) (g : SimpleFunc Y ℂ) (hg : Integrable g ν) (z : ℂ) :
+    Integrable (bilinearInterpInput α β g z : Y → ℂ) ν :=
+  ((SimpleFunc.integrable_iff_finMeasSupp.mp hg).map
+    (bilinearInterpCoeff_zero α β z)).integrable
+
+/-- At an interpolation point where `a(θ) = 1`, the deformed input is the original one. -/
+theorem bilinearInterpInput_at {Y : Type*} [MeasurableSpace Y] {α β θ : ℝ}
+    (h : α * (1 - θ) + β * θ = 1) (g : SimpleFunc Y ℂ) :
+    bilinearInterpInput α β g (θ : ℂ) = g := by
+  ext x
+  exact bilinearInterpCoeff_at h (g x)
+
+/-- Finite level-set expansion of `g.map φ` for a zero-preserving `φ`. -/
+theorem bilinearInterp_map_sum {Y : Type*} [MeasurableSpace Y]
+    (g : SimpleFunc Y ℂ) (φ : ℂ → ℂ) (hφ : φ 0 = 0) :
+    g.map φ = ∑ c ∈ g.range.erase 0, φ c • smoothingInterpolationLevel g c := by
+  classical
+  ext x
+  have hs (S : Finset ℂ) :
+      (∑ c ∈ S, φ c • smoothingInterpolationLevel g c) x =
+      ∑ c ∈ S, φ c * smoothingInterpolationLevel g c x := by
+    induction S using Finset.induction_on with
+    | empty => simp
+    | insert a S ha ih =>
+      rw [Finset.sum_insert ha, Finset.sum_insert ha, SimpleFunc.coe_add, SimpleFunc.coe_smul,
+        Pi.add_apply, Pi.smul_apply, smul_eq_mul, ih]
+  rw [hs]
+  simp_rw [smoothingInterpolationLevel_apply]
+  by_cases hx : g x = 0
+  · simp [SimpleFunc.map_apply, hx, hφ]
+  · rw [Finset.sum_eq_single (g x)]
+    · simp [SimpleFunc.map_apply]
+    · intro c hc hne
+      simp [Ne.symm hne]
+    · intro hn
+      exact (hn (Finset.mem_erase.mpr ⟨hx, g.mem_range_self x⟩)).elim
+
+/-- Expansion of a tested bilinear output along the level sets of the second input. -/
+theorem bilinearInterp_pairing_eq {X Y Z : Type*}
+    [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
+    {μ : Measure X} {ν : Measure Y} {ρ : Measure Z}
+    (B : SimpleFunc X ℂ →ₗ[ℂ] SimpleFunc Y ℂ →ₗ[ℂ] (Z → ℂ))
+    (hBi : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      Integrable (B f g) ρ)
+    (u : SimpleFunc X ℂ) (hu : Integrable u μ) (g : SimpleFunc Y ℂ) (hg : Integrable g ν)
+    (h : SimpleFunc Z ℂ) (φ : ℂ → ℂ) (hφ : φ 0 = 0) :
+    ∫ y, B u (g.map φ) y * h y ∂ρ =
+      ∑ c ∈ g.range.erase 0, φ c * ∫ y, B u (smoothingInterpolationLevel g c) y * h y ∂ρ := by
+  rw [bilinearInterp_map_sum g φ hφ, map_sum]
+  simp only [map_smul, Finset.sum_apply, Pi.smul_apply, smul_eq_mul, Finset.sum_mul, mul_assoc]
+  rw [integral_finsetSum]
+  · simp only [integral_const_mul]
+  · intro c hc
+    exact (smoothingInterpolation_test_integrable
+      (hBi u _ hu (smoothingInterpolationLevel_integrable g hg hc)) h).const_mul _
+
+/-- Edge estimate for the deformed input: if `|w| ≤ |g|^γ` with `s γ = q` (or `s = ∞`
+and `γ = 0`) and `‖g‖_q ≤ 1`, then `‖w‖_s ≤ 1`. -/
+theorem bilinearInterp_edge_le {Y : Type*} [MeasurableSpace Y] {ν : Measure Y}
+    {q s : ENNReal} (g : SimpleFunc Y ℂ) (hgn : eLpNorm (g : Y → ℂ) q ν ≤ 1) {γ : ℝ}
+    (hs : (s = ⊤ ∧ γ = 0) ∨ (0 < γ ∧ s * ENNReal.ofReal γ = q))
+    (w : Y → ℂ) (hw : ∀ x, ‖w x‖ ≤ ‖g x‖ ^ γ) :
+    eLpNorm w s ν ≤ 1 := by
+  rcases hs with ⟨rfl, rfl⟩ | ⟨hγ, hsq⟩
+  · rw [eLpNorm_exponent_top]
+    have h1 := eLpNormEssSup_le_of_ae_bound (μ := ν) (f := w)
+      (Filter.Eventually.of_forall (fun x => by simpa using hw x))
+    rwa [ENNReal.ofReal_one] at h1
+  · calc eLpNorm w s ν ≤ eLpNorm (fun x => ‖g x‖ ^ γ) s ν := eLpNorm_mono_real hw
+      _ = eLpNorm (g : Y → ℂ) q ν ^ γ := by rw [eLpNorm_norm_rpow _ hγ, hsq]
+      _ ≤ 1 := ENNReal.rpow_le_one hgn hγ.le
+
+/-- The edge exponent `q/s` satisfies the hypothesis of `bilinearInterp_edge_le`. -/
+theorem bilinearInterp_exponent_cases {q s : ENNReal} (hq0 : q ≠ 0) (hqt : q ≠ ⊤)
+    (hs : s ≠ 0) :
+    (s = ⊤ ∧ (q / s).toReal = 0) ∨
+      (0 < (q / s).toReal ∧ s * ENNReal.ofReal (q / s).toReal = q) := by
+  by_cases hst : s = ⊤
+  · left
+    simp [hst]
+  · right
+    have hne : q / s ≠ ⊤ := by simp [ENNReal.div_eq_top, hqt, hs]
+    refine ⟨ENNReal.toReal_pos (by simp [hq0, hst]) hne, ?_⟩
+    rw [ENNReal.ofReal_toReal hne, ENNReal.mul_div_cancel hs hst]
+
+/-- The affine exponent `a(z) = (q/q₀)(1 - z) + (q/q₁) z` equals one at `z = θ`. -/
+theorem bilinearInterp_exponent_at {q₀ q₁ q : ENNReal} {θ : ℝ} (hθ : θ ∈ Set.Ioo 0 1)
+    (hq₀ : q₀ ≠ 0) (hq₁ : q₁ ≠ 0) (hq0 : q ≠ 0) (hqt : q ≠ ⊤)
+    (hq : q⁻¹ = ENNReal.ofReal (1 - θ) * q₀⁻¹ + ENNReal.ofReal θ * q₁⁻¹) :
+    (q / q₀).toReal * (1 - θ) + (q / q₁).toReal * θ = 1 := by
+  have h := congrArg ENNReal.toReal hq
+  rw [ENNReal.toReal_add (ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.inv_ne_top.mpr hq₀))
+    (ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.inv_ne_top.mpr hq₁)),
+    ENNReal.toReal_mul, ENNReal.toReal_mul, ENNReal.toReal_ofReal (by linarith [hθ.2]),
+    ENNReal.toReal_ofReal hθ.1.le] at h
+  have hinv : q.toReal * q⁻¹.toReal = 1 := by
+    rw [ENNReal.toReal_inv]
+    exact mul_inv_cancel₀ (ENNReal.toReal_ne_zero.mpr ⟨hq0, hqt⟩)
+  rw [div_eq_mul_inv, div_eq_mul_inv, ENNReal.toReal_mul, ENNReal.toReal_mul]
+  linear_combination hinv - q.toReal * h
+
+/-- The normalized general bilinear interpolation step: for `‖g‖_q ≤ 1`, the bilinear
+form is bounded by `M₀^(1-θ) M₁^θ ‖f‖_p` in `L^r`. -/
+theorem bilinear_interpolation_normalized {X Y Z : Type*}
+    [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
+    {μ : Measure X} {ν : Measure Y} {ρ : Measure Z} [SigmaFinite ρ]
+    (B : SimpleFunc X ℂ →ₗ[ℂ] SimpleFunc Y ℂ →ₗ[ℂ] (Z → ℂ))
+    (hBm : ∀ f g, Measurable (B f g))
+    (hBi : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      Integrable (B f g) ρ)
+    {p₀ p₁ q₀ q₁ r₀ r₁ p q r : ENNReal}
+    (hp₀ : 1 ≤ p₀) (hp₁ : 1 ≤ p₁) (hq₀ : 1 ≤ q₀) (hq₁ : 1 ≤ q₁) (hr₀ : 1 ≤ r₀) (hr₁ : 1 ≤ r₁)
+    {θ : ℝ} (hθ : θ ∈ Set.Ioo 0 1)
+    (hp : p⁻¹ = ENNReal.ofReal (1 - θ) * p₀⁻¹ + ENNReal.ofReal θ * p₁⁻¹)
+    (hq : q⁻¹ = ENNReal.ofReal (1 - θ) * q₀⁻¹ + ENNReal.ofReal θ * q₁⁻¹)
+    (hr : r⁻¹ = ENNReal.ofReal (1 - θ) * r₀⁻¹ + ENNReal.ofReal θ * r₁⁻¹)
+    (hq_top : q ≠ ⊤)
+    {M₀ M₁ : ℝ} (hM₀ : 0 < M₀) (hM₁ : 0 < M₁)
+    (hB₀ : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      eLpNorm (B f g) r₀ ρ ≤ ENNReal.ofReal M₀ * eLpNorm (f : X → ℂ) p₀ μ *
+        eLpNorm (g : Y → ℂ) q₀ ν)
+    (hB₁ : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      eLpNorm (B f g) r₁ ρ ≤ ENNReal.ofReal M₁ * eLpNorm (f : X → ℂ) p₁ μ *
+        eLpNorm (g : Y → ℂ) q₁ ν)
+    (g : SimpleFunc Y ℂ) (hg : Integrable g ν) (hgn : eLpNorm (g : Y → ℂ) q ν ≤ 1)
+    (f : SimpleFunc X ℂ) (hf : Integrable f μ) :
+    eLpNorm (B f g) r ρ ≤ ENNReal.ofReal (M₀ ^ (1 - θ) * M₁ ^ θ) * eLpNorm (f : X → ℂ) p μ := by
+  classical
+  have hq₀0 : q₀ ≠ 0 := (zero_lt_one.trans_le hq₀).ne'
+  have hq₁0 : q₁ ≠ 0 := (zero_lt_one.trans_le hq₁).ne'
+  have hq0 : q ≠ 0 := by
+    rw [← ENNReal.inv_ne_top, hq]
+    exact ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.inv_ne_top.mpr hq₀0),
+        ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.inv_ne_top.mpr hq₁0)⟩
+  set α : ℝ := (q / q₀).toReal with hα
+  set β : ℝ := (q / q₁).toReal with hβ
+  have hα0 : 0 ≤ α := ENNReal.toReal_nonneg
+  have hβ0 : 0 ≤ β := ENNReal.toReal_nonneg
+  have hθ1 : α * (1 - θ) + β * θ = 1 := bilinearInterp_exponent_at hθ hq₀0 hq₁0 hq0 hq_top hq
+  let T : ℂ → SimpleFunc X ℂ → Z → ℂ := fun z u => B u (bilinearInterpInput α β g z)
+  have hpair (u : SimpleFunc X ℂ) (hu : Integrable u μ) (h : SimpleFunc Z ℂ) (z : ℂ) :
+      ∫ y, T z u y * h y ∂ρ = ∑ c ∈ g.range.erase 0, bilinearInterpCoeff α β z c *
+        ∫ y, B u (smoothingInterpolationLevel g c) y * h y ∂ρ :=
+    bilinearInterp_pairing_eq B hBi u hu g hg h _ (bilinearInterpCoeff_zero α β z)
+  obtain ⟨_, hbound⟩ := SteinInterpolation.stein_interpolation_constant_bounds
+    (μ := μ) (ν := ρ) (T := T) hp₀ hp₁ hr₀ hr₁ hθ hp hr
+    (by
+      intro z u v hu hv
+      exact congrArg (fun L => L (bilinearInterpInput α β g z)) (map_add B u v))
+    (by
+      intro z c u hu
+      exact congrArg (fun L => L (bilinearInterpInput α β g z)) (map_smul B c u))
+    (by intro z u hu; exact hBm _ _)
+    (by
+      intro z u h hu hh
+      exact smoothingInterpolation_test_integrable
+        (hBi _ _ hu (bilinearInterpInput_integrable α β g hg _)) h)
+    (by
+      intro u h hu hh
+      apply Differentiable.diffContOnCl
+      simp_rw [hpair u hu h]
+      apply Differentiable.fun_sum
+      intro c hc
+      exact (bilinearInterpCoeff_differentiable α β c).mul_const _)
+    (by
+      refine ⟨0, Real.pi_pos, ?_⟩
+      intro u h hu hh
+      refine ⟨∑ c ∈ g.range.erase 0, Real.exp ((α + β) * |Real.log ‖c‖|) *
+        ‖∫ y, B u (smoothingInterpolationLevel g c) y * h y ∂ρ‖, ?_⟩
+      intro z
+      rw [hpair u hu h]
+      refine (norm_sum_le _ _).trans ?_
+      refine le_trans (Finset.sum_le_sum (g := fun c => Real.exp ((α + β) * |Real.log ‖c‖|) *
+        ‖∫ y, B u (smoothingInterpolationLevel g c) y * h y ∂ρ‖) (fun c _ => ?_)) ?_
+      · rw [norm_mul]
+        exact mul_le_mul_of_nonneg_right (bilinearInterpCoeff_bound hα0 hβ0 c z.2)
+          (norm_nonneg _)
+      · simp only [zero_mul, Real.exp_zero, mul_one]
+        exact (le_add_of_nonneg_right zero_le_one).trans (Real.add_one_le_exp _))
+    hM₀ hM₁
+    (by
+      intro t u hu
+      have h := hB₀ u (bilinearInterpInput α β g ((t : ℂ) * I)) hu
+        (bilinearInterpInput_integrable α β g hg _)
+      have hn : eLpNorm (bilinearInterpInput α β g ((t : ℂ) * I) : Y → ℂ) q₀ ν ≤ 1 := by
+        refine bilinearInterp_edge_le g hgn
+          (bilinearInterp_exponent_cases hq0 hq_top hq₀0) _ (fun x => ?_)
+        have hre : ((t : ℂ) * I).re = 0 := by simp
+        have h2 := bilinearInterpCoeff_norm_le α β ((t : ℂ) * I) (g x)
+        rw [hre, sub_zero, mul_one, mul_zero, add_zero] at h2
+        exact h2
+      exact h.trans (by
+        simpa only [mul_one] using
+          mul_le_mul' (le_refl (ENNReal.ofReal M₀ * eLpNorm (u : X → ℂ) p₀ μ)) hn))
+    (by
+      intro t u hu
+      have h := hB₁ u (bilinearInterpInput α β g (1 + (t : ℂ) * I)) hu
+        (bilinearInterpInput_integrable α β g hg _)
+      have hn : eLpNorm (bilinearInterpInput α β g (1 + (t : ℂ) * I) : Y → ℂ) q₁ ν ≤ 1 := by
+        refine bilinearInterp_edge_le g hgn
+          (bilinearInterp_exponent_cases hq0 hq_top hq₁0) _ (fun x => ?_)
+        have hre : (1 + (t : ℂ) * I).re = 1 := by simp
+        have h2 := bilinearInterpCoeff_norm_le α β (1 + (t : ℂ) * I) (g x)
+        rw [hre, sub_self, mul_zero, zero_add, mul_one] at h2
+        exact h2
+      exact h.trans (by
+        simpa only [mul_one] using
+          mul_le_mul' (le_refl (ENNReal.ofReal M₁ * eLpNorm (u : X → ℂ) p₁ μ)) hn))
+    f hf
+  simpa only [T, bilinearInterpInput_at hθ1, Real.rpow_eq_pow] using hbound
+
+/-- **Bilinear Riesz–Thorin interpolation** for simple inputs: interpolating the bounds
+`L^{p₀} × L^{q₀} → L^{r₀}` (constant `M₀`) and `L^{p₁} × L^{q₁} → L^{r₁}` (constant `M₁`)
+at `θ` gives `L^p × L^q → L^r` with constant `M₀^(1-θ) M₁^θ`, provided `q < ∞`. -/
+theorem bilinear_interpolation {X Y Z : Type*}
+    [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
+    {μ : Measure X} {ν : Measure Y} {ρ : Measure Z} [SigmaFinite ρ]
+    (B : SimpleFunc X ℂ →ₗ[ℂ] SimpleFunc Y ℂ →ₗ[ℂ] (Z → ℂ))
+    (hBm : ∀ f g, Measurable (B f g))
+    (hBi : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      Integrable (B f g) ρ)
+    {p₀ p₁ q₀ q₁ r₀ r₁ p q r : ENNReal}
+    (hp₀ : 1 ≤ p₀) (hp₁ : 1 ≤ p₁) (hq₀ : 1 ≤ q₀) (hq₁ : 1 ≤ q₁) (hr₀ : 1 ≤ r₀) (hr₁ : 1 ≤ r₁)
+    {θ : ℝ} (hθ : θ ∈ Set.Ioo 0 1)
+    (hp : p⁻¹ = ENNReal.ofReal (1 - θ) * p₀⁻¹ + ENNReal.ofReal θ * p₁⁻¹)
+    (hq : q⁻¹ = ENNReal.ofReal (1 - θ) * q₀⁻¹ + ENNReal.ofReal θ * q₁⁻¹)
+    (hr : r⁻¹ = ENNReal.ofReal (1 - θ) * r₀⁻¹ + ENNReal.ofReal θ * r₁⁻¹)
+    (hq_top : q ≠ ⊤)
+    {M₀ M₁ : ℝ} (hM₀ : 0 < M₀) (hM₁ : 0 < M₁)
+    (hB₀ : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      eLpNorm (B f g) r₀ ρ ≤ ENNReal.ofReal M₀ * eLpNorm (f : X → ℂ) p₀ μ *
+        eLpNorm (g : Y → ℂ) q₀ ν)
+    (hB₁ : ∀ (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ), Integrable f μ → Integrable g ν →
+      eLpNorm (B f g) r₁ ρ ≤ ENNReal.ofReal M₁ * eLpNorm (f : X → ℂ) p₁ μ *
+        eLpNorm (g : Y → ℂ) q₁ ν)
+    (f : SimpleFunc X ℂ) (g : SimpleFunc Y ℂ) (hf : Integrable f μ) (hg : Integrable g ν) :
+    eLpNorm (B f g) r ρ ≤
+      ENNReal.ofReal (M₀ ^ (1 - θ) * M₁ ^ θ) * eLpNorm (f : X → ℂ) p μ *
+        eLpNorm (g : Y → ℂ) q ν := by
+  have hgp : MemLp (g : Y → ℂ) q ν :=
+    g.memLp_of_finite_measure_preimage _ (SimpleFunc.integrable_iff.mp hg)
+  have hq₀0 : q₀ ≠ 0 := (zero_lt_one.trans_le hq₀).ne'
+  have hq₁0 : q₁ ≠ 0 := (zero_lt_one.trans_le hq₁).ne'
+  have hq0 : q ≠ 0 := by
+    rw [← ENNReal.inv_ne_top, hq]
+    exact ENNReal.add_ne_top.mpr
+      ⟨ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.inv_ne_top.mpr hq₀0),
+        ENNReal.mul_ne_top ENNReal.ofReal_ne_top (ENNReal.inv_ne_top.mpr hq₁0)⟩
+  by_cases hz : eLpNorm (g : Y → ℂ) q ν = 0
+  · have hga : (g : Y → ℂ) =ᵐ[ν] 0 := (eLpNorm_eq_zero_iff hgp.1 hq0).mp hz
+    have hgz : eLpNorm (g : Y → ℂ) q₀ ν = 0 := by rw [eLpNorm_congr_ae hga]; simp
+    have hh := hB₀ f g hf hg
+    rw [hgz, mul_zero, nonpos_iff_eq_zero] at hh
+    have hBa : B f g =ᵐ[ρ] 0 := (eLpNorm_eq_zero_iff (hBm f g).aestronglyMeasurable
+      (zero_lt_one.trans_le hr₀).ne').mp hh
+    rw [eLpNorm_congr_ae hBa]
+    simp
+  · let N : ENNReal := eLpNorm (g : Y → ℂ) q ν
+    let a : ℝ := N.toReal
+    have ha : 0 < a := ENNReal.toReal_pos hz hgp.2.ne
+    let g' : SimpleFunc Y ℂ := (a⁻¹ : ℂ) • g
+    have hg' : Integrable (g' : Y → ℂ) ν := hg.smul _
+    have hn : eLpNorm (g' : Y → ℂ) q ν ≤ 1 := by
+      change eLpNorm ((a⁻¹ : ℂ) • (g : Y → ℂ)) q ν ≤ 1
+      apply eLpNorm_const_smul_le.trans_eq
+      rw [← ofReal_norm, norm_inv, Complex.norm_real, Real.norm_eq_abs, abs_of_pos ha,
+        ENNReal.ofReal_inv_of_pos ha]
+      change (ENNReal.ofReal N.toReal)⁻¹ * N = 1
+      rw [ENNReal.ofReal_toReal hgp.2.ne, ENNReal.inv_mul_cancel hz hgp.2.ne]
+    have hbound := bilinear_interpolation_normalized B hBm hBi hp₀ hp₁ hq₀ hq₁ hr₀ hr₁ hθ
+      hp hq hr hq_top hM₀ hM₁ hB₀ hB₁ g' hg' hn f hf
+    have hscale : g = (a : ℂ) • g' := by simp [g', ha.ne']
+    calc
+      _ = ‖(a : ℂ)‖ₑ * eLpNorm (B f g') r ρ := by
+        conv_lhs => rw [hscale, map_smul]
+        exact eLpNorm_const_smul _ _ _ _
+      _ ≤ ‖(a : ℂ)‖ₑ * (ENNReal.ofReal (M₀ ^ (1 - θ) * M₁ ^ θ) * eLpNorm (f : X → ℂ) p μ) :=
+        mul_le_mul' le_rfl hbound
+      _ = _ := by
+        rw [← ofReal_norm, Complex.norm_real, Real.norm_eq_abs, abs_of_pos ha]
+        have he : ENNReal.ofReal a = N := ENNReal.ofReal_toReal hgp.2.ne
+        rw [he]
+        ring
+
 end
 end Auto

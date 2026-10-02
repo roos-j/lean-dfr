@@ -10,6 +10,7 @@ Proof progress and verification evidence belong in the per-task ledgers
 | 2 | 3d smoothing inequality, [blueprints/task_2_smoothingineq3d_blueprint.tex](../blueprints/task_2_smoothingineq3d_blueprint.tex) | DFR/Auto/SmoothingIneq3D/ | DFR/Auto/SmoothingIneq3D/Smoothing3D.lean | Claude session task2-20260911-1213 | Complete; Auto.mainTheorem (`thm:main`, no hypotheses) verified with Auto.koszAdjoint, lake build, and allowed-axiom audit |
 | 3 | Twisted; `blueprints/task_3_twisted_blueprint.tex`, Theorem `thm:main` | DFR/Auto/Twisted/ | DFR/Auto/Twisted/Twisted.lean | Claude root task3-20260911-1842 | Complete; Auto.Twisted.thm_main verified (unconditional) |
 | 4 | Reduction: `thm:main` of `blueprints/main.tex` (paper draft, kept out of git) from Tasks 1-3 | DFR/Auto/Reduction/ | DFR/Auto/Reduction/Reduction.lean | Claude session task4-20260925-2118 | Active (2026-09-25T21:17:51-04:00) |
+| CDR | Theorems 1-4 of [arXiv:2008.10140v2](https://arxiv.org/abs/2008.10140) (Christ-Durcik-Roos) | DFR/Auto/CDR/ | imported from DFR.lean (Sec2PreliminaryReductions1Decomposition, Sec4SmoothCase, Sec2PreliminaryReductions, Sec5Applications) | Claude session cdr-20261001-0711 | Complete; Auto.CDR.thm_singint, thm_anisotp, thm_maxfct, thm_patterns verified (lake build, allowed-axiom audit); ledger `Status-cdr.md`, discrepancies `ErrorReport-cdr.md` |
 
 ## Assignment protocol
 
@@ -115,3 +116,7 @@ The user assigns Task 4 to Claude session task4-20260925-2118. Scope: `DFR/Auto/
 (plus reusable prerequisites directly in `DFR/Auto/`); main file
 `DFR/Auto/Reduction/Reduction.lean`; source `blueprints/main.tex`, target Theorem `thm:main`
 (the first theorem). Ledger `Status-task4.md`, discrepancies `ErrorReport-task4.md`.
+
+## CDR assignment
+
+2026-10-01T07:11:11-04:00 — The user assigns the formalization of Theorems 1-4 of arXiv:2008.10140v2 to Claude session cdr-20261001-0711. Scope: `DFR/Auto/CDR/`, plus justified reusable prerequisites directly in `DFR/Auto/` and generalizations of existing developments that keep every DFR result intact. Ledger `automation/Status-cdr.md`, discrepancies `automation/ErrorReport-cdr.md`. The completion gate above applies.
