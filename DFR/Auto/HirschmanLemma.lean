@@ -14,20 +14,17 @@ import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 
 This file develops **Hirschman's lemma**, the sharpening of the Hadamard three-lines theorem in
 which the two boundary suprema are replaced by averages against the harmonic measure of the
-strip.  For `0 < θ < 1` the harmonic measure of
-
+strip. For `0 < θ < 1` the harmonic measure of
   `S = {z : ℂ | 0 < re z < 1}`
 
 seen from the interior point `θ` splits into two pieces, carried by the two boundary lines
 `re z = 0` and `re z = 1`, with densities
-
   `w₀(t) = sin(π θ) / (2 (cosh(π t) - cos(π θ)))`,
   `w₁(t) = sin(π θ) / (2 (cosh(π t) + cos(π θ)))`
 
-in the boundary coordinate `t = im z`.  Their total masses are `1 - θ` and `θ`.  For a function
+in the boundary coordinate `t = im z`. Their total masses are `1 - θ` and `θ`. For a function
 `H` continuous on the closed strip, analytic inside, and of admissible growth
 `|H(z)| ≤ exp(C exp(c |im z|))` with `c < π`, Hirschman's lemma states
-
   `|H(θ)| ≤ (∫ |H(i t)|^s dν₀)^((1-θ)/s) · (∫ |H(1 + i t)|^s dν₁)^(θ/s)`
 
 for every `s > 0`, where `ν₀` and `ν₁` are the probability measures obtained by normalizing `w₀`
@@ -36,7 +33,7 @@ and `w₁`.
 Mathlib provides only the supremum form of the three-lines theorem
 (`Complex.HadamardThreeLines.norm_le_interpStrip_of_mem_verticalClosedStrip`), which requires the
 function to be bounded on the strip and gives no information about the distribution of the
-boundary values.  The averaged form is what makes quasi-Banach (output exponent `< 1`)
+boundary values. The averaged form is what makes quasi-Banach (output exponent `< 1`)
 interpolation work, because the boundary averages can then be estimated in `L^{q/s}` with
 `q/s > 1`; the supremum form cannot be used there.
 
@@ -176,10 +173,9 @@ theorem integrable_poissonStrip {θ σ : ℝ} (hθ : θ ∈ Ioo (0 : ℝ) 1) (h�
 
 /-! ### The total masses of the two densities
 
-`w₀` has mass `1 - θ` and `w₁` has mass `θ`.  The primitive is
+`w₀` has mass `1 - θ` and `w₁` has mass `θ`. The primitive is
 `t ↦ π⁻¹ arctan (cot (π θ / 2) tanh (π t / 2))`, whose limits at `±∞` are
 `±(1 - θ)/2`. -/
-
 theorem tendsto_sinh_div_cosh_atTop :
     Filter.Tendsto (fun x : ℝ => Real.sinh x / Real.cosh x) Filter.atTop (nhds 1) := by
   have key : ∀ x : ℝ, Real.sinh x / Real.cosh x
@@ -372,12 +368,11 @@ theorem integral_poissonStripRight {θ : ℝ} (hθ : θ ∈ Ioo (0 : ℝ) 1) :
 
 The map `φ z = exp (i π z)` carries the strip `0 < re z < 1` conformally onto the upper
 half-plane, the edge `re z = 0` onto the positive real axis by `t ↦ exp (-π t)`, and the edge
-`re z = 1` onto the negative real axis by `t ↦ -exp (-π t)`.  The interior point `θ` goes to
-`exp (i π θ) = cos (π θ) + i sin (π θ)`.  The Poisson kernel of the half-plane at the point
+`re z = 1` onto the negative real axis by `t ↦ -exp (-π t)`. The interior point `θ` goes to
+`exp (i π θ) = cos (π θ) + i sin (π θ)`. The Poisson kernel of the half-plane at the point
 `u + i v` is `π⁻¹ v / ((ξ - u)² + v²)`, so the push-forward of the harmonic measure to the
-boundary coordinate `t` is exactly `poissonStrip`.  The identity below records this; it is the
+boundary coordinate `t` is exactly `poissonStrip`. The identity below records this; it is the
 computation on which the harmonic majorization of `lem:scalar-strip` rests. -/
-
 theorem poissonStrip_eq_halfPlane {θ σ : ℝ} (hθ : θ ∈ Ioo (0 : ℝ) 1) (hσ : σ = 1 ∨ σ = -1)
     (t : ℝ) :
     poissonStrip θ σ t
@@ -405,7 +400,7 @@ theorem poissonStrip_eq_halfPlane {θ σ : ℝ} (hθ : θ ∈ Ioo (0 : ℝ) 1) (
 
 The last step of `lem:scalar-strip` passes from the additive (logarithmic) majorization to the
 multiplicative statement by Jensen's inequality applied to the concave function `log`, against
-the normalized densities.  It is convenient to record it in the equivalent convex form for
+the normalized densities. It is convenient to record it in the equivalent convex form for
 `exp`. -/
 
 open MeasureTheory in
@@ -438,12 +433,12 @@ theorem integral_log_le_log_integral {α : Type*} [MeasurableSpace α] {μ : Mea
 /-! ### The complex Herglotz kernel of the strip
 
 The densities `poissonStrip` are the imaginary parts of a kernel that is analytic in the interior
-variable.  This is what turns the harmonic majorization into a statement about an analytic
+variable. This is what turns the harmonic majorization into a statement about an analytic
 function, to which `PhragmenLindelof.vertical_strip` applies: its growth hypothesis for the strip
 `0 < re z < 1` is exactly `c < π`, the hypothesis of `lem:scalar-strip`. -/
 
 /-- The Herglotz kernel of the strip in the boundary coordinate `t`, pulled back from the upper
-half-plane along `z ↦ exp (i π z)`.  For `σ = 1` it carries the edge `re z = 0` and for `σ = -1`
+half-plane along `z ↦ exp (i π z)`. For `σ = 1` it carries the edge `re z = 0` and for `σ = -1`
 the edge `re z = 1`. -/
 noncomputable def stripKernel (σ t : ℝ) (z : ℂ) : ℂ :=
   (Real.exp (-(π * t)) : ℂ)
@@ -486,7 +481,7 @@ theorem im_exp_pi_mul_I_ofReal (θ : ℝ) :
   simp
 
 /-- The imaginary part of the Herglotz kernel at a real interior point is the density
-`poissonStrip`.  With `poissonStrip_eq_halfPlane` this identifies `poissonStrip` as the
+`poissonStrip`. With `poissonStrip_eq_halfPlane` this identifies `poissonStrip` as the
 push-forward of the Poisson kernel of the half-plane. -/
 theorem im_stripKernel {θ σ : ℝ} (hθ : θ ∈ Ioo (0 : ℝ) 1) (hσ : σ = 1 ∨ σ = -1) (t : ℝ) :
     (stripKernel σ t (θ : ℂ)).im = poissonStrip θ σ t := by
@@ -510,7 +505,7 @@ theorem im_stripKernel {θ σ : ℝ} (hθ : θ ∈ Ioo (0 : ℝ) 1) (hσ : σ = 
 
 The blueprint's growth hypothesis `|H(z)| ≤ exp (C exp (c |Im z|))` with `c < π` is exactly the
 hypothesis of `PhragmenLindelof.vertical_strip` for the strip `0 < re z < 1`, whose threshold is
-`π / (1 - 0)`.  The statement below converts the blueprint's pointwise bound into the
+`π / (1 - 0)`. The statement below converts the blueprint's pointwise bound into the
 `IsBigO` form the Mathlib lemma expects. -/
 
 open Complex in
@@ -532,7 +527,7 @@ theorem norm_le_of_strip_growth {G : ℂ → ℂ} {c B C : ℝ} (hc : c < π)
 
 The Poisson kernel of the strip is invariant under vertical translation: at the interior point
 `z = x + i y` it is the density at the real point `x`, translated by `y` in the boundary
-coordinate.  Positivity, continuity and integrability in `t` therefore come for free from the
+coordinate. Positivity, continuity and integrability in `t` therefore come for free from the
 results already proved for `poissonStrip`. -/
 
 /-- The algebraic identity behind the translation invariance. -/
@@ -550,7 +545,7 @@ theorem sq_eq_one_of_eq_one_or_neg_one {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) : �
 theorem abs_le_one_of_eq_one_or_neg_one {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) : |σ| ≤ 1 := by
   rcases hσ with rfl | rfl <;> norm_num
 
-/-- **Vertical translation invariance of the strip Poisson kernel.**  At the interior point `z`
+/-- **Vertical translation invariance of the strip Poisson kernel.** At the interior point `z`
 the kernel is the density at the real point `re z`, translated by `im z`. -/
 theorem im_stripKernel_eq {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ} (hz : z.re ∈ Ioo (0 : ℝ) 1)
     (t : ℝ) : (stripKernel σ t z).im = poissonStrip z.re σ (t - z.im) := by
@@ -644,8 +639,8 @@ theorem integral_im_stripKernel_neg_one {z : ℂ} (hz : z.re ∈ Ioo (0 : ℝ) 1
 /-! ### The normalized Herglotz kernel
 
 Rotating by `-i` turns the Poisson kernel into the *real* part, which is the part that decays in
-`t`.  The imaginary part of `-i · stripKernel` tends to `-σ` as `t → -∞`, so the analytic
-completion has to be normalized before it can be integrated against boundary data.  Subtracting a
+`t`. The imaginary part of `-i · stripKernel` tends to `-σ` as `t → -∞`, so the analytic
+completion has to be normalized before it can be integrated against boundary data. Subtracting a
 purely imaginary quantity that does not depend on `z` leaves the real part -- hence the harmonic
 majorization -- unchanged, and makes the imaginary part vanish at the reference point `1/2`.
 This is the strip analogue of the Schwarz kernel `1/(ξ - w) - ξ/(1 + ξ²)` of the half-plane. -/
@@ -724,14 +719,12 @@ theorem integral_re_stripKernelNorm_neg_one {z : ℂ} (hz : z.re ∈ Ioo (0 : �
 /-! ### The real part of the kernel, and the closed form of the normalized imaginary part
 
 The real part of `stripKernel` has the closed form
-
-  `σ/2 - σ sinh(π s) / (2 (cosh(π s) - σ cos(π x)))`,  `s = t - im z`,  `x = re z`,
+  `σ/2 - σ sinh(π s) / (2 (cosh(π s) - σ cos(π x)))`, `s = t - im z`, `x = re z`,
 
 which exhibits the obstruction described above: it tends to `σ` as `t → -∞` and to `0` as
-`t → +∞`.  Subtracting the value at the reference point cancels the constant, and the normalized
+`t → +∞`. Subtracting the value at the reference point cancels the constant, and the normalized
 imaginary part becomes a difference of two such expressions, each tending to the same limits at
 each end. -/
-
 theorem stripKernel_denom_re (σ t : ℝ) (z : ℂ) :
     (((σ * Real.exp (-(π * t)) : ℝ) : ℂ) - Complex.exp (↑π * z * Complex.I)).re
       = σ * Real.exp (-(π * t)) - Real.exp (-(π * z.im)) * Real.cos (π * z.re) := by
@@ -836,7 +829,6 @@ The resulting closed form shows at once that the imaginary part of the normalize
 dominated by its real part, uniformly in `t`, with a constant depending only on the point `z`.
 That is the estimate needed for the Poisson integral to converge and to be analytic: the
 imaginary part is integrable against exactly the same boundary data as the real part. -/
-
 theorem abs_sinh_le_cosh (x : ℝ) : |Real.sinh x| ≤ Real.cosh x := by
   have h := Real.cosh_sq x
   nlinarith [Real.cosh_pos x, abs_nonneg (Real.sinh x), sq_abs (Real.sinh x)]
@@ -876,7 +868,7 @@ theorem im_stripKernelNorm_closed {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ
   rw [im_stripKernelNorm_eq hσ hz, div_sub_div _ _ h2D h2Ct, key]
   field_simp
 
-/-- **The imaginary part of the normalized kernel is dominated by its real part.**  The constant
+/-- **The imaginary part of the normalized kernel is dominated by its real part.** The constant
 depends only on the interior point `z`, not on the boundary coordinate `t`. -/
 theorem abs_im_stripKernelNorm_le {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ}
     (hz : z.re ∈ Ioo (0 : ℝ) 1) (t : ℝ) :
@@ -935,10 +927,9 @@ theorem abs_im_stripKernelNorm_le {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ
 /-! ### Well-definedness of the Poisson integral
 
 The boundary data enters only through the hypothesis that it is integrable against the Poisson
-kernel, i.e. against the real part of the normalized kernel.  By
+kernel, i.e. against the real part of the normalized kernel. By
 `abs_im_stripKernelNorm_le` the imaginary part is then automatically integrable against the same
 data, so the complex-valued integrand is integrable and the Poisson integral is well defined. -/
-
 theorem continuous_re_stripKernelNorm {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ}
     (hz : z.re ∈ Ioo (0 : ℝ) 1) :
     Continuous fun t : ℝ => (stripKernelNorm σ t z).re := by
@@ -1033,7 +1024,6 @@ theorem re_stripPoissonIntegral {g₀ g₁ : ℝ → ℝ} {z : ℂ} (hz : z.re �
 
 Differentiating `stripKernelNorm` in `z` produces a kernel whose modulus is again a constant
 multiple of the Poisson kernel:
-
   `‖∂_z stripKernelNorm σ t z‖ = π / (2 (cosh(π (t - y)) - σ cos(π x)))`
                               = (π / sin(π x)) · re (stripKernelNorm σ t z) .
 
@@ -1113,10 +1103,10 @@ theorem norm_stripKernelDeriv_le {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ}
 /-! ### Uniform bounds on a sub-rectangle of the strip
 
 To differentiate the Poisson integral under the integral sign one needs a bound on the derivative
-that is uniform for `z` in a neighbourhood of the point considered.  Both the kernel and its
+that is uniform for `z` in a neighbourhood of the point considered. Both the kernel and its
 derivative are controlled by `1 / (cosh(π (t - im z)) - σ cos(π (re z)))`, so it is enough to
 bound that denominator from below by a constant multiple of `cosh (π t)`, uniformly on a closed
-sub-rectangle of the strip.  Two elementary facts do it: `cos` is antitone on `[0, π]`, so
+sub-rectangle of the strip. Two elementary facts do it: `cos` is antitone on `[0, π]`, so
 `|cos (π x)|` is at most its larger endpoint value; and `cosh (a - b) ≥ cosh a / (2 cosh b)`. -/
 
 /-- `|cos|` on a subinterval of `(0, 1)` is bounded by its endpoint values. -/
@@ -1248,7 +1238,7 @@ theorem norm_stripKernelDeriv_uniform_le {x₁ x₂ Y : ℝ} (hx₁ : 0 < x₁) 
   exact div_le_div_of_nonneg_left Real.pi_pos.le hpos (by linarith)
 
 /-- Uniform bound for the kernel itself on a closed sub-rectangle: it is dominated by a constant
-multiple of the kernel at the base point.  This is the comparability of the harmonic measures of
+multiple of the kernel at the base point. This is the comparability of the harmonic measures of
 the strip seen from different interior points. -/
 theorem re_stripKernelNorm_uniform_le {x₁ x₂ Y : ℝ} (hx₁ : 0 < x₁) (hx₂ : x₂ < 1)
     {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ} (hxm : z.re ∈ Icc x₁ x₂) (hym : |z.im| ≤ Y)
@@ -1284,10 +1274,9 @@ theorem re_stripKernelNorm_uniform_le {x₁ x₂ Y : ℝ} (hx₁ : 0 < x₁) (hx
 
 All the pieces are now in place: the kernel is analytic in the interior variable with derivative
 `stripKernelDeriv`, and on a ball contained in the strip both the kernel and its derivative are
-bounded by a fixed constant times `1 / cosh (π t)`.  Differentiation under the integral sign
+bounded by a fixed constant times `1 / cosh (π t)`. Differentiation under the integral sign
 therefore applies, with the single hypothesis that the boundary data is integrable against
 `1 / cosh (π t)`, i.e. against the Poisson kernel at the base point `1/2`. -/
-
 theorem continuous_stripKernelNorm {σ : ℝ} (hσ : σ = 1 ∨ σ = -1) {z : ℂ}
     (hz : z.re ∈ Ioo (0 : ℝ) 1) : Continuous fun t : ℝ => stripKernelNorm σ t z := by
   have hfun : (fun t : ℝ => stripKernelNorm σ t z)
@@ -1464,12 +1453,11 @@ theorem re_stripPoissonIntegral' {g₀ g₁ : ℝ → ℝ}
 /-! ### The kernel as an approximate identity
 
 As the interior point approaches the edge `re z = 0`, the kernel of that edge concentrates at the
-corresponding boundary point while the kernel of the opposite edge vanishes uniformly.  The two
+corresponding boundary point while the kernel of the opposite edge vanishes uniformly. The two
 estimates below are the quantitative form of this: away from the peak the near kernel is at most
 `sin(π x) / (2 (cosh(π δ) - 1))`, and the far kernel is at most `sin(π x) / (2 (1 + cos(π x)))`
-everywhere.  Both bounds tend to `0` as `x → 0⁺`, and the near kernel has total mass `1 - x → 1`
+everywhere. Both bounds tend to `0` as `x → 0⁺`, and the near kernel has total mass `1 - x → 1`
 (`integral_poissonStripLeft`), which is exactly the peak-function situation. -/
-
 theorem one_lt_cosh_of_ne_zero {x : ℝ} (hx : x ≠ 0) : 1 < Real.cosh x := by
   have h := one_add_sq_div_four_le_cosh x
   have hx2 : 0 < x ^ 2 := by positivity
@@ -1537,10 +1525,10 @@ theorem tendsto_poissonStrip_far_bound_zero :
 /-! ### The tail of the boundary limit
 
 The peak-function theorem of Mathlib needs the data to be globally integrable, which the boundary
-data here is not: it is integrable only against the kernel.  The limit is therefore split at a
-radius `δ` around the peak.  This section handles the outer part: away from the peak the kernel is
+data here is not: it is integrable only against the kernel. The limit is therefore split at a
+radius `δ` around the peak. This section handles the outer part: away from the peak the kernel is
 bounded by `sin(π x)` times a constant multiple of `1 / cosh(π (t - y))`, and that weight is in
-turn comparable to the reference weight `1 / cosh(π t)`.  So the whole outer contribution is
+turn comparable to the reference weight `1 / cosh(π t)`. So the whole outer contribution is
 `O(sin(π x))`, which vanishes as the interior point approaches the edge. -/
 
 /-- Away from the peak the kernel is bounded by a multiple of `1 / cosh (π s)`. -/
@@ -1620,9 +1608,9 @@ theorem integrable_weight_translate {g : ℝ → ℝ} (hgm : AEStronglyMeasurabl
 
 
 open MeasureTheory in
-/-- **The tail estimate.**  The contribution to the Poisson integral of the region at distance at
+/-- **The tail estimate.** The contribution to the Poisson integral of the region at distance at
 least `δ` from the peak is `O(sin (π x))`, with a constant depending only on `δ`, on the height
-`y` of the point, and on the weighted `L¹` norm of the boundary data.  Since `sin (π x) → 0` as
+`y` of the point, and on the weighted `L¹` norm of the boundary data. Since `sin (π x) → 0` as
 `x → 0⁺`, this contribution vanishes in the boundary limit. -/
 theorem integral_tail_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
     (hg : Integrable fun t : ℝ => |g t| / Real.cosh (π * t))
@@ -1658,8 +1646,8 @@ theorem integral_tail_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
     intro t
     have hCt : 0 < Real.cosh (π * t) := Real.cosh_pos _
     by_cases ht : t ∈ {t : ℝ | δ ≤ |t - y|}
-    · simp only [Set.indicator_apply, if_pos ht]
-      have hker := poissonStrip_one_le_cosh_of_le_abs hx hδ (Set.mem_setOf_eq ▸ ht)
+    · simp only [Set.indicator_apply, ite_eq_left ht]
+      have hker := poissonStrip_one_le_cosh_of_le_abs hx hδ (Set.mem_ofPred_eq ▸ ht)
       have hCd : 0 < Real.cosh (π * (t - y)) := Real.cosh_pos _
       have hfac : (0 : ℝ)
           ≤ Real.sin (π * x) * (Real.cosh (π * δ) / (Real.cosh (π * δ) - 1)) / 2 := by
@@ -1678,7 +1666,7 @@ theorem integral_tail_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
         _ = C * (|g t| / Real.cosh (π * t)) := by
             rw [hCdef]
             field_simp
-    · simp only [Set.indicator_apply, if_neg ht]
+    · simp only [Set.indicator_apply, ite_eq_right ht]
       positivity
   have hind_int : Integrable (Set.indicator {t : ℝ | δ ≤ |t - y|}
       (fun t => |g t| * poissonStrip x 1 (t - y))) volume := by
@@ -1700,7 +1688,7 @@ theorem integral_tail_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
 /-! ### The Poisson average of boundary data
 
 Everything needed for the boundary limit is now phrased in terms of the *Poisson average*
-`∫ g t * poissonStrip x 1 (t - y) dt`.  This section records that the average is well defined and
+`∫ g t * poissonStrip x 1 (t - y) dt`. This section records that the average is well defined and
 computes the mass of the kernel, and then splits the average at radius `δ` around the peak. -/
 
 /-- A global bound for the kernel by a multiple of the reference weight. -/
@@ -1798,9 +1786,9 @@ theorem tail_mass_le {x δ y : ℝ} (hx : x ∈ Ioo (0 : ℝ) 1) (hδ : 0 < δ) 
 
 
 open MeasureTheory in
-/-- **The boundary estimate.**  The Poisson average of `g` at the interior point `x + i y`
+/-- **The boundary estimate.** The Poisson average of `g` at the interior point `x + i y`
 differs from `g y` by at most the local oscillation of `g` on a `δ`-neighbourhood of `y`, plus
-two terms that vanish as `x → 0⁺`.  This is the quantitative form of the statement that the
+two terms that vanish as `x → 0⁺`. This is the quantitative form of the statement that the
 kernel of the edge `re z = 0` is an approximate identity. -/
 theorem abs_poissonAverage_sub_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
     (hg : Integrable fun t : ℝ => |g t| / Real.cosh (π * t))
@@ -1863,15 +1851,15 @@ theorem abs_poissonAverage_sub_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable 
     have hw := hwpos t
     rw [Real.norm_eq_abs, abs_mul, abs_of_pos hw]
     by_cases ht : t ∈ {t : ℝ | δ ≤ |t - y|}
-    · simp only [Set.indicator_apply, if_pos ht]
+    · simp only [Set.indicator_apply, ite_eq_left ht]
       have h1 : |g t - g y| ≤ |g t| + |g y| := by
         rw [sub_eq_add_neg]
         simpa using abs_add_le (g t) (-g y)
       nlinarith [hw.le, h1, mul_nonneg hε hw.le]
-    · simp only [Set.indicator_apply, if_neg ht]
+    · simp only [Set.indicator_apply, ite_eq_right ht]
       have hlt : |t - y| < δ := by
         by_contra hcon
-        exact ht (Set.mem_setOf_eq ▸ not_lt.mp hcon)
+        exact ht (Set.mem_ofPred_eq ▸ not_lt.mp hcon)
       nlinarith [hw.le, hosc t hlt, abs_nonneg (g y)]
   have hL : |∫ t : ℝ, (g t - g y) * poissonStrip x 1 (t - y)|
       ≤ ∫ t : ℝ, ((ε * poissonStrip x 1 (t - y)
@@ -1914,9 +1902,9 @@ theorem abs_poissonAverage_sub_le {g : ℝ → ℝ} (hgm : AEStronglyMeasurable 
 
 
 open MeasureTheory in
-/-- **The boundary limit.**  For weighted-integrable boundary data that is continuous at `y`, the
+/-- **The boundary limit.** For weighted-integrable boundary data that is continuous at `y`, the
 Poisson average converges to the boundary value as the interior point approaches the edge
-`re z = 0` at height `y`.  This is the approximate-identity property of the strip kernel. -/
+`re z = 0` at height `y`. This is the approximate-identity property of the strip kernel. -/
 theorem tendsto_poissonAverage {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
     (hg : Integrable fun t : ℝ => |g t| / Real.cosh (π * t)) {y : ℝ}
     (hcont : ContinuousAt g y) :
@@ -1991,7 +1979,6 @@ theorem tendsto_poissonAverage {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g v
 As the interior point approaches the edge `re z = 0`, the kernel of the opposite edge vanishes:
 for `x ≤ 1/2` it is at most `sin(π x) / (2 cosh(π s))`, so the far-edge Poisson average is
 `O(sin(π x))` and tends to zero. -/
-
 theorem poissonStrip_neg_one_le_cosh {x s : ℝ} (hx : x ∈ Ioo (0 : ℝ) 1) (hx2 : x ≤ 1 / 2) :
     poissonStrip x (-1) s ≤ Real.sin (π * x) / (2 * Real.cosh (π * s)) := by
   have hpi := Real.pi_pos
@@ -2108,23 +2095,23 @@ theorem tendsto_poissonAverage_far {g : ℝ → ℝ} (hgm : AEStronglyMeasurable
 
 Mathlib's maximum modulus principle on a bounded domain,
 `Complex.norm_le_of_forall_mem_frontier_norm_le`, requires the function to be continuous up to the
-boundary.  That is too strong for the harmonic majorization of `lem:scalar-strip`.  There the
+boundary. That is too strong for the harmonic majorization of `lem:scalar-strip`. There the
 majorant is `G = H exp (-Φ)` with `Φ` the analytic completion of a Poisson integral: `‖G‖` does
 extend continuously to the boundary of the strip, because its boundary values involve only
 `re Φ`, but `G` itself need not, because `im Φ` is a conjugate function and has no reason to
-converge at the boundary.  What is available at the boundary is a bound on the limit superior of
+converge at the boundary. What is available at the boundary is a bound on the limit superior of
 `‖G‖`, and the argument below shows that this suffices.
 
 The proof is the classical one: the set where `‖f‖` is at least the value at an alleged
 counterexample is closed in `ℂ` — closed inside the domain by continuity, and with no limit point
 on the boundary by the hypothesis — hence compact, so `‖f‖` attains a maximum there, which is a
-maximum over the whole domain.  The maximum modulus principle on a connected set then forces
+maximum over the whole domain. The maximum modulus principle on a connected set then forces
 `‖f‖` to be constant, contradicting the boundary hypothesis. -/
 
 open Filter Topology in
-/-- **Maximum modulus principle with boundary limit superior conditions.**  If `f` is
+/-- **Maximum modulus principle with boundary limit superior conditions.** If `f` is
 differentiable on a bounded connected open set `U` and `‖f‖` is eventually `< C` on approach to
-every boundary point, then `‖f‖ ≤ C` on `U`.  No continuity of `f` up to the boundary is
+every boundary point, then `‖f‖ ≤ C` on `U`. No continuity of `f` up to the boundary is
 assumed. -/
 theorem norm_le_of_eventually_lt_boundary {U : Set ℂ} (hUo : IsOpen U)
     (hUb : Bornology.IsBounded U) (hUc : IsPreconnected U) {f : ℂ → ℂ}
@@ -2192,7 +2179,7 @@ theorem norm_le_of_eventually_lt_boundary {U : Set ℂ} (hUo : IsOpen U)
     · exact absurd h (Set.nonempty_iff_ne_empty.mp hUne)
     · exact hUuniv h
   obtain ⟨ζ, hζ⟩ := hfrontier
-  haveI : (𝓝[U] ζ).NeBot :=
+  have : (𝓝[U] ζ).NeBot :=
     mem_closure_iff_nhdsWithin_neBot.mp (frontier_subset_closure hζ)
   obtain ⟨u, hu1, hu2⟩ := ((hb ζ hζ).and self_mem_nhdsWithin).exists
   have : ‖f u‖ = ‖f z₀‖ := heq hu2
@@ -2206,12 +2193,11 @@ theorem norm_le_of_eventually_lt_boundary {U : Set ℂ} (hUo : IsOpen U)
 The auxiliary factor is the one Mathlib uses in `PhragmenLindelof.horizontal_strip`, transported
 to the vertical strip: with `aff z = d (z - 1/2) (-i)` one has `re (aff z) = d (im z)` and
 `im (aff z) = -d (re z - 1/2)`, so on the closed strip `0 ≤ re z ≤ 1` the angle `im (aff z)` stays
-within `d/2 < π/2` of zero.  Consequently
-
+within `d/2 < π/2` of zero. Consequently
   `‖exp (ε (exp (aff z) + exp (-aff z)))‖ = exp (2 ε cos (d (re z - 1/2)) cosh (d (im z)))`
 
 is at most `1` for `ε ≤ 0`, and decays like `exp (ε cos (d/2) exp (d |im z|))` as `|im z| → ∞`
-*uniformly on the closed strip*, boundary included.  That uniformity is what lets the argument run
+*uniformly on the closed strip*, boundary included. That uniformity is what lets the argument run
 with only a boundary limit superior hypothesis. -/
 
 /-- The affine change of variable in the Phragmén–Lindelöf auxiliary factor. -/
@@ -2314,7 +2300,7 @@ theorem convex_plRect (T : ℝ) : Convex ℝ (plRect T) := by
   have h2 : Convex ℝ {z : ℂ | |z.im| < T} := by
     have heq : {z : ℂ | |z.im| < T} = Complex.imLm ⁻¹' Ioo (-T) T := by
       ext z
-      simp only [Set.mem_setOf_eq, Set.mem_preimage, Set.mem_Ioo, abs_lt]
+      simp only [Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_Ioo, abs_lt]
       exact ⟨fun h => ⟨h.1, h.2⟩, fun h => ⟨h.1, h.2⟩⟩
     rw [heq]
     exact (convex_Ioo (-T) T).linear_preimage Complex.imLm
@@ -2336,7 +2322,7 @@ theorem closure_plRect_subset (T : ℝ) :
     closure (plRect T) ⊆ {z : ℂ | z.re ∈ Icc (0 : ℝ) 1} ∩ {z : ℂ | |z.im| ≤ T} := by
   refine closure_minimal ?_ ?_
   · intro z hz
-    simp only [Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_Icc] at hz ⊢
+    simp only [Set.mem_inter_iff, Set.mem_ofPred_eq, Set.mem_Icc] at hz ⊢
     exact ⟨⟨hz.1.1.le, hz.1.2.le⟩, hz.2.le⟩
   · exact (isClosed_Icc.preimage Complex.continuous_re).inter
       (isClosed_Iic.preimage Complex.continuous_im.abs)
@@ -2493,7 +2479,7 @@ theorem norm_le_of_boundary_lt_strip {G : ℂ → ℂ}
 
 
 open MeasureTheory Filter Topology in
-/-- **The two-variable boundary limit.**  The Poisson average of the edge `re z = 0` converges to
+/-- **The two-variable boundary limit.** The Poisson average of the edge `re z = 0` converges to
 the boundary value as the interior point approaches `i t₀` from inside the strip along any path.
 Only continuity of `g` at `t₀` is needed: the halved-radius triangle inequality converts it into
 the oscillation hypothesis of `abs_poissonAverage_sub_le` at every nearby height, and all the
@@ -2649,7 +2635,7 @@ theorem tendsto_poissonAverage_strip {g : ℝ → ℝ} (hgm : AEStronglyMeasurab
 
 
 open MeasureTheory Filter Topology in
-/-- **The two-variable far-edge limit.**  The Poisson average against the opposite edge tends to
+/-- **The two-variable far-edge limit.** The Poisson average against the opposite edge tends to
 zero as the interior point approaches `i t₀`. -/
 theorem tendsto_poissonAverage_far_strip {g : ℝ → ℝ} (hgm : AEStronglyMeasurable g volume)
     (hg : Integrable fun t : ℝ => |g t| / Real.cosh (π * t)) (t₀ : ℝ) :
@@ -2728,7 +2714,7 @@ theorem tendsto_poissonAverage_far_strip {g : ℝ → ℝ} (hgm : AEStronglyMeas
 /-! ### Reflection of the strip
 
 The map `z ↦ 1 - conj z` exchanges the two edges of the strip, and the two Poisson kernels are
-exchanged with it (`poissonStrip_reflect`).  So the boundary statements at the edge `re z = 1`
+exchanged with it (`poissonStrip_reflect`). So the boundary statements at the edge `re z = 1`
 follow from those at `re z = 0` with no new analysis. -/
 
 /-- Reflection of the strip in the line `re z = 1/2`. -/
@@ -2806,7 +2792,7 @@ theorem tendsto_poissonAverage_far_strip_right {g : ℝ → ℝ}
 /-! ### The boundary behaviour of the Poisson integral
 
 Combining the four limits: the real part of `stripPoissonIntegral` extends continuously to each
-edge of the strip, with the corresponding boundary datum as its limit.  This is the hypothesis
+edge of the strip, with the corresponding boundary datum as its limit. This is the hypothesis
 needed by `norm_le_of_boundary_lt_strip`. -/
 
 open MeasureTheory Filter Topology in
@@ -2900,7 +2886,7 @@ theorem re_stripPoissonIntegral_ge {g₀ g₁ : ℝ → ℝ}
 Everything is now in place to run the blueprint's argument: `G = H exp (-Φ)` with `Φ` the analytic
 completion of the Poisson integral of `log (‖H‖ + ε)` is analytic on the strip, has admissible
 growth because `re Φ ≥ log ε`, and has `‖G‖ < 1` in the limit at every boundary point because
-`re Φ` reproduces the boundary data there.  `norm_le_of_boundary_lt_strip` then gives `‖G‖ ≤ 1`,
+`re Φ` reproduces the boundary data there. `norm_le_of_boundary_lt_strip` then gives `‖G‖ ≤ 1`,
 that is, `‖H‖ ≤ exp (re Φ)`. -/
 
 open MeasureTheory Filter Topology in
@@ -3040,7 +3026,7 @@ theorem norm_le_exp_re_stripPoissonIntegral {H : ℂ → ℂ}
 /-! ### Jensen's inequality against a probability density
 
 The final step of `lem:scalar-strip` needs Jensen's inequality against the normalized harmonic
-measures.  Rather than build the measures `volume.withDensity (w / mass)`, it is shorter to prove
+measures. Rather than build the measures `volume.withDensity (w / mass)`, it is shorter to prove
 the weighted form directly from the tangent line `exp a (1 + u - a) ≤ exp u` at `u = a`: multiply
 by the density, integrate, and the linear term integrates to the mean. -/
 
@@ -3241,11 +3227,10 @@ theorem norm_le_geom_mean_strip {H : ℂ → ℂ} {θ s ε : ℝ}
 
 /-! ### Removing the regularization
 
-The hypotheses of `norm_le_geom_mean_strip` depend on `ε`.  For the passage `ε → 0` they are
+The hypotheses of `norm_le_geom_mean_strip` depend on `ε`. For the passage `ε → 0` they are
 reduced to their `ε = 1` instances: `log (x + ε)` lies between `log ε` and `log (x + 1)`, and
 `(x + ε) ^ s ≤ (x + 1) ^ s`, so both integrability hypotheses for `ε ∈ (0, 1]` follow from the
 ones at `ε = 1` together with the integrability of the reference weight. -/
-
 theorem abs_log_add_le {x ε : ℝ} (hx : 0 ≤ x) (hε0 : 0 < ε) (hε1 : ε ≤ 1) :
     |Real.log (x + ε)| ≤ |Real.log (x + 1)| + |Real.log ε| := by
   have hxe : (0 : ℝ) < x + ε := by linarith
@@ -3339,7 +3324,7 @@ theorem tendsto_integral_rpow_shift {F w : ℝ → ℝ} {s : ℝ} (hs : 0 < s)
 
 
 open MeasureTheory Filter Topology in
-/-- **The scalar strip inequality, blueprint `lem:scalar-strip`.**  For `H` continuous on the
+/-- **The scalar strip inequality, blueprint `lem:scalar-strip`.** For `H` continuous on the
 closed strip, analytic inside, of admissible growth `exp (B exp (c |im z|))` with `c < π`, and for
 every `s > 0`, the modulus of `H` at the interior real point `θ` is at most the geometric mean,
 with weights `1 - θ` and `θ`, of the `s`-th power means of `‖H‖` on the two edges against the

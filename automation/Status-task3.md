@@ -317,3 +317,9 @@ Lean file: DFR/Auto/Twisted/ConeDecompositionMultiplierTheorem/ConeDecomposition
 \label{lem:symbol_derivatives}: Proof completed (Lean: Auto.Twisted.lem_symbol_derivatives) (2026-09-12T14:47-0700)
 \label{lem:fourier_series}: Proof completed (Lean: Auto.Twisted.lem_fourier_series_coefficient_decay) (2026-09-12T14:47-0700)
 \label{thm:cone}: Proof completed (Lean: Auto.Twisted.thm_cone) (2026-09-12T14:47-0700)
+
+## Palomar toolchain revalidation
+
+Source target | Exported declaration and module | Verification | Local verification time
+--- | --- | --- | ---
+task_3_twisted_blueprint.tex, thm:main | `Auto.Twisted.thm_main` in `DFR.Auto.Twisted` | Lean v4.35.0-rc3; direct checks and full builds pass; zero repository warnings; axioms: propext, Classical.choice, Quot.sound | 2026-10-12T21:54:24-04:00

@@ -105,3 +105,10 @@ exponential gain needed at the exponents of `thm:main`. `thm:smoothing_2` enters
 `lem:gain_2-` and is stated as `Auto.SmoothingTwo` (user instruction of this date), the single
 hypothesis of `thm:main`.
 
+2026-10-12T21:54:24-04:00 - Toolchain maintenance: migrated supporting proofs to Mathlib's
+measurability-sensitive `eLpNorm` API and current theorem names. Added or derived
+measurability where required, removed genuinely unused hypotheses and tactics,
+and corrected linter-reported formatting. This records API compatibility work,
+not a new discrepancy in the mathematical source. Exported target statements
+are unchanged; direct checks, builds, and the allowed-axiom audit pass. External
+LeanSpherical warnings are tracked in `instructions.md`.

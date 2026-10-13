@@ -42,22 +42,24 @@ import DFR.Auto.VanDerCorput
 /-!
 # A trilinear Sobolev smoothing estimate in three dimensions
 
-Task 2.  Source: `blueprints/task_2_smoothingineq3d_blueprint.tex`, the real monomial case
-extracted from Kosz-Mirek-Peluse-Wan-Wright.  The target is the blueprint's `thm:main`.
+Task 2. Source: `blueprints/task_2_smoothingineq3d_blueprint.tex`, the real monomial case
+extracted from Kosz-Mirek-Peluse-Wan-Wright. The target is the blueprint's `thm:main`.
 
-This module follows the blueprint in strict forward dependency order.  See
+This module follows the blueprint in strict forward dependency order. See
 `automation/Status.md` for the ledger and `automation/ErrorReport.md` for the recorded
 discrepancies.
 -/
 
 namespace Auto
 
+attribute [local fun_prop] continuous_fourier_of_integrable
+
 open scoped ENNReal NNReal FourierTransform RealInnerProductSpace ComplexConjugate
 
 /-! ## Section 2: conventions and elementary lemmas -/
 
 /-- The dyadic envelope of `s`, blueprint `def:dyadic-envelope`:
-`Dyad s = 2 ^ ⌈log₂ (max 1 s)⌉`.  It is an integer power of `2` that dominates `max 1 s`
+`Dyad s = 2 ^ ⌈log₂ (max 1 s)⌉`. It is an integer power of `2` that dominates `max 1 s`
 by a factor strictly less than `2`. -/
 noncomputable def Dyad (s : ℝ) : ℝ := (2 : ℝ) ^ (⌈Real.logb 2 (max 1 s)⌉ : ℤ)
 
@@ -124,11 +126,11 @@ theorem cutoff_boundary {a b : ℝ} (_hab : a < b) {ψ : ℝ → ℝ} (hψ : Con
 /-! ## The ambient space, the monomial curve, and the averages -/
 
 /-- The ambient space `ℝ³` of the blueprint, carrying the Euclidean inner product and
-Lebesgue measure.  With this choice Mathlib's Fourier transform `𝓕` is exactly the
+Lebesgue measure. With this choice Mathlib's Fourier transform `𝓕` is exactly the
 convention of blueprint `def:fourier`. -/
 abbrev E3 : Type := EuclideanSpace ℝ (Fin 3)
 
-/-- The exponent attached to the coordinate `i`.  The blueprint indexes coordinates by
+/-- The exponent attached to the coordinate `i`. The blueprint indexes coordinates by
 `{1, 2, 3}` and attaches the monomial `t ^ n` to `e_n`; `Fin 3` indexes them by `{0, 1, 2}`,
 so the exponent of coordinate `i` is `i + 1`. -/
 def expo (i : Fin 3) : ℕ := (i : ℕ) + 1
@@ -179,7 +181,31 @@ noncomputable def B (r : ℝ) (f : Fin 3 → E3 → ℂ) (x : E3) : ℂ :=
 noncomputable def Apsi (ψ : ℝ → ℝ) (f : Fin 3 → E3 → ℂ) (x : E3) : ℂ :=
   ∫ t : ℝ, (ψ t : ℂ) * prodShift f x t
 
-/-- `B_r = r A_r`; blueprint `def:averages`.  The identity holds for every real `r`,
+open MeasureTheory in
+@[fun_prop] theorem measurable_A {N : ℝ} (hN : 0 ≤ N) {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable
+  (f i)) :
+    Measurable (A N f) := by
+  have hm : Measurable fun p : E3 × ℝ => prodShift f p.1 p.2 := by
+    simp only [prodShift]
+    exact Finset.measurable_prod _ fun i _ =>
+      (hf i).comp (measurable_fst.add ((continuous_curve i).measurable.comp measurable_snd))
+  have heq : A N f = fun x => (N : ℂ)⁻¹ * ∫ t in Set.Ioc (0 : ℝ) N, prodShift f x t := by
+    funext x
+    rw [A, intervalIntegral.integral_of_le hN]
+  rw [heq]
+  exact measurable_const.mul hm.stronglyMeasurable.integral_prod_right'.measurable
+
+open MeasureTheory in
+@[fun_prop] theorem measurable_Apsi {ψ : ℝ → ℝ} (hψ : Measurable ψ)
+    {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) : Measurable (Apsi ψ f) := by
+  have hm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      (ψ t : ℂ) * prodShift f x t) := by
+    exact (Complex.measurable_ofReal.comp (hψ.comp measurable_snd)).mul
+      (Finset.measurable_prod _ fun i _ =>
+        (hf i).comp (measurable_fst.add ((continuous_curve i).measurable.comp measurable_snd)))
+  exact hm.stronglyMeasurable.integral_prod_right'.measurable
+
+/-- `B_r = r A_r`; blueprint `def:averages`. The identity holds for every real `r`,
 including `r = 0`, because both sides then vanish. -/
 theorem B_eq_smul_A (r : ℝ) (f : Fin 3 → E3 → ℂ) (x : E3) :
     B r f x = (r : ℂ) * A r f x := by
@@ -341,7 +367,10 @@ theorem eLpNorm_S {ρ : ℝ} (hρ : 0 < ρ) {f : E3 → ℂ} (hf : Measurable f)
       = ENNReal.ofReal (ρ ^ 6) * ∫⁻ y, ‖f y‖ₑ ^ p.toReal := by
     have := lintegral_comp_D (ρ := ρ⁻¹) (by positivity) hmeas
     simpa [S, inv_pow, inv_inv] using this
-  rw [MeasureTheory.eLpNorm_eq_eLpNorm' hp0 hptop, MeasureTheory.eLpNorm_eq_eLpNorm' hp0 hptop,
+  rw [MeasureTheory.eLpNorm_eq_eLpNorm' hp0 hptop (by
+    unfold S;
+    exact (hf.comp (measurable_D _)).aestronglyMeasurable), MeasureTheory.eLpNorm_eq_eLpNorm' hp0
+      hptop (by fun_prop),
     MeasureTheory.eLpNorm', MeasureTheory.eLpNorm', hint,
     ENNReal.mul_rpow_of_nonneg _ _ (by positivity)]
   congr 1
@@ -361,7 +390,7 @@ theorem inner_D_left (ρ : ℝ) (x y : E3) :
 theorem continuous_D (ρ : ℝ) : Continuous (D ρ) :=
   LinearMap.continuous_of_finiteDimensional (Dlin ρ)
 
-theorem continuous_S {ρ : ℝ} {f : E3 → ℂ} (hf : Continuous f) : Continuous (S ρ f) :=
+@[fun_prop] theorem continuous_S {ρ : ℝ} {f : E3 → ℂ} (hf : Continuous f) : Continuous (S ρ f) :=
   hf.comp (continuous_D ρ⁻¹)
 
 /-- Change of variables for the anisotropic dilation in a Bochner integral. -/
@@ -401,7 +430,7 @@ theorem support_fourier_S {ρ : ℝ} (hρ : 0 < ρ) {f : E3 → ℂ} (hf : Conti
     Function.support (𝓕 (S ρ f)) ⊆ {ξ : E3 | (ρ ^ expo j)⁻¹ * lam ≤ |ξ j|} := by
   intro ξ hξ
   by_contra hcon
-  simp only [Set.mem_setOf_eq, not_le] at hcon
+  simp only [Set.mem_ofPred_eq, not_le] at hcon
   have hpow : (0 : ℝ) < ρ ^ expo j := by positivity
   have hDξ : |(D ρ ξ) j| < lam := by
     rw [D_apply, abs_mul, abs_of_pos hpow]
@@ -429,19 +458,19 @@ theorem eLpNorm_mul_three_le {f₀ f₁ f₂ : E3 → ℂ} (h₀ : Continuous f�
     eLpNorm (fun x => f₀ x * f₁ x * f₂ x) p volume
       ≤ eLpNorm f₀ p₀ volume * eLpNorm f₁ p₁ volume * eLpNorm f₂ p₂ volume := by
   set s : ℝ≥0∞ := (p₀⁻¹ + p₁⁻¹)⁻¹ with hs
-  haveI hA : ENNReal.HolderTriple p₀ p₁ s := ⟨by rw [hs, inv_inv]⟩
-  haveI hB : ENNReal.HolderTriple s p₂ p := ⟨by rw [hs, inv_inv, ← hp]⟩
+  have hA : ENNReal.HolderTriple p₀ p₁ s := ⟨by rw [hs, inv_inv]⟩
+  have hB : ENNReal.HolderTriple s p₂ p := ⟨by rw [hs, inv_inv, ← hp]⟩
   have e1 : (fun x => f₀ x * f₁ x) = f₀ • f₁ := by ext x; simp
   have e2 : (fun x => f₀ x * f₁ x * f₂ x) = (fun x => f₀ x * f₁ x) • f₂ := by ext x; simp
   have hmul : Continuous fun x => f₀ x * f₁ x := h₀.mul h₁
   calc eLpNorm (fun x => f₀ x * f₁ x * f₂ x) p volume
       = eLpNorm ((fun x => f₀ x * f₁ x) • f₂) p volume := by rw [e2]
     _ ≤ eLpNorm (fun x => f₀ x * f₁ x) s volume * eLpNorm f₂ p₂ volume :=
-        eLpNorm_smul_le_mul_eLpNorm h₂.aestronglyMeasurable hmul.aestronglyMeasurable
+        eLpNorm_smul_le_mul_eLpNorm hmul.aestronglyMeasurable h₂.aestronglyMeasurable
     _ ≤ (eLpNorm f₀ p₀ volume * eLpNorm f₁ p₁ volume) * eLpNorm f₂ p₂ volume := by
         gcongr
         rw [e1]
-        exact eLpNorm_smul_le_mul_eLpNorm h₁.aestronglyMeasurable h₀.aestronglyMeasurable
+        exact eLpNorm_smul_le_mul_eLpNorm h₀.aestronglyMeasurable h₁.aestronglyMeasurable
     _ = eLpNorm f₀ p₀ volume * eLpNorm f₁ p₁ volume * eLpNorm f₂ p₂ volume := by ring
 
 open MeasureTheory in
@@ -493,13 +522,14 @@ theorem lintegral_rpow_le_of_isFiniteMeasure {ν : Measure ℝ} [IsFiniteMeasure
   exact hraise.trans_eq (mul_comm _ _)
 
 open MeasureTheory in
-/-- The `L^p` bound for an average over a finite parameter measure.  This is the special case of
+/-- The `L^p` bound for an average over a finite parameter measure. This is the special case of
 Minkowski's integral inequality used in blueprint `lem:trivial-holder` and in the proof of
-`thm:main`.  It is derived here from Hölder's inequality in the parameter together with Tonelli's
+`thm:main`. It is derived here from Hölder's inequality in the parameter together with Tonelli's
 theorem; see `automation/ErrorReport.md` for this recorded change of proof route. -/
 theorem eLpNorm_le_of_enorm_le_lintegral {ν : Measure ℝ} [IsFiniteMeasure ν] {p : ℝ≥0∞}
     (hp1 : 1 ≤ p) (hptop : p ≠ ⊤) {G : ℝ → E3 → ℂ}
     (hG : Measurable fun z : E3 × ℝ => G z.2 z.1) {F : E3 → ℂ}
+    (hFm : AEStronglyMeasurable F volume)
     (hF : ∀ x, ‖F x‖ₑ ≤ ∫⁻ t, ‖G t x‖ₑ ∂ν) {C : ℝ≥0∞}
     (hC : ∀ᵐ t ∂ν, eLpNorm (G t) p volume ≤ C) :
     eLpNorm F p volume ≤ ν Set.univ * C := by
@@ -538,7 +568,8 @@ theorem eLpNorm_le_of_enorm_le_lintegral {ν : Measure ℝ} [IsFiniteMeasure ν]
       _ ≤ (ν Set.univ) ^ (P - 1) * ∫⁻ _t, C ^ P ∂ν := by
           refine mul_le_mul' le_rfl (lintegral_mono_ae ?_)
           filter_upwards [hC] with t ht
-          rw [eLpNorm_eq_eLpNorm' hp0 hptop, eLpNorm'] at ht
+          rw [eLpNorm_eq_eLpNorm' (f := G t) hp0 hptop (hG.comp
+            measurable_prodMk_right).aestronglyMeasurable, eLpNorm'] at ht
           have := ENNReal.rpow_le_rpow ht hP0.le
           rwa [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hP0.ne', ENNReal.rpow_one] at this
       _ = (ν Set.univ) ^ (P - 1) * (ν Set.univ * C ^ P) := by
@@ -550,7 +581,7 @@ theorem eLpNorm_le_of_enorm_le_lintegral {ν : Measure ℝ} [IsFiniteMeasure ν]
             congr 1
             ring
           rw [ENNReal.mul_rpow_of_nonneg _ _ hP0.le, ← mul_assoc, h1]
-  rw [eLpNorm_eq_eLpNorm' hp0 hptop, eLpNorm']
+  rw [eLpNorm_eq_eLpNorm' hp0 hptop (by fun_prop), eLpNorm']
   calc (∫⁻ x, ‖F x‖ₑ ^ P ∂volume) ^ (1 / P)
       ≤ ((ν Set.univ * C) ^ P) ^ (1 / P) := ENNReal.rpow_le_rpow key (by positivity)
     _ = ν Set.univ * C := by
@@ -564,6 +595,8 @@ theorem eLpNorm_integral_le {ν : Measure ℝ} [IsFiniteMeasure ν] {p : ℝ≥0
     (hC : ∀ t, eLpNorm (G t) p volume ≤ C) :
     eLpNorm (fun x => ∫ t, G t x ∂ν) p volume ≤ ν Set.univ * C :=
   eLpNorm_le_of_enorm_le_lintegral hp1 hptop (hG.comp continuous_swap).measurable
+    (show StronglyMeasurable (Function.uncurry fun x t => G t x) from
+      (hG.comp continuous_swap).stronglyMeasurable).integral_prod_right.aestronglyMeasurable
     (fun _ => enorm_integral_le_lintegral_enorm _) (Filter.Eventually.of_forall hC)
 
 /-- The average integrand is jointly continuous in the parameter and the point. -/
@@ -584,7 +617,7 @@ theorem eLpNorm_B_le {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i))
     (hp : (pv 0)⁻¹ + (pv 1)⁻¹ + (pv 2)⁻¹ = p⁻¹) {r : ℝ} (hr : 0 ≤ r) :
     eLpNorm (B r f) p volume
       ≤ ENNReal.ofReal r * ∏ i, eLpNorm (f i) (pv i) volume := by
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) r)) :=
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) r)) :=
     ⟨by rw [Measure.restrict_apply_univ, Real.volume_Ioc]; exact ENNReal.ofReal_lt_top⟩
   have hBeq : B r f = fun x => ∫ t, prodShift f x t ∂(volume.restrict (Set.Ioc (0 : ℝ) r)) := by
     funext x
@@ -863,7 +896,7 @@ theorem etaKer_integrable : MeasureTheory.Integrable etaKer := etaKerS.integrabl
 
 theorem etaKer_continuous : Continuous etaKer := etaKerS.continuous
 
-/-- Fourier inversion for the cutoff: `𝓕 η̌ = η`.  This is the identity that makes the
+/-- Fourier inversion for the cutoff: `𝓕 η̌ = η`. This is the identity that makes the
 convolution description of `P_R^{(j)}` agree with its multiplier description. -/
 theorem fourier_etaKer : 𝓕 etaKer = fun t : ℝ => (eta t : ℂ) := by
   have h : 𝓕 (𝓕⁻ etaS) = etaS := FourierTransform.fourier_fourierInv_eq etaS
@@ -884,12 +917,12 @@ theorem one_le_Ceta : 1 ≤ Ceta := one_le_dyad _
 `lem:projection-properties`. -/
 noncomputable def projKernel (R : ℝ) (u : ℝ) : ℂ := (R : ℂ) * etaKer (R * u)
 
-theorem projKernel_continuous (R : ℝ) : Continuous (projKernel R) :=
+@[fun_prop] theorem projKernel_continuous (R : ℝ) : Continuous (projKernel R) :=
   continuous_const.mul (etaKer_continuous.comp (continuous_const.mul continuous_id))
 
 open MeasureTheory in
 /-- The kernel is integrable, with the same `L¹` norm as `η̌`; blueprint
-`lem:projection-properties`.  This is the substitution `v = R u`. -/
+`lem:projection-properties`. This is the substitution `v = R u`. -/
 theorem projKernel_integrable {R : ℝ} (hR : 0 < R) : Integrable (projKernel R) := by
   exact (etaKer_integrable.comp_mul_left' hR.ne').const_mul _
 
@@ -906,7 +939,7 @@ theorem projKernel_L1 {R : ℝ} (hR : 0 < R) :
   rfl
 
 /-- The one-coordinate low-frequency projection `P_R^{(j)}` of blueprint `def:projection`,
-realized as convolution in the `j`-th coordinate with the kernel `k_R`.  The agreement with
+realized as convolution in the `j`-th coordinate with the kernel `k_R`. The agreement with
 the multiplier description `𝓕(P_R^{(j)} f) ξ = η(ξ_j / R) 𝓕 f ξ` is `fourier_P` below. -/
 noncomputable def P (R : ℝ) (j : Fin 3) (f : E3 → ℂ) (x : E3) : ℂ :=
   ∫ u : ℝ, projKernel R u * f (x - u • basisVec j)
@@ -917,7 +950,7 @@ noncomputable def Q (R : ℝ) (j : Fin 3) (f : E3 → ℂ) (x : E3) : ℂ :=
 
 open MeasureTheory in
 /-- Weighted Hölder inequality in the parameter: for `1 ≤ P` and a weight `w`,
-`(∫ w g)^P ≤ (∫ w)^{P-1} ∫ w g^P`.  This is the weighted form of
+`(∫ w g)^P ≤ (∫ w)^{P-1} ∫ w g^P`. This is the weighted form of
 `lintegral_rpow_le_of_isFiniteMeasure`, needed for the `L^s` bounds of blueprint
 `lem:projection-properties`. -/
 theorem lintegral_weighted_rpow_le {P : ℝ} (hP : 1 ≤ P) {w g : ℝ → ℝ≥0∞}
@@ -957,7 +990,7 @@ theorem lintegral_weighted_rpow_le {P : ℝ} (hP : 1 ≤ P) {w g : ℝ → ℝ�
 
 open MeasureTheory in
 /-- The `L^p` bound for convolution against an integrable one-dimensional kernel:
-`‖∫ k(u) G(u, ·) du‖_{L^p} ≤ ‖k‖_{L¹} · sup_u ‖G(u, ·)‖_{L^p}`.  This is the form of
+`‖∫ k(u) G(u, ·) du‖_{L^p} ≤ ‖k‖_{L¹} · sup_u ‖G(u, ·)‖_{L^p}`. This is the form of
 Minkowski's integral inequality used for the `L^s` bounds of blueprint
 `lem:projection-properties`. -/
 theorem eLpNorm_integral_kernel_le {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p ≠ ⊤)
@@ -965,6 +998,10 @@ theorem eLpNorm_integral_kernel_le {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p �
     {G : ℝ → E3 → ℂ} (hG : Continuous (Function.uncurry G)) {C : ℝ≥0∞}
     (hC : ∀ u, eLpNorm (G u) p volume ≤ C) :
     eLpNorm (fun x => ∫ u : ℝ, k u * G u x) p volume ≤ (∫⁻ u : ℝ, ‖k u‖ₑ) * C := by
+  have hIntm : AEStronglyMeasurable (fun x => ∫ u : ℝ, k u * G u x) volume :=
+    (show StronglyMeasurable (Function.uncurry fun x u => k u * G u x) from
+      ((hkc.comp continuous_snd).mul (hG.comp
+        continuous_swap)).stronglyMeasurable).integral_prod_right.aestronglyMeasurable
   have hp0 : p ≠ 0 := by intro h; rw [h] at hp1; exact absurd hp1 (by simp)
   have hP : 1 ≤ p.toReal := by
     rw [show (1 : ℝ) = (1 : ℝ≥0∞).toReal by simp]
@@ -1013,7 +1050,7 @@ theorem eLpNorm_integral_kernel_le {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p �
       _ ≤ M ^ (P - 1) * ∫⁻ _u : ℝ, ‖k _u‖ₑ * C ^ P := by
           gcongr with u
           have h1 := hC u
-          rw [eLpNorm_eq_eLpNorm' hp0 hptop, eLpNorm'] at h1
+          rw [eLpNorm_eq_eLpNorm' hp0 hptop (by fun_prop), eLpNorm'] at h1
           have h2 := ENNReal.rpow_le_rpow h1 hP0.le
           rwa [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hP0.ne', ENNReal.rpow_one] at h2
       _ = M ^ (P - 1) * (M * C ^ P) := by
@@ -1025,7 +1062,7 @@ theorem eLpNorm_integral_kernel_le {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p �
             congr 1
             ring
           rw [ENNReal.mul_rpow_of_nonneg _ _ hP0.le, ← mul_assoc, h1]
-  rw [eLpNorm_eq_eLpNorm' hp0 hptop, eLpNorm']
+  rw [eLpNorm_eq_eLpNorm' hp0 hptop (by fun_prop), eLpNorm']
   calc (∫⁻ x, ‖∫ u : ℝ, k u * G u x‖ₑ ^ P ∂volume) ^ (1 / P)
       ≤ ((M * C) ^ P) ^ (1 / P) := ENNReal.rpow_le_rpow key (by positivity)
     _ = M * C := by
@@ -1036,6 +1073,15 @@ open MeasureTheory in
 theorem lintegral_enorm_projKernel {R : ℝ} (hR : 0 < R) :
     (∫⁻ u : ℝ, ‖projKernel R u‖ₑ) = ENNReal.ofReal etaKerL1 := by
   rw [← ofReal_integral_norm_eq_lintegral_enorm (projKernel_integrable hR), projKernel_L1 hR]
+
+open MeasureTheory in
+@[fun_prop] theorem measurable_P {R : ℝ} (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f) :
+    Measurable (P R j f) := by
+  have hm : Measurable (Function.uncurry fun (x : E3) (u : ℝ) =>
+      projKernel R u * f (x - u • basisVec j)) :=
+    ((projKernel_continuous R).measurable.comp measurable_snd).mul
+      (hf.comp (measurable_fst.sub (measurable_snd.smul measurable_const)))
+  exact hm.stronglyMeasurable.integral_prod_right'.measurable
 
 open MeasureTheory in
 /-- The projection of a continuous function is strongly measurable. -/
@@ -1074,8 +1120,7 @@ theorem eLpNorm_Q_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : C
   have hle : eLpNorm (Q R j f) p volume
       ≤ eLpNorm f p volume + eLpNorm (P (4 * R) j f) p volume := by
     rw [hsub]
-    exact eLpNorm_sub_le hf.aestronglyMeasurable
-      (stronglyMeasurable_P (4 * R) j hf).aestronglyMeasurable hp1
+    exact eLpNorm_sub_le hp1
   have hCeta : ENNReal.ofReal (1 + etaKerL1) ≤ ENNReal.ofReal Ceta :=
     ENNReal.ofReal_le_ofReal (le_trans (le_max_right 1 (1 + etaKerL1)) (dyad_bounds _).1)
   calc eLpNorm (Q R j f) p volume
@@ -1252,7 +1297,7 @@ theorem integrable_P {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : C
     hf hfi j).integral_prod_left
 
 open MeasureTheory in
-/-- The projection of a bounded continuous function is continuous.  Schwartz functions, the
+/-- The projection of a bounded continuous function is continuous. Schwartz functions, the
 setting of the blueprint, are bounded and continuous. -/
 theorem continuous_P {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Continuous f)
     {Cf : ℝ} (hfb : ∀ x, ‖f x‖ ≤ Cf) : Continuous (P R j f) := by
@@ -1271,7 +1316,7 @@ theorem continuous_P {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : C
 
 open MeasureTheory in
 /-- Sharp form of the vanishing statement: the multiplier `η(ξ_j / R)` is supported in
-`|ξ_j| < R/2`, so `P_R^{(j)} f = 0` already when `supp 𝓕f ⊆ {|ξ_j| ≥ R/2}`.  The blueprint
+`|ξ_j| < R/2`, so `P_R^{(j)} f = 0` already when `supp 𝓕f ⊆ {|ξ_j| ≥ R/2}`. The blueprint
 states the two special cases `P_eq_zero_of_fourier_support` and
 `Q_eq_self_of_fourier_support`. -/
 theorem P_eq_zero_of_fourier_support_sharp {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
@@ -1307,7 +1352,7 @@ theorem P_eq_zero_of_fourier_support {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 
     P R j f = 0 := by
   refine P_eq_zero_of_fourier_support_sharp hR j hf hfi hfb fun ξ hx => ?_
   have h := hsupp hx
-  simp only [Set.mem_setOf_eq] at h ⊢
+  simp only [Set.mem_ofPred_eq] at h ⊢
   linarith
 
 open MeasureTheory in
@@ -1321,7 +1366,7 @@ theorem Q_eq_self_of_fourier_support {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 
   have hP : P (4 * R) j f = 0 := by
     refine P_eq_zero_of_fourier_support_sharp h4R j hf hfi hfb fun ξ hx => ?_
     have h := hsupp hx
-    simp only [Set.mem_setOf_eq] at h ⊢
+    simp only [Set.mem_ofPred_eq] at h ⊢
     linarith
   funext x
   rw [show Q R j f x = f x - P (4 * R) j f x from rfl, hP]
@@ -1355,7 +1400,7 @@ theorem support_fourier_Q {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (h
     Function.support (𝓕 (Q R j f)) ⊆ {ξ : E3 | R ≤ |ξ j|} := by
   intro ξ hξ
   by_contra hcon
-  simp only [Set.mem_setOf_eq, not_le] at hcon
+  simp only [Set.mem_ofPred_eq, not_le] at hcon
   have h4R : (0 : ℝ) < 4 * R := by linarith
   have hone : eta (ξ j / (4 * R)) = 1 := by
     refine eta_eq_one ?_
@@ -1506,7 +1551,7 @@ theorem pairing_P_right {R : ℝ} (hR : 0 < R) (j : Fin 3) {f g : E3 → ℂ}
 
 open MeasureTheory in
 /-- Blueprint `lem:projection-properties`, fifth statement: `P_R^{(j)}` is self-adjoint for the
-`L²` pairing `⟪u, v⟫ = ∫ u · conj v`.  The blueprint derives this from Plancherel and the
+`L²` pairing `⟪u, v⟫ = ∫ u · conj v`. The blueprint derives this from Plancherel and the
 real-valuedness of the multiplier; the equivalent Lean route used here is the Hermitian symmetry
 of the convolution kernel, `projKernel_hermitian`. -/
 theorem P_self_adjoint {R : ℝ} (hR : 0 < R) (j : Fin 3) {f g : E3 → ℂ}
@@ -1530,6 +1575,25 @@ noncomputable def adjShift (j : Fin 3) (f0 : E3 → ℂ) (f : Fin 3 → E3 → �
 /-- The adjoint `A_N^{*j}` of blueprint `def:adjoint`. -/
 noncomputable def Astar (N : ℝ) (j : Fin 3) (f0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ) (y : E3) : ℂ :=
   (N : ℂ)⁻¹ * ∫ t in (0 : ℝ)..N, adjShift j f0 f y t
+
+open MeasureTheory in
+@[fun_prop] theorem measurable_Astar {N : ℝ} (j : Fin 3) {f0 : E3 → ℂ} (hf0 : Measurable f0)
+    {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) : Measurable (Astar N j f0 f) := by
+  have hcm : Measurable (curve j) := (continuous_curve j).measurable
+  have hadjm : Measurable fun z : E3 × ℝ => adjShift j f0 f z.1 z.2 := by
+    simp only [adjShift]
+    have hc0 : Measurable fun z : E3 × ℝ => z.1 - curve j z.2 :=
+      measurable_fst.sub (hcm.comp measurable_snd)
+    refine (hf0.comp hc0).mul (Finset.measurable_prod _ fun i _ => ?_)
+    exact Complex.continuous_conj.measurable.comp ((hf i).comp
+      (hc0.add (((continuous_curve i).measurable).comp measurable_snd)))
+  unfold Astar
+  refine measurable_const.mul ?_
+  simp only [intervalIntegral]
+  exact ((hadjm.stronglyMeasurable.integral_prod_right'
+    (ν := volume.restrict (Set.Ioc 0 N))).measurable).sub
+    ((hadjm.stronglyMeasurable.integral_prod_right'
+      (ν := volume.restrict (Set.Ioc N 0))).measurable)
 
 /-- Splitting off the `j`-th factor of the average integrand; this is the algebraic step in the
 proof of blueprint `lem:adjoint-identity`. -/
@@ -1562,7 +1626,7 @@ theorem continuous_adjShift {f0 : E3 → ℂ} (hf0 : Continuous f0) {f : Fin 3 �
 
 open MeasureTheory in
 /-- Integrability on `ℝ³ × T` for a finite parameter measure, from a bound of the form
-`C * ‖f₀ (x - c t)‖` with `f₀` integrable.  Taking `c = 0` gives the unshifted bound. -/
+`C * ‖f₀ (x - c t)‖` with `f₀` integrable. Taking `c = 0` gives the unshifted bound. -/
 theorem integrable_prod_of_bound_shift {ν : Measure ℝ} [IsFiniteMeasure ν] {F : E3 × ℝ → ℂ}
     (hF : AEStronglyMeasurable F (volume.prod ν))
     {f0 : E3 → ℂ} (hf0c : Continuous f0) (hf0 : Integrable f0) {C : ℝ} (hC : 0 ≤ C)
@@ -1600,7 +1664,7 @@ theorem norm_prodShift_le {f : Fin 3 → E3 → ℂ} {Cb : ℝ} (hfb : ∀ i x, 
     (x : E3) (t : ℝ) : ‖prodShift f x t‖ ≤ Cb ^ 3 := by
   rw [prodShift, norm_prod]
   calc ∏ i : Fin 3, ‖f i (x + curve i t)‖ ≤ ∏ _i : Fin 3, Cb :=
-        Finset.prod_le_prod (fun i _ => norm_nonneg (f i (x + curve i t)))
+        Finset.prod_le_prod₀ (fun i _ => norm_nonneg (f i (x + curve i t)))
           (fun i _ => hfb i _)
     _ = Cb ^ 3 := by simp
 
@@ -1612,7 +1676,7 @@ theorem norm_adjShift_le {f0 : E3 → ℂ} {f : Fin 3 → E3 → ℂ} {Cb : ℝ}
   refine mul_le_mul_of_nonneg_right ?_ (norm_nonneg (f0 (y - curve j t)))
   calc ∏ i ∈ Finset.univ.erase j, ‖conj (f i (y - curve j t + curve i t))‖
       ≤ ∏ _i ∈ Finset.univ.erase j, Cb :=
-        Finset.prod_le_prod
+        Finset.prod_le_prod₀
           (fun i _ => norm_nonneg (conj (f i (y - curve j t + curve i t))))
           (fun i _ => by rw [RCLike.norm_conj]; exact hfb i _)
     _ = Cb ^ 2 := by
@@ -1626,7 +1690,7 @@ theorem adjoint_identity {N : ℝ} (hN : 0 < N) (j : Fin 3) {f0 : E3 → ℂ}
     (hf0 : Continuous f0) (hf0i : Integrable f0) {f : Fin 3 → E3 → ℂ}
     (hf : ∀ i, Continuous (f i)) {Cb : ℝ} (hCb : 0 ≤ Cb) (hfb : ∀ i x, ‖f i x‖ ≤ Cb) :
     Lambda N f0 f = ∫ y : E3, f j y * conj (Astar N j f0 f y) := by
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
     ⟨by rw [Measure.restrict_apply_univ, Real.volume_Ioc]; exact ENNReal.ofReal_lt_top⟩
   set ν := volume.restrict (Set.Ioc (0 : ℝ) N) with hν
   have hcont1 : Continuous (Function.uncurry fun (x : E3) (t : ℝ) =>
@@ -1699,7 +1763,7 @@ theorem adjoint_identity {N : ℝ} (hN : 0 < N) (j : Fin 3) {f0 : E3 → ℂ}
 /-! ## Section 4: the endpoint interpolation geometry
 
 Blueprint `lem:endpoint-geometry` is stated there for the specific exponents
-`b_i = b_{i, thm:kosz-subunit, j}`.  The proof uses only that each `b_i` lies in `(0,1)` and
+`b_i = b_{i, thm:kosz-subunit, j}`. The proof uses only that each `b_i` lies in `(0,1)` and
 that their sum exceeds `1`, so it is formalized with those hypotheses; this makes the lemma
 independent of the imported module `thm:kosz-subunit`. -/
 
@@ -1798,13 +1862,13 @@ its proof of `thm:kosz-subunit` takes from the same paper, and `thm:quasi-interp
 
 By the user's decision of 2026-09-11T16:46:20-04:00, recorded in `automation/instructions.md`,
 each is stated here as a named `Prop` and carried as an explicit hypothesis of every downstream
-result, up to and including the target `thm:main`.  No axiom and no `sorry` is introduced, so the
+result, up to and including the target `thm:main`. No axiom and no `sorry` is introduced, so the
 axiom audit remains clean, and `thm:main` is proved conditionally on exactly these three imports.
 -/
 
 open MeasureTheory in
 /-- Blueprint `thm:kosz-adjoint`: the real, nontruncated, monomial specialization of
-Theorem 6.13 of Kosz-Mirek-Peluse-Wan-Wright (arXiv:2411.09478).  Imported by citation; see
+Theorem 6.13 of Kosz-Mirek-Peluse-Wan-Wright (arXiv:2411.09478). Imported by citation; see
 `automation/ErrorReport.md`. -/
 def KoszAdjoint (j : Fin 3) : Prop :=
   ∀ α₀ : ℝ, ∀ α : Fin 3 → ℝ,
@@ -1822,7 +1886,7 @@ def KoszAdjoint (j : Fin 3) : Prop :=
 
 open MeasureTheory in
 /-- The scale-one subunit estimate that the blueprint's proof of `thm:kosz-subunit` takes from
-Corollary 5.3 and equation (6.24) of Kosz-Mirek-Peluse-Wan-Wright.  Imported by citation; the
+Corollary 5.3 and equation (6.24) of Kosz-Mirek-Peluse-Wan-Wright. Imported by citation; the
 blueprint's derivation of `thm:kosz-subunit` from it is formalized below. -/
 def KoszSubunitScaleOne (j : Fin 3) : Prop :=
   ∃ q : ℝ, ∃ qv : Fin 3 → ℝ, ∃ Ct : ℝ,
@@ -1833,17 +1897,16 @@ def KoszSubunitScaleOne (j : Fin 3) : Prop :=
           ≤ ENNReal.ofReal Ct * ∏ i, eLpNorm (f i) (ENNReal.ofReal (qv i)) volume
 
 /-! ### The blueprint's derivation of `thm:kosz-subunit` from its scale-one input -/
-
 theorem continuous_uncurry_prodShift' {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i)) :
     Continuous (Function.uncurry fun (x : E3) (t : ℝ) => prodShift f x t) :=
   (continuous_uncurry_prodShift hf).comp continuous_swap
 
-theorem continuous_A {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i)) (N : ℝ) :
+@[fun_prop] theorem continuous_A {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i)) (N : ℝ) :
     Continuous (A N f) :=
   continuous_const.mul (intervalIntegral.continuous_parametric_intervalIntegral_of_continuous'
     (continuous_uncurry_prodShift' hf) 0 N)
 
-theorem continuous_Atilde {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i)) (N : ℝ) :
+@[fun_prop] theorem continuous_Atilde {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i)) (N : ℝ) :
     Continuous (Atilde N f) :=
   continuous_const.mul (intervalIntegral.continuous_parametric_intervalIntegral_of_continuous'
     (continuous_uncurry_prodShift' hf) (N / 2) N)
@@ -1995,8 +2058,12 @@ theorem eLpNorm_A_of_Atilde_bound {q : ℝ} (hq0 : 0 < q) (hq1 : q ≤ 1)
     have hsub : eLpNorm (F M) p volume ^ q
         ≤ ∑ m ∈ Finset.range M,
             eLpNorm (fun x => ((2 : ℂ)⁻¹) ^ (m + 1) * Atilde (N / 2 ^ m) f x) p volume ^ q := by
-      rw [eLpNorm_eq_eLpNorm' hp0 hptop, hqt]
-      simp only [eLpNorm_eq_eLpNorm' hp0 hptop, hqt]
+      rw [eLpNorm_eq_eLpNorm' hp0 hptop (by fun_prop), hqt]
+      have hnorm (m : ℕ) :
+          eLpNorm (fun x => ((2 : ℂ)⁻¹) ^ (m + 1) * Atilde (N / 2 ^ m) f x) p volume =
+          eLpNorm' (fun x => ((2 : ℂ)⁻¹) ^ (m + 1) * Atilde (N / 2 ^ m) f x) q volume := by
+        rw [eLpNorm_eq_eLpNorm' hp0 hptop (by fun_prop), hqt]
+      simp only [hnorm]
       exact eLpNorm'_sum_rpow_le hq0 hq1
         (fun m => (continuous_const.mul (continuous_Atilde hf _)).aestronglyMeasurable)
     have hchain : eLpNorm (F M) p volume ^ q ≤ (r * (1 - r)⁻¹) * D ^ q := by
@@ -2014,7 +2081,8 @@ theorem eLpNorm_A_of_Atilde_bound {q : ℝ} (hq0 : 0 < q) (hq1 : q ≤ 1)
   -- Fatou
   have hlim : ∀ᵐ x : E3, Filter.Tendsto (fun M => F M x) Filter.atTop (nhds (A N f x)) :=
     Filter.Eventually.of_forall fun x => A_dyadic_tendsto hf hN x
-  refine le_trans (MeasureTheory.Lp.eLpNorm_lim_le_liminf_eLpNorm hFmeas (A N f) hlim) ?_
+  refine le_trans (MeasureTheory.Lp.eLpNorm_lim_le_liminf_eLpNorm hFmeas (A N f) (continuous_A hf
+    N).aestronglyMeasurable hlim) ?_
   have hlimsup : Filter.liminf (fun M => eLpNorm (F M) p volume) Filter.atTop
       ≤ Filter.liminf (fun _ : ℕ => (r * (1 - r)⁻¹) ^ (1 / q) * D) Filter.atTop :=
     Filter.liminf_le_liminf (Filter.Eventually.of_forall hFbound)
@@ -2025,7 +2093,7 @@ theorem eLpNorm_A_of_Atilde_bound {q : ℝ} (hq0 : 0 < q) (hq1 : q ≤ 1)
 
 open MeasureTheory in
 /-- Blueprint `thm:kosz-subunit`, derived in full from its imported scale-one input
-`KoszSubunitScaleOne`.  The blueprint proves this step, so only the scale-one estimate is
+`KoszSubunitScaleOne`. The blueprint proves this step, so only the scale-one estimate is
 imported. -/
 theorem kosz_subunit (j : Fin 3) (H : KoszSubunitScaleOne j) :
     ∃ b : Fin 3 → ℝ, ∃ C : ℝ,
@@ -2070,8 +2138,8 @@ theorem kosz_subunit (j : Fin 3) (H : KoszSubunitScaleOne j) :
 
 /-! ### Regularity bundle
 
-The blueprint quantifies over Schwartz functions.  This development uses only three consequences
-of that hypothesis, bundled here for readability.  `Nice` is a hypothesis bundle, not a
+The blueprint quantifies over Schwartz functions. This development uses only three consequences
+of that hypothesis, bundled here for readability. `Nice` is a hypothesis bundle, not a
 mathematical definition: no part of any estimate is hidden in it. -/
 
 /-- Continuity, integrability and boundedness: the three consequences of the blueprint's
@@ -2108,10 +2176,10 @@ theorem nice_smul_add {u v : E3 → ℂ} (c : ℂ) (hu : Nice u) (hv : Nice v) :
 /-! ### `L^p` duality
 
 Mathlib provides no `L^p` duality, so the form needed by blueprint `prop:normalized-banach` is
-developed here.  In the application the `L^p` norm is already known to be finite by
+developed here. In the application the `L^p` norm is already known to be finite by
 `eLpNorm_A_le`, so the general truncation argument is unnecessary. -/
 
-/-- The dual function of `F` at exponent `p`.  It pairs with `F` to give `‖F‖ ^ p` pointwise and
+/-- The dual function of `F` at exponent `p`. It pairs with `F` to give `‖F‖ ^ p` pointwise and
 has `L^{p'}` norm `‖F‖_p ^ (p - 1)`. -/
 noncomputable def dualFun (p : ℝ) (F : E3 → ℂ) (x : E3) : ℂ := (‖F x‖ ^ (p - 2) : ℝ) • F x
 
@@ -2141,7 +2209,7 @@ theorem mul_conj_dualFun {p : ℝ} (hp : 1 < p) (F : E3 → ℂ) (x : E3) :
       mul_comm (F x), mul_assoc, Complex.mul_conj', ← Complex.ofReal_pow,
       ← Complex.ofReal_mul, hreal]
 
-theorem continuous_dualFun {p : ℝ} (hp : 1 < p) {F : E3 → ℂ} (hF : Continuous F) :
+@[fun_prop] theorem continuous_dualFun {p : ℝ} (hp : 1 < p) {F : E3 → ℂ} (hF : Continuous F) :
     Continuous (dualFun p F) := by
   rw [continuous_iff_continuousAt]
   intro x₀
@@ -2181,7 +2249,7 @@ theorem conj_exponent_facts {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + p'⁻¹ 
 
 
 /-- A smooth cutoff equal to `1` on the closed ball of radius `n + 1` and supported in the ball
-of radius `n + 2`.  It truncates the dual function to a compactly supported one, so that the
+of radius `n + 2`. It truncates the dual function to a compactly supported one, so that the
 duality hypothesis need only be assumed for integrable test functions. -/
 noncomputable def cutoffBump (n : ℕ) : ContDiffBump (0 : E3) :=
   ⟨(n : ℝ) + 1, (n : ℝ) + 2, by positivity, by linarith⟩
@@ -2214,8 +2282,8 @@ theorem cutoff_eventually_one (x : E3) :
 open MeasureTheory in
 /-- `L^p` duality in the form used by blueprint `prop:normalized-banach`: a bound on the pairing
 of `F` against every continuous integrable function, in terms of the `L^{p'}` norm of that
-function, bounds the `L^p` norm of `F`.  The finiteness of `‖F‖_{L^p}` is available in the
-application through `eLpNorm_A_le`.  The dual function need not be integrable, so it is truncated
+function, bounds the `L^p` norm of `F`. The finiteness of `‖F‖_{L^p}` is available in the
+application through `eLpNorm_A_le`. The dual function need not be integrable, so it is truncated
 by the smooth cutoffs `cutoff n` and the bound is passed to the limit. -/
 theorem eLpNorm_le_of_pairing_bound {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + p'⁻¹ = 1)
     {F : E3 → ℂ} (hF : Continuous F) (hFfin : eLpNorm F (ENNReal.ofReal p) volume ≠ ⊤)
@@ -2230,13 +2298,14 @@ theorem eLpNorm_le_of_pairing_bound {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + 
   rcases eq_or_ne S 0 with h0 | h0
   · rw [h0]; exact zero_le
   have hlint : (∫⁻ x : E3, ‖F x‖ₑ ^ p) = S ^ p := by
-    rw [hS, eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hp0).ne' ENNReal.ofReal_ne_top,
+    rw [hS, eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hp0).ne' ENNReal.ofReal_ne_top
+      (by fun_prop),
       ENNReal.toReal_ofReal hp0.le, eLpNorm', ← ENNReal.rpow_mul, one_div,
       inv_mul_cancel₀ hp0.ne', ENNReal.rpow_one]
   have hlintfin : (∫⁻ x : E3, ‖F x‖ₑ ^ p) ≠ ⊤ := by
     rw [hlint]; exact ENNReal.rpow_ne_top_of_nonneg hp0.le hFfin
   have hdualnorm : eLpNorm (dualFun p F) (ENNReal.ofReal p') volume = S ^ (p - 1) := by
-    rw [eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hp'0).ne' ENNReal.ofReal_ne_top,
+    rw [eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hp'0).ne' ENNReal.ofReal_ne_top (by fun_prop),
       ENNReal.toReal_ofReal hp'0.le, eLpNorm']
     have hpt : ∀ x : E3, ‖dualFun p F x‖ₑ ^ p' = ‖F x‖ₑ ^ p := by
       intro x
@@ -2273,7 +2342,7 @@ theorem eLpNorm_le_of_pairing_bound {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + 
   have hgnorm : ∀ n, eLpNorm (g n) (ENNReal.ofReal p') volume ≤ S ^ (p - 1) := by
     intro n
     rw [← hdualnorm]
-    refine eLpNorm_mono fun x => ?_
+    refine eLpNorm_mono (by fun_prop) fun x => ?_
     rw [hgdef, norm_mul, Complex.norm_real, Real.norm_of_nonneg (cutoff_nonneg n x)]
     calc ‖dualFun p F x‖ * cutoff n x ≤ ‖dualFun p F x‖ * 1 :=
           mul_le_mul_of_nonneg_left (cutoff_le_one n x) (norm_nonneg _)
@@ -2343,7 +2412,7 @@ theorem eLpNorm_le_of_pairing_bound {p p' : ℝ} (hp : 1 < p) (hconj : p⁻¹ + 
 open MeasureTheory in
 theorem eLpNorm_conj (G : E3 → ℂ) (b : ℝ≥0∞) :
     eLpNorm (fun x => conj (G x)) b volume = eLpNorm G b volume :=
-  eLpNorm_congr_norm_ae (Filter.Eventually.of_forall fun x => by simp)
+  MeasureTheory.eLpNorm_conj G b volume
 
 open MeasureTheory in
 /-- Hölder's inequality for the `L²`-type pairing; this is the step "apply Hölder's inequality
@@ -2351,18 +2420,19 @@ with exponents `p_j` and `p_j'`" in the proof of blueprint `prop:normalized-bana
 theorem enorm_integral_mul_conj_le {a b : ℝ≥0∞} (hab : a⁻¹ + b⁻¹ = 1)
     {F G : E3 → ℂ} (hF : AEStronglyMeasurable F volume) (hG : AEStronglyMeasurable G volume) :
     ‖∫ x : E3, F x * conj (G x)‖ₑ ≤ eLpNorm F a volume * eLpNorm G b volume := by
-  haveI : ENNReal.HolderTriple a b 1 := ⟨by simpa using hab⟩
+  have : ENNReal.HolderTriple a b 1 := ⟨by simpa using hab⟩
   have hsmul : (fun x : E3 => F x * conj (G x)) = F • fun x : E3 => conj (G x) := by
     funext x; simp
   calc ‖∫ x : E3, F x * conj (G x)‖ₑ
       ≤ ∫⁻ x : E3, ‖F x * conj (G x)‖ₑ := enorm_integral_le_lintegral_enorm _
     _ = eLpNorm (fun x : E3 => F x * conj (G x)) 1 volume :=
-        eLpNorm_one_eq_lintegral_enorm.symm
+        (eLpNorm_one_eq_lintegral_enorm (hF.mul (Complex.continuous_conj.comp_aestronglyMeasurable
+          hG))).symm
     _ ≤ eLpNorm F a volume * eLpNorm (fun x : E3 => conj (G x)) b volume := by
         have hGc : AEStronglyMeasurable (fun x : E3 => conj (G x)) volume :=
           Complex.continuous_conj.comp_aestronglyMeasurable hG
         rw [hsmul]
-        exact eLpNorm_smul_le_mul_eLpNorm hGc hF
+        exact eLpNorm_smul_le_mul_eLpNorm hF hGc
     _ = eLpNorm F a volume * eLpNorm G b volume := by rw [eLpNorm_conj]
 
 /-- A single bound serving all three factors. -/
@@ -2385,7 +2455,7 @@ theorem continuous_uncurry_adjShift {f0 : E3 → ℂ} (hf0 : Continuous f0)
   exact Complex.continuous_conj.comp
     ((hf i).comp (hc0.add ((continuous_curve i).comp continuous_snd)))
 
-theorem continuous_Astar (N : ℝ) (j : Fin 3) {f0 : E3 → ℂ} (hf0 : Continuous f0)
+@[fun_prop] theorem continuous_Astar (N : ℝ) (j : Fin 3) {f0 : E3 → ℂ} (hf0 : Continuous f0)
     {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous (f i)) : Continuous (Astar N j f0 f) :=
   continuous_const.mul (intervalIntegral.continuous_parametric_intervalIntegral_of_continuous'
     (continuous_uncurry_adjShift hf0 hf j) 0 N)
@@ -2424,7 +2494,7 @@ theorem Nice.eLpNorm_ne_top {f : E3 → ℂ} (hf : Nice f) {p : ℝ} (hp : 1 ≤
   obtain ⟨hc, hi, C, hC⟩ := hf
   have hp0 : 0 < p := by linarith
   have hC0 : 0 ≤ C := le_trans (norm_nonneg _) (hC 0)
-  rw [eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hp0).ne' ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hp0).ne' ENNReal.ofReal_ne_top (by fun_prop),
     ENNReal.toReal_ofReal hp0.le, eLpNorm']
   refine ENNReal.rpow_ne_top_of_nonneg (by positivity) ?_
   have hreal : ∀ x : E3, ‖f x‖ ^ p ≤ C ^ (p - 1) * ‖f x‖ := by
@@ -2453,7 +2523,7 @@ open MeasureTheory in
 /-- A `Nice` function belongs to every `L^p` with `p ∈ [1, ∞)`. -/
 theorem Nice.memLp {f : E3 → ℂ} (hf : Nice f) {p : ℝ} (hp : 1 ≤ p) :
     MemLp f (ENNReal.ofReal p) volume :=
-  ⟨hf.continuous.aestronglyMeasurable, lt_top_iff_ne_top.mpr (hf.eLpNorm_ne_top hp)⟩
+  lt_top_iff_ne_top.mpr (hf.eLpNorm_ne_top hp)
 
 open MeasureTheory in
 /-- `Nice` functions are dense in every `L^p` with `p ∈ [1, ∞)`, the density being supplied by
@@ -2485,7 +2555,7 @@ theorem ennreal_conj_exponent {a b : ℝ} (ha : 0 < a) (hb : 0 < b) (hab : a⁻�
 
 open MeasureTheory in
 /-- The main case of blueprint `prop:normalized-banach`: whenever the adjoint estimate is
-available at the given scale and frequency threshold, duality yields the bound on `A_N`.  This
+available at the given scale and frequency threshold, duality yields the bound on `A_N`. This
 is the part of the blueprint proof that runs "by `lem:adjoint-identity`, ... duality between
 `L^p` and `L^{p'}` gives ...". -/
 theorem normalized_banach_case_one (j : Fin 3)
@@ -2679,7 +2749,7 @@ theorem normalized_banach (j : Fin 3) (HA : KoszAdjoint j)
     have hνsupp : Function.support (𝓕 (f j)) ⊆ {ξ : E3 | (N ^ expo j)⁻¹ * (ν ^ 2)⁻¹ ≤ |ξ j|} := by
       intro ξ hξ
       have h := hsupp hξ
-      simp only [Set.mem_setOf_eq] at h ⊢
+      simp only [Set.mem_ofPred_eq] at h ⊢
       refine le_trans ?_ h
       have hNj : (0 : ℝ) < N ^ expo j := by positivity
       have hinv : (ν ^ 2)⁻¹ ≤ (μ ^ 2)⁻¹ :=
@@ -2734,7 +2804,6 @@ theorem normalized_banach (j : Fin 3) (HA : KoszAdjoint j)
           simpa using ENNReal.one_le_ofReal.mpr hone
 
 /-! ### Section 4: the endpoint `p = 1` -/
-
 theorem nice_P {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) :
     Nice (P R j f) := by
   obtain ⟨hc, hi, C, hC⟩ := hf
@@ -2756,6 +2825,21 @@ with the `j`-th argument replaced by its high-frequency part. -/
 noncomputable def Tproj (N R : ℝ) (j : Fin 3) (g : Fin 3 → E3 → ℂ) : E3 → ℂ :=
   A N (Function.update g j (Q R j (g j)))
 
+open MeasureTheory in
+@[fun_prop] theorem measurable_Q {R : ℝ} (j : Fin 3) {f : E3 → ℂ}
+    (hf : Measurable f) : Measurable (Q R j f) :=
+  hf.sub (measurable_P j hf)
+
+open MeasureTheory in
+@[fun_prop] theorem measurable_Tproj {N R : ℝ} (hN : 0 ≤ N) (j : Fin 3)
+    {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) : Measurable (Tproj N R j f) := by
+  apply measurable_A hN
+  intro i
+  by_cases hi : i = j
+  · subst i
+    simpa only [Function.update_self] using measurable_Q j (hf j)
+  · simpa only [Function.update_of_ne hi] using hf i
+
 theorem nice_update_Q {R : ℝ} (hR : 0 < R) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
     (hg : ∀ i, Nice (g i)) : ∀ i, Nice (Function.update g j (Q R j (g j)) i) := by
   intro i
@@ -2768,7 +2852,7 @@ theorem nice_update_Q {R : ℝ} (hR : 0 < R) (j : Fin 3) {g : Fin 3 → E3 → �
 
 /-! ### Trilinearity of the interpolated operator
 
-Blueprint `thm:quasi-interpolation` carries a trilinearity hypothesis.  The present proof of
+Blueprint `thm:quasi-interpolation` carries a trilinearity hypothesis. The present proof of
 `lem:lebesgue-strip` does not use it -- the analyticity of the composed family is obtained from
 the explicit kernel instead -- but the fact is part of the blueprint and is recorded here. -/
 
@@ -2913,7 +2997,6 @@ theorem support_fourier_update_Q {R : ℝ} (hR : 0 < R) (j : Fin 3) {g : Fin 3 �
 /-! ### Towards `lem:lebesgue-strip`: the exponent path
 
 The proof of `lem:lebesgue-strip` moves each input along the analytic family
-
   `F_i (z, x) = ph (f_i x) * exp (a_i z * log |f_i x|)`,
   `a_i z = p_i ((1 - z) / p_{i,0} + z / p_{i,1})`,
 
@@ -2965,8 +3048,7 @@ theorem differentiable_interpExp (p p₀ p₁ : ℝ) : Differentiable ℂ (inter
 /-! ### The analytic family of `lem:lebesgue-strip`
 
 With the convention `ph 0 = 0` and `ph w = w / ‖w‖` otherwise, the blueprint's family is
-
-  `F_i (z, x) = ph (f_i x) * exp (a_i z * log ‖f_i x‖)`,  `a_i = interpExp p_i p_{i,0} p_{i,1}`.
+  `F_i (z, x) = ph (f_i x) * exp (a_i z * log ‖f_i x‖)`, `a_i = interpExp p_i p_{i,0} p_{i,1}`.
 
 It vanishes wherever `f_i` does, has modulus `‖f_i x‖ ^ re (a_i z)` elsewhere, is entire in `z`
 for each fixed `x`, and equals `f_i` at `z = θ` by the exponent relation. -/
@@ -2978,7 +3060,7 @@ noncomputable def ph (w : ℂ) : ℂ := if w = 0 then 0 else w / (‖w‖ : ℂ)
 
 theorem norm_ph_of_ne {w : ℂ} (hw : w ≠ 0) : ‖ph w‖ = 1 := by
   have h : ‖w‖ ≠ 0 := norm_ne_zero_iff.mpr hw
-  rw [ph, if_neg hw, norm_div, Complex.norm_real, Real.norm_eq_abs,
+  rw [ph, ite_eq_right hw, norm_div, Complex.norm_real, Real.norm_eq_abs,
     abs_of_nonneg (norm_nonneg w)]
   exact div_self h
 
@@ -2987,7 +3069,7 @@ theorem ph_mul_norm (w : ℂ) : ph w * (‖w‖ : ℂ) = w := by
   · simp [hw]
   · have h : ((‖w‖ : ℝ) : ℂ) ≠ 0 := by
       exact_mod_cast norm_ne_zero_iff.mpr hw
-    rw [ph, if_neg hw]
+    rw [ph, ite_eq_right hw]
     field_simp
 
 /-- The analytic family of `lem:lebesgue-strip`. -/
@@ -3051,17 +3133,44 @@ theorem enorm_anFam {p p₀ p₁ : ℝ} {α : Type*} {f : α → ℂ} {z : ℂ} 
       ← ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hr.le]
 
 open MeasureTheory in
+open MeasureTheory in
+theorem measurable_ph : Measurable ph := by
+  unfold ph
+  have hset : MeasurableSet {w : ℂ | w = 0} := by
+    simp
+  refine Measurable.ite hset measurable_const ?_
+  exact measurable_id.div (Complex.measurable_ofReal.comp measurable_norm)
+
+theorem measurable_anFam {p p₀ p₁ : ℝ} {α : Type*} [MeasurableSpace α] {g : α → ℂ}
+    (hg : Measurable g) (z : ℂ) : Measurable (anFam p p₀ p₁ g z) := by
+  unfold anFam
+  refine (measurable_ph.comp hg).mul (Complex.measurable_exp.comp ?_)
+  exact measurable_const.mul
+    (Complex.measurable_ofReal.comp (Real.measurable_log.comp hg.norm))
+
+open MeasureTheory in
+@[fun_prop] theorem aestronglyMeasurable_anFam {α : Type*} [MeasurableSpace α]
+    {μ : Measure α} {f : α → ℂ} (hf : AEStronglyMeasurable f μ) (p p₀ p₁ : ℝ) (z : ℂ) :
+    AEStronglyMeasurable (anFam p p₀ p₁ f z) μ := by
+  have hm : Measurable (fun w : ℂ => ph w * Complex.exp
+      (interpExp p p₀ p₁ z * (Real.log ‖w‖ : ℂ))) := by
+    exact (measurable_anFam measurable_id z)
+  exact (hm.comp_aemeasurable hf.aemeasurable).aestronglyMeasurable
+
+open MeasureTheory in
 /-- The Lebesgue norms of the family are powers of a single Lebesgue norm of `f`. -/
 theorem eLpNorm_anFam {p p₀ p₁ : ℝ} {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {f : α → ℂ} {z : ℂ} {r P : ℝ} (hrz : (interpExp p p₀ p₁ z).re = r) (hr : 0 < r)
-    (hP : 0 < P) :
+    (hP : 0 < P) (hf : AEStronglyMeasurable f μ) :
     eLpNorm (anFam p p₀ p₁ f z) (ENNReal.ofReal P) μ
       = eLpNorm f (ENNReal.ofReal (r * P)) μ ^ r := by
   have hr0 : r ≠ 0 := hr.ne'
   have hP0 : P ≠ 0 := hP.ne'
   have hrP : 0 < r * P := mul_pos hr hP
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hP).ne' ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hrP).ne' ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hP).ne' ENNReal.ofReal_ne_top
+    (by fun_prop),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hrP).ne' ENNReal.ofReal_ne_top
+      (by fun_prop),
     ENNReal.toReal_ofReal hP.le, ENNReal.toReal_ofReal hrP.le]
   have hint : (∫⁻ x, ‖anFam p p₀ p₁ f z x‖ₑ ^ P ∂μ) = ∫⁻ x, ‖f x‖ₑ ^ (r * P) ∂μ := by
     refine lintegral_congr fun x => ?_
@@ -3073,21 +3182,23 @@ theorem eLpNorm_anFam {p p₀ p₁ : ℝ} {α : Type*} [MeasurableSpace α] {μ 
 open MeasureTheory in
 /-- On the left edge of the strip the family has `L^{p₀}` norm `‖f‖_{L^p} ^ (p / p₀)`. -/
 theorem eLpNorm_anFam_left {p p₀ p₁ : ℝ} (hp : 0 < p) (hp₀ : 0 < p₀) (hp₁ : 0 < p₁)
-    {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ} (hz : z.re = 0) :
+    {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ} (hz : z.re = 0) (hfm :
+      AEStronglyMeasurable f μ) :
     eLpNorm (anFam p p₀ p₁ f z) (ENNReal.ofReal p₀) μ
       = eLpNorm f (ENNReal.ofReal p) μ ^ (p / p₀) := by
   have h := eLpNorm_anFam (μ := μ) (f := f)
-    (interpExp_re_left hp₀.ne' hp₁.ne' hz) (div_pos hp hp₀) hp₀
+    (interpExp_re_left hp₀.ne' hp₁.ne' hz) (div_pos hp hp₀) hp₀ hfm
   rwa [div_mul_cancel₀ _ hp₀.ne'] at h
 
 open MeasureTheory in
 /-- On the right edge of the strip the family has `L^{p₁}` norm `‖f‖_{L^p} ^ (p / p₁)`. -/
 theorem eLpNorm_anFam_right {p p₀ p₁ : ℝ} (hp : 0 < p) (hp₀ : 0 < p₀) (hp₁ : 0 < p₁)
-    {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ} (hz : z.re = 1) :
+    {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ} (hz : z.re = 1) (hfm :
+      AEStronglyMeasurable f μ) :
     eLpNorm (anFam p p₀ p₁ f z) (ENNReal.ofReal p₁) μ
       = eLpNorm f (ENNReal.ofReal p) μ ^ (p / p₁) := by
   have h := eLpNorm_anFam (μ := μ) (f := f)
-    (interpExp_re_right hp₀.ne' hp₁.ne' hz) (div_pos hp hp₁) hp₁
+    (interpExp_re_right hp₀.ne' hp₁.ne' hz) (div_pos hp hp₁) hp₁ hfm
   rwa [div_mul_cancel₀ _ hp₁.ne'] at h
 
 open MeasureTheory in
@@ -3096,28 +3207,31 @@ theorem eLpNorm_anFam_left_eq_one {p p₀ p₁ : ℝ} (hp : 0 < p) (hp₀ : 0 < 
     {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ} (hz : z.re = 0)
     (hf : eLpNorm f (ENNReal.ofReal p) μ = 1) :
     eLpNorm (anFam p p₀ p₁ f z) (ENNReal.ofReal p₀) μ = 1 := by
-  rw [eLpNorm_anFam_left hp hp₀ hp₁ hz, hf, ENNReal.one_rpow]
+  rw [eLpNorm_anFam_left hp hp₀ hp₁ hz (aestronglyMeasurable_of_eLpNorm_ne_top (by
+    rw [hf];
+    simp)), hf, ENNReal.one_rpow]
 
 open MeasureTheory in
 theorem eLpNorm_anFam_right_eq_one {p p₀ p₁ : ℝ} (hp : 0 < p) (hp₀ : 0 < p₀) (hp₁ : 0 < p₁)
     {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ} (hz : z.re = 1)
     (hf : eLpNorm f (ENNReal.ofReal p) μ = 1) :
     eLpNorm (anFam p p₀ p₁ f z) (ENNReal.ofReal p₁) μ = 1 := by
-  rw [eLpNorm_anFam_right hp hp₀ hp₁ hz, hf, ENNReal.one_rpow]
+  rw [eLpNorm_anFam_right hp hp₀ hp₁ hz (aestronglyMeasurable_of_eLpNorm_ne_top (by
+    rw [hf];
+    simp)), hf, ENNReal.one_rpow]
 
 
 /-! ### Blueprint `lem:lebesgue-strip`
 
-The Lebesgue-space strip argument.  The analytic family `Auto.anFam` is fed into
+The Lebesgue-space strip argument. The analytic family `Auto.anFam` is fed into
 `Auto.eLpNorm_le_of_analyticFamily`: it passes through `f` at `z = θ`, its `L^{p_{i,ℓ}}` norm on
 the edge `re z = ℓ` is `‖f i‖_{L^{p_i}} ^ (p_i / p_{i,ℓ})`, and the two exponent identities make
 the resulting constants collapse to `M₀ ^ (1-θ) M₁ ^ θ ∏ ‖f i‖_{L^{p_i}}`.
 
 Where the blueprint expands `T` on finite-valued simple functions in order to know that
 `z ↦ T (F₁ z, F₂ z, F₃ z) (y)` is entire, the hypotheses `hcont`, `hdiff` and `hbdd` below carry
-that information instead; see `automation/ErrorReport.md`.  The dense class `S` has to be closed
+that information instead; see `automation/ErrorReport.md`. The dense class `S` has to be closed
 under the analytic family, which is what `hSfam` says. -/
-
 theorem ennreal_rpow_add_one {A : ℝ≥0∞} {a b : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hab : a + b = 1) :
     A ^ a * A ^ b = A := by
   rw [← ENNReal.rpow_add_of_nonneg _ _ ha hb, hab, ENNReal.rpow_one]
@@ -3132,7 +3246,7 @@ open MeasureTheory in
 A map bounded from the products `∏ L^{p_{i,0}}` into `L^{q₀}` and from `∏ L^{p_{i,1}}` into
 `L^{q₁}` on a class `S` closed under the analytic family obeys the interpolated bound on `S`,
 provided the composed family is measurable, analytic in the open strip and bounded on the closed
-strip.  Trilinearity itself is not needed once those three properties are assumed; in the
+strip. Trilinearity itself is not needed once those three properties are assumed; in the
 blueprint it serves only to produce them. -/
 theorem interpolate_of_analyticFamily
     {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {S : (E3 → ℂ) → Prop}
@@ -3145,6 +3259,8 @@ theorem interpolate_of_analyticFamily
     (hSfam : ∀ u : E3 → ℂ, S u → ∀ (i : Fin 3) (z : ℂ), z.re ∈ Set.Icc (0 : ℝ) 1 →
       S (anFam (p i) (p₀ i) (p₁ i) u z))
     (f : Fin 3 → E3 → ℂ) (hf : ∀ i, S (f i))
+    (hfm : ∀ i, AEStronglyMeasurable (f i) volume)
+    (hmeas : AEStronglyMeasurable (T f) volume)
     (hmeas₀ : AEStronglyMeasurable
       (fun w : E3 × ℝ =>
         T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) ((w.2 : ℂ) * Complex.I)) w.1)
@@ -3189,7 +3305,7 @@ theorem interpolate_of_analyticFamily
       (hFS _ (hmemL t))
     have hprod : (∏ i, eLpNorm (anFam (p i) (p₀ i) (p₁ i) (f i) ((t : ℂ) * Complex.I))
         (ENNReal.ofReal (p₀ i)) volume) = ∏ i, A i ^ (p i / p₀ i) :=
-      Finset.prod_congr rfl fun i _ => eLpNorm_anFam_left (hp i) (hp₀ i) (hp₁ i) (hreL t)
+      Finset.prod_congr rfl fun i _ => eLpNorm_anFam_left (hp i) (hp₀ i) (hp₁ i) (hreL t) (hfm i)
     rw [hprod] at h
     exact h
   have hb1 : ∀ t : ℝ, eLpNorm
@@ -3200,15 +3316,16 @@ theorem interpolate_of_analyticFamily
       (hFS _ (hmemR t))
     have hprod : (∏ i, eLpNorm (anFam (p i) (p₀ i) (p₁ i) (f i) (1 + (t : ℂ) * Complex.I))
         (ENNReal.ofReal (p₁ i)) volume) = ∏ i, A i ^ (p i / p₁ i) :=
-      Finset.prod_congr rfl fun i _ => eLpNorm_anFam_right (hp i) (hp₀ i) (hp₁ i) (hreR t)
+      Finset.prod_congr rfl fun i _ => eLpNorm_anFam_right (hp i) (hp₀ i) (hp₁ i) (hreR t) (hfm i)
     rw [hprod] at h
     exact h
-  have hmain := eLpNorm_le_of_analyticFamily (μ := (volume : Measure E3))
-    (H := fun z y => T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) z) y)
-    ⟨hθ0, hθ1⟩ hq₀ hq₁ hq hqrel hmeas₀ hmeas₁ hcont hdiff hbdd hb0 hb1
   have hFθ : (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) (θ : ℂ)) = f := by
     funext i x
     exact anFam_at (hp₀ i) (hp₁ i) (hp i) (hrel i) (f i) x
+  have hmain := eLpNorm_le_of_analyticFamily (μ := (volume : Measure E3))
+    (H := fun z y => T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) z) y)
+    ⟨hθ0, hθ1⟩ hq₀ hq₁ hq hqrel (by simpa only [hFθ] using hmeas) hmeas₀ hmeas₁ hcont hdiff hbdd
+      hb0 hb1
   rw [hFθ] at hmain
   refine hmain.trans (le_of_eq ?_)
   have hL : (∏ i, A i ^ (p i / p₀ i)) ^ (1 - θ) = ∏ i, A i ^ (p i / p₀ i * (1 - θ)) := by
@@ -3249,7 +3366,7 @@ theorem interpolate_of_analyticFamily
 /-! ### The dense class carried through the strip
 
 `Auto.Nice` is not closed under the analytic family: for an exponent `r < 1` the function
-`|u| ^ r` of a bounded integrable `u` need not be integrable.  Continuous functions with compact
+`|u| ^ r` of a bounded integrable `u` need not be integrable. Continuous functions with compact
 support are closed under it, are contained in `Auto.Nice`, and are dense in every `L^p`, so they
 are the class `S` of `Auto.interpolate_of_analyticFamily` in the application. -/
 
@@ -3299,7 +3416,7 @@ theorem continuous_anFam {p p₀ p₁ : ℝ} {α : Type*} [TopologicalSpace α] 
         fun x => f x / ((‖f x‖ : ℝ) : ℂ)
           * Complex.exp (interpExp p p₀ p₁ z * ((Real.log ‖f x‖ : ℝ) : ℂ)) := by
       filter_upwards [hmem] with x hx'
-      rw [anFam, ph, if_neg hx']
+      rw [anFam, ph, ite_eq_right hx']
     have hne : ‖f x₀‖ ≠ 0 := norm_ne_zero_iff.mpr hx
     have h1 : ContinuousAt (fun x => f x / ((‖f x‖ : ℝ) : ℂ)) x₀ := by
       refine hf.continuousAt.div ((Complex.continuous_ofReal.comp hf.norm).continuousAt) ?_
@@ -3341,8 +3458,8 @@ theorem ccs_anFam {p p₀ p₁ : ℝ} (hp : 0 < p) (hp₀ : 0 < p₀) (hp₁ : 0
 /-! ### Analyticity of parametric integrals
 
 The remaining operator-side obligation of `lem:lebesgue-strip` is that
-`z ↦ Tproj N R j (F z) y` be analytic.  `Tproj` is built from two integrals, so what is needed is
-that an integral of an entire family with locally uniform integrable bounds is entire.  The
+`z ↦ Tproj N R j (F z) y` be analytic. `Tproj` is built from two integrals, so what is needed is
+that an integral of an entire family with locally uniform integrable bounds is entire. The
 derivative bound required by `hasDerivAt_integral_of_dominated_loc_of_deriv_le` is *not* an extra
 hypothesis: Cauchy's estimate turns the bound on the values into a bound on the derivative on a
 smaller disc. -/
@@ -3418,7 +3535,7 @@ theorem aestronglyMeasurable_deriv_at {β : Type*} [MeasurableSpace β] {μ : Me
 
 open MeasureTheory in
 /-- **An integral of a family holomorphic on a disc, with a uniform integrable bound there, is
-differentiable at the centre.**  The derivative bound needed for differentiation under the
+differentiable at the centre.** The derivative bound needed for differentiation under the
 integral sign is supplied by Cauchy's estimate, so only a bound on the values is assumed. -/
 theorem differentiableAt_integral_of_bounded {β : Type*} [MeasurableSpace β] {μ : Measure β}
     {Φ : ℂ → β → ℂ} {z₀ : ℂ} {δ : ℝ} {bound : β → ℝ} (hδ : 0 < δ)
@@ -3536,20 +3653,6 @@ theorem exists_disc_bound {p p₀ p₁ : ℝ} (hp₀ : p₀ ≠ 0) (hp₁ : p₁
 
 /-! ### Measurability of the analytic family, and analyticity of the projected family -/
 
-theorem measurable_ph : Measurable ph := by
-  unfold ph
-  have hset : MeasurableSet {w : ℂ | w = 0} := by
-    simp
-  refine Measurable.ite hset measurable_const ?_
-  exact measurable_id.div (Complex.measurable_ofReal.comp measurable_norm)
-
-theorem measurable_anFam {p p₀ p₁ : ℝ} {α : Type*} [MeasurableSpace α] {g : α → ℂ}
-    (hg : Measurable g) (z : ℂ) : Measurable (anFam p p₀ p₁ g z) := by
-  unfold anFam
-  refine (measurable_ph.comp hg).mul (Complex.measurable_exp.comp ?_)
-  exact measurable_const.mul
-    (Complex.measurable_ofReal.comp (Real.measurable_log.comp hg.norm))
-
 open MeasureTheory in
 /-- The one-coordinate projection of the analytic family is differentiable in the strip variable
 at every interior point of the strip. -/
@@ -3628,8 +3731,8 @@ theorem norm_P_anFam_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {p p₀ p₁ : ℝ} {
 
 
 open MeasureTheory in
-/-- **The composed family is holomorphic in the strip variable.**  This is the analyticity
-hypothesis of `Auto.interpolate_of_analyticFamily` for the operator `Auto.Tproj`.  Each of the
+/-- **The composed family is holomorphic in the strip variable.** This is the analyticity
+hypothesis of `Auto.interpolate_of_analyticFamily` for the operator `Auto.Tproj`. Each of the
 three factors of the averaged product is holomorphic on a disc about an interior point of the
 strip and bounded there, and the `t`-average is over a finite interval, so
 `Auto.differentiableAt_integral_of_bounded` applies. -/
@@ -3713,7 +3816,7 @@ theorem differentiableAt_Tproj_anFam {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j 
     · simp only [h]
       have : (0 : ℝ) ≤ max 1 (Bv j ^ r2v j) := le_trans zero_le_one (le_max_left _ _)
       positivity
-    · simp only [if_neg h]
+    · simp only [ite_eq_right h]
       exact le_trans zero_le_one (le_max_left _ _)
   -- the factorwise bound
   have hfac : ∀ w : ℂ, w ∈ Metric.closedBall z₀ (2 * δ) → ∀ (t : ℝ) (i : Fin 3),
@@ -3741,7 +3844,7 @@ theorem differentiableAt_Tproj_anFam {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j 
             linarith
         _ = max 1 (Bv i ^ r2v i) * (1 + ∫ u : ℝ, ‖projKernel (4 * R) u‖) := by ring
     · rw [Function.update_of_ne h, hCbdef]
-      simp only [if_neg h]
+      simp only [ite_eq_right h]
       exact norm_anFam_le (hBv i) (hr0 i) (hbdv i w (hwi i)).1 (hbdv i w (hwi i)).2 _
   refine differentiableAt_integral_of_bounded (μ := volume.restrict (Set.Ioc (0 : ℝ) N))
     (δ := δ) (bound := fun _ => ∏ i, Cb i) hδ ?_ ?_ ?_ ?_
@@ -3778,16 +3881,15 @@ theorem differentiableAt_Tproj_anFam {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j 
   · -- the uniform bound
     intro w hw t
     refine le_trans (Finset.norm_prod_le _ _) ?_
-    exact Finset.prod_le_prod (fun i _ => norm_nonneg _) (fun i _ => hfac w hw t i)
+    exact Finset.prod_le_prod₀ (fun i _ => norm_nonneg _) (fun i _ => hfac w hw t i)
 
 
 /-! ### Uniform bounds and continuity on the closed strip
 
 `Auto.interpolate_of_analyticFamily` also asks for continuity of the composed family on the
-*closed* strip and a bound there.  On the closed strip the exponent `re (a z)` is an affine
+*closed* strip and a bound there. On the closed strip the exponent `re (a z)` is an affine
 function of `re z` lying between `p * min p₀⁻¹ p₁⁻¹ > 0` and `p * (p₀⁻¹ + p₁⁻¹)`, so the bound of
 `Auto.norm_anFam_le` holds with constants that do not depend on `z`. -/
-
 theorem interpExp_re_ge {p p₀ p₁ : ℝ} (hp : 0 < p) (hp₀ : 0 < p₀) (hp₁ : 0 < p₁) {z : ℂ}
     (hz : z.re ∈ Set.Icc (0 : ℝ) 1) : p * min p₀⁻¹ p₁⁻¹ ≤ (interpExp p p₀ p₁ z).re := by
   obtain ⟨h0, h1⟩ := hz
@@ -3866,7 +3968,7 @@ theorem continuousAt_P_anFam {R : ℝ} (hR : 0 < R) (j : Fin 3) {p p₀ p₁ : �
 
 
 open MeasureTheory in
-/-- **The composed family is bounded on the closed strip, uniformly in the output point.**  This
+/-- **The composed family is bounded on the closed strip, uniformly in the output point.** This
 is the boundedness hypothesis of `Auto.interpolate_of_analyticFamily`. -/
 theorem exists_bound_Tproj_anFam {N R : ℝ} (hR : 0 < R) (j : Fin 3)
     {p p₀ p₁ : Fin 3 → ℝ} (hp : ∀ i, 0 < p i) (hp₀ : ∀ i, 0 < p₀ i) (hp₁ : ∀ i, 0 < p₁ i)
@@ -3905,7 +4007,7 @@ theorem exists_bound_Tproj_anFam {N R : ℝ} (hR : 0 < R) (j : Fin 3)
             linarith
         _ = max 1 (Bv i ^ e i) * (1 + ∫ u : ℝ, ‖projKernel (4 * R) u‖) := by ring
     · rw [Function.update_of_ne h, hCbdef]
-      simp only [if_neg h]
+      simp only [ite_eq_right h]
       exact norm_anFam_strip_le (hp i) (hp₀ i) (hp₁ i) (hBv i) hz _
   have hprod : ∀ t : ℝ,
       ‖prodShift (Function.update (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) z) j
@@ -3913,7 +4015,7 @@ theorem exists_bound_Tproj_anFam {N R : ℝ} (hR : 0 < R) (j : Fin 3)
     intro t
     rw [prodShift]
     refine le_trans (Finset.norm_prod_le _ _) ?_
-    exact Finset.prod_le_prod (fun i _ => norm_nonneg _) (fun i _ => hfac t i)
+    exact Finset.prod_le_prod₀ (fun i _ => norm_nonneg _) (fun i _ => hfac t i)
   rw [Tproj, A, norm_mul]
   refine mul_le_mul_of_nonneg_left ?_ (norm_nonneg _)
   have hb := intervalIntegral.norm_integral_le_of_norm_le_const
@@ -3921,7 +4023,7 @@ theorem exists_bound_Tproj_anFam {N R : ℝ} (hR : 0 < R) (j : Fin 3)
   simpa using hb
 
 open MeasureTheory in
-/-- **The composed family is continuous on the closed strip.**  This is the continuity hypothesis
+/-- **The composed family is continuous on the closed strip.** This is the continuity hypothesis
 of `Auto.interpolate_of_analyticFamily`; the bound is taken on a disc about the point, which for a
 point of an edge sticks out of the strip, so `Auto.exists_disc_bound` is used rather than the
 uniform bound of `Auto.norm_anFam_strip_le`. -/
@@ -3983,7 +4085,7 @@ theorem continuousAt_Tproj_anFam {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fi
             linarith
         _ = max 1 (Bv i ^ r2v i) * (1 + ∫ u : ℝ, ‖projKernel (4 * R) u‖) := by ring
     · rw [Function.update_of_ne h, hCbdef]
-      simp only [if_neg h]
+      simp only [ite_eq_right h]
       exact norm_anFam_le (hBv i) (hpos i) (hbdv i w (hwi i)).1 (hbdv i w (hwi i)).2 _
   have hrw : ∀ z : ℂ, Tproj N R j (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) z) y
       = (N : ℂ)⁻¹ * ∫ t in Set.Ioc (0 : ℝ) N,
@@ -4013,7 +4115,7 @@ theorem continuousAt_Tproj_anFam {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fi
   · filter_upwards [Metric.closedBall_mem_nhds z₀ (by linarith : (0 : ℝ) < 2 * δ)] with w hw
     filter_upwards with t
     refine le_trans (Finset.norm_prod_le _ _) ?_
-    exact Finset.prod_le_prod (fun i _ => norm_nonneg _) (fun i _ => hfac w hw t i)
+    exact Finset.prod_le_prod₀ (fun i _ => norm_nonneg _) (fun i _ => hfac w hw t i)
   · exact integrable_const _
   · filter_upwards with t
     refine tendsto_finsetProd _ (fun i _ => ?_)
@@ -4033,10 +4135,9 @@ theorem continuousAt_Tproj_anFam {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fi
 /-! ### Joint measurability of the composed family
 
 The last hypothesis of `Auto.interpolate_of_analyticFamily` is joint measurability in the output
-point and the boundary parameter.  It is obtained from joint measurability of `Auto.anFam` in
+point and the boundary parameter. It is obtained from joint measurability of `Auto.anFam` in
 `(z, x)`, which holds for every `z`, and from
 `MeasureTheory.StronglyMeasurable.integral_prod_right'`, which needs no integrability. -/
-
 theorem measurable_anFam_uncurry {p p₀ p₁ : ℝ} {α : Type*} [MeasurableSpace α] {g : α → ℂ}
     (hg : Measurable g) : Measurable fun w : ℂ × α => anFam p p₀ p₁ g w.1 w.2 := by
   unfold anFam
@@ -4162,16 +4263,17 @@ theorem interpolate_Tproj {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
     exact fun y => ⟨C, fun z hz => hC y z hz⟩
   exact interpolate_of_analyticFamily (T := Tproj N R j) (S := Ccs)
     hp₀ hp₁ hp hq₀ hq₁ hq hM₀ hM₁ hθ hrel hqrel
-    (fun u hu i z hz => ccs_anFam (hp i) (hp₀ i) (hp₁ i) hu hz) f hf hm₀ hm₁ hc hd hb h0 h1
+    (fun u hu i z hz => ccs_anFam (hp i) (hp₀ i) (hp₁ i) hu hz) f hf (fun i => (hf
+      i).1.aestronglyMeasurable) (by fun_prop) hm₀ hm₁ hc hd hb h0 h1
 
 
 /-! ### From compact support back to `Nice`
 
-`Auto.interpolate_Tproj` bounds `Tproj` on continuous compactly supported triples.  The passage
+`Auto.interpolate_Tproj` bounds `Tproj` on continuous compactly supported triples. The passage
 to `Auto.Nice` triples is by truncation: multiplying by a cutoff keeps every `L^p` norm from
 increasing, and `Tproj` of the truncations converges **pointwise** to `Tproj` of the original
 triple, because the operator is an average over a compact interval of a product of one-coordinate
-convolutions.  No convergence in any `L^p` norm is needed; Fatou's lemma then preserves the
+convolutions. No convergence in any `L^p` norm is needed; Fatou's lemma then preserves the
 bound. -/
 
 open MeasureTheory Filter in
@@ -4182,6 +4284,8 @@ theorem eLpNorm_le_of_tendsto {α : Type*} [MeasurableSpace α] {μ : Measure α
     (hconv : ∀ x, Filter.Tendsto (fun n => F n x) Filter.atTop (nhds (G x)))
     (hb : ∀ n, eLpNorm (F n) (ENNReal.ofReal q) μ ≤ K) :
     eLpNorm G (ENNReal.ofReal q) μ ≤ K := by
+  have hGm := (measurable_of_tendsto_metrizable hFm (tendsto_pi_nhds.mpr
+    hconv)).aestronglyMeasurable (μ := μ)
   have hqne : ENNReal.ofReal q ≠ 0 := (ENNReal.ofReal_pos.mpr hq).ne'
   have hpow : ∀ (c : ℂ), ‖c‖ₑ ^ q = ENNReal.ofReal (‖c‖ ^ q) := fun c => by
     rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hq.le]
@@ -4198,7 +4302,7 @@ theorem eLpNorm_le_of_tendsto {α : Type*} [MeasurableSpace α] {μ : Measure α
     have h1 : (∫⁻ x, ‖F n x‖ₑ ^ q ∂μ) = eLpNorm' (F n) q μ ^ q :=
       lintegral_rpow_enorm_eq_rpow_eLpNorm' hq
     have h2 : eLpNorm' (F n) q μ = eLpNorm (F n) (ENNReal.ofReal q) μ := by
-      rw [eLpNorm_eq_eLpNorm' hqne ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
+      rw [eLpNorm_eq_eLpNorm' hqne ENNReal.ofReal_ne_top (by fun_prop), ENNReal.toReal_ofReal hq.le]
     rw [h1, h2]
     exact ENNReal.rpow_le_rpow (hb n) hq.le
   have hint : ∫⁻ x, ‖G x‖ₑ ^ q ∂μ ≤ K ^ q := by
@@ -4211,19 +4315,20 @@ theorem eLpNorm_le_of_tendsto {α : Type*} [MeasurableSpace α] {μ : Measure α
         ≤ Filter.liminf (fun _ : ℕ => K ^ q) Filter.atTop :=
           Filter.liminf_le_liminf (Filter.Eventually.of_forall hn)
       _ = K ^ q := Filter.liminf_const _
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne ENNReal.ofReal_ne_top (by fun_prop),
     ENNReal.toReal_ofReal hq.le]
   calc (∫⁻ x, ‖G x‖ₑ ^ q ∂μ) ^ (1 / q) ≤ (K ^ q) ^ (1 / q) :=
         ENNReal.rpow_le_rpow hint (by positivity)
     _ = K := by rw [← ENNReal.rpow_mul, mul_one_div, div_self hq.ne', ENNReal.rpow_one]
 
 open MeasureTheory in
-/-- **Fatou with a degenerate alternative.**  Where the limit is not attained the limit function is
+/-- **Fatou with a degenerate alternative.** Where the limit is not attained the limit function is
 required to vanish, which is exactly what an operator given by an integral does at a point where
-the integral of the limit diverges.  This is the form `Auto.Lim3` supplies. -/
+the integral of the limit diverges. This is the form `Auto.Lim3` supplies. -/
 theorem eLpNorm_le_of_tendsto_or_zero {α : Type*} [MeasurableSpace α] {μ : Measure α} {q : ℝ}
     (hq : 0 < q) {F : ℕ → α → ℂ} {G : α → ℂ} {K : ℝ≥0∞}
     (hFm : ∀ n, Measurable (F n))
+    (hGm : AEStronglyMeasurable G μ)
     (hconv : ∀ x, Filter.Tendsto (fun n => F n x) Filter.atTop (nhds (G x)) ∨ G x = 0)
     (hb : ∀ n, eLpNorm (F n) (ENNReal.ofReal q) μ ≤ K) :
     eLpNorm G (ENNReal.ofReal q) μ ≤ K := by
@@ -4248,7 +4353,7 @@ theorem eLpNorm_le_of_tendsto_or_zero {α : Type*} [MeasurableSpace α] {μ : Me
     have h1 : (∫⁻ x, ‖F n x‖ₑ ^ q ∂μ) = eLpNorm' (F n) q μ ^ q :=
       lintegral_rpow_enorm_eq_rpow_eLpNorm' hq
     have h2 : eLpNorm' (F n) q μ = eLpNorm (F n) (ENNReal.ofReal q) μ := by
-      rw [eLpNorm_eq_eLpNorm' hqne ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
+      rw [eLpNorm_eq_eLpNorm' hqne ENNReal.ofReal_ne_top (by fun_prop), ENNReal.toReal_ofReal hq.le]
     rw [h1, h2]
     exact ENNReal.rpow_le_rpow (hb n) hq.le
   have hint : ∫⁻ x, ‖G x‖ₑ ^ q ∂μ ≤ K ^ q := by
@@ -4258,7 +4363,7 @@ theorem eLpNorm_le_of_tendsto_or_zero {α : Type*} [MeasurableSpace α] {μ : Me
         ≤ Filter.liminf (fun _ : ℕ => K ^ q) Filter.atTop :=
           Filter.liminf_le_liminf (Filter.Eventually.of_forall hn)
       _ = K ^ q := Filter.liminf_const _
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne ENNReal.ofReal_ne_top (by fun_prop),
     ENNReal.toReal_ofReal hq.le]
   calc (∫⁻ x, ‖G x‖ₑ ^ q ∂μ) ^ (1 / q) ≤ (K ^ q) ^ (1 / q) :=
         ENNReal.rpow_le_rpow hint (by positivity)
@@ -4294,8 +4399,13 @@ theorem tendsto_trunc (g : E3 → ℂ) (x : E3) :
 open MeasureTheory in
 theorem eLpNorm_trunc_le {g : E3 → ℂ} (n : ℕ) (r : ℝ≥0∞) :
     eLpNorm (trunc n g) r volume ≤ eLpNorm g r volume := by
-  refine eLpNorm_mono fun x => ?_
-  exact norm_trunc_le n x
+  by_cases hg : AEStronglyMeasurable g volume
+  · have hm : AEStronglyMeasurable (trunc n g) volume :=
+      hg.mul ((Complex.continuous_ofReal.comp (cutoff_continuous n)).aestronglyMeasurable)
+    exact eLpNorm_mono hm (norm_trunc_le n)
+  · rw [eLpNorm_of_not_aestronglyMeasurable hg]
+    exact le_top
+
 
 
 open MeasureTheory in
@@ -4323,7 +4433,7 @@ theorem tendsto_Q_trunc {R : ℝ} (hR : 0 < R) (j : Fin 3) {g : E3 → ℂ} (hg 
   exact (tendsto_trunc g x).sub (tendsto_P_trunc (by linarith : (0 : ℝ) < 4 * R) j hg x)
 
 open MeasureTheory in
-/-- **`Tproj` is continuous under truncation, pointwise.**  This is what makes the passage from
+/-- **`Tproj` is continuous under truncation, pointwise.** This is what makes the passage from
 compactly supported data back to `Auto.Nice` data possible without any convergence in norm. -/
 theorem tendsto_Tproj_trunc {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
     {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Nice (f i)) (y : E3) :
@@ -4358,7 +4468,7 @@ theorem tendsto_Tproj_trunc {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
   · intro n
     filter_upwards with t
     refine le_trans (Finset.norm_prod_le _ _) ?_
-    refine Finset.prod_le_prod (fun i _ => norm_nonneg _) (fun i _ => ?_)
+    refine Finset.prod_le_prod₀ (fun i _ => norm_nonneg _) (fun i _ => ?_)
     by_cases h : i = j
     · subst h
       rw [Function.update_self, hCbdef]
@@ -4374,7 +4484,7 @@ theorem tendsto_Tproj_trunc {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
             exact norm_sub_le _ _
         _ ≤ Bv i + etaKerL1 * Bv i := by linarith
     · rw [Function.update_of_ne h, hCbdef]
-      simp only [if_neg h]
+      simp only [ite_eq_right h]
       exact le_trans (norm_trunc_le n _) (hBv i _)
   · filter_upwards with t
     refine tendsto_finsetProd _ (fun i _ => ?_)
@@ -4387,8 +4497,8 @@ theorem tendsto_Tproj_trunc {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
 
 
 open MeasureTheory in
-/-- **The interpolation bound for `Auto.Tproj` on `Auto.Nice` triples.**  This is the operator
-form of blueprint `lem:lebesgue-strip` and `thm:gm-internal` for the operator actually used.  It
+/-- **The interpolation bound for `Auto.Tproj` on `Auto.Nice` triples.** This is the operator
+form of blueprint `lem:lebesgue-strip` and `thm:gm-internal` for the operator actually used. It
 is what `Auto.endpoint_interpolate` rests on, and it is proved, not imported. -/
 theorem interpolate_Tproj_nice {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
     {p₀ p₁ p : Fin 3 → ℝ} {q₀ q₁ q M₀ M₁ θ : ℝ}
@@ -4418,11 +4528,11 @@ theorem interpolate_Tproj_nice {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 
     refine le_trans (interpolate_Tproj hN hR j hp₀ hp₁ hp hq₀ hq₁ hq hM₀ hM₁ hθ hrel hqrel
       h0 h1 (fun i => trunc n (f i)) (fun i => ccs_trunc (hf i).1 n)) ?_
     refine mul_le_mul' le_rfl ?_
-    exact Finset.prod_le_prod' (fun i _ => eLpNorm_trunc_le n _)
+    exact Finset.prod_le_prod (fun i _ => eLpNorm_trunc_le n _)
 open MeasureTheory in
 open MeasureTheory in
 /-- The interpolation step of blueprint `prop:normalized-endpoint`, packaged with the exponent
-relations of `lem:endpoint-geometry`.  Unconditional: it is `Auto.interpolate_Tproj_nice`, which
+relations of `lem:endpoint-geometry`. Unconditional: it is `Auto.interpolate_Tproj_nice`, which
 is blueprint `lem:lebesgue-strip` and `thm:gm-internal` for this operator, specialized to the
 exponents produced by `lem:endpoint-geometry`. -/
 theorem endpoint_interpolate {N R : ℝ} (hN : 0 ≤ N) (hR : 0 < R) (j : Fin 3)
@@ -4591,7 +4701,7 @@ theorem normalized_endpoint (j : Fin 3) (HA : KoszAdjoint j) (HS : KoszSubunitSc
 
 open MeasureTheory in
 /-- Blueprint `def:normalized-constants` and `cor:normalized-smoothing`: the two propositions
-unified over `p ∈ [1, ∞)`.  The constants of `def:normalized-constants` are the ones produced by
+unified over `p ∈ [1, ∞)`. The constants of `def:normalized-constants` are the ones produced by
 whichever of the two propositions applies, so the corollary is stated as an existence
 statement. -/
 theorem normalized_smoothing (j : Fin 3) (HA : KoszAdjoint j) (HS : KoszSubunitScaleOne j)
@@ -4617,7 +4727,7 @@ theorem normalized_smoothing (j : Fin 3) (HA : KoszAdjoint j) (HS : KoszSubunitS
     refine hest N μ hN hμ f hf ?_
     intro ξ hξ
     have hx := hsupp hξ
-    simp only [Set.mem_setOf_eq] at hx ⊢
+    simp only [Set.mem_ofPred_eq] at hx ⊢
     have hR0 : (0 : ℝ) < (N ^ expo j)⁻¹ * (μ ^ 2)⁻¹ := by
       have := hμ.1
       positivity
@@ -4836,7 +4946,7 @@ theorem primitive_smoothing (j : Fin 3) (HA : KoszAdjoint j) (HS : KoszSubunitSc
       refine primitive_scaled_bound j hp hpv hsum hest hr0 ⟨hmu0, hmu1⟩ hrho hf ?_
       intro xi hxi
       have hS := support_fourier_S hrho (hf j).continuous hsupp hxi
-      simp only [Set.mem_setOf_eq] at hS ⊢
+      simp only [Set.mem_ofPred_eq] at hS ⊢
       refine le_trans ?_ hS
       have hrhoj : (0 : ℝ) < rho ^ expo j := by positivity
       have hajrj : a ^ expo j ≤ r ^ expo j := pow_le_pow_left₀ ha.le hra _
@@ -4928,14 +5038,14 @@ theorem continuous_uncurry_B {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Continuous 
 
 /-! ### The requested theorem
 
-Blueprint `def:main-constants` and `thm:main`.  The exponent is the minimum of the three
+Blueprint `def:main-constants` and `thm:main`. The exponent is the minimum of the three
 exponents supplied by `primitive_smoothing` and the constant is `2 max{1, M}` times the
-maximum of the three constants, exactly as in `def:main-constants`.  The quantity `M`
+maximum of the three constants, exactly as in `def:main-constants`. The quantity `M`
 enters only through the hypothesis `∫⁻ ‖ψ'‖ ≤ ENNReal.ofReal M`, which is satisfied by
 `M = ‖ψ'‖_{L¹(ℝ)}` and by every larger value. -/
 
 open MeasureTheory in
-/-- Blueprint `thm:main`: the requested smoothing theorem.  For `ψ ∈ C¹` supported in `[a, b]`
+/-- Blueprint `thm:main`: the requested smoothing theorem. For `ψ ∈ C¹` supported in `[a, b]`
 with `‖ψ'‖_{L¹} ≤ M`, the weighted average `𝒜_ψ(f₁, f₂, f₃)` obeys a `λ^{-δ}` gain as soon as
 one of the `f`'s has Fourier support in `{|ξ_j| ≥ λ}`. -/
 theorem main_smoothing (HA : ∀ j, KoszAdjoint j) (HS : ∀ j, KoszSubunitScaleOne j)
@@ -4992,8 +5102,7 @@ theorem main_smoothing (HA : ∀ j, KoszAdjoint j) (HS : ∀ j, KoszSubunitScale
     intro u hu
     have hsub : (fun x => B u f x - B a f x) = B u f - B a f := rfl
     rw [hsub]
-    refine le_trans (eLpNorm_sub_le (hBfix u).aestronglyMeasurable
-      (hBfix a).aestronglyMeasurable hpE) ?_
+    refine le_trans (eLpNorm_sub_le hpE) ?_
     have h1 := hBbound u hu
     have h2 := hBbound a ⟨le_rfl, hab.le⟩
     rw [two_mul]
@@ -5005,7 +5114,7 @@ theorem main_smoothing (HA : ∀ j, KoszAdjoint j) (HS : ∀ j, KoszSubunitScale
   have hνuniv : ν Set.univ ≤ ENNReal.ofReal M := by
     rw [hνdef, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ]
     exact le_trans (setLIntegral_le_lintegral _ _) hM
-  haveI : IsFiniteMeasure ν := ⟨lt_of_le_of_lt hνuniv ENNReal.ofReal_lt_top⟩
+  have : IsFiniteMeasure ν := ⟨lt_of_le_of_lt hνuniv ENNReal.ofReal_lt_top⟩
   have hGmeas : Measurable fun z : E3 × ℝ => B z.2 f z.1 - B a f z.1 :=
     (hBjoint.sub ((hBfix a).comp continuous_fst)).measurable
   -- the pointwise bound coming from the fundamental-theorem-of-calculus identity
@@ -5036,7 +5145,10 @@ theorem main_smoothing (HA : ∀ j, KoszAdjoint j) (HS : ∀ j, KoszSubunitScale
     filter_upwards [hmem] with u hu
     exact hDbound u ⟨hu.1.le, hu.2⟩
   have hmain := eLpNorm_le_of_enorm_le_lintegral (p := ENNReal.ofReal p) (ν := ν)
-    hpE ENNReal.ofReal_ne_top hGmeas hF hCae
+    hpE ENNReal.ofReal_ne_top hGmeas
+      ((measurable_Apsi (show Continuous ψ from continuous_iff_continuousAt.mpr
+        fun t => (hψ t).continuousAt).measurable (fun i => (hfc
+          i).measurable)).aestronglyMeasurable) hF hCae
   refine le_trans hmain ?_
   -- convert the constants
   have htwo : ENNReal.ofReal (2 : ℝ) = 2 := by simp
@@ -5130,7 +5242,7 @@ theorem liftDims : (1 + 2 + 3 : ℕ) = 6 ∧ (1 + 3 + 6 : ℕ) = 10 ∧ (10 - 6 
 /-! ### Blueprint `lem:fibre-separation`: separation inside a measurable fibre -/
 
 open MeasureTheory in
-/-- **Blueprint `lem:fibre-separation`.**  A measurable subset of `[0,N]` of measure at least
+/-- **Blueprint `lem:fibre-separation`.** A measurable subset of `[0,N]` of measure at least
 `a N` contains a measurable subset of measure at least `a N / 2` all of whose points are at
 distance at least `a N / (4 m)` from each of `m` given points. -/
 theorem exists_separated_subset {N a : ℝ} {E : Set ℝ} (hEm : MeasurableSet E)
@@ -5217,7 +5329,7 @@ theorem exists_separated_subset {N a : ℝ} {E : Set ℝ} (hEm : MeasurableSet E
 The blueprint's refinement lemma is an induction whose single step is the following: if a
 nonnegative incidence function `H` on a set `E` has integral at least `2B`, and the threshold `c`
 satisfies `c * μ E ≤ B`, then discarding the part of `E` where `H < c` leaves incidence at least
-`B`, while the surviving set carries the pointwise lower bound `c`.  Applying the step to the
+`B`, while the surviving set carries the pointwise lower bound `c`. Applying the step to the
 forward operator and to its three adjoints is what costs the factor `2⁴` per stage in the
 blueprint's statement. -/
 
@@ -5250,7 +5362,7 @@ theorem lintegral_le_setLIntegral_thresh {X : Type*} [MeasurableSpace X] {μ : M
     _ ≤ (∫⁻ x in E ∩ S, H x ∂μ) + c * μ E := add_le_add le_rfl hsmall
 
 open MeasureTheory in
-/-- **Blueprint `lem:lossless-refinements`, one deletion.**  The refined set is measurable, is
+/-- **Blueprint `lem:lossless-refinements`, one deletion.** The refined set is measurable, is
 contained in `E`, carries the pointwise lower bound `c`, and retains at least half of the
 incidence. -/
 theorem refinement_step {X : Type*} [MeasurableSpace X] {μ : Measure X}
@@ -5274,11 +5386,10 @@ theorem refinement_step {X : Type*} [MeasurableSpace X] {μ : Measure X}
 
 The flow of the blueprint has block lower triangular derivative, so its determinant is the
 product of the determinants of the three diagonal blocks, which are the derivatives of
-
-  `Φ₁(u) = -u`,  `Φ₂(u,v) = (u - v, u² - v²)`,
+  `Φ₁(u) = -u`, `Φ₂(u,v) = (u - v, u² - v²)`,
   `Φ₃(a,b,c) = -(a - b + c, a² - b² + c², a³ - b³ + c³)`.
 
-The first has determinant `-1`; the second and third are computed here.  Their product has
+The first has determinant `-1`; the second and third are computed here. Their product has
 absolute value `12 |u-v| |a-b| |a-c| |b-c|`, the Vandermonde expression of the blueprint. -/
 
 /-- The derivative of the degree-two block `Φ₂(u,v) = (u - v, u² - v²)`. -/
@@ -5299,7 +5410,7 @@ theorem det_flowBlock3 (a b c : ℝ) :
   simp
   ring
 
-/-- **Blueprint `lem:real-flow-jacobian`, the Jacobian formula.**  The determinant of the block
+/-- **Blueprint `lem:real-flow-jacobian`, the Jacobian formula.** The determinant of the block
 lower triangular derivative is the product of the three diagonal determinants, and its absolute
 value is the displayed Vandermonde expression. -/
 theorem abs_det_flow (u v a b c : ℝ) :
@@ -5385,7 +5496,7 @@ theorem flowBlock3_pair {a b c a' b' c' : ℝ} (hcoeff : (a - b) * (b - c) ≠ 0
 /-! ### The area formula with bounded multiplicity
 
 Mathlib's `MeasureTheory.lintegral_abs_det_fderiv_le_addHaar_image` requires the map to be
-injective on the set.  The flow of `lem:real-flow-jacobian` is only finite-to-one, so the version
+injective on the set. The flow of `lem:real-flow-jacobian` is only finite-to-one, so the version
 below is what the blueprint's "area formula and the multiplicity bound" step needs: cover the
 parameter set by finitely many pieces on which the map is injective and sum. -/
 
@@ -5416,7 +5527,7 @@ theorem lintegral_abs_det_fderiv_le_card_mul_image
 
 
 open MeasureTheory in
-/-- **The fibre integration step of `prop:restricted-improving-vertex`.**  On the separated
+/-- **The fibre integration step of `prop:restricted-improving-vertex`.** On the separated
 subset produced by `Auto.exists_separated_subset`, every Vandermonde factor carried by the new
 parameter is at least `a N / (4 m)`, so integrating the Jacobian over that fibre produces one
 factor of the fibre measure together with `m` Vandermonde factors. -/
@@ -5434,7 +5545,7 @@ theorem exists_separated_lintegral_ge {N a : ℝ} {E : Set ℝ} (hEm : Measurabl
     have hconst : (∏ _ℓ : Fin m, ENNReal.ofReal δ) = ENNReal.ofReal δ ^ m := by
       rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
     rw [ENNReal.ofReal_pow hδ0, ← hconst]
-    exact Finset.prod_le_prod' fun ℓ _ => ENNReal.ofReal_le_ofReal (hsep v hv ℓ)
+    exact Finset.prod_le_prod fun ℓ _ => ENNReal.ofReal_le_ofReal (hsep v hv ℓ)
   calc ENNReal.ofReal (δ ^ m * (a * N / 2))
       = ENNReal.ofReal (δ ^ m) * ENNReal.ofReal (a * N / 2) :=
         ENNReal.ofReal_mul (by positivity)
@@ -5459,7 +5570,7 @@ noncomputable def incid (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) : ℝ�
       ∏ i : Fin 3, Set.indicator (E i) (fun _ => (1 : ℝ≥0∞)) (x + liftCurve i t)
 
 open MeasureTheory in
-/-- **The adjoint identity.**  Translating the integration variable by `Γ_j(t)` moves the average
+/-- **The adjoint identity.** Translating the integration variable by `Γ_j(t)` moves the average
 onto the `j`-th slot and changes nothing, because Lebesgue measure on the lift is translation
 invariant. -/
 theorem incid_shift (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) (j : Fin 3) :
@@ -5479,14 +5590,14 @@ theorem incid_mono {N : ℝ} {E₀ F₀ : Set E6} {E F : Fin 3 → Set E6}
     (h₀ : E₀ ⊆ F₀) (h : ∀ i, E i ⊆ F i) : incid N E₀ E ≤ incid N F₀ F := by
   refine lintegral_mono fun t => lintegral_mono fun x => ?_
   refine mul_le_mul' (Set.indicator_le_indicator_of_subset h₀ (fun _ => bot_le) x) ?_
-  exact Finset.prod_le_prod' fun i _ =>
+  exact Finset.prod_le_prod fun i _ =>
     Set.indicator_le_indicator_of_subset (h i) (fun _ => bot_le) _
 
 
 /-! ### The descent from the lift to `ℝ³`
 
 The three monomial curves of the lift sit in three disjoint coordinate blocks, one per degree,
-and in each block the curve's top-degree entry is the last coordinate.  Projecting on those three
+and in each block the curve's top-degree entry is the last coordinate. Projecting on those three
 last coordinates therefore carries `Γ_i` to `curve i` and the lifted average to the original one:
 this is the identity behind the descent in `prop:restricted-improving-vertex`. -/
 
@@ -5527,7 +5638,7 @@ theorem Llift_comp_proj (N : ℝ) (g : Fin 3 → E3 → ℂ) (x : E6) :
 /-! ### The fibre of a move
 
 `lem:lossless-refinements` leaves a pointwise lower bound on the incidence at each surviving
-point.  Written out, that lower bound *is* a lower bound for the measure of the set of parameters
+point. Written out, that lower bound *is* a lower bound for the measure of the set of parameters
 carrying the point into the next refinement; this is the fibre `I_ℓ` of the parameter tower of
 `lem:real-flow-jacobian`. -/
 
@@ -5556,8 +5667,8 @@ theorem lintegral_indicator_move (N : ℝ) (i : Fin 3) (x : E6) {S : Set E6}
 
 
 open MeasureTheory in
-/-- **The induction atom of the parameter tower.**  If the inner integral is at least `c` at
-every point of the outer set, the iterated integral is at least `c` times the outer measure.  Six
+/-- **The induction atom of the parameter tower.** If the inner integral is at least `c` at
+every point of the outer set, the iterated integral is at least `c` times the outer measure. Six
 applications of this, interleaved with `Auto.exists_separated_lintegral_ge`, are what the
 blueprint calls "successive integration of the Jacobian". -/
 theorem mul_measure_le_setLIntegral {α : Type*} [MeasurableSpace α] {μ : Measure α}
@@ -5604,7 +5715,7 @@ theorem abs_det_flowMatrix (u v a b c : ℝ) :
 The tower of `lem:real-flow-jacobian` is built one parameter at a time, and the blueprint's
 instruction is to "apply Fubini after every move".  Written on a product, one move is the
 following: if every fibre of the tower over a point of the outer set carries at least `c`, then
-the whole tower carries at least `c` times the measure of the outer set.  The two forms below are
+the whole tower carries at least `c` times the measure of the outer set. The two forms below are
 the one for the measure of the tower and the one for a weighted integral over it, the weight
 being the Jacobian in the application. -/
 
@@ -5620,7 +5731,7 @@ theorem measure_prod_ge_of_fibres {α β : Type*} [MeasurableSpace α] [Measurab
     _ ≤ ∫⁻ a, ν (Prod.mk a ⁻¹' T) ∂μ := setLIntegral_le_lintegral _ _
 
 open MeasureTheory in
-/-- One move of the tower, for a weighted integral over it.  In the application the weight is the
+/-- One move of the tower, for a weighted integral over it. In the application the weight is the
 Jacobian of the flow. -/
 theorem lintegral_prod_ge_of_fibres {α β : Type*} [MeasurableSpace α] [MeasurableSpace β]
     {μ : Measure α} {ν : Measure β} [SFinite μ] [SFinite ν]
@@ -5652,7 +5763,7 @@ theorem lintegral_prod_ge_of_fibres {α β : Type*} [MeasurableSpace α] [Measur
 /-! ### Fubini transport for the lift
 
 The lift carries an additive Haar measure, which the adjoint identity and the area formula both
-need, so it is kept as `EuclideanSpace ℝ (Fin 6)`; see `automation/ErrorReport.md`.  Fubini in
+need, so it is kept as `EuclideanSpace ℝ (Fin 6)`; see `automation/ErrorReport.md`. Fubini in
 the six tower parameters is obtained by transporting along the two measure-preserving maps below,
 peeling one coordinate at a time. -/
 
@@ -5675,7 +5786,7 @@ theorem measurePreserving_E6_prod :
 
 /-! ### The flow of `lem:real-flow-jacobian` as a map on the lift -/
 
-/-- The flow of blueprint `lem:real-flow-jacobian`.  The six parameters are grouped into the
+/-- The flow of blueprint `lem:real-flow-jacobian`. The six parameters are grouped into the
 three blocks `(t 0)`, `(t 1, t 2)`, `(t 3, t 4, t 5)`, and each block is sent to the moment map
 of its degree. -/
 noncomputable def flowPi (s : Fin 6 → ℝ) : Fin 6 → ℝ :=
@@ -5785,7 +5896,7 @@ theorem hasFDerivAt_flowMap (t : E6) : HasFDerivAt flowMap (flowDeriv t) t := by
 /-! ### The parameter tower
 
 The tower of `lem:real-flow-jacobian` is built by adjoining one parameter at a time: the new
-parameter ranges over a fibre depending on the parameters already chosen.  `Auto.towerCons` is
+parameter ranges over a fibre depending on the parameters already chosen. `Auto.towerCons` is
 that operation, and `Auto.measure_towerCons_ge` is the blueprint's "apply Fubini after every
 move": the measure of the enlarged tower is at least the measure of the new outer set times the
 uniform lower bound for its fibres. -/
@@ -5816,9 +5927,9 @@ theorem measure_towerCons_ge {X : Type*} [MeasureSpace X] [SFinite (volume : Mea
     _ = volume (towerCons A T) := by rw [← Measure.volume_eq_prod]
 
 open MeasureTheory in
-/-- **The six-level parameter tower.**  Six parameters, each ranging over a fibre of measure at
+/-- **The six-level parameter tower.** Six parameters, each ranging over a fibre of measure at
 least `β i` depending on the parameters already chosen, occupy a set of measure at least the
-product of the six bounds.  This is the measure statement of the tower of
+product of the six bounds. This is the measure statement of the tower of
 `lem:real-flow-jacobian`; the blueprint's depth-`60` refinement is what makes the six fibre
 bounds available simultaneously. -/
 theorem measure_tower6_ge
@@ -5859,7 +5970,7 @@ theorem measure_tower6_ge
 
 
 open MeasureTheory in
-/-- **One move of the parameter tower, for a weighted integral.**  In the application the weight
+/-- **One move of the parameter tower, for a weighted integral.** In the application the weight
 is the Jacobian of the flow, so that six applications of this give the blueprint's "successive
 integration of the Jacobian". -/
 theorem lintegral_towerCons_ge {X : Type*} [MeasureSpace X] [SFinite (volume : Measure X)]
@@ -5882,8 +5993,8 @@ theorem lintegral_towerCons_ge {X : Type*} [MeasureSpace X] [SFinite (volume : M
 /-! ### The incidence densities deleted against
 
 `lem:lossless-refinements` deletes, at each stage, the part of a set on which an incidence
-density is small.  There are four such densities: the forward one, carried by `E₀`, and the three
-adjoint ones, carried by `E j`.  That the incidence integral is the integral of each of them over
+density is small. There are four such densities: the forward one, carried by `E₀`, and the three
+adjoint ones, carried by `E j`. That the incidence integral is the integral of each of them over
 its own set is "Fubini and the adjoint identity" of the blueprint's proof. -/
 
 open MeasureTheory in
@@ -5938,7 +6049,7 @@ noncomputable def incidAdj (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) (j :
       Set.indicator (E i) (fun _ => (1 : ℝ≥0∞)) (y - liftCurve j t + liftCurve i t)
 
 open MeasureTheory in
-/-- **The incidence integral is the integral of the `j`-th adjoint density over `E j`.**  This is
+/-- **The incidence integral is the integral of the `j`-th adjoint density over `E j`.** This is
 the adjoint identity in the form `lem:lossless-refinements` uses between deletions. -/
 theorem incid_eq_setLIntegral_incidAdj (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E₀)
     {E : Fin 3 → Set E6} (hE : ∀ i, MeasurableSet (E i)) (j : Fin 3) :
@@ -6028,7 +6139,7 @@ theorem incidAdj_update (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) (j : Fi
   rw [Function.update_of_ne (Finset.ne_of_mem_erase hi)]
 
 open MeasureTheory in
-/-- **One deletion from `E₀`.**  Discarding the part of `E₀` on which the forward incidence
+/-- **One deletion from `E₀`.** Discarding the part of `E₀` on which the forward incidence
 density is below `c` leaves at least half of the incidence, and the surviving set carries the
 pointwise bound `c`. -/
 theorem refinement_delete_fwd (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E₀)
@@ -6044,7 +6155,7 @@ theorem refinement_delete_fwd (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E
   exact hge
 
 open MeasureTheory in
-/-- **One deletion from `E j`.**  Discarding the part of `E j` on which the `j`-th adjoint
+/-- **One deletion from `E j`.** Discarding the part of `E j` on which the `j`-th adjoint
 incidence density is below `c` leaves at least half of the incidence. -/
 theorem refinement_delete_adj (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E₀)
     {E : Fin 3 → Set E6} (hE : ∀ i, MeasurableSet (E i)) (j : Fin 3)
@@ -6074,7 +6185,7 @@ open MeasureTheory in
 theorem incidFwd_mono {N : ℝ} {E F : Fin 3 → Set E6} (h : ∀ i, E i ⊆ F i) (x : E6) :
     incidFwd N E x ≤ incidFwd N F x := by
   refine lintegral_mono fun t => ?_
-  exact Finset.prod_le_prod' fun i _ =>
+  exact Finset.prod_le_prod fun i _ =>
     Set.indicator_le_indicator_of_subset (h i) (fun _ => bot_le) _
 
 open MeasureTheory in
@@ -6084,13 +6195,13 @@ theorem incidAdj_mono {N : ℝ} {E₀ F₀ : Set E6} {E F : Fin 3 → Set E6}
     incidAdj N E₀ E j y ≤ incidAdj N F₀ F j y := by
   refine lintegral_mono fun t => ?_
   refine mul_le_mul' (Set.indicator_le_indicator_of_subset h₀ (fun _ => bot_le) _) ?_
-  exact Finset.prod_le_prod' fun i _ =>
+  exact Finset.prod_le_prod fun i _ =>
     Set.indicator_le_indicator_of_subset (h i) (fun _ => bot_le) _
 
 open MeasureTheory in
-/-- **One stage of `lem:lossless-refinements`.**  Four deletions -- one against the forward
+/-- **One stage of `lem:lossless-refinements`.** Four deletions -- one against the forward
 density and one against each of the three adjoint densities -- shrink the four sets and cost at
-most a factor `2 ^ 4` in the incidence.  The forward pointwise bound survives in the stated form;
+most a factor `2 ^ 4` in the incidence. The forward pointwise bound survives in the stated form;
 each adjoint bound is available from `Auto.refinement_delete_adj` at the point where that deletion
 is made, relative to the configuration in force there. -/
 theorem refinement_stage (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E₀)
@@ -6197,7 +6308,7 @@ theorem refinement_stage (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E₀)
 
 
 open MeasureTheory in
-/-- **One move of the tower on the lift's coordinate space.**  The tower is cut out of
+/-- **One move of the tower on the lift's coordinate space.** The tower is cut out of
 `Fin (n+1) → ℝ` by the first coordinate and a fibre in the remaining ones; transporting along
 `Auto.measurePreserving_piFinSucc` turns it into a `Auto.towerCons` on a product, where
 `Auto.measure_towerCons_ge` applies. -/
@@ -6228,9 +6339,9 @@ theorem lintegral_E6_preimage {S : Set (Fin 6 → ℝ)} (hS : MeasurableSet S)
 /-! ### The multiplicity bound as an injective cover
 
 `lem:real-flow-jacobian` bounds the number of preimages of a noncritical value by solving the
-three blocks in turn.  In Lean the useful form is a cover of the parameter set by pieces on which
+three blocks in turn. In Lean the useful form is a cover of the parameter set by pieces on which
 the flow is injective, because that is what `Auto.lintegral_abs_det_fderiv_le_card_mul_image`
-consumes.  Where the Jacobian does not vanish, the first block determines its parameter, the
+consumes. Where the Jacobian does not vanish, the first block determines its parameter, the
 second block is injective off its diagonal, and the third determines `b` together with the
 unordered outer pair; fixing the order of that pair splits the parameter set into two pieces. -/
 
@@ -6251,7 +6362,7 @@ theorem flowMap_coord (t t' : E6) (h : flowMap t = flowMap t') (k : Fin 6) :
   have hc := congrArg (fun z : E6 => WithLp.ofLp z k) h
   simpa [flowMap] using hc
 
-/-- **Blueprint `lem:real-flow-jacobian`, injectivity on one piece.**  On a set where the
+/-- **Blueprint `lem:real-flow-jacobian`, injectivity on one piece.** On a set where the
 Jacobian's factors are nonzero and the outer pair of the degree-three block is ordered, the flow
 is injective. -/
 theorem flowMap_injOn {S : Set E6}
@@ -6319,7 +6430,7 @@ theorem flowMap_injOn' {S : Set E6}
   · exact hb
   · exact h5
 
-/-- **Blueprint `lem:real-flow-jacobian`, the multiplicity bound as a cover.**  Where the
+/-- **Blueprint `lem:real-flow-jacobian`, the multiplicity bound as a cover.** Where the
 Jacobian's factors are nonzero, the parameter set is covered by two measurable pieces on which
 the flow is injective; the blueprint's bound `12` allows for the orientation relabellings, and
 `2` is what the ordering of the outer pair actually costs. -/
@@ -6354,8 +6465,8 @@ theorem flowMap_injective_cover {S : Set E6} (hSm : MeasurableSet S)
 
 The three block projections of `Auto.proj6` use the coordinates `0, 2, 5`; the remaining
 coordinates `1, 3, 4` are the ones the blueprint calls unused, one in the degree-two block and
-two in the degree-three block.  A function on `ℝ³` is lifted by composing with `Auto.proj6` and
-cutting off in those three coordinates, at heights `N`, `N` and `N²`.  The translations of the
+two in the degree-three block. A function on `ℝ³` is lifted by composing with `Auto.proj6` and
+cutting off in those three coordinates, at heights `N`, `N` and `N²`. The translations of the
 average move the unused coordinates by at most `N`, `N` and `N²`, so on the inner box the lifted
 average is the original average. -/
 
@@ -6411,7 +6522,7 @@ theorem Llift_liftFun {N : ℝ} (hN : 0 ≤ N) (g : Fin 3 → E3 → ℂ) {x : E
 /-! ### The coordinate split of the lift
 
 The block projection uses the coordinates `0, 2, 5` and the cutoff box lives in the coordinates
-`1, 3, 4`.  Splitting the lift along that partition turns the lifted function into a product and
+`1, 3, 4`. Splitting the lift along that partition turns the lifted function into a product and
 produces the factor `N^{D'}` of `prop:restricted-improving-vertex`. -/
 
 /-- The used coordinates first, then the unused ones. -/
@@ -6484,7 +6595,7 @@ theorem boxSet_eq_preimage (N : ℝ) :
     · rw [abs_le]; simpa using h2
 
 open MeasureTheory in
-/-- **The factor `N^{D'}` of `prop:restricted-improving-vertex`.**  The cutoff box has measure
+/-- **The factor `N^{D'}` of `prop:restricted-improving-vertex`.** The cutoff box has measure
 `8 N^4`. -/
 theorem volume_unusedBox {N : ℝ} (hN : 0 ≤ N) :
     volume (unusedBox N) = ENNReal.ofReal (8 * N ^ 4) := by
@@ -6506,8 +6617,8 @@ Wright Corollary 5.3 and of the subunit endpoint.
 ### Blueprint `lem:finite-marcinkiewicz`: the dyadic decomposition
 
 The proof writes each nonnegative input as `sum over n of 2^n` times the indicator of a level
-set, the level sets being disjoint.  Exactly that is `Auto.dyadicLevel`: the set where the
-function lies in `[2^n, 2^(n+1))`.  The decomposition is exact up to the factor `2` implicit in
+set, the level sets being disjoint. Exactly that is `Auto.dyadicLevel`: the set where the
+function lies in `[2^n, 2^(n+1))`. The decomposition is exact up to the factor `2` implicit in
 the width of a dyadic block, which is what makes the sums `sum 2^(n p) |E n|` comparable to
 `‖f‖_p ^ p`. -/
 
@@ -6543,7 +6654,7 @@ theorem measurableSet_dyadicLevel {α : Type*} [MeasurableSpace α] {f : α → 
   (measurableSet_le measurable_const hf).inter (measurableSet_lt hf measurable_const)
 
 open MeasureTheory in
-/-- **The dyadic sum is dominated by the integral.**  This is the lower half of the blueprint's
+/-- **The dyadic sum is dominated by the integral.** This is the lower half of the blueprint's
 "the remaining sums are `sum 2^(n p) |E_n|`, which are bounded by fixed multiples of
 `‖f‖_{p}^{p}`". -/
 theorem tsum_dyadic_le_lintegral {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℝ}
@@ -6577,7 +6688,7 @@ theorem iUnion_dyadicLevel {α : Type*} {f : α → ℝ} :
 
 open MeasureTheory in
 /-- **The integral is dominated by the dyadic sum**, up to the factor `2 ^ p` implicit in the
-width of a dyadic block.  With `Auto.tsum_dyadic_le_lintegral` this is the blueprint's comparison
+width of a dyadic block. With `Auto.tsum_dyadic_le_lintegral` this is the blueprint's comparison
 of `sum 2^(n p) |E_n|` with `‖f‖_p ^ p`. -/
 theorem lintegral_le_tsum_dyadic {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℝ}
     (hf : Measurable f) (hf0 : ∀ x, 0 ≤ f x) {p : ℝ} (hp : 0 < p) :
@@ -6629,7 +6740,7 @@ estimate is used and the sum along the extremal ray is geometric. -/
 /-- The cone on which the `j`-th functional is largest. -/
 def maxCone {ι α : Type*} (L : ι → α → ℝ) (j : ι) : Set α := {n | ∀ k, L k n ≤ L j n}
 
-/-- **The finite cone split.**  Finitely many endpoints cover the whole lattice. -/
+/-- **The finite cone split.** Finitely many endpoints cover the whole lattice. -/
 theorem iUnion_maxCone {ι α : Type*} [Finite ι] [Nonempty ι] (L : ι → α → ℝ) :
     (⋃ j, maxCone L j) = Set.univ := by
   refine Set.eq_univ_of_forall fun n => ?_
@@ -6673,12 +6784,11 @@ theorem tsum_two_rpow_neg_mul_ne_top {ε : ℝ} (hε : 0 < ε) :
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: real and imaginary parts, and monotone limits
 
-The dyadic argument is run on nonnegative inputs.  A complex input is reduced to four nonnegative
+The dyadic argument is run on nonnegative inputs. A complex input is reduced to four nonnegative
 ones -- the positive and negative parts of its real and imaginary parts -- each dominated
 pointwise by its modulus, and a nonnegative measurable input is the increasing limit of
-nonnegative simple ones.  The estimate then passes to the limit by
+nonnegative simple ones. The estimate then passes to the limit by
 `Auto.eLpNorm_le_of_tendsto`. -/
-
 theorem max_sub_max_neg (a : ℝ) : max a 0 - max (-a) 0 = a := by
   rcases le_total 0 a with h | h
   · rw [max_eq_left h, max_eq_right (by linarith), sub_zero]
@@ -6721,7 +6831,7 @@ theorem measurable_cpart {α : Type*} [MeasurableSpace α] {f : α → ℂ} (hf 
   · exact ((Complex.measurable_im.comp hf).neg).max measurable_const
 
 open MeasureTheory in
-/-- **The monotone approximation by nonnegative simple functions.**  This is the blueprint's
+/-- **The monotone approximation by nonnegative simple functions.** This is the blueprint's
 "passing to monotone limits". -/
 theorem exists_monotone_simple_approx {α : Type*} [MeasurableSpace α] {f : α → ℝ}
     (hf : Measurable f) :
@@ -6735,7 +6845,7 @@ theorem exists_monotone_simple_approx {α : Type*} [MeasurableSpace α] {f : α 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the weak quasi-norm
 
 The restricted weak estimates of the blueprint are estimates for the weak `L^q` quasi-norm of the
-output against products of measures of the input sets.  Mathlib has no weak Lebesgue spaces, so
+output against products of measures of the input sets. Mathlib has no weak Lebesgue spaces, so
 the quasi-norm is defined here; see `automation/ErrorReport.md` for the decision to work with the
 set form throughout. -/
 
@@ -6767,19 +6877,19 @@ theorem wnorm_mono {α : Type*} [MeasurableSpace α] {μ : Measure α} {q : ℝ}
   gcongr
 
 open MeasureTheory in
-/-- **Chebyshev: a strong estimate implies the corresponding weak one.**  This is the inequality
+/-- **Chebyshev: a strong estimate implies the corresponding weak one.** This is the inequality
 that makes the endpoint estimates of `lem:finite-marcinkiewicz` available in weak form. -/
 theorem wnorm_le_eLpNorm {α : Type*} [MeasurableSpace α] (μ : Measure α) {q : ℝ} (hq : 0 < q)
-    {g : α → ℂ} (hg : AEStronglyMeasurable g μ) :
+    {g : α → ℂ} :
     wnorm μ q g ≤ eLpNorm g (ENNReal.ofReal q) μ := by
   have hq0 : ENNReal.ofReal q ≠ 0 := (ENNReal.ofReal_pos.mpr hq).ne'
   have hqt : (ENNReal.ofReal q).toReal = q := ENNReal.toReal_ofReal hq.le
   refine wnorm_le fun lam => ?_
-  have hcheb := mul_meas_ge_le_pow_eLpNorm' μ hq0 ENNReal.ofReal_ne_top hg lam
+  have hcheb := mul_meas_ge_le_pow_eLpNorm' (f := g) μ hq0 ENNReal.ofReal_ne_top lam
   rw [hqt] at hcheb
   have hsub : μ {x | lam < ‖g x‖ₑ} ≤ μ {x | lam ≤ ‖g x‖ₑ} := by
     refine measure_mono fun x hx => ?_
-    rw [Set.mem_setOf_eq] at hx ⊢
+    rw [Set.mem_ofPred_eq] at hx ⊢
     exact le_of_lt hx
   have hstep : lam ^ q * μ {x | lam < ‖g x‖ₑ} ≤ eLpNorm g (ENNReal.ofReal q) μ ^ q :=
     le_trans (by gcongr) hcheb
@@ -6796,11 +6906,11 @@ theorem wnorm_le_eLpNorm {α : Type*} [MeasurableSpace α] (μ : Measure α) {q 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: expansion by trilinearity
 
 After the dyadic decomposition each input is a finite sum of scaled indicators, and the proof
-expands the operator over those sums.  The expansion is recorded here for an operator that is
-trilinear on bounded measurable slots.  That side condition cannot be dropped: the operators of
+expands the operator over those sums. The expansion is recorded here for an operator that is
+trilinear on bounded measurable slots. That side condition cannot be dropped: the operators of
 the blueprint are given by integrals and the Bochner integral of a non-integrable function is `0`
 by convention, so additivity in a slot fails as soon as the two summands are not separately
-integrable.  Every slot the expansion is applied to is a simple function, hence bounded and
+integrable. Every slot the expansion is applied to is a simple function, hence bounded and
 measurable. -/
 
 /-- A bounded measurable complex function: the class of slots on which the operators of the
@@ -6915,17 +7025,16 @@ theorem Trilin.finset_sum {ι : Type*} {T : (Fin 3 → E3 → ℂ) → E3 → �
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the distributional upgrade
 
 The hypotheses of the lemma are restricted *weak* estimates and its conclusion is a *strong*
-estimate.  The passage between the two is the classical Marcinkiewicz argument on the distribution
-function, which the blueprint's sketch passes over; see `automation/ErrorReport.md`.  The layer
+estimate. The passage between the two is the classical Marcinkiewicz argument on the distribution
+function, which the blueprint's sketch passes over; see `automation/ErrorReport.md`. The layer
 cake formula turns the `L^q` integral into an integral of the distribution function against
 `t ^ (q - 1)`, each weak bound turns the distribution function into a power of `t`, and the two
 resulting powers are integrable on complementary halves of the half line.
 
-Two forms are needed.  The first has `L^∞` as its upper endpoint, because `L^∞ × L^∞ × L^∞ → L^∞`
+Two forms are needed. The first has `L^∞` as its upper endpoint, because `L^∞ × L^∞ × L^∞ → L^∞`
 is one of the trivial vertices of `thm:strong-real-improving`; there the upper half of the half
-line carries no mass at all.  The second keeps both endpoints finite and leaves the splitting
+line carries no mass at all. The second keeps both endpoints finite and leaves the splitting
 level free, so that the level can be optimized later, once the endpoint constants are concrete. -/
-
 theorem Ioi_zero_split {c : ℝ} (hc : 0 ≤ c) :
     Set.Ioi (0 : ℝ) = Set.Ioc (0 : ℝ) c ∪ Set.Ioi c := by
   ext t
@@ -6977,7 +7086,7 @@ theorem meas_rpow_le_of_wnorm {α : Type*} [MeasurableSpace α] {μ : Measure α
     ENNReal.ofReal t ^ r * μ {x | t < ‖g x‖} ≤ A ^ r := by
   have hset : {x | ENNReal.ofReal t < ‖g x‖ₑ} = {x | t < ‖g x‖} := by
     ext x
-    simp only [Set.mem_setOf_eq]
+    simp only [Set.mem_ofPred_eq]
     rw [← ofReal_norm (g x), ENNReal.ofReal_lt_ofReal_iff_of_nonneg ht.le]
   have hle := le_trans (le_wnorm μ r g (ENNReal.ofReal t)) h
   rw [hset] at hle
@@ -7016,9 +7125,9 @@ theorem lintegral_enorm_rpow_eq {α : Type*} [MeasurableSpace α] {μ : Measure 
   rw [← ofReal_norm (g x), ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hq.le]
 
 open MeasureTheory in
-/-- **The distributional upgrade with an `L^∞` upper endpoint.**  A weak `L^{q₀}` bound together
+/-- **The distributional upgrade with an `L^∞` upper endpoint.** A weak `L^{q₀}` bound together
 with an essential supremum bound gives a strong `L^{q}` bound for every `q₀ < q`, with a constant
-that is a product of powers of the two endpoint constants.  That product structure is what lets
+that is a product of powers of the two endpoint constants. That product structure is what lets
 the scale gain of the improving vertex be tracked through the interpolation. -/
 theorem eLpNorm_le_of_wnorm_of_bdd {α : Type*} [MeasurableSpace α] {μ : Measure α} {g : α → ℂ}
     (hg : AEMeasurable g μ) {q₀ q : ℝ} (hq₀ : 0 < q₀) (hq₀q : q₀ < q)
@@ -7038,7 +7147,7 @@ theorem eLpNorm_le_of_wnorm_of_bdd {α : Type*} [MeasurableSpace α] {μ : Measu
   have hnull : ∀ t : ℝ, A₁.toReal < t → μ {x | t < ‖g x‖} = 0 := by
     intro t ht
     refine measure_mono_null (fun x hx => ?_) (ae_iff.mp h₁')
-    simp only [Set.mem_setOf_eq, not_le] at hx ⊢
+    simp only [Set.mem_ofPred_eq, not_le] at hx ⊢
     exact lt_trans ht hx
   have hinner : ∫⁻ t in Set.Ioi (0 : ℝ), μ {x | t < ‖g x‖} * ENNReal.ofReal (t ^ (q - 1))
       ≤ A₀ ^ q₀ * ENNReal.ofReal (A₁.toReal ^ (q - q₀) / (q - q₀)) := by
@@ -7073,7 +7182,7 @@ theorem eLpNorm_le_of_wnorm_of_bdd {α : Type*} [MeasurableSpace α] {μ : Measu
           rw [hrw, div_eq_mul_inv, ENNReal.ofReal_mul hq.le]
           ring
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hq).ne'
-    ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
+    ENNReal.ofReal_ne_top (by fun_prop), ENNReal.toReal_ofReal hq.le]
   calc (∫⁻ x, ‖g x‖ₑ ^ q ∂μ) ^ (1 / q)
       ≤ (ENNReal.ofReal (q / (q - q₀)) * A₀ ^ q₀ * A₁ ^ (q - q₀)) ^ (1 / q) :=
         ENNReal.rpow_le_rpow hI (by positivity)
@@ -7083,9 +7192,9 @@ theorem eLpNorm_le_of_wnorm_of_bdd {α : Type*} [MeasurableSpace α] {μ : Measu
           ← ENNReal.rpow_mul, mul_one_div, mul_one_div]
 
 open MeasureTheory in
-/-- **The distributional upgrade between two finite endpoints, at a free splitting level.**  Weak
+/-- **The distributional upgrade between two finite endpoints, at a free splitting level.** Weak
 `L^{q₀}` and `L^{q₁}` bounds give, for every `q₀ < q < q₁` and every level `c > 0`, a bound for the
-`L^{q}` integral by the two endpoint contributions.  The level is left free: choosing it is a
+`L^{q}` integral by the two endpoint contributions. The level is left free: choosing it is a
 question about real numbers alone, to be settled where the endpoint constants are concrete. -/
 theorem lintegral_enorm_rpow_le_of_wnorm_pair {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {g : α → ℂ} (hg : AEMeasurable g μ) {q₀ q q₁ : ℝ} (hq₀ : 0 < q₀) (hq₀q : q₀ < q)
@@ -7156,7 +7265,6 @@ Optimizing the level in `Auto.lintegral_enorm_rpow_le_of_wnorm_pair` is a questi
 numbers alone: the level at which the two endpoint contributions are equal is the weighted
 geometric mean of the two endpoint constants, and at that level each contribution is exactly the
 interpolated product of powers. -/
-
 theorem interp_relation {q₀ q q₁ θ : ℝ} (hq₀ : 0 < q₀) (hq : 0 < q) (hq₁ : 0 < q₁)
     (hθ : 1 / q = (1 - θ) / q₀ + θ / q₁) :
     q₀ * q₁ = (1 - θ) * q * q₁ + θ * q * q₀ := by
@@ -7186,7 +7294,7 @@ theorem interp_theta_mem {q₀ q q₁ θ : ℝ} (hq₀ : 0 < q₀) (hq₀q : q�
     exact div_pos (mul_pos hq₀ (by linarith)) hX
   linarith
 
-/-- **The optimal splitting level.**  At the weighted geometric mean of the two endpoint
+/-- **The optimal splitting level.** At the weighted geometric mean of the two endpoint
 constants both contributions of `Auto.lintegral_enorm_rpow_le_of_wnorm_pair` equal the
 interpolated product `a₀ ^ ((1 - θ) q) * a₁ ^ (θ q)`. -/
 theorem exists_split_level {q₀ q q₁ θ : ℝ} (hq₀ : 0 < q₀) (hq₀q : q₀ < q) (hqq₁ : q < q₁)
@@ -7216,7 +7324,7 @@ theorem exists_split_level {q₀ q q₁ θ : ℝ} (hq₀ : 0 < q₀) (hq₀q : q
       ← Real.rpow_mul ha₀.le, ← Real.rpow_mul ha₁.le, e3, mul_assoc, ← Real.rpow_add ha₁, e4]
 
 open MeasureTheory in
-/-- **The distributional upgrade between two finite endpoints.**  Weak `L^{q₀}` and `L^{q₁}`
+/-- **The distributional upgrade between two finite endpoints.** Weak `L^{q₀}` and `L^{q₁}`
 bounds give a strong `L^{q}` bound at every intermediate exponent, with a constant that is the
 interpolated product of powers of the two endpoint constants. -/
 theorem eLpNorm_le_of_wnorm_pair {α : Type*} [MeasurableSpace α] {μ : Measure α} {g : α → ℂ}
@@ -7255,7 +7363,7 @@ theorem eLpNorm_le_of_wnorm_pair {α : Type*} [MeasurableSpace α] {μ : Measure
     rw [mul_assoc, mul_assoc, t₀, t₁, ← add_mul,
       ← ENNReal.ofReal_add (by positivity) (by positivity)]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hq).ne'
-    ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
+    ENNReal.ofReal_ne_top (by fun_prop), ENNReal.toReal_ofReal hq.le]
   have hcancel₀ : (1 - θ) * q * (1 / q) = 1 - θ := by field_simp
   have hcancel₁ : θ * q * (1 / q) = θ := by field_simp
   calc (∫⁻ x, ‖g x‖ₑ ^ q ∂μ) ^ (1 / q)
@@ -7271,10 +7379,9 @@ theorem eLpNorm_le_of_wnorm_pair {α : Type*} [MeasurableSpace α] {μ : Measure
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the interpolated product of set measures
 
 A restricted estimate bounds the output by a constant times a product of powers of the measures
-of the input sets.  Interpolating two such estimates has to recombine the two products into the
+of the input sets. Interpolating two such estimates has to recombine the two products into the
 single product belonging to the interpolated exponent vector, which is what the following
 bookkeeping records. -/
-
 theorem rpow_ne_zero_of_ne_zero {x : ℝ≥0∞} (hx : x ≠ 0) (hx' : x ≠ ⊤) (r : ℝ) : x ^ r ≠ 0 := by
   simp [ENNReal.rpow_eq_zero_iff, hx, hx']
 
@@ -7289,7 +7396,7 @@ theorem prod_ne_top_of_ne_top {m : Fin 3 → ℝ≥0∞} (hm : ∀ i, m i ≠ 0)
     (a : Fin 3 → ℝ) : (∏ i, m i ^ a i) ≠ ⊤ :=
   ENNReal.prod_ne_top fun i _ => rpow_ne_top_of_ne_top (hm i) (hm' i) (a i)
 
-/-- **The interpolated product.**  A product of two powers of products of powers of the same
+/-- **The interpolated product.** A product of two powers of products of powers of the same
 measures is the product of powers of the combined exponent vector. -/
 theorem prod_rpow_interp {m : Fin 3 → ℝ≥0∞} (hm : ∀ i, m i ≠ 0) (hm' : ∀ i, m i ≠ ⊤)
     (a b : Fin 3 → ℝ) (s t : ℝ) :
@@ -7304,7 +7411,7 @@ theorem prod_rpow_interp {m : Fin 3 → ℝ≥0∞} (hm : ∀ i, m i ≠ 0) (hm'
   ring
 
 open MeasureTheory in
-/-- **The distributional upgrade in the shape a restricted estimate produces.**  Two weak
+/-- **The distributional upgrade in the shape a restricted estimate produces.** Two weak
 estimates whose constants are products of powers of the measures of the input sets give the
 strong estimate at the interpolated exponent vector, with the interpolated product of those same
 measures and the interpolated product of the two constants. -/
@@ -7357,9 +7464,9 @@ theorem eLpNorm_le_of_wnorm_of_bdd_prod {α : Type*} [MeasurableSpace α] {μ : 
 
 An exponent vector of the lemma is `(1/p₁, 1/p₂, 1/p₃, 1 - 1/q)`, and the estimate it carries is
 an estimate for the output of the operator on a triple of indicator functions by the product of
-the corresponding powers of the measures of the three sets.  Mathlib has no Lorentz spaces, so the
+the corresponding powers of the measures of the three sets. Mathlib has no Lorentz spaces, so the
 three input coordinates are carried by the set form throughout; the output coordinate is carried
-by the weak quasi-norm `Auto.wnorm` in the hypotheses and by `eLpNorm` in the conclusions.  Only
+by the weak quasi-norm `Auto.wnorm` in the hypotheses and by `eLpNorm` in the conclusions. Only
 sets of finite positive measure occur, as in the blueprint, where the finite-measure restriction is
 removed at the end by truncation and monotone convergence. -/
 
@@ -7390,7 +7497,7 @@ def RestrictedBdd (T : (Fin 3 → E3 → ℂ) → E3 → ℂ) (r : Fin 3 → ℝ
       ∀ᵐ x ∂(volume : Measure E3), ‖T (indicators E) x‖ₑ ≤ C * ∏ i, volume (E i) ^ r i
 
 open MeasureTheory in
-/-- **Two restricted weak estimates give a restricted strong estimate in between.**  The exponent
+/-- **Two restricted weak estimates give a restricted strong estimate in between.** The exponent
 vector of the conclusion is the convex combination of the two, with the same weight `θ` in all
 four coordinates, and its constant is the corresponding product of powers of the two constants. -/
 theorem restrictedStrong_of_restrictedWeak_pair {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
@@ -7408,7 +7515,7 @@ theorem restrictedStrong_of_restrictedWeak_pair {T : (Fin 3 → E3 → ℂ) → 
 
 open MeasureTheory in
 /-- **A restricted weak estimate and a restricted `L^∞` estimate give a restricted strong estimate
-in between.**  This is the case of `Auto.restrictedStrong_of_restrictedWeak_pair` in which the
+in between.** This is the case of `Auto.restrictedStrong_of_restrictedWeak_pair` in which the
 upper endpoint is the trivial vertex `L^∞ × L^∞ × L^∞ → L^∞`. -/
 theorem restrictedStrong_of_restrictedWeak_bdd {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
     (hT : ∀ E : Fin 3 → Set E3, (∀ i, MeasurableSet (E i)) →
@@ -7425,13 +7532,12 @@ theorem restrictedStrong_of_restrictedWeak_bdd {T : (Fin 3 → E3 → ℂ) → E
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: combining vertices with equal output exponent
 
-Two vertices whose output exponents differ are combined by the distributional upgrade.  Two whose
+Two vertices whose output exponents differ are combined by the distributional upgrade. Two whose
 output exponents agree are combined by a triviality: a quantity below two bounds is below their
 weighted geometric mean.  That is what the blueprint's "convex hull" needs beyond the segments,
 since the hull of finitely many vertices is reached by iterating the two operations, and it is
 what lets the three trivial vertices with output exponent `1` be merged before any interpolation
 takes place. -/
-
 theorem le_geom_mean_of_le {x A B : ℝ≥0∞} {θ : ℝ} (hθ0 : 0 ≤ θ) (hθ1 : θ ≤ 1)
     (hA : x ≤ A) (hB : x ≤ B) : x ≤ A ^ (1 - θ) * B ^ θ := by
   have hx : x = x ^ (1 - θ) * x ^ θ := by
@@ -7442,17 +7548,15 @@ theorem le_geom_mean_of_le {x A B : ℝ≥0∞} {θ : ℝ} (hθ0 : 0 ≤ θ) (h�
       mul_le_mul' (ENNReal.rpow_le_rpow hA (by linarith)) (ENNReal.rpow_le_rpow hB hθ0)
 
 open MeasureTheory in
-/-- **A restricted strong estimate implies the corresponding restricted weak one.**  This is
+/-- **A restricted strong estimate implies the corresponding restricted weak one.** This is
 Chebyshev, and it is what lets the output of one interpolation step be the input of the next. -/
 theorem restrictedWeak_of_restrictedStrong {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
-    (hT : ∀ E : Fin 3 → Set E3, (∀ i, MeasurableSet (E i)) →
-      AEStronglyMeasurable (T (indicators E)) volume)
     {r : Fin 3 → ℝ} {q : ℝ} (hq : 0 < q) {C : ℝ≥0∞} (h : RestrictedStrong T r q C) :
     RestrictedWeak T r q C := fun E hE hE0 hEtop =>
-  le_trans (wnorm_le_eLpNorm volume hq (hT E hE)) (h E hE hE0 hEtop)
+  le_trans (wnorm_le_eLpNorm volume hq ) (h E hE hE0 hEtop)
 
 open MeasureTheory in
-/-- **Two restricted strong estimates with the same output exponent combine.**  The exponent
+/-- **Two restricted strong estimates with the same output exponent combine.** The exponent
 vector of the conclusion is the convex combination of the two input vectors, and the constant is
 the corresponding product of powers; the output coordinate is unchanged. -/
 theorem restrictedStrong_combine {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {r₀ r₁ : Fin 3 → ℝ} {q θ : ℝ}
@@ -7494,10 +7598,10 @@ theorem restrictedBdd_combine {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {r₀ 
 
 
 open MeasureTheory in
-/-- **The chain that reaches an output exponent equal to that of one of the vertices.**  Two
+/-- **The chain that reaches an output exponent equal to that of one of the vertices.** Two
 straddle steps: the first raises the output exponent from `q₀` to an intermediate `qm` using a
 vertex with output exponent `q₁`, and the second raises it from `qm` to `q` against the trivial
-`L^∞` vertex.  This is the route `thm:strong-real-improving` needs, where the target output
+`L^∞` vertex. This is the route `thm:strong-real-improving` needs, where the target output
 exponent coincides with that of the improving vertex and therefore cannot be produced by a single
 straddle against it. -/
 theorem restrictedStrong_of_chain {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
@@ -7519,15 +7623,15 @@ theorem restrictedStrong_of_chain {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
   have hX := restrictedStrong_of_restrictedWeak_pair (fun E hE => (hT E hE).aemeasurable)
     hq₀ hqm0 hqm1 hθ hC₀0 hC₀ hC₁0 hC₁ h₀ h₁
   exact restrictedStrong_of_restrictedWeak_bdd (fun E hE => (hT E hE).aemeasurable) hqm hqmq hC₂
-    (restrictedWeak_of_restrictedStrong hT hqm hX) h₂
+    (restrictedWeak_of_restrictedStrong  hqm hX) h₂
 
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the dyadic floor
 
 The proof writes each nonnegative input as `sum over n of 2^n` times the indicator of its `n`-th
-dyadic level set.  That sum has at most one nonzero term at each point, namely the largest power
+dyadic level set. That sum has at most one nonzero term at each point, namely the largest power
 of two below the value, so it is the following function; and the decomposition is a two-sided
-comparison rather than an identity, the value lying between the dyadic floor and twice it.  See
+comparison rather than an identity, the value lying between the dyadic floor and twice it. See
 `automation/ErrorReport.md` for what that costs. -/
 
 /-- The dyadic floor of a function: the largest power of two below its value. -/
@@ -7550,7 +7654,7 @@ theorem dyadicFloor_le {α : Type*} {f : α → ℝ} {x : α} (hf : 0 ≤ f x) :
 theorem le_two_mul_dyadicFloor {α : Type*} {f : α → ℝ} {x : α} (hx : 0 < f x) :
     f x ≤ 2 * dyadicFloor f x := by
   unfold dyadicFloor
-  rw [if_pos hx]
+  rw [ite_eq_left hx]
   have h := Int.lt_zpow_succ_log_self (b := 2) (by norm_num) (f x)
   push_cast at h
   have hsplit : (2 : ℝ) ^ (Int.log 2 (f x) + 1) = 2 * 2 ^ Int.log 2 (f x) := by
@@ -7558,7 +7662,7 @@ theorem le_two_mul_dyadicFloor {α : Type*} {f : α → ℝ} {x : α} (hx : 0 < 
     ring
   linarith [h, hsplit]
 
-/-- On its `n`-th dyadic level set the dyadic floor is the constant `2 ^ n`.  This is what makes
+/-- On its `n`-th dyadic level set the dyadic floor is the constant `2 ^ n`. This is what makes
 the decomposition a sum of scaled indicators. -/
 theorem dyadicFloor_eq_of_mem {α : Type*} {f : α → ℝ} {n : ℤ} {x : α}
     (hx : x ∈ dyadicLevel f n) : dyadicFloor f x = 2 ^ n := by
@@ -7566,15 +7670,15 @@ theorem dyadicFloor_eq_of_mem {α : Type*} {f : α → ℝ} {n : ℤ} {x : α}
   have hpos : 0 < f x := lt_of_lt_of_le h2 hx.1
   have hmem := mem_dyadicLevel hpos
   by_cases hn : Int.log 2 (f x) = n
-  · rw [dyadicFloor, if_pos hpos, hn]
+  · rw [dyadicFloor, ite_eq_left hpos, hn]
   · exact absurd hx (Set.disjoint_left.mp (dyadicLevel_disjoint f hn) hmem)
 
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: monotonicity on nonnegative inputs
 
 The dyadic expansion replaces each nonnegative input by the dyadic minorant it dominates, so the
-assembly needs the operator to be monotone in each slot on nonnegative inputs.  The lemma's
-statement does not assume this; see `automation/ErrorReport.md`.  The class of data the expansion
+assembly needs the operator to be monotone in each slot on nonnegative inputs. The lemma's
+statement does not assume this; see `automation/ErrorReport.md`. The class of data the expansion
 stays inside is the bounded nonnegative measurable functions -- the dyadic floors are not
 continuous, so continuity is not available -- and the averages of `def:averages` are monotone on
 exactly that class. -/
@@ -7609,14 +7713,14 @@ theorem prodShiftR_nonneg {u : Fin 3 → E3 → ℝ} (hu : ∀ i x, 0 ≤ u i x)
 theorem prodShiftR_mono {u v : Fin 3 → E3 → ℝ} (hu : ∀ i x, 0 ≤ u i x)
     (huv : ∀ i x, u i x ≤ v i x) (x : E3) (t : ℝ) :
     prodShiftR u x t ≤ prodShiftR v x t :=
-  Finset.prod_le_prod (fun i _ => hu i _) fun i _ => huv i _
+  Finset.prod_le_prod₀ (fun i _ => hu i _) fun i _ => huv i _
 
 theorem exists_bound_prodShiftR {u : Fin 3 → E3 → ℝ} (hu : ∀ i, BddMeas (u i)) (x : E3) :
     ∃ C : ℝ, ∀ t : ℝ, ‖prodShiftR u x t‖ ≤ C := by
   classical
   refine ⟨∏ i : Fin 3, (hu i).2.2.choose, fun t => ?_⟩
   rw [Real.norm_eq_abs, abs_of_nonneg (prodShiftR_nonneg (fun i y => (hu i).2.1 y) x t)]
-  exact Finset.prod_le_prod (fun i _ => (hu i).2.1 _) fun i _ => (hu i).2.2.choose_spec _
+  exact Finset.prod_le_prod₀ (fun i _ => (hu i).2.1 _) fun i _ => (hu i).2.2.choose_spec _
 
 open MeasureTheory in
 theorem intervalIntegrable_prodShiftR {u : Fin 3 → E3 → ℝ} (hu : ∀ i, BddMeas (u i)) (x : E3)
@@ -7637,7 +7741,7 @@ theorem A_ofReal {N : ℝ} (u : Fin 3 → E3 → ℝ) (x : E3) :
   rw [intervalIntegral.integral_ofReal]
 
 open MeasureTheory in
-/-- **The averages of `def:averages` are monotone on nonnegative inputs.**  This discharges the
+/-- **The averages of `def:averages` are monotone on nonnegative inputs.** This discharges the
 hypothesis the dyadic expansion of `lem:finite-marcinkiewicz` needs. -/
 theorem mono3_A {N : ℝ} (hN : 0 ≤ N) : Mono3 (A N) := by
   intro u v hu hv huv x
@@ -7656,8 +7760,7 @@ theorem mono3_A {N : ℝ} (hN : 0 ≤ N) : Mono3 (A N) := by
 
 For a function with finitely many values -- the blueprint's "nonnegative finite simple inputs" --
 only finitely many dyadic level sets are nonempty, so the dyadic floor is a *finite* sum of scaled
-indicators.  That is what lets `Auto.Trilin.finset_sum` expand the operator over it. -/
-
+indicators. That is what lets `Auto.Trilin.finset_sum` expand the operator over it. -/
 theorem dyadicLevel_eq_log {α : Type*} {u : α → ℝ} {n : ℤ} {x : α} (hx : x ∈ dyadicLevel u n) :
     n = Int.log 2 (u x) := by
   have h2 : (0 : ℝ) < 2 ^ n := by positivity
@@ -7668,7 +7771,7 @@ theorem dyadicLevel_eq_log {α : Type*} {u : α → ℝ} {n : ℤ} {x : α} (hx 
 theorem le_two_mul_dyadicFloor' {α : Type*} {u : α → ℝ} {x : α} (hu : 0 ≤ u x) :
     u x ≤ 2 * dyadicFloor u x := by
   rcases eq_or_lt_of_le hu with h | h
-  · rw [dyadicFloor, if_neg (by rw [← h]; exact lt_irrefl 0), ← h]
+  · rw [dyadicFloor, ite_eq_right (by rw [← h]; exact lt_irrefl 0), ← h]
     norm_num
   · exact le_two_mul_dyadicFloor h
 
@@ -7683,13 +7786,13 @@ theorem exists_finset_dyadicFloor {α : Type*} {u : α → ℝ} (hfin : (Set.ran
       Finset.mem_image.mpr ⟨u x,
         Finset.mem_filter.mpr ⟨hfin.mem_toFinset.mpr (Set.mem_range_self x), hx⟩, rfl⟩
     rw [Finset.sum_eq_single (Int.log 2 (u x))]
-    · rw [Set.indicator_of_mem (mem_dyadicLevel hx), dyadicFloor, if_pos hx]
+    · rw [Set.indicator_of_mem (mem_dyadicLevel hx), dyadicFloor, ite_eq_left hx]
       norm_num
     · intro n _ hne
       rw [Set.indicator_of_notMem (fun hmem' => hne (dyadicLevel_eq_log hmem')), mul_zero]
     · intro h
       exact absurd hmem h
-  · rw [dyadicFloor, if_neg hx]
+  · rw [dyadicFloor, ite_eq_right hx]
     refine (Finset.sum_eq_zero fun n _ => ?_).symm
     have h2 : (0 : ℝ) < 2 ^ n := by positivity
     rw [Set.indicator_of_notMem (fun hmem' => hx (lt_of_lt_of_le h2 hmem'.1)), mul_zero]
@@ -7738,9 +7841,8 @@ theorem bddMeas_two_mul {u : E3 → ℝ} (hu : BddMeas u) :
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the triple dyadic sum
 
 Expanding a trilinear operator over the three finite dyadic sums gives a triple sum of its values
-on triples of indicators, which is where the restricted estimates enter.  The expansion is
+on triples of indicators, which is where the restricted estimates enter. The expansion is
 `Auto.Trilin.finset_sum` applied once in each slot. -/
-
 theorem update3_eq_matrix {d : Fin 3 → E3 → ℂ} (a b e : E3 → ℂ) :
     Function.update (Function.update (Function.update d 0 a) 1 b) 2 e = ![a, b, e] := by
   funext i
@@ -7816,7 +7918,7 @@ theorem Trilin.expand3 {ι : Type*} {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: summing the expansion in `L^q`
 
 The expansion is a sum, and the estimate for each term is an `L^q` estimate, so the terms are
-combined by the triangle inequality in `L^q`.  This is legitimate exactly because the target
+combined by the triangle inequality in `L^q`. This is legitimate exactly because the target
 output exponent is at least one, which is where the restricted strong estimates of the previous
 rows are needed rather than the weak estimates the vertices carry. -/
 
@@ -7841,49 +7943,42 @@ theorem aestronglyMeasurable_sum_mul {ι : Type*} {μ : Measure E3} (s : Finset 
 open MeasureTheory in
 /-- **The triangle inequality for a finite sum of scaled terms.** -/
 theorem eLpNorm_sum_mul_le {ι : Type*} {μ : Measure E3} {p : ℝ≥0∞} (hp : 1 ≤ p) (s : Finset ι)
-    (c : ι → ℂ) (g : ι → E3 → ℂ) (hg : ∀ n ∈ s, AEStronglyMeasurable (g n) μ) :
+    (c : ι → ℂ) (g : ι → E3 → ℂ) :
     eLpNorm (fun x => ∑ n ∈ s, c n * g n x) p μ ≤ ∑ n ∈ s, ‖c n‖ₑ * eLpNorm (g n) p μ := by
   have hfun : (fun x => ∑ n ∈ s, c n * g n x) = ∑ n ∈ s, fun x => c n * g n x := by
     funext x
     simp [Finset.sum_apply]
   rw [hfun]
-  refine le_trans (eLpNorm_sum_le (fun n hn => aestronglyMeasurable_const.mul (hg n hn)) hp) ?_
+  refine le_trans (eLpNorm_sum_le hp) ?_
   exact Finset.sum_le_sum fun n _ => le_of_eq (eLpNorm_const_mul' _ _ _)
 
 open MeasureTheory in
 /-- **The triangle inequality for the triple sum produced by `Auto.Trilin.expand3`.** -/
 theorem eLpNorm_triple_sum_mul_le {ι : Type*} {μ : Measure E3} {p : ℝ≥0∞} (hp : 1 ≤ p)
     (S : Fin 3 → Finset ι) (c : Fin 3 → ι → ℂ) (F : ι → ι → ι → E3 → ℂ)
-    (hF : ∀ n₀ n₁ n₂, AEStronglyMeasurable (F n₀ n₁ n₂) μ) :
+    :
     eLpNorm (fun x => ∑ n₀ ∈ S 0, c 0 n₀ * ∑ n₁ ∈ S 1, c 1 n₁ * ∑ n₂ ∈ S 2,
         c 2 n₂ * F n₀ n₁ n₂ x) p μ
       ≤ ∑ n₀ ∈ S 0, ‖c 0 n₀‖ₑ * ∑ n₁ ∈ S 1, ‖c 1 n₁‖ₑ * ∑ n₂ ∈ S 2,
           ‖c 2 n₂‖ₑ * eLpNorm (F n₀ n₁ n₂) p μ := by
-  have hin : ∀ n₀ n₁ : ι, AEStronglyMeasurable
-      (fun x => ∑ n₂ ∈ S 2, c 2 n₂ * F n₀ n₁ n₂ x) μ :=
-    fun n₀ n₁ => aestronglyMeasurable_sum_mul _ _ _ fun n₂ _ => hF n₀ n₁ n₂
-  have hmid : ∀ n₀ : ι, AEStronglyMeasurable
-      (fun x => ∑ n₁ ∈ S 1, c 1 n₁ * ∑ n₂ ∈ S 2, c 2 n₂ * F n₀ n₁ n₂ x) μ :=
-    fun n₀ => aestronglyMeasurable_sum_mul _ _ _ fun n₁ _ => hin n₀ n₁
-  refine le_trans (eLpNorm_sum_mul_le hp (S 0) (c 0) _ fun n₀ _ => hmid n₀) ?_
+  refine le_trans (eLpNorm_sum_mul_le hp (S 0) (c 0) _) ?_
   refine Finset.sum_le_sum fun n₀ _ => ?_
   refine mul_le_mul' le_rfl ?_
-  refine le_trans (eLpNorm_sum_mul_le hp (S 1) (c 1) _ fun n₁ _ => hin n₀ n₁) ?_
+  refine le_trans (eLpNorm_sum_mul_le hp (S 1) (c 1) _) ?_
   refine Finset.sum_le_sum fun n₁ _ => ?_
   refine mul_le_mul' le_rfl ?_
-  exact eLpNorm_sum_mul_le hp (S 2) (c 2) _ fun n₂ _ => hF n₀ n₁ n₂
+  exact eLpNorm_sum_mul_le hp (S 2) (c 2) _
 
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the summation along an extremal ray
 
 On the cone belonging to one endpoint the sum runs over a ray of the lattice, and the blueprint's
 "every resulting ratio is `2^{-eps |m|}` for some `eps > 0`, hence every sum is geometric" is the
-following.  A single coordinate of the dyadic decomposition contributes `2^n * |E_n| ^ rho`, the
+following. A single coordinate of the dyadic decomposition contributes `2^n * |E_n| ^ rho`, the
 normalization gives `2^(n p) * |E_n| <= 1`, and moving the exponent `rho` off `1/p` by `delta` in
 the direction that decays -- upward for `n >= 0`, downward for `n < 0` -- turns the term into
-`2^(-p delta |n|)`.  Both directions are available exactly because the target exponent vector is
+`2^(-p delta |n|)`. Both directions are available exactly because the target exponent vector is
 an interior point of the convex hull. -/
-
 theorem tsum_pow_natAbs_le {a : ℝ≥0∞} (ha : a ≤ 1) :
     (∑' n : ℤ, a ^ n.natAbs) ≤ 2 * (1 - a)⁻¹ := by
   have hfun : (fun n : ℤ => a ^ n.natAbs)
@@ -7903,7 +7998,7 @@ theorem tsum_pow_natAbs_le {a : ℝ≥0∞} (ha : a ≤ 1) :
         exact add_le_add (le_of_eq (ENNReal.tsum_geometric a)) h2
     _ = 2 * (1 - a)⁻¹ := by ring
 
-/-- **One term of the extremal ray.**  The normalization bounds the measure, and the exponent is
+/-- **One term of the extremal ray.** The normalization bounds the measure, and the exponent is
 moved off `1/p` in the direction that decays. -/
 theorem term_le_pow_natAbs {p δ : ℝ} (hp : 0 < p) (hδ : 0 < δ) (hδ' : δ ≤ 1 / p)
     {m : ℤ → ℝ≥0∞} (hm : ∀ n : ℤ, ENNReal.ofReal ((2 : ℝ) ^ ((n : ℝ) * p)) * m n ≤ 1) (n : ℤ) :
@@ -7937,7 +8032,7 @@ theorem term_le_pow_natAbs {p δ : ℝ} (hp : 0 < p) (hδ : 0 < δ) (hδ' : δ �
     have hc : ((n.natAbs : ℕ) : ℝ) = (n : ℝ) := by
       calc ((n.natAbs : ℕ) : ℝ) = (((n.natAbs : ℕ) : ℤ) : ℝ) := (Int.cast_natCast _).symm
         _ = (n : ℝ) := by rw [hz]
-    rw [if_pos h, hc]
+    rw [ite_eq_left h, hc]
     field_simp
     ring
   · have hz : ((n.natAbs : ℕ) : ℤ) = -n := Int.ofNat_natAbs_of_nonpos h.le
@@ -7945,7 +8040,7 @@ theorem term_le_pow_natAbs {p δ : ℝ} (hp : 0 < p) (hδ : 0 < δ) (hδ' : δ �
       calc ((n.natAbs : ℕ) : ℝ) = (((n.natAbs : ℕ) : ℤ) : ℝ) := (Int.cast_natCast _).symm
         _ = ((-n : ℤ) : ℝ) := by rw [hz]
         _ = -(n : ℝ) := by push_cast; ring
-    rw [if_neg (not_le.mpr h), hc]
+    rw [ite_eq_right (not_le.mpr h), hc]
     field_simp
     ring
 
@@ -7969,9 +8064,9 @@ theorem tsum_extremal_ray_ne_top {p δ : ℝ} (hδ : 0 < δ) (hp : 0 < p) :
 
 The cone containing a lattice point is the one whose sign pattern is that of the point, and the
 exponent vector it carries is the target moved by `delta` in the direction, coordinate by
-coordinate, in which that coordinate's sum decays.  Because the exponent of each coordinate
+coordinate, in which that coordinate's sum decays. Because the exponent of each coordinate
 depends only on that coordinate of the lattice point, the triple sum factorizes into three sums
-along extremal rays.  See `automation/ErrorReport.md` for why this is the family of cones the
+along extremal rays. See `automation/ErrorReport.md` for why this is the family of cones the
 blueprint's proof is using. -/
 
 /-- The exponent of one coordinate on the cone of a lattice point. -/
@@ -7987,7 +8082,7 @@ theorem tsum_extremal_ray_coneExp {p δ : ℝ} (hp : 0 < p) (hδ : 0 < δ) (hδ'
       ≤ 2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p * δ))))⁻¹ :=
   tsum_extremal_ray hp hδ hδ' hm
 
-/-- **A nested triple sum of a product factorizes.**  This is what makes the cone split work: the
+/-- **A nested triple sum of a product factorizes.** This is what makes the cone split work: the
 exponent of each coordinate depends only on that coordinate, so each sum is a separate ray. -/
 theorem nested_sum_le {S : Fin 3 → Finset ℤ} {a b : Fin 3 → ℤ → ℝ≥0∞} {F : ℤ → ℤ → ℤ → ℝ≥0∞}
     {C : ℝ≥0∞} (hF : ∀ n₀ n₁ n₂, F n₀ n₁ n₂ ≤ C * (b 0 n₀ * b 1 n₁ * b 2 n₂))
@@ -8036,7 +8131,7 @@ theorem nested_sum_le {S : Fin 3 → Finset ℤ} {a b : Fin 3 → ℤ → ℝ≥
         exact hray 0 (S 0)
     _ = C * (B 0 * B 1 * B 2) := by ring
 
-/-- **The cone split and the geometric summation, combined.**  The nested dyadic sum, with the
+/-- **The cone split and the geometric summation, combined.** The nested dyadic sum, with the
 exponent vector of each lattice point chosen by its sign pattern, is bounded by the constant times
 a product of three geometric sums. -/
 theorem nested_sum_cone_le {p : Fin 3 → ℝ} {S : Fin 3 → Finset ℤ} {m : Fin 3 → ℤ → ℝ≥0∞}
@@ -8061,13 +8156,12 @@ theorem nested_sum_cone_le {p : Fin 3 → ℝ} {S : Fin 3 → Finset ℤ} {m : F
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: homogeneity, the dyadic coefficients, and null slots
 
-Three small facts the assembly needs.  The dyadic decomposition dominates each input by *twice*
+Three small facts the assembly needs. The dyadic decomposition dominates each input by *twice*
 its dyadic floor, so the operator has to be rescaled, and trilinearity turns the factor two in each
-slot into a factor eight.  The coefficients of the expansion are the powers of two, whose extended
-norms are what the summation lemmas consume.  Finally a dyadic level set of measure zero carries
+slot into a factor eight. The coefficients of the expansion are the powers of two, whose extended
+norms are what the summation lemmas consume. Finally a dyadic level set of measure zero carries
 no restricted estimate, so the assembly needs to know that such a slot contributes nothing; that
 is a second hypothesis the blueprint's statement omits and its proof uses. -/
-
 theorem matrix_eta3 (g : Fin 3 → E3 → ℂ) : ![g 0, g 1, g 2] = g := by
   funext i
   match i with
@@ -8083,7 +8177,7 @@ theorem Trilin.smul_slot {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT : Trili
   rw [hT.update_zero i hg] at h
   simpa using h
 
-/-- **Scaling all three slots.**  This is the factor eight the dyadic comparison costs. -/
+/-- **Scaling all three slots.** This is the factor eight the dyadic comparison costs. -/
 theorem Trilin.smul3 {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT : Trilin T) {g : Fin 3 → E3 → ℂ}
     (hg : ∀ i, BddMeasC (g i))
     (c : ℂ) (d : Fin 3 → E3 → ℂ) (hd : ∀ i, d i = fun x => c * g i x) :
@@ -8123,7 +8217,7 @@ theorem enorm_two_zpow (n : ℤ) : ‖(2 : ℂ) ^ n‖ₑ = ENNReal.ofReal ((2 :
   rw [← ofReal_norm, norm_zpow, h, ← Real.rpow_intCast]
 
 open MeasureTheory in
-/-- **A slot that vanishes almost everywhere kills the output.**  A dyadic level set of measure
+/-- **A slot that vanishes almost everywhere kills the output.** A dyadic level set of measure
 zero carries no restricted estimate, so the assembly needs this to discard those terms. -/
 def Null3 (T : (Fin 3 → E3 → ℂ) → E3 → ℂ) : Prop :=
   ∀ E : Fin 3 → Set E3, (∃ i, volume (E i) = 0) → T (indicators E) =ᵐ[volume] 0
@@ -8138,15 +8232,13 @@ theorem eLpNorm_eq_zero_of_null3 {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT
 
 /-! ### Blueprint `lem:finite-marcinkiewicz`: the estimate for the dyadic floors
 
-The expansion, the term-by-term estimate and the cone summation are now combined.  The input here
+The expansion, the term-by-term estimate and the cone summation are now combined. The input here
 is already a triple of dyadic floors, so the expansion is exact; the comparison with a general
 nonnegative input costs the factor eight and is done in the next step. -/
 
 open MeasureTheory in
 theorem eLpNorm_dyadicFloor_le {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hTlin : Trilin T)
     (hTnull : Null3 T)
-    (hTmeas : ∀ E : Fin 3 → Set E3, (∀ i, MeasurableSet (E i)) →
-      AEStronglyMeasurable (T (indicators E)) volume)
     {q : ℝ} (hq : 1 ≤ q) {p : Fin 3 → ℝ} (hp : ∀ i, 0 < p i)
     {dl : ℝ} (hdl : 0 < dl) (hdl' : ∀ i, dl ≤ 1 / p i) {C : ℝ≥0∞}
     (hrest : ∀ n : Fin 3 → ℤ, RestrictedStrong T (coneVec (fun i => 1 / p i) dl n) q C)
@@ -8189,18 +8281,8 @@ theorem eLpNorm_dyadicFloor_le {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hTli
     exact bddMeasC_indicator (hmeasE i n)
   rw [hTlin.expand3 S c hVb w hdw]
   -- the term-by-term estimate
-  have hFmeas : ∀ n₀ n₁ n₂ : ℤ,
-      AEStronglyMeasurable (T ![V 0 n₀, V 1 n₁, V 2 n₂]) volume := by
-    intro n₀ n₁ n₂
-    rw [hmat n₀ n₁ n₂]
-    refine hTmeas _ ?_
-    intro i
-    match i with
-    | 0 => exact hmeasE 0 n₀
-    | 1 => exact hmeasE 1 n₁
-    | 2 => exact hmeasE 2 n₂
   refine le_trans
-    (eLpNorm_triple_sum_mul_le (ENNReal.one_le_ofReal.mpr hq) S c _ hFmeas) ?_
+    (eLpNorm_triple_sum_mul_le (ENNReal.one_le_ofReal.mpr hq) S c _) ?_
   -- the coefficients
   have hcoef : ∀ (i : Fin 3) (n : ℤ), ‖c i n‖ₑ = ENNReal.ofReal ((2 : ℝ) ^ (n : ℝ)) := by
     intro i n
@@ -8243,21 +8325,20 @@ theorem eLpNorm_dyadicFloor_le {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hTli
 
 
 open MeasureTheory in
-/-- **Blueprint `lem:finite-marcinkiewicz` for nonnegative simple inputs.**  Restricted strong
+/-- **Blueprint `lem:finite-marcinkiewicz` for nonnegative simple inputs.** Restricted strong
 estimates at the exponent vectors of all eight cones give the strong estimate at the target, for
-normalized nonnegative inputs with finitely many values.  The two hypotheses `Auto.Mono3` and
+normalized nonnegative inputs with finitely many values. The two hypotheses `Auto.Mono3` and
 `Auto.Null3` are the ones the blueprint's statement omits and its proof uses; see
 `automation/ErrorReport.md`. -/
 theorem finite_marcinkiewicz_simple {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hTlin : Trilin T)
     (hTmono : Mono3 T) (hTnull : Null3 T)
-    (hTmeas : ∀ E : Fin 3 → Set E3, (∀ i, MeasurableSet (E i)) →
-      AEStronglyMeasurable (T (indicators E)) volume)
     {q : ℝ} (hq : 1 ≤ q) {p : Fin 3 → ℝ} (hp : ∀ i, 0 < p i)
     {dl : ℝ} (hdl : 0 < dl) (hdl' : ∀ i, dl ≤ 1 / p i) {C : ℝ≥0∞}
     (hrest : ∀ n : Fin 3 → ℤ, RestrictedStrong T (coneVec (fun i => 1 / p i) dl n) q C)
     {u : Fin 3 → E3 → ℝ} (hu : ∀ i, BddMeas (u i)) (hfin : ∀ i, (Set.range (u i)).Finite)
     (hnorm : ∀ (i : Fin 3) (n : ℤ),
-      ENNReal.ofReal ((2 : ℝ) ^ ((n : ℝ) * p i)) * volume (dyadicLevel (u i) n) ≤ 1) :
+      ENNReal.ofReal ((2 : ℝ) ^ ((n : ℝ) * p i)) * volume (dyadicLevel (u i) n) ≤ 1)
+    (hout : AEStronglyMeasurable (T fun i y => ((u i y : ℝ) : ℂ)) volume) :
     eLpNorm (T fun i y => ((u i y : ℝ) : ℂ)) (ENNReal.ofReal q) volume
       ≤ 8 * C * ((2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 0 * dl))))⁻¹)
           * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 1 * dl))))⁻¹)
@@ -8285,14 +8366,14 @@ theorem finite_marcinkiewicz_simple {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} 
     norm_num
   calc eLpNorm (T fun i y => ((u i y : ℝ) : ℂ)) (ENNReal.ofReal q) volume
       ≤ eLpNorm (T fun i y => ((v i y : ℝ) : ℂ)) (ENNReal.ofReal q) volume :=
-        eLpNorm_mono (hTmono u v hu hvbdd huv)
+        eLpNorm_mono hout (hTmono u v hu hvbdd huv)
     _ = 8 * eLpNorm (T w) (ENNReal.ofReal q) volume := by
         rw [hsm, eLpNorm_const_mul', h8]
     _ ≤ 8 * (C * ((2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 0 * dl))))⁻¹)
           * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 1 * dl))))⁻¹)
           * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 2 * dl))))⁻¹))) := by
         refine mul_le_mul' le_rfl ?_
-        exact eLpNorm_dyadicFloor_le hTlin hTnull hTmeas hq hp hdl hdl' hrest
+        exact eLpNorm_dyadicFloor_le hTlin hTnull  hq hp hdl hdl' hrest
           (fun i => (hu i).1) hfin hnorm w fun i => rfl
     _ = 8 * C * ((2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 0 * dl))))⁻¹)
           * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 1 * dl))))⁻¹)
@@ -8305,7 +8386,6 @@ The assembly is stated for inputs normalized so that every dyadic level obeys
 `2^(n p) * |E_n| <= 1`.  That is what the blueprint's "the remaining sums are
 `sum_n 2^(n p) |E_n|`, which are bounded by fixed multiples of `||f||_p^p`" provides, in the
 sharper per-term form: a single term of the dyadic sum is already below the `L^p` integral. -/
-
 theorem two_zpow_rpow (n : ℤ) (p : ℝ) : ((2 : ℝ) ^ n) ^ p = (2 : ℝ) ^ ((n : ℝ) * p) := by
   rw [← Real.rpow_intCast (2 : ℝ) n, ← Real.rpow_mul (by norm_num)]
 
@@ -8326,11 +8406,12 @@ theorem meas_dyadicLevel_le {α : Type*} [MeasurableSpace α] {μ : Measure α} 
 open MeasureTheory in
 /-- The `L^p` integral of a nonnegative function, through the complex-valued input the operator
 receives. -/
-theorem lintegral_rpow_eq_eLpNorm_rpow {u : E3 → ℝ} (hnn : ∀ x, 0 ≤ u x) {p : ℝ} (hp : 0 < p) :
+theorem lintegral_rpow_eq_eLpNorm_rpow {u : E3 → ℝ} (hnn : ∀ x, 0 ≤ u x) {p : ℝ} (hp : 0 < p)
+    (hum : Measurable u := by fun_prop) :
     ∫⁻ x, ENNReal.ofReal (u x ^ p) ∂volume
       = eLpNorm (fun y => ((u y : ℝ) : ℂ)) (ENNReal.ofReal p) volume ^ p := by
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hp).ne'
-    ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul,
+    ENNReal.ofReal_ne_top (by fun_prop), ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul,
     one_div_mul_cancel hp.ne', ENNReal.rpow_one]
   refine lintegral_congr fun x => ?_
   have h1 : ‖((u x : ℝ) : ℂ)‖ₑ = ENNReal.ofReal (u x) := by
@@ -8338,7 +8419,7 @@ theorem lintegral_rpow_eq_eLpNorm_rpow {u : E3 → ℝ} (hnn : ∀ x, 0 ≤ u x)
   rw [h1, ENNReal.ofReal_rpow_of_nonneg (hnn x) hp.le]
 
 open MeasureTheory in
-/-- **The normalization.**  An input of `L^p` norm at most one has every dyadic level normalized
+/-- **The normalization.** An input of `L^p` norm at most one has every dyadic level normalized
 in the sense the assembly requires. -/
 theorem normalization_of_eLpNorm_le_one {u : E3 → ℝ} (hu : Measurable u) (hnn : ∀ x, 0 ≤ u x)
     {p : ℝ} (hp : 0 < p)
@@ -8355,7 +8436,7 @@ theorem normalization_of_eLpNorm_le_one {u : E3 → ℝ} (hu : Measurable u) (hn
 /-! ### Blueprint `lem:finite-marcinkiewicz`: monotone limits
 
 The blueprint's "passing to monotone limits" needs the operator to respect those limits, which is a
-third property its statement does not assume; see `automation/ErrorReport.md`.  With it the
+third property its statement does not assume; see `automation/ErrorReport.md`. With it the
 estimate passes from inputs with finitely many values to arbitrary bounded nonnegative measurable
 ones, by `Auto.eLpNorm_le_of_tendsto`, which is Fatou. -/
 
@@ -8370,7 +8451,7 @@ def Lim3 (T : (Fin 3 → E3 → ℂ) → E3 → ℂ) : Prop :=
       ∨ T (fun i y => ((v i y : ℝ) : ℂ)) x = 0
 
 open MeasureTheory in
-/-- The properties of the operator that `lem:finite-marcinkiewicz` uses beyond trilinearity.  The
+/-- The properties of the operator that `lem:finite-marcinkiewicz` uses beyond trilinearity. The
 blueprint's statement assumes only trilinearity; the other four are recorded in
 `automation/ErrorReport.md` and all hold for the averages of `def:averages`. -/
 structure Admissible (T : (Fin 3 → E3 → ℂ) → E3 → ℂ) : Prop where
@@ -8381,12 +8462,13 @@ structure Admissible (T : (Fin 3 → E3 → ℂ) → E3 → ℂ) : Prop where
     AEStronglyMeasurable (T (indicators E)) volume
   measFun : ∀ u : Fin 3 → E3 → ℝ, (∀ i, Measurable (u i)) → (∀ i x, 0 ≤ u i x) →
     Measurable (T fun i y => ((u i y : ℝ) : ℂ))
+  measComplex : ∀ f : Fin 3 → E3 → ℂ, (∀ i, Measurable (f i)) → Measurable (T f)
   limit : Lim3 T
   modC : ∀ f : Fin 3 → E3 → ℂ, (∀ i, Measurable (f i)) →
     ∀ x, ‖T f x‖ ≤ ‖T (fun i y => ((‖f i y‖ : ℝ) : ℂ)) x‖
 
 open MeasureTheory in
-/-- **The monotone simple approximation, in real form.**  A bounded nonnegative measurable function
+/-- **The monotone simple approximation, in real form.** A bounded nonnegative measurable function
 is the increasing pointwise limit of functions of the same kind with finitely many values, all
 below it. -/
 theorem exists_simple_approx_real {u : E3 → ℝ} (hu : BddMeas u) :
@@ -8450,7 +8532,8 @@ theorem finite_marcinkiewicz_bddMeas {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
       ENNReal.ofReal ((2 : ℝ) ^ ((n : ℝ) * p i)) * volume (dyadicLevel (U k i) n) ≤ 1 := by
     intro k i n
     refine normalization_of_eLpNorm_le_one (hUbdd k i).1 (hUbdd k i).2.1 (hp i) ?_ n
-    refine le_trans (eLpNorm_mono fun y => ?_) (hnorm i)
+    refine le_trans (eLpNorm_mono
+      (Complex.measurable_ofReal.comp (hUbdd k i).1).aestronglyMeasurable fun y => ?_) (hnorm i)
     rw [Complex.norm_real, Complex.norm_real, Real.norm_eq_abs, Real.norm_eq_abs,
       abs_of_nonneg ((hUbdd k i).2.1 y), abs_of_nonneg ((hu i).2.1 y)]
     exact hUle k i y
@@ -8459,10 +8542,12 @@ theorem finite_marcinkiewicz_bddMeas {T : (Fin 3 → E3 → ℂ) → E3 → ℂ}
         ≤ 8 * C * ((2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 0 * dl))))⁻¹)
             * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 1 * dl))))⁻¹)
             * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 2 * dl))))⁻¹)) := fun k =>
-    finite_marcinkiewicz_simple hT.lin hT.mono hT.null hT.measInd hq hp hdl hdl' hrest
+    finite_marcinkiewicz_simple hT.lin hT.mono hT.null  hq hp hdl hdl' hrest
       (hUbdd k) (fun i => hfin i k) (hUnorm k)
+      (hT.measFun _ (fun i => (hUbdd k i).1) (fun i => (hUbdd k i).2.1)).aestronglyMeasurable
   refine eLpNorm_le_of_tendsto_or_zero (lt_of_lt_of_le zero_lt_one hq)
-    (fun k => hT.measFun (U k) (fun i => (hUbdd k i).1) fun i x => (hUbdd k i).2.1 x) ?_ hbound
+    (fun k => hT.measFun (U k) (fun i => (hUbdd k i).1) fun i x => (hUbdd k i).2.1 x)
+    (hT.measFun u (fun i => (hu i).1) (fun i x => (hu i).2.1 x)).aestronglyMeasurable ?_ hbound
   exact hT.limit U u hUbdd (fun i => (hu i).1) (fun i x => (hu i).2.1 x) hUle
     fun i x => htend i x
 
@@ -8492,7 +8577,7 @@ theorem cpart_sum {α : Type*} (f : α → ℂ) (x : α) :
   ring
 
 open MeasureTheory in
-/-- **Blueprint `lem:finite-marcinkiewicz` for nonnegative measurable inputs.**  The boundedness of
+/-- **Blueprint `lem:finite-marcinkiewicz` for nonnegative measurable inputs.** The boundedness of
 the previous step is removed by truncation, which is again a monotone limit. -/
 theorem finite_marcinkiewicz_meas {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT : Admissible T)
     {q : ℝ} (hq : 1 ≤ q) {p : Fin 3 → ℝ} (hp : ∀ i, 0 < p i)
@@ -8514,7 +8599,8 @@ theorem finite_marcinkiewicz_meas {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (h
   have hUnorm : ∀ (k : ℕ) (i : Fin 3),
       eLpNorm (fun y => ((U k i y : ℝ) : ℂ)) (ENNReal.ofReal (p i)) volume ≤ 1 := by
     intro k i
-    refine le_trans (eLpNorm_mono fun y => ?_) (hnorm i)
+    refine le_trans (eLpNorm_mono
+      (Complex.measurable_ofReal.comp (hUbdd k i).1).aestronglyMeasurable fun y => ?_) (hnorm i)
     rw [Complex.norm_real, Complex.norm_real, Real.norm_eq_abs, Real.norm_eq_abs,
       abs_of_nonneg ((hUbdd k i).2.1 y), abs_of_nonneg (hun i y)]
     exact hUle k i y
@@ -8532,15 +8618,16 @@ theorem finite_marcinkiewicz_meas {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (h
             * (2 * (1 - ENNReal.ofReal ((2 : ℝ) ^ (-(p 2 * dl))))⁻¹)) := fun k =>
     finite_marcinkiewicz_bddMeas hT hq hp hdl hdl' hrest (hUbdd k) (hUnorm k)
   refine eLpNorm_le_of_tendsto_or_zero (lt_of_lt_of_le zero_lt_one hq)
-    (fun k => hT.measFun (U k) (fun i => (hUbdd k i).1) fun i x => (hUbdd k i).2.1 x) ?_ hbound
+    (fun k => hT.measFun (U k) (fun i => (hUbdd k i).1) fun i x => (hUbdd k i).2.1 x)
+    (hT.measFun u hum hun).aestronglyMeasurable ?_ hbound
   exact hT.limit U u hUbdd hum hun hUle htend
 open MeasureTheory in
 /-- **Blueprint `lem:finite-marcinkiewicz`, the statement at interior points of the convex hull.**
 Restricted strong estimates at the exponent vectors of all eight cones -- which
 `Auto.restrictedStrong_of_chain` produces from the vertex estimates -- give the strong estimate at
-the target, for arbitrary measurable inputs of `L^{p_i}` norm at most one.  The hypotheses of
+the target, for arbitrary measurable inputs of `L^{p_i}` norm at most one. The hypotheses of
 `Auto.Admissible` beyond trilinearity are the ones the blueprint's statement omits; see
-`automation/ErrorReport.md`.  A complex input is reduced to a nonnegative one by the modulus
+`automation/ErrorReport.md`. A complex input is reduced to a nonnegative one by the modulus
 domination `Auto.Admissible.modC` rather than by the four-term splitting of each slot, because
 trilinearity is available only on bounded slots; see the note in `automation/Status.md`. -/
 theorem finite_marcinkiewicz {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT : Admissible T)
@@ -8561,19 +8648,20 @@ theorem finite_marcinkiewicz {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT : A
   have hmodnorm : ∀ i,
       eLpNorm (fun y => ((‖f i y‖ : ℝ) : ℂ)) (ENNReal.ofReal (p i)) volume ≤ 1 := by
     intro i
-    refine le_trans (eLpNorm_mono fun y => ?_) (hnorm i)
+    refine le_trans (eLpNorm_mono
+      (Complex.measurable_ofReal.comp (hmodm i)).aestronglyMeasurable fun y => ?_) (hnorm i)
     rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _)]
   have hkey := finite_marcinkiewicz_meas hT hq hp hdl hdl' hrest hmodm hmodn hmodnorm
   calc eLpNorm (T f) (ENNReal.ofReal q) volume
       ≤ eLpNorm (T fun i y => ((‖f i y‖ : ℝ) : ℂ)) (ENNReal.ofReal q) volume :=
-        eLpNorm_mono fun x => hT.modC f hfm x
+        eLpNorm_mono (hT.measComplex f hfm).aestronglyMeasurable fun x => hT.modC f hfm x
     _ ≤ B := hkey
     _ ≤ 64 * B := le_mul_of_one_le_left' (by norm_num)
 
 
 /-! ## Blueprint `thm:strong-real-improving`
 
-The vertices of the interpolation and the arithmetic of their convex combination.  Coordinates are
+The vertices of the interpolation and the arithmetic of their convex combination. Coordinates are
 written in the order `(j, j', k)` of the theorem, so that the trivial vertex carrying the weight
 `1/4` is the first one. -/
 
@@ -8612,7 +8700,7 @@ theorem strong_real_improving_weights :
       (1 / 2 : ℝ) + 1 / 4 + 1 / 12 + 1 / 12 + 1 / 12 = 1 := by
   norm_num
 
-/-- **The convex combination.**  Weight `1/2` on the improving vertex, `1/4` on the trivial vertex
+/-- **The convex combination.** Weight `1/2` on the improving vertex, `1/4` on the trivial vertex
 of the first slot and `1/12` on each of the other three trivial vertices gives the target. -/
 theorem targetVertex_eq_combination (i : Fin 3) :
     targetVertex i
@@ -8636,7 +8724,7 @@ theorem targetVertex_eq_combination (i : Fin 3) :
         Matrix.tail_cons]
       norm_num
 
-/-- **The output coordinate.**  The improving vertex has output coordinate `1 - 5/6`, the three
+/-- **The output coordinate.** The improving vertex has output coordinate `1 - 5/6`, the three
 `L^1` vertices have `0` and the `L^infinity` vertex has `1`; the combination is again `1 - 5/6`,
 that is, the output exponent `6/5`. -/
 theorem target_output_eq_combination :
@@ -8645,7 +8733,7 @@ theorem target_output_eq_combination :
 
 theorem target_output_exponent : (1 : ℝ) - 5 / 6 = 1 - 1 / (6 / 5) := by norm_num
 
-/-- **The scale gain.**  Only the improving vertex carries a power of `N`, so its exponent
+/-- **The scale gain.** Only the improving vertex carries a power of `N`, so its exponent
 `-1/10` is multiplied by the weight `1/2`. -/
 theorem strong_real_improving_gain : (1 / 2 : ℝ) * (-(1 / 10)) = -(1 / 20) := by norm_num
 
@@ -8653,7 +8741,7 @@ theorem strong_real_improving_gain : (1 / 2 : ℝ) * (-(1 / 10)) = -(1 / 20) := 
 /-! ### Blueprint `thm:strong-real-improving`: the trivial vertices
 
 The last of the four trivial bounds, `L^infinity x L^infinity x L^infinity -> L^infinity`, is the
-one whose exponent vector has output coordinate `1`.  For an average of a product of translates it
+one whose exponent vector has output coordinate `1`. For an average of a product of translates it
 is immediate: the integrand of `Auto.A` is a product of three indicator values, hence at most one,
 and the average of a function at most one is at most one. -/
 
@@ -8683,7 +8771,7 @@ theorem restrictedBdd_A {N : ℝ} (hN : 0 < N) : RestrictedBdd (A N) trivialVert
   have hbm : ∀ i, BddMeas (ind i) := fun i => bddMeas_indicator (hE i)
   have hnn : ∀ (i : Fin 3) (y : E3), 0 ≤ ind i y := fun i y => (hbm i).2.1 y
   have hle1 : ∀ (x : E3) (t : ℝ), prodShiftR ind x t ≤ 1 :=
-    fun x t => Finset.prod_le_one (fun i _ => hnn i _) fun i _ => indicator_le_one _
+    fun x t => Finset.prod_le_one₀ (fun i _ => hnn i _) fun i _ => indicator_le_one _
   have hI0 : ∀ x : E3, 0 ≤ ∫ t in (0 : ℝ)..N, prodShiftR ind x t := fun x =>
     intervalIntegral.integral_nonneg hN.le fun t _ => prodShiftR_nonneg hnn x t
   have hInt : ∀ x : E3, (∫ t in (0 : ℝ)..N, prodShiftR ind x t) ≤ N := by
@@ -8716,7 +8804,6 @@ blueprint's "follow from Fubini".  On a triple of indicators the integrand of `A
 the indicator of the distinguished slot; integrating in `x` first, for each fixed parameter, gives
 the measure of that set by translation invariance, and the parameter integral then cancels the
 normalization `N⁻¹`. -/
-
 theorem prodShiftR_le_single {u : Fin 3 → E3 → ℝ} (hnn : ∀ (l : Fin 3) (y : E3), 0 ≤ u l y)
     (hle1 : ∀ (l : Fin 3) (y : E3), u l y ≤ 1) (i : Fin 3) (x : E3) (t : ℝ) :
     prodShiftR u x t ≤ u i (x + curve i t) := by
@@ -8727,7 +8814,7 @@ theorem prodShiftR_le_single {u : Fin 3 → E3 → ℝ} (hnn : ∀ (l : Fin 3) (
         rw [prodShiftR, ← h]
     _ ≤ u i (x + curve i t) * 1 := by
         refine mul_le_mul_of_nonneg_left ?_ (hnn i _)
-        exact Finset.prod_le_one (fun l _ => hnn l _) fun l _ => hle1 l _
+        exact Finset.prod_le_one₀ (fun l _ => hnn l _) fun l _ => hle1 l _
     _ = u i (x + curve i t) := mul_one _
 
 open MeasureTheory in
@@ -8813,7 +8900,9 @@ theorem restrictedStrong_A_one {N : ℝ} (hN : 0 < N) (i : Fin 3) :
         simp only [trivialVertex, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
           Matrix.cons_val_two, Matrix.tail_cons]
         rw [ENNReal.rpow_one, ENNReal.rpow_zero, ENNReal.rpow_zero, one_mul, one_mul]
-  rw [ENNReal.ofReal_one, eLpNorm_one_eq_lintegral_enorm, hprod, one_mul]
+  rw [ENNReal.ofReal_one, eLpNorm_one_eq_lintegral_enorm (f := A N (indicators E))
+    (measurable_A hN.le (fun i => measurable_const.indicator (hE i))).aestronglyMeasurable, hprod,
+      one_mul]
   calc (∫⁻ x, ‖A N (indicators E) x‖ₑ ∂volume)
       = ∫⁻ x, ENNReal.ofReal N⁻¹
           * ENNReal.ofReal (∫ t in (0 : ℝ)..N, prodShiftR ind x t) ∂volume := by
@@ -8834,9 +8923,8 @@ theorem restrictedStrong_A_one {N : ℝ} (hN : 0 < N) (i : Fin 3) :
 /-! ### Blueprint `thm:strong-real-improving`: merging the three `L^1` vertices
 
 The three `L^1` vertices share the output exponent `1`, so they combine by
-`Auto.restrictedStrong_combine` rather than by a straddle step.  The weights `3/5, 1/5, 1/5` are
+`Auto.restrictedStrong_combine` rather than by a straddle step. The weights `3/5, 1/5, 1/5` are
 the weights `1/4, 1/12, 1/12` of the theorem renormalized to sum to one. -/
-
 theorem RestrictedStrong.congr {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {r r' : Fin 3 → ℝ} {q : ℝ}
     {C C' : ℝ≥0∞} (h : RestrictedStrong T r q C) (hr : r = r') (hC : C = C') :
     RestrictedStrong T r' q C' := by
@@ -8880,7 +8968,7 @@ real monomial instance of Kosz-Mirek-Peluse-Wan-Wright Corollary 5.3, with
 `r_0 = 6`, `r_{j'} = 40/7`, `r_k = 6` and `r = 120/61`.  The blueprint's "the two arithmetic
 identities follow after putting all fractions over the denominator 120" is checked here. -/
 
-/-- **The conjugate exponent of `6/5` is `6`.**  This is why the output exponent of
+/-- **The conjugate exponent of `6/5` is `6`.** This is why the output exponent of
 `thm:strong-real-improving` becomes the first input exponent of the adjoint. -/
 theorem kosz53_conjugate : (1 : ℝ) / (6 / 5) + 1 / 6 = 1 := by norm_num
 
@@ -8907,10 +8995,9 @@ theorem kosz53_inputs :
 /-! ## Blueprint `lem:adjoint-gain-to-subunit`: the unit cubes and their enlargements
 
 The stopping-time argument runs inside a partition of `R^3` into unit cubes, each replaced by a
-fixed finite enlargement containing every translate that occurs for `0 <= t <= 1`.  Because the
+fixed finite enlargement containing every translate that occurs for `0 <= t <= 1`. Because the
 curves of `def:averages` move a point by `t ^ n` in a single coordinate, and `t ^ n` lies in
 `[0,1]` for `t` in `[0,1]`, doubling the cube in each coordinate suffices. -/
-
 theorem continuous_E3_coord (k : Fin 3) : Continuous fun x : E3 => x k :=
   (continuous_apply k).comp (PiLp.continuousLinearEquiv 2 ℝ fun _ : Fin 3 => ℝ).continuous
 
@@ -9025,7 +9112,7 @@ theorem volume_bigCube_lt_top (m : Fin 3 → ℤ) : volume (bigCube m) < ⊤ := 
 /-! ### Blueprint `lem:adjoint-gain-to-subunit`: the exponents of the `m`-th cycle
 
 The exponents the proof arrives at after `m` cycles are given explicitly, and every property it
-claims of them is arithmetic.  The selection of cubes that produces them is not determined by the
+claims of them is arithmetic. The selection of cubes that produces them is not determined by the
 blueprint; see `automation/ErrorReport.md`. -/
 
 /-- The blueprint's `d_m = m eps / (2 (1 + m eps))`. -/
@@ -9084,7 +9171,7 @@ theorem dExp_qm_range {ε : ℝ} (hε : 0 < ε) {m : ℕ} (hm : 1 ≤ m) :
 The blueprint's "move the last term to the left", whose Lean form it gives as the inequality
 `(1 - 2^{-m}) X <= Y`. -/
 
-/-- **Absorption.**  A finite quantity below a bound plus a strict fraction of itself is below the
+/-- **Absorption.** A finite quantity below a bound plus a strict fraction of itself is below the
 bound divided by the remaining fraction. -/
 theorem absorb_le {X Y c : ℝ≥0∞} (hX : X ≠ ⊤) (hc : c < 1) (h : X ≤ Y + c * X) :
     X ≤ (1 - c)⁻¹ * Y := by
@@ -9214,7 +9301,7 @@ theorem fdiff_zero_shift (v : E3) (f : E3 → ℂ) (x : E3) :
 theorem norm_fdiff_le (v : E3) (h : ℝ) {f : E3 → ℂ} (hf : ∀ y, ‖f y‖ ≤ 1) (x : E3) :
     ‖fdiff v h f x‖ ≤ 1 := by
   rw [fdiff, norm_mul, RCLike.norm_conj]
-  exact mul_le_one₀ (hf _) (norm_nonneg _) (hf x)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hf _)).trans (hf x))
 
 /-- The iterated Fejer difference `Delta_{h_1;v} ... Delta_{h_s;v} f`. -/
 noncomputable def fdiffIter (v : E3) : ∀ s : ℕ, (Fin s → ℝ) → (E3 → ℂ) → E3 → ℂ
@@ -9338,7 +9425,7 @@ theorem norm_prod_fejer {H : ℝ} (hH : 0 < H) {s : ℕ} (h : Fin s → ℝ) :
     abs_of_nonneg (prod_fejer_nonneg hH h)]
 
 /-- **The integrand of the local uniformity norm is dominated by the product of Fejer kernels**
-when the function has modulus at most one.  This is what makes the definition an average against a
+when the function has modulus at most one. This is what makes the definition an average against a
 probability density. -/
 theorem norm_locUnif_integrand_le {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) (h : Fin s → ℝ)
     {f : E3 → ℂ} (hf : ∀ y, ‖f y‖ ≤ 1) (x : E3) :
@@ -9364,7 +9451,7 @@ theorem locUnif_integrand_eq (v : E3) (s : ℕ) (h : Fin s → ℝ) (f : E3 → 
 The blueprint's `lem:fejer-vdc` changes variables "from the two shift variables to their
 difference" and says "the density of that difference is `kappa_H`".  That is the following
 identity: the overlap of `(0, H]` with its translate by `h` has length `(H - |h|)_+`, so `kappa_H`
-is `H^{-2}` times that overlap.  It is also what exhibits the local uniformity integral as a
+is `H^{-2}` times that overlap. It is also what exhibits the local uniformity integral as a
 square, and so as nonnegative. -/
 
 open MeasureTheory in
@@ -9409,7 +9496,7 @@ theorem fejer_eq_overlap {H : ℝ} (hH : 0 < H) (h : ℝ) :
 "Pairing every vertex with its opposite and applying Cauchy-Schwarz shows that its integral is real
 and nonnegative."  The two ingredients are recorded here: an interval integral times its conjugate
 is the double integral of the paired integrand, and the integral in `x` of such a pair depends only
-on the difference of the two shifts.  Together with `Auto.fejer_eq_overlap`, which turns the Fejer
+on the difference of the two shifts. Together with `Auto.fejer_eq_overlap`, which turns the Fejer
 weight into exactly such a pair of shifts, they exhibit the integral as a square. -/
 
 open MeasureTheory in
@@ -9477,7 +9564,7 @@ theorem integral_shift_pair_interval (v : E3) (f : E3 → ℂ) (H a : ℝ) :
 The blueprint's "pairing every vertex with its opposite and applying Cauchy-Schwarz shows that its
 integral is real and nonnegative" is, at one difference, the following: after the change of
 variables the integral is a double integral in the two shifts, and exchanging it with the integral
-in `x` turns the integrand into the square of the shifted average.  The exchange is Fubini, whose
+in `x` turns the integrand into the square of the shifted average. The exchange is Fubini, whose
 integrability hypothesis the blueprint does not discuss; it is carried explicitly here. -/
 
 open MeasureTheory in
@@ -9501,7 +9588,7 @@ theorem re_integral_mul_conj_nonneg (F : E3 → ℂ) :
   exact integral_nonneg fun x => by positivity
 
 open MeasureTheory in
-/-- **The positivity at one difference.**  Once the two shift integrals are exchanged with the
+/-- **The positivity at one difference.** Once the two shift integrals are exchanged with the
 integral in `x`, the integrand is a square, so the integral is real and nonnegative. -/
 theorem re_integral_shift_pair_nonneg {H : ℝ} (v : E3) (f : E3 → ℂ)
     (hswap : (∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H,
@@ -9533,7 +9620,7 @@ theorem integrable_shift_pair_prod {H : ℝ} (_hH : 0 < H) (v : E3) {f : E3 → 
         f (x + a • v) * (starRingEnd ℂ) (f (x + b • v)))
       ((volume : Measure E3).prod (volume.restrict (Set.Ioc (0 : ℝ) H))) := by
   obtain ⟨hcont, hint, C, hC⟩ := hf
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -9561,7 +9648,7 @@ theorem integral_swap_shift_nice {H : ℝ} (hH : 0 < H) (v : E3) {f : E3 → ℂ
 /-! ### Blueprint `def:local-uniformity`: joint integrability of a shifted input
 
 Every exchange in the argument needs the shifted input to be integrable jointly in the point and
-the shift.  It is, for inputs of the class `Auto.Nice`: for each fixed shift the translate is
+the shift. It is, for inputs of the class `Auto.Nice`: for each fixed shift the translate is
 integrable with the same norm, and the shift ranges over an interval of finite measure. -/
 
 open MeasureTheory in
@@ -9569,7 +9656,7 @@ theorem integrable_shift_prod {H : ℝ} (v : E3) {f : E3 → ℂ} (hf : Nice f) 
     Integrable (Function.uncurry fun (x : E3) (a : ℝ) => f (x + a • v))
       ((volume : Measure E3).prod (volume.restrict (Set.Ioc (0 : ℝ) H))) := by
   obtain ⟨hcont, hint, C, hC⟩ := hf
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -9593,7 +9680,7 @@ theorem integrable_shift_pair_prod' {H : ℝ} (v : E3) {f : E3 → ℂ} (hf : Ni
         f (x + a • v) * (starRingEnd ℂ) (f (x + b • v)))
       ((volume : Measure E3).prod (volume.restrict (Set.Ioc (0 : ℝ) H))) := by
   obtain ⟨hcont, hint, C, hC⟩ := hf
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -9621,7 +9708,7 @@ theorem integral_swap_shift_nice' {H : ℝ} (hH : 0 < H) (v : E3) {f : E3 → �
 
 /-! ### Blueprint `def:local-uniformity`: the double exchange
 
-Both shift integrals are moved past the integral in the point, one at a time.  For the second the
+Both shift integrals are moved past the integral in the point, one at a time. For the second the
 inner shift integral has already been carried out, so the integrand is the input times the
 conjugate of its shifted average, and the average is bounded and strongly measurable. -/
 
@@ -9846,7 +9933,7 @@ theorem integral_double_sub_eq_fejer {H : ℝ} (hH : 0 < H) {G : ℝ → ℂ} (h
 /-! ### Blueprint `def:local-uniformity`: the Fejer-weighted integral at one difference
 
 With the change of variables in hand, the Fejer-weighted integral of the paired average is a
-positive multiple of the double integral over the two shifts, which was shown nonnegative.  This is
+positive multiple of the double integral over the two shifts, which was shown nonnegative. This is
 the blueprint's positivity statement in the form its definition uses it. -/
 
 open MeasureTheory in
@@ -9913,7 +10000,7 @@ theorem re_fejer_pairAvg_nonneg {H : ℝ} (hH : 0 < H) (v : E3) {f : E3 → ℂ}
 /-! ### Blueprint `def:local-uniformity`: the positivity at every order
 
 The difference operator preserves the class `Auto.Nice`, so the iterated difference of a `Nice`
-input is again `Nice`, and the positivity of the previous entry applies to it.  That is the
+input is again `Nice`, and the positivity of the previous entry applies to it. That is the
 inductive step: the iterated difference of order `s + 1` is one difference applied to the iterated
 difference of order `s`, by `Auto.fdiffIter_succ`. -/
 
@@ -9946,7 +10033,7 @@ theorem nice_fdiffIter (v : E3) : ∀ (s : ℕ) (h : Fin s → ℝ) {f : E3 → 
       exact nice_fdiff v (h 0) (nice_fdiffIter v s (fun i => h i.succ) hf)
 
 open MeasureTheory in
-/-- **The positivity at every order.**  At each order the innermost Fejer-weighted difference is
+/-- **The positivity at every order.** At each order the innermost Fejer-weighted difference is
 real and nonnegative, the iterated difference it is applied to being again of class `Auto.Nice`. -/
 theorem re_fejer_fdiffIter_nonneg {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) (h : Fin s → ℝ)
     {f : E3 → ℂ} (hf : Nice f) :
@@ -9959,7 +10046,7 @@ theorem re_fejer_fdiffIter_nonneg {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) (h :
 "Write the average of `F` as the average of `(1/H) int_0^H F(t+h) dh` up to the two boundary
 intervals, whose total normalized contribution is at most `2H/N`."  Shifting the interval by `h`
 changes the integral by the two boundary pieces, each of length `h`, on which the integrand has
-modulus at most one.  See `automation/ErrorReport.md` for the missing operator in the lemma's
+modulus at most one. See `automation/ErrorReport.md` for the missing operator in the lemma's
 display. -/
 
 open MeasureTheory in
@@ -9997,7 +10084,7 @@ theorem norm_integral_shift_sub_le {F : ℝ → ℂ}
 
 /-! ### Blueprint `lem:fejer-vdc`: the averaged boundary estimate
 
-Averaging the shift over `[0, H]` costs at most `2H`, by the pointwise estimate.  The average is
+Averaging the shift over `[0, H]` costs at most `2H`, by the pointwise estimate. The average is
 legitimate because the shifted integral is measurable in the shift -- as the parametric integral of
 a jointly measurable function -- and bounded by the length of the interval. -/
 
@@ -10062,7 +10149,7 @@ theorem norm_integral_avg_sub_le {F : ℝ → ℂ} (hFm : Measurable F)
 /-! ### Blueprint `lem:fejer-vdc`: the Cauchy-Schwarz step
 
 "Apply Cauchy-Schwarz, expand the square."  On an interval of length `N` the square of an integral
-is at most `N` times the integral of the square.  The proof is the discriminant argument: the
+is at most `N` times the integral of the square. The proof is the discriminant argument: the
 integral of `(u - lam)^2` is nonnegative for every `lam`, and at `lam` the mean of `u` it is the
 difference of the two sides. -/
 
@@ -10126,11 +10213,11 @@ theorem integrable_pair_prod_bdd {F : ℝ → ℂ} (hFm : Measurable F) (hF : �
     {N H : ℝ} (c a : ℝ) :
     Integrable (Function.uncurry fun (t b : ℝ) => F (t + a) * (starRingEnd ℂ) (F (t + b)))
       ((volume.restrict (Set.Ioc c (c + N))).prod (volume.restrict (Set.Ioc (0 : ℝ) H))) := by
-  haveI h1 : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
+  have h1 : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
-  haveI h2 : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have h2 : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -10141,7 +10228,7 @@ theorem integrable_pair_prod_bdd {F : ℝ → ℂ} (hFm : Measurable F) (hF : �
   refine Integrable.mono' (integrable_const (1 : ℝ)) hmeas.aestronglyMeasurable ?_
   refine Filter.Eventually.of_forall fun p => ?_
   rw [Function.uncurry_apply_pair, norm_mul, RCLike.norm_conj]
-  exact mul_le_one₀ (hF _) (norm_nonneg _) (hF _)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hF _)).trans (hF _))
 
 open MeasureTheory in
 /-- **Exchanging the interval integral with the second shift integral.** -/
@@ -10157,7 +10244,7 @@ theorem integral_swap_interval_pair {F : ℝ → ℂ} (hFm : Measurable F) (hF :
 /-! ### Blueprint `lem:fejer-vdc`: the domain bookkeeping
 
 After the substitution the integral runs over the shifted interval, while the lemma's display runs
-over `I` intersected with its translate.  The two are intervals whose endpoints differ by at most
+over `I` intersected with its translate. The two are intervals whose endpoints differ by at most
 the shift, so for an integrand of modulus at most one the integrals differ by at most the total
 endpoint displacement. -/
 
@@ -10194,7 +10281,7 @@ noncomputable def capLeft (c h : ℝ) : ℝ := c + max 0 (-h)
 /-- The right endpoint of `I` intersected with its translate by `h`. -/
 noncomputable def capRight (c N h : ℝ) : ℝ := c + N - max 0 h
 
-/-- **The endpoint displacement is at most twice the shift range.**  With `h = a - b` and both
+/-- **The endpoint displacement is at most twice the shift range.** With `h = a - b` and both
 shifts in `[0, H]`, the shifted interval `[c+b, c+N+b]` and the intersected interval differ at each
 end by at most `H`. -/
 theorem endpoint_displacement_le {H a b : ℝ} (ha : a ∈ Set.Icc (0 : ℝ) H)
@@ -10224,7 +10311,7 @@ theorem endpoint_displacement_le {H a b : ℝ} (ha : a ∈ Set.Icc (0 : ℝ) H)
 /-! ### Blueprint `lem:fejer-vdc`: putting the shift integral inside
 
 To apply Cauchy-Schwarz in the variable of the interval, the shift integral has to be the inner
-one.  Exchanging them is again Fubini on two bounded intervals with a bounded integrand, and the
+one. Exchanging them is again Fubini on two bounded intervals with a bounded integrand, and the
 resulting inner average is measurable in the interval variable and bounded by the shift range. -/
 
 open MeasureTheory in
@@ -10240,11 +10327,11 @@ theorem integrable_shift_prod_bdd {F : ℝ → ℂ} (hFm : Measurable F) (hF : �
     {N H : ℝ} (c : ℝ) :
     Integrable (Function.uncurry fun (h t : ℝ) => F (t + h))
       ((volume.restrict (Set.Ioc (0 : ℝ) H)).prod (volume.restrict (Set.Ioc c (c + N)))) := by
-  haveI h1 : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have h1 : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
-  haveI h2 : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
+  have h2 : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -10342,7 +10429,7 @@ theorem sq_norm_avg_le {F : ℝ → ℂ} (hFm : Measurable F) (hF : ∀ t, ‖F 
 /-! ### Blueprint `lem:fejer-vdc`: replacing the two shifts by their difference
 
 Substituting `t + b` for `t` turns the paired integrand into one depending only on the difference
-of the shifts, at the cost of moving the interval by `b`.  By the domain bookkeeping that costs at
+of the shifts, at the cost of moving the interval by `b`. By the domain bookkeeping that costs at
 most `2H`. -/
 
 open MeasureTheory in
@@ -10354,7 +10441,7 @@ theorem measurable_pairShift {F : ℝ → ℂ} (hFm : Measurable F) (h : ℝ) :
 theorem norm_pairShift_le {F : ℝ → ℂ} (hF : ∀ t, ‖F t‖ ≤ 1) (h s : ℝ) :
     ‖F (s + h) * (starRingEnd ℂ) (F s)‖ ≤ 1 := by
   rw [norm_mul, RCLike.norm_conj]
-  exact mul_le_one₀ (hF _) (norm_nonneg _) (hF _)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hF _)).trans (hF _))
 
 open MeasureTheory in
 /-- **The paired integral depends on the two shifts only through their difference, up to `2H`.** -/
@@ -10385,7 +10472,7 @@ theorem norm_pairIntegral_sub_le {F : ℝ → ℂ} (hFm : Measurable F) (hF : �
 
 /-! ### Blueprint `lem:fejer-vdc`: the triple exchange
 
-The integral over the interval has to be moved past both shift integrals, one at a time.  The
+The integral over the interval has to be moved past both shift integrals, one at a time. The
 outer exchange has as integrand the input times a bounded factor depending only on the interval
 variable, namely the conjugate of the inner shifted average. -/
 
@@ -10396,11 +10483,11 @@ theorem integral_swap_interval_prod {F : ℝ → ℂ} (hFm : Measurable F) (hF :
     (∫ t in c..(c + N), ∫ a in (0 : ℝ)..H, F (t + a) * G t)
       = ∫ a in (0 : ℝ)..H, ∫ t in c..(c + N), F (t + a) * G t := by
   have hle : c ≤ c + N := by linarith
-  haveI h1 : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
+  have h1 : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
-  haveI h2 : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have h2 : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -10421,7 +10508,7 @@ theorem integral_swap_interval_prod {F : ℝ → ℂ} (hFm : Measurable F) (hF :
   exact integral_integral_swap hint
 
 open MeasureTheory in
-/-- **The triple exchange.**  The integral over the interval moves past both shift integrals. -/
+/-- **The triple exchange.** The integral over the interval moves past both shift integrals. -/
 theorem integral_swap_triple_interval {F : ℝ → ℂ} (hFm : Measurable F) (hF : ∀ t, ‖F t‖ ≤ 1)
     {N H : ℝ} (hN : 0 ≤ N) (hH : 0 ≤ H) (c : ℝ) :
     (∫ t in c..(c + N), ∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H,
@@ -10451,7 +10538,7 @@ theorem integral_swap_triple_interval {F : ℝ → ℂ} (hFm : Measurable F) (hF
 
 The integral over the interval of the squared modulus of the inner shifted average is, after the
 expansion and the triple exchange, a double integral in the shifts of the paired integral over the
-interval.  That paired integral, as a function of the difference of the shifts, is measurable and
+interval. That paired integral, as a function of the difference of the shifts, is measurable and
 bounded by the length of the interval -- which is what the change of variables asks of it. -/
 
 open MeasureTheory in
@@ -10491,7 +10578,7 @@ theorem norm_pairIntegral_le {F : ℝ → ℂ} (hF : ∀ t, ‖F t‖ ≤ 1) {N 
 
 The error estimate integrates the pointwise cost of replacing the two shifts by their difference
 over the square of shifts, so the paired integral has to be measurable jointly in the two shifts,
-and its shift integrals measurable in the remaining one.  All of it follows from measurability of
+and its shift integrals measurable in the remaining one. All of it follows from measurability of
 the integrand on the triple product and the parametric-integral lemma. -/
 
 open MeasureTheory in
@@ -10547,7 +10634,7 @@ theorem norm_pairIntegral₂_le {F : ℝ → ℂ} (hF : ∀ t, ‖F t‖ ≤ 1) 
   have hb := intervalIntegral.norm_integral_le_of_norm_le_const (C := 1) (a := c) (b := c + N)
     (f := fun t => F (t + a) * (starRingEnd ℂ) (F (t + b))) fun t _ => by
       rw [norm_mul, RCLike.norm_conj]
-      exact mul_le_one₀ (hF _) (norm_nonneg _) (hF _)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (hF _)).trans (hF _))
   simpa [abs_of_nonneg hN] using hb
 
 open MeasureTheory in
@@ -10613,7 +10700,7 @@ theorem norm_double_pair_sub_le {F : ℝ → ℂ} (hFm : Measurable F) (hF : ∀
 /-! ### Blueprint `lem:fejer-vdc`: the integral over `I ∩ (I - h)`
 
 The inner integral of the conclusion runs over the intersection of the interval with its translate,
-whose endpoints move with the shift.  A parametric integral over an `Ioc` with measurable endpoints
+whose endpoints move with the shift. A parametric integral over an `Ioc` with measurable endpoints
 is measurable in the parameter, and the intersection is an `Ioc` of length `N - |h|`, so that the
 integral is bounded by `N` for every shift at once. -/
 
@@ -10737,7 +10824,7 @@ theorem capPair_eq_intervalIntegral {F : ℝ → ℂ} {N h : ℝ} (hh : |h| ≤ 
 
 Substituting `t + b` for `t` turns the paired integrand into one depending only on the difference
 of the shifts, and moves the interval to `I + b`; replacing that by the intersection `I ∩ (I - h)`
-costs the endpoint displacement, at most `2H`.  Integrated over the square of shifts this is the
+costs the endpoint displacement, at most `2H`. Integrated over the square of shifts this is the
 whole error of the change of variables. -/
 
 open MeasureTheory in
@@ -10837,13 +10924,12 @@ theorem norm_double_pair_sub_cap_le {F : ℝ → ℂ} (hFm : Measurable F) (hF :
 /-! ### Blueprint `lem:fejer-vdc`: the inequality
 
 "Write the average of `F` as the average of `(1/H) int_0^H F(t+h) dh` up to the two boundary
-intervals, whose total normalized contribution is at most `2H/N`.  Apply Cauchy-Schwarz, expand the
-square, and change variables from the two shift variables to their difference.  The density of that
+intervals, whose total normalized contribution is at most `2H/N`. Apply Cauchy-Schwarz, expand the
+square, and change variables from the two shift variables to their difference. The density of that
 difference is `kappa_H`, which proves the displayed inequality after `(a+b)^2 <= 2a^2 + 2b^2`."
 
-The blueprint display omits the operator joining its two terms; see the error report.  The
+The blueprint display omits the operator joining its two terms; see the error report. The
 inequality proved here is the one the proof sketch gives, with the boundary term added. -/
-
 theorem norm_le_of_norm_sub_le {x y : ℂ} {e m : ℝ} (h1 : ‖x - y‖ ≤ e) (h2 : ‖y‖ ≤ m) :
     ‖x‖ ≤ m + e := by
   have h3 := norm_sub_norm_le x y
@@ -10942,10 +11028,9 @@ theorem fejer_vdc {F : ℝ → ℂ} (hFm : Measurable F) (hF : ∀ t, ‖F t‖ 
 /-! ### Blueprint `lem:fejer-vdc`: the inequality on a fixed interval
 
 Iterating the inequality means applying it again to the Fejér difference, and for that the inner
-integral has to run over the same interval as the outer one.  Replacing `I ∩ (I - h)` by `I` costs
+integral has to run over the same interval as the outer one. Replacing `I ∩ (I - h)` by `I` costs
 `|h|`, which the kernel keeps below `H`, so the fixed-interval form holds with `12H/N` in place of
-`8H/N`.  This is the form the Gowers-Cauchy-Schwarz induction uses. -/
-
+`8H/N`. This is the form the Gowers-Cauchy-Schwarz induction uses. -/
 theorem max_zero_add_max_zero_neg (h : ℝ) : max 0 h + max 0 (-h) = |h| := by
   rcases le_total 0 h with hh | hh
   · rw [max_eq_right hh, max_eq_left (by linarith : -h ≤ (0 : ℝ)), abs_of_nonneg hh, add_zero]
@@ -10973,7 +11058,7 @@ open MeasureTheory in
 /-- The kernel times a bounded measurable function is integrable. -/
 theorem integrable_fejer_mul {H : ℝ} (hH : 0 < H) {g : ℝ → ℝ} (hgm : Measurable g) {M : ℝ}
     (hg : ∀ t, |g t| ≤ M) : Integrable fun h : ℝ => fejer H h * g h := by
-  haveI hfin : IsFiniteMeasure (volume.restrict (Set.Ioc (-H) H)) := by
+  have hfin : IsFiniteMeasure (volume.restrict (Set.Ioc (-H) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -11112,9 +11197,9 @@ function ... An induction on the number of applications gives exactly the cube p
 `def:local-uniformity`."
 
 Each application of the fixed-interval inequality replaces the function by its Fejér difference and
-averages against the kernel of the new shift.  Iterating `s` times therefore produces the nested
+averages against the kernel of the new shift. Iterating `s` times therefore produces the nested
 Fejér average of the normalized integrals of the `s`-fold iterated Fejér differences, whose
-integrand is the cube product of `def:local-uniformity` transported to the line.  This section sets
+integrand is the cube product of `def:local-uniformity` transported to the line. This section sets
 up that average and proves what the induction needs of it: it is measurable in any parameter the
 function depends on measurably, it is nonnegative, and it never exceeds one. -/
 
@@ -11128,7 +11213,7 @@ theorem norm_rdiff_le {F : ℝ → ℂ} (hF : ∀ t, ‖F t‖ ≤ 1) (h t : ℝ
   norm_pairShift_le hF h t
 
 open MeasureTheory in
-/-- The nested Fejér average of the normalized integrals of the iterated Fejér differences.  At
+/-- The nested Fejér average of the normalized integrals of the iterated Fejér differences. At
 depth zero it is the normalized integral itself. -/
 noncomputable def vdcAvg (N c : ℝ) : ∀ s : ℕ, (Fin s → ℝ) → (ℝ → ℂ) → ℝ
   | 0, _, F => ‖N⁻¹ • ∫ t in c..(c + N), F t‖
@@ -11235,7 +11320,7 @@ theorem vdcAvg_le_one (N c : ℝ) (hN : 0 < N) :
 "Repeated use of this inequality followed by Cauchy-Schwarz in all variables except a selected
 function."  The kernel is a probability density, so Cauchy-Schwarz against it says that the square
 of a weighted average is at most the weighted average of the square; iterating moves any power of
-two inside the kernel average.  That is what lets the induction raise the inequality to the power
+two inside the kernel average. That is what lets the induction raise the inequality to the power
 it needs at each step. -/
 
 open MeasureTheory in
@@ -11263,7 +11348,7 @@ theorem add_pow_le_two_pow_mul {x y : ℝ} (hx : 0 ≤ x) (hy : 0 ≤ y) (n : �
           linarith
 
 open MeasureTheory in
-/-- **Cauchy-Schwarz against the Fejér kernel.**  The kernel has integral one, so the square of a
+/-- **Cauchy-Schwarz against the Fejér kernel.** The kernel has integral one, so the square of a
 kernel average is at most the kernel average of the square. -/
 theorem sq_integral_fejer_le {H : ℝ} (hH : 0 < H) {g : ℝ → ℝ} (hgm : Measurable g) {M : ℝ}
     (hg : ∀ t, |g t| ≤ M) :
@@ -11341,15 +11426,14 @@ theorem pow_integral_fejer_le {H : ℝ} (hH : 0 < H) :
 "Put `E_i^0 := E_i`.  For `r >= 1` define ... `E_0^r := {x in E_0^{r-1} : H_0^r(x) >= c_{r,0}
 alpha_0}`, `E_i^r := {x in E_i^{r-1} : H_i^r(x) >= c_{r,i} alpha_i}`."
 
-One stage is `Auto.refinement_stage`; the tower is that stage iterated.  Each stage costs the
+One stage is `Auto.refinement_stage`; the tower is that stage iterated. Each stage costs the
 factor `16` of the incidence integral, so a tower of depth `r` starts from `16^r B` and ends at
 `B`, and the four pointwise bounds of every stage refer to the configuration at the start of that
-stage.  That is the uniform reading of the patch's level convention: each move of the flow consumes
-exactly one level, rather than only the moves `a -> b` with `a < b`.  The patch's own remark that
+stage. That is the uniform reading of the patch's level convention: each move of the flow consumes
+exactly one level, rather than only the moves `a -> b` with `a < b`. The patch's own remark that
 "any `r_0 >= 4` would do" is what makes the two conventions interchangeable; only a uniform lower
 bound on the constants is load bearing, and here the constants do not change from stage to stage at
 all. -/
-
 theorem one_le_pow_sixteen (r : ℕ) : (1 : ℝ≥0∞) ≤ 16 ^ r := by
   induction r with
   | zero => simp
@@ -11359,7 +11443,7 @@ theorem one_le_pow_sixteen (r : ℕ) : (1 : ℝ≥0∞) ≤ 16 ^ r := by
         _ ≤ 16 ^ n * 16 := mul_le_mul' ihn (by norm_num)
 
 open MeasureTheory in
-/-- **Patch 1 `def:refinements` and `lem:nonempty`: the refinement tower.**  Iterating the stage
+/-- **Patch 1 `def:refinements` and `lem:nonempty`: the refinement tower.** Iterating the stage
 produces a decreasing chain of configurations in which every set of every stage carries the
 pointwise density bound of the configuration at the start of that stage, and the incidence integral
 is still at least `B` at the bottom. -/
@@ -11456,7 +11540,7 @@ theorem refinement_tower (N : ℝ) {B : ℝ≥0∞} (hB : B ≠ ⊤) {c₀ : ℝ
 `|E_i^r| >= c_{r,i} K / ||H^r_i||_inf >= c_{r,i} K > 0` because `0 <= H^r_i <= 1` pointwise."
 
 Here the incidence integral is not normalized by `N`, so the sup norm of a density is
-`ofReal N` rather than `1`, and the conclusion reads `ofReal N * |E| >= B`.  Since the tower ends
+`ofReal N` rather than `1`, and the conclusion reads `ofReal N * |E| >= B`. Since the tower ends
 with `B <= incid`, every set of every stage has measure at least `B / ofReal N`, and in particular
 is nonempty as soon as `B` is nonzero. -/
 
@@ -11474,7 +11558,7 @@ theorem incidFwd_le (N : ℝ) (E : Fin 3 → Set E6) (x : E6) :
     incidFwd N E x ≤ ENNReal.ofReal N := by
   have hpt : ∀ t : ℝ,
       ∏ i : Fin 3, Set.indicator (E i) (fun _ => (1 : ℝ≥0∞)) (x + liftCurve i t) ≤ 1 :=
-    fun t => Finset.prod_le_one' fun i _ => indicator_one_le_one (E i) _
+    fun t => Finset.prod_le_one fun i _ => indicator_one_le_one (E i) _
   calc incidFwd N E x
       ≤ ∫⁻ _ in Set.Ioc (0 : ℝ) N, (1 : ℝ≥0∞) := lintegral_mono fun t => hpt t
     _ = volume (Set.Ioc (0 : ℝ) N) := setLIntegral_one _
@@ -11489,7 +11573,7 @@ theorem incidAdj_le (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) (j : Fin 3)
         Set.indicator (E i) (fun _ => (1 : ℝ≥0∞)) (y - liftCurve j t + liftCurve i t) ≤ 1 := by
     intro t
     refine mul_le_one' (indicator_one_le_one E₀ _) ?_
-    exact Finset.prod_le_one' fun i _ => indicator_one_le_one (E i) _
+    exact Finset.prod_le_one fun i _ => indicator_one_le_one (E i) _
   calc incidAdj N E₀ E j y
       ≤ ∫⁻ _ in Set.Ioc (0 : ℝ) N, (1 : ℝ≥0∞) := lintegral_mono fun t => hpt t
     _ = volume (Set.Ioc (0 : ℝ) N) := setLIntegral_one _
@@ -11517,7 +11601,7 @@ theorem incid_le_volume_adj (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E�
     _ = ENNReal.ofReal N * volume (E j) := setLIntegral_const _ _
 
 open MeasureTheory in
-/-- **Patch 1 `lem:nonempty`.**  A lower bound on the incidence integral is a lower bound on the
+/-- **Patch 1 `lem:nonempty`.** A lower bound on the incidence integral is a lower bound on the
 measure of each of the four sets, up to the length of the parameter interval. -/
 theorem volume_ge_of_incid_ge (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E₀)
     {E : Fin 3 → Set E6} (hE : ∀ i, MeasurableSet (E i)) {B : ℝ≥0∞}
@@ -11549,7 +11633,7 @@ theorem nonempty_of_incid_ge (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E�
 /-! ### Patch 1 `lem:transition`: the fibre of one move, as a set
 
 The incidence densities are integrals of products of indicators, so each of them is the measure of
-the set of parameters for which every membership holds at once.  Writing them that way is what
+the set of parameters for which every membership holds at once. Writing them that way is what
 turns the pointwise density bound carried by a refined set into the fibre bound
 `|T_a^r(x)| >= c_{r,a} alpha_a N` of the patch. -/
 
@@ -11637,7 +11721,7 @@ three-case split in `lem:transition`."
 With that convention the displacement of the move `(a, b)` is `Gamma b (t) - Gamma a (t)` -- the
 sign is opposite to the patch's, because the incidence integral of this development is written with
 `x + Gamma i t` rather than `x - Gamma i t`; the flow is therefore the negative of the patch's, and
-nothing downstream sees the difference, since only `|det D Phi|` is used.  The fibre of the move
+nothing downstream sees the difference, since only `|det D Phi|` is used. The fibre of the move
 leaving the label `a` is the set `transSet`, its measure is the density carried by the label `a`,
 and every parameter in it carries the point into the set of any other label. -/
 
@@ -11669,7 +11753,7 @@ def transSet (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) (a : Fin 4) (x : E
 theorem transSet_subset (N : ℝ) (E₀ : Set E6) (E : Fin 3 → Set E6) (a : Fin 4) (x : E6) :
     transSet N E₀ E a x ⊆ Set.Ioc (0 : ℝ) N := Set.inter_subset_left
 
-/-- **The move itself.**  Every parameter of the fibre carries the point into the set of any other
+/-- **The move itself.** Every parameter of the fibre carries the point into the set of any other
 label. -/
 theorem mem_cfg4_of_mem_transSet {N : ℝ} {E₀ : Set E6} {E : Fin 3 → Set E6} {a : Fin 4} {x : E6}
     {t : ℝ} (ht : t ∈ transSet N E₀ E a x) (b : Fin 4) (hb : b ≠ a) :
@@ -11739,7 +11823,7 @@ theorem volume_transSet_succ (N : ℝ) {E₀ : Set E6} (hE₀ : MeasurableSet E�
 
 
 open MeasureTheory in
-/-- **Patch 1 `lem:transition`, in the form the tower supplies.**  A point of the set of label `a`
+/-- **Patch 1 `lem:transition`, in the form the tower supplies.** A point of the set of label `a`
 at stage `k+1` has a fibre of measure at least the density of that label, and every parameter of
 that fibre carries it into the set of any other label at stage `k`. -/
 theorem volume_transSet_ge_of_tower (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
@@ -11759,7 +11843,7 @@ theorem volume_transSet_ge_of_tower (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ →
 /-! ### Patch 1 `def:itinerary` and `lem:parity`
 
 "An itinerary is a word `w = (w_0, w_1, ..., w_6)` in `{0,1,2,3}^7` with `w_{l-1} /= w_l` for
-`1 <= l <= 6`.  Move `l` is the pair `(w_{l-1}, w_l)` and carries the parameter `t_l`.  We say move
+`1 <= l <= 6`. Move `l` is the pair `(w_{l-1}, w_l)` and carries the parameter `t_l`. We say move
 `l` touches block `i` if `i` is one of its two endpoints."
 
 "For every itinerary `w` and every `i`, `n_i(w) = 2 #{l : w_l = i} - [w_0 = i] - [w_6 = i]`."
@@ -11770,7 +11854,7 @@ label at both of its endpoints, so the indicator of "move `l` touches `i`" is th
 indicators of its two endpoints, and the resulting sum telescopes over the seven positions, each
 interior one being counted twice and each end one once. -/
 
-/-- A word of seven labels in which consecutive labels differ.  Only the values at `0, ..., 6`
+/-- A word of seven labels in which consecutive labels differ. Only the values at `0, ..., 6`
 matter. -/
 def IsItinerary (w : ℕ → Fin 4) : Prop := ∀ l < 6, w l ≠ w (l + 1)
 
@@ -11800,7 +11884,7 @@ theorem numTouch_add_ends (w : ℕ → Fin 4) (hw : IsItinerary w) (i : Fin 4) :
   simp only [Finset.sum_range_succ, Finset.sum_range_zero]
   split_ifs <;> omega
 
-/-- **The parity consequence.**  The number of moves touching a label has the parity of the number
+/-- **The parity consequence.** The number of moves touching a label has the parity of the number
 of ends carrying it. -/
 theorem numTouch_mod_two (w : ℕ → Fin 4) (hw : IsItinerary w) (i : Fin 4) :
     numTouch w i % 2
@@ -11811,16 +11895,16 @@ theorem numTouch_mod_two (w : ℕ → Fin 4) (hw : IsItinerary w) (i : Fin 4) :
 
 /-! ### Patch 1 `def:three-itineraries`, `lem:itineraries-admissible` and `lem:levels`
 
-The three words, their block assignments and their level bookkeeping.  Everything here is a finite
+The three words, their block assignments and their level bookkeeping. Everything here is a finite
 check on words of seven labels, so `decide` does it.
 
 The consequence of `lem:parity` that forces the statement correction is
 `Auto.ends_of_numTouch_odd`: a word whose moves touch the labels `1` and `3` an odd number of times
 -- which is what `#B_i = d_i` gives when every move touches `E_0`, since `(d_1, d_2, d_3) = (1,2,3)`
--- has its two ends at `1` and `3`.  So no such word terminates at `2`, and the word `w^(2)` must
+-- has its two ends at `1` and `3`. So no such word terminates at `2`, and the word `w^(2)` must
 have a move between two nonzero labels. -/
 
-/-- **Patch 1 `lem:parity`, the consequence.**  A word touching the labels `1` and `3` an odd
+/-- **Patch 1 `lem:parity`, the consequence.** A word touching the labels `1` and `3` an odd
 number of times has its two ends at `1` and `3`; in particular it does not terminate at `2`. -/
 theorem ends_of_numTouch_odd (w : ℕ → Fin 4) (hw : IsItinerary w)
     (h1 : numTouch w 1 % 2 = 1) (h3 : numTouch w 3 % 2 = 1) :
@@ -11880,7 +11964,7 @@ theorem word2_not_touches_zero : ¬ (∀ l < 6, word2 l = 0 ∨ word2 (l + 1) = 
 theorem word2_nonzero_moves :
     (word2 0 ≠ 0 ∧ word2 1 ≠ 0) ∧ (word2 3 ≠ 0 ∧ word2 4 ≠ 0) := by decide
 
-/-- **No word all of whose moves touch `E_0` terminates at `2`.**  This is the statement
+/-- **No word all of whose moves touch `E_0` terminates at `2`.** This is the statement
 correction: the blueprint's word cannot be relabelled to end at the index of even degree. -/
 theorem not_ends_at_two (w : ℕ → Fin 4) (hw : IsItinerary w)
     (h1 : numTouch w 1 = 1) (h3 : numTouch w 3 = 3) : w 6 ≠ 2 := by
@@ -11888,7 +11972,7 @@ theorem not_ends_at_two (w : ℕ → Fin 4) (hw : IsItinerary w)
     rw [hb] <;> decide
 
 /-- The block carrying each of the six moves, for each of the three words: the block being left
-when a move has both endpoints nonzero, and the unique nonzero endpoint otherwise.  Blocks are
+when a move has both endpoints nonzero, and the unique nonzero endpoint otherwise. Blocks are
 numbered `0, 1, 2` for the degrees `1, 2, 3`. -/
 def blk3 : ℕ → Fin 3 := fun l => [0, 1, 1, 2, 2, 2].getD l 0
 def blk1 : ℕ → Fin 3 := fun l => [2, 1, 1, 2, 2, 0].getD l 0
@@ -11903,7 +11987,7 @@ theorem blk3_card : blkCard blk3 0 = 1 ∧ blkCard blk3 1 = 2 ∧ blkCard blk3 2
 theorem blk1_card : blkCard blk1 0 = 1 ∧ blkCard blk1 1 = 2 ∧ blkCard blk1 2 = 3 := by decide
 theorem blk2_card : blkCard blk2 0 = 1 ∧ blkCard blk2 1 = 2 ∧ blkCard blk2 2 = 3 := by decide
 
-/-- **Patch 1 `lem:levels`.**  A level is consumed exactly at a move `a -> b` with `a < b`. -/
+/-- **Patch 1 `lem:levels`.** A level is consumed exactly at a move `a -> b` with `a < b`. -/
 def levels (w : ℕ → Fin 4) (r0 : ℕ) : ℕ → ℕ
   | 0 => r0
   | (l + 1) => levels w r0 l - (if w l < w (l + 1) then 1 else 0)
@@ -11925,8 +12009,8 @@ theorem levels_word2_ge : ∀ l < 7, 57 ≤ levels word2 60 l := by decide
 `I_l := T^{lambda_{l-1}}_{w_{l-1}}(x_{l-1})`."
 
 The displacement here is `Gamma_{w_l} - Gamma_{w_{l-1}}`, the negative of the patch's, for the
-reason recorded at `Auto.transSet`.  The level of move `l` is `r - l`, since in this development
-every move consumes exactly one refinement level.  The invariant is a single induction: the point
+reason recorded at `Auto.transSet`. The level of move `l` is `r - l`, since in this development
+every move consumes exactly one refinement level. The invariant is a single induction: the point
 after `l` moves lies in the set of the label `w l` at level `r - l`, and the fibre of the next move
 has measure at least the density of the label being left. -/
 
@@ -11958,7 +12042,7 @@ theorem cfg4_subset_zero {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
   · exact tower_subset_zero hGdec k
   · exact tower_subset_zero (G := fun k => Gi k i) (fun k => hGidec k i) k
 
-/-- **Patch 1 `lem:tower`, the invariant.**  After `l` moves the point lies in the set of the label
+/-- **Patch 1 `lem:tower`, the invariant.** After `l` moves the point lies in the set of the label
 `w l`, at level `r - l`. -/
 theorem flowPt_mem (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6} {r : ℕ}
     {w : ℕ → Fin 4} (hw : IsItinerary w) {z : E6} (hz : z ∈ cfg4 (G r) (Gi r) (w 0))
@@ -11979,7 +12063,7 @@ theorem flowPt_mem (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6
       exact hmem
 
 open MeasureTheory in
-/-- **Patch 1 `lem:tower`, the fibre bound.**  The fibre of the move `l` has measure at least the
+/-- **Patch 1 `lem:tower`, the fibre bound.** The fibre of the move `l` has measure at least the
 density of the label being left. -/
 theorem volume_flowFibre_ge (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGm : ∀ k, MeasurableSet (G k)) (hGim : ∀ k i, MeasurableSet (Gi k i))
@@ -11994,7 +12078,7 @@ theorem volume_flowFibre_ge (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 �
   rw [harith] at hinv
   exact volume_transSet_ge_of_tower N hGm hGim (hfwd _ hlt) (hadj _ hlt) (w l) _ hinv
 
-/-- **Patch 1 `lem:tower`, the conclusion.**  The flow lands in the set of the terminal label of
+/-- **Patch 1 `lem:tower`, the conclusion.** The flow lands in the set of the terminal label of
 the word, at the top of the tower. -/
 theorem flowPt_six_mem (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGdec : ∀ k, G (k + 1) ⊆ G k) (hGidec : ∀ k i, Gi (k + 1) i ⊆ Gi k i) {r : ℕ}
@@ -12008,12 +12092,12 @@ theorem flowPt_six_mem (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Se
 
 The signs of the six moves of `w^(3) = (1,0,2,0,3,0,3)` are, block by block, `-` for block `1`
 (the word leaves block `1` at its first move), `+, -` for block `2` (enter, leave) and `+, -, +`
-for block `3` (enter, leave, enter).  The last of these is the negative of the pattern carried by
+for block `3` (enter, leave, enter). The last of these is the negative of the pattern carried by
 `Auto.flowPi`, which is why the determinant below carries a minus sign relative to
-`Auto.det_flowMatrix`; see the error report of 2026-09-13.  In absolute value the two agree, which
+`Auto.det_flowMatrix`; see the error report of 2026-09-13. In absolute value the two agree, which
 is all patch `lem:jacobian` asserts. -/
 
-/-- The flow of the word `w^(3)`, in coordinates.  The three blocks are `(s 0)`, `(s 1, s 2)` and
+/-- The flow of the word `w^(3)`, in coordinates. The three blocks are `(s 0)`, `(s 1, s 2)` and
 `(s 3, s 4, s 5)`, carried by the moves in the order the word makes them. -/
 noncomputable def flowPi3 (s : Fin 6 → ℝ) : Fin 6 → ℝ :=
   ![-(s 0), s 1 - s 2, s 1 ^ 2 - s 2 ^ 2,
@@ -12047,7 +12131,7 @@ theorem det_flowMatrix3 (u v a b c : ℝ) :
   simp [Matrix.det_succ_row_zero, Fin.sum_univ_succ, Fin.succAbove]
   ring
 
-/-- **Patch 1 `lem:jacobian`, the Jacobian in absolute value.**  It agrees with the one of
+/-- **Patch 1 `lem:jacobian`, the Jacobian in absolute value.** It agrees with the one of
 `Auto.flowMatrix`, as the patch's display asserts. -/
 theorem abs_det_flowMatrix3 (u v a b c : ℝ) :
     |(flowMatrix3 u v a b c).det| = 12 * |u - v| * |a - b| * |a - c| * |b - c| := by
@@ -12076,7 +12160,7 @@ theorem det_flowDeriv3 (t : E6) :
       = (Matrix.toEuclideanLin (flowMatrix3 (t 1) (t 2) (t 3) (t 4) (t 5)) : E6 →ₗ[ℝ] E6) from rfl]
   rw [det_toEuclideanLin, det_flowMatrix3]
 
-/-- **Patch 1 `lem:jacobian`, the Jacobian of the flow of `w^(3)`.**  It is the modulus the patch
+/-- **Patch 1 `lem:jacobian`, the Jacobian of the flow of `w^(3)`.** It is the modulus the patch
 displays. -/
 theorem abs_det_flowDeriv3 (t : E6) :
     |LinearMap.det ((flowDeriv3 t : E6 →L[ℝ] E6) : E6 →ₗ[ℝ] E6)|
@@ -12146,9 +12230,8 @@ theorem hasFDerivAt_flowMap3 (t : E6) : HasFDerivAt flowMap3 (flowDeriv3 t) t :=
 
 Expanding the six moves of `w^(3) = (1,0,2,0,3,0,3)` with the convention of `Auto.transSet` gives
 the displacements `-Γ₁(t₀), +Γ₂(t₁), -Γ₂(t₂), +Γ₃(t₃), -Γ₃(t₄), +Γ₃(t₅)`, whose sum is
-`Auto.flowMap3` read in the standard basis.  So the flow is the translation of `Auto.flowMap3` by
+`Auto.flowMap3` read in the standard basis. So the flow is the translation of `Auto.flowMap3` by
 the starting point, and the Jacobian and the injectivity of the one transfer to the other. -/
-
 theorem curve4_word3_zero : curve4 (word3 0) = liftCurve1 := rfl
 theorem curve4_word3_one : curve4 (word3 1) = fun _ => (0 : E6) := rfl
 theorem curve4_word3_two : curve4 (word3 2) = liftCurve2 := rfl
@@ -12191,7 +12274,7 @@ theorem flowPt_word3_eq (z : E6) (s : E6) :
 
 `w^(1) = (3,0,2,0,3,0,1)` has the same block structure as `w^(3)` -- every move touches `E_0`, so
 the derivative is block diagonal -- but the parameters are distributed differently: block `3`
-carries the moves `0, 3, 4`, block `2` the moves `1, 2`, and block `1` the move `5`.  The signs are
+carries the moves `0, 3, 4`, block `2` the moves `1, 2`, and block `1` the move `5`. The signs are
 `-, +, -` on block `3` (leave, enter, leave), `+, -` on block `2` and `+` on block `1`. -/
 
 /-- The flow of the word `w^(1)`, in coordinates. -/
@@ -12356,11 +12439,11 @@ theorem flowPt_word1_eq (z : E6) (s : E6) :
 
 /-! ### Patch 1 `lem:jacobian` for `w^(2)`: block lower triangular, not diagonal
 
-`w^(2) = (1,3,0,3,2,0,2)` has two moves with both endpoints nonzero, the moves `0` and `3`.  Their
+`w^(2) = (1,3,0,3,2,0,2)` has two moves with both endpoints nonzero, the moves `0` and `3`. Their
 parameters are assigned to the block being left: move `0` leaves block `1`, move `3` leaves block
-`3`.  So the block-`3` coordinates depend on the block-`1` parameter `t 0` and the block-`2`
+`3`. So the block-`3` coordinates depend on the block-`1` parameter `t 0` and the block-`2`
 coordinates depend on the block-`3` parameter `t 3`, and in the visiting order `1, 3, 2` the
-derivative is block lower triangular but not block diagonal.  Its diagonal blocks are those of the
+derivative is block lower triangular but not block diagonal. Its diagonal blocks are those of the
 patch, and its determinant in absolute value is the same
 `12 |u-v| |a-b| |a-c| |b-c|`, now with `{a,b,c} = {t 1, t 2, t 3}` and `{u,v} = {t 4, t 5}`. -/
 
@@ -12390,7 +12473,7 @@ def flowMatrix2 (p a b c u v : ℝ) : Matrix (Fin 6) (Fin 6) ℝ :=
      2 * p, -(2 * a), 2 * b, -(2 * c), 0, 0;
      3 * p ^ 2, -(3 * a ^ 2), 3 * b ^ 2, -(3 * c ^ 2), 0, 0]
 
-/-- **The derivative is not block diagonal.**  The block-`3` rows see the block-`1` parameter and
+/-- **The derivative is not block diagonal.** The block-`3` rows see the block-`1` parameter and
 the block-`2` rows see a block-`3` parameter. -/
 theorem flowMatrix2_not_blockDiagonal (p a b c u v : ℝ) :
     flowMatrix2 p a b c u v 3 0 = 1 ∧ flowMatrix2 p a b c u v 1 3 = 1 := ⟨rfl, rfl⟩
@@ -12504,7 +12587,7 @@ theorem curve4_word2_four : curve4 (word2 4) = liftCurve2 := rfl
 theorem curve4_word2_five : curve4 (word2 5) = fun _ => (0 : E6) := rfl
 theorem curve4_word2_six : curve4 (word2 6) = liftCurve2 := rfl
 
-/-- The six displacements of `w^(2)`.  Two of them are moves between nonzero labels. -/
+/-- The six displacements of `w^(2)`. Two of them are moves between nonzero labels. -/
 theorem flowPt_word2 (z : E6) (t : ℕ → ℝ) :
     flowPt word2 z t 6
       = z + liftCurve3 (t 0) - liftCurve1 (t 0) - liftCurve3 (t 1) + liftCurve3 (t 2)
@@ -12543,10 +12626,9 @@ determines the value of the diagonal map at the parameters of `B_i`."
 For `w^(3)` and `w^(1)` the visiting order is irrelevant, the derivative being block diagonal; for
 `w^(2)` it is `1, 3, 2`, and the unwinding really does proceed in that order: the block-`1`
 parameter is read off first, then the block-`3` parameters after subtracting it, then the block-`2`
-parameters after subtracting the block-`3` one.  In each case the degree-three block determines the
+parameters after subtracting the block-`3` one. In each case the degree-three block determines the
 unordered outer pair, so the parameter set splits into the two pieces on which that pair is ordered,
 and the flow is injective on each. -/
-
 theorem flowMap3_coord (t t' : E6) (h : flowMap3 t = flowMap3 t') (k : Fin 6) :
     flowPi3 (WithLp.ofLp t) k = flowPi3 (WithLp.ofLp t') k := by
   have hc := congrArg (fun z : E6 => WithLp.ofLp z k) h
@@ -12737,7 +12819,7 @@ theorem flowMap1_injective_cover {S : Set E6} (hSm : MeasurableSet S)
     · exact flowMap1_injOn fun t ht => ⟨(hS t ht.1).1, (hS t ht.1).2.1, ht.2⟩
     · exact flowMap1_injOn' fun t ht => ⟨(hS t ht.1).1, (hS t ht.1).2.1, ht.2⟩
 
-/-- Injectivity of the flow of `w^(2)`.  The parameters are recovered in the visiting order
+/-- Injectivity of the flow of `w^(2)`. The parameters are recovered in the visiting order
 `1, 3, 2`: the block-`1` parameter first, then the block-`3` ones, then the block-`2` ones. -/
 theorem flowMap2_injOn {S : Set E6}
     (hS : ∀ t ∈ S, t 4 ≠ t 5 ∧ (t 1 - t 2) * (t 2 - t 3) ≠ 0 ∧ t 1 < t 3) :
@@ -12838,7 +12920,7 @@ theorem flowMap2_injective_cover {S : Set E6} (hSm : MeasurableSet S)
 
 The parameters are read off a point of the lift, so `P` is a subset of the lift; it is measurable
 because each fibre condition is the preimage of a measurable set under a continuous map of the
-parameters.  The area bound is the injective change of variables applied to the two pieces of the
+parameters. The area bound is the injective change of variables applied to the two pieces of the
 cover, which is exactly the patch's `|E_{j'}| >= (1/2) int_P |det D Phi|`. -/
 
 /-- The six parameters read off a point of the lift. -/
@@ -12851,9 +12933,9 @@ theorem continuous_curve4 (a : Fin 4) : Continuous (curve4 a) := by
 
 theorem continuous_toSeq_apply (m : ℕ) : Continuous fun s : E6 => toSeq s m := by
   by_cases h : m < 6
-  · simp only [toSeq, dif_pos h]
+  · simp only [toSeq, dite_eq_left h]
     exact continuous_E6_coord _
-  · simp only [toSeq, dif_neg h]
+  · simp only [toSeq, dite_eq_right h]
     exact continuous_const
 
 theorem continuous_flowPt (w : ℕ → Fin 4) (z : E6) :
@@ -12911,7 +12993,7 @@ theorem measurableSet_flowParamSet (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → 
   exact MeasurableSet.iInter fun m => MeasurableSet.iInter fun _ => hpiece m
 
 open MeasureTheory in
-/-- **The area bound with the factor `1/2`.**  A map with a two-piece injective cover has
+/-- **The area bound with the factor `1/2`.** A map with a two-piece injective cover has
 `int_S |det Df| <= 2 |f(S)|`, and the image is contained in the terminal set. -/
 theorem lintegral_abs_det_le_two_mul {f : E6 → E6} {f' : E6 → E6 →L[ℝ] E6} {S T : Set E6}
     (hf' : ∀ x, HasFDerivAt f (f' x) x)
@@ -12942,7 +13024,7 @@ derivatives of `Phi_1, Phi_2, Phi_3`, and `|det D Phi| = 12 |u-v| |a-b| |a-c| |b
 point has at most `2` preimages under `Phi` restricted to `P^circ`, hence at most `12`; and
 `|E_{j'}| >= (1/2) int_P |det D Phi|`."
 
-The four items, for each of the three words.  Item (iii) is block *diagonal* for `w^(3)` and
+The four items, for each of the three words. Item (iii) is block *diagonal* for `w^(3)` and
 `w^(1)` and block lower triangular but not diagonal for `w^(2)`
 (`Auto.flowMatrix2_not_blockDiagonal`), which is the correction the patch makes to the blueprint's
 statement. -/
@@ -13025,7 +13107,7 @@ theorem real_flow_jacobian_word1 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fi
       exact hland s (hSsub hs)
 
 open MeasureTheory in
-/-- **Patch 1 `lem:real-flow-jacobian-fixed`, for the word `w^(2)`.**  Here the derivative is block
+/-- **Patch 1 `lem:real-flow-jacobian-fixed`, for the word `w^(2)`.** Here the derivative is block
 lower triangular but not block diagonal; see `Auto.flowMatrix2_not_blockDiagonal`. -/
 theorem real_flow_jacobian_word2 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGm : ∀ k, MeasurableSet (G k)) (hGim : ∀ k i, MeasurableSet (Gi k i))
@@ -13068,13 +13150,13 @@ theorem real_flow_jacobian_word2 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fi
 
 "Apply `lem:fibre-separation` to `E = I_l` with `a = c_* alpha_{w_{l-1}}` and the `m_l <= 2` points
 `u_{l'} = t_{l'}`: it produces `I'_l subseteq I_l` with `|I'_l| >= (1/2) c_* alpha_{w_{l-1}} N` and
-`|t_l - t_{l'}| >= (1/(4 m_l)) c_* alpha_{w_{l-1}} N >= 2^{-3} c_* alpha_{w_{l-1}} N`.  Hence
+`|t_l - t_{l'}| >= (1/(4 m_l)) c_* alpha_{w_{l-1}} N >= 2^{-3} c_* alpha_{w_{l-1}} N`. Hence
 `int_{I_l} prod |t_l - t_{l'}| >= 2^{-1} (2^{-3})^{m_l} (c_* alpha_{w_{l-1}} N)^{m_l+1}`."
 
 Here `m_l` is the number of earlier parameters of the same block, so at most two. -/
 
 open MeasureTheory in
-/-- **Patch 1 `lem:integrated`, one step.**  Integrating the Vandermonde factors that a new
+/-- **Patch 1 `lem:integrated`, one step.** Integrating the Vandermonde factors that a new
 parameter contributes costs only a power of two, because the separated subset is half the fibre and
 every distance on it is at least an eighth of the fibre's length. -/
 theorem lintegral_prod_dist_ge {N a : ℝ} {E : Set ℝ} (hEm : MeasurableSet E)
@@ -13098,7 +13180,7 @@ theorem lintegral_prod_dist_ge {N a : ℝ} {E : Set ℝ} (hEm : MeasurableSet E)
     have hconst : ENNReal.ofReal (a * N / 8) ^ m
         = ∏ _l : Fin m, ENNReal.ofReal (a * N / 8) := by simp
     rw [hconst]
-    exact Finset.prod_le_prod' fun l _ => ENNReal.ofReal_le_ofReal (hdist v hv l)
+    exact Finset.prod_le_prod fun l _ => ENNReal.ofReal_le_ofReal (hdist v hv l)
   have hstep : ENNReal.ofReal (a * N / 8) ^ m * volume E'
       ≤ ∫⁻ v in E, ∏ l : Fin m, ENNReal.ofReal |v - u l| := by
     calc ENNReal.ofReal (a * N / 8) ^ m * volume E'
@@ -13125,7 +13207,7 @@ first ... At the `l`-th step the integrand contains exactly the `m_l` factors `|
 
 `Auto.lintegral_towerCons_ge` moves one variable with the outer one contributing only its measure.
 That is not enough here: the outer variable of each step carries the Vandermonde factors joining it
-to the earlier parameters of its own block, so it contributes a *weighted* integral.  The lemmas
+to the earlier parameters of its own block, so it contributes a *weighted* integral. The lemmas
 below are that refinement; with the weight `1` they specialize to the existing ones. -/
 
 open MeasureTheory in
@@ -13169,7 +13251,7 @@ theorem lintegral_prod_ge_of_fibres' {α β : Type*} [MeasurableSpace α] [Measu
     _ ≤ ∫⁻ a, ∫⁻ b in Prod.mk a ⁻¹' T, w (a, b) ∂ν ∂μ := setLIntegral_le_lintegral _ _
 
 open MeasureTheory in
-/-- **One move of the parameter tower, with the outer variable weighted.**  This is the step the
+/-- **One move of the parameter tower, with the outer variable weighted.** This is the step the
 patch's successive integration of the Jacobian actually performs. -/
 theorem lintegral_towerCons_ge' {X : Type*} [MeasureSpace X] [SFinite (volume : Measure X)]
     {A : Set ℝ} (hA : MeasurableSet A) {T : ℝ → Set X}
@@ -13193,8 +13275,8 @@ theorem lintegral_towerCons_ge' {X : Type*} [MeasureSpace X] [SFinite (volume : 
 "Multiplying the six steps and using `sum_l (m_l + 1) = 10`."
 
 The weight is a product of six factors, the `l`-th depending on the `l`-th parameter and the
-earlier ones, and each factor is integrated against its own fibre.  Six applications of the step
-below therefore give the product of the six per-step bounds.  No factor has to be finite: a factor
+earlier ones, and each factor is integrated against its own fibre. Six applications of the step
+below therefore give the product of the six per-step bounds. No factor has to be finite: a factor
 is only ever pulled out of an inner integral in the direction `c * int f <= int (c * f)`, which
 holds in `ℝ≥0∞` without hypotheses. -/
 
@@ -13213,7 +13295,7 @@ theorem lintegral_towerCons_ge_mul {X : Type*} [MeasureSpace X] [SFinite (volume
     _ ≤ ∫⁻ x in T a, g a * v a x := lintegral_const_mul_le _ _
 
 open MeasureTheory in
-/-- **Patch 1 `lem:integrated`, the six successive fibre integrations.**  The product of the six
+/-- **Patch 1 `lem:integrated`, the six successive fibre integrations.** The product of the six
 per-step bounds is a lower bound for the integral of the weight over the tower. -/
 theorem lintegral_tower6_ge
     {A1 : Set ℝ} {A2 : ℝ → Set ℝ} {A3 : ℝ → ℝ → Set ℝ} {A4 : ℝ → ℝ → ℝ → Set ℝ}
@@ -13313,7 +13395,7 @@ theorem mCount_le_two_word3 : ∀ l < 6, mCount blk3 l ≤ 2 := by decide
 theorem mCount_le_two_word1 : ∀ l < 6, mCount blk1 l ≤ 2 := by decide
 theorem mCount_le_two_word2 : ∀ l < 6, mCount blk2 l ≤ 2 := by decide
 
-/-- **The exponent `D* = 1 + 3 + 6 = 10`.**  For each word the six exponents `m_l + 1` sum to
+/-- **The exponent `D* = 1 + 3 + 6 = 10`.** For each word the six exponents `m_l + 1` sum to
 ten, which is the `10` of the blueprint's `def:real-lift`. -/
 theorem sum_mCount_word3 : ∑ l ∈ Finset.range 6, (mCount blk3 l + 1) = 10 := by decide
 theorem sum_mCount_word1 : ∑ l ∈ Finset.range 6, (mCount blk1 l + 1) = 10 := by decide
@@ -13338,7 +13420,7 @@ theorem mCount_word1_values :
 "Multiplying the six steps and using `sum_l (m_l + 1) = 10`,
 `int_P |det D Phi| >= 12 * 2^{-54} c_*^{10} N^{10} prod_l alpha_{w_{l-1}}^{m_l+1}
  >= 2^{-54} 2^{-2400} N^{10} prod_i alpha_i^{e_i}`, where `e_i := sum_{l : w_{l-1} = i} (m_l + 1)`
-and `sum_i e_i = 10`.  Since `0 < alpha_i <= 1` and `e_i <= 10` we have
+and `sum_i e_i = 10`. Since `0 < alpha_i <= 1` and `e_i <= 10` we have
 `alpha_i^{e_i} >= alpha_i^{10}`."
 
 Every numerical constant is an explicit power of two, as the patch's scope section promises. -/
@@ -13356,7 +13438,7 @@ theorem six_step_const : (((2 : ℝ) ^ (9 : ℕ))⁻¹) ^ (6 : ℕ) = ((2 : ℝ)
 theorem cstar_pow_ten : ((((2 : ℝ) ^ (240 : ℕ))⁻¹) ^ (10 : ℕ)) = ((2 : ℝ) ^ (2400 : ℕ))⁻¹ := by
   rw [inv_pow, ← pow_mul]
 
-/-- **The constant of the patch's `lem:integrated`.**  The six steps, the tenth power of `c_*` and
+/-- **The constant of the patch's `lem:integrated`.** The six steps, the tenth power of `c_*` and
 the factor `1/2` of the area bound multiply to `2^{-2455}`. -/
 theorem two_pow_const :
     (2 : ℝ)⁻¹ * ((2 : ℝ) ^ (54 : ℕ))⁻¹ * ((((2 : ℝ) ^ (240 : ℕ))⁻¹) ^ (10 : ℕ))
@@ -13365,13 +13447,13 @@ theorem two_pow_const :
   congr 1
   rw [← pow_succ', ← pow_add]
 
-/-- **Patch 1 `lem:integrated`, the exponent trade.**  With each `alpha_i` in `(0,1]` and each
+/-- **Patch 1 `lem:integrated`, the exponent trade.** With each `alpha_i` in `(0,1]` and each
 exponent at most ten, the product `prod_i alpha_i^{e_i}` dominates `(prod_i alpha_i)^{10}`. -/
 theorem prod_alpha_pow_ge {α : Fin 4 → ℝ} (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1)
     {e : Fin 4 → ℕ} (he : ∀ i, e i ≤ 10) :
     (∏ i : Fin 4, α i) ^ (10 : ℕ) ≤ ∏ i : Fin 4, α i ^ e i := by
   rw [← Finset.prod_pow]
-  refine Finset.prod_le_prod (fun i _ => by positivity) fun i _ => ?_
+  refine Finset.prod_le_prod₀ (fun i _ => by positivity) fun i _ => ?_
   exact pow_le_pow_of_le_one (hα0 i) (hα1 i) (he i)
 
 /-- The same, written out for the four labels. -/
@@ -13386,7 +13468,7 @@ theorem prod_alpha_pow_ge' {α : Fin 4 → ℝ} (hα0 : ∀ i, 0 ≤ α i) (hα1
 /-! ### Patch 1 `lem:integrated`: the lift as the six-fold product of the line
 
 The tower of `Auto.towerCons` lives in the right-nested product `ℝ × ℝ × ℝ × ℝ × ℝ × ℝ`, while the
-flow and its Jacobian live on the lift.  Peeling one coordinate at a time, with
+flow and its Jacobian live on the lift. Peeling one coordinate at a time, with
 `Auto.measurePreserving_E6_prod` for the first and `Auto.measurePreserving_piFinSucc` for the rest,
 identifies the two measure-preservingly; the resulting map is the tuple of the six coordinates. -/
 
@@ -13434,7 +13516,7 @@ theorem lintegral_e6ToProd_preimage {S : Set (ℝ × ℝ × ℝ × ℝ × ℝ ×
 /-! ### Patch 1 `lem:integrated`: the fibres depend only on the earlier parameters
 
 `x_l(t_1, ..., t_l)` reads only the first `l` parameters, so the fibre `I_l` of the `l`-th move is a
-function of `t_1, ..., t_{l-1}` alone.  That is what lets the parameter set be written as the nested
+function of `t_1, ..., t_{l-1}` alone. That is what lets the parameter set be written as the nested
 tower the integration lemma expects. -/
 
 /-- The point after `l` moves reads only the first `l` parameters. -/
@@ -13564,7 +13646,7 @@ block `i(l)`, times a quantity independent of `t_l`."
 
 For `w^(3)` the blocks are `B_1 = {0}`, `B_2 = {1,2}`, `B_3 = {3,4,5}` in the zero-based numbering,
 so the moves `2`, `4` and `5` carry respectively one, one and two Vandermonde factors, and the
-moves `0`, `1`, `3` carry none.  The six factors multiply to the Jacobian divided by `12`. -/
+moves `0`, `1`, `3` carry none. The six factors multiply to the Jacobian divided by `12`. -/
 
 /-- The factor carried by the first move of `w^(3)`: none. -/
 noncomputable def jg1 : ℝ → ℝ≥0∞ := fun _ => 1
@@ -13585,7 +13667,7 @@ noncomputable def jg5 : ℝ → ℝ → ℝ → ℝ → ℝ → ℝ≥0∞ := fu
 noncomputable def jg6 : ℝ → ℝ → ℝ → ℝ → ℝ → ℝ → ℝ≥0∞ :=
   fun _ _ _ d e f => ENNReal.ofReal |f - d| * ENNReal.ofReal |f - e|
 
-/-- **The six per-move factors are dominated by the Jacobian of the flow of `w^(3)`.**  They
+/-- **The six per-move factors are dominated by the Jacobian of the flow of `w^(3)`.** They
 multiply to the Jacobian divided by `12`. -/
 theorem jacWeight3_le (s : E6) :
     jg1 (s 0) * (jg2 (s 0) (s 1) * (jg3 (s 0) (s 1) (s 2) * (jg4 (s 0) (s 1) (s 2) (s 3) *
@@ -13609,11 +13691,10 @@ theorem jacWeight3_le (s : E6) :
 
 /-! ### Patch 1 `lem:integrated`: measurability in the tower coordinates
 
-The six fibre conditions, read on a tuple rather than on a point of the lift.  Each is the preimage
+The six fibre conditions, read on a tuple rather than on a point of the lift. Each is the preimage
 of a measurable set under a continuous map, exactly as in `Auto.measurableSet_flowParamSet`, and
 the intermediate towers of the integration are preimages of intersections of these under the
 continuous map that fixes the earlier parameters. -/
-
 theorem continuous_seqOf_apply (m : ℕ) :
     Continuous fun p : ℝ × ℝ × ℝ × ℝ × ℝ × ℝ => seqOf p m := by
   match m with
@@ -13681,8 +13762,7 @@ theorem measurableSet_towCond (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3
 
 The full tower is the intersection of the six fibre conditions, and each intermediate tower of the
 integration is the preimage of an intersection of the later ones under the continuous map that
-fixes the earlier parameters.  Measurability follows from `Auto.measurableSet_towCond`. -/
-
+fixes the earlier parameters. Measurability follows from `Auto.measurableSet_towCond`. -/
 theorem flowTower_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set E6) (r : ℕ)
     (w : ℕ → Fin 4) (z : E6) :
     flowTower N G Gi r w z
@@ -13703,7 +13783,7 @@ theorem flowTower_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set 
   have e5 : flowFibre N G Gi r w z (seqOf p) 5
       = towA6 N G Gi r w z p.1 p.2.1 p.2.2.1 p.2.2.2.1 p.2.2.2.2.1 :=
     flowFibre_congr N G Gi r w z 5 (by intro m hm; interval_cases m <;> rfl)
-  simp only [flowTower, towerCons, towCond, Set.mem_setOf_eq, Set.mem_inter_iff, e0, e1, e2, e3,
+  simp only [flowTower, towerCons, towCond, Set.mem_ofPred_eq, Set.mem_inter_iff, e0, e1, e2, e3,
     e4, e5]
   tauto
 
@@ -13731,7 +13811,7 @@ theorem towerCons5_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set
   have e5 : flowFibre N G Gi r w z (seqOf (a, b, c, d, q.1, q.2)) 5
       = towA6 N G Gi r w z a b c d q.1 :=
     flowFibre_congr N G Gi r w z 5 (by intro m hm; interval_cases m <;> rfl)
-  simp only [towerCons, towCond, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_inter_iff, e4, e5]
+  simp only [towerCons, towCond, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_inter_iff, e4, e5]
   tauto
 
 theorem towerCons4_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set E6) (r : ℕ)
@@ -13750,7 +13830,7 @@ theorem towerCons4_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set
   have e5 : flowFibre N G Gi r w z (seqOf (a, b, c, q.1, q.2.1, q.2.2)) 5
       = towA6 N G Gi r w z a b c q.1 q.2.1 :=
     flowFibre_congr N G Gi r w z 5 (by intro m hm; interval_cases m <;> rfl)
-  simp only [towerCons, towCond, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_inter_iff, e3, e4, e5]
+  simp only [towerCons, towCond, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_inter_iff, e3, e4, e5]
   tauto
 
 theorem towerCons3_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set E6) (r : ℕ)
@@ -13775,7 +13855,7 @@ theorem towerCons3_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set
   have e5 : flowFibre N G Gi r w z (seqOf (a, b, q.1, q.2.1, q.2.2.1, q.2.2.2)) 5
       = towA6 N G Gi r w z a b q.1 q.2.1 q.2.2.1 :=
     flowFibre_congr N G Gi r w z 5 (by intro m hm; interval_cases m <;> rfl)
-  simp only [towerCons, towCond, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_inter_iff, e2, e3, e4,
+  simp only [towerCons, towCond, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_inter_iff, e2, e3, e4,
     e5]
   tauto
 
@@ -13805,7 +13885,7 @@ theorem towerCons2_eq (N : ℝ) (G : ℕ → Set E6) (Gi : ℕ → Fin 3 → Set
   have e5 : flowFibre N G Gi r w z (seqOf (a, q.1, q.2.1, q.2.2.1, q.2.2.2.1, q.2.2.2.2)) 5
       = towA6 N G Gi r w z a q.1 q.2.1 q.2.2.1 q.2.2.2.1 :=
     flowFibre_congr N G Gi r w z 5 (by intro m hm; interval_cases m <;> rfl)
-  simp only [towerCons, towCond, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_inter_iff, e1, e2, e3,
+  simp only [towerCons, towCond, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_inter_iff, e1, e2, e3,
     e4, e5]
   tauto
 
@@ -13887,11 +13967,11 @@ theorem measurableSet_towA (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 �
 /-! ### Patch 1 `lem:integrated` for `w^(3)`: the six steps composed
 
 Each of the six fibre bounds of `Auto.volume_flowFibre_ge` feeds `Auto.lintegral_prod_dist_ge`, and
-`Auto.lintegral_tower6_ge` multiplies the results.  The exponents are the `(m_l + 1)` of
+`Auto.lintegral_tower6_ge` multiplies the results. The exponents are the `(m_l + 1)` of
 `Auto.mCount_word3_values`, namely `1, 1, 2, 1, 2, 3`, summing to `D* = 10`. -/
 
 open MeasureTheory in
-/-- **Patch 1 `lem:integrated` for `w^(3)`.**  The integral of the per-move Vandermonde weight over
+/-- **Patch 1 `lem:integrated` for `w^(3)`.** The integral of the per-move Vandermonde weight over
 the tower is at least the product of the six per-step bounds. -/
 theorem lintegral_jacWeight3_flowTower_ge (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGm : ∀ k, MeasurableSet (G k)) (hGim : ∀ k i, MeasurableSet (Gi k i)) (r : ℕ) (z : E6)
@@ -14053,7 +14133,7 @@ theorem measurableSet_ndSet3 : MeasurableSet ndSet3 := by
 theorem absDet_flowDeriv3_eq_zero {s : E6} (h : s ∉ ndSet3) :
     |LinearMap.det ((flowDeriv3 s : E6 →L[ℝ] E6) : E6 →ₗ[ℝ] E6)| = 0 := by
   rw [abs_det_flowDeriv3]
-  rw [ndSet3, Set.mem_setOf_eq] at h
+  rw [ndSet3, Set.mem_ofPred_eq] at h
   rcases not_and_or.mp h with h1 | h2
   · rw [not_not] at h1
     rw [abs_eq_zero.mpr (sub_eq_zero.mpr h1)]
@@ -14090,7 +14170,7 @@ theorem lintegral_absDet_eq_ndSet3 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → 
   rw [← lintegral_inter_add_sdiff _ _ measurableSet_ndSet3, hzero, add_zero]
 
 open MeasureTheory in
-/-- **Patch 1 `lem:integrated` for `w^(3)`: the terminal set is large.**  This is the patch's
+/-- **Patch 1 `lem:integrated` for `w^(3)`: the terminal set is large.** This is the patch's
 `|E_{j'}| >= (1/2) int_P |det D Phi|`, with the six per-step bounds on the right. -/
 theorem measure_terminal_ge_word3 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGm : ∀ k, MeasurableSet (G k)) (hGim : ∀ k i, MeasurableSet (Gi k i))
@@ -14134,9 +14214,8 @@ theorem measure_terminal_ge_word3 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → F
 
 `w^(1) = (3,0,2,0,3,0,1)` has blocks `B_3 = {0,3,4}`, `B_2 = {1,2}`, `B_1 = {5}` in the zero-based
 numbering, so the moves carrying Vandermonde factors are `2` (one), `3` (one) and `4` (two), and
-`(m_l + 1) = (1,1,2,2,3,1)` as `Auto.mCount_word1_values` computes.  The machinery is the one used
+`(m_l + 1) = (1,1,2,2,3,1)` as `Auto.mCount_word1_values` computes. The machinery is the one used
 for `w^(3)`; only the placement of the factors changes. -/
-
 noncomputable def kg1 : ℝ → ℝ≥0∞ := fun _ => 1
 noncomputable def kg2 : ℝ → ℝ → ℝ≥0∞ := fun _ _ => 1
 noncomputable def kg3 : ℝ → ℝ → ℝ → ℝ≥0∞ := fun _ b c => ENNReal.ofReal |c - b|
@@ -14314,7 +14393,7 @@ theorem measurableSet_ndSet1 : MeasurableSet ndSet1 := by
 theorem absDet_flowDeriv1_eq_zero {s : E6} (h : s ∉ ndSet1) :
     |LinearMap.det ((flowDeriv1 s : E6 →L[ℝ] E6) : E6 →ₗ[ℝ] E6)| = 0 := by
   rw [abs_det_flowDeriv1]
-  rw [ndSet1, Set.mem_setOf_eq] at h
+  rw [ndSet1, Set.mem_ofPred_eq] at h
   rcases not_and_or.mp h with h1 | h2
   · rw [not_not] at h1
     rw [abs_eq_zero.mpr (sub_eq_zero.mpr h1)]
@@ -14393,10 +14472,9 @@ theorem measure_terminal_ge_word1 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → F
 
 `w^(2) = (1,3,0,3,2,0,2)` has blocks `B_1 = {0}`, `B_3 = {1,2,3}`, `B_2 = {4,5}`, so the moves
 carrying Vandermonde factors are `2` (one), `3` (two) and `5` (one), and
-`(m_l + 1) = (1,1,2,3,1,2)` as `Auto.mCount_word2_values` computes.  This is the word whose
+`(m_l + 1) = (1,1,2,3,1,2)` as `Auto.mCount_word2_values` computes. This is the word whose
 derivative is block lower triangular but not block diagonal; the integration does not see the
 difference, since only the diagonal blocks enter the determinant. -/
-
 noncomputable def mg1 : ℝ → ℝ≥0∞ := fun _ => 1
 noncomputable def mg2 : ℝ → ℝ → ℝ≥0∞ := fun _ _ => 1
 noncomputable def mg3 : ℝ → ℝ → ℝ → ℝ≥0∞ := fun _ b c => ENNReal.ofReal |c - b|
@@ -14582,7 +14660,7 @@ theorem measurableSet_ndSet2 : MeasurableSet ndSet2 := by
 theorem absDet_flowDeriv2_eq_zero {s : E6} (h : s ∉ ndSet2) :
     |LinearMap.det ((flowDeriv2 s : E6 →L[ℝ] E6) : E6 →ₗ[ℝ] E6)| = 0 := by
   rw [abs_det_flowDeriv2]
-  rw [ndSet2, Set.mem_setOf_eq] at h
+  rw [ndSet2, Set.mem_ofPred_eq] at h
   rcases not_and_or.mp h with h1 | h2
   · rw [not_not] at h1
     rw [abs_eq_zero.mpr (sub_eq_zero.mpr h1)]
@@ -14618,7 +14696,7 @@ theorem lintegral_absDet2_eq_ndSet2 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ →
   rw [← lintegral_inter_add_sdiff _ _ measurableSet_ndSet2, hzero, add_zero]
 
 open MeasureTheory in
-/-- **Patch 1 `lem:integrated` for `w^(2)`: the terminal set is large.**  With this the patch's
+/-- **Patch 1 `lem:integrated` for `w^(2)`: the terminal set is large.** With this the patch's
 `lem:integrated` holds for all three terminal indices. -/
 theorem measure_terminal_ge_word2 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGm : ∀ k, MeasurableSet (G k)) (hGim : ∀ k i, MeasurableSet (Gi k i))
@@ -14661,18 +14739,17 @@ theorem measure_terminal_ge_word2 (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → F
 /-! ### Blueprint `prop:restricted-improving-vertex`: the symmetric measure bound
 
 "Successive integration of the Jacobian then gives
-`int_P |det D Phi| >= c (alpha_0 alpha_1 alpha_2 alpha_3 N)^10`.  The exponent `10 = 1+3+6` is the
-sum of the numbers of Vandermonde factors plus the fibre-measure factor in the three blocks.  The
+`int_P |det D Phi| >= c (alpha_0 alpha_1 alpha_2 alpha_3 N)^10`. The exponent `10 = 1+3+6` is the
+sum of the numbers of Vandermonde factors plus the fibre-measure factor in the three blocks. The
 area formula and the multiplicity bound therefore imply
 `|E_{j'}| >= c (alpha_0 alpha_1 alpha_2 alpha_3 N)^10`."
 
 The product of the six per-step bounds carries the exponent `e_i` on each density, where `e_i` is
-the total exponent of the moves leaving the label `i`.  The patch's remark lists these: `(5,1,2,2)`
-for `w^(3)` and `(4,1,1,4)` for `w^(2)`; for `w^(1)` they are `(4,0,2,4)`.  Each sums to `10` and
+the total exponent of the moves leaving the label `i`. The patch's remark lists these: `(5,1,2,2)`
+for `w^(3)` and `(4,1,1,4)` for `w^(2)`; for `w^(1)` they are `(4,0,2,4)`. Each sums to `10` and
 none exceeds `10`, so `Auto.prod_alpha_pow_ge'` trades them all for the symmetric `(prod alpha)^10`.
 The constant is the same for the three words: six factors `2⁻¹` and four factors `8⁻¹`, that is
 `2^{-18}`. -/
-
 theorem prod_six_word3_ge (cst N : ℝ) {α : Fin 4 → ℝ}
     (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) :
     ((2 : ℝ) ^ (18 : ℕ))⁻¹ * cst ^ (10 : ℕ) * (α 0 * α 1 * α 2 * α 3 * N) ^ (10 : ℕ)
@@ -14700,9 +14777,8 @@ theorem prod_six_word3_ge (cst N : ℝ) {α : Fin 4 → ℝ}
   exact mul_le_mul_of_nonneg_left hkey hpos
 
 
-/-! The same constant arithmetic for the other two words.  The exponent vectors are `(4,0,2,4)` for
+/-! The same constant arithmetic for the other two words. The exponent vectors are `(4,0,2,4)` for
 `w^(1)` and `(4,1,1,4)` for `w^(2)`, the latter as the patch's remark lists it. -/
-
 theorem prod_six_word1_ge (cst N : ℝ) {α : Fin 4 → ℝ}
     (hα0 : ∀ i, 0 ≤ α i) (hα1 : ∀ i, α i ≤ 1) :
     ((2 : ℝ) ^ (18 : ℕ))⁻¹ * cst ^ (10 : ℕ) * (α 0 * α 1 * α 2 * α 3 * N) ^ (10 : ℕ)
@@ -14762,7 +14838,6 @@ theorem prod_six_word2_ge (cst N : ℝ) {α : Fin 4 → ℝ}
 With the six fibre densities written as `c_* alpha_{w l}`, the product of the per-step bounds is
 `2^{-18} c_*^{10} N^{10} prod_i alpha_i^{e_i}`, and the exponent trade replaces the `e_i` by the
 symmetric tenth power. -/
-
 theorem ofReal_prod_six {x1 x2 x3 x4 x5 x6 : ℝ} (h1 : 0 ≤ x1) (h2 : 0 ≤ x2) (h3 : 0 ≤ x3)
     (h4 : 0 ≤ x4) (h5 : 0 ≤ x5) :
     ENNReal.ofReal (x1 * x2 * x3 * x4 * x5 * x6)
@@ -14874,7 +14949,7 @@ theorem measure_terminal_ge_symmetric_word1 (N cst : ℝ) {G : ℕ → Set E6}
   exact ENNReal.ofReal_le_ofReal (prod_six_word1_ge cst N hα0 hα1)
 
 open MeasureTheory in
-/-- **Blueprint `prop:restricted-improving-vertex`, the image measure bound, for `w^(2)`.**  With
+/-- **Blueprint `prop:restricted-improving-vertex`, the image measure bound, for `w^(2)`.** With
 this the bound holds for all three terminal indices. -/
 theorem measure_terminal_ge_symmetric_word2 (N cst : ℝ) {G : ℕ → Set E6}
     {Gi : ℕ → Fin 3 → Set E6}
@@ -14932,7 +15007,7 @@ theorem measure_terminal_ge_symmetric_word2 (N cst : ℝ) {G : ℕ → Set E6}
 
 The densities are `alpha_i = K / |E_i|`, which is written here without division as
 `alpha_i * |E_i| = K`; then the symmetric bound multiplied by `(|E_0||E_j||E_{j'}||E_k|)^10` reads
-`c N^10 K^40 <= |E_{j'}| (|E_0||E_j||E_{j'}||E_k|)^10`.  The step from `K^40` to `K^60` is the one
+`c N^10 K^40 <= |E_{j'}| (|E_0||E_j||E_{j'}||E_k|)^10`. The step from `K^40` to `K^60` is the one
 the patch's `rem:statement-correction` isolates: the index `j` carrying the exponent `S = 30` enters
 only through `alpha_j <= 1`, that is `K <= |E_j|`. -/
 
@@ -14995,7 +15070,7 @@ pairing is at least `lam` times the measure, so the hypothesis at that set is ex
 bound after cancelling the common power. -/
 
 open MeasureTheory in
-/-- **A restricted weak bound from the dual pairing.**  If the integral of `|F|` over every set of
+/-- **A restricted weak bound from the dual pairing.** If the integral of `|F|` over every set of
 finite measure is at most `C` times the measure to the power `1 - 1/q`, then the weak `L^q`
 quasi-norm of `F` is at most `C`. -/
 theorem wnorm_le_of_setLIntegral {q : ℝ} (hq : 0 < q) {F : E3 → ℂ}
@@ -15037,9 +15112,8 @@ theorem wnorm_le_of_setLIntegral {q : ℝ} (hq : 0 < q) {F : E3 → ℂ}
 
 `Auto.flowPt_mem` establishes the invariant of the tower from the memberships at every level, but
 the succ step uses only the membership at the previous level: the landing property of
-`Auto.transSet` is unconditional, so one move suffices.  Isolating that gives the six fibre bounds
+`Auto.transSet` is unconditional, so one move suffices. Isolating that gives the six fibre bounds
 in exactly the restricted form the integration lemmas ask for. -/
-
 theorem flowPt_mem_succ (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6} {r : ℕ}
     {w : ℕ → Fin 4} (hw : IsItinerary w) {z : E6} {t : ℕ → ℝ} {n : ℕ} (hn : n < 6)
     (ht : t n ∈ flowFibre N G Gi r w z t n) :
@@ -15051,7 +15125,7 @@ theorem flowPt_mem_succ (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → S
   exact hmem
 
 open MeasureTheory in
-/-- **The six fibre bounds of the tower, in the restricted form.**  Each holds at every point of
+/-- **The six fibre bounds of the tower, in the restricted form.** Each holds at every point of
 the preceding fibres. -/
 theorem towA_fibre_bounds (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 → Set E6}
     (hGm : ∀ k, MeasurableSet (G k)) (hGim : ∀ k i, MeasurableSet (Gi k i))
@@ -15118,7 +15192,6 @@ theorem towA_fibre_bounds (N : ℝ) {G : ℕ → Set E6} {Gi : ℕ → Fin 3 →
 Taking the four density constants of the tower to be `ofReal (c_* alpha_i N)` turns the six fibre
 bounds of `Auto.towA_fibre_bounds` into exactly the hypotheses of the symmetric measure bound, so
 the latter follows from the refinement tower with no further input. -/
-
 theorem dens4_ofReal (cst N : ℝ) (α : Fin 4 → ℝ) (a : Fin 4) :
     dens4 (ENNReal.ofReal (cst * α 0 * N)) (fun i => ENNReal.ofReal (cst * α i.succ * N)) a
       = ENNReal.ofReal (cst * α a * N) := by
@@ -15194,7 +15267,7 @@ theorem measure_terminal_ge_of_tower_word1 (N cst : ℝ) {G : ℕ → Set E6}
     hα0 hα1 hcN b1 b2 b3 b4 b5 b6
 
 open MeasureTheory in
-/-- **The image measure bound for `w^(2)`, from the refinement tower.**  With this the bound holds
+/-- **The image measure bound for `w^(2)`, from the refinement tower.** With this the bound holds
 for all three terminal indices, from the refinement tower alone. -/
 theorem measure_terminal_ge_of_tower_word2 (N cst : ℝ) {G : ℕ → Set E6}
     {Gi : ℕ → Fin 3 → Set E6}
@@ -15239,7 +15312,7 @@ Under the coordinate split the lifted set is a rectangle: the used coordinates c
 set and the unused ones the cutoff box, so its measure is the product. -/
 
 open MeasureTheory in
-/-- **The measure of a lifted set.**  Lifting multiplies the measure by that of the cutoff box,
+/-- **The measure of a lifted set.** Lifting multiplies the measure by that of the cutoff box,
 `8 N^4`. -/
 theorem volume_lifted_set {N : ℝ} (hN : 0 ≤ N) {A : Set E3} (hA : MeasurableSet A) :
     volume (proj6 ⁻¹' A ∩ boxSet N) = volume A * ENNReal.ofReal (8 * N ^ 4) := by
@@ -15261,7 +15334,7 @@ theorem volume_lifted_set {N : ℝ} (hN : 0 ≤ N) {A : Set E3} (hA : Measurable
 /-! ### Blueprint `prop:restricted-improving-vertex`: a lifted set inside the inner box
 
 The inner box is the half of the cutoff box on which every translation of the average stays inside
-the cutoff box, so it is where the lifted average equals the original one.  In the unused
+the cutoff box, so it is where the lifted average equals the original one. In the unused
 coordinates it is the product of the lower halves, of measure `N^4`. -/
 
 /-- The inner box, seen in the unused coordinate space. -/
@@ -15315,7 +15388,7 @@ theorem volume_lifted_inner {N : ℝ} (hN : 0 ≤ N) {A : Set E3} (hA : Measurab
 /-! ### Blueprint `prop:restricted-improving-vertex`: integrating a lifted function
 
 A function of the used coordinates only, integrated over a lifted set, separates: the used
-coordinates give the original integral and the unused ones give the measure of their box.  This is
+coordinates give the original integral and the unused ones give the measure of their box. This is
 the Fubini step behind the blueprint's "the product of their measures is comparable to `N^{D'}`". -/
 
 open MeasureTheory in
@@ -15367,7 +15440,7 @@ theorem lintegral_lifted_inner {N : ℝ} {S : Set E3} (hS : MeasurableSet S)
 
 On the inner box every translation of the average stays inside the cutoff box, so the indicator of
 a lifted set, evaluated at a translated point, is the indicator of the original set at the
-translated projection.  The incidence integral of the lifted configuration is therefore the
+translated projection. The incidence integral of the lifted configuration is therefore the
 incidence integral on `R^3` times the measure of the inner box in the unused coordinates. -/
 
 open MeasureTheory in
@@ -15405,7 +15478,7 @@ theorem indicator_lifted_shift {N : ℝ} (hN : 0 ≤ N) {F : Set E3} {x : E6}
     exact hmem (by rw [← hproj]; exact hc.1)
 
 open MeasureTheory in
-/-- **The incidence integral of lifted data.**  It is the incidence integral on `R^3` times the
+/-- **The incidence integral of lifted data.** It is the incidence integral on `R^3` times the
 measure of the inner box in the unused coordinates. -/
 theorem incid_lifted {N : ℝ} (hN : 0 ≤ N) {S : Set E3} (hS : MeasurableSet S)
     {F : Fin 3 → Set E3} (hF : ∀ i, MeasurableSet (F i)) :
@@ -15451,7 +15524,7 @@ theorem incid_lifted {N : ℝ} (hN : 0 ≤ N) {S : Set E3} (hS : MeasurableSet S
 /-! ### Blueprint `prop:restricted-improving-vertex`: the average as a fibre integral
 
 The modulus of the average of indicators is `N⁻¹` times the measure of the set of parameters for
-which all three translates land in their sets.  Integrating over a test set and exchanging gives
+which all three translates land in their sets. Integrating over a test set and exchanging gives
 the incidence integral on `R^3`, which the descent identity ties to the one on the lift. -/
 
 open MeasureTheory in
@@ -15512,7 +15585,7 @@ theorem lintegral_enorm_A_eq {N : ℝ} (hN : 0 < N) {S : Set E3}
 Everything upstream is now available: the refinement tower produces a configuration in which every
 set carries the density bound of its own stage, the flow of the itinerary `w^(3)` sends the
 resulting parameter tower into the terminal set, and the area formula turns the integrated Jacobian
-into the measure of that terminal set.  Feeding this into `K_pow_sixty_le_of_symmetric` gives the
+into the measure of that terminal set. Feeding this into `K_pow_sixty_le_of_symmetric` gives the
 symmetric restricted inequality for the four sets of the lift. -/
 
 /-- A product over the three indices, taken in any order. -/
@@ -15521,9 +15594,9 @@ theorem prod_three_perm {j j' k : Fin 3} (hjj' : j ≠ j') (hjk : j ≠ k) (hj'k
   fin_cases j <;> fin_cases j' <;> fin_cases k <;> simp_all <;> ring
 
 open MeasureTheory in
-/-- **Blueprint `prop:restricted-improving-vertex`, the symmetric inequality on the lift.**  The
+/-- **Blueprint `prop:restricted-improving-vertex`, the symmetric inequality on the lift.** The
 terminal index `m` is the one supplied by the itinerary `wrd`, whose conclusion enters as the
-hypothesis `hword`.  Here `K` is any lower bound for the normalized incidence integral divided by
+hypothesis `hword`. Here `K` is any lower bound for the normalized incidence integral divided by
 `16^r`. -/
 theorem K_pow_sixty_incid_of_word {N : ℝ} (hN : 0 < N) {E₀ : Set E6} {E : Fin 3 → Set E6}
     (hE₀m : MeasurableSet E₀) (hEm : ∀ i, MeasurableSet (E i))
@@ -15723,7 +15796,7 @@ theorem K_pow_sixty_incid_word2 {N : ℝ} (hN : 0 < N) {E₀ : Set E6} {E : Fin 
       measure_terminal_ge_of_tower_word2 N 1 hGm hGim hGdec hGidec hr hα0 hα1 hcN hfwd hadj hz)
 
 open MeasureTheory in
-/-- **The symmetric inequality on the lift, for every terminal index.**  The three itineraries of
+/-- **The symmetric inequality on the lift, for every terminal index.** The three itineraries of
 patch 1 cover the three choices of `j'` in the blueprint's proposition. -/
 theorem K_pow_sixty_incid {N : ℝ} (hN : 0 < N) {E₀ : Set E6} {E : Fin 3 → Set E6}
     (hE₀m : MeasurableSet E₀) (hEm : ∀ i, MeasurableSet (E i))
@@ -15782,7 +15855,7 @@ theorem enorm_A_indicators_le_one {N : ℝ} (hN : 0 < N) {F : Fin 3 → Set E3}
     calc (∫⁻ t in Set.Ioc (0 : ℝ) N,
           ∏ i, Set.indicator (F i) (fun _ => (1 : ℝ≥0∞)) (y + curve i t))
         ≤ ∫⁻ _ in Set.Ioc (0 : ℝ) N, (1 : ℝ≥0∞) :=
-          lintegral_mono fun t => Finset.prod_le_one' fun i _ => indicator_one_le_one3 (F i) _
+          lintegral_mono fun t => Finset.prod_le_one fun i _ => indicator_one_le_one3 (F i) _
       _ = ENNReal.ofReal N := by
           rw [setLIntegral_one, Real.volume_Ioc, sub_zero]
   rw [enorm_A_indicators hN hF]
@@ -15806,9 +15879,8 @@ theorem lintegral_enorm_A_ne_top {N : ℝ} (hN : 0 < N) {S : Set E3} (hSt : volu
 /-! ### Blueprint `prop:restricted-improving-vertex`: the descent inequality
 
 Lifting the test set and the three input sets, applying the symmetric inequality on the lift, and
-undoing the measures of the boxes gives the sixtieth power of the pairing on `R^3`.  The powers of
+undoing the measures of the boxes gives the sixtieth power of the pairing on `R^3`. The powers of
 `N` are `250` on the left and `244` on the right, leaving the promised `N^6`. -/
-
 theorem enn_le_of_mul_le_mul {c x y : ℝ≥0∞} (hc0 : c ≠ 0) (hct : c ≠ ⊤) (h : c * x ≤ c * y) :
     x ≤ y := by
   have h3 := mul_le_mul' (le_refl c⁻¹) h
@@ -15821,7 +15893,7 @@ theorem enn_le_mul_of_inv_mul_le {c x y : ℝ≥0∞} (hc0 : c ≠ 0) (hct : c �
 
 set_option exponentiation.threshold 400 in
 open MeasureTheory in
-/-- **Blueprint `prop:restricted-improving-vertex`, the descent inequality.**  The sixtieth power
+/-- **Blueprint `prop:restricted-improving-vertex`, the descent inequality.** The sixtieth power
 of the pairing of the average with a test set, against the measures of the four sets. -/
 theorem lintegral_enorm_A_pow_sixty_le {N : ℝ} (hN : 0 < N) {S : Set E3} (hS : MeasurableSet S)
     (hS0 : volume S ≠ 0) (hSt : volume S ≠ ⊤)
@@ -15929,7 +16001,7 @@ theorem lintegral_enorm_A_pow_sixty_le {N : ℝ} (hN : 0 < N) {S : Set E3} (hS :
 
 The average of indicators is measurable and its integral over the whole space is at most the
 measure of any one of the three sets, so all its level sets at a positive height have finite
-measure.  This is what the restricted weak estimate needs in order to be tested on level sets. -/
+measure. This is what the restricted weak estimate needs in order to be tested on level sets. -/
 
 open MeasureTheory in
 theorem measurable_prod_indicator_shift {F : Fin 3 → Set E3} (hF : ∀ i, MeasurableSet (F i)) :
@@ -15951,7 +16023,7 @@ theorem measurable_enorm_A_indicators {N : ℝ} (hN : 0 < N) {F : Fin 3 → Set 
   exact measurable_const.mul ((measurable_prod_indicator_shift hF).lintegral_prod_right')
 
 open MeasureTheory in
-/-- **The `L^1` bound.**  The average of indicators integrates to at most the measure of any one
+/-- **The `L^1` bound.** The average of indicators integrates to at most the measure of any one
 of the three sets. -/
 theorem lintegral_enorm_A_le_volume {N : ℝ} (hN : 0 < N) {F : Fin 3 → Set E3}
     (hF : ∀ i, MeasurableSet (F i)) (i : Fin 3) :
@@ -15970,7 +16042,7 @@ theorem lintegral_enorm_A_le_volume {N : ℝ} (hN : 0 < N) {F : Fin 3 → Set E3
                   Set.indicator (F i') (fun _ => (1 : ℝ≥0∞)) (x + curve i' t)
               ≤ Set.indicator (F i) (fun _ => (1 : ℝ≥0∞)) (x + curve i t) * 1 :=
                 mul_le_mul' le_rfl
-                  (Finset.prod_le_one' fun i' _ => indicator_one_le_one3 (F i') _)
+                  (Finset.prod_le_one fun i' _ => indicator_one_le_one3 (F i') _)
             _ = Set.indicator (F i) (fun _ => (1 : ℝ≥0∞)) (x + curve i t) := mul_one _
       _ = volume (F i) := by
           rw [lintegral_add_right_eq_self
@@ -16040,7 +16112,7 @@ theorem prod_improvingExp {m j k : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m) (hjk :
 
 set_option exponentiation.threshold 400 in
 open MeasureTheory in
-/-- **Blueprint `prop:restricted-improving-vertex`.**  The restricted weak estimate
+/-- **Blueprint `prop:restricted-improving-vertex`.** The restricted weak estimate
 `L^{2,1} x L^{60/11,1} x L^{6,1} -> L^{6/5,infinity}` for the average `A_N`, with constant
 `C N^{-1/10}`. -/
 theorem restrictedWeak_A_improving {N : ℝ} (hN : 0 < N) {m j k : Fin 3}
@@ -16111,10 +16183,9 @@ theorem restrictedWeak_A_improving {N : ℝ} (hN : 0 < N) {m j k : Fin 3}
 /-! ### Blueprint `thm:strong-real-improving`: the vertices available for the interpolation
 
 The finite Marcinkiewicz lemma consumes restricted strong estimates at the eight cone vectors
-around the target.  Those are produced from the vertex estimates by convex combination, so the
+around the target. Those are produced from the vertex estimates by convex combination, so the
 first thing needed is the whole simplex of `L^1` vertices, and the monotonicity of a restricted
 estimate in its constant. -/
-
 theorem RestrictedStrong.mono_const {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {r : Fin 3 → ℝ} {q : ℝ}
     {C C' : ℝ≥0∞} (h : RestrictedStrong T r q C) (hC : C ≤ C') :
     RestrictedStrong T r q C' :=
@@ -16126,7 +16197,7 @@ theorem RestrictedWeak.mono_const {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {r
   fun E hE hE0 hEtop => le_trans (h E hE hE0 hEtop) (mul_le_mul' hC le_rfl)
 
 open MeasureTheory in
-/-- **The restricted strong `L^1` estimate at every point of the simplex.**  The three trivial
+/-- **The restricted strong `L^1` estimate at every point of the simplex.** The three trivial
 vertices `L^1 x L^infinity x L^infinity -> L^1` convex-combine to any nonnegative weight vector of
 total mass one, with constant `1`. -/
 theorem restrictedStrong_A_simplex {N : ℝ} (hN : 0 < N) {w : Fin 3 → ℝ}
@@ -16171,10 +16242,9 @@ theorem restrictedStrong_A_simplex {N : ℝ} (hN : 0 < N) {w : Fin 3 → ℝ}
 
 /-! ### Blueprint `thm:strong-real-improving`: the average is admissible
 
-The interpolation lemma is stated for an abstract operator satisfying `Auto.Admissible`.  The
+The interpolation lemma is stated for an abstract operator satisfying `Auto.Admissible`. The
 average `A_N` satisfies it: trilinearity on bounded measurable slots, monotonicity, the null slot,
 measurability, monotone limits, and the domination of a complex input by its modulus. -/
-
 theorem prodShift_update (g : Fin 3 → E3 → ℂ) (i : Fin 3) (h : E3 → ℂ) (x : E3) (t : ℝ) :
     prodShift (Function.update g i h) x t
       = h (x + curve i t) * ∏ l ∈ Finset.univ.erase i, g l (x + curve l t) := by
@@ -16205,7 +16275,7 @@ theorem intervalIntegrable_slot {g : Fin 3 → E3 → ℂ} (hg : ∀ l, BddMeasC
     intro t
     rw [norm_mul, norm_prod]
     refine mul_le_mul (hCu _)
-      (Finset.prod_le_prod (fun l _ => norm_nonneg _) fun l _ => hCg l _)
+      (Finset.prod_le_prod₀ (fun l _ => norm_nonneg _) fun l _ => hCg l _)
       (Finset.prod_nonneg fun l _ => norm_nonneg _)
       (le_trans (norm_nonneg _) (hCu (x + curve i 0)))
   rw [intervalIntegrable_iff]
@@ -16286,7 +16356,7 @@ theorem measInd_A {N : ℝ} (hN : 0 ≤ N) (E : Fin 3 → Set E3) (hE : ∀ i, M
   exact (measFun_A hN _ fun i => measurable_const.indicator (hE i)).aestronglyMeasurable
 
 open MeasureTheory in
-/-- **A null slot kills the average.**  The fibre of a null set over almost every point is null,
+/-- **A null slot kills the average.** The fibre of a null set over almost every point is null,
 so the product of indicators vanishes almost everywhere on the parameter interval. -/
 theorem null3_A {N : ℝ} (hN : 0 ≤ N) : Null3 (A N) := by
   intro E hE
@@ -16326,7 +16396,7 @@ theorem null3_A {N : ℝ} (hN : 0 ≤ N) : Null3 (A N) := by
   rw [Pi.zero_apply, A, hI, mul_zero]
 
 open MeasureTheory in
-/-- **Monotone limits.**  Where the limiting integrand is integrable this is dominated
+/-- **Monotone limits.** Where the limiting integrand is integrable this is dominated
 convergence; where it is not, the average of the limit vanishes by the convention on
 non-integrable Bochner integrals, which is the second alternative of `Auto.Lim3`. -/
 theorem lim3_A {N : ℝ} (hN : 0 ≤ N) : Lim3 (A N) := by
@@ -16349,7 +16419,7 @@ theorem lim3_A {N : ℝ} (hN : 0 ≤ N) : Lim3 (A N) := by
       intro k
       refine Filter.Eventually.of_forall fun t => ?_
       rw [Real.norm_eq_abs, abs_of_nonneg (prodShiftR_nonneg (huun k) x t)]
-      exact Finset.prod_le_prod (fun l _ => huun k l _) fun l _ => hle k l _
+      exact Finset.prod_le_prod₀ (fun l _ => huun k l _) fun l _ => hle k l _
     have hlim : ∀ᵐ t ∂(volume.restrict (Set.Ioc (0 : ℝ) N)),
         Filter.Tendsto (fun k => prodShiftR (uu k) x t) Filter.atTop
           (nhds (prodShiftR v x t)) := by
@@ -16363,7 +16433,7 @@ theorem lim3_A {N : ℝ} (hN : 0 ≤ N) : Lim3 (A N) := by
     simp
 
 open MeasureTheory in
-/-- **The average is admissible.**  This discharges the hypothesis of
+/-- **The average is admissible.** This discharges the hypothesis of
 `Auto.finite_marcinkiewicz` for `A_N`. -/
 theorem admissible_A {N : ℝ} (hN : 0 ≤ N) : Admissible (A N) where
   lin := trilin_A N
@@ -16372,15 +16442,15 @@ theorem admissible_A {N : ℝ} (hN : 0 ≤ N) : Admissible (A N) where
   measInd := measInd_A hN
   measFun := fun u hum _ => measFun_A hN u hum
   limit := lim3_A hN
+  measComplex := fun _ hf => measurable_A hN hf
   modC := fun f _ x => modC_A hN f x
 
 
 /-! ### Blueprint `thm:strong-real-improving`: one chain at `N = 1`
 
 The interpolation is run at `N = 1`, where every constant is absolute; the factor `N^{-1/20}` is
-recovered afterwards by the anisotropic dilation.  Each cone vector is written as a chain: a weight
+recovered afterwards by the anisotropic dilation. Each cone vector is written as a chain: a weight
 vector of the `L^1` simplex, the improving vertex, and the `L^infinity` vertex. -/
-
 theorem improvingVertex_base_ne_top :
     ((2 : ℝ≥0∞) ^ (19 : ℕ) * 8 ^ (51 : ℕ) * 16 ^ (360 : ℕ)) ≠ ⊤ :=
   ENNReal.mul_ne_top (ENNReal.mul_ne_top (ENNReal.pow_ne_top (by norm_num))
@@ -16423,7 +16493,7 @@ theorem chainConst_ne_top {θ qm : ℝ} (hθ0 : 0 ≤ θ) (hqm0 : 1 < qm) :
   exact ENNReal.mul_ne_top (by simp) (ENNReal.rpow_ne_top_of_nonneg hθ0 improvingConst_ne_top)
 
 open MeasureTheory in
-/-- **One chain at `N = 1`.**  A weight vector of the `L^1` simplex, the improving vertex with
+/-- **One chain at `N = 1`.** A weight vector of the `L^1` simplex, the improving vertex with
 weight `theta`, and the `L^infinity` vertex with the remaining weight. -/
 theorem restrictedStrong_A_chain {θ qm : ℝ} (hqm0 : 1 < qm) (hqm1 : qm < 6 / 5)
     (hθqm : 1 / qm = (1 - θ) / 1 + θ / (6 / 5))
@@ -16433,7 +16503,7 @@ theorem restrictedStrong_A_chain {θ qm : ℝ} (hqm0 : 1 < qm) (hqm1 : qm < 6 / 
         + ((6 : ℝ) / 5 - qm) / (6 / 5) * trivialVertexInf i) (6 / 5) (chainConst θ qm) := by
   have hmeas := measInd_A (N := 1) zero_le_one
   have h₀ : RestrictedWeak (A 1) w 1 1 :=
-    restrictedWeak_of_restrictedStrong hmeas one_pos (restrictedStrong_A_simplex one_pos hw hsum)
+    restrictedWeak_of_restrictedStrong  one_pos (restrictedStrong_A_simplex one_pos hw hsum)
   have h₁ : RestrictedWeak (A 1) improvingVertex (6 / 5) improvingConst := by
     have h := restrictedWeak_A_improving (N := 1) one_pos (m := 1) (j := 0) (k := 2)
       (by decide) (by decide) (by decide)
@@ -16447,7 +16517,7 @@ theorem restrictedStrong_A_chain {θ qm : ℝ} (hqm0 : 1 < qm) (hqm1 : qm < 6 / 
 
 /-! ### Blueprint `thm:strong-real-improving`: the eight cone vectors at `N = 1`
 
-The half-width is `1/400`.  The coordinate sum of a cone vector determines the weight the improving
+The half-width is `1/400`. The coordinate sum of a cone vector determines the weight the improving
 vertex must carry, hence `theta` and `q_m`; the remaining weight is distributed over the three
 `L^1` vertices, and the weight vector stays in the simplex because `1/400` is small. -/
 
@@ -16544,29 +16614,15 @@ theorem exists_restrictedStrong_A_cone :
 /-! ### Blueprint `thm:strong-real-improving`: the scaling transfer from `N = 1`
 
 The anisotropic dilation carries the estimate at `N = 1` to every `N`, and the mismatch between the
-output exponent and the input exponents appears as a power of `N`.  For the target vertex it is
+output exponent and the input exponents appears as a power of `N`. For the target vertex it is
 `6/q - sum 6/p_i = 5 - 101/20 = -1/20`. -/
 
 open MeasureTheory in
-theorem measurable_S {ρ : ℝ} {f : E3 → ℂ} (hf : Measurable f) : Measurable (S ρ f) :=
+@[fun_prop] theorem measurable_S {ρ : ℝ} {f : E3 → ℂ} (hf : Measurable f) : Measurable (S ρ f) :=
   hf.comp (continuous_D ρ⁻¹).measurable
 
 open MeasureTheory in
-/-- The average of measurable data is measurable. -/
-theorem measurable_A {N : ℝ} (hN : 0 ≤ N) {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) :
-    Measurable (A N f) := by
-  have hm : Measurable fun p : E3 × ℝ => prodShift f p.1 p.2 := by
-    simp only [prodShift]
-    exact Finset.measurable_prod _ fun i _ =>
-      (hf i).comp (measurable_fst.add ((continuous_curve i).measurable.comp measurable_snd))
-  have heq : A N f = fun x => (N : ℂ)⁻¹ * ∫ t in Set.Ioc (0 : ℝ) N, prodShift f x t := by
-    funext x
-    rw [A, intervalIntegral.integral_of_le hN]
-  rw [heq]
-  exact measurable_const.mul hm.stronglyMeasurable.integral_prod_right'.measurable
-
-open MeasureTheory in
-/-- **The scaling transfer.**  An estimate for `A_1` with an arbitrary exponent vector gives the
+/-- **The scaling transfer.** An estimate for `A_1` with an arbitrary exponent vector gives the
 estimate for `A_N` with the factor `N^{6/q - sum 6/p_i}`. -/
 theorem eLpNorm_A_of_scale_one {q : ℝ} (hq : 0 < q) {pv : Fin 3 → ℝ} (hpv : ∀ i, 0 < pv i)
     {C : ℝ≥0∞}
@@ -16626,10 +16682,9 @@ theorem strong_real_improving_scale_factor {N : ℝ} (hN : 0 < N) :
 
 /-! ### Blueprint `thm:strong-real-improving`: from normalized to arbitrary inputs
 
-`Auto.finite_marcinkiewicz` bounds the output for inputs of norm at most one.  Scaling each slot by
+`Auto.finite_marcinkiewicz` bounds the output for inputs of norm at most one. Scaling each slot by
 a constant scales the output by the product of the constants, so the general estimate follows, with
 the degenerate cases handled by the vanishing of the average when a slot vanishes. -/
-
 theorem A_smul_slots (N : ℝ) (c : Fin 3 → ℂ) (f : Fin 3 → E3 → ℂ) (x : E3) :
     A N (fun i y => c i * f i y) x = (∏ i, c i) * A N f x := by
   have h : ∀ t : ℝ, prodShift (fun i y => c i * f i y) x t = (∏ i, c i) * prodShift f x t := by
@@ -16641,14 +16696,14 @@ theorem A_smul_slots (N : ℝ) (c : Fin 3 → ℂ) (f : Fin 3 → E3 → ℂ) (x
   ring
 
 open MeasureTheory in
-/-- **A slot that vanishes almost everywhere kills the average.**  The complex form of
+/-- **A slot that vanishes almost everywhere kills the average.** The complex form of
 `Auto.null3_A`. -/
 theorem A_ae_zero_of_slot_ae_zero {N : ℝ} (hN : 0 ≤ N) {f : Fin 3 → E3 → ℂ} {i : Fin 3}
     (hfm : ∀ l, Measurable (f l)) (hi : f i =ᵐ[volume] 0) : A N f =ᵐ[volume] 0 := by
   have hZm : MeasurableSet {y : E3 | f i y ≠ 0} := by
     have h : MeasurableSet {y : E3 | f i y = 0} := (hfm i) (measurableSet_singleton (0 : ℂ))
     have h2 := h.compl
-    rwa [Set.compl_setOf] at h2
+    rwa [Set.compl_ofPred] at h2
   have hZ0 : volume {y : E3 | f i y ≠ 0} = 0 := by
     have h := hi
     rw [Filter.EventuallyEq, ae_iff] at h
@@ -16700,7 +16755,7 @@ theorem eLpNorm_A_one_le {C : ℝ≥0∞} (hC0 : C ≠ 0) {q : ℝ} {p : Fin 3 �
   by_cases hzero : ∃ i, eLpNorm (f i) (ENNReal.ofReal (p i)) volume = 0
   · obtain ⟨i, hi⟩ := hzero
     have hfi : f i =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (hf i).aestronglyMeasurable (hpne i)).mp hi
+      (eLpNorm_eq_zero_iff (hpne i)).mp hi
     rw [eLpNorm_congr_ae (A_ae_zero_of_slot_ae_zero zero_le_one hf hfi)]
     simp
   push Not at hzero
@@ -16773,7 +16828,6 @@ theorem eLpNorm_A_one_le {C : ℝ≥0∞} (hC0 : C ≠ 0) {q : ℝ} {p : Fin 3 �
 
 Everything is in place: the eight cone vectors at `N = 1`, the finite Marcinkiewicz lemma, the
 normalization, and the anisotropic dilation. -/
-
 theorem one_sub_ofReal_rpow_inv_ne_top {c : ℝ} (hc : 0 < c) :
     ((1 : ℝ≥0∞) - ENNReal.ofReal ((2 : ℝ) ^ (-c)))⁻¹ ≠ ⊤ := by
   have h1 : ENNReal.ofReal ((2 : ℝ) ^ (-c)) < 1 := by
@@ -16782,7 +16836,7 @@ theorem one_sub_ofReal_rpow_inv_ne_top {c : ℝ} (hc : 0 < c) :
   exact ENNReal.inv_ne_top.mpr (tsub_pos_of_lt h1).ne'
 
 open MeasureTheory in
-/-- **Blueprint `thm:strong-real-improving`.**  The strong estimate
+/-- **Blueprint `thm:strong-real-improving`.** The strong estimate
 `L^2 x L^{40/7} x L^6 -> L^{6/5}` for `A_N`, with constant `C N^{-1/20}`. -/
 theorem strong_real_improving :
     ∃ C : ℝ≥0∞, C ≠ ⊤ ∧ ∀ N : ℝ, 0 < N → ∀ f : Fin 3 → E3 → ℂ, (∀ i, Measurable (f i)) →
@@ -16840,11 +16894,12 @@ theorem strong_real_improving :
 
 /-! ## Patch 2: the subunit endpoint for the monomial system
 
-`blueprints/task_2_patch_2.tex` replaces the blocked stopping-time proof of `lem:adjoint-gain-to-subunit`
+`blueprints/task_2_patch_2.tex` replaces the blocked stopping-time proof of
+  `lem:adjoint-gain-to-subunit`
 by a direct argument for the actual monomial average, and shows that the abstract implication the
 blueprint asserts is false; see `automation/ErrorReport.md`.
 
-This section develops the replacement.  Throughout, the parameter interval is `I = (1/2, 1]`, the
+This section develops the replacement. Throughout, the parameter interval is `I = (1/2, 1]`, the
 operator is the upper-half average at scale one, and everything is written in `ℝ≥0∞` so that no
 integrability hypothesis is needed. -/
 
@@ -17007,7 +17062,6 @@ theorem uhInc_refine_le {F : Fin 3 → Set E3} (hF : ∀ i, MeasurableSet (F i))
 The thresholds are `alpha_1/2`, `alpha_d/4` and `alpha_1/8`, and each application of (D2) loses at
 most the threshold times the measure of the set being refined, that is `K/2`, `K/4` and `K/8`.
 Halves are written as iterated division by two so that `ENNReal.add_halves` applies directly. -/
-
 theorem enn_div_mul (a m k : ℝ≥0∞) : a / k * m = a * m / k := by
   rw [div_eq_mul_inv, div_eq_mul_inv]
   ring
@@ -17092,7 +17146,7 @@ theorem uhF3_zero (E : Fin 3 → Set E3) (d : Fin 3) :
     uhF3 E d 0 = uhRefine (uhF2 E d) 0 (uhAlpha E 0 / 2 / 2 / 2) := Function.update_self _ _ _
 
 open MeasureTheory in
-/-- **Patch 2 (D3).**  The three updates lose at most half of the incidence integral in total. -/
+/-- **Patch 2 (D3).** The three updates lose at most half of the incidence integral in total. -/
 theorem uhInc_uhF3_ge {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i))
     (h0 : ∀ i, volume (E i) ≠ 0) (ht : ∀ i, volume (E i) ≠ ⊤) (hKt : uhInc E ≠ ⊤)
     {d : Fin 3} (hd : d ≠ 0) :
@@ -17168,7 +17222,6 @@ theorem uhF3_zero_nonempty {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E 
 
 The fibre function is twice the measure of the set of parameters for which the two remaining
 translates land in their sets, so each threshold is a lower bound for that measure. -/
-
 theorem enn_le_half_of_two_mul_le {c X : ℝ≥0∞} (h : c ≤ 2 * X) : c / 2 ≤ X := by
   rw [div_eq_mul_inv, mul_comm]
   calc (2 : ℝ≥0∞)⁻¹ * c ≤ 2⁻¹ * (2 * X) := mul_le_mul' le_rfl h
@@ -17186,7 +17239,7 @@ theorem measurableSet_uhFibPre {F : Fin 3 → Set E3} (hF : ∀ i, MeasurableSet
   have heq : {t : ℝ | ∀ a, a ≠ i → y - curve i t + curve a t ∈ F a}
       = ⋂ a ∈ ({i}ᶜ : Set (Fin 3)), {t : ℝ | y - curve i t + curve a t ∈ F a} := by
     ext t
-    simp only [Set.mem_setOf_eq, Set.mem_iInter, Set.mem_compl_iff, Set.mem_singleton_iff]
+    simp only [Set.mem_ofPred_eq, Set.mem_iInter, Set.mem_compl_iff, Set.mem_singleton_iff]
   rw [heq]
   refine MeasurableSet.biInter (Set.to_countable _) fun a _ => ?_
   exact (hF a).preimage
@@ -17208,7 +17261,7 @@ theorem prod_indicator_eq_indicator (F : Fin 3 → Set E3) (i : Fin 3) (y : E3) 
     refine Finset.prod_eq_one fun a ha => ?_
     rw [Set.indicator_of_mem (h a (Finset.ne_of_mem_erase ha))]
   · rw [Set.indicator_of_notMem h]
-    simp only [Set.mem_setOf_eq] at h
+    simp only [Set.mem_ofPred_eq] at h
     push Not at h
     obtain ⟨a, ha, hmem⟩ := h
     refine Finset.prod_eq_zero (Finset.mem_erase.mpr ⟨ha, Finset.mem_univ a⟩) ?_
@@ -17263,7 +17316,7 @@ theorem uhFibSet_third_ge {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i
 /-! ### Patch 2 (T2): the parameter set of the tower
 
 The three fibres are assembled into a subset of the parameter cube, with the middle fibre separated
-from the first parameter by removing one interval.  Tonelli and (T1) give the lower bound
+from the first parameter by removing one interval. Tonelli and (T1) give the lower bound
 `2^{-10} alpha_1^2 alpha_d`. -/
 
 open MeasureTheory in
@@ -17274,7 +17327,7 @@ theorem measurableSet_memFibSet {F : Fin 3 → Set E3} (hF : ∀ i, MeasurableSe
       = (⋂ a ∈ ({i}ᶜ : Set (Fin 3)),
           {p : α | g p - curve i (h p) + curve a (h p) ∈ F a}) ∩ (h ⁻¹' uhI) := by
     ext p
-    simp only [uhFibSet, Set.mem_inter_iff, Set.mem_setOf_eq, Set.mem_iInter,
+    simp only [uhFibSet, Set.mem_inter_iff, Set.mem_ofPred_eq, Set.mem_iInter,
       Set.mem_compl_iff, Set.mem_singleton_iff, Set.mem_preimage]
   rw [heq]
   refine MeasurableSet.inter ?_ (hh measurableSet_uhI)
@@ -17325,7 +17378,7 @@ theorem volume_sep_interval (u ε : ℝ) :
     volume {v : ℝ | ¬ ε ≤ |u - v|} = ENNReal.ofReal (2 * ε) := by
   have heq : {v : ℝ | ¬ ε ≤ |u - v|} = Set.Ioo (u - ε) (u + ε) := by
     ext v
-    simp only [Set.mem_setOf_eq, not_le, Set.mem_Ioo, abs_lt]
+    simp only [Set.mem_ofPred_eq, not_le, Set.mem_Ioo, abs_lt]
     constructor
     · intro h
       constructor <;> [linarith [h.2]; linarith [h.1]]
@@ -17336,7 +17389,7 @@ theorem volume_sep_interval (u ε : ℝ) :
   ring
 
 open MeasureTheory in
-/-- **Patch 2 (T2).**  The parameter set has measure at least `2^{-10} alpha_1^2 alpha_d`. -/
+/-- **Patch 2 (T2).** The parameter set has measure at least `2^{-10} alpha_1^2 alpha_d`. -/
 theorem volume_uhParam_ge {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i))
     {d : Fin 3} (hd : d ≠ 0) {z : E3} (hz : z ∈ uhF3 E d 0)
     (hdt : uhAlpha E d / 2 / 2 / 2 / 2 ≠ ⊤) :
@@ -17473,9 +17526,8 @@ theorem uhFlow_image_subset {E : Fin 3 → Set E3} {d l : Fin 3} (hl : l ≠ 0) 
 
 /-! ### Patch 2 (J1): the Jacobian of the flow
 
-The flow is a translate of a polynomial map of the three parameters.  Its two cases, `d = 1` with
+The flow is a translate of a polynomial map of the three parameters. Its two cases, `d = 1` with
 `l = 2` and `d = 2` with `l = 1`, have Jacobians `6 w^2 (v - u)` and `6 w (u^2 - v^2)`. -/
-
 theorem det_toEuclideanLin3 (M : Matrix (Fin 3) (Fin 3) ℝ) :
     LinearMap.det (Matrix.toEuclideanLin M : E3 →ₗ[ℝ] E3) = M.det := by
   rw [Matrix.toEuclideanLin_eq_toLin_orthonormal]
@@ -17605,10 +17657,9 @@ theorem hasFDerivAt_uhMapB (t : E3) : HasFDerivAt uhMapB (uhDerivB t) t := by
 /-! ### Patch 2 (J2): injectivity of the flow and the change of variables
 
 Off the diagonal `u = v` the flow is injective: its `l`-coordinate determines `w`, the first
-coordinate then determines `v - u`, and the `d`-coordinate determines `u + v`.  The change of
+coordinate then determines `v - u`, and the `d`-coordinate determines `u + v`. The change of
 variables then turns the lower bound for the Jacobian into a lower bound for the measure of the
 remaining set. -/
-
 theorem sq_lt_sq_of_lt_nonneg {x y : ℝ} (hx : 0 ≤ x) (h : x < y) : x ^ 2 < y ^ 2 := by
   nlinarith [hx, h]
 
@@ -17712,7 +17763,7 @@ theorem uhParam_preimage_subset_uhOmega {E : Fin 3 → Set E3} {d : Fin 3} {z : 
   refine ⟨hs.1.1.1.2, hs.1.1.2.2, hs.2.2, ?_⟩
   intro heq
   have h := hs.1.2
-  simp only [Set.mem_setOf_eq, e3ToProd] at h
+  simp only [Set.mem_ofPred_eq, e3ToProd] at h
   rw [heq, sub_self, abs_zero] at h
   linarith
 
@@ -17723,7 +17774,7 @@ theorem det_uhDerivB' (t : E3) : (uhDerivB t).det = 6 * t 2 * (t 0 ^ 2 - t 1 ^ 2
   det_uhDerivB t
 
 open MeasureTheory in
-/-- **Patch 2 (J2) for `d = 1`, `l = 2`.**  The change of variables turns the lower bound for the
+/-- **Patch 2 (J2) for `d = 1`, `l = 2`.** The change of variables turns the lower bound for the
 Jacobian into a lower bound for the measure of the remaining set. -/
 theorem uhArea_A {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i)) (z : E3) {ε : ℝ}
     (hε : 0 < ε) :
@@ -17852,7 +17903,7 @@ theorem uh_const_arith {K a0 ad m0 md : ℝ≥0∞} (h0 : a0 * m0 = K) (hd : ad 
         rw [hinv, h0, hd, one_mul, ← pow_add]
 
 open MeasureTheory in
-/-- **Patch 2 (R), the power form.**  The fourth power of the incidence integral. -/
+/-- **Patch 2 (R), the power form.** The fourth power of the incidence integral. -/
 theorem uhInc_pow_four_le {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i))
     (h0 : ∀ i, volume (E i) ≠ 0) (ht : ∀ i, volume (E i) ≠ ⊤)
     {d l : Fin 3} (hdl : (d = 1 ∧ l = 2) ∨ (d = 2 ∧ l = 1)) :
@@ -17905,7 +17956,7 @@ theorem uhInc_pow_four_le {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i
 
 
 open MeasureTheory in
-/-- **Patch 2 `lem:three-set-restricted-upper-half` (R).**  The restricted three-set estimate for
+/-- **Patch 2 `lem:three-set-restricted-upper-half` (R).** The restricted three-set estimate for
 the upper-half monomial average. -/
 theorem uhInc_le_restricted {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E i))
     (h0 : ∀ i, volume (E i) ≠ 0) (ht : ∀ i, volume (E i) ≠ ⊤)
@@ -17939,7 +17990,7 @@ theorem uhInc_le_restricted {E : Fin 3 → Set E3} (hE : ∀ i, MeasurableSet (E
 
 /-! ### The monomial average over an arbitrary parameter interval
 
-Patch 2 works with the upper-half average `Atilde 1`, whose parameter interval is `(1/2, 1]`.  The
+Patch 2 works with the upper-half average `Atilde 1`, whose parameter interval is `(1/2, 1]`. The
 admissibility proofs for `Auto.A` use nothing about the interval `(0, N]`, so they are restated
 here for an arbitrary interval and an arbitrary normalizing constant; both `Auto.A` and
 `Auto.Atilde` are instances. -/
@@ -18084,7 +18135,7 @@ theorem lim3_Aint {a b : ℝ} (hab : a ≤ b) (c : ℂ) : Lim3 (Aint a b c) := b
       intro k
       refine Filter.Eventually.of_forall fun t => ?_
       rw [Real.norm_eq_abs, abs_of_nonneg (prodShiftR_nonneg (huun k) x t)]
-      exact Finset.prod_le_prod (fun l _ => huun k l _) fun l _ => hle k l _
+      exact Finset.prod_le_prod₀ (fun l _ => huun k l _) fun l _ => hle k l _
     have hlim : ∀ᵐ t ∂(volume.restrict (Set.Ioc a b)),
         Filter.Tendsto (fun k => prodShiftR (uu k) x t) Filter.atTop
           (nhds (prodShiftR v x t)) := by
@@ -18115,7 +18166,26 @@ theorem modC_Aint {a b : ℝ} (hab : a ≤ b) (c : ℂ) (f : Fin 3 → E3 → �
   exact mul_le_mul_of_nonneg_left hle (norm_nonneg _)
 
 open MeasureTheory in
-/-- **The monomial average over any interval is admissible.** -/
+theorem measurable_Aint {a b : ℝ} (hab : a ≤ b) (c : ℂ) {f : Fin 3 → E3 → ℂ}
+    (hf : ∀ i, Measurable (f i)) : Measurable (Aint a b c f) := by
+  have hm : Measurable fun p : E3 × ℝ => prodShift f p.1 p.2 := by
+    simp only [prodShift]
+    exact Finset.measurable_prod _ fun i _ =>
+      (hf i).comp (measurable_fst.add ((continuous_curve i).measurable.comp measurable_snd))
+  have heq : Aint a b c f = fun x => c * ∫ t in Set.Ioc a b, prodShift f x t := by
+    funext x
+    rw [Aint, intervalIntegral.integral_of_le hab]
+  rw [heq]
+  exact measurable_const.mul hm.stronglyMeasurable.integral_prod_right'.measurable
+
+open MeasureTheory in
+/-- The monomial average over any interval is admissible. -/
+@[fun_prop] theorem measurable_Atilde_one {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) :
+    Measurable (Atilde 1 f) := by
+  rw [Atilde_eq_Aint]
+  exact measurable_Aint (by norm_num) _ hf
+
+open MeasureTheory in
 theorem admissible_Aint {a b : ℝ} (hab : a ≤ b) (c : ℂ) : Admissible (Aint a b c) where
   lin := trilin_Aint a b c
   mono := mono3_Aint hab c
@@ -18123,6 +18193,7 @@ theorem admissible_Aint {a b : ℝ} (hab : a ≤ b) (c : ℂ) : Admissible (Aint
   measInd := measInd_Aint hab c
   measFun := fun u hum _ => measFun_Aint hab c u hum
   limit := lim3_Aint hab c
+  measComplex := fun _ hf => measurable_Aint hab c hf
   modC := fun f _ x => modC_Aint hab c f x
 
 open MeasureTheory in
@@ -18167,7 +18238,8 @@ theorem eLpNorm_Atilde_indicators {E : Fin 3 → Set E3} (hE : ∀ i, Measurable
     Finset.measurable_prod _ fun i _ =>
       (measurable_const.indicator (hE i)).comp
         (measurable_fst.add ((continuous_curve i).measurable.comp measurable_snd))
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm (f := Atilde 1 (indicators E))
+    (measurable_Atilde_one (fun i => measurable_const.indicator (hE i))).aestronglyMeasurable]
   simp_rw [enorm_Atilde_indicators hE]
   rw [lintegral_const_mul' _ _ (by norm_num), uhInc]
   congr 1
@@ -18253,7 +18325,7 @@ theorem restrictedStrong_simplex {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {q 
     fin_cases i <;> simp [trivialVertex] <;> linarith
 
 open MeasureTheory in
-/-- **Patch 2 (S1).**  Every point `tau * v + lam` of the tetrahedron carries the restricted strong
+/-- **Patch 2 (S1).** Every point `tau * v + lam` of the tetrahedron carries the restricted strong
 `L^1` estimate with constant `16`. -/
 theorem restrictedStrong_Atilde_combo {d l : Fin 3}
     (hdl : (d = 1 ∧ l = 2) ∨ (d = 2 ∧ l = 1)) {τ : ℝ} {lam : Fin 3 → ℝ}
@@ -18356,7 +18428,6 @@ theorem restrictedStrong_Atilde_cone (j : Fin 3) (n : Fin 3 → ℤ) :
 
 The finite Marcinkiewicz lemma turns the eight cone estimates into the estimate for normalized
 inputs, and scaling each slot removes the normalization. -/
-
 theorem Aint_smul_slots (a b : ℝ) (cst : ℂ) (c : Fin 3 → ℂ) (f : Fin 3 → E3 → ℂ) (x : E3) :
     Aint a b cst (fun i y => c i * f i y) x = (∏ i, c i) * Aint a b cst f x := by
   have h : ∀ t : ℝ, prodShift (fun i y => c i * f i y) x t = (∏ i, c i) * prodShift f x t := by
@@ -18374,7 +18445,7 @@ theorem Aint_ae_zero_of_slot_ae_zero {a b : ℝ} (hab : a ≤ b) (cst : ℂ) {f 
   have hZm : MeasurableSet {y : E3 | f i y ≠ 0} := by
     have h : MeasurableSet {y : E3 | f i y = 0} := (hfm i) (measurableSet_singleton (0 : ℂ))
     have h2 := h.compl
-    rwa [Set.compl_setOf] at h2
+    rwa [Set.compl_ofPred] at h2
   have hZ0 : volume {y : E3 | f i y ≠ 0} = 0 := by
     have h := hi
     rw [Filter.EventuallyEq, ae_iff] at h
@@ -18432,7 +18503,7 @@ theorem eLpNorm_normalize {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} {C : ℝ�
   by_cases hzz : ∃ i, eLpNorm (f i) (ENNReal.ofReal (p i)) volume = 0
   · obtain ⟨i, hi⟩ := hzz
     have hfi : f i =ᵐ[volume] 0 :=
-      (eLpNorm_eq_zero_iff (hf i).aestronglyMeasurable (hpne i)).mp hi
+      (eLpNorm_eq_zero_iff (hpne i)).mp hi
     rw [eLpNorm_congr_ae (hzero f i hf hfi)]
     simp
   push Not at hzz
@@ -18554,7 +18625,7 @@ theorem eLpNorm_Atilde_normalized (j : Fin 3) (f : Fin 3 → E3 → ℂ) (hf : �
   exact finite_marcinkiewicz admissible_Atilde_one (le_refl 1) hp (by norm_num) hdl' hrest hf hn
 
 open MeasureTheory in
-/-- **Patch 2 `lem:three-set-strong-upper-half` (S).**  The strong `L^1` bound for the upper-half
+/-- **Patch 2 `lem:three-set-strong-upper-half` (S).** The strong `L^1` bound for the upper-half
 monomial average at scale one. -/
 theorem eLpNorm_Atilde_le (j : Fin 3) (f : Fin 3 → E3 → ℂ) (hf : ∀ i, Measurable (f i)) :
     eLpNorm (Atilde 1 f) 1 volume
@@ -18579,7 +18650,7 @@ theorem eLpNorm_Atilde_le (j : Fin 3) (f : Fin 3 → E3 → ℂ) (hf : ∀ i, Me
 /-! ### Patch 2 (Q): localization to unit cubes
 
 On a unit cube every translate of the average stays inside the enlargement, so the output there
-depends only on the inputs restricted to the enlargement.  The unit cubes have measure one, which
+depends only on the inputs restricted to the enlargement. The unit cubes have measure one, which
 is what makes the Hölder step on each of them available. -/
 
 open MeasureTheory in
@@ -18599,7 +18670,7 @@ theorem unitCube_eq_preimage (m : Fin 3 → ℤ) :
     unitCube m = (WithLp.ofLp : E3 → (Fin 3 → ℝ)) ⁻¹'
       (Set.univ.pi fun i => Set.Ico ((m i : ℝ)) ((m i : ℝ) + 1)) := by
   ext x
-  simp only [unitCube, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_pi, Set.mem_univ,
+  simp only [unitCube, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_pi, Set.mem_univ,
     forall_const, Set.mem_Ico]
   constructor
   · intro h i
@@ -18654,7 +18725,7 @@ theorem tsum_indicator_bigCube_le (x : E3) :
     have hc : S.card ≤ 8 := by
       rw [hS, Fintype.card_piFinset]
       calc (∏ i : Fin 3, ({⌊x i⌋, ⌊x i⌋ - 1} : Finset ℤ).card)
-          ≤ ∏ _i : Fin 3, 2 := Finset.prod_le_prod (fun i _ => Nat.zero_le _) fun i _ => by
+          ≤ ∏ _i : Fin 3, 2 := Finset.prod_le_prod₀ (fun i _ => Nat.zero_le _) fun i _ => by
             exact le_trans (Finset.card_insert_le _ _) (by simp)
         _ = 8 := by norm_num
     exact_mod_cast hc
@@ -18665,7 +18736,7 @@ theorem tsum_indicator_bigCube_le (x : E3) :
     _ ≤ 8 := hcard
 
 open MeasureTheory in
-/-- **The bounded overlap.**  Summing an integral over the enlargements costs a factor eight. -/
+/-- **The bounded overlap.** Summing an integral over the enlargements costs a factor eight. -/
 theorem tsum_setLIntegral_bigCube_le {g : E3 → ℝ≥0∞} (hg : Measurable g) :
     (∑' z : Fin 3 → ℤ, ∫⁻ y in bigCube z, g y) ≤ 8 * ∫⁻ y, g y := by
   have hstep : ∀ z : Fin 3 → ℤ, (∫⁻ y in bigCube z, g y)
@@ -18694,7 +18765,6 @@ theorem tsum_setLIntegral_bigCube_le {g : E3 → ℝ≥0∞} (hg : Measurable g)
 
 The discrete Hölder inequality of the patch, in the form needed: for weights summing to one, the
 integral of a weighted geometric mean is at most the weighted geometric mean of the integrals. -/
-
 theorem holderConjugate_of_mem_Ioo {t : ℝ} (h0 : 0 < t) (h1 : t < 1) :
     Real.HolderConjugate (1 / t) (1 / (1 - t)) := by
   have ht : (0 : ℝ) < 1 - t := by linarith
@@ -18775,6 +18845,18 @@ theorem lintegral_rpow_mul3_le {α : Type*} [MeasurableSpace α] {μ : Measure �
 
 /-! ### Patch 2 (Q): the Hölder step on a cube, and the partition -/
 
+/-- The local mass of the `i`-th input on the enlargement of the cube `z`. -/
+noncomputable def uhM (j : Fin 3) (f : Fin 3 → E3 → ℂ) (i : Fin 3) (z : Fin 3 → ℤ) : ℝ≥0∞ :=
+  ∫⁻ y in bigCube z, ‖f i y‖ₑ ^ ((uhB j i)⁻¹)
+
+/-- The weights of the discrete Hölder step, `q / p_i`. -/
+noncomputable def uhTh (j : Fin 3) (i : Fin 3) : ℝ := (8 / 9 : ℝ) * uhB j i
+
+theorem uhTh_pos (j i : Fin 3) : 0 < uhTh j i := mul_pos (by norm_num) (uhB_pos j i)
+
+theorem uhTh_sum (j : Fin 3) : uhTh j 0 + uhTh j 1 + uhTh j 2 = 1 := by
+  fin_cases j <;> norm_num [uhTh, uhB, Matrix.cons_val_two, Matrix.tail_cons]
+
 open MeasureTheory in
 /-- On a probability space the `q`-th power integrates to at most the `q`-th power of the
 integral, for `q <= 1`. -/
@@ -18784,11 +18866,11 @@ theorem lintegral_enorm_rpow_le_of_probability {α : Type*} [MeasurableSpace α]
     (∫⁻ x, ‖g x‖ₑ ^ q ∂μ) ≤ (∫⁻ x, ‖g x‖ₑ ∂μ) ^ q := by
   have hqne : ENNReal.ofReal q ≠ 0 := (ENNReal.ofReal_pos.mpr hq0).ne'
   have hle : eLpNorm g (ENNReal.ofReal q) μ ≤ eLpNorm g 1 μ := by
-    refine eLpNorm_le_eLpNorm_of_exponent_le ?_ hg
+    refine eLpNorm_le_eLpNorm_of_exponent_le ?_
     rw [← ENNReal.ofReal_one]
     exact ENNReal.ofReal_le_ofReal hq1
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne ENNReal.ofReal_ne_top,
-    ENNReal.toReal_ofReal hq0.le, eLpNorm_one_eq_lintegral_enorm] at hle
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne ENNReal.ofReal_ne_top (by fun_prop),
+    ENNReal.toReal_ofReal hq0.le, eLpNorm_one_eq_lintegral_enorm (by fun_prop)] at hle
   have h := ENNReal.rpow_le_rpow hle hq0.le
   rwa [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hq0.ne', ENNReal.rpow_one] at h
 
@@ -18807,10 +18889,11 @@ theorem lintegral_eq_tsum_unitCube (g : E3 → ℝ≥0∞) :
 
 open MeasureTheory in
 theorem eLpNorm_indicator_rpow {S : Set E3} (hS : MeasurableSet S) {g : E3 → ℂ}
-    {r : ℝ} (hr : 0 < r) :
+    {r : ℝ} (hr : 0 < r) (hg : AEStronglyMeasurable g volume := by fun_prop) :
     eLpNorm (Set.indicator S g) (ENNReal.ofReal r) volume
       = (∫⁻ y in S, ‖g y‖ₑ ^ r) ^ (1 / r) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hr.le]
   congr 1
   rw [← lintegral_indicator hS]
@@ -18842,36 +18925,7 @@ theorem tsum_rpow_mul3_le {ι : Type*} [Countable ι] [MeasurableSpace ι]
 /-! ### Patch 2 (Q): the subunit bound -/
 
 open MeasureTheory in
-theorem measurable_Aint {a b : ℝ} (hab : a ≤ b) (c : ℂ) {f : Fin 3 → E3 → ℂ}
-    (hf : ∀ i, Measurable (f i)) : Measurable (Aint a b c f) := by
-  have hm : Measurable fun p : E3 × ℝ => prodShift f p.1 p.2 := by
-    simp only [prodShift]
-    exact Finset.measurable_prod _ fun i _ =>
-      (hf i).comp (measurable_fst.add ((continuous_curve i).measurable.comp measurable_snd))
-  have heq : Aint a b c f = fun x => c * ∫ t in Set.Ioc a b, prodShift f x t := by
-    funext x
-    rw [Aint, intervalIntegral.integral_of_le hab]
-  rw [heq]
-  exact measurable_const.mul hm.stronglyMeasurable.integral_prod_right'.measurable
-
 open MeasureTheory in
-theorem measurable_Atilde_one {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) :
-    Measurable (Atilde 1 f) := by
-  rw [Atilde_eq_Aint]
-  exact measurable_Aint (by norm_num) _ hf
-
-/-- The local mass of the `i`-th input on the enlargement of the cube `z`. -/
-noncomputable def uhM (j : Fin 3) (f : Fin 3 → E3 → ℂ) (i : Fin 3) (z : Fin 3 → ℤ) : ℝ≥0∞ :=
-  ∫⁻ y in bigCube z, ‖f i y‖ₑ ^ ((uhB j i)⁻¹)
-
-/-- The weights of the discrete Hölder step, `q / p_i`. -/
-noncomputable def uhTh (j : Fin 3) (i : Fin 3) : ℝ := (8 / 9 : ℝ) * uhB j i
-
-theorem uhTh_pos (j i : Fin 3) : 0 < uhTh j i := mul_pos (by norm_num) (uhB_pos j i)
-
-theorem uhTh_sum (j : Fin 3) : uhTh j 0 + uhTh j 1 + uhTh j 2 = 1 := by
-  fin_cases j <;> norm_num [uhTh, uhB, Matrix.cons_val_two, Matrix.tail_cons]
-
 open MeasureTheory in
 theorem lintegral_unitCube_le (j : Fin 3) {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i))
     (z : Fin 3 → ℤ) :
@@ -18890,7 +18944,7 @@ theorem lintegral_unitCube_le (j : Fin 3) {f : Fin 3 → E3 → ℂ} (hf : ∀ i
     lintegral_enorm_rpow_le_of_probability
       (measurable_Atilde_one hgm).aestronglyMeasurable hq (by norm_num)
   have hstep2 : (∫⁻ x in unitCube z, ‖Atilde 1 g x‖ₑ) ≤ eLpNorm (Atilde 1 g) 1 volume := by
-    rw [eLpNorm_one_eq_lintegral_enorm]
+    rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop)]
     exact setLIntegral_le_lintegral _ _
   have hS := eLpNorm_Atilde_le j g hgm
   have hnorm : ∀ i, eLpNorm (g i) (ENNReal.ofReal ((uhB j i)⁻¹)) volume
@@ -18916,14 +18970,16 @@ theorem lintegral_unitCube_le (j : Fin 3) {f : Fin 3 → E3 → ℂ} (hf : ∀ i
 
 
 open MeasureTheory in
-theorem lintegral_enorm_rpow_eq_eLpNorm {g : E3 → ℂ} {r : ℝ} (hr : 0 < r) :
+theorem lintegral_enorm_rpow_eq_eLpNorm {g : E3 → ℂ} {r : ℝ} (hr : 0 < r)
+    (hg : AEStronglyMeasurable g volume := by fun_prop) :
     (∫⁻ y, ‖g y‖ₑ ^ r) = eLpNorm g (ENNReal.ofReal r) volume ^ r := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hr.le, ← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hr.ne',
     ENNReal.rpow_one]
 
 open MeasureTheory in
-/-- **Patch 2 `lem:adjoint-gain-to-subunit` (Q).**  The subunit bound for the upper-half monomial
+/-- **Patch 2 `lem:adjoint-gain-to-subunit` (Q).** The subunit bound for the upper-half monomial
 average at scale one. -/
 theorem eLpNorm_Atilde_subunit (j : Fin 3) (f : Fin 3 → E3 → ℂ) (hf : ∀ i, Measurable (f i)) :
     eLpNorm (Atilde 1 f) (ENNReal.ofReal (8 / 9)) volume
@@ -18985,7 +19041,7 @@ theorem eLpNorm_Atilde_subunit (j : Fin 3) (f : Fin 3 → E3 → ℂ) (hf : ∀ 
             _ = 8 * (uhC1 j ^ (8 / 9 : ℝ)
                   * (N 0 ^ (8 / 9 : ℝ) * (N 1 ^ (8 / 9 : ℝ) * N 2 ^ (8 / 9 : ℝ)))) := by
                 rw [h8]
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top (by fun_prop),
     ENNReal.toReal_ofReal hq.le]
   have hroot := ENNReal.rpow_le_rpow hkey (by norm_num : (0 : ℝ) ≤ 1 / (8 / 9))
   refine le_trans hroot (le_of_eq ?_)
@@ -19035,11 +19091,10 @@ theorem koszSubunitScaleOne (j : Fin 3) : KoszSubunitScaleOne j := by
 /-! ### `thm:strong-real-improving` at every index triple
 
 `Auto.main_smoothing` needs `Auto.KoszAdjoint j` for every `j`, so `cor:kosz-53-internal` and with
-it `thm:strong-real-improving` are needed at every choice of the distinguished pair.  The improving
+it `thm:strong-real-improving` are needed at every choice of the distinguished pair. The improving
 vertex is available at all six choices (`Auto.restrictedWeak_A_improving`), the three trivial
 vertices and the `L^infinity` vertex are symmetric, and the weights of the convex combination are
 the same numbers attached to the permuted indices. -/
-
 theorem fin3_third {j m k i : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m) (hjk : j ≠ k)
     (hij : i ≠ j) (him : i ≠ m) : i = k := by
   revert hjm hkm hjk hij him
@@ -19066,7 +19121,7 @@ theorem restrictedStrong_A_chain' {m j k : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m
         + ((6 : ℝ) / 5 - qm) / (6 / 5) * trivialVertexInf i) (6 / 5) (chainConst θ qm) := by
   have hmeas := measInd_A (N := 1) zero_le_one
   have h₀ : RestrictedWeak (A 1) w 1 1 :=
-    restrictedWeak_of_restrictedStrong hmeas one_pos (restrictedStrong_A_simplex one_pos hw hsum)
+    restrictedWeak_of_restrictedStrong  one_pos (restrictedStrong_A_simplex one_pos hw hsum)
   have h₁ : RestrictedWeak (A 1) (improvingExp j m) (6 / 5) improvingConst := by
     have h := restrictedWeak_A_improving (N := 1) one_pos hjm hkm hjk
     simpa using h
@@ -19226,7 +19281,7 @@ theorem strong_real_improving_scale_factor' {m j k : Fin 3} (hjm : j ≠ m) (hkm
   linarith
 
 open MeasureTheory in
-/-- **Blueprint `thm:strong-real-improving`, at an arbitrary index triple.**  The `L^2` index is
+/-- **Blueprint `thm:strong-real-improving`, at an arbitrary index triple.** The `L^2` index is
 `j`, the `L^{40/7}` index is `m`, and the remaining one carries `L^6`. -/
 theorem strong_real_improving' {m j k : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m) (hjk : j ≠ k) :
     ∃ C : ℝ≥0∞, C ≠ ⊤ ∧ ∀ N : ℝ, 0 < N → ∀ f : Fin 3 → E3 → ℂ, (∀ i, Measurable (f i)) →
@@ -19285,10 +19340,9 @@ theorem strong_real_improving' {m j k : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m) (
 /-! ### `cor:kosz-53-internal`: the adjoint is in `L^2` for nice inputs
 
 The duality lemma needs the `L^2` norm of the adjoint to be finite before the estimate is
-available.  That does not follow from a trivial Hölder bound -- the trivial exponent for the
+available. That does not follow from a trivial Hölder bound -- the trivial exponent for the
 adjoint is `120/61`, and reaching `2` is the content of the corollary -- but it does follow from
 the pointwise bound by the average of `|g_0|` along the curve, which is bounded and in `L^1`. -/
-
 theorem enorm_rpow_two (x : ℝ≥0∞) : x ^ (2 : ℝ) = x * x := by
   rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) by norm_num, ENNReal.rpow_natCast, sq]
 
@@ -19361,7 +19415,8 @@ open MeasureTheory in
 /-- **The adjoint is in `L^2` for nice inputs.** -/
 theorem eLpNorm_Astar_two_ne_top {N : ℝ} (hN : 0 < N) (j : Fin 3) {f0 : E3 → ℂ} {C0 : ℝ}
     (hf0c : Continuous f0) (hf0i : Integrable f0) (hf0b : ∀ x, ‖f0 x‖ ≤ C0)
-    {f : Fin 3 → E3 → ℂ} {Cb : ℝ} (hCb : 0 ≤ Cb) (hfb : ∀ i x, ‖f i x‖ ≤ Cb) :
+    {f : Fin 3 → E3 → ℂ} {Cb : ℝ} (hCb : 0 ≤ Cb) (hfb : ∀ i x, ‖f i x‖ ≤ Cb)
+    (hfm : ∀ i, Measurable (f i) := by intro i; fun_prop) :
     eLpNorm (Astar N j f0 f) (ENNReal.ofReal 2) volume ≠ ⊤ := by
   have hsq : (∫⁻ y, ‖Astar N j f0 f y‖ₑ ^ (2 : ℝ)) ≠ ⊤ := by
     have hbd : ∀ y, ‖Astar N j f0 f y‖ₑ ^ (2 : ℝ)
@@ -19378,7 +19433,8 @@ theorem eLpNorm_Astar_two_ne_top {N : ℝ} (hN : 0 < N) (j : Fin 3) {f0 : E3 →
         _ = _ := lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
     exact ne_top_of_le_ne_top (ENNReal.mul_ne_top ENNReal.ofReal_ne_top
       (lintegral_enorm_Astar_ne_top hN j hf0c hf0i hCb hfb)) hle
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top (measurable_Astar j
+    hf0c.measurable hfm).aestronglyMeasurable,
     ENNReal.toReal_ofReal (by norm_num : (0 : ℝ) ≤ 2)]
   exact ENNReal.rpow_ne_top_of_nonneg (by norm_num) hsq
 
@@ -19387,9 +19443,8 @@ theorem eLpNorm_Astar_two_ne_top {N : ℝ} (hN : 0 < N) (j : Fin 3) {f0 : E3 →
 /-! ### `cor:kosz-53-internal`: pairing with `g_0` and the adjoint identity
 
 Pair the output of `thm:strong-real-improving` with `g_0`, use `lem:adjoint-identity`, and take
-the supremum over `‖f_j‖_{L^2} = 1`.  The conjugate exponent of `6/5` is `6`, so the three input
+the supremum over `‖f_j‖_{L^2} = 1`. The conjugate exponent of `6/5` is `6`, so the three input
 exponents of the adjoint are `r_0 = 6`, `r_{j'} = 40/7`, `r_k = 6`. -/
-
 theorem erase_fin3_eq {j m k : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m) (hjk : j ≠ k) :
     (Finset.univ : Finset (Fin 3)).erase j = {m, k} := by
   ext i
@@ -19409,12 +19464,12 @@ theorem targetV_at_j (j m : Fin 3) : ((targetV j m j)⁻¹ : ℝ) = 2 := by
   norm_num
 
 theorem targetV_at_m {j m : Fin 3} (hjm : j ≠ m) : ((targetV j m m)⁻¹ : ℝ) = 40 / 7 := by
-  simp only [targetV, if_neg (Ne.symm hjm)]
+  simp only [targetV, ite_eq_right (Ne.symm hjm)]
   norm_num
 
 theorem targetV_at_k {j m k : Fin 3} (_hjm : j ≠ m) (hkm : k ≠ m) (hjk : j ≠ k) :
     ((targetV j m k)⁻¹ : ℝ) = 6 := by
-  simp only [targetV, if_neg (Ne.symm hjk), if_neg hkm]
+  simp only [targetV, ite_eq_right (Ne.symm hjk), ite_eq_right hkm]
   norm_num
 
 theorem adjShift_update (j : Fin 3) (f0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ) (h : E3 → ℂ)
@@ -19519,11 +19574,10 @@ selected function, plus a boundary error."
 
 Each application of `Auto.fejer_vdc'` squares the left side and adds one Fejer average on the
 right, so after `s` applications the left side carries the exponent `2^s` and the right side is
-the nested Fejer average `Auto.vdcAvg` of depth `s`.  The powers are moved inside the successive
+the nested Fejer average `Auto.vdcAvg` of depth `s`. The powers are moved inside the successive
 kernel averages by `Auto.pow_integral_fejer_le`, which is the Cauchy-Schwarz in the shift
 variables; the boundary terms accumulate to a fixed multiple of `sum_i H_i / N`, which is the
 "geometric multiple of `H/N`" of the blueprint. -/
-
 theorem pow_two_pow_le_mul {y M : ℝ} (hy : 0 ≤ y) (hM : y ≤ M) (hM1 : 1 ≤ M) (s : ℕ) :
     y ^ (2 ^ s) ≤ M ^ (2 ^ s) * y := by
   obtain ⟨m, hm⟩ := Nat.exists_eq_succ_of_ne_zero (by positivity : (0 : ℕ) < 2 ^ s).ne'
@@ -19533,10 +19587,10 @@ theorem pow_two_pow_le_mul {y M : ℝ} (hy : 0 ≤ y) (hM : y ≤ M) (hM1 : 1 �
     _ ≤ M ^ (m + 1) := pow_le_pow_right₀ hM1 (Nat.le_succ m)
 
 open MeasureTheory in
-/-- **Blueprint `lem:fejer-vdc`, the Gowers-Cauchy-Schwarz step.**  After `s` applications of
+/-- **Blueprint `lem:fejer-vdc`, the Gowers-Cauchy-Schwarz step.** After `s` applications of
 the Fejer van der Corput inequality the normalized average of a `1`-bounded measurable function,
 raised to the power `2^s`, is bounded by a constant multiple of the nested Fejer average of depth
-`s` of its iterated differences, plus a constant multiple of `sum_i H_i / N`.  The two constants
+`s` of its iterated differences, plus a constant multiple of `sum_i H_i / N`. The two constants
 depend only on `s`. -/
 theorem exists_vdc_iterate : ∀ s : ℕ, ∃ A B : ℝ, 0 ≤ A ∧ 0 ≤ B ∧
     ∀ N c : ℝ, 0 < N → ∀ H : Fin s → ℝ, (∀ i, 0 < H i) → (∀ i, H i ≤ N / 4) →
@@ -19674,7 +19728,7 @@ theorem exists_vdc_iterate : ∀ s : ℕ, ∃ A B : ℝ, 0 ≤ A ∧ 0 ≤ B ∧
 
 The reusable prerequisite `Auto.exists_polynomial_oscillation_bound`, proved in
 DFR/Auto/VanDerCorput.lean, is the normalized case `N = 1` with the phase `exp(i
-f)`.  The two remaining steps are the substitution `t = N s`, which replaces `a_m` by `a_m N^m`,
+f)`. The two remaining steps are the substitution `t = N s`, which replaces `a_m` by `a_m N^m`,
 and the factor `2 pi`, which only rescales the largest coefficient by a fixed amount. -/
 
 /-- The polynomial `sum_{m=1}^d b_m X^m`, with no constant term. -/
@@ -19691,7 +19745,7 @@ theorem oscPoly_coeff (d : ℕ) (b : ℕ → ℝ) (n : ℕ) :
 theorem oscPoly_natDegree_le (d : ℕ) (b : ℕ → ℝ) : (oscPoly d b).natDegree ≤ d := by
   refine Polynomial.natDegree_le_iff_coeff_eq_zero.mpr fun n hn => ?_
   rw [oscPoly_coeff]
-  refine if_neg ?_
+  refine ite_eq_right ?_
   simp only [Finset.mem_Icc, not_and, not_le]
   intro _
   omega
@@ -19727,14 +19781,14 @@ theorem real_polynomial_oscillation (d : ℕ) : ∃ C : ℝ, 1 ≤ C ∧
     intro m hm
     rw [hfdef, oscPoly_coeff]
     by_cases hmd : m ∈ Finset.Icc 1 d
-    · rw [if_pos hmd, hbdef]
+    · rw [ite_eq_left hmd, hbdef]
       simp only []
       rw [abs_mul, abs_of_nonneg hpi.le, abs_mul, abs_pow, abs_of_nonneg hN.le]
       exact mul_le_mul_of_nonneg_left (hAle m hm (Finset.mem_Icc.mp hmd).2) hpi.le
-    · rw [if_neg hmd, abs_zero]
+    · rw [ite_eq_right hmd, abs_zero]
       positivity
   have hcoeff₀ : 2 * Real.pi * A ≤ |f.coeff m₀| := by
-    rw [hfdef, oscPoly_coeff, if_pos (Finset.mem_Icc.mpr ⟨hm₀1, hm₀d⟩), hbdef]
+    rw [hfdef, oscPoly_coeff, ite_eq_left (Finset.mem_Icc.mpr ⟨hm₀1, hm₀d⟩), hbdef]
     simp only []
     rw [abs_mul, abs_of_nonneg hpi.le, abs_mul, abs_pow, abs_of_nonneg hN.le]
     exact mul_le_mul_of_nonneg_left hm₀A hpi.le
@@ -19847,8 +19901,8 @@ theorem continuous_fdiffIter_uncurry (v : E3) (s : ℕ) {f : E3 → ℂ} (hf : C
     hf.comp (continuous_fst.add
       (((continuous_cubeShift ω).comp continuous_snd).smul continuous_const))
   by_cases hω : Even (numFalse ω)
-  · simpa only [conjPar, if_pos hω] using hc
-  · simpa only [conjPar, if_neg hω, Function.comp_def] using Complex.continuous_conj.comp hc
+  · simpa only [conjPar, ite_eq_left hω] using hc
+  · simpa only [conjPar, ite_eq_right hω, Function.comp_def] using Complex.continuous_conj.comp hc
 
 
 
@@ -20098,7 +20152,7 @@ theorem integrable_fejerCube_innerFejer {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ
       (fejerCube_nonneg hH h)
 
 open MeasureTheory in
-/-- **The `2^{s+1}`-th power of the local uniformity norm is real and nonnegative.**  This is the
+/-- **The `2^{s+1}`-th power of the local uniformity norm is real and nonnegative.** This is the
 statement that makes the root in `def:local-uniformity` well defined. -/
 theorem locUnifPow_re_nonneg {N H : ℝ} (hH : 0 < H) (hN : 0 < N) (j : Fin 3) (s : ℕ)
     {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -20157,7 +20211,7 @@ theorem petBox_eq_preimage (C N : ℝ) :
     petBox C N = (WithLp.ofLp : E3 → (Fin 3 → ℝ)) ⁻¹'
       (Set.univ.pi fun i : Fin 3 => Set.Icc (-(C * N ^ expo i)) (C * N ^ expo i)) := by
   ext x
-  simp only [petBox, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_pi, Set.mem_univ,
+  simp only [petBox, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_pi, Set.mem_univ,
     forall_const, Set.mem_Icc]
 
 open MeasureTheory in
@@ -20234,9 +20288,9 @@ theorem norm_Lambda_le_volume {N : ℝ} (hN : 0 < N) {C : ℝ} (hC : 0 ≤ C) {f
 
 /-! ## Blueprint `lem:pet-reduction`: one van der Corput step
 
-The step has two halves.  Cauchy-Schwarz in the point removes the undifferenced factor `f_0`,
+The step has two halves. Cauchy-Schwarz in the point removes the undifferenced factor `f_0`,
 leaving the `L^2` norm of the average; the support of `f_0` enters only through the volume of the
-box.  Then van der Corput in the parameter, `Auto.fejer_vdc'`, replaces the average by a Fejer
+box. Then van der Corput in the parameter, `Auto.fejer_vdc'`, replaces the average by a Fejer
 average of the differenced average, in which every factor has acquired a shift. -/
 
 open MeasureTheory in
@@ -20273,7 +20327,7 @@ theorem A_eq_zero_of_notMem_petBox {N : ℝ} (hN : 0 < N) {C : ℝ} {f : Fin 3 �
   simp
 
 open MeasureTheory in
-/-- **Cauchy-Schwarz in the point.**  The undifferenced factor is removed at the cost of the
+/-- **Cauchy-Schwarz in the point.** The undifferenced factor is removed at the cost of the
 square root of the volume of its support. -/
 theorem enorm_Lambda_le_L2 {N : ℝ} {C : ℝ} {f0 : E3 → ℂ} {f : Fin 3 → E3 → ℂ}
     (hfc : ∀ i, Continuous (f i)) (hf0m : AEStronglyMeasurable f0 volume)
@@ -20287,13 +20341,14 @@ theorem enorm_Lambda_le_L2 {N : ℝ} {C : ℝ} {f0 : E3 → ℂ} {f : Fin 3 → 
   refine le_trans hcs (mul_le_mul' le_rfl ?_)
   have hmono : eLpNorm f0 2 volume
       ≤ eLpNorm (Set.indicator (petBox C N) (fun _ => (1 : ℂ))) 2 volume := by
-    refine eLpNorm_mono fun x => ?_
+    refine eLpNorm_mono (by fun_prop) fun x => ?_
     by_cases hx : x ∈ petBox C N
     · rw [Set.indicator_of_mem hx]
       simpa using hf01 x
     · rw [Set.indicator_of_notMem hx, hsupp x hx]
   refine le_trans hmono (le_of_eq ?_)
-  rw [eLpNorm_indicator_const (measurableSet_petBox C N) (by norm_num) (by norm_num)]
+  rw [eLpNorm_indicator_const (measurableSet_petBox C N).nullMeasurableSet (by norm_num)
+    (by norm_num)]
   simp
 
 
@@ -20316,10 +20371,10 @@ theorem norm_dshift_le {f : Fin 3 → E3 → ℂ} (hf1 : ∀ i x, ‖f i x‖ �
   rw [dshift_eq_rdiff, rdiff, norm_mul, RCLike.norm_conj]
   have h1 : ‖prodShift f x (t + h)‖ ≤ 1 := le_trans (norm_prodShift_le hf1 x (t + h)) (by norm_num)
   have h2 : ‖prodShift f x t‖ ≤ 1 := le_trans (norm_prodShift_le hf1 x t) (by norm_num)
-  exact mul_le_one₀ h1 (norm_nonneg _) h2
+  exact ((mul_le_of_le_one_left (norm_nonneg _) h1).trans h2)
 
 open MeasureTheory in
-/-- **One van der Corput step in the parameter.**  The square of the average is controlled by the
+/-- **One van der Corput step in the parameter.** The square of the average is controlled by the
 Fejer average of the differenced averages, up to the boundary error `12 H / N`. -/
 theorem sq_norm_A_le {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4)
     {f : Fin 3 → E3 → ℂ} (hfc : ∀ i, Continuous (f i)) (hf1 : ∀ i x, ‖f i x‖ ≤ 1) (x : E3) :
@@ -20344,16 +20399,15 @@ theorem sq_norm_A_le {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4)
 /-! ## Blueprint `lem:pet-reduction`: the differencing calculus
 
 "Choose a polynomial of largest degree and apply `lem:fejer-vdc`; translate so that this
-polynomial becomes zero.  Every other polynomial `Q` is replaced by `Q(t+h) - P(t)` and
+polynomial becomes zero. Every other polynomial `Q` is replaced by `Q(t+h) - P(t)` and
 `Q(t) - P(t)`."
 
 Translating the point by `-Gamma_k(t)` leaves the `k`-th conjugated factor undisplaced, which is
 what selects one function of the configuration; the `k`-th displaced factor then carries
-`Gamma_k(t+h) - Gamma_k(t)`, whose degree in `t` is one less than that of `Gamma_k`.  For the
+`Gamma_k(t+h) - Gamma_k(t)`, whose degree in `t` is one less than that of `Gamma_k`. For the
 system `t, t^2, t^3` the three drops are computed explicitly below: a degree-one translation
 becomes the constant `h`, a degree-two one becomes `2 h t + h^2`, and a degree-three one becomes
 `3 h t^2 + 3 h^2 t + h^3`. -/
-
 theorem curve_sub_curve (k : Fin 3) (t h : ℝ) :
     curve k (t + h) - curve k t = ((t + h) ^ expo k - t ^ expo k) • basisVec k := by
   rw [curve, curve, ← sub_smul]
@@ -20375,7 +20429,7 @@ theorem expo_diff_two (t h : ℝ) :
   ring
 
 open MeasureTheory in
-/-- **The translation that selects one function.**  Translating the point by `-Gamma_k(t)` does
+/-- **The translation that selects one function.** Translating the point by `-Gamma_k(t)` does
 not change the integral, and leaves the `k`-th conjugated factor undisplaced. -/
 theorem integral_dshift_translate (f : Fin 3 → E3 → ℂ) (k : Fin 3) (h t : ℝ) :
     (∫ x : E3, dshift f h x t)
@@ -20412,7 +20466,7 @@ theorem prod_translate_split (f : Fin 3 → E3 → ℂ) (k : Fin 3) (h t : ℝ) 
 replaces the monomial translations `Gamma_i` by differences `Gamma_i(t+h) - Gamma_k(t)` and
 `Gamma_i(t) - Gamma_k(t)`, which are no longer monomial and no longer point along a single axis.
 The class closed under the step is therefore the *polynomial translations*: a triple of real
-polynomials acting by `x -> x + sum_d q_d(t) e_d`.  This section sets up that class, its action,
+polynomials acting by `x -> x + sum_d q_d(t) e_d`. This section sets up that class, its action,
 and the two operations the step performs on it. -/
 
 /-- A polynomial translation of `R^3`: one real polynomial per coordinate direction. -/
@@ -20504,11 +20558,11 @@ theorem natDegree_taylor_sub_lt {p : Polynomial ℝ} (hp : 0 < p.natDegree) (h :
     exact hp
   · have htp0 : Polynomial.taylor h p ≠ 0 := by simpa using hp0
     have hd : (Polynomial.taylor h p).degree = p.degree := Polynomial.degree_taylor p h
-    have hlt := Polynomial.degree_sub_lt hd htp0 (Polynomial.leadingCoeff_taylor h p)
+    have hlt := Polynomial.degree_sub_lt_left hd htp0 (Polynomial.leadingCoeff_taylor h p)
     rw [hd] at hlt
     exact Polynomial.natDegree_lt_natDegree hz hlt
 
-/-- **The degree drops under the step applied to the selected translation.**  This is the
+/-- **The degree drops under the step applied to the selected translation.** This is the
 blueprint's "if `Q` has the same leading coefficient as `P`, its degree drops", in the case
 `Q = P` where the drop is automatic: shifting does not move the leading coefficient. -/
 theorem translDeg_shift_sub_self_lt {q : Fin 3 → Polynomial ℝ} (hq : 0 < translDeg q) (h : ℝ) :
@@ -20530,11 +20584,11 @@ theorem translDeg_shift_sub_self_lt {q : Fin 3 → Polynomial ℝ} (hq : 0 < tra
 /-! ## Blueprint `lem:pet-reduction`: leading-coefficient classes
 
 "`w_d` is the number of distinct leading-coefficient classes of degree `d`."  The class of a
-polynomial translation at level `d` is the triple of its degree-`d` coefficients.  Two
+polynomial translation at level `d` is the triple of its degree-`d` coefficients. Two
 translations of degree `d` lie in the same class exactly when their difference has degree below
 `d`; this is what makes the weight drop under the step. -/
 
-/-- The degree-`d` coefficient vector of a polynomial translation.  At `d = translDeg q` it is the
+/-- The degree-`d` coefficient vector of a polynomial translation. At `d = translDeg q` it is the
 leading-coefficient class of the blueprint. -/
 noncomputable def leadVec (d : ℕ) (q : Fin 3 → Polynomial ℝ) : Fin 3 → ℝ :=
   fun c => (q c).coeff d
@@ -20550,7 +20604,7 @@ theorem coeff_taylor_of_natDegree_le {p : Polynomial ℝ} {d : ℕ} (hd : p.natD
   · rw [Polynomial.coeff_eq_zero_of_natDegree_lt (by rwa [Polynomial.natDegree_taylor]),
       Polynomial.coeff_eq_zero_of_natDegree_lt hlt]
 
-/-- **Shifting does not change the leading-coefficient class.**  This is why the selected
+/-- **Shifting does not change the leading-coefficient class.** This is why the selected
 translation cancels against its own shift. -/
 theorem leadVec_translShift {q : Fin 3 → Polynomial ℝ} {d : ℕ} (hd : translDeg q ≤ d) (h : ℝ) :
     leadVec d (translShift q h) = leadVec d q := by
@@ -20571,7 +20625,7 @@ theorem translDeg_translSub_le {q r : Fin 3 → Polynomial ℝ} {d : ℕ}
   exact max_le (le_trans (natDegree_le_translDeg q c) hq)
     (le_trans (natDegree_le_translDeg r c) hr)
 
-/-- **Equal classes make the degree drop.**  If two translations of degree at most `d` have the
+/-- **Equal classes make the degree drop.** If two translations of degree at most `d` have the
 same degree-`d` coefficient vector, their difference has degree below `d`. -/
 theorem translDeg_translSub_lt {q r : Fin 3 → Polynomial ℝ} {d : ℕ} (hd : 0 < d)
     (hq : translDeg q ≤ d) (hr : translDeg r ≤ d) (hlead : leadVec d q = leadVec d r) :
@@ -20590,7 +20644,7 @@ theorem translDeg_translSub_lt {q r : Fin 3 → Polynomial ℝ} {d : ℕ} (hd : 
     Polynomial.coeff_eq_zero_of_natDegree_lt
       (lt_of_le_of_lt (le_trans (natDegree_le_translDeg r c) hr) hMlt), sub_self]
 
-/-- **Different classes keep the degree.**  If the degree-`d` coefficient vectors differ, the
+/-- **Different classes keep the degree.** If the degree-`d` coefficient vectors differ, the
 difference has degree exactly `d`, with coefficient vector the difference of the two. -/
 theorem translDeg_translSub_eq {q r : Fin 3 → Polynomial ℝ} {d : ℕ}
     (hq : translDeg q ≤ d) (hr : translDeg r ≤ d) (hlead : leadVec d q ≠ leadVec d r) :
@@ -20611,7 +20665,7 @@ theorem translDeg_translSub_eq {q r : Fin 3 → Polynomial ℝ} {d : ℕ}
 /-! ## Blueprint `lem:pet-reduction`: the weight of a configuration
 
 "To a finite family of nonconstant polynomials attach its weight `(w_3, w_2, w_1)`, where `w_d` is
-the number of distinct leading-coefficient classes of degree `d`.  Order these triples
+the number of distinct leading-coefficient classes of degree `d`. Order these triples
 lexicographically from degree 3 downward."
 
 The differencing polynomial is taken of **smallest** degree, not largest; with the largest the
@@ -20697,7 +20751,7 @@ theorem mem_petStep {h : ℝ} {P u : Fin 3 → Polynomial ℝ} {S : Finset (Fin 
     · exact ⟨Or.inl ⟨q, hq, hqu.symm⟩, h2⟩
     · exact ⟨Or.inr ⟨q, hq, hqu.symm⟩, h2⟩
 
-/-- **What one step does to a member.**  If the selected translation has the minimal degree `m`
+/-- **What one step does to a member.** If the selected translation has the minimal degree `m`
 and a member of the new family has degree `d ≥ m`, then it came from a member of the old family of
 degree exactly `d`, and its class is the difference of the two classes. -/
 theorem step_member_data {h : ℝ} {P q u : Fin 3 → Polynomial ℝ} {m d : ℕ}
@@ -20764,7 +20818,7 @@ theorem petClassSet_step_subset_min {h : ℝ} {P : Fin 3 → Polynomial ℝ}
   · rw [← hvu, hlead]
 
 open Classical in
-/-- **The weight drops at the minimal degree.**  The class of the selected translation disappears
+/-- **The weight drops at the minimal degree.** The class of the selected translation disappears
 and no new class replaces it. -/
 theorem petClasses_step_lt {h : ℝ} {P : Fin 3 → Polynomial ℝ}
     {S : Finset (Fin 3 → Polynomial ℝ)} {m : ℕ} (hm : 0 < m) (hPS : P ∈ S)
@@ -20794,9 +20848,9 @@ noncomputable def petWeight (S : Finset (Fin 3 → Polynomial ℝ)) : ℕ ×ₗ 
   toLex (petClasses 3 S, toLex (petClasses 2 S, petClasses 1 S))
 
 open Classical in
-/-- **The weight decreases under one step of the recursion.**  The selected translation `P` has
+/-- **The weight decreases under one step of the recursion.** The selected translation `P` has
 the minimal degree `m` of the family; at that level the number of classes drops by at least one,
-and at the levels above it does not increase.  This is the well-founded descent of
+and at the levels above it does not increase. This is the well-founded descent of
 `lem:pet-reduction`, with the differencing polynomial of *smallest* degree -- see the ErrorReport
 entry of 2026-09-14 for why the blueprint's choice of largest degree does not descend. -/
 theorem petWeight_step_lt {h : ℝ} {P : Fin 3 → Polynomial ℝ}
@@ -20830,7 +20884,7 @@ theorem petWeight_step_lt {h : ℝ} {P : Fin 3 → Polynomial ℝ}
 /-! ## Blueprint `lem:pet-reduction`: the recursion terminates
 
 "Thus the weight decreases in the well-founded lexicographic order after finitely many
-repetitions.  Starting with `{t, t^2, t^3}`, the resulting primitive recursion terminates at
+repetitions. Starting with `{t, t^2, t^3}`, the resulting primitive recursion terminates at
 linear polynomials." -/
 
 open Classical in
@@ -20858,7 +20912,7 @@ theorem petStep_deg {h : ℝ} {P : Fin 3 → Polynomial ℝ} {S : Finset (Fin 3 
   · exact translDeg_translSub_le (hS q hqS) hP
 
 open Classical in
-/-- **The recursion terminates.**  Any run in which each family is obtained from the previous one
+/-- **The recursion terminates.** Any run in which each family is obtained from the previous one
 by a step whose selected translation has minimal degree reaches the empty family, because the
 weight strictly decreases in a well-founded order. -/
 theorem petStep_terminates (F : ℕ → Finset (Fin 3 → Polynomial ℝ))
@@ -20885,7 +20939,7 @@ theorem petStep_terminates (F : ℕ → Finset (Fin 3 → Polynomial ℝ))
 
 "At each use of van der Corput take `H = c delta^C N` in the current normalized parameter.  The
 boundary error in `lem:fejer-vdc` is then at most half the current lower bound after enlarging
-`C`.  Pigeonholing the difference variable loses only a fixed power of `delta`. ...  All
+`C`. Pigeonholing the difference variable loses only a fixed power of `delta`. ... All
 recurrences are inequalities between natural powers of `delta`."
 
 The three ingredients are isolated here: the shift is small enough that the boundary error is
@@ -20900,7 +20954,7 @@ theorem vdc_boundary_small {H N ρ : ℝ} (hN : 0 < N)
   calc 12 * H / N ≤ 12 * (ρ ^ 2 * N / 24) / N := div_le_div_of_nonneg_right h1 hN.le
     _ = ρ ^ 2 / 2 := by field_simp; ring
 
-/-- **The step squares the lower bound.**  Once the boundary error is at most half of it, the
+/-- **The step squares the lower bound.** Once the boundary error is at most half of it, the
 Fejer average inherits a lower bound of the same shape, smaller by the fixed factor eight. -/
 theorem vdc_boundary_absorb {X Y ρ b : ℝ} (hρ : 0 < ρ) (hX : ρ ≤ X)
     (hb : b ≤ ρ ^ 2 / 2) (hstep : X ^ 2 ≤ 4 * Y + b) : ρ ^ 2 / 8 ≤ Y := by
@@ -20908,7 +20962,7 @@ theorem vdc_boundary_absorb {X Y ρ b : ℝ} (hρ : 0 < ρ) (hX : ρ ≤ X)
   linarith
 
 open MeasureTheory in
-/-- **Pigeonholing the difference variable.**  A Fejer average bounded below is attained, up to a
+/-- **Pigeonholing the difference variable.** A Fejer average bounded below is attained, up to a
 factor two, at some shift; the Fejer kernel is a probability density, so a uniformly smaller
 integrand could not reach the bound. -/
 theorem exists_of_fejer_average_ge {H β : ℝ} (hH : 0 < H) (hβ : 0 < β) {g : ℝ → ℝ}
@@ -20923,7 +20977,7 @@ theorem exists_of_fejer_average_ge {H β : ℝ} (hH : 0 < H) (hβ : 0 < β) {g :
   rw [integral_mul_const, integral_fejer hH, one_mul] at hle
   linarith
 
-/-- **All recurrences are powers of `delta`.**  A finite composition of maps `x -> c x^C` is again
+/-- **All recurrences are powers of `delta`.** A finite composition of maps `x -> c x^C` is again
 a map of that shape, so a fixed number of steps costs only a fixed power. -/
 theorem exists_pow_iterate {c C : ℝ} (hc : 0 < c) (hC : 1 ≤ C) : ∀ n : ℕ,
     ∃ c' C' : ℝ, 0 < c' ∧ 1 ≤ C' ∧ ∀ δ : ℝ, 0 < δ →
@@ -20945,7 +20999,7 @@ theorem exists_pow_iterate {c C : ℝ} (hc : 0 < c) (hC : 1 ≤ C) : ∀ n : ℕ
 The van der Corput step does not preserve the shape "three functions along the three monomial
 curves": it doubles the number of factors and replaces the curves by polynomial translations.  The
 shape it does preserve is a *configuration*: a finite family of one-bounded functions, each
-translated along its own polynomial translation.  One step sends a configuration indexed by `iota`
+translated along its own polynomial translation. One step sends a configuration indexed by `iota`
 to one indexed by `iota x Bool`, the two copies carrying the shifted and the conjugated factor. -/
 
 /-- The integrand of a configuration at a point and a parameter. -/
@@ -20962,7 +21016,7 @@ theorem norm_cfgProd_le {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
     (hg : ∀ a x, ‖g a x‖ ≤ 1) (γ : ι → (Fin 3 → Polynomial ℝ)) (x : E3) (t : ℝ) :
     ‖cfgProd g γ x t‖ ≤ 1 := by
   rw [cfgProd, norm_prod]
-  exact Finset.prod_le_one (fun a _ => norm_nonneg _) fun a _ => hg a _
+  exact Finset.prod_le_one₀ (fun a _ => norm_nonneg _) fun a _ => hg a _
 
 theorem continuous_cfgProd {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
     (hg : ∀ a, Continuous (g a)) (γ : ι → (Fin 3 → Polynomial ℝ)) (x : E3) :
@@ -21011,11 +21065,11 @@ theorem cfgProd_dcfg {ι : Type*} [Fintype ι] (g : ι → E3 → ℂ)
   rw [cfgProd, cfgProd, map_prod, ← Finset.prod_mul_distrib]
   refine Finset.prod_congr rfl fun a _ => ?_
   rw [Fintype.prod_bool]
-  simp only [dcfgFun, dcfgTransl, if_pos, if_neg, Bool.false_eq_true, not_false_eq_true]
+  simp only [dcfgFun, dcfgTransl, ite_eq_left, ite_eq_right, Bool.false_eq_true, not_false_eq_true]
   rw [translAct_translShift]
 
 open MeasureTheory in
-/-- **One van der Corput step in configuration form.**  The square of the average of a
+/-- **One van der Corput step in configuration form.** The square of the average of a
 configuration is controlled by the Fejer average of the averages of its differenced
 configurations, up to the boundary error. -/
 theorem sq_norm_cfgAvg_le {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
@@ -21040,13 +21094,13 @@ theorem sq_norm_cfgAvg_le {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH
 /-! ## Blueprint `lem:pet-reduction`: the two inequalities that let the step iterate
 
 The van der Corput step leaves a modulus inside the parameter average, which blocks the next
-translation.  The standard remedy is to pass back to `L^2` after each step: Cauchy-Schwarz in the
+translation. The standard remedy is to pass back to `L^2` after each step: Cauchy-Schwarz in the
 point turns the `L^1` norm of the differenced average into the square root of its `L^2` norm, and
 Cauchy-Schwarz in the shift turns the Fejer average of a square root into the square root of the
-Fejer average.  Both are recorded here. -/
+Fejer average. Both are recorded here. -/
 
 open MeasureTheory in
-/-- **Cauchy-Schwarz in the shift.**  The Fejer density is a probability density, so the Fejer
+/-- **Cauchy-Schwarz in the shift.** The Fejer density is a probability density, so the Fejer
 average of a square root is at most the square root of the Fejer average. -/
 theorem fejer_average_sqrt_le {H : ℝ} (hH : 0 < H) {g : ℝ → ℝ} (hgm : Measurable g)
     (hg0 : ∀ t, 0 ≤ g t) {M : ℝ} (hgM : ∀ t, g t ≤ M) :
@@ -21069,7 +21123,7 @@ theorem fejer_average_sqrt_le {H : ℝ} (hH : 0 < H) {g : ℝ → ℝ} (hgm : Me
   exact (Real.le_sqrt hnn hrad).mpr hsq
 
 open MeasureTheory in
-/-- **Cauchy-Schwarz in the point.**  On a set of finite measure the `L^1` norm is at most the
+/-- **Cauchy-Schwarz in the point.** On a set of finite measure the `L^1` norm is at most the
 square root of the measure times the `L^2` norm. -/
 theorem lintegral_enorm_le_sqrt {B : Set E3} {u : E3 → ℂ}
     (hu : AEMeasurable u (volume.restrict B)) :
@@ -21087,10 +21141,9 @@ theorem lintegral_enorm_le_sqrt {B : Set E3} {u : E3 → ℂ}
 /-! ## Blueprint `lem:pet-reduction`: the differenced average as a function of the shift
 
 For the recursion the differenced average has to be handled jointly in the point and the shift:
-the Fejer average is taken in the shift, and the point is then integrated over the box.  Writing
+the Fejer average is taken in the shift, and the point is then integrated over the box. Writing
 it through `Auto.cfgProd` rather than through `Auto.dcfgTransl` makes the joint continuity
 immediate, since the shift enters only as a translation of the parameter. -/
-
 theorem continuous_uncurry_cfgProd {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
     (hg : ∀ a, Continuous (g a)) (γ : ι → (Fin 3 → Polynomial ℝ)) :
     Continuous fun z : E3 × ℝ => cfgProd g γ z.1 z.2 := by
@@ -21181,12 +21234,12 @@ theorem sq_le_of_quadratic_nonneg {I J V : ℝ} (hV : 0 < V)
 
 open MeasureTheory in
 /-- **Cauchy-Schwarz on a set of finite measure**, in real form: the square of the integral is at
-most the measure times the integral of the square.  Proved by expanding the square of `u - c` and
+most the measure times the integral of the square. Proved by expanding the square of `u - c` and
 choosing `c` to be the mean. -/
 theorem sq_setIntegral_le {B : Set E3} (hBfin : volume B ≠ ⊤)
     {u : E3 → ℝ} (hum : Measurable u) (hu0 : ∀ x, 0 ≤ u x) (hub : ∀ x, u x ≤ 1) :
     (∫ x in B, u x) ^ 2 ≤ (volume B).toReal * ∫ x in B, u x ^ 2 := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   set V := (volume B).toReal with hV
   set I := ∫ x in B, u x with hI
@@ -21226,14 +21279,14 @@ theorem sq_setIntegral_le {B : Set E3} (hBfin : volume B ≠ ⊤)
   · exact sq_le_of_quadratic_nonneg hV0 hexp
 
 open MeasureTheory in
-/-- **The point and the shift may be exchanged.**  The integrand is bounded by the Fejer weight,
+/-- **The point and the shift may be exchanged.** The integrand is bounded by the Fejer weight,
 which is integrable, and the box has finite measure. -/
 theorem integral_fejer_dAvg_swap {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
     {B : Set E3} (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ} (hgc : ∀ a, Continuous (g a))
     (hg1 : ∀ a x, ‖g a x‖ ≤ 1) (γ : ι → (Fin 3 → Polynomial ℝ)) :
     (∫ x in B, ∫ h : ℝ, fejer H h * ‖dAvg N g γ x h‖)
       = ∫ h : ℝ, fejer H h * ∫ x in B, ‖dAvg N g γ x h‖ := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hcont : Continuous fun p : E3 × ℝ => fejer H p.2 * ‖dAvg N g γ p.1 p.2‖ :=
     (continuous_fejer.comp continuous_snd).mul (continuous_uncurry_dAvg N hgc γ).norm
@@ -21256,9 +21309,8 @@ theorem integral_fejer_dAvg_swap {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 <
 
 /-! ## Blueprint `lem:pet-reduction`: the recursion for the `L^2` functional
 
-The quantity that iterates is the `L^2` norm of the average over the box.  One van der Corput step
+The quantity that iterates is the `L^2` norm of the average over the box. One van der Corput step
 followed by Cauchy-Schwarz in the point and in the shift gives
-
   `Phi <= 4 vol^{1/2} (avg_h Phi_h)^{1/2} + 12 H vol / N`,
 
 which is the recursion the induction runs on: a lower bound on `Phi`, with the boundary error
@@ -21303,7 +21355,7 @@ theorem cfgL2_le_volume {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Se
     (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ} (hgc : ∀ a, Continuous (g a))
     (hg1 : ∀ a x, ‖g a x‖ ≤ 1) (γ : ι → (Fin 3 → Polynomial ℝ)) :
     cfgL2 N B g γ ≤ (volume B).toReal := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hint : Integrable (fun x : E3 => ‖cfgAvg N g γ x‖ ^ 2) (volume.restrict B) := by
     refine Integrable.mono' (integrable_const (1 : ℝ))
@@ -21338,7 +21390,7 @@ theorem measurable_setIntegral_dAvg {ι : Type*} [Fintype ι] (N : ℝ) (B : Set
   exact (hjoint.integral_prod_right' (ν := volume.restrict B)).measurable
 
 open MeasureTheory in
-/-- **The one-step recursion for the `L^2` functional.**  One van der Corput step, then
+/-- **The one-step recursion for the `L^2` functional.** One van der Corput step, then
 Cauchy-Schwarz in the point and in the shift. -/
 theorem cfgL2_step {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
     (hHN : H ≤ N / 4) {B : Set E3} (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ}
@@ -21348,7 +21400,7 @@ theorem cfgL2_step {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < 
       ≤ 4 * (Real.sqrt ((volume B).toReal)
           * Real.sqrt (∫ h : ℝ, fejer H h * cfgL2 N B (dcfgFun g) (dcfgTransl γ h)))
         + 12 * H / N * (volume B).toReal := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hV0 : (0 : ℝ) ≤ (volume B).toReal := ENNReal.toReal_nonneg
   have hdm : ∀ x : E3, Measurable fun h : ℝ => ‖dAvg N g γ x h‖ := fun x =>
@@ -21481,7 +21533,7 @@ theorem cfgL2_step {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < 
 
 
 open MeasureTheory in
-/-- **The descent step in usable form.**  A lower bound on the `L^2` functional, with the boundary
+/-- **The descent step in usable form.** A lower bound on the `L^2` functional, with the boundary
 error absorbed, produces a single shift at which the differenced configuration still obeys a lower
 bound of the same shape -- the square of the old one, divided by a fixed multiple of the volume.
 This is the step the induction of `lem:pet-reduction` repeats. -/
@@ -21527,19 +21579,19 @@ theorem exists_shift_cfgL2_ge {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N)
 
 /-! ## Blueprint `lem:pet-reduction`: the entry point
 
-The recursion starts from the four-linear form.  Cauchy-Schwarz in the point, with the
+The recursion starts from the four-linear form. Cauchy-Schwarz in the point, with the
 undifferenced factor supported in the box, turns the hypothesis `|Lambda_N| >= delta N^6` into a
 lower bound for the `L^2` functional of the monomial configuration, which is where
 `Auto.exists_shift_cfgL2_ge` takes over. -/
 
 open MeasureTheory in
-/-- **The entry point of the recursion.**  The square of the four-linear form is at most the
+/-- **The entry point of the recursion.** The square of the four-linear form is at most the
 volume of the box times the `L^2` functional of the monomial configuration. -/
 theorem sq_norm_Lambda_le_cfgL2 {N : ℝ} (hN : 0 < N) {B : Set E3} (hBfin : volume B ≠ ⊤)
     {f0 : E3 → ℂ} {f : Fin 3 → E3 → ℂ} (hfc : ∀ i, Continuous (f i)) (hf1 : ∀ i x, ‖f i x‖ ≤ 1)
     (hf0m : Measurable f0) (hf01 : ∀ x, ‖f0 x‖ ≤ 1) (hsupp : ∀ x, x ∉ B → f0 x = 0) :
     ‖Lambda N f0 f‖ ^ 2 ≤ (volume B).toReal * cfgL2 N B f curveTransl := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hA1 : ∀ x : E3, ‖A N f x‖ ≤ 1 := by
     intro x
@@ -21562,7 +21614,7 @@ theorem sq_norm_Lambda_le_cfgL2 {N : ℝ} (hN : 0 < N) {B : Set E3} (hBfin : vol
         (Complex.continuous_conj.measurable.comp hf0m)).aestronglyMeasurable
       (Filter.Eventually.of_forall fun x => ?_)
     rw [norm_mul, RCLike.norm_conj]
-    exact mul_le_one₀ (hA1 x) (norm_nonneg _) (hf01 x)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hA1 x)).trans (hf01 x))
   have hpair : ‖Lambda N f0 f‖ ≤ ∫ x in B, ‖A N f x‖ := by
     rw [hrestrict]
     refine le_trans (norm_integral_le_integral_norm _) ?_
@@ -21584,7 +21636,7 @@ theorem sq_norm_Lambda_le_cfgL2 {N : ℝ} (hN : 0 < N) {B : Set E3} (hBfin : vol
 /-! ## Blueprint `lem:pet-reduction`: iterating the descent
 
 Each step doubles the family, so the index type after `n` steps is `iota` with `n` copies of
-`Bool` appended.  The one-boundedness and the continuity are preserved, and the bound is squared
+`Bool` appended. The one-boundedness and the continuity are preserved, and the bound is squared
 and divided by a fixed multiple of the volume at each step; the shifts chosen along the way are
 collected into a tuple. -/
 
@@ -21637,7 +21689,7 @@ theorem iterBound_succ_left (V β : ℝ) : ∀ n : ℕ,
       rw [iterBound_succ_left V β n]
 
 open MeasureTheory in
-/-- **The descent, iterated.**  After `n` steps there is a tuple of shifts along which the
+/-- **The descent, iterated.** After `n` steps there is a tuple of shifts along which the
 `n`-fold differenced configuration still obeys the iterated lower bound; one-boundedness and
 continuity are carried along by `Auto.norm_dcfgFunN_le` and `Auto.continuous_dcfgFunN`. -/
 theorem exists_iterated_descent {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4)
@@ -21687,14 +21739,13 @@ Two facts about the shape of a configuration.
 
 First, "translate so that this polynomial becomes zero": subtracting one common translation from
 every member of the family is invisible to the integral in the point, because it amounts to
-translating the point by a quantity depending only on the parameter.  This is what reconciles the
+translating the point by a quantity depending only on the parameter. This is what reconciles the
 combinatorial step `Auto.petStep`, which subtracts the selected translation, with the analytic
 step `Auto.dcfgTransl`, which does not.
 
 Second, the endpoint: when every surviving translation is constant the average no longer depends
 on the parameter, and the `L^2` functional becomes the integral of a product of fixed translates
 of the functions. -/
-
 theorem cfgProd_translSub {ι : Type*} [Fintype ι] (g : ι → E3 → ℂ)
     (γ : ι → (Fin 3 → Polynomial ℝ)) (P : Fin 3 → Polynomial ℝ) (x : E3) (t : ℝ) :
     cfgProd g (fun a => translSub (γ a) P) x t = cfgProd g γ (x - translAct P t) t := by
@@ -21730,7 +21781,7 @@ theorem cfgProd_of_constant {ι : Type*} [Fintype ι] (g : ι → E3 → ℂ)
   rw [translAct_of_translDeg_zero (hconst a) t 0]
 
 open MeasureTheory in
-/-- **The endpoint.**  When every translation is constant the average does not depend on the
+/-- **The endpoint.** When every translation is constant the average does not depend on the
 parameter: it is the product of fixed translates of the functions. -/
 theorem cfgAvg_of_constant {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) (g : ι → E3 → ℂ)
     {γ : ι → (Fin 3 → Polynomial ℝ)} (hconst : ∀ a, translDeg (γ a) = 0) (x : E3) :
@@ -21754,7 +21805,7 @@ theorem cfgL2_of_constant {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) (B : 
 
 The quantity the recursion must iterate is the one with the integral in the point *innermost* and
 no modulus, so that the translation of the point and the removal of the selected factor by
-Cauchy-Schwarz are both available.  See the Status entry of 2026-09-14 for why the modulus form
+Cauchy-Schwarz are both available. See the Status entry of 2026-09-14 for why the modulus form
 cannot shed a factor. -/
 
 open MeasureTheory in
@@ -21793,10 +21844,10 @@ theorem cfgInt_dcfg {ι : Type*} [Fintype ι] (N : ℝ) (g : ι → E3 → ℂ)
 /-! ## Blueprint `lem:pet-reduction`: the modulus as an extra factor
 
 The van der Corput step leaves `int_x |D(x)| dx` with a modulus outside the integral in the point,
-which blocks both the translation and the removal of the selected factor.  The modulus can be
+which blocks both the translation and the removal of the selected factor. The modulus can be
 removed at the cost of one extra factor: `|D(x)| = u(x) D(x)` for the unimodular `u = conj D / |D|`,
 so the quantity is again an integral of a product of one-bounded functions, with `u` carrying the
-zero translation.  That extra undisplaced factor is precisely the one the next step removes by
+zero translation. That extra undisplaced factor is precisely the one the next step removes by
 Cauchy-Schwarz. -/
 
 open Classical in
@@ -21808,7 +21859,7 @@ theorem norm_unitPhase (D : E3 → ℂ) (x : E3) : ‖unitPhase D x‖ = 1 := by
   rw [unitPhase]
   by_cases h : D x = 0
   · simp [h]
-  · rw [if_neg h, norm_div, RCLike.norm_conj, Complex.norm_real, Real.norm_eq_abs,
+  · rw [ite_eq_right h, norm_div, RCLike.norm_conj, Complex.norm_real, Real.norm_eq_abs,
       abs_of_nonneg (norm_nonneg _)]
     exact div_self (norm_ne_zero_iff.mpr h)
 
@@ -21822,7 +21873,7 @@ theorem unitPhase_mul (D : E3 → ℂ) (x : E3) :
   · simp [h]
   · have hn : ((‖D x‖ : ℝ) : ℂ) ≠ 0 :=
       Complex.ofReal_ne_zero.mpr (norm_ne_zero_iff.mpr h)
-    rw [if_neg h, div_mul_eq_mul_div, ← Complex.normSq_eq_conj_mul_self,
+    rw [ite_eq_right h, div_mul_eq_mul_div, ← Complex.normSq_eq_conj_mul_self,
       Complex.normSq_eq_norm_sq, Complex.ofReal_pow, sq]
     field_simp
 
@@ -21852,7 +21903,7 @@ theorem setIntegral_norm_eq_setIntegral_unitPhase (B : Set E3) (D : E3 → ℂ) 
 
 The quantity the corrected recursion iterates carries a **head**: one distinguished one-bounded
 factor, supported in the box and carrying the zero translation, multiplying the average of a
-configuration whose translations are all nonconstant.  Writing it this way is what makes the two
+configuration whose translations are all nonconstant. Writing it this way is what makes the two
 operations of the blueprint's step available at the same time:
 
 * the head is what Cauchy-Schwarz in the point removes, so the family *shrinks* at each step --
@@ -21882,7 +21933,7 @@ theorem norm_cfgHeadInt_le {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B :
     (γ : ι → (Fin 3 → Polynomial ℝ)) :
     ‖cfgHeadInt N g0 g γ‖ ≤ ∫ x in B, ‖cfgAvg N g γ x‖ := by
   classical
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hCAm : Measurable (cfgAvg N g γ) := (continuous_cfgAvg N hgc γ).measurable
   have hCA1 : ∀ x, ‖cfgAvg N g γ x‖ ≤ 1 := fun x => norm_cfgAvg_le hN hg1 γ x
@@ -21896,7 +21947,7 @@ theorem norm_cfgHeadInt_le {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B :
     refine Integrable.mono' (integrable_const (1 : ℝ)) hPm.aestronglyMeasurable
       (Filter.Eventually.of_forall fun x => ?_)
     rw [Real.norm_eq_abs, abs_of_nonneg (norm_nonneg _), norm_mul]
-    exact mul_le_one₀ (hg01 x) (norm_nonneg _) (hCA1 x)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hg01 x)).trans (hCA1 x))
   have hstep : ‖cfgHeadInt N g0 g γ‖ ≤ ∫ x : E3, ‖g0 x * cfgAvg N g γ x‖ :=
     norm_integral_le_integral_norm _
   refine hstep.trans ?_
@@ -21913,7 +21964,7 @@ theorem norm_cfgHeadInt_le {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B :
   exact mul_le_of_le_one_left (norm_nonneg _) (hg01 x)
 
 open MeasureTheory in
-/-- **Shedding the head.**  Cauchy-Schwarz in the point removes the undisplaced factor: a headed
+/-- **Shedding the head.** Cauchy-Schwarz in the point removes the undisplaced factor: a headed
 functional whose head is one-bounded and supported in `B` is controlled by the `L^2` functional of
 the configuration alone. -/
 theorem sq_norm_cfgHeadInt_le {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Set E3}
@@ -21936,10 +21987,9 @@ theorem sq_norm_cfgHeadInt_le {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {
 /-! ## Blueprint `lem:pet-reduction`: adjoining the head to the family
 
 The headed functional is the headless one for the family extended by a single member carrying the
-zero translation.  This is the bookkeeping that closes the descent cycle: `Auto.cfgInt` is what
+zero translation. This is the bookkeeping that closes the descent cycle: `Auto.cfgInt` is what
 the normalization `Auto.cfgInt_translSub` acts on, `Auto.cfgHeadInt` is what Cauchy-Schwarz sheds,
 and the two are the same object read through `Auto.cfgCons`. -/
-
 theorem translAct_zero (t : ℝ) : translAct (0 : Fin 3 → Polynomial ℝ) t = 0 := by
   simp [translAct]
 
@@ -21959,7 +22009,7 @@ theorem cfgProd_cons {ι : Type*} [Fintype ι] (g0 : E3 → ℂ) (g : ι → E3 
   simp [cfgCons, translCons, translAct_zero]
 
 open MeasureTheory in
-/-- **The head is a member of the family.**  Fubini in the point and the parameter identifies the
+/-- **The head is a member of the family.** Fubini in the point and the parameter identifies the
 headless functional of the extended family with the headed functional of the original one. -/
 theorem cfgInt_cons {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Set E3}
     (hBm : MeasurableSet B) (hBfin : volume B ≠ ⊤) {g0 : E3 → ℂ}
@@ -21968,11 +22018,11 @@ theorem cfgInt_cons {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Set E3
     (γ : ι → (Fin 3 → Polynomial ℝ)) :
     cfgInt N (cfgCons g0 g) (translCons γ) = cfgHeadInt N g0 g γ := by
   classical
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) := by
     refine ⟨?_⟩
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   -- the dominating function: the head is one-bounded and supported in `B`
   have hIonB : IntegrableOn (fun _ : E3 => (1 : ℝ)) B := integrable_const 1
@@ -21994,7 +22044,7 @@ theorem cfgInt_cons {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Set E3
     simp only [Function.uncurry_apply_pair, one_mul]
     by_cases hx : x ∈ B
     · rw [Set.indicator_of_mem hx, norm_mul]
-      exact mul_le_one₀ (hg01 x) (norm_nonneg _) (norm_cfgProd_le hg1 γ x t)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (hg01 x)).trans (norm_cfgProd_le hg1 γ x t))
     · rw [Set.indicator_of_notMem hx]
       simp [hg0supp x hx]
   rw [cfgInt, cfgHeadInt]
@@ -22016,8 +22066,8 @@ theorem cfgInt_cons {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Set E3
 /-! ## Blueprint `lem:pet-reduction`: the van der Corput half in headed shape
 
 The descent cycle needs its other half: from a lower bound on `Auto.cfgL2` produce a single shift
-`h` and a *headed* functional of the differenced family bounded below.  The `L^1` functional over
-the box is the intermediary.  The van der Corput step bounds `cfgL2` by the Fejer average of
+`h` and a *headed* functional of the differenced family bounded below. The `L^1` functional over
+the box is the intermediary. The van der Corput step bounds `cfgL2` by the Fejer average of
 `cfgL1` of the differenced family; pigeonholing fixes `h`; and the unimodular bridge of
 `Auto.unitPhase` rewrites `int_B ‖D‖` as the pairing of `D` against a one-bounded function
 supported in `B`, which is exactly a head. -/
@@ -22057,7 +22107,7 @@ theorem cfgL1_le_volume {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Se
     (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ} (hgc : ∀ a, Continuous (g a))
     (hg1 : ∀ a x, ‖g a x‖ ≤ 1) (γ : ι → (Fin 3 → Polynomial ℝ)) :
     cfgL1 N B g γ ≤ (volume B).toReal := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hint : Integrable (fun x : E3 => ‖cfgAvg N g γ x‖) (volume.restrict B) := by
     refine Integrable.mono' (integrable_const (1 : ℝ))
@@ -22070,7 +22120,7 @@ theorem cfgL1_le_volume {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N) {B : Se
   rwa [setIntegral_const, smul_eq_mul, mul_one, measureReal_def, ← cfgL1] at hmono
 
 open MeasureTheory in
-/-- **One van der Corput step, in `L^1` form.**  The `L^2` functional is bounded by the Fejer
+/-- **One van der Corput step, in `L^1` form.** The `L^2` functional is bounded by the Fejer
 average of the `L^1` functional of the differenced family, plus the boundary error. -/
 theorem cfgL2_le_fejer_cfgL1 {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
     (hHN : H ≤ N / 4) {B : Set E3} (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ}
@@ -22079,7 +22129,7 @@ theorem cfgL2_le_fejer_cfgL1 {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) 
     cfgL2 N B g γ
       ≤ 4 * (∫ h : ℝ, fejer H h * cfgL1 N B (dcfgFun g) (dcfgTransl γ h))
         + 12 * H / N * (volume B).toReal := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hdm : ∀ x : E3, Measurable fun h : ℝ => ‖dAvg N g γ x h‖ := fun x =>
     ((continuous_uncurry_dAvg N hgc γ).comp
@@ -22139,7 +22189,7 @@ theorem cfgL2_le_fejer_cfgL1 {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) 
           + 12 * H / N * (volume B).toReal := by simp only [cfgL1_eq_dAvg]
 
 open MeasureTheory in
-/-- **Pigeonholing the shift.**  A lower bound on the `L^2` functional, with the boundary error
+/-- **Pigeonholing the shift.** A lower bound on the `L^2` functional, with the boundary error
 absorbed, yields a single shift at which the `L^1` functional of the differenced family is bounded
 below. -/
 theorem exists_shift_cfgL1_ge {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
@@ -22163,7 +22213,7 @@ theorem exists_shift_cfgL1_ge {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N)
 
 open MeasureTheory in
 /-- The head produced by one step: the unimodular phase of the differenced average, cut off to the
-box.  It is one-bounded, measurable and supported in `B`, which is exactly what
+box. It is one-bounded, measurable and supported in `B`, which is exactly what
 `Auto.sq_norm_cfgHeadInt_le` asks of a head. -/
 noncomputable def dHead {ι : Type*} [Fintype ι] (N : ℝ) (B : Set E3) (g : ι → E3 → ℂ)
     (γ : ι → (Fin 3 → Polynomial ℝ)) (h : ℝ) : E3 → ℂ :=
@@ -22191,7 +22241,7 @@ theorem dHead_eq_zero_of_notMem {ι : Type*} [Fintype ι] (N : ℝ) (B : Set E3)
   rw [dHead, Set.indicator_of_notMem hx]
 
 open MeasureTheory in
-/-- **The bridge.**  Pairing the differenced average against its own unimodular phase, cut off to
+/-- **The bridge.** Pairing the differenced average against its own unimodular phase, cut off to
 the box, recovers the `L^1` functional -- so the lower bound produced by the pigeonhole is a lower
 bound for a headed functional of the differenced family. -/
 theorem cfgHeadInt_dHead {ι : Type*} [Fintype ι] (N : ℝ) {B : Set E3} (hBm : MeasurableSet B)
@@ -22216,8 +22266,8 @@ theorem norm_cfgHeadInt_dHead {ι : Type*} [Fintype ι] (N : ℝ) {B : Set E3}
     abs_of_nonneg (cfgL1_nonneg _ _ _ _)]
 
 open MeasureTheory in
-/-- **The van der Corput half of the cycle.**  From a lower bound on the `L^2` functional, one
-shift and one head, with the headed functional of the differenced family bounded below.  Together
+/-- **The van der Corput half of the cycle.** From a lower bound on the `L^2` functional, one
+shift and one head, with the headed functional of the differenced family bounded below. Together
 with `Auto.sq_norm_cfgHeadInt_le` and `Auto.cfgInt_cons` this closes the descent cycle. -/
 theorem exists_shift_cfgHeadInt_ge {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
     (hHN : H ≤ N / 4) {B : Set E3} (hBm : MeasurableSet B) (hBfin : volume B ≠ ⊤)
@@ -22232,13 +22282,13 @@ theorem exists_shift_cfgHeadInt_ge {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0
 
 /-! ## Blueprint `lem:pet-reduction`: one full turn of the descent
 
-Composing the two halves gives the step the induction repeats.  Note that the head it produces,
+Composing the two halves gives the step the induction repeats. Note that the head it produces,
 `Auto.dHead`, satisfies exactly the three hypotheses the step demands of a head, and the functions
 it produces, `Auto.dcfgFun g`, are again continuous and one-bounded, so the conclusion can be fed
 straight back into the hypothesis. -/
 
 open MeasureTheory in
-/-- **One turn.**  Cauchy-Schwarz sheds the head, van der Corput and the pigeonhole produce a
+/-- **One turn.** Cauchy-Schwarz sheds the head, van der Corput and the pigeonhole produce a
 shift, and the unimodular bridge supplies the next head: a headed functional bounded below by
 `beta` yields a differenced headed functional bounded below by `beta^2 / (16 vol(B))`. -/
 theorem exists_head_descent {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
@@ -22276,7 +22326,7 @@ theorem dHead_is_head {ι : Type*} [Fintype ι] (N : ℝ) {B : Set E3} (hBm : Me
 
 The turn of `Auto.exists_head_descent` composes with itself: the head it produces is a head, the
 functions it produces are continuous and one-bounded, and the index type doubles exactly as in
-`Auto.cfgIdx`.  Iterating it is the analytic half of the recursion, to be run for as many steps as
+`Auto.cfgIdx`. Iterating it is the analytic half of the recursion, to be run for as many steps as
 the combinatorial half `Auto.petStep_terminates` asks for. -/
 
 /-- The lower bound after `n` turns: each turn squares it and divides by sixteen times the
@@ -22294,7 +22344,7 @@ theorem headBound_succ_left (V β : ℝ) : ∀ n : ℕ,
       rw [headBound_succ_left V β n]
 
 open MeasureTheory in
-/-- **The turn, iterated.**  After `n` turns there is a tuple of shifts and a final head along
+/-- **The turn, iterated.** After `n` turns there is a tuple of shifts and a final head along
 which the `n`-fold differenced configuration still obeys the iterated lower bound. -/
 theorem exists_iterated_head_descent {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4)
     {B : Set E3} (hBm : MeasurableSet B) (hBfin : volume B ≠ ⊤)
@@ -22349,9 +22399,9 @@ theorem exists_iterated_head_descent {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN 
 
 After the normalization by the selected translation, some members acquire a constant translation:
 in the blueprint these are the ones that "become zero" or drop out of the recursion, and
-`Auto.petStep` deletes them with its `0 < translDeg` filter.  Analytically they do not disappear,
+`Auto.petStep` deletes them with its `0 < translDeg` filter. Analytically they do not disappear,
 they are absorbed: a member with constant translation contributes a fixed translate of its
-function, independent of the parameter, so it multiplies into the head.  The head stays
+function, independent of the parameter, so it multiplies into the head. The head stays
 one-bounded and stays supported in `B`, because the factor it acquires is one-bounded.
 
 This is the last piece of bookkeeping the analytic turn needs in order to run alongside
@@ -22367,7 +22417,7 @@ theorem norm_constFactor_le {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
     (hg1 : ∀ a x, ‖g a x‖ ≤ 1) (γ : ι → (Fin 3 → Polynomial ℝ)) (p : ι → Prop)
     [DecidablePred p] (x : E3) : ‖constFactor g γ p x‖ ≤ 1 := by
   rw [constFactor, norm_prod]
-  exact Finset.prod_le_one (fun a _ => norm_nonneg _) fun a _ => hg1 a _
+  exact Finset.prod_le_one₀ (fun a _ => norm_nonneg _) fun a _ => hg1 a _
 
 theorem continuous_constFactor {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
     (hgc : ∀ a, Continuous (g a)) (γ : ι → (Fin 3 → Polynomial ℝ)) (p : ι → Prop)
@@ -22408,7 +22458,7 @@ theorem cfgAvg_split {ι : Type*} [Fintype ι] (N : ℝ) (g : ι → E3 → ℂ)
     intervalIntegral.integral_const_mul, mul_smul_comm]
 
 open MeasureTheory in
-/-- **Merging the constant translations into the head.**  The members whose translation has become
+/-- **Merging the constant translations into the head.** The members whose translation has become
 constant multiply into the head; the reduced family carries only the nonconstant translations,
 which are the ones `Auto.petStep` keeps. -/
 theorem cfgHeadInt_merge {ι : Type*} [Fintype ι] (N : ℝ) (g0 : E3 → ℂ) (g : ι → E3 → ℂ)
@@ -22428,7 +22478,7 @@ theorem norm_mul_constFactor_le {ι : Type*} [Fintype ι] {g0 : E3 → ℂ}
     (γ : ι → (Fin 3 → Polynomial ℝ)) (p : ι → Prop) [DecidablePred p] (x : E3) :
     ‖g0 x * constFactor g γ p x‖ ≤ 1 := by
   rw [norm_mul]
-  exact mul_le_one₀ (hg01 x) (norm_nonneg _) (norm_constFactor_le hg1 γ p x)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hg01 x)).trans (norm_constFactor_le hg1 γ p x))
 
 /-- The merged head is still supported in the box. -/
 theorem mul_constFactor_eq_zero_of_notMem {ι : Type*} [Fintype ι] {B : Set E3} {g0 : E3 → ℂ}
@@ -22450,7 +22500,7 @@ theorem measurable_mul_constFactor {ι : Type*} [Fintype ι] {g0 : E3 → ℂ} (
 
 "A final Cauchy-Schwarz produces the cube defining `U^{s_*}`."  At the end of the recursion every
 surviving translation is constant, so the configuration is a family of fixed translates of a
-single function, one per vertex of a cube, conjugated according to the parity of the vertex.  That
+single function, one per vertex of a cube, conjugated according to the parity of the vertex. That
 is literally the cube expansion `Auto.fdiffIter_eq_cubeProd` of the iterated Fejer difference whose
 average defines `Auto.locUnifPow`.
 
@@ -22484,24 +22534,24 @@ theorem translDeg_cubeTransl (j : Fin 3) {s : ℕ} (h : Fin s → ℝ) (ω : Fin
 
 theorem norm_cubeFun_le {s : ℕ} {f : E3 → ℂ} (hf1 : ∀ x, ‖f x‖ ≤ 1) (ω : Fin s → Bool) (x : E3) :
     ‖cubeFun s f ω x‖ ≤ 1 := by
-  show ‖conjPar (numFalse ω) (f x)‖ ≤ 1
+  change ‖conjPar (numFalse ω) (f x)‖ ≤ 1
   rw [norm_conjPar]
   exact hf1 x
 
 theorem continuous_cubeFun {s : ℕ} {f : E3 → ℂ} (hf : Continuous f) (ω : Fin s → Bool) :
     Continuous (cubeFun s f ω) := by
-  show Continuous fun x => conjPar (numFalse ω) (f x)
+  change Continuous fun x => conjPar (numFalse ω) (f x)
   by_cases hω : Even (numFalse ω)
-  · simpa only [conjPar, if_pos hω] using hf
-  · simpa only [conjPar, if_neg hω, Function.comp_def] using Complex.continuous_conj.comp hf
+  · simpa only [conjPar, ite_eq_left hω] using hf
+  · simpa only [conjPar, ite_eq_right hω, Function.comp_def] using Complex.continuous_conj.comp hf
 
-/-- **The endpoint identification.**  The configuration product of the cube family is the iterated
+/-- **The endpoint identification.** The configuration product of the cube family is the iterated
 Fejer difference; in particular it does not depend on the parameter. -/
 theorem cfgProd_cube (j : Fin 3) (s : ℕ) (f : E3 → ℂ) (h : Fin s → ℝ) (x : E3) (t : ℝ) :
     cfgProd (cubeFun s f) (cubeTransl j h) x t = fdiffIter (basisVec j) s h f x := by
   rw [cfgProd, fdiffIter_eq_cubeProd]
   refine Finset.prod_congr rfl fun ω _ => ?_
-  show conjPar (numFalse ω) (f (x + translAct (constTransl (cubeShift h ω • basisVec j)) t))
+  change conjPar (numFalse ω) (f (x + translAct (constTransl (cubeShift h ω • basisVec j)) t))
       = conjPar (numFalse ω) (f (x + cubeShift h ω • basisVec j))
   rw [translAct_constTransl]
 
@@ -22530,14 +22580,14 @@ theorem cfgHeadInt_cube {N : ℝ} (hN : 0 < N) (j : Fin 3) (s : ℕ) (f : E3 →
 
 /-! ## Blueprint `lem:pet-reduction`: the entry point in headed form
 
-The hypothesis of the lemma is a lower bound on the four-linear form `Auto.Lambda`.  Read through
+The hypothesis of the lemma is a lower bound on the four-linear form `Auto.Lambda`. Read through
 `Auto.cfgAvg_curveTransl`, that form *is* a headed functional: the head is the conjugate of `f_0`,
-the family is `f_1, f_2, f_3` and the translations are the monomial ones `Auto.curveTransl`.  So
+the family is `f_1, f_2, f_3` and the translations are the monomial ones `Auto.curveTransl`. So
 the descent can be started directly from the hypothesis, with no intermediate Cauchy-Schwarz --
 the first turn performs it. -/
 
 open MeasureTheory in
-/-- **The entry point.**  The four-linear form is the headed functional of the monomial
+/-- **The entry point.** The four-linear form is the headed functional of the monomial
 configuration, with head the conjugate of `f_0`. -/
 theorem Lambda_eq_cfgHeadInt (N : ℝ) (f0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ) :
     Lambda N f0 f = cfgHeadInt N (fun x => (starRingEnd ℂ) (f0 x)) f curveTransl := by
@@ -22561,7 +22611,7 @@ theorem conj_head_eq_zero_of_notMem {B : Set E3} {f0 : E3 → ℂ}
   rw [hsupp x hx, map_zero]
 
 open MeasureTheory in
-/-- **The descent, started from the hypothesis of `lem:pet-reduction`.**  A lower bound on the
+/-- **The descent, started from the hypothesis of `lem:pet-reduction`.** A lower bound on the
 four-linear form drives the iterated turn: after `n` turns there is a tuple of shifts and a head
 along which the `n`-fold differenced monomial configuration still obeys the iterated bound. -/
 theorem exists_iterated_descent_of_Lambda {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N / 4)
@@ -22590,7 +22640,7 @@ theorem exists_iterated_descent_of_Lambda {N H : ℝ} (hN : 0 < N) (hH : 0 < H) 
 
 The correction recorded in `automation/ErrorReport.md` at 2026-09-15T11:35:11-04:00 requires van der
 Corput to be applied to the `L^2(E3)`-valued average `t -> cfgProd(., t)` rather than pointwise in
-the point.  The inner product of two such vectors is the pairing defined here.  Its parameter
+the point. The inner product of two such vectors is the pairing defined here. Its parameter
 average over `t` at a fixed shift `h` is exactly `Auto.cfgInt` of the differenced family -- a
 quantity with no modulus inside the integral in the point, hence one that
 `Auto.cfgInt_translSub` can normalize.
@@ -22602,14 +22652,14 @@ it can be carried along the recursion. -/
 open MeasureTheory in
 /-- The configuration is supported in `B`: its integrand vanishes off `B`, uniformly in the
 parameter. -/
--- SUPERSEDED.  `Auto.CfgSupported` and the four lemmas that consume it below
+-- SUPERSEDED. `Auto.CfgSupported` and the four lemmas that consume it below
 -- (`Auto.CfgSupported.dcfg`, `Auto.cfgSupported_cons`, `Auto.cfgPair_eq_setIntegral`,
 -- `Auto.norm_cfgPair_le`, `Auto.integral_sq_norm_eq_setIntegral_of_cfgSupported`) are true but no
 -- longer used: quantifying over *every* real parameter, the notion does not survive the
--- normalization, since the displacement `translAct P t` is unbounded in `t`.  See
--- `automation/ErrorReport.md` at 2026-09-15T13:16:11-04:00.  The chain now runs on
+-- normalization, since the displacement `translAct P t` is unbounded in `t`. See
+-- `automation/ErrorReport.md` at 2026-09-15T13:16:11-04:00. The chain now runs on
 -- `Auto.CfgMemSupported` (a property of the members, giving bounds at every parameter) and
--- `Auto.CfgSupportedOn` (the product support over a bounded parameter range).  Kept, as
+-- `Auto.CfgSupportedOn` (the product support over a bounded parameter range). Kept, as
 -- `Auto.cfgL2_step` is, so that the record of the route is complete; do not build on them.
 def CfgSupported {ι : Type*} [Fintype ι] (B : Set E3) (g : ι → E3 → ℂ)
     (γ : ι → (Fin 3 → Polynomial ℝ)) : Prop :=
@@ -22642,8 +22692,8 @@ noncomputable def cfgPair {ι : Type*} [Fintype ι] (g : ι → E3 → ℂ)
 /-! ## Blueprint `lem:pet-reduction`: the support invariant that survives the turn
 
 `Auto.CfgSupported` is a property of the *product* and, as recorded in `automation/ErrorReport.md`
-at 2026-09-15T13:16:11-04:00, it does not survive the normalization.  The property that does is a
-property of the *members*: each member function supported in a fixed set.  It is preserved by
+at 2026-09-15T13:16:11-04:00, it does not survive the normalization. The property that does is a
+property of the *members*: each member function supported in a fixed set. It is preserved by
 differencing (the functions are the same up to conjugation), by the normalization (which changes
 only the translations), by merging into the head (a product of translates), and by shedding (which
 only removes members).
@@ -22675,7 +22725,7 @@ theorem norm_cfgProd_le_single {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
         * ∏ a ∈ Finset.univ.erase a₀, ‖g a (x + translAct (γ a) t)‖
       ≤ ‖g a₀ (x + translAct (γ a₀) t)‖ * 1 :=
         mul_le_mul_of_nonneg_left
-          (Finset.prod_le_one (fun a _ => norm_nonneg _) fun a _ => hg1 a _) (norm_nonneg _)
+          (Finset.prod_le_one₀ (fun a _ => norm_nonneg _) fun a _ => hg1 a _) (norm_nonneg _)
     _ = ‖g a₀ (x + translAct (γ a₀) t)‖ := mul_one _
 
 open MeasureTheory in
@@ -22686,7 +22736,7 @@ theorem integral_norm_shift_le {B : Set E3} (hBm : MeasurableSet B) (hBfin : vol
     (hsupp : ∀ x, x ∉ B → f x = 0) (v : E3) :
     Integrable (fun x : E3 => ‖f (x + v)‖) ∧ (∫ x : E3, ‖f (x + v)‖) ≤ (volume B).toReal := by
   classical
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hIonB : IntegrableOn (fun _ : E3 => (1 : ℝ)) B := integrable_const 1
   have hindint : Integrable (B.indicator fun _ : E3 => (1 : ℝ)) volume :=
@@ -22719,7 +22769,7 @@ theorem continuous_cfgProd_point {ι : Type*} [Fintype ι] {g : ι → E3 → �
   (continuous_uncurry_cfgProd hgc γ).comp (continuous_id.prodMk continuous_const)
 
 open MeasureTheory in
-/-- **The `L^1` bound on the integrand, uniform in the parameter.**  This is the point of the
+/-- **The `L^1` bound on the integrand, uniform in the parameter.** This is the point of the
 member-support invariant: the bound holds for every `t`, because translating the point does not
 change the measure of the dominating factor's support. -/
 theorem integral_norm_cfgProd_le {ι : Type*} [Fintype ι] {B : Set E3} (hBm : MeasurableSet B)
@@ -22741,7 +22791,7 @@ theorem integral_norm_cfgProd_le {ι : Type*} [Fintype ι] {B : Set E3} (hBm : M
   exact ⟨hint, le_trans (integral_mono hint hdint hdom) hdle⟩
 
 open MeasureTheory in
-/-- **The pairing is bounded, at every pair of parameters.**  No restriction on the parameters is
+/-- **The pairing is bounded, at every pair of parameters.** No restriction on the parameters is
 needed, in contrast with the bound derived from `Auto.CfgSupported`. -/
 theorem norm_cfgPair_le' {ι : Type*} [Fintype ι] {B : Set E3} (hBm : MeasurableSet B)
     (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ} (hgc : ∀ a, Continuous (g a))
@@ -22775,9 +22825,9 @@ domination is by the indicator of a fixed set.
 
 `Auto.CfgSupported` cannot serve there, and no constructor can rescue it: it quantifies over every
 real parameter, so the set would have to contain `B - translAct q t` for all `t`, which for a
-nonconstant translation is unbounded.  The notion below restricts the parameter to `|t| <= L`,
+nonconstant translation is unbounded. The notion below restricts the parameter to `|t| <= L`,
 which is all any call site uses -- every integral in the chain runs over `t ∈ [0, N]` with shifts in
-`[0, H]`, `H <= N`, so `L = 2N` suffices.  Over such a range the member-support invariant does
+`[0, H]`, `H <= N`, so `L = 2N` suffices. Over such a range the member-support invariant does
 supply a fixed set, namely the box enlarged by the displacement, which is the blueprint's own
 enlargement of `I_N(C)` from step to step.
 
@@ -22872,13 +22922,14 @@ theorem norm_cfgPair_le {ι : Type*} [Fintype ι] {B : Set E3} (hBfin : volume B
     {g : ι → E3 → ℂ} (hg1 : ∀ a x, ‖g a x‖ ≤ 1)
     {γ : ι → (Fin 3 → Polynomial ℝ)} (hs : CfgSupported B g γ) (t s : ℝ) :
     ‖cfgPair g γ t s‖ ≤ (volume B).toReal := by
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   rw [cfgPair_eq_setIntegral hs t s]
   have hbd : ∀ x : E3, ‖cfgProd g γ x t * (starRingEnd ℂ) (cfgProd g γ x s)‖ ≤ 1 := by
     intro x
     rw [norm_mul, RCLike.norm_conj]
-    exact mul_le_one₀ (norm_cfgProd_le hg1 γ x t) (norm_nonneg _) (norm_cfgProd_le hg1 γ x s)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_cfgProd_le hg1 γ x t)).trans
+      (norm_cfgProd_le hg1 γ x s))
   have hfin : volume B < ⊤ := lt_of_le_of_ne le_top hBfin
   have := norm_setIntegral_le_of_norm_le_const (C := 1) (μ := volume) (s := B)
     (f := fun x : E3 => cfgProd g γ x t * (starRingEnd ℂ) (cfgProd g γ x s)) hfin
@@ -22886,7 +22937,7 @@ theorem norm_cfgPair_le {ι : Type*} [Fintype ι] {B : Set E3} (hBfin : volume B
   simpa [measureReal_def] using this
 
 open MeasureTheory in
-/-- **The differenced functional is the parameter average of the pairing.**  This is the shape the
+/-- **The differenced functional is the parameter average of the pairing.** This is the shape the
 corrected van der Corput step produces: the integral in the point is innermost and there is no
 modulus anywhere inside it, so `Auto.cfgInt_translSub` applies. -/
 theorem cfgInt_dcfg_eq_pair {ι : Type*} [Fintype ι] (N : ℝ) (g : ι → E3 → ℂ)
@@ -22904,7 +22955,7 @@ theorem cfgPair_self {ι : Type*} [Fintype ι] (g : ι → E3 → ℂ)
     cfgPair g γ t t = ((∫ x : E3, ‖cfgProd g γ x t‖ ^ 2 : ℝ) : ℂ) := by
   rw [cfgPair, ← integral_complex_ofReal]
   refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-  show cfgProd g γ x t * (starRingEnd ℂ) (cfgProd g γ x t)
+  change cfgProd g γ x t * (starRingEnd ℂ) (cfgProd g γ x t)
       = ((‖cfgProd g γ x t‖ ^ 2 : ℝ) : ℂ)
   simp [Complex.mul_conj, Complex.normSq_eq_norm_sq]
 
@@ -22912,10 +22963,10 @@ theorem cfgPair_self {ι : Type*} [Fintype ι] (g : ι → E3 → ℂ)
 
 /-! ## Blueprint `lem:pet-reduction`: expanding the square of an inner average
 
-First analytic step of the `L^2`-valued van der Corput.  The square of the modulus of an integral
+First analytic step of the `L^2`-valued van der Corput. The square of the modulus of an integral
 is the double integral of the pairing of the integrand with itself; carrying that through the
 integral in the point turns the squared `L^2` norm of an inner average into a double parameter
-integral of `Auto.cfgPair`, with the integral in the point innermost.  That placement is the whole
+integral of `Auto.cfgPair`, with the integral in the point innermost. That placement is the whole
 object of the exercise: it is what the pointwise-modulus route of the superseded entries could
 never produce. -/
 
@@ -22931,7 +22982,7 @@ theorem sq_norm_setIntegral_eq_double {S : Set ℝ} {W : ℝ → ℂ} (_hW : Int
     integral_conj.symm
   rw [h1, h2, ← integral_mul_const]
   refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-  show W a * (∫ b in S, (starRingEnd ℂ) (W b)) = ∫ b in S, W a * (starRingEnd ℂ) (W b)
+  change W a * (∫ b in S, (starRingEnd ℂ) (W b)) = ∫ b in S, W a * (starRingEnd ℂ) (W b)
   rw [← integral_const_mul]
 
 open MeasureTheory in
@@ -22950,7 +23001,7 @@ theorem integral_sq_norm_eq_setIntegral_of_cfgSupported {ι : Type*} [Fintype ι
   norm_num
 
 open MeasureTheory in
-/-- **The squared `L^2` norm of an inner average, expanded.**  Two applications of Fubini move the
+/-- **The squared `L^2` norm of an inner average, expanded.** Two applications of Fubini move the
 integral in the point inside the two parameter integrals, where it is exactly `Auto.cfgPair`. -/
 theorem ofReal_integral_sq_norm_innerAvg {ι : Type*} [Fintype ι] {L : ℝ} {B : Set E3}
     (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ} (hgc : ∀ a, Continuous (g a))
@@ -22963,9 +23014,9 @@ theorem ofReal_integral_sq_norm_innerAvg {ι : Type*} [Fintype ι] {L : ℝ} {B 
   have hSfin : volume S < ⊤ := by
     rw [hSdef, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
-  haveI : IsFiniteMeasure (volume.restrict S) :=
+  have : IsFiniteMeasure (volume.restrict S) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact hSfin⟩
   have hjoint : Continuous fun p : E3 × ℝ => cfgProd g γ p.1 p.2 :=
     continuous_uncurry_cfgProd hgc γ
@@ -22980,8 +23031,8 @@ theorem ofReal_integral_sq_norm_innerAvg {ι : Type*} [Fintype ι] {L : ℝ} {B 
       ‖cfgProd g γ x (t + a) * (starRingEnd ℂ) (cfgProd g γ x (t + b))‖ ≤ 1 := by
     intro x a b
     rw [norm_mul, RCLike.norm_conj]
-    exact mul_le_one₀ (norm_cfgProd_le hg1 γ x (t + a)) (norm_nonneg _)
-      (norm_cfgProd_le hg1 γ x (t + b))
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_cfgProd_le hg1 γ x (t + a))).trans
+      (norm_cfgProd_le hg1 γ x (t + b)))
   -- the inner exchange, at a fixed first parameter
   have hswap2 : ∀ a : ℝ, (∫ x in B, ∫ b in S,
         cfgProd g γ x (t + a) * (starRingEnd ℂ) (cfgProd g γ x (t + b)))
@@ -23041,19 +23092,19 @@ theorem ofReal_integral_sq_norm_innerAvg {ι : Type*} [Fintype ι] {L : ℝ} {B 
 /-! ## Blueprint `lem:pet-reduction`: van der Corput without taking the modulus in the point
 
 The obstruction recorded on 2026-09-15T11:35:11-04:00 is that `Auto.sq_norm_cfgAvg_le'` takes the
-modulus pointwise in the point.  It turns out that no Hilbert-space machinery is needed to avoid
+modulus pointwise in the point. It turns out that no Hilbert-space machinery is needed to avoid
 that: the two analytic steps of van der Corput -- replacing an average by an average of shifted
 averages, and Cauchy-Schwarz in the parameter -- both *square* the modulus they produce, and a
-square is a product.  So they may be applied pointwise in the point, with the existing scalar
+square is a product. So they may be applied pointwise in the point, with the existing scalar
 lemmas, and the quantity that reaches the integral in the point is already
 `|int_a cfgProd(x, t+a) da|^2`, which `Auto.ofReal_integral_sq_norm_innerAvg` expands into a double
 parameter integral of `Auto.cfgPair`.
 
 The modulus is taken only at the very end, on a scalar function of the shift -- outside the integral
-in the point.  That is exactly what the superseded route could not arrange. -/
+in the point. That is exactly what the superseded route could not arrange. -/
 
 open MeasureTheory in
-/-- **The scalar step, stopped before the modulus.**  The square of an integral is controlled by
+/-- **The scalar step, stopped before the modulus.** The square of an integral is controlled by
 the mean square of its inner averages, with no modulus of a paired quantity anywhere: from
 `Auto.norm_integral_avg_sub_le` (the boundary error) and `Auto.sq_norm_avg_le` (Cauchy-Schwarz in
 the parameter). -/
@@ -23099,7 +23150,7 @@ theorem continuous_innerAvg {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
   exact intervalIntegral.continuous_parametric_intervalIntegral_of_continuous' hc 0 H
 
 open MeasureTheory in
-/-- **The van der Corput step for the `L^2` functional.**  Every modulus taken is squared, hence a
+/-- **The van der Corput step for the `L^2` functional.** Every modulus taken is squared, hence a
 product, so nothing is lost: the bound is by the mean square of the inner averages. -/
 theorem cfgL2_le_innerSq {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH : 0 < H)
     {B : Set E3} (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ} (hgc : ∀ a, Continuous (g a))
@@ -23108,7 +23159,7 @@ theorem cfgL2_le_innerSq {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH 
       ≤ 2 * N⁻¹ * H⁻¹ ^ 2 * (∫ t in (0 : ℝ)..N, innerSq B g γ H t)
         + 8 * (H / N) ^ 2 * (volume B).toReal := by
   classical
-  haveI : IsFiniteMeasure (volume.restrict B) :=
+  have : IsFiniteMeasure (volume.restrict B) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hBfin⟩
   have hV0 : (0 : ℝ) ≤ (volume B).toReal := ENNReal.toReal_nonneg
   set T : E3 → ℝ := fun x => ∫ t in (0 : ℝ)..N, ‖∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)‖ ^ 2
@@ -23190,7 +23241,7 @@ theorem cfgL2_le_innerSq {ι : Type*} [Fintype ι] {N H : ℝ} (hN : 0 < N) (hH 
         norm_cfgProd_le hg1 γ x (t + a)
       have hle := intervalIntegral.norm_integral_le_of_norm_le_const hia
       rw [sub_zero, abs_of_pos hH] at hle
-      show ‖‖∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)‖ ^ 2‖ ≤ H ^ 2
+      change ‖‖∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)‖ ^ 2‖ ≤ H ^ 2
       rw [Real.norm_eq_abs, abs_of_nonneg
         (by positivity : (0 : ℝ) ≤ ‖∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)‖ ^ 2)]
       nlinarith [norm_nonneg (∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)), hle, hH.le]
@@ -23238,7 +23289,7 @@ theorem norm_integral_sub_integral_le' {g : ℝ → ℂ} {M : ℝ}
     _ = M * (|p - p'| + |q - q'|) := by ring
 
 open MeasureTheory in
-/-- **The pairing at two shifts is measurable in the interval variable.**  Stated in the
+/-- **The pairing at two shifts is measurable in the interval variable.** Stated in the
 `ℝ × E3` shape that `Auto.measurable_setIntegral_dAvg` already uses; the `ℝ × ℝ` product form
 exhausts the elaborator's heartbeats on this space. -/
 theorem measurable_cfgPairPair {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
@@ -23298,7 +23349,7 @@ theorem norm_cfgCapPair_le {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
   exact le_trans hb (mul_le_mul_of_nonneg_left (volume_capSet_le hN c h) hM0)
 
 open MeasureTheory in
-/-- **The cost of the change of shift variables, at one pair of shifts.**  Substituting `t + b` for
+/-- **The cost of the change of shift variables, at one pair of shifts.** Substituting `t + b` for
 `t` makes the integrand depend only on the difference of the shifts; replacing the shifted interval
 by the capped one costs the volume of the box times twice the shift range. -/
 theorem norm_cfgPairIntegral_sub_cfgCapPair_le {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
@@ -23335,20 +23386,21 @@ theorem norm_cfgPairIntegral_sub_cfgCapPair_le {ι : Type*} [Fintype ι] {g : ι
 /-! ## Blueprint `lem:pet-reduction`: measurability of the pairing in its shifts
 
 The comparison over the square of shifts needs the pairing, the capped pairing and the parametric
-integrals of both to be measurable in the shifts.  Everything reduces to one joint measurability
+integrals of both to be measurable in the shifts. Everything reduces to one joint measurability
 statement for `Auto.cfgPair` on `ℝ × ℝ`, after which `Auto.measurable_varSetIntegral` supplies the
 rest.
 
-Two points of technique.  First, that one statement is expensive to elaborate -- `E3` is
+Two points of technique. First, that one statement is expensive to elaborate -- `E3` is
 `EuclideanSpace`, and integrating it out of a nested product exceeds the default heartbeat budget --
 so it carries the same `set_option maxHeartbeats 2000000` the file already uses in four earlier
-places.  Second, and more important, the lemmas built on top of it must **not** mention `cfgPair`
+places. Second, and more important, the lemmas built on top of it must **not** mention `cfgPair`
 while they are being elaborated: stating them for an arbitrary pairing `P : ℝ → ℝ → ℂ` keeps every
 space involved a copy of `ℝ`, whereas instantiating first makes the unifier unfold an integral over
 `E3` and diverge -- 2000000 heartbeats are not enough, which is the sign that the problem is
 unification and not arithmetic. -/
 
 set_option maxHeartbeats 2000000 in
+-- The extended analytic estimates below require additional elaboration steps.
 open MeasureTheory in
 /-- **The pairing is jointly measurable in its two parameters.** -/
 theorem measurable_cfgPair_prod {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
@@ -23433,7 +23485,7 @@ theorem norm_cfgPairIntegral_le {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ
 /-! ## Blueprint `lem:pet-reduction`: the comparison over the square of shifts
 
 Integrating `Auto.norm_cfgPairIntegral_sub_cfgCapPair_le` over `[0,H]^2`, on the model of the
-scalar `Auto.norm_double_pair_sub_cap_le`.  As in the previous section, every measurability lemma
+scalar `Auto.norm_double_pair_sub_cap_le`. As in the previous section, every measurability lemma
 is stated for an abstract pairing first and instantiated only at the end: composing a statement
 that already mentions `Auto.cfgPair` makes the unifier unfold an integral over `E3`. -/
 
@@ -23568,9 +23620,9 @@ theorem norm_double_cfgPair_sub_cap_le {ι : Type*} [Fintype ι] {g : ι → E3 
 /-! ## Blueprint `lem:pet-reduction`: putting the interval variable innermost
 
 `Auto.cfgL2_le_innerSq` leaves the interval variable outermost and the two shifts inside;
-`Auto.norm_double_cfgPair_sub_cap_le` wants the opposite order.  The exchange is two applications of
+`Auto.norm_double_cfgPair_sub_cap_le` wants the opposite order. The exchange is two applications of
 Fubini on bounded intervals, stated -- as everywhere in this part -- for an abstract pairing, so
-that no integral over `E3` is ever exposed to the unifier.  The scalar
+that no integral over `E3` is ever exposed to the unifier. The scalar
 `Auto.integral_swap_triple_interval` cannot be reused: its proof factors the inner integral using
 the special form `F(t+a) conj(F(t+b))`, which a general pairing does not have. -/
 
@@ -23582,11 +23634,11 @@ theorem integral_swap_triple_pairOf {P : ℝ → ℝ → ℂ}
     (∫ t in c..(c + N), ∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H, P (t + a) (t + b))
       = ∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H, ∫ t in c..(c + N), P (t + a) (t + b) := by
   have hM0 : (0 : ℝ) ≤ M := le_trans (norm_nonneg _) (hM 0 0)
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc c (c + N))) := by
     refine ⟨?_⟩
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) H)) := by
     refine ⟨?_⟩
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -23638,7 +23690,7 @@ theorem integral_swap_triple_pairOf {P : ℝ → ℝ → ℂ}
   exact hswapb a
 
 open MeasureTheory in
-/-- **The mean square of the inner averages, expanded.**  Combining
+/-- **The mean square of the inner averages, expanded.** Combining
 `Auto.ofReal_integral_sq_norm_innerAvg` pointwise in the interval variable with the exchange above
 puts the interval variable innermost, where `Auto.norm_double_cfgPair_sub_cap_le` acts on it. -/
 theorem ofReal_integral_innerSq_eq {ι : Type*} [Fintype ι] {L : ℝ} {B : Set E3}
@@ -23654,14 +23706,12 @@ theorem ofReal_integral_innerSq_eq {ι : Type*} [Fintype ι] {L : ℝ} {B : Set 
   rw [← integral_swap_triple_pairOf (measurable_cfgPair_prod hgc γ) hMb hN hH c,
     ← intervalIntegral.integral_ofReal]
   refine intervalIntegral.integral_congr fun t ht => ?_
-  show ((innerSq B g γ H t : ℝ) : ℂ)
-      = ∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H, cfgPair g γ (t + a) (t + b)
   have hTa : ∀ a ∈ Set.Ioc (0 : ℝ) H, |t + a| ≤ L := hTt t ht
   have h1 : innerSq B g γ H t
       = ∫ x in B, ‖∫ a in Set.Ioc (0 : ℝ) H, cfgProd g γ x (t + a)‖ ^ 2 := by
     rw [innerSq]
     refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-    show ‖∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)‖ ^ 2
+    change ‖∫ a in (0 : ℝ)..H, cfgProd g γ x (t + a)‖ ^ 2
         = ‖∫ a in Set.Ioc (0 : ℝ) H, cfgProd g γ x (t + a)‖ ^ 2
     rw [intervalIntegral.integral_of_le hH]
   have h2 : innerSq B g γ H t
@@ -23676,7 +23726,7 @@ theorem ofReal_integral_innerSq_eq {ι : Type*} [Fintype ι] {L : ℝ} {B : Set 
 
 /-! ## Blueprint `lem:pet-reduction`: the corrected van der Corput inequality
 
-The three links now compose.  `Auto.cfgL2_le_innerSq` bounds the `L^2` functional by the mean square
+The three links now compose. `Auto.cfgL2_le_innerSq` bounds the `L^2` functional by the mean square
 of the inner averages; `Auto.ofReal_integral_innerSq_eq` turns that into a double shift integral of
 `Auto.cfgPair` with the interval variable innermost; `Auto.norm_double_cfgPair_sub_cap_le` replaces
 it by the capped pairing at the difference of the shifts; and `Auto.integral_double_sub_eq_fejer`,
@@ -23708,7 +23758,7 @@ theorem norm_integral_fejer_cfgCapPair_le {ι : Type*} [Fintype ι] {g : ι → 
   simp only [norm_smul, Real.norm_eq_abs, abs_of_nonneg (fejer_nonneg hH h)]
 
 open MeasureTheory in
-/-- **The corrected van der Corput inequality for the `L^2` functional.**  The modulus is taken on
+/-- **The corrected van der Corput inequality for the `L^2` functional.** The modulus is taken on
 `Auto.cfgCapPair`, a scalar function of the shift, *outside* the integral in the point -- which is
 what makes the normalization `Auto.cfgInt_translSub` available at the next step. -/
 theorem cfgL2_le_fejer_cfgCapPair {ι : Type*} [Fintype ι] {L : ℝ} {B : Set E3}
@@ -23771,13 +23821,13 @@ theorem cfgL2_le_fejer_cfgCapPair {ι : Type*} [Fintype ι] {L : ℝ} {B : Set E
 
 /-! ## Blueprint `lem:pet-reduction`: the corrected descent step
 
-Pigeonholing the shift against the Fejer kernel and undoing the capping.  The result is a lower
+Pigeonholing the shift against the Fejer kernel and undoing the capping. The result is a lower
 bound on `‖cfgInt‖` of the *differenced* family -- the headless functional, whose integral in the
-point runs over all of `E3`, so that `Auto.cfgInt_translSub` can normalize it.  This is the step the
+point runs over all of `E3`, so that `Auto.cfgInt_translSub` can normalize it. This is the step the
 superseded route could not reach. -/
 
 open MeasureTheory in
-/-- **Pigeonholing inside the support of the kernel.**  The Fejer kernel vanishes off `[-H, H]`, so
+/-- **Pigeonholing inside the support of the kernel.** The Fejer kernel vanishes off `[-H, H]`, so
 the shift it produces may be taken there. -/
 theorem exists_of_fejer_average_ge' {H β : ℝ} (hH : 0 < H) (hβ : 0 < β) {g : ℝ → ℝ}
     (hgm : Measurable g) {M : ℝ} (hgM : ∀ h, |g h| ≤ M)
@@ -23810,7 +23860,7 @@ theorem norm_cfgPairShiftIntegral_le {ι : Type*} [Fintype ι] {g : ι → E3 �
   rwa [habs] at hb
 
 open MeasureTheory in
-/-- **Undoing the capping.**  Replacing the intersection of the interval with its translate by the
+/-- **Undoing the capping.** Replacing the intersection of the interval with its translate by the
 interval itself costs the volume of the box times the shift. -/
 theorem norm_cfgPairShiftIntegral_sub_cfgCapPair_le {ι : Type*} [Fintype ι] {g : ι → E3 → ℂ}
     (hgc : ∀ a, Continuous (g a)) {γ : ι → (Fin 3 → Polynomial ℝ)} {M : ℝ} (hM0 : 0 ≤ M)
@@ -23845,9 +23895,9 @@ theorem norm_cfgPairShiftIntegral_sub_cfgCapPair_le {ι : Type*} [Fintype ι] {g
       (mul_le_mul_of_nonneg_left hcase.le hM0)
 
 open MeasureTheory in
-/-- **The corrected descent step.**  A lower bound on the `L^2` functional, with the boundary error
+/-- **The corrected descent step.** A lower bound on the `L^2` functional, with the boundary error
 absorbed, yields a shift within the kernel's support at which the headless functional of the
-differenced family is bounded below.  Unlike the superseded
+differenced family is bounded below. Unlike the superseded
 `Auto.exists_shift_cfgHeadInt_ge`, the conclusion is about `Auto.cfgInt`, on which
 `Auto.cfgInt_translSub` acts. -/
 theorem exists_shift_cfgInt_ge {ι : Type*} [Fintype ι] {L : ℝ} {B : Set E3}
@@ -23904,14 +23954,14 @@ Two facts complete the transition described by the blueprint's step.
 
 First, once the family has been normalized by the selected translation, the members whose
 translation has become constant can be read off as a head: `Auto.cfgInt` becomes
-`Auto.cfgHeadInt` of the reduced family, with `Auto.constFactor` as the head.  This is the
+`Auto.cfgHeadInt` of the reduced family, with `Auto.constFactor` as the head. This is the
 `Auto.cfgInt_cons` identification applied to `Auto.cfgProd_split`.
 
 Second, the translations that survive -- those of positive degree -- are exactly the members of
 `Auto.petStep h P`, so the combinatorial half applies verbatim. -/
 
 open MeasureTheory in
-/-- **Reading the normalized family as a headed one.**  The members whose translation is constant
+/-- **Reading the normalized family as a headed one.** The members whose translation is constant
 multiply into the head, and the headless functional becomes the headed functional of the reduced
 family. -/
 theorem cfgInt_eq_cfgHeadInt_constFactor {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N)
@@ -23931,7 +23981,7 @@ theorem cfgInt_eq_cfgHeadInt_constFactor {ι : Type*} [Fintype ι] {N : ℝ} (hN
     congr 1
     refine intervalIntegral.integral_congr fun t _ => ?_
     refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-    show cfgProd g γ x t
+    change cfgProd g γ x t
         = cfgProd (cfgCons (constFactor g γ p) (fun a : {a // p a} => g a.1))
             (translCons (fun a : {a // p a} => γ a.1)) x t
     rw [cfgProd_cons, ← cfgProd_split g γ p hconst x t]
@@ -23940,7 +23990,7 @@ theorem cfgInt_eq_cfgHeadInt_constFactor {ι : Type*} [Fintype ι] {N : ℝ} (hN
     (norm_constFactor_le hg1 γ p) hCsupp
     (fun a : {a // p a} => hgc a.1) (fun (a : {a // p a}) (x : E3) => hg1 a.1 x) _
 
-/-- **The surviving translations are exactly the members of `Auto.petStep`.**  Every normalized
+/-- **The surviving translations are exactly the members of `Auto.petStep`.** Every normalized
 translation of positive degree comes from one of the two replacements the step performs. -/
 theorem normalized_transl_mem_petStep {ι : Type*} [Fintype ι]
     (γ : ι → (Fin 3 → Polynomial ℝ)) (h : ℝ) (P : Fin 3 → Polynomial ℝ) (q : ι × Bool)
@@ -23951,9 +24001,9 @@ theorem normalized_transl_mem_petStep {ι : Type*} [Fintype ι]
   refine ⟨hpos, γ q.1, Finset.mem_image.mpr ⟨q.1, Finset.mem_univ _, rfl⟩, ?_⟩
   by_cases hb : q.2
   · left
-    rw [dcfgTransl, if_pos hb]
+    rw [dcfgTransl, ite_eq_left hb]
   · right
-    rw [dcfgTransl, if_neg hb]
+    rw [dcfgTransl, ite_eq_right hb]
 
 /-- The normalization is invisible to the headless functional: this is
 `Auto.cfgInt_translSub` in the direction the step uses. -/
@@ -23979,7 +24029,7 @@ theorem translDeg_eq_zero_of_translSub_eq_zero {q P : Fin 3 → Polynomial ℝ}
 
 /-! ## Blueprint `lem:pet-reduction`: one turn of the corrected descent, assembled
 
-The parts proved above compose into a single step.  Its statement carries exactly the data the next
+The parts proved above compose into a single step. Its statement carries exactly the data the next
 turn needs, so that it can be iterated:
 
 * the members are continuous, one-bounded, and supported in a common set (`Auto.CfgMemSupported`),
@@ -23993,7 +24043,7 @@ Shedding the head is `Auto.sq_norm_cfgHeadInt_le`; the analytic step is
 `Auto.exists_shift_cfgInt_ge`. -/
 
 open MeasureTheory in
-/-- **One turn, from a headed functional to the differenced headless one.**  Cauchy-Schwarz in the
+/-- **One turn, from a headed functional to the differenced headless one.** Cauchy-Schwarz in the
 point sheds the head; van der Corput, the pigeonhole and the uncapping produce a shift within
 `[-H, H]` at which the differenced family's headless functional is bounded below. -/
 theorem exists_shift_cfgInt_of_cfgHeadInt {ι : Type*} [Fintype ι] {L : ℝ} {B : Set E3}
@@ -24035,7 +24085,7 @@ theorem norm_cfgPair_dcfg_le {ι : Type*} [Fintype ι] {B : Set E3} (hBm : Measu
 
 open MeasureTheory in
 /-- After the turn, the normalized family is again headed: the members whose translation became
-constant merge into the head.  This is the other half of the cycle, and it is where the family
+constant merge into the head. This is the other half of the cycle, and it is where the family
 sheds a genuine member rather than a phase factor. -/
 theorem cfgHeadInt_of_cfgInt_normalized {ι : Type*} [Fintype ι] {N : ℝ} (hN : 0 < N)
     {B : Set E3} (hBm : MeasurableSet B) (hBfin : volume B ≠ ⊤) {g : ι → E3 → ℂ}
@@ -24056,7 +24106,7 @@ theorem cfgHeadInt_of_cfgInt_normalized {ι : Type*} [Fintype ι] {N : ℝ} (hN 
 
 /-! ## Blueprint `lem:pet-reduction`: the weight descends for the surviving translations
 
-`Auto.petWeight_step_lt` compares the weight of `Auto.petStep h P S` with that of `S`.  What the
+`Auto.petWeight_step_lt` compares the weight of `Auto.petStep h P S` with that of `S`. What the
 iteration needs is the weight of the translations that actually survive one analytic turn, which
 `Auto.normalized_transl_mem_petStep` places inside `Auto.petStep h P S` but need not exhaust.
 Monotonicity of the weight under inclusion closes that gap: fewer translations means no more
@@ -24074,7 +24124,7 @@ theorem petClasses_mono {d : ℕ} {S T : Finset (Fin 3 → Polynomial ℝ)} (hST
   Finset.card_le_card (petClassSet_mono hST)
 
 open Classical in
-/-- **The weight is monotone under inclusion.**  Componentwise `≤` gives `≤` in the lexicographic
+/-- **The weight is monotone under inclusion.** Componentwise `≤` gives `≤` in the lexicographic
 order, because the first place where the two differ is then a strict `<`. -/
 theorem petWeight_mono {S T : Finset (Fin 3 → Polynomial ℝ)} (hST : S ⊆ T) :
     petWeight S ≤ petWeight T := by
@@ -24108,7 +24158,7 @@ theorem survivorSet_subset_petStep {ι : Type*} [Fintype ι]
   exact normalized_transl_mem_petStep γ h P q hpos
 
 open Classical in
-/-- **The descent the iteration runs on.**  Selecting a translation of minimal positive degree from
+/-- **The descent the iteration runs on.** Selecting a translation of minimal positive degree from
 the family, the translations that survive one turn have strictly smaller weight. -/
 theorem petWeight_survivorSet_lt {ι : Type*} [Fintype ι] {γ : ι → (Fin 3 → Polynomial ℝ)}
     {h : ℝ} {P : Fin 3 → Polynomial ℝ} {m : ℕ} (hm : 0 < m) (hm3 : m ≤ 3)
@@ -24129,13 +24179,15 @@ theorem exists_min_translDeg {S : Finset (Fin 3 → Polynomial ℝ)} (hS : S.Non
 
 /-! ## Blueprint `lem:pet-reduction`: the working box as a ball
 
-`Auto.cfgBox` is the honest enlargement, but it is a projection -- `x` lies in it when `x + translAct q t`
-lies in `B` for *some* `t` -- and a projection of a Borel set is analytic, not in general Borel.  The
+`Auto.cfgBox` is the honest enlargement, but it is a projection -- `x` lies in it when `x +
+  translAct q t`
+lies in `B` for *some* `t` -- and a projection of a Borel set is analytic, not in general Borel.
+  The
 lemmas of the chain need a measurable box of finite measure, so the iteration works instead with a
 closed ball containing it: the members live in a ball, the displacement over a bounded parameter
 range is bounded by compactness, and the sum of the two radii is the working box.
 
-This also makes the invariant easy to carry.  The member ball never changes -- differencing only
+This also makes the invariant easy to carry. The member ball never changes -- differencing only
 conjugates the member functions -- and only the radius of the working box grows, by the bound on the
 displacement, which is the blueprint's enlargement of `I_N(C)` from step to step. -/
 
@@ -24168,7 +24220,7 @@ theorem cfgBox_subset_closedBall {L r ρ : ℝ} {q : Fin 3 → Polynomial ℝ}
     _ ≤ r + ρ := add_le_add hx (hρ t ht)
 
 open MeasureTheory in
-/-- **The working box.**  From members supported in a ball of radius `r`, the configuration is
+/-- **The working box.** From members supported in a ball of radius `r`, the configuration is
 supported -- over parameters of size at most `L` -- in the ball of radius `r + ρ`, where `ρ` bounds
 the displacement of the distinguished member's translation. -/
 theorem cfgSupportedOn_closedBall {ι : Type*} [Fintype ι] {r : ℝ} {g : ι → E3 → ℂ}
@@ -24200,14 +24252,14 @@ Two ingredients of the induction step.
 First, the blueprint takes `H = c delta^C N` "at each use of van der Corput, in the current
 normalized parameter": the shift range is chosen afresh at every turn from the current lower bound,
 so the boundary error is absorbed step by step and no uniform bound on the number of turns is
-needed.  `Auto.exists_H_small` is that choice.
+needed. `Auto.exists_H_small` is that choice.
 
-Second, the head produced by normalizing is supported where the *selected* member is.  The member
+Second, the head produced by normalizing is supported where the *selected* member is. The member
 whose translation is the selected `P` normalizes to the zero translation, so it always belongs to
-the merged head, and a product vanishes wherever one factor does.  The head therefore does not
+the merged head, and a product vanishes wherever one factor does. The head therefore does not
 spread: only the working box, which must also contain the support of the reduced family, grows. -/
 
-/-- **The shift range at one turn.**  The boundary error is at most half the current lower bound for
+/-- **The shift range at one turn.** The boundary error is at most half the current lower bound for
 all sufficiently small shift ranges, and one such range is exhibited. -/
 theorem exists_H_small {M V N β : ℝ} (hN : 0 < N) (hM0 : 0 ≤ M) (hV0 : 0 < V) (hβ : 0 < β) :
     ∃ H : ℝ, 0 < H ∧ H ≤ N ∧
@@ -24244,7 +24296,7 @@ theorem exists_H_small {M V N β : ℝ} (hN : 0 < N) (hM0 : 0 ≤ M) (hV0 : 0 < 
     linarith [hgoal]
 
 open Classical in
-/-- **The merged head does not spread.**  The member carrying the zero translation is one of the
+/-- **The merged head does not spread.** The member carrying the zero translation is one of the
 factors of `Auto.constFactor`, and a product vanishes wherever one of its factors does, so the head
 is supported where that member is. -/
 theorem constFactor_eq_zero_of_zero_transl {ι : Type*} [Fintype ι] {B : Set E3}
@@ -24272,10 +24324,10 @@ theorem not_pos_translDeg_selected {ι : Type*} (γ : ι → (Fin 3 → Polynomi
 
 /-! ## Blueprint `lem:pet-reduction`: the reduced family's translations are the survivors
 
-The bookkeeping that connects the analytic step to the combinatorial one.  After a turn and the
+The bookkeeping that connects the analytic step to the combinatorial one. After a turn and the
 normalization, the reduced family is indexed by the members whose translation stayed nonconstant,
 and the image of its translations is exactly `Auto.survivorSet` -- on which
-`Auto.petWeight_survivorSet_lt` gives the descent.  The degree bound of the recursion is inherited
+`Auto.petWeight_survivorSet_lt` gives the descent. The degree bound of the recursion is inherited
 along the way, so the selected translation always has degree between one and three, which is what
 `Auto.petWeight_step_lt` requires. -/
 
@@ -24335,7 +24387,7 @@ is what places it in the merged head. -/
 theorem keepMem_false_of_selected {ι : Type*} (γ : ι → (Fin 3 → Polynomial ℝ)) (h : ℝ) (a₀ : ι) :
     ¬ keepMem γ h (γ a₀) (a₀, false) := by
   rw [keepMem, dcfgTransl]
-  simp only [Bool.false_eq_true, if_false]
+  simp only [Bool.false_eq_true, ite_false]
   rw [translSub_self_eq_zero]
   simp [translDeg]
 
@@ -24352,19 +24404,19 @@ theorem reduced_transl_pos {ι : Type*} (γ : ι → (Fin 3 → Polynomial ℝ))
 /-! ## Blueprint `lem:pet-reduction`: the induction step
 
 One turn, from a headed configuration to a headed configuration of strictly smaller weight, with
-every component of the invariant restored.  The pieces are proved above; what this section does is
+every component of the invariant restored. The pieces are proved above; what this section does is
 choose the data at each turn -- the selected translation, the shift range, the shift -- and check
 that the result is again admissible.
 
-Two features are worth pointing out.  The shift range is chosen *inside* the step, from the current
+Two features are worth pointing out. The shift range is chosen *inside* the step, from the current
 lower bound (`Auto.exists_H_small`), which is the blueprint's prescription and is why no bound on
-the number of turns is needed.  And the member ball does not change: differencing only conjugates
+the number of turns is needed. And the member ball does not change: differencing only conjugates
 the member functions, and the merged head is supported where the selected member was, so the same
 radius `r` serves at every turn. -/
 
 open Classical in
 open MeasureTheory in
-/-- **One step of the induction.**  A headed configuration whose translations are all nonconstant,
+/-- **One step of the induction.** A headed configuration whose translations are all nonconstant,
 with members in a ball of radius `r` and working box a ball of radius `R`, yields a headed
 configuration of strictly smaller weight whose members lie in the *same* ball. -/
 theorem exists_step_of_headed {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (hr : 0 < r)
@@ -24414,7 +24466,7 @@ theorem exists_step_of_headed {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (hr 
     refine constFactor_eq_zero_of_zero_transl hm.dcfg _ p (a₀, false) ?_ ?_ hx
     · exact keepMem_false_of_selected γ h a₀
     · rw [dcfgTransl]
-      simp only [Bool.false_eq_true, if_false]
+      simp only [Bool.false_eq_true, ite_false]
       exact translSub_self_eq_zero P
   have hEq := cfgHeadInt_of_cfgInt_normalized (N := N) hN hBm hBfin
     (fun q => continuous_dcfgFun hgc q) (norm_dcfgFun_le hg1) (dcfgTransl γ h) P p hconst
@@ -24450,14 +24502,14 @@ theorem exists_step_of_headed {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (hr 
 
 /-! ## Blueprint `lem:pet-reduction`: the recursion
 
-Iterating `Auto.exists_step_of_headed` by well-founded recursion on `Auto.petWeight`.  The
+Iterating `Auto.exists_step_of_headed` by well-founded recursion on `Auto.petWeight`. The
 recursion stops when the family is empty -- every translation having become constant and merged
 into the head -- and at that point the configuration average is one, so the headed functional is
 just the integral of the accumulated head.
 
 The working box is rebuilt at each turn rather than carried: from the member ball and a bound on
 the displacement of one member's translation over the parameter range
-(`Auto.exists_bound_translAct`, `Auto.cfgSupportedOn_closedBall`).  That is why the step does not
+(`Auto.exists_bound_translAct`, `Auto.cfgSupportedOn_closedBall`). That is why the step does not
 have to return it. -/
 
 open MeasureTheory in
@@ -24478,12 +24530,12 @@ theorem cfgHeadInt_of_isEmpty {ι : Type*} [Fintype ι] [IsEmpty ι] {N : ℝ} (
     cfgHeadInt N g0 g γ = ∫ x : E3, g0 x := by
   rw [cfgHeadInt]
   refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-  show g0 x * cfgAvg N g γ x = g0 x
+  change g0 x * cfgAvg N g γ x = g0 x
   rw [cfgAvg_of_isEmpty hN g γ x, mul_one]
 
 open Classical in
 open MeasureTheory in
-/-- **The recursion.**  Iterating the turn to the empty family: a headed configuration with all
+/-- **The recursion.** Iterating the turn to the empty family: a headed configuration with all
 translations nonconstant yields an accumulated head, one-bounded and supported in the same ball,
 whose integral is bounded below. -/
 theorem exists_constant_endpoint {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (hr : 0 < r) :
@@ -24506,7 +24558,7 @@ theorem exists_constant_endpoint {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (
     rcases isEmpty_or_nonempty ι with hemp | hne
     · refine ⟨g0, β, hg0m, hg01, hg0supp, hβ, ?_⟩
       rwa [cfgHeadInt_of_isEmpty hN g0 g γ] at hlow
-    · haveI := hne
+    · have := hne
       obtain ⟨ρ, hρ0, hρ⟩ := exists_bound_translAct (γ (Classical.arbitrary ι)) L
       have hR : 0 < r + ρ := by linarith
       have hrR : Metric.closedBall (0 : E3) r ⊆ Metric.closedBall (0 : E3) (r + ρ) :=
@@ -24517,7 +24569,7 @@ theorem exists_constant_endpoint {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (
         hg0supp', hwlt, hβ', hlow'⟩ :=
         exists_step_of_headed hN hL hr hgc hg1 hm hpos hdeg hR hrR hs hg0m hg01
           (fun x hx => hg0supp x fun hxr => hx (hrR hxr)) hβ hlow
-      letI : Fintype ι' := hFin
+      let : Fintype ι' := hFin
       exact ih _ (hw ▸ hwlt) ι' g' γ' g0' β' rfl
         hgc' hg1' hm' hpos' hdeg' hg0m' hg01' hg0supp' hβ' hlow'
 
@@ -24528,13 +24580,13 @@ theorem exists_constant_endpoint {N L r : ℝ} (hN : 0 < N) (hL : 2 * N ≤ L) (
 The proof begins "expand the `(s+1)`-st difference and use Fubini to select the last difference
 `h`".  The algebraic content is that Fejer differences along a fixed direction commute, so the
 `(s+1)`-fold difference at shifts `(a, h')` is the `s`-fold difference at `h'` of the single
-difference at `a`.  Iterating that identity is what lets the outer shift be pulled out of the
+difference at `a`. Iterating that identity is what lets the outer shift be pulled out of the
 `(s+1)`-fold average, turning it into an average of `s`-fold averages of differenced functions.
 
 This row is stated under the hypotheses of `lem:pet-reduction` but does not depend on how that lemma
 is proved, so it is available while the endpoint of `lem:pet-reduction` is blocked. -/
 
-/-- **Fejer differences along a fixed direction commute.**  Both sides expand to the same product of
+/-- **Fejer differences along a fixed direction commute.** Both sides expand to the same product of
 four values of `f`, over the four vertices of the rectangle spanned by the two shifts. -/
 theorem fdiff_comm (v : E3) (a b : ℝ) (f : E3 → ℂ) (x : E3) :
     fdiff v a (fdiff v b f) x = fdiff v b (fdiff v a f) x := by
@@ -24557,7 +24609,7 @@ theorem fdiff_fdiffIter_comm (v : E3) (a : ℝ) :
           = fdiffIter v s (fun i => h i.succ) (fdiff v a f) := funext IH
       rw [hfun]
 
-/-- **The last difference, split off.**  The `(s+1)`-fold difference at the shifts `Fin.cons a h'`
+/-- **The last difference, split off.** The `(s+1)`-fold difference at the shifts `Fin.cons a h'`
 is the `s`-fold difference at `h'` of the single difference at `a`. -/
 theorem fdiffIter_cons (v : E3) (s : ℕ) (a : ℝ) (h' : Fin s → ℝ) (f : E3 → ℂ) (x : E3) :
     fdiffIter v (s + 1) (Fin.cons a h') f x = fdiffIter v s h' (fdiff v a f) x := by
@@ -24576,7 +24628,6 @@ theorem fdiffIter_cons (v : E3) (s : ℕ) (a : ℝ) (h' : Fin s → ℝ) (f : E3
 `Auto.fdiffIter_cons` the `(s+1)`-fold difference factors over the first shift, and Fubini on
 `ℝ × (Fin s → ℝ)` turns the `(s+1)`-fold average into an average, against the Fejer kernel, of the
 `s`-fold averages of the differenced functions:
-
   `locUnifPow N H j (s+1) f = int_a fejer(a) * locUnifPow N H j s (fdiff e_j a f)`.
 
 The integrability is `Auto.integrable_split_integrand`, already proved for
@@ -24597,7 +24648,7 @@ theorem pairAvg_eq_integral_fdiffIter (v : E3) (s : ℕ) (a : ℝ) (h' : Fin s �
   exact integral_congr_ae (Filter.Eventually.of_forall fun x => fdiffIter_cons v s a h' f x)
 
 open MeasureTheory in
-/-- **The Fubini selection.**  The `(s+1)`-fold local uniformity average is the Fejer average, over
+/-- **The Fubini selection.** The `(s+1)`-fold local uniformity average is the Fejer average, over
 the first shift, of the `s`-fold averages of the differenced function. -/
 theorem locUnifPow_succ_split {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3) (s : ℕ)
     {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -24612,7 +24663,7 @@ theorem locUnifPow_succ_split {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3
               * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a := by
     rw [← integral_const_mul]
     refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-    show ((fejer H a : ℝ) : ℂ) * locUnifPow N H j s (fdiff (basisVec j) a f)
+    change ((fejer H a : ℝ) : ℂ) * locUnifPow N H j s (fdiff (basisVec j) a f)
         = ((N ^ (6 : ℕ))⁻¹ : ℂ) * (((fejer H a : ℝ) : ℂ)
             * ∫ h' : Fin s → ℝ, ((fejerCube H h' : ℝ) : ℂ)
                 * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a)
@@ -24657,7 +24708,7 @@ theorem locUnifPow_succ_split {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3
     MeasureTheory.Measure.volume_eq_prod,
     integral_prod _ (integrable_split_integrand hH (basisVec j) s hf hf1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-  show (∫ y : Fin s → ℝ, ((fejer H a : ℝ) : ℂ)
+  change (∫ y : Fin s → ℝ, ((fejer H a : ℝ) : ℂ)
       * (((fejerCube H y : ℝ) : ℂ) * pairAvg (basisVec j) (fdiffIter (basisVec j) s y f) a))
       = ((fejer H a : ℝ) : ℂ) * ∫ h' : Fin s → ℝ, ((fejerCube H h' : ℝ) : ℂ)
           * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a
@@ -24668,8 +24719,8 @@ theorem locUnifPow_succ_split {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3
 /-! ## Blueprint `lem:degree-lowering-zero`: pigeonholing the last difference
 
 `Auto.locUnifPow_succ_split` writes the `(s+1)`-fold average as a Fejer average over the first
-shift.  To select a shift the average has to be pigeonholed, which needs the `s`-fold average of the
-differenced function to be measurable in that shift and bounded uniformly in it.  Both follow from
+shift. To select a shift the average has to be pigeonholed, which needs the `s`-fold average of the
+differenced function to be measurable in that shift and bounded uniformly in it. Both follow from
 reading it through `Auto.pairAvg`, where the point integral is already packaged. -/
 
 open MeasureTheory in
@@ -24683,7 +24734,7 @@ theorem locUnifPow_fdiff_eq {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f : 
   rw [locUnifPow_swap hH j s (nice_fdiff _ a hf) (fun y => norm_fdiff_le _ a hf1 y)]
   congr 1
   refine integral_congr_ae (Filter.Eventually.of_forall fun h' => ?_)
-  show ((fejerCube H h' : ℝ) : ℂ)
+  change ((fejerCube H h' : ℝ) : ℂ)
       * ∫ x : E3, fdiffIter (basisVec j) s h' (fdiff (basisVec j) a f) x
       = ((fejerCube H h' : ℝ) : ℂ)
         * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a
@@ -24716,7 +24767,7 @@ theorem measurable_locUnifPow_fdiff {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : �
   exact (hjoint.integral_prod_right' (ν := (volume : Measure (Fin s → ℝ)))).measurable
 
 open MeasureTheory in
-/-- **The uniform bound in the shift.**  The `s`-fold average of the differenced function is bounded
+/-- **The uniform bound in the shift.** The `s`-fold average of the differenced function is bounded
 by the `L^1` norm of the function, normalized -- because the Fejer cube is a probability density and
 the pairing is bounded by that norm. -/
 theorem norm_locUnifPow_fdiff_le {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f : E3 → ℂ}
@@ -24744,7 +24795,7 @@ theorem norm_locUnifPow_fdiff_le {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) 
       refine integral_mono_of_nonneg (Filter.Eventually.of_forall fun h' => norm_nonneg _)
         ((integrable_fejerCube hH s).mul_const L)
         (Filter.Eventually.of_forall fun h' => ?_)
-      show ‖((fejerCube H h' : ℝ) : ℂ)
+      change ‖((fejerCube H h' : ℝ) : ℂ)
           * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a‖ ≤ fejerCube H h' * L
       rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
         abs_of_nonneg (fejerCube_nonneg hH h')]
@@ -24762,20 +24813,19 @@ theorem norm_locUnifPow_fdiff_le {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) 
 /-! ## Patch 3: the slope blocks
 
 `blueprints/task_2_patch_3.tex` replaces the blocked last assertion of `lem:fejer-vdc` by a terminal
-configuration theorem, and its first step is to name the object the induction carries.  For an
+configuration theorem, and its first step is to name the object the induction carries. For an
 affine configuration with slopes `a i`, the block attached to input `i` after `r` removals is
 defined by the recursion of the patch's (eq:blocksucc):
-
   `G_{i,0}(x) = g_i(x)`,
   `G_{i,r+1}(x; h, h_r) = G_{i,r}(x; h) * conj (G_{i,r}(x + (a_i - a_r) h_r e_j; h))`,
 
-the new shift being appended and the slope gap being against the block removed at stage `r`.  Note
+the new shift being appended and the slope gap being against the block removed at stage `r`. Note
 that this is the *conjugate* of `Auto.fdiff` applied to the block, not `Auto.fdiff` itself; the
 patch's conjugation-convention paragraph addresses the comparison, and the real parts and
 integrated Fejer powers agree.
 
 Two bounds come with it: every block is one-bounded, and -- the zero vertex being undisplaced -- it
-is dominated by the input it is built from.  Those are the patch's `headBlock_norm_le` and the
+is dominated by the input it is built from. Those are the patch's `headBlock_norm_le` and the
 domination it uses for the `L^2` bound `int |G_{i,r}|^2 <= V`. -/
 
 /-- The block attached to input `i` after `r` removals, by the patch's recursion. -/
@@ -24805,10 +24855,10 @@ theorem headBlock_norm_le (j : Fin 3) (a : ℕ → ℝ) {g : E3 → ℂ} (i : �
   | 0, _, x => hg x
   | (r + 1), h, x => by
       rw [headBlock_succ, norm_mul, RCLike.norm_conj]
-      exact mul_le_one₀ (headBlock_norm_le j a i hg r _ x) (norm_nonneg _)
-        (headBlock_norm_le j a i hg r _ _)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (headBlock_norm_le j a i hg r _ x)).trans
+        (headBlock_norm_le j a i hg r _ _))
 
-/-- **The zero vertex is undisplaced**, so the block is dominated by its input.  This is what gives
+/-- **The zero vertex is undisplaced**, so the block is dominated by its input. This is what gives
 `int |G_{i,r}|^2 <= V` from `int |g_i|^2 <= V`. -/
 theorem headBlock_le_self (j : Fin 3) (a : ℕ → ℝ) {g : E3 → ℂ} (i : ℕ)
     (hg : ∀ y, ‖g y‖ ≤ 1) :
@@ -24839,7 +24889,7 @@ theorem continuous_headBlock (j : Fin 3) (a : ℕ → ℝ) {g : E3 → ℂ} (hg 
 
 The patch's (eq:block): the block is a cube product over the vertices `omega` of `{0,1}^r`, the
 vertex `omega` carrying the shift `sum_{nu<r} omega_nu (a_i - a_nu) h_nu` and a conjugation
-according to the parity of `|omega|`.  The patch instructs to prove it from the recursion by the
+according to the parity of `|omega|`. The patch instructs to prove it from the recursion by the
 equivalence `{0,1}^{r+1} ≃ {0,1}^r × {0,1}`, the new bit `0` keeping the old term and the bit `1`
 translating it and toggling the parity -- and not to deduplicate equal factors, the indexing being a
 finite product with multiplicity.
@@ -24927,11 +24977,10 @@ theorem headBlock_cube (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i : ℕ) 
 /-! ## Patch 3: the state of the induction, and isolating the removed block
 
 The patch's (eq:state):
-
   `A_r(h) = V^{-1} int_{R^3} E_{t in I} prod_{i=r}^m G_{i,r}(x + a_i t e_j; h) dx`.
 
 Step 2 begins by translating `x` by `-a_r t e_j`, after which the block `G_{r,r}` -- and only that
-block -- is independent of the parameter, so Cauchy-Schwarz in the point can remove it.  That
+block -- is independent of the parameter, so Cauchy-Schwarz in the point can remove it. That
 translation is the content of `Auto.slopeProd_translate` below.
 
 The removal order is fixed: at stage `r` the block removed is `G_{r,r}`, the `2^r` descendants of
@@ -24952,7 +25001,7 @@ theorem norm_slopeProd_le {j : Fin 3} {a : ℕ → ℝ} {g : ℕ → E3 → ℂ}
     (hg : ∀ i y, ‖g i y‖ ≤ 1) (m r : ℕ) (h : Fin r → ℝ) (x : E3) (t : ℝ) :
     ‖slopeProd j a g m r h x t‖ ≤ 1 := by
   rw [slopeProd, norm_prod]
-  exact Finset.prod_le_one (fun i _ => norm_nonneg _)
+  exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _)
     fun i _ => headBlock_norm_le j a i (hg i) r h _
 
 /-- The index set of the surviving blocks, with the removed one split off. -/
@@ -24962,7 +25011,7 @@ theorem Icc_eq_insert_succ {r m : ℕ} (hrm : r ≤ m) :
   simp only [Finset.mem_Icc, Finset.mem_insert]
   omega
 
-/-- **Isolating the removed block.**  After translating the point by `-a_r t e_j`, the block
+/-- **Isolating the removed block.** After translating the point by `-a_r t e_j`, the block
 `G_{r,r}` carries no parameter and factors out; every other block is displaced by its slope *gap*
 against `a_r`. -/
 theorem slopeProd_translate (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) {m r : ℕ} (hrm : r ≤ m)
@@ -25004,7 +25053,7 @@ a directly usable shape here, so it is built from the quadratic-discriminant arg
 file (`Auto.sq_le_of_quadratic_nonneg`), the same device that proves `Auto.sq_setIntegral_le`. -/
 
 open MeasureTheory in
-/-- **Cauchy-Schwarz for integrals.**  The degenerate case is genuine: when the second factor has
+/-- **Cauchy-Schwarz for integrals.** The degenerate case is genuine: when the second factor has
 vanishing `L^2` norm it is null, and so is the pairing. -/
 theorem sq_integral_mul_le {α : Type*} [MeasurableSpace α] {μ : Measure α} {u v : α → ℝ}
     (hu2 : Integrable (fun x : α => u x ^ 2) μ) (hv2 : Integrable (fun x : α => v x ^ 2) μ)
@@ -25067,18 +25116,19 @@ theorem sq_norm_integral_mul_le {α : Type*} [MeasurableSpace α] {μ : Measure 
 The patch records, right after the block definition, that every `G_{i,r}` is one-bounded with zero
 vertex `g_i(x)`, so `|G_{i,r}(x)| <= |g_i(x)|` and hence `int |G_{i,r}|^2 <= V`; and that at every
 nonterminal stage at least two blocks survive, so their product is integrable with integral at most
-`V` by Cauchy-Schwarz.  These are the hypotheses the removal step feeds to
+`V` by Cauchy-Schwarz. These are the hypotheses the removal step feeds to
 `Auto.sq_norm_integral_mul_le`. -/
 
 /-- A product of one-bounded factors is dominated by any one of them. -/
-theorem norm_finsetProd_le_single {ι' : Type*} [DecidableEq ι'] {s : Finset ι'} {F : ι' → ℂ}
+theorem norm_finsetProd_le_single {ι' : Type*} {s : Finset ι'} {F : ι' → ℂ}
     {i₀ : ι'} (hi₀ : i₀ ∈ s) (hF : ∀ i ∈ s, ‖F i‖ ≤ 1) :
     ‖∏ i ∈ s, F i‖ ≤ ‖F i₀‖ := by
+  classical
   rw [norm_prod, ← Finset.mul_prod_erase _ _ hi₀]
   calc ‖F i₀‖ * ∏ i ∈ s.erase i₀, ‖F i‖
       ≤ ‖F i₀‖ * 1 :=
         mul_le_mul_of_nonneg_left
-          (Finset.prod_le_one (fun i _ => norm_nonneg _)
+          (Finset.prod_le_one₀ (fun i _ => norm_nonneg _)
             fun i hi => hF i (Finset.mem_of_mem_erase hi)) (norm_nonneg _)
     _ = ‖F i₀‖ := mul_one _
 
@@ -25095,7 +25145,7 @@ theorem integrable_sq_headBlock (j : Fin 3) (a : ℕ → ℝ) {g : E3 → ℂ} (
   exact pow_le_pow_left₀ (norm_nonneg _) (headBlock_le_self j a i hg1 r h x) 2
 
 open MeasureTheory in
-/-- **`int |G_{i,r}|^2 <= V`.**  The zero vertex is undisplaced, so the block is dominated by its
+/-- **`int |G_{i,r}|^2 <= V`.** The zero vertex is undisplaced, so the block is dominated by its
 input. -/
 theorem integral_sq_headBlock_le (j : Fin 3) (a : ℕ → ℝ) {g : E3 → ℂ} (i : ℕ)
     (hgc : Continuous g) (hg1 : ∀ y, ‖g y‖ ≤ 1)
@@ -25132,12 +25182,12 @@ theorem norm_slopeTail_le_input (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 �
 /-! ## Patch 3: Cauchy-Schwarz against a support of finite measure
 
 Both Cauchy-Schwarz steps of the patch's step 2 have the same shape: a function supported in a set
-of finite measure, paired against the constant one.  In the point it is the removed block, supported
+of finite measure, paired against the constant one. In the point it is the removed block, supported
 in the selected box; on the parameter line it is the windowed average `S_u`, supported in an
-interval of length `N + H`.  Stating it once, for an arbitrary measure space, serves both. -/
+interval of length `N + H`. Stating it once, for an arbitrary measure space, serves both. -/
 
 open MeasureTheory in
-/-- **Cauchy-Schwarz against a support.**  A function vanishing off a set of finite measure has
+/-- **Cauchy-Schwarz against a support.** A function vanishing off a set of finite measure has
 `|int F|^2 <= mu(S) * int |F|^2`. -/
 theorem sq_norm_integral_le_measure_mul {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {S : Set α} (hSm : MeasurableSet S) (hSfin : μ S ≠ ⊤) {F : α → ℂ}
@@ -25146,7 +25196,7 @@ theorem sq_norm_integral_le_measure_mul {α : Type*} [MeasurableSpace α] {μ : 
     (hFn : Integrable (fun x : α => ‖F x‖) μ) :
     ‖∫ x : α, F x ∂μ‖ ^ 2 ≤ (μ S).toReal * ∫ x : α, ‖F x‖ ^ 2 ∂μ := by
   classical
-  haveI : IsFiniteMeasure (μ.restrict S) :=
+  have : IsFiniteMeasure (μ.restrict S) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hSfin⟩
   set u : α → ℝ := S.indicator fun _ => (1 : ℝ) with hu
   have hu0 : ∀ x, 0 ≤ u x := fun x => Set.indicator_nonneg (fun _ _ => zero_le_one) x
@@ -25186,11 +25236,11 @@ theorem sq_norm_integral_le_measure_mul {α : Type*} [MeasurableSpace α] {μ : 
 /-! ## Patch 3: the window on the parameter line
 
 The patch's step 2 replaces the parameter average by a window:
+  `W_t(x) = 1_I(t) F_t(x)`, `S_u(x) = H^{-1} int_0^H W_{u+s}(x) ds`,
 
-  `W_t(x) = 1_I(t) F_t(x)`,   `S_u(x) = H^{-1} int_0^H W_{u+s}(x) ds`,
-
-whose `u`-support lies in `I - [0,H]`, an interval of length `N + H`, and whose total integral in `u`
-is the parameter integral of `F` over `I`.  Cauchy-Schwarz in `u` against that support is then
+whose `u`-support lies in `I - [0,H]`, an interval of length `N + H`, and whose total integral in
+  `u`
+is the parameter integral of `F` over `I`. Cauchy-Schwarz in `u` against that support is then
 `Auto.sq_norm_integral_le_measure_mul`.
 
 This section defines the window and settles its support and its bound; the identity
@@ -25202,7 +25252,7 @@ noncomputable def windowAvg (H : ℝ) (W : ℝ → ℂ) (u : ℝ) : ℂ :=
   (H⁻¹ : ℂ) * ∫ s in (0 : ℝ)..H, W (u + s)
 
 open MeasureTheory in
-/-- **The window's support.**  If the function is carried by `Ioc c (c+N)`, the window is carried by
+/-- **The window's support.** If the function is carried by `Ioc c (c+N)`, the window is carried by
 `Ioc (c-H) (c+N)`, an interval of length `N + H`. -/
 theorem windowAvg_eq_zero_of_notMem {H c N : ℝ} (hH : 0 ≤ H) {W : ℝ → ℂ}
     (hsupp : ∀ t, t ∉ Set.Ioc c (c + N) → W t = 0) {u : ℝ}
@@ -25270,7 +25320,7 @@ theorem measurable_windowAvg {H : ℝ} {W : ℝ → ℂ} (hWi : ∀ p q : ℝ,
 
 /-! ## Patch 3: the window has the same total integral
 
-The patch's `int_R S_u du = int_I F_t dt`.  This is Fubini together with translation invariance of
+The patch's `int_R S_u du = int_I F_t dt`. This is Fubini together with translation invariance of
 Lebesgue measure, and the joint integrability is genuine work; it is easy here only because the
 patch's `W` is bounded and carried by a bounded interval, so the whole exchange happens over a set
 of finite measure.
@@ -25295,9 +25345,9 @@ theorem integrable_of_bdd_support {c N M : ℝ} {W : ℝ → ℂ} (hWm : Measura
     exact hWb t
   · rw [Set.indicator_of_notMem ht, hWsupp t ht, norm_zero]
 
--- UNPARKED 2026-09-16.  `integral_windowAvg` -- the patch's `int_R S_u du = int_I F_t dt` -- is
+-- UNPARKED 2026-09-16. `integral_windowAvg` -- the patch's `int_R S_u du = int_I F_t dt` -- is
 -- proved at the end of this file, together with its Fubini hypothesis
--- `Auto.integrable_shift_prod_line`.  It is the one-dimensional twin of `Auto.integral_winAvg` and
+-- `Auto.integrable_shift_prod_line`. It is the one-dimensional twin of `Auto.integral_winAvg` and
 -- belongs to `patch:signed-vdc` of `blueprints/task_2_patch_3_updated.tex`.
 
 
@@ -25305,7 +25355,7 @@ theorem integrable_of_bdd_support {c N M : ℝ} {W : ℝ → ℂ} (hWm : Measura
 /-! ## Blueprint `lem:degree-lowering-zero`: selecting the last difference
 
 `Auto.locUnifPow_succ_split` writes the `(s+1)`-fold average as a Fejer average over the first
-shift.  Taking real parts through that integral and pigeonholing with
+shift. Taking real parts through that integral and pigeonholing with
 `Auto.exists_of_fejer_average_ge'` -- the variant that places the selected shift inside the kernel's
 support -- gives the blueprint's "select the last difference `h` on a set of Fejer measure at least
 `c rho^C`".
@@ -25354,7 +25404,7 @@ theorem integrable_fejer_locUnifPow_fdiff {N H : ℝ} (hH : 0 < H) (j : Fin 3) (
       (fejer_nonneg hH a)
 
 open MeasureTheory in
-/-- **The real part of the splitting.**  Real parts pass through the Fejer average. -/
+/-- **The real part of the splitting.** Real parts pass through the Fejer average. -/
 theorem re_locUnifPow_succ_split {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3) (s : ℕ)
     {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
     (locUnifPow N H j (s + 1) f).re
@@ -25363,12 +25413,12 @@ theorem re_locUnifPow_succ_split {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fi
   rw [← Complex.reCLM_apply, ← ContinuousLinearMap.integral_comp_comm _
     (integrable_fejer_locUnifPow_fdiff hH j s hf hf1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-  show (((fejer H a : ℝ) : ℂ) * locUnifPow N H j s (fdiff (basisVec j) a f)).re
+  change (((fejer H a : ℝ) : ℂ) * locUnifPow N H j s (fdiff (basisVec j) a f)).re
       = fejer H a * (locUnifPow N H j s (fdiff (basisVec j) a f)).re
   rw [Complex.re_ofReal_mul]
 
 open MeasureTheory in
-/-- **Selecting the last difference.**  A lower bound on the `(s+1)`-fold average yields a shift
+/-- **Selecting the last difference.** A lower bound on the `(s+1)`-fold average yields a shift
 inside the kernel's support at which the `s`-fold average of the differenced function is bounded
 below. -/
 theorem exists_shift_locUnifPow_ge {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3) (s : ℕ)
@@ -25391,11 +25441,10 @@ theorem exists_shift_locUnifPow_ge {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : 
 /-! ## Blueprint `thm:real-inverse`: the phase cut-off
 
 The theorem's witness is
-
   `h_j(x) = 1_{I_N(C_1)}(x) * ph(P_L^{(j)} f_j(x))`,
 
 and the point of it is that pairing a function against the cut-off phase of itself returns the `L^1`
-norm over the cut-off set.  That is the same unimodular bridge as `Auto.dHead`, and it is extracted
+norm over the cut-off set. That is the same unimodular bridge as `Auto.dHead`, and it is extracted
 here in the general form the theorem needs, so that an `L^1` lower bound becomes a lower bound for a
 pairing against a one-bounded function supported in the box.
 
@@ -25447,7 +25496,7 @@ theorem norm_integral_phaseCutoff_mul {B : Set E3} (hBm : MeasurableSet B) (F : 
     abs_of_nonneg (integral_nonneg fun _ => norm_nonneg _)]
 
 open MeasureTheory in
-/-- **The witness of `thm:real-inverse`, packaged.**  From an `L^1` lower bound on the box, a
+/-- **The witness of `thm:real-inverse`, packaged.** From an `L^1` lower bound on the box, a
 one-bounded function supported in the box whose pairing with `F` is at least that bound. -/
 theorem exists_phase_witness {B : Set E3} (hBm : MeasurableSet B) {F : E3 → ℂ}
     (hFm : Measurable F) {κ : ℝ} (hlow : κ ≤ ∫ x in B, ‖F x‖) :
@@ -25462,8 +25511,8 @@ open MeasureTheory in
 /-- **`thm:real-inverse`: the witness in the blueprint's pairing form.**
 
 The theorem asks for `h_j` with `|⟪f_j, P_L^{(j)} h_j⟫| ≥ C^{-1} δ^C N^6`, the projection sitting
-on the witness.  `exists_phase_witness` produces the bound with the projection on `f_j` instead;
-`P_self_adjoint` moves it across.  The witness is therefore
+on the witness. `exists_phase_witness` produces the bound with the projection on `f_j` instead;
+`P_self_adjoint` moves it across. The witness is therefore
 `h_j = conj (1_B · ph (P_L^{(j)} f_j))`, and the `L^1` lower bound on `P_L^{(j)} f_j` over the box
 -- the output of `lem:degree-lowering-zero` -- enters as a hypothesis. -/
 theorem exists_real_inverse_witness {L : ℝ} (hL : 0 < L) (j : Fin 3) {B : Set E3}
@@ -25480,14 +25529,14 @@ theorem exists_real_inverse_witness {L : ℝ} (hL : 0 < L) (j : Fin 3) {B : Set 
     exact norm_phaseCutoff_le B (P L j f) x
   refine ⟨fun x => (starRingEnd ℂ) (phaseCutoff B (P L j f) x), hm, hb, ?_, ?_⟩
   · intro x hx
-    show (starRingEnd ℂ) (phaseCutoff B (P L j f) x) = 0
+    change (starRingEnd ℂ) (phaseCutoff B (P L j f) x) = 0
     rw [phaseCutoff_eq_zero_of_notMem B (P L j f) hx, map_zero]
   · rw [← P_self_adjoint hL j hfc hfi hm hb]
     have hcongr : (∫ x : E3, P L j f x
           * (starRingEnd ℂ) ((starRingEnd ℂ) (phaseCutoff B (P L j f) x)))
         = ∫ x : E3, phaseCutoff B (P L j f) x * P L j f x := by
       refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-      show P L j f x * (starRingEnd ℂ) ((starRingEnd ℂ) (phaseCutoff B (P L j f) x))
+      change P L j f x * (starRingEnd ℂ) ((starRingEnd ℂ) (phaseCutoff B (P L j f) x))
           = phaseCutoff B (P L j f) x * P L j f x
       rw [Complex.conj_conj]
       ring
@@ -25498,14 +25547,12 @@ theorem exists_real_inverse_witness {L : ℝ} (hL : 0 < L) (j : Fin 3) {B : Set 
 /-! ## Blueprint `lem:degree-lowering-zero`: the Fourier transform of the Fejer kernel
 
 The `s = 2` endpoint of the lemma rests on the identity
-
   `hat kappa_H(xi) = (sin(pi H xi) / (pi H xi))^2`,
 
 whose whole point is that the multiplier is **nonnegative**: it turns the local `U^2` expression
 into a nonnegative weighted partial-frequency energy, which is what the major-frequency restriction
-is then applied to.  `Auto.fejer` is the normalized triangle of width `2H`, so the computation is
+is then applied to. `Auto.fejer` is the normalized triangle of width `2H`, so the computation is
 one elementary antiderivative on `[0, H]` together with the reflection `h -> -h`. -/
-
 theorem fejer_neg (H h : ℝ) : fejer H (-h) = fejer H h := by
   rw [fejer, fejer, abs_neg]
 
@@ -25562,7 +25609,7 @@ theorem integral_fejer_mul_cexp {H : ℝ} (hH : 0 < H) {c : ℂ} (hc : c ≠ 0) 
       refine intervalIntegral.integral_congr fun h hh => ?_
       rw [Set.uIcc_of_le hH.le] at hh
       have habs : |h| ≤ H := by rw [abs_of_nonneg hh.1]; exact hh.2
-      show (fejer H h : ℂ) * Complex.exp (d * h)
+      change (fejer H h : ℂ) * Complex.exp (d * h)
           = (H : ℂ)⁻¹ * ((1 - (h : ℂ) / (H : ℂ)) * Complex.exp (d * h))
       rw [fejer_eq_of_mem hH habs, abs_of_nonneg hh.1]
       push_cast
@@ -25576,8 +25623,6 @@ theorem integral_fejer_mul_cexp {H : ℝ} (hH : 0 < H) {c : ℂ} (hc : c ≠ 0) 
     rw [neg_zero] at h1
     rw [← h1]
     refine intervalIntegral.integral_congr fun h _ => ?_
-    show (fejer H (-h) : ℂ) * Complex.exp (c * ((-h : ℝ) : ℂ))
-        = (fejer H h : ℂ) * Complex.exp (-c * h)
     rw [fejer_neg]
     push_cast
     ring
@@ -25590,7 +25635,7 @@ theorem integral_fejer_mul_cexp {H : ℝ} (hH : 0 < H) {c : ℂ} (hc : c ≠ 0) 
   field_simp
   ring
 
-/-- The Fejer multiplier `hat kappa_H`.  At `xi = 0` the quotient is `0/0`, and the true value of
+/-- The Fejer multiplier `hat kappa_H`. At `xi = 0` the quotient is `0/0`, and the true value of
 the transform there is the total mass `1`, so the definition names it. -/
 noncomputable def fejerHat (H ξ : ℝ) : ℝ :=
   if ξ = 0 then 1 else (Real.sin (Real.pi * (H * ξ)) / (Real.pi * (H * ξ))) ^ 2
@@ -25627,7 +25672,7 @@ theorem fourier_fejer {H : ℝ} (hH : 0 < H) (ξ : ℝ) :
           = ((fejer H v : ℝ) : ℂ) := by
       intro v
       norm_num
-    have hhat : fejerHat H 0 = 1 := by rw [fejerHat, if_pos rfl]
+    have hhat : fejerHat H 0 = 1 := by rw [fejerHat, ite_eq_left rfl]
     have hofR : (∫ v : ℝ, ((fejer H v : ℝ) : ℂ)) = ((∫ v : ℝ, fejer H v : ℝ) : ℂ) := by
       simpa using Complex.ofRealCLM.integral_comp_comm (integrable_fejer hH)
     simp only [hsimp]
@@ -25670,7 +25715,7 @@ theorem fourier_fejer {H : ℝ} (hH : 0 < H) (ξ : ℝ) :
         have harg : 2 * Real.pi * ξ * H = 2 * (Real.pi * (H * ξ)) := by ring
         rw [harg, Real.cos_two_mul]
         nlinarith [Real.sin_sq_add_cos_sq (Real.pi * (H * ξ))]
-      rw [hcos, fejerHat, if_neg hξ]
+      rw [hcos, fejerHat, ite_eq_right hξ]
       field_simp
       ring
     rw [← hreal]
@@ -25682,9 +25727,9 @@ theorem fourier_fejer {H : ℝ} (hH : 0 < H) (ξ : ℝ) :
 
 `hat kappa_H` is bounded by `1` and decays like `(pi H xi)^{-2}`; both bounds together give the
 single clean majorant `2 / (1 + (pi H xi)^2)`, which is a dilate of Mathlib's
-`integrable_inv_one_add_sq`.  Integrability is what lets the multiplier be paired with a
-frequency-side energy, and it is also the hypothesis of Fourier inversion for `Auto.fourier_fejer`. -/
-
+`integrable_inv_one_add_sq`. Integrability is what lets the multiplier be paired with a
+frequency-side energy, and it is also the hypothesis of Fourier inversion for
+  `Auto.fourier_fejer`. -/
 theorem fejerHat_le_two_div (H ξ : ℝ) :
     fejerHat H ξ ≤ 2 / (1 + (Real.pi * (H * ξ)) ^ 2) := by
   rw [fejerHat]
@@ -25720,12 +25765,12 @@ theorem integrable_fejerHat {H : ℝ} (hH : 0 < H) : Integrable (fejerHat H) := 
   have hbase : Integrable fun u : ℝ => 2 / (1 + u ^ 2) := by
     have h := integrable_inv_one_add_sq.const_mul (2 : ℝ)
     refine h.congr (Filter.Eventually.of_forall fun u => ?_)
-    show (2 : ℝ) * (1 + u ^ 2)⁻¹ = 2 / (1 + u ^ 2)
+    change (2 : ℝ) * (1 + u ^ 2)⁻¹ = 2 / (1 + u ^ 2)
     rw [div_eq_mul_inv]
   have hdom : Integrable fun ξ : ℝ => 2 / (1 + (Real.pi * (H * ξ)) ^ 2) := by
     have h := (integrable_comp_mul_left_iff (fun u : ℝ => 2 / (1 + u ^ 2)) hc).mpr hbase
     refine h.congr (Filter.Eventually.of_forall fun ξ => ?_)
-    show (2 : ℝ) / (1 + (Real.pi * H * ξ) ^ 2) = 2 / (1 + (Real.pi * (H * ξ)) ^ 2)
+    change (2 : ℝ) / (1 + (Real.pi * H * ξ) ^ 2) = 2 / (1 + (Real.pi * (H * ξ)) ^ 2)
     ring
   refine Integrable.mono' hdom (measurable_fejerHat H).aestronglyMeasurable
     (Filter.Eventually.of_forall fun ξ => ?_)
@@ -25737,7 +25782,7 @@ theorem fejerHat_neg (H ξ : ℝ) : fejerHat H (-ξ) = fejerHat H ξ := by
   rcases eq_or_ne ξ 0 with h0 | h0
   · subst h0
     simp
-  · rw [if_neg (neg_ne_zero.mpr h0), if_neg h0]
+  · rw [ite_eq_right (neg_ne_zero.mpr h0), ite_eq_right h0]
     rw [show H * -ξ = -(H * ξ) by ring, show Real.pi * -(H * ξ) = -(Real.pi * (H * ξ)) by ring,
       Real.sin_neg, neg_div_neg_eq]
 
@@ -25746,7 +25791,7 @@ open MeasureTheory in
 /-- **Fourier inversion for the Fejer pair**: `𝓕 hat kappa_H = kappa_H`.
 
 Both members of the pair are continuous and integrable, so inversion applies; the transform rather
-than the inverse transform appears on the left because both are even.  This is what lets the
+than the inverse transform appears on the left because both are even. This is what lets the
 multiplier be moved from one side of a pairing to the other. -/
 theorem fourier_fejerHat {H : ℝ} (hH : 0 < H) (h : ℝ) :
     𝓕 (fun ξ : ℝ => ((fejerHat H ξ : ℝ) : ℂ)) h = ((fejer H h : ℝ) : ℂ) := by
@@ -25770,10 +25815,9 @@ theorem fourier_fejerHat {H : ℝ} (hH : 0 < H) (h : ℝ) :
 Blueprint `lem:degree-lowering-zero`, the `s = 2` endpoint: "Plancherel and the identity
 `hat kappa_H(xi) = (sin(pi H xi) / (pi H xi))^2` identify the local `U^2` expression with a
 nonnegative weighted partial-frequency energy."  In one variable the statement is
-
     ∫ kappa_H(h) ∫ psi(t + h) conj(psi t) dt dh = ∫ hat kappa_H(xi) ‖hat psi(xi)‖^2 dxi,
 
-and the right-hand side is manifestly nonnegative by `Auto.fejerHat_nonneg`.  The inner integral is
+and the right-hand side is manifestly nonnegative by `Auto.fejerHat_nonneg`. The inner integral is
 the autocorrelation of `psi`; this section builds it and its transform. -/
 
 /-- The autocorrelation `A_psi(h) = ∫ psi(t + h) conj(psi t) dt`. -/
@@ -25816,7 +25860,7 @@ theorem integrable_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integr
 open MeasureTheory in
 /-- **The transform of the autocorrelation is the frequency energy**: `hat A_psi = ‖hat psi‖^2`.
 
-This is the Plancherel input of the `s = 2` endpoint of blueprint `lem:degree-lowering-zero`.  It is
+This is the Plancherel input of the `s = 2` endpoint of blueprint `lem:degree-lowering-zero`. It is
 proved directly from Fubini and the translation invariance of Lebesgue measure rather than through
 the convolution theorem, so no new import is needed. -/
 theorem fourier_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integrable ψ) (ξ : ℝ) :
@@ -25844,7 +25888,7 @@ theorem fourier_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integrabl
     intro φ
     rw [Real.fourier_real_eq_integral_exp_smul]
     refine integral_congr_ae (Filter.Eventually.of_forall fun t => ?_)
-    show Complex.exp ((↑(-2 * Real.pi * t * ξ) : ℂ) * Complex.I) • φ t
+    change Complex.exp ((↑(-2 * Real.pi * t * ξ) : ℂ) * Complex.I) • φ t
         = Complex.exp (c * t) * φ t
     rw [smul_eq_mul]
     congr 2
@@ -25862,7 +25906,7 @@ theorem fourier_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integrabl
         = Complex.exp (c * (t : ℂ)) * ∫ h : ℝ, Complex.exp (c * h) * ψ (t + h) := by
       rw [← integral_const_mul]
       refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-      show Complex.exp (c * ((h + t : ℝ) : ℂ)) * ψ (h + t)
+      change Complex.exp (c * ((h + t : ℝ) : ℂ)) * ψ (h + t)
           = Complex.exp (c * (t : ℂ)) * (Complex.exp (c * h) * ψ (t + h))
       rw [hexp h t, show ψ (h + t) = ψ (t + h) from by rw [add_comm]]
       ring
@@ -25881,20 +25925,20 @@ theorem fourier_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integrabl
       = ∫ h : ℝ, Complex.exp (c * h) * autocorr ψ h := hF _
     _ = ∫ h : ℝ, ∫ t : ℝ, Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t)) := by
         refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-        show Complex.exp (c * h) * autocorr ψ h
+        change Complex.exp (c * h) * autocorr ψ h
             = ∫ t : ℝ, Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t))
         rw [autocorr, integral_const_mul]
     _ = ∫ t : ℝ, ∫ h : ℝ, Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t)) :=
         integral_integral_swap hprodi
     _ = ∫ t : ℝ, (starRingEnd ℂ) (ψ t) * Complex.exp (-(c * (t : ℂ))) * 𝓕 ψ ξ := by
         refine integral_congr_ae (Filter.Eventually.of_forall fun t => ?_)
-        show (∫ h : ℝ, Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t)))
+        change (∫ h : ℝ, Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t)))
             = (starRingEnd ℂ) (ψ t) * Complex.exp (-(c * (t : ℂ))) * 𝓕 ψ ξ
         have hin : (∫ h : ℝ, Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t)))
             = (starRingEnd ℂ) (ψ t) * ∫ h : ℝ, Complex.exp (c * h) * ψ (t + h) := by
           rw [← integral_const_mul]
           refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-          show Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t))
+          change Complex.exp (c * h) * (ψ (t + h) * (starRingEnd ℂ) (ψ t))
               = (starRingEnd ℂ) (ψ t) * (Complex.exp (c * h) * ψ (t + h))
           ring
         rw [hin, hshift t, ← mul_assoc]
@@ -25904,7 +25948,7 @@ theorem fourier_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integrabl
         congr 1
         rw [hF ψ, ← integral_conj]
         refine integral_congr_ae (Filter.Eventually.of_forall fun t => ?_)
-        show (starRingEnd ℂ) (ψ t) * Complex.exp (-(c * (t : ℂ)))
+        change (starRingEnd ℂ) (ψ t) * Complex.exp (-(c * (t : ℂ)))
             = (starRingEnd ℂ) (Complex.exp (c * t) * ψ t)
         rw [map_mul, ← Complex.exp_conj, hconjc t]
         ring
@@ -25915,7 +25959,7 @@ theorem fourier_autocorr {ψ : ℝ → ℂ} (hc : Continuous ψ) (hi : Integrabl
 
 open MeasureTheory in
 /-- **The multiplication formula** `∫ (𝓕 f) g = ∫ f (𝓕 g)` on the line: the Fourier transform is
-symmetric for the bilinear pairing.  Both sides need only integrability, and the proof is Fubini
+symmetric for the bilinear pairing. Both sides need only integrability, and the proof is Fubini
 against the symmetric kernel `e(-vx)`. -/
 theorem integral_fourier_mul_comm {f g : ℝ → ℂ} (hf : Integrable f) (hg : Integrable g) :
     (∫ x : ℝ, 𝓕 f x * g x) = ∫ v : ℝ, f v * 𝓕 g v := by
@@ -25940,18 +25984,18 @@ theorem integral_fourier_mul_comm {f g : ℝ → ℂ} (hf : Integrable f) (hg : 
         Complex.exp ((↑(-2 * Real.pi * z.2 * z.1) : ℂ) * Complex.I)) (by fun_prop)
       (Filter.Eventually.of_forall fun z => le_of_eq (hnorm z.2 z.1))
     refine h.congr (Filter.Eventually.of_forall fun z => ?_)
-    show Complex.exp ((↑(-2 * Real.pi * z.2 * z.1) : ℂ) * Complex.I) * (g z.1 * f z.2)
+    change Complex.exp ((↑(-2 * Real.pi * z.2 * z.1) : ℂ) * Complex.I) * (g z.1 * f z.2)
         = Complex.exp ((↑(-2 * Real.pi * z.2 * z.1) : ℂ) * Complex.I) * (f z.2 * g z.1)
     ring
   calc (∫ x : ℝ, 𝓕 f x * g x)
       = ∫ x : ℝ, ∫ v : ℝ,
           Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x) := by
         refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-        show 𝓕 f x * g x
+        change 𝓕 f x * g x
             = ∫ v : ℝ, Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x)
         rw [Real.fourier_real_eq_integral_exp_smul, ← integral_mul_const]
         refine integral_congr_ae (Filter.Eventually.of_forall fun v => ?_)
-        show Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) • f v * g x
+        change Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) • f v * g x
             = Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x)
         rw [smul_eq_mul]
         ring
@@ -25960,11 +26004,11 @@ theorem integral_fourier_mul_comm {f g : ℝ → ℂ} (hf : Integrable f) (hg : 
         integral_integral_swap hint
     _ = ∫ v : ℝ, f v * 𝓕 g v := by
         refine integral_congr_ae (Filter.Eventually.of_forall fun v => ?_)
-        show (∫ x : ℝ, Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x))
+        change (∫ x : ℝ, Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x))
             = f v * 𝓕 g v
         rw [Real.fourier_real_eq_integral_exp_smul, ← integral_const_mul]
         refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-        show Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x)
+        change Complex.exp ((↑(-2 * Real.pi * v * x) : ℂ) * Complex.I) * (f v * g x)
             = f v * (Complex.exp ((↑(-2 * Real.pi * x * v) : ℂ) * Complex.I) • g x)
         rw [smul_eq_mul, ← hk v x]
         ring
@@ -25973,7 +26017,6 @@ open MeasureTheory in
 /-- **The Fejer-weighted autocorrelation is a frequency energy.**
 
 Blueprint `lem:degree-lowering-zero`, the `s = 2` endpoint, in one variable:
-
     ∫ kappa_H(h) A_psi(h) dh = ∫ hat kappa_H(xi) ‖hat psi(xi)‖^2 dxi.
 
 The right-hand side is a *nonnegative* weighted partial-frequency energy, by
@@ -25988,13 +26031,13 @@ theorem integral_fejer_autocorr {H : ℝ} (hH : 0 < H) {ψ : ℝ → ℂ}
   have hL : (∫ x : ℝ, 𝓕 (fun ξ : ℝ => ((fejerHat H ξ : ℝ) : ℂ)) x * autocorr ψ x)
       = ∫ h : ℝ, ((fejer H h : ℝ) : ℂ) * autocorr ψ h := by
     refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-    show 𝓕 (fun ξ : ℝ => ((fejerHat H ξ : ℝ) : ℂ)) x * autocorr ψ x
+    change 𝓕 (fun ξ : ℝ => ((fejerHat H ξ : ℝ) : ℂ)) x * autocorr ψ x
         = ((fejer H x : ℝ) : ℂ) * autocorr ψ x
     rw [fourier_fejerHat hH x]
   have hR : (∫ v : ℝ, ((fejerHat H v : ℝ) : ℂ) * 𝓕 (autocorr ψ) v)
       = ∫ ξ : ℝ, ((fejerHat H ξ : ℝ) : ℂ) * (‖𝓕 ψ ξ‖ : ℂ) ^ 2 := by
     refine integral_congr_ae (Filter.Eventually.of_forall fun v => ?_)
-    show ((fejerHat H v : ℝ) : ℂ) * 𝓕 (autocorr ψ) v
+    change ((fejerHat H v : ℝ) : ℂ) * 𝓕 (autocorr ψ) v
         = ((fejerHat H v : ℝ) : ℂ) * (‖𝓕 ψ v‖ : ℂ) ^ 2
     rw [fourier_autocorr hc hi v]
   rw [← hL, ← hR]
@@ -26005,7 +26048,7 @@ theorem integral_fejer_autocorr {H : ℝ} (hH : 0 < H) {ψ : ℝ → ℂ}
 
 `K_R = F^{-1}(eta(./R))` is `k_R(u) = R eta-check(R u)` with `eta-check` a Schwartz function
 (`Auto.etaKerS`), so the blueprint's `|K_R(u)| <= C_m R (1 + R|u|)^{-m}` is just rapid decay,
-rescaled.  Both statements below are written multiplicatively, so no negative power appears. -/
+rescaled. Both statements below are written multiplicatively, so no negative power appears. -/
 
 /-- Rapid decay of `eta-check` in the form the rescaling needs. -/
 theorem etaKer_decay (m : ℕ) : ∃ C : ℝ, 0 ≤ C ∧ ∀ v : ℝ, (1 + |v|) ^ m * ‖etaKer v‖ ≤ C := by
@@ -26075,10 +26118,8 @@ theorem integrable_etaKer_mom (m : ℕ) :
       ≤ 2 ^ m * (1 ^ m + |v| ^ m) * ‖etaKer v‖ :=
     mul_le_mul_of_nonneg_right hpow (norm_nonneg _)
   refine hstep.trans (le_of_eq ?_)
-  show 2 ^ m * (1 ^ m + |v| ^ m) * ‖etaKer v‖
-      = 2 ^ m * (‖v‖ ^ 0 * ‖etaKerS v‖ + ‖v‖ ^ m * ‖etaKerS v‖)
   rw [Real.norm_eq_abs]
-  show 2 ^ m * (1 ^ m + |v| ^ m) * ‖etaKer v‖
+  change 2 ^ m * (1 ^ m + |v| ^ m) * ‖etaKer v‖
       = 2 ^ m * (|v| ^ 0 * ‖etaKer v‖ + |v| ^ m * ‖etaKer v‖)
   ring
 
@@ -26095,7 +26136,7 @@ theorem integrable_projKernel_mom {R : ℝ} (hR : 0 < R) (m : ℕ) :
   have hg := (integrable_comp_mul_left_iff
       (fun v : ℝ => (1 + |v|) ^ m * ‖etaKer v‖) hR.ne').mpr (integrable_etaKer_mom m)
   refine (hg.const_mul R).congr (Filter.Eventually.of_forall fun u => ?_)
-  show R * ((1 + |R * u|) ^ m * ‖etaKer (R * u)‖)
+  change R * ((1 + |R * u|) ^ m * ‖etaKer (R * u)‖)
       = (1 + R * |u|) ^ m * ‖projKernel R u‖
   rw [projKernel, norm_mul, Complex.norm_real, Real.norm_of_nonneg hR.le,
     abs_mul, abs_of_pos hR]
@@ -26103,7 +26144,7 @@ theorem integrable_projKernel_mom {R : ℝ} (hR : 0 < R) (m : ℕ) :
 
 open MeasureTheory in
 /-- The weighted moment of the rescaled kernel is `R`-independent, as the substitution `v = R u`
-shows.  This is the quantitative form of the decay in `Auto.projKernel_decay`. -/
+shows. This is the quantitative form of the decay in `Auto.projKernel_decay`. -/
 theorem integral_projKernel_mom {R : ℝ} (hR : 0 < R) (m : ℕ) :
     (∫ u : ℝ, (1 + R * |u|) ^ m * ‖projKernel R u‖) = etaKerMom m := by
   have hrw : ∀ u : ℝ, (1 + R * |u|) ^ m * ‖projKernel R u‖
@@ -26149,7 +26190,6 @@ theorem integral_projKernel_tail_le {R d : ℝ} (hR : 0 < R) (hd : 0 ≤ d) (m :
 /-! ## `blueprints/task_2_patch_3_updated.tex`, stage 1: the Fejer square identity
 
 `patch:fejer-squares` states
-
     ∫∫ u(x) conj(u(x + h e_j)) kappa_H(h) dh dx = ‖T_{H,j} u‖_2^2,
     T_{H,j} u (x) = H⁻¹ ∫_0^H u (x + t e_j) dt,
 
@@ -26160,7 +26200,7 @@ The file already carries every ingredient, assembled earlier for `Auto.re_fejer_
 `Auto.integral_double_sub_eq_fejer` turns the Fejer average into the double window average,
 `Auto.integral_shift_pair` says the paired integral depends only on the difference of the shifts,
 `Auto.integral_swap_double` is the Fubini exchange, and `Auto.integral_mul_conj_integral` closes the
-square.  What was proved there was the inequality `0 <= Re`; the patch needs the equality. -/
+square. What was proved there was the inequality `0 <= Re`; the patch needs the equality. -/
 
 /-- The window average `T_{H,v} f (x) = H⁻¹ ∫_0^H f (x + a v) da`; patch_3_updated
 `patch:fejer-squares`. -/
@@ -26188,7 +26228,7 @@ theorem integral_fejer_pairAvg_eq_sq {H : ℝ} (hH : 0 < H) (v : E3) {f : E3 →
     simp_rw [hpair]
     rw [integral_swap_double hH v hf, ← integral_complex_ofReal]
     refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-    show (∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H,
+    change (∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H,
           f (x + a • v) * (starRingEnd ℂ) (f (x + b • v)))
         = ((‖∫ a in (0 : ℝ)..H, f (x + a • v)‖ ^ 2 : ℝ) : ℂ)
     rw [← integral_mul_conj_integral (fun a => f (x + a • v)), Complex.mul_conj,
@@ -26217,7 +26257,7 @@ theorem locUnifPow_zero {N H : ℝ} (j : Fin 3) (f : E3 → ℂ) :
     intro h
     rw [fdiffIter_zero]
     simp
-  show (∫ h : Fin 0 → ℝ, fdiffIter (basisVec j) 0 h f x
+  change (∫ h : Fin 0 → ℝ, fdiffIter (basisVec j) 0 h f x
       * ∏ l : Fin 0, ((fejer H (h l) : ℝ) : ℂ)) = f x
   have hu : (volume : Measure (Fin 0 → ℝ)) Set.univ = 1 := by
     rw [volume_pi, Measure.pi_of_empty]
@@ -26226,7 +26266,8 @@ theorem locUnifPow_zero {N H : ℝ} (j : Fin 3) (f : E3 → ℂ) :
   simp [MeasureTheory.Measure.real, hu]
 
 open MeasureTheory in
-/-- **`patch:public-u1`** of `blueprints/task_2_patch_3_updated.tex`: the order-one local uniformity power
+/-- **`patch:public-u1`** of `blueprints/task_2_patch_3_updated.tex`: the order-one local
+  uniformity power
 is the normalized `L^2` norm of the window average, `Q_1 = N^{-6} ‖T_H f‖_2^2`.
 
 This is `Auto.integral_fejer_pairAvg_eq_sq` read through `Auto.locUnifPow`; the order-one cube is
@@ -26262,7 +26303,7 @@ theorem locUnifPow_two_eq {N H : ℝ} (hH : 0 < H) (hN : N ≠ 0) (j : Fin 3) {f
           * ((∫ x : E3, ‖winAvg H (basisVec j) (fdiff (basisVec j) z f) x‖ ^ 2 : ℝ) : ℂ) := by
   rw [locUnifPow_succ_split hH hN j 1 hf hf1, ← integral_const_mul]
   refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-  show ((fejer H z : ℝ) : ℂ) * locUnifPow N H j 1 (fdiff (basisVec j) z f)
+  change ((fejer H z : ℝ) : ℂ) * locUnifPow N H j 1 (fdiff (basisVec j) z f)
       = ((N ^ (6 : ℕ))⁻¹ : ℂ) * (((fejer H z : ℝ) : ℂ)
           * ((∫ x : E3, ‖winAvg H (basisVec j) (fdiff (basisVec j) z f) x‖ ^ 2 : ℝ) : ℂ))
   rw [locUnifPow_one_eq hH hN j (nice_fdiff _ z hf) (fun y => norm_fdiff_le _ z hf1 y)]
@@ -26323,8 +26364,9 @@ theorem winWidth_le {H : ℝ} (hH : 0 ≤ H) (j i : Fin 3) : winWidth H j i ≤ 
   · exact le_rfl
   · exact hH
 
-/-- `I_N(C)` widened by `H` on the lower side of the `j`-th coordinate.  This is where
-`T_{H,e_j} u` lives when `u` lives in `I_N(C)`; task_2_patch_3_updated `patch:energy-to-u2`, where its
+/-- `I_N(C)` widened by `H` on the lower side of the `j`-th coordinate. This is where
+`T_{H,e_j} u` lives when `u` lives in `I_N(C)`; task_2_patch_3_updated `patch:energy-to-u2`,
+where its
 volume is the `V_H = |B_N| (1 + H/S)` of the support Cauchy-Schwarz. -/
 def petBoxWin (C N H : ℝ) (j : Fin 3) : Set E3 :=
   {x | ∀ i : Fin 3,
@@ -26335,7 +26377,7 @@ theorem petBoxWin_eq_preimage (C N H : ℝ) (j : Fin 3) :
       (Set.univ.pi fun i : Fin 3 =>
         Set.Icc (-(C * N ^ expo i) - winWidth H j i) (C * N ^ expo i)) := by
   ext x
-  simp only [petBoxWin, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_pi, Set.mem_univ,
+  simp only [petBoxWin, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_pi, Set.mem_univ,
     forall_const, Set.mem_Icc]
 
 open MeasureTheory in
@@ -26439,7 +26481,7 @@ theorem integrable_norm_pow_winAvg {C N H : ℝ} (hH : 0 < H) (j : Fin 3)
     Integrable fun x : E3 => ‖winAvg H (basisVec j) f x‖ ^ (p + 1) := by
   have hM0 : 0 ≤ M := le_trans (norm_nonneg _) (hM 0)
   have hfin : volume (petBoxWin C N H j) ≠ ⊤ := volume_petBoxWin_ne_top C N H j
-  haveI : IsFiniteMeasure (volume.restrict (petBoxWin C N H j)) :=
+  have : IsFiniteMeasure (volume.restrict (petBoxWin C N H j)) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact lt_of_le_of_ne le_top hfin⟩
   have hmeas : Measurable fun x : E3 => ‖winAvg H (basisVec j) f x‖ ^ (p + 1) :=
     ((stronglyMeasurable_winAvg hH.le (basisVec j) hf).measurable.norm).pow_const _
@@ -26537,12 +26579,11 @@ theorem sq_re_locUnifPow_zero_le {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN :
 
 open MeasureTheory in
 /-- **`patch:raise-order`** of `blueprints/task_2_patch_3_updated.tex`, at every order:
-
     (Q_s)^2 <= (1 + H/S) Q_{s+1},
 
 in the file's normalization, where `(1 + H/S) |B_N| / N^6 <= 16 C^3`.
 
-Induction on `s`.  The base case is the support Cauchy-Schwarz `Auto.sq_re_locUnifPow_zero_le`.
+Induction on `s`. The base case is the support Cauchy-Schwarz `Auto.sq_re_locUnifPow_zero_le`.
 The step splits both sides over the first shift with `Auto.re_locUnifPow_succ_split`, applies the
 induction hypothesis to the one-difference function -- which is again `Auto.Nice`, one-bounded and
 supported in the same box -- and closes with Jensen for the Fejer density
@@ -26611,7 +26652,7 @@ theorem sq_re_locUnifPow_one_le {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN : 
 
 open MeasureTheory in
 /-- The order-`s` power is bounded by the normalized `L^1` norm of the input: the zero vertex of the
-cube dominates the integrand, and the Fejer cube is a probability density.  This is the
+cube dominates the integrand, and the Fejer cube is a probability density. This is the
 `fdiff`-free companion of `Auto.norm_locUnifPow_fdiff_le`. -/
 theorem norm_locUnifPow_le_L1 {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f : E3 → ℂ}
     (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -26634,7 +26675,7 @@ theorem norm_locUnifPow_le_L1 {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f 
       refine integral_mono_of_nonneg (Filter.Eventually.of_forall fun h' => norm_nonneg _)
         ((integrable_fejerCube hH s).mul_const L)
         (Filter.Eventually.of_forall fun h' => ?_)
-      show ‖((fejerCube H h' : ℝ) : ℂ) * ∫ x : E3, fdiffIter (basisVec j) s h' f x‖
+      change ‖((fejerCube H h' : ℝ) : ℂ) * ∫ x : E3, fdiffIter (basisVec j) s h' f x‖
           ≤ fejerCube H h' * L
       rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
         abs_of_nonneg (fejerCube_nonneg hH h')]
@@ -26653,7 +26694,7 @@ theorem integral_norm_le_of_petBox {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) {f 
     (∫ x : E3, ‖f x‖) ≤ 8 * C ^ 3 * N ^ 6 := by
   have hz : ∀ x : E3, x ∉ petBox C N → ‖f x‖ = 0 := fun x hx => by rw [hsupp x hx, norm_zero]
   have hvol : volume (petBox C N) = ENNReal.ofReal (8 * C ^ 3 * N ^ 6) := volume_petBox hC hN
-  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+  have : IsFiniteMeasure (volume.restrict (petBox C N)) := by
     constructor
     rw [Measure.restrict_apply_univ, hvol]
     exact ENNReal.ofReal_lt_top
@@ -26672,7 +26713,7 @@ open MeasureTheory in
 every order-`s` power satisfies `0 <= Q_s <= |B_N|/N^6 = 8 C^3`.
 
 The lower bound is `Auto.locUnifPow_re_nonneg` -- positivity coming from the integrated square, as
-the patch insists, before any kernel is compared with another.  The upper bound is the zero vertex
+the patch insists, before any kernel is compared with another. The upper bound is the zero vertex
 of the cube together with the Fejer cube being a probability density. -/
 theorem re_locUnifPow_nonneg_le {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN : 0 < N) (j : Fin 3)
     (s : ℕ) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1)
@@ -26692,7 +26733,7 @@ theorem re_locUnifPow_nonneg_le {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN : 
 
 open MeasureTheory in
 /-- The inner Fejer average at a fixed cube parameter is the `L^2` norm of a window average, hence
-a real number.  This is `Auto.integral_fejer_pairAvg_eq_sq` applied to the iterated difference. -/
+a real number. This is `Auto.integral_fejer_pairAvg_eq_sq` applied to the iterated difference. -/
 theorem innerFejer_eq_ofReal {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) {f : E3 → ℂ} (hf : Nice f)
     (h : Fin s → ℝ) :
     innerFejer H v s f h
@@ -26701,7 +26742,7 @@ theorem innerFejer_eq_ofReal {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) {f : E3 �
   have hcongr : (∫ t : ℝ, ((fejer H t : ℝ) : ℂ) * pairAvg v (fdiffIter v s h f) t)
       = ∫ t : ℝ, fejer H t • pairAvg v (fdiffIter v s h f) t := by
     refine integral_congr_ae (Filter.Eventually.of_forall fun t => ?_)
-    show ((fejer H t : ℝ) : ℂ) * pairAvg v (fdiffIter v s h f) t
+    change ((fejer H t : ℝ) : ℂ) * pairAvg v (fdiffIter v s h f) t
         = fejer H t • pairAvg v (fdiffIter v s h f) t
     rw [Complex.real_smul]
   rw [hcongr, integral_fejer_pairAvg_eq_sq hH v (nice_fdiffIter v s h hf)]
@@ -26720,7 +26761,7 @@ theorem im_locUnifPow_succ {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f : E
           * ∫ x : E3, ‖winAvg H (basisVec j) (fdiffIter (basisVec j) s h f) x‖ ^ 2 : ℝ) : ℂ) := by
     rw [← integral_complex_ofReal]
     refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-    show ((fejerCube H h : ℝ) : ℂ) * innerFejer H (basisVec j) s f h
+    change ((fejerCube H h : ℝ) : ℂ) * innerFejer H (basisVec j) s f h
         = ((fejerCube H h
             * ∫ x : E3, ‖winAvg H (basisVec j) (fdiffIter (basisVec j) s h f) x‖ ^ 2 : ℝ) : ℂ)
     rw [innerFejer_eq_ofReal hH _ s hf h]
@@ -26731,9 +26772,10 @@ theorem im_locUnifPow_succ {N H : ℝ} (hH : 0 < H) (j : Fin 3) (s : ℕ) {f : E
 
 /-! ## `blueprints/task_2_patch_3_updated.tex`, stage 1: budget arithmetic and popularity
 
-`patch:budgets` fixes what the patch's `delta^{O(1)}` notation means -- a returned integer `c`, never
+`patch:budgets` fixes what the patch's `delta^{O(1)}` notation means -- a returned integer `c`,
+  never
 an asymptotic statement -- and records the composition rules that let every budget in the proof be
-assembled from finitely many of them.  The patch is explicit that the integers are to be retained
+assembled from finitely many of them. The patch is explicit that the integers are to be retained
 rather than replaced by asymptotic notation, so the two budget functions are named here and the
 composition rules are stated as inequalities between them.
 
@@ -26900,13 +26942,12 @@ theorem exists_cell_ge {ι : Type*} {s : Finset ι} (hs : s.Nonempty) {g : ι �
 
 /-! ## `patch:energy-to-u2`, the last step: the multiplier of the window average
 
-The remaining step of `patch:energy-to-u2` is `‖P_L^{(j)} f‖_2 <= c ‖T_{H,j} f‖_2`.  The route taken
+The remaining step of `patch:energy-to-u2` is `‖P_L^{(j)} f‖_2 <= c ‖T_{H,j} f‖_2`. The route taken
 here avoids `L^2` Fourier theory entirely -- see `automation/ErrorReport.md` at 2026-09-16T03:05 --
 and its first ingredient is the multiplier of the window average,
-
     m_H(v) = H^{-1} ∫_0^H e(v a) da,
 
-together with the elementary fact that it stays away from zero at low frequency.  With the patch's
+together with the elementary fact that it stays away from zero at low frequency. With the patch's
 choice `H = 1/(8L)` and `|v| <= L/2` the hypotheses below read `2 pi |v| H <= pi/8 <= 1` and
 `2 pi H |v| <= pi/8 <= 1/2`, so both are satisfied with room to spare. -/
 
@@ -26967,7 +27008,7 @@ theorem norm_winMult_sub_one_le {H : ℝ} (hH : 0 < H) {v : ℝ}
         mul_le_mul_of_nonneg_left hfinal (by positivity)
     _ = 2 * Real.pi * H * |v| := by field_simp
 
-/-- **The multiplier stays away from zero at low frequency.**  This is the plateau estimate that
+/-- **The multiplier stays away from zero at low frequency.** This is the plateau estimate that
 makes `eta(./L) / m_H` a bounded smooth function. -/
 theorem half_le_norm_winMult {H : ℝ} (hH : 0 < H) {v : ℝ}
     (hsmall : 2 * Real.pi * |v| * H ≤ 1) (hhalf : 2 * Real.pi * H * |v| ≤ 1 / 2) :
@@ -26983,7 +27024,7 @@ theorem half_le_norm_winMult {H : ℝ} (hH : 0 < H) {v : ℝ}
 
 To compare `P_L^{(j)}` with `T_{H,j}` through kernels rather than through `L^2` Fourier theory, the
 window average has to be presented the way `Auto.P` already is: as convolution in the `j`-th
-coordinate with an `L^1` kernel.  That kernel is the normalized indicator of `(-H, 0]`, and its
+coordinate with an `L^1` kernel. That kernel is the normalized indicator of `(-H, 0]`, and its
 Fourier transform is `Auto.winMult`. -/
 
 /-- The convolution kernel of the window average: `H^{-1} 1_{(-H, 0]}`. -/
@@ -27057,7 +27098,7 @@ theorem integral_norm_le_volume_petBox {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N)
     (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) (hsupp : ∀ y, y ∉ petBox C N → f y = 0) :
     (∫ x : E3, ‖f x‖) ≤ 8 * C ^ 3 * N ^ 6 := by
   have hvol : volume (petBox C N) = ENNReal.ofReal (8 * C ^ 3 * N ^ 6) := volume_petBox hC hN
-  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+  have : IsFiniteMeasure (volume.restrict (petBox C N)) := by
     constructor
     rw [Measure.restrict_apply_univ, hvol]
     exact ENNReal.ofReal_lt_top
@@ -27078,9 +27119,9 @@ theorem integral_norm_le_volume_petBox {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N)
         rw [hvol, ENNReal.toReal_ofReal (by positivity)]
 
 open MeasureTheory in
-/-- **`patch:fejer-squares`, the range of the cube power.**  The patch normalizes by the support
+/-- **`patch:fejer-squares`, the range of the cube power.** The patch normalizes by the support
 volume `V` and states `0 <= Q_s <= 1`; the file normalizes by `N^6`, so the upper bound is the ratio
-`|B_N| / N^6 = 8 C^3`.  Its source is the zero vertex of the cube: `|C_s(f; x, h)| <= 1_B(x)`. -/
+`|B_N| / N^6 = 8 C^3`. Its source is the zero vertex of the cube: `|C_s(f; x, h)| <= 1_B(x)`. -/
 theorem norm_locUnifPow_le_box {C N H : ℝ} (hH : 0 < H) (hC : 0 ≤ C) (hN : 0 < N) (j : Fin 3)
     (s : ℕ) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1)
     (hsupp : ∀ y, y ∉ petBox C N → f y = 0) :
@@ -27113,7 +27154,7 @@ out is a *real part* of an averaged correlation rather than its modulus -- the p
 that it "is not obtained by deleting an absolute value from `fejer_vdc'`".
 
 Its first move is the one recorded here: the factor `g`, which does not depend on the averaging
-variable, is removed by Cauchy-Schwarz in `x` alone.  The pairing inequality itself is already in
+variable, is removed by Cauchy-Schwarz in `x` alone. The pairing inequality itself is already in
 the file as `Auto.sq_norm_integral_mul_le`; what is added is its normalized form, with the patch's
 `V` in place. -/
 
@@ -27143,7 +27184,7 @@ theorem sq_norm_normalized_pairing_le {α : Type*} [MeasurableSpace α] {μ : Me
 /-! ### `patch:signed-vdc`: the window keeps the mass, on the line
 
 This unparks the lemma left aside on 2026-09-15: `int_R S_u du = int_I F_t dt`, the statement that
-the window average does not change the total integral.  It is the one-dimensional twin of
+the window average does not change the total integral. It is the one-dimensional twin of
 `Auto.integral_winAvg`, and `patch:signed-vdc` uses it exactly as `patch:energy-to-u2` uses that
 one -- to know that the Cauchy-Schwarz on the window's support still sees the full mass. -/
 
@@ -27221,7 +27262,7 @@ theorem integrable_shift_pair_prod_line {H : ℝ} (hH : 0 < H) {W : ℝ → ℂ}
       (Complex.continuous_conj.measurable.comp (hWm.comp (measurable_fst.add measurable_const)))
   refine Integrable.mono' hbase hmeas.aestronglyMeasurable
     (Filter.Eventually.of_forall fun z => ?_)
-  show ‖W (z.1 + z.2) * (starRingEnd ℂ) (W (z.1 + b))‖ ≤ M * ‖W (z.1 + z.2)‖
+  change ‖W (z.1 + z.2) * (starRingEnd ℂ) (W (z.1 + b))‖ ≤ M * ‖W (z.1 + z.2)‖
   rw [norm_mul, RCLike.norm_conj, mul_comm]
   exact mul_le_mul_of_nonneg_right (hWb _) (norm_nonneg _)
 
@@ -27239,7 +27280,7 @@ theorem integrable_shift_pair_prod_line' {H : ℝ} (hH : 0 < H) {W : ℝ → ℂ
       (Complex.continuous_conj.measurable.comp (hWm.comp (measurable_fst.add measurable_snd)))
   refine Integrable.mono' hbase hmeas.aestronglyMeasurable
     (Filter.Eventually.of_forall fun z => ?_)
-  show ‖W (z.1 + a) * (starRingEnd ℂ) (W (z.1 + z.2))‖ ≤ M * ‖W (z.1 + z.2)‖
+  change ‖W (z.1 + a) * (starRingEnd ℂ) (W (z.1 + z.2))‖ ≤ M * ‖W (z.1 + z.2)‖
   rw [norm_mul, RCLike.norm_conj]
   exact mul_le_mul_of_nonneg_right (hWb _) (norm_nonneg _)
 
@@ -27251,7 +27292,7 @@ theorem integral_shift_pair_line (W : ℝ → ℂ) (a b : ℝ) :
   rw [← integral_add_right_eq_self
     (fun u : ℝ => W (u + (a - b)) * (starRingEnd ℂ) (W u)) b]
   refine integral_congr_ae (Filter.Eventually.of_forall fun u => ?_)
-  show W (u + a) * (starRingEnd ℂ) (W (u + b))
+  change W (u + a) * (starRingEnd ℂ) (W (u + b))
       = W (u + b + (a - b)) * (starRingEnd ℂ) (W (u + b))
   have hu : u + b + (a - b) = u + a := by ring
   rw [hu]
@@ -27390,7 +27431,7 @@ theorem integral_fejer_autocorr_eq_sq {H : ℝ} (hH : 0 < H) {W : ℝ → ℂ} (
     simp_rw [autocorr_eq_shift_pair]
     rw [integral_swap_double_line hH hWm hWi hWb, ← integral_complex_ofReal]
     refine integral_congr_ae (Filter.Eventually.of_forall fun u => ?_)
-    show (∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H,
+    change (∫ a in (0 : ℝ)..H, ∫ b in (0 : ℝ)..H,
           W (u + a) * (starRingEnd ℂ) (W (u + b)))
         = ((‖∫ s in (0 : ℝ)..H, W (u + s)‖ ^ 2 : ℝ) : ℂ)
     rw [← integral_mul_conj_integral (fun a => W (u + a)), Complex.mul_conj,
@@ -27406,14 +27447,15 @@ theorem integral_fejer_autocorr_eq_sq {H : ℝ} (hH : 0 < H) {W : ℝ → ℂ} (
 
 
 open MeasureTheory in
-/-- The window average of a bounded function carried by an interval lies in every `L^p`, `p >= 1`. -/
+/-- The window average of a bounded function carried
+  by an interval lies in every `L^p`, `p >= 1`. -/
 theorem integrable_norm_pow_windowAvg {c N H M : ℝ} (hH : 0 < H) {W : ℝ → ℂ}
     (hWi : Integrable W) (hWb : ∀ t, ‖W t‖ ≤ M)
     (hsupp : ∀ t, t ∉ Set.Ioc c (c + N) → W t = 0) (p : ℕ) :
     Integrable fun u : ℝ => ‖windowAvg H W u‖ ^ (p + 1) := by
   have hM0 : 0 ≤ M := le_trans (norm_nonneg _) (hWb 0)
   have hSm : MeasurableSet (Set.Ioc (c - H) (c + N)) := measurableSet_Ioc
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (c - H) (c + N))) := by
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (c - H) (c + N))) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -27441,7 +27483,7 @@ open MeasureTheory in
 
 The window average has the same integral as `W` and is carried by an interval of length `N + H`, so
 Cauchy-Schwarz on that interval bounds `|∫ W|^2` by `(N + H)` times its `L^2` norm -- which, by
-`Auto.integral_fejer_autocorr_eq_sq`, is the Fejer average of the autocorrelation.  The right-hand
+`Auto.integral_fejer_autocorr_eq_sq`, is the Fejer average of the autocorrelation. The right-hand
 side is real because it came from an integrated square. -/
 theorem sq_norm_integral_le_fejer_autocorr {c N H : ℝ} (hN : 0 < N) (hH : 0 < H) {W : ℝ → ℂ}
     (hWm : Measurable W) {M : ℝ} (hWb : ∀ t, ‖W t‖ ≤ M)
@@ -27477,14 +27519,14 @@ theorem measurableSet_capSet (c N h : ℝ) : MeasurableSet (capSet c N h) :=
   measurableSet_Ioc.inter measurableSet_Ioc
 
 open MeasureTheory in
-/-- **The cut-off window is the intersected interval.**  With `W = 1_I F`, the autocorrelation of
+/-- **The cut-off window is the intersected interval.** With `W = 1_I F`, the autocorrelation of
 `W` is exactly the paired integral over `I ∩ (I - h)`, so `Auto.capPair` and `Auto.autocorr` are the
 same object seen from the two sides of `patch:signed-vdc`. -/
 theorem autocorr_indicator_eq_capPair (F : ℝ → ℂ) (c N h : ℝ) :
     autocorr ((Set.Ioc c (c + N)).indicator F) h = capPair F c N h := by
   rw [autocorr, capPair, ← integral_indicator (measurableSet_capSet c N h)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun u => ?_)
-  show (Set.Ioc c (c + N)).indicator F (u + h)
+  change (Set.Ioc c (c + N)).indicator F (u + h)
         * (starRingEnd ℂ) ((Set.Ioc c (c + N)).indicator F u)
       = (capSet c N h).indicator (fun t => F (t + h) * (starRingEnd ℂ) (F t)) u
   by_cases hu : u ∈ capSet c N h
@@ -27557,7 +27599,7 @@ open MeasureTheory in
 /-- **The Cauchy-Schwarz behind the cut-off cost of `patch:signed-vdc`.**
 
 The patch justifies its `|h|/N` by "`∫ |F(x,t) conj(F(x,t+h))| dx <= V` by Cauchy-Schwarz", from the
-hypothesis `∫ |F(x,s)|^2 dx <= V` at each parameter value.  That step is this lemma, applied with
+hypothesis `∫ |F(x,s)|^2 dx <= V` at each parameter value. That step is this lemma, applied with
 `G = F(., t+h)` and `K = F(., t)`. -/
 theorem integral_mul_norm_le_of_sq_le {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {G K : α → ℂ} (hG2 : Integrable (fun x => ‖G x‖ ^ 2) μ)
@@ -27582,7 +27624,7 @@ theorem norm_integral_mul_conj_le_of_sq_le {α : Type*} [MeasurableSpace α] {μ
   refine le_trans (norm_integral_le_integral_norm _) ?_
   have hpt : (∫ x, ‖G x * (starRingEnd ℂ) (K x)‖ ∂μ) = ∫ x, ‖G x‖ * ‖K x‖ ∂μ := by
     refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-    show ‖G x * (starRingEnd ℂ) (K x)‖ = ‖G x‖ * ‖K x‖
+    change ‖G x * (starRingEnd ℂ) (K x)‖ = ‖G x‖ * ‖K x‖
     rw [norm_mul, RCLike.norm_conj]
   rw [hpt]
   exact integral_mul_norm_le_of_sq_le hG2 hK2 hGK hV hGV hKV
@@ -27593,7 +27635,7 @@ open MeasureTheory in
 most `H^{-1} * H = 1`. -/
 theorem integrable_fejer_abs {H : ℝ} (hH : 0 < H) :
     Integrable fun h : ℝ => fejer H h * |h| := by
-  haveI hfin : IsFiniteMeasure (volume.restrict (Set.Ioc (-H) H)) := by
+  have hfin : IsFiniteMeasure (volume.restrict (Set.Ioc (-H) H)) := by
     constructor
     rw [Measure.restrict_apply_univ, Real.volume_Ioc]
     exact ENNReal.ofReal_lt_top
@@ -27613,7 +27655,7 @@ theorem integrable_fejer_abs {H : ℝ} (hH : 0 < H) :
     · rw [Set.indicator_of_notMem hin, fejer_eq_zero_off hH hin, zero_mul, norm_zero]
 
 open MeasureTheory in
-/-- **The Fejer average of the shift size is at most `H`.**  This is what turns the per-shift
+/-- **The Fejer average of the shift size is at most `H`.** This is what turns the per-shift
 cut-off cost `|h|` of `Auto.norm_pairIntegral_sub_autocorr_le` into the patch's `H/N`. -/
 theorem integral_fejer_abs_le {H : ℝ} (hH : 0 < H) : (∫ h : ℝ, fejer H h * |h|) ≤ H := by
   have hptw : ∀ h : ℝ, fejer H h * |h| ≤ fejer H h * H := by
@@ -27631,16 +27673,15 @@ theorem integral_fejer_abs_le {H : ℝ} (hH : 0 < H) : (∫ h : ℝ, fejer H h *
 `patch:cylinder` is the reusable Gowers-Cauchy-Schwarz induction, stated *with its state*: after `a`
 steps the variables `b_1, ..., b_a` have been doubled into pairs `b_i^0, b_i^1`, and the running
 quantity is
-
     J_a = E [ ∏_{ω ∈ {0,1}^a} C^{|ω|} v(z, b^ω) * ∏_{i > a} u_{i,a} ],
     b_i^ω = (1 - ω_i) b_i^0 + ω_i b_i^1.
 
-This section supplies the selection `b^ω` and its structure.  The conjugation parity `Auto.conjPar`
+This section supplies the selection `b^ω` and its structure. The conjugation parity `Auto.conjPar`
 and the vertex bookkeeping `Auto.numTrue`, `Auto.numFalse`, `Auto.consBoolEquiv` are already in the
 file, built for the Fejer cube of `def:local-uniformity`, and are reused here unchanged. -/
 
 /-- **The cube selection of `patch:cylinder`**: `b^ω i` is `c i` where `ω i` holds and `b i`
-elsewhere.  With `b = b^0` and `c = b^1` this is the patch's
+elsewhere. With `b = b^0` and `c = b^1` this is the patch's
 `b_i^ω = (1 - ω_i) b_i + ω_i c_i`. -/
 def cubeSel {B : Type*} {r : ℕ} (ω : Fin r → Bool) (b c : Fin r → B) : Fin r → B :=
   fun i => if ω i then c i else b i
@@ -27681,7 +27722,7 @@ theorem cubeSel_snoc {B : Type*} {r : ℕ} (σ : Fin r → Bool) (β : Bool)
 open MeasureTheory in
 theorem measurable_cubeSel {B : Type*} [MeasurableSpace B] {r : ℕ} (ω : Fin r → Bool) :
     Measurable fun p : (Fin r → B) × (Fin r → B) => cubeSel ω p.1 p.2 := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   have h1 : Measurable fun p : (Fin r → B) × (Fin r → B) => p.1 i :=
     (measurable_pi_apply i).comp measurable_fst
   have h2 : Measurable fun p : (Fin r → B) × (Fin r → B) => p.2 i :=
@@ -27705,7 +27746,7 @@ open MeasureTheory in
 /-- **The doubling of `patch:cylinder` is measure preserving.**
 
 Selecting the coordinates of a vertex `ω` from the doubled family returns the original product
-measure.  This is what makes each step of the induction an identity between expectations rather than
+measure. This is what makes each step of the induction an identity between expectations rather than
 merely an inequality, and it is the reason the patch can say the doubled average "is precisely the
 displayed next state". -/
 theorem measurePreserving_cubeSel {B : Type*} [MeasurableSpace B] (ν : Measure B)
@@ -27738,7 +27779,7 @@ theorem integrable_of_bdd_finite {Ω : Type*} [MeasurableSpace Ω] {μ : Measure
 
 open MeasureTheory in
 /-- **The square of an average is a doubled average**, for a measure rather than an interval:
-`(∫ F) conj (∫ F) = ∫∫ F(b⁰) conj (F(b¹))`.  This is the step of `patch:cylinder` that turns the
+`(∫ F) conj (∫ F) = ∫∫ F(b⁰) conj (F(b¹))`. This is the step of `patch:cylinder` that turns the
 inner square into the two independent copies `b⁰, b¹` of the doubled variable. -/
 theorem integral_mul_conj_integral_measure {B : Type*} [MeasurableSpace B] {ν : Measure B}
     (F : B → ℂ) :
@@ -27783,7 +27824,7 @@ theorem sq_norm_integral_mul_le_sq {Ω : Type*} [MeasurableSpace Ω] {μ : Measu
 
 /-- **The cylinder cube state of `patch:cylinder`**: the product over the vertices of `{0,1}^r` of
 the parity-conjugated values of `v` at the selected families,
-`∏_{ω} C^{|ω|} v(b^ω)`.  The parity `Auto.conjPar` and the vertex weight `Auto.numTrue` are the ones
+`∏_{ω} C^{|ω|} v(b^ω)`. The parity `Auto.conjPar` and the vertex weight `Auto.numTrue` are the ones
 already used by the Fejer cube. -/
 noncomputable def cubeProdSel {B : Type*} {r : ℕ} (v : (Fin r → B) → ℂ) (b c : Fin r → B) : ℂ :=
   ∏ ω : Fin r → Bool, conjPar (numTrue ω) (v (cubeSel ω b c))
@@ -27799,7 +27840,7 @@ theorem cubeProdSel_zero {B : Type*} (v : (Fin 0 → B) → ℂ) (b c : Fin 0 �
 theorem norm_cubeProdSel_le {B : Type*} {r : ℕ} {v : (Fin r → B) → ℂ}
     (hv : ∀ x, ‖v x‖ ≤ 1) (b c : Fin r → B) : ‖cubeProdSel v b c‖ ≤ 1 := by
   rw [cubeProdSel, norm_prod]
-  refine Finset.prod_le_one (fun ω _ => norm_nonneg _) fun ω _ => ?_
+  refine Finset.prod_le_one₀ (fun ω _ => norm_nonneg _) fun ω _ => ?_
   rw [norm_conjPar]
   exact hv _
 
@@ -27809,13 +27850,13 @@ theorem measurable_cubeProdSel {B : Type*} [MeasurableSpace B] {r : ℕ} {v : (F
     Measurable fun p : (Fin r → B) × (Fin r → B) => cubeProdSel v p.1 p.2 := by
   refine Finset.measurable_prod _ fun ω _ => ?_
   by_cases hEven : Even (numTrue ω)
-  · simp only [conjPar, if_pos hEven]
+  · simp only [conjPar, ite_eq_left hEven]
     exact hv.comp (measurable_cubeSel ω)
-  · simp only [conjPar, if_neg hEven]
+  · simp only [conjPar, ite_eq_right hEven]
     exact Complex.continuous_conj.measurable.comp (hv.comp (measurable_cubeSel ω))
 
 
-/-- **The snoc recursion of the cylinder cube.**  Doubling one more coordinate multiplies the cube
+/-- **The snoc recursion of the cylinder cube.** Doubling one more coordinate multiplies the cube
 by the conjugate of the cube of the shifted function -- exactly the shape that one application of
 `Auto.sq_norm_integral_mul_le_sq` produces.
 
@@ -27860,7 +27901,7 @@ open MeasureTheory in
 
 The block `U`, which does not depend on the variable `b` about to be doubled, is removed by
 Cauchy-Schwarz in the outer variables; the inner square is then expanded into two independent copies
-`b⁰, b¹` of that variable.  The right-hand side is real because it came from a square, which is why
+`b⁰, b¹` of that variable. The right-hand side is real because it came from a square, which is why
 the state stays a genuine cube average rather than a modulus. -/
 theorem sq_norm_integral_mul_inner_le {Ω B : Type*} [MeasurableSpace Ω] [MeasurableSpace B]
     {μ : Measure Ω} [IsProbabilityMeasure μ] {ν : Measure B}
@@ -27871,7 +27912,7 @@ theorem sq_norm_integral_mul_inner_le {Ω B : Type*} [MeasurableSpace Ω] [Measu
       ≤ ∫ w, (∫ b0, ∫ b1, v w b0 * (starRingEnd ℂ) (v w b1) ∂ν ∂ν).re ∂μ := by
   refine (sq_norm_integral_mul_le_sq hUm hU hΦm hΦ).trans (le_of_eq ?_)
   refine integral_congr_ae (Filter.Eventually.of_forall fun w => ?_)
-  show ‖∫ b, v w b ∂ν‖ ^ 2
+  change ‖∫ b, v w b ∂ν‖ ^ 2
       = (∫ b0, ∫ b1, v w b0 * (starRingEnd ℂ) (v w b1) ∂ν ∂ν).re
   rw [← integral_mul_conj_integral_measure (v w), Complex.mul_conj, Complex.ofReal_re,
     Complex.normSq_eq_norm_sq]
@@ -27880,7 +27921,7 @@ theorem sq_norm_integral_mul_inner_le {Ω B : Type*} [MeasurableSpace Ω] [Measu
 /-- **The chain of squarings of `patch:cylinder`.**
 
 The induction of the patch produces one inequality `|J_a|^2 <= J_{a+1}` per doubled variable.
-Chaining them gives the `2^r`-th power in the statement of the lemma.  This is the purely numerical
+Chaining them gives the `2^r`-th power in the statement of the lemma. This is the purely numerical
 half, separated so the measure-theoretic half does not have to carry it.
 
 Nonnegativity of the intermediate states is not needed: the squaring step only uses that the
@@ -27934,7 +27975,7 @@ open MeasureTheory in
 /-- **Splitting off the last coordinate of a product measure.**
 
 The assembly of `patch:cylinder` doubles the last remaining variable at each step, so the ambient
-product has to be split there.  This is Mathlib's `measurePreserving_piFinSuccAbove` at the index
+product has to be split there. This is Mathlib's `measurePreserving_piFinSuccAbove` at the index
 `Fin.last n`, where `succAbove` is `castSucc` and the constant family makes the target measure the
 plain product. -/
 theorem measurePreserving_piFinLast {B : Type*} [MeasurableSpace B] (ν : Measure B)
@@ -27960,7 +28001,7 @@ theorem integral_pi_fin_last {B : Type*} [MeasurableSpace B] (ν : Measure B) [S
 
 open MeasureTheory in
 /-- **The inner square is the doubled average**, pointwise in the outer variable:
-`‖∫ f‖^2 = Re ∫∫ f(b⁰) conj (f(b¹))`.  Extracted from the proof of
+`‖∫ f‖^2 = Re ∫∫ f(b⁰) conj (f(b¹))`. Extracted from the proof of
 `Auto.sq_norm_integral_mul_inner_le` so that the assembly of `patch:cylinder` can use it on its own,
 where the state has to be recognized rather than merely bounded. -/
 theorem sq_norm_integral_eq_re_doubled {B : Type*} [MeasurableSpace B] {ν : Measure B}
@@ -27971,7 +28012,7 @@ theorem sq_norm_integral_eq_re_doubled {B : Type*} [MeasurableSpace B] {ν : Mea
 
 open MeasureTheory in
 /-- **Every state of the cylinder induction from the first on is nonnegative**, because it is an
-integrated square.  This is what lets `Auto.pow_two_pow_le_of_sq_chain` be applied to the states
+integrated square. This is what lets `Auto.pow_two_pow_le_of_sq_chain` be applied to the states
 themselves rather than to their moduli. -/
 theorem integral_re_doubled_nonneg {Ω B : Type*} [MeasurableSpace Ω] [MeasurableSpace B]
     {μ : Measure Ω} {ν : Measure B} (v : Ω → B → ℂ) :
@@ -27985,7 +28026,7 @@ open MeasureTheory in
 /-- Appending a coordinate is measurable in the pair. -/
 theorem measurable_snoc {B : Type*} [MeasurableSpace B] {r : ℕ} :
     Measurable fun q : (Fin r → B) × B => (Fin.snoc q.1 q.2 : Fin (r + 1) → B) := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   refine Fin.lastCases ?_ ?_ i
   · simpa using measurable_snd
   · intro j
@@ -27994,7 +28035,7 @@ theorem measurable_snoc {B : Type*} [MeasurableSpace B] {r : ℕ} :
 /-- **The doubled function of one cylinder step.**
 
 After doubling the last coordinate, the auxiliary variable grows from `z` to `(z, beta⁰, beta¹)` and
-the function is replaced by the two-vertex cube.  This is the object the induction of
+the function is replaced by the two-vertex cube. This is the object the induction of
 `patch:cylinder` recurses on, and `Auto.cubeProdSel_succ` is what identifies its cube with the full
 cube one order up. -/
 noncomputable def cylStep {Z B : Type*} {r : ℕ} (v : Z → (Fin (r + 1) → B) → ℂ)
@@ -28029,7 +28070,7 @@ theorem measurable_cylStep {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace B]
 
 open MeasureTheory in
 /-- The complex companion of `Auto.integrable_of_bdd_finite`: a bounded measurable complex function
-is integrable against a finite measure.  Every integrand of the cylinder induction is of this
+is integrable against a finite measure. Every integrand of the cylinder induction is of this
 shape, since all its functions are `1`-bounded and all its measures are probability measures. -/
 theorem integrable_of_bdd_finite' {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
     [IsFiniteMeasure μ] {f : Ω → ℂ} (hfm : Measurable f) {C : ℝ} (hf : ∀ w, ‖f w‖ ≤ C) :
@@ -28042,7 +28083,7 @@ open MeasureTheory in
 
 `Auto.integral_pi_fin_last` splits the product measure; this puts the two factors in the order the
 cylinder induction needs, namely the surviving coordinates outside and the coordinate about to be
-doubled inside.  The swap is Fubini, which the boundedness hypothesis supplies. -/
+doubled inside. The swap is Fubini, which the boundedness hypothesis supplies. -/
 theorem integral_pi_snoc {B : Type*} [MeasurableSpace B] (ν : Measure B) [IsProbabilityMeasure ν]
     {n : ℕ} {f : (Fin (n + 1) → B) → ℂ} (hfm : Measurable f) {C : ℝ} (hf : ∀ b, ‖f b‖ ≤ C) :
     (∫ b, f b ∂(Measure.pi fun _ : Fin (n + 1) => ν))
@@ -28073,7 +28114,7 @@ open MeasureTheory in
 
 The average over `Fin (n+1)` coordinates with an outer factor `U` is rewritten as an average over
 the enlarged outer space `Z x (Fin n -> B)` of `U` times an average over the single coordinate that
-is about to be doubled.  This is exactly the shape consumed by
+is about to be doubled. This is exactly the shape consumed by
 `Auto.sq_norm_integral_mul_inner_le`, whose outer space is arbitrary. -/
 theorem integral_mul_pi_snoc {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace B]
     {μ : Measure Z} [IsProbabilityMeasure μ] {ν : Measure B} [IsProbabilityMeasure ν]
@@ -28105,7 +28146,7 @@ theorem integral_mul_pi_snoc {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace 
     integral_prod _ hint
   rw [h2]
   refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-  show U z * (∫ b, v z b ∂(Measure.pi fun _ : Fin (n + 1) => ν))
+  change U z * (∫ b, v z b ∂(Measure.pi fun _ : Fin (n + 1) => ν))
       = ∫ b', U z * (∫ β, v z (Fin.snoc b' β) ∂ν) ∂(Measure.pi fun _ : Fin n => ν)
   have hvz : Measurable (v z) := hvm.comp (Measurable.prodMk measurable_const measurable_id)
   rw [integral_const_mul, integral_pi_snoc ν hvz (C := 1) fun b => hv z b]
@@ -28118,14 +28159,14 @@ theorem conjPar_conj (n : ℕ) (z : ℂ) :
     conjPar n ((starRingEnd ℂ) z) = (starRingEnd ℂ) (conjPar n z) := by
   by_cases h : Even n <;> simp [conjPar, h]
 
-/-- **The cube of a doubled function splits.**  Since `conjPar` is a ring hom in each parity, the
+/-- **The cube of a doubled function splits.** Since `conjPar` is a ring hom in each parity, the
 cube of `f * conj g` is the cube of `f` times the conjugate of the cube of `g`. -/
 theorem cubeProdSel_mul_conj {B : Type*} {r : ℕ} (f g : (Fin r → B) → ℂ) (b c : Fin r → B) :
     cubeProdSel (fun x => f x * (starRingEnd ℂ) (g x)) b c
       = cubeProdSel f b c * (starRingEnd ℂ) (cubeProdSel g b c) := by
   rw [cubeProdSel, cubeProdSel, cubeProdSel, map_prod, ← Finset.prod_mul_distrib]
   refine Finset.prod_congr rfl fun ω _ => ?_
-  show conjPar (numTrue ω) (f (cubeSel ω b c) * (starRingEnd ℂ) (g (cubeSel ω b c)))
+  change conjPar (numTrue ω) (f (cubeSel ω b c) * (starRingEnd ℂ) (g (cubeSel ω b c)))
       = conjPar (numTrue ω) (f (cubeSel ω b c))
         * (starRingEnd ℂ) (conjPar (numTrue ω) (g (cubeSel ω b c)))
   rw [conjPar_mul, conjPar_conj]
@@ -28145,7 +28186,7 @@ theorem cubeProdSel_cylStep {Z B : Type*} {r : ℕ} (v : Z → (Fin (r + 1) → 
 
 
 open MeasureTheory in
-/-- Fubini for a bounded measurable complex function of two variables on finite measures.  All the
+/-- Fubini for a bounded measurable complex function of two variables on finite measures. All the
 reorderings of the cylinder induction are instances of this: every function there is `1`-bounded
 and every measure is a probability measure. -/
 theorem integral_swap_of_bdd {X Y : Type*} [MeasurableSpace X] [MeasurableSpace Y]
@@ -28163,7 +28204,7 @@ theorem integral_prod_of_bdd {X Y : Type*} [MeasurableSpace X] [MeasurableSpace 
   integral_prod _ (integrable_of_bdd_finite' hf (C := C) fun p => hb p.1 p.2)
 
 open MeasureTheory in
-/-- The real part commutes with the integral of a bounded measurable complex function.  This is
+/-- The real part commutes with the integral of a bounded measurable complex function. This is
 what lets the states of the cylinder induction be handled as one complex integral and only taken
 real at the end. -/
 theorem integral_re_of_bdd {X : Type*} [MeasurableSpace X] {μ : Measure X} [IsFiniteMeasure μ]
@@ -28177,7 +28218,7 @@ open MeasureTheory in
 
 One Cauchy-Schwarz step of `patch:cylinder` produces an average over the old outer variable of an
 average over the new pair `(beta0, beta1)`; the induction hypothesis wants the pair adjoined to the
-auxiliary variable instead, with the surviving coordinates innermost.  This is that regrouping, and
+auxiliary variable instead, with the surviving coordinates innermost. This is that regrouping, and
 it is pure Fubini: nothing here knows that `W` is a coordinate product. -/
 theorem integral_regroup_prod {Z B W : Type*} [MeasurableSpace Z] [MeasurableSpace B]
     [MeasurableSpace W] {μ : Measure Z} [IsProbabilityMeasure μ] {ν : Measure B}
@@ -28210,7 +28251,7 @@ theorem integral_regroup_prod {Z B W : Type*} [MeasurableSpace Z] [MeasurableSpa
     integral_prod_of_bdd (f := fun (z : Z) (p : B × B) => ∫ w, g (z, p) w ∂π) hGm (C := C) hJ
   rw [step1, step3]
   refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-  show (∫ w, (∫ p : B × B, g (z, p) w ∂(ν.prod ν)) ∂π)
+  change (∫ w, (∫ p : B × B, g (z, p) w ∂(ν.prod ν)) ∂π)
       = ∫ p : B × B, (∫ w, g (z, p) w ∂π) ∂(ν.prod ν)
   have hgm2 : Measurable fun q : W × (B × B) => g (z, q.2) q.1 :=
     hg.comp (Measurable.prodMk (Measurable.prodMk measurable_const measurable_snd) measurable_fst)
@@ -28222,7 +28263,7 @@ open MeasureTheory in
 /-- **The output of one Cauchy-Schwarz step is the next state of the induction.**
 
 `Auto.sq_norm_integral_mul_inner_le`, applied with outer space `Z x (Fin r -> B)` and doubled
-variable the last coordinate, produces the left-hand side here.  The right-hand side is the same
+variable the last coordinate, produces the left-hand side here. The right-hand side is the same
 average read as an average over the enlarged auxiliary space `Z x B x B` of the doubled function
 `Auto.cylStep v` -- which is the shape the induction hypothesis consumes. -/
 theorem integral_re_doubled_eq_cylStep {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace B]
@@ -28257,7 +28298,7 @@ theorem integral_re_doubled_eq_cylStep {Z B : Type*} [MeasurableSpace Z] [Measur
       = ∫ w : Z × (Fin r → B), (∫ p : B × B, cylStep v (w.1, p) w.2 ∂(ν.prod ν)).re
           ∂(μ.prod (Measure.pi fun _ : Fin r => ν)) := by
     refine integral_congr_ae (Filter.Eventually.of_forall fun w => ?_)
-    show (∫ β0, ∫ β1, v w.1 (Fin.snoc w.2 β0) * (starRingEnd ℂ) (v w.1 (Fin.snoc w.2 β1))
+    change (∫ β0, ∫ β1, v w.1 (Fin.snoc w.2 β0) * (starRingEnd ℂ) (v w.1 (Fin.snoc w.2 β1))
           ∂ν ∂ν).re
         = (∫ p : B × B, cylStep v (w.1, p) w.2 ∂(ν.prod ν)).re
     rw [hinner w]
@@ -28282,7 +28323,7 @@ theorem measurable_cubeProdSel_right {B : Type*} [MeasurableSpace B] {r : ℕ}
 
 open MeasureTheory in
 /-- **The cube with both arguments split at their last coordinate**, as a measurable function of
-the four pieces.  The reindexing of `patch:cylinder` needs this and its two partially fixed forms;
+the four pieces. The reindexing of `patch:cylinder` needs this and its two partially fixed forms;
 each is proved directly from `Auto.measurable_cubeProdSel`, because deriving one from another by
 composing with a projection makes the elaborator unfold `Fin.snoc` under a composition and time
 out. -/
@@ -28333,12 +28374,12 @@ theorem integral_cubeProdSel_snoc_aux1 {B : Type*} [MeasurableSpace B] {ν : Mea
     (f := fun c0 => ∫ c1, cubeProdSel w c0 c1 ∂(Measure.pi fun _ : Fin (r + 1) => ν))
     hm1 (C := 1) fun c0 => norm_integral_le_one fun c1 => hcb _ _]
   refine integral_congr_ae (Filter.Eventually.of_forall fun b0 => ?_)
-  show (∫ β0, (∫ c1, cubeProdSel w (Fin.snoc b0 β0) c1
+  change (∫ β0, (∫ c1, cubeProdSel w (Fin.snoc b0 β0) c1
         ∂(Measure.pi fun _ : Fin (r + 1) => ν)) ∂ν)
       = ∫ β0, (∫ b1, (∫ β1, cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1) ∂ν)
         ∂(Measure.pi fun _ : Fin r => ν)) ∂ν
   refine integral_congr_ae (Filter.Eventually.of_forall fun β0 => ?_)
-  show (∫ c1, cubeProdSel w (Fin.snoc b0 β0) c1 ∂(Measure.pi fun _ : Fin (r + 1) => ν))
+  change (∫ c1, cubeProdSel w (Fin.snoc b0 β0) c1 ∂(Measure.pi fun _ : Fin (r + 1) => ν))
       = ∫ b1, (∫ β1, cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1) ∂ν)
         ∂(Measure.pi fun _ : Fin r => ν)
   exact integral_pi_snoc ν (f := fun c1 => cubeProdSel w (Fin.snoc b0 β0) c1)
@@ -28357,7 +28398,7 @@ theorem integral_cubeProdSel_snoc_aux2 {B : Type*} [MeasurableSpace B] {ν : Mea
   have hcb : ∀ c0 c1 : Fin (r + 1) → B, ‖cubeProdSel w c0 c1‖ ≤ 1 := fun c0 c1 =>
     norm_cubeProdSel_le hwb c0 c1
   refine integral_congr_ae (Filter.Eventually.of_forall fun b0 => ?_)
-  show (∫ β0, (∫ b1, (∫ β1, cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1) ∂ν)
+  change (∫ β0, (∫ b1, (∫ β1, cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1) ∂ν)
           ∂(Measure.pi fun _ : Fin r => ν)) ∂ν)
       = ∫ b1, (∫ p : B × B, cubeProdSel w (Fin.snoc b0 p.1) (Fin.snoc b1 p.2) ∂(ν.prod ν))
           ∂(Measure.pi fun _ : Fin r => ν)
@@ -28368,7 +28409,7 @@ theorem integral_cubeProdSel_snoc_aux2 {B : Type*} [MeasurableSpace B] {ν : Mea
       (ν := ν)).measurable) (C := 1)
     fun β0 b1 => norm_integral_le_one fun β1 => hcb _ _]
   refine integral_congr_ae (Filter.Eventually.of_forall fun b1 => ?_)
-  show (∫ β0, (∫ β1, cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1) ∂ν) ∂ν)
+  change (∫ β0, (∫ β1, cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1) ∂ν) ∂ν)
       = ∫ p : B × B, cubeProdSel w (Fin.snoc b0 p.1) (Fin.snoc b1 p.2) ∂(ν.prod ν)
   exact (integral_prod_of_bdd
     (f := fun (β0 β1 : B) => cubeProdSel w (Fin.snoc b0 β0) (Fin.snoc b1 β1))
@@ -28427,15 +28468,15 @@ theorem measurable_cubeProdSel_param {Z B : Type*} [MeasurableSpace Z] [Measurab
     Measurable fun t : Z × ((Fin r → B) × (Fin r → B)) => cubeProdSel (v t.1) t.2.1 t.2.2 := by
   refine Finset.measurable_prod _ fun ω _ => ?_
   by_cases hEven : Even (numTrue ω)
-  · simp only [conjPar, if_pos hEven]
+  · simp only [conjPar, ite_eq_left hEven]
     exact hv.comp (Measurable.prodMk measurable_fst ((measurable_cubeSel ω).comp measurable_snd))
-  · simp only [conjPar, if_neg hEven]
+  · simp only [conjPar, ite_eq_right hEven]
     exact Complex.continuous_conj.measurable.comp
       (hv.comp (Measurable.prodMk measurable_fst ((measurable_cubeSel ω).comp measurable_snd)))
 
 /-- One rung of the tower of squares: `X^2 <= J` and `J^(2^k) <= R` give `X^(2^(k+1)) <= R`.
 This is how the induction of `patch:cylinder` converts a single Cauchy-Schwarz step into the
-doubling of the exponent.  No sign hypothesis on `X` is needed, because the square is what gets
+doubling of the exponent. No sign hypothesis on `X` is needed, because the square is what gets
 raised to the power. -/
 theorem pow_two_pow_step {X J R : ℝ} {k : ℕ} (h1 : X ^ 2 ≤ J) (h2 : J ^ (2 ^ k) ≤ R) :
     X ^ (2 ^ (k + 1)) ≤ R := by
@@ -28484,7 +28525,7 @@ theorem integral_cube_cylStep {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace
       hOm (C := 1) fun z p => norm_integral_le_one fun q => hcubeb _ _ _
   rw [hO]
   refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-  show (∫ p : B × B, (∫ q : (Fin r → B) × (Fin r → B), cubeProdSel (cylStep v (z, p)) q.1 q.2
+  change (∫ p : B × B, (∫ q : (Fin r → B) × (Fin r → B), cubeProdSel (cylStep v (z, p)) q.1 q.2
           ∂((Measure.pi fun _ : Fin r => ν).prod (Measure.pi fun _ : Fin r => ν)))
         ∂(ν.prod ν))
       = ∫ Q : (Fin (r + 1) → B) × (Fin (r + 1) → B), cubeProdSel (v z) Q.1 Q.2
@@ -28498,13 +28539,13 @@ theorem integral_cube_cylStep {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace
             ∂((Measure.pi fun _ : Fin r => ν).prod (Measure.pi fun _ : Fin r => ν)))
           ∂(ν.prod ν) := by
     refine integral_congr_ae (Filter.Eventually.of_forall fun p => ?_)
-    show (∫ q : (Fin r → B) × (Fin r → B), cubeProdSel (cylStep v (z, p)) q.1 q.2
+    change (∫ q : (Fin r → B) × (Fin r → B), cubeProdSel (cylStep v (z, p)) q.1 q.2
           ∂((Measure.pi fun _ : Fin r => ν).prod (Measure.pi fun _ : Fin r => ν)))
         = ∫ q : (Fin r → B) × (Fin r → B),
             cubeProdSel (v z) (Fin.snoc q.1 p.1) (Fin.snoc q.2 p.2)
             ∂((Measure.pi fun _ : Fin r => ν).prod (Measure.pi fun _ : Fin r => ν))
     refine integral_congr_ae (Filter.Eventually.of_forall fun q => ?_)
-    show cubeProdSel (cylStep v (z, p)) q.1 q.2
+    change cubeProdSel (cylStep v (z, p)) q.1 q.2
         = cubeProdSel (v z) (Fin.snoc q.1 p.1) (Fin.snoc q.2 p.2)
     exact cubeProdSel_cylStep v z p.1 p.2 q.1 q.2
   rw [hcong, ← integral_cubeProdSel_snoc (hvz z) (fun x => hv z x)]
@@ -28539,7 +28580,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel {B : Type u} [MeasurableSpace B] {ν
   induction r with
   | zero =>
       intro Z _ μ _ U v hUm hU hvm hv
-      show ‖∫ z, U z * (∫ b, v z b ∂(Measure.pi fun _ : Fin 1 => ν)) ∂μ‖ ^ 2
+      change ‖∫ z, U z * (∫ b, v z b ∂(Measure.pi fun _ : Fin 1 => ν)) ∂μ‖ ^ 2
           ≤ (∫ z, (∫ Q : (Fin 1 → B) × (Fin 1 → B), cubeProdSel (v z) Q.1 Q.2
               ∂((Measure.pi fun _ : Fin 1 => ν).prod (Measure.pi fun _ : Fin 1 => ν))) ∂μ).re
       have hvz : ∀ z : Z, Measurable (v z) := fun z =>
@@ -28568,10 +28609,10 @@ theorem sq_norm_pow_le_integral_cubeProdSel {B : Type u} [MeasurableSpace B] {ν
           (measurable_cubeProdSel (hvz z)) (C := 1)
           fun c0 c1 => norm_cubeProdSel_le (hv z) c0 c1]
         refine integral_congr_ae (Filter.Eventually.of_forall fun b0 => ?_)
-        show (∫ b1, v z b0 * (starRingEnd ℂ) (v z b1) ∂(Measure.pi fun _ : Fin 1 => ν))
+        change (∫ b1, v z b0 * (starRingEnd ℂ) (v z b1) ∂(Measure.pi fun _ : Fin 1 => ν))
             = ∫ b1, cubeProdSel (v z) b0 b1 ∂(Measure.pi fun _ : Fin 1 => ν)
         refine integral_congr_ae (Filter.Eventually.of_forall fun b1 => ?_)
-        show v z b0 * (starRingEnd ℂ) (v z b1) = cubeProdSel (v z) b0 b1
+        change v z b0 * (starRingEnd ℂ) (v z b1) = cubeProdSel (v z) b0 b1
         exact (cubeProdSel_one (v z) b0 b1).symm
       refine (sq_norm_integral_mul_inner_le hUm hU hΦm hΦ).trans (le_of_eq ?_)
       calc (∫ z, (∫ b0, (∫ b1, v z b0 * (starRingEnd ℂ) (v z b1)
@@ -28580,7 +28621,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel {B : Type u} [MeasurableSpace B] {ν
                 ∂((Measure.pi fun _ : Fin 1 => ν).prod
                   (Measure.pi fun _ : Fin 1 => ν))).re ∂μ := by
             refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-            show (∫ b0, (∫ b1, v z b0 * (starRingEnd ℂ) (v z b1)
+            change (∫ b0, (∫ b1, v z b0 * (starRingEnd ℂ) (v z b1)
                   ∂(Measure.pi fun _ : Fin 1 => ν)) ∂(Measure.pi fun _ : Fin 1 => ν)).re
                 = (∫ Q : (Fin 1 → B) × (Fin 1 → B), cubeProdSel (v z) Q.1 Q.2
                   ∂((Measure.pi fun _ : Fin 1 => ν).prod
@@ -28620,7 +28661,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel {B : Type u} [MeasurableSpace B] {ν
       exact hNonneg
 
 
-/-- The doubled function of a product is the product of the doubled functions.  This is what lets
+/-- The doubled function of a product is the product of the doubled functions. This is what lets
 the family `u_i` of `patch:cylinder` be carried through a doubling step one factor at a time. -/
 theorem cylStep_mul {Z B : Type*} {r : ℕ} (f g : Z → (Fin (r + 1) → B) → ℂ)
     (y : Z × B × B) (b : Fin r → B) :
@@ -28628,7 +28669,7 @@ theorem cylStep_mul {Z B : Type*} {r : ℕ} (f g : Z → (Fin (r + 1) → B) →
   simp only [cylStep, map_mul]
   ring
 
-/-- **Independence of a coordinate is inherited by the doubled function.**  If `f` does not depend
+/-- **Independence of a coordinate is inherited by the doubled function.** If `f` does not depend
 on the coordinate `j.castSucc`, then `Auto.cylStep f` does not depend on the coordinate `j` of the
 shortened tuple, which is the hypothesis the next round of the induction needs. -/
 theorem cylStep_indep {Z B : Type*} {r : ℕ} {f : Z → (Fin (r + 1) → B) → ℂ} {j : Fin r}
@@ -28657,7 +28698,7 @@ theorem eq_integral_of_indep_last {Z B : Type*} [MeasurableSpace B] {ν : Measur
   simp
 
 
-/-- **Doubling distributes over the whole family.**  The doubled function of `v * prod u_i` is
+/-- **Doubling distributes over the whole family.** The doubled function of `v * prod u_i` is
 `cylStep v` times the product of the `cylStep u_i`, which is precisely the shape the next round of
 the induction of `patch:cylinder` consumes. -/
 theorem cylStep_prod {Z B : Type*} {r m : ℕ} (f : Z → (Fin (r + 1) → B) → ℂ)
@@ -28672,7 +28713,7 @@ open MeasureTheory in
 
 The factor `p` is independent of the last coordinate, so it comes out of the average over that
 coordinate as a function of the outer variable `(z, b')`; `Auto.eq_integral_of_indep_last` exhibits
-it as its own average, which avoids having to choose a point of `B`.  The result is exactly the
+it as its own average, which avoids having to choose a point of `B`. The result is exactly the
 shape `Auto.sq_norm_integral_mul_inner_le` consumes. -/
 theorem integral_mul_indep_pi_snoc {Z B : Type*} [MeasurableSpace Z] [MeasurableSpace B]
     {μ : Measure Z} [IsProbabilityMeasure μ] {ν : Measure B} [IsProbabilityMeasure ν]
@@ -28718,7 +28759,7 @@ theorem integral_mul_indep_pi_snoc {Z B : Type*} [MeasurableSpace Z] [Measurable
           _ = 1 := one_mul 1)
   rw [hfin]
   refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-  show (∫ b, g z b * p z b ∂(Measure.pi fun _ : Fin (n + 1) => ν))
+  change (∫ b, g z b * p z b ∂(Measure.pi fun _ : Fin (n + 1) => ν))
       = ∫ b', (∫ γ, p z (Fin.snoc b' γ) ∂ν) * (∫ β, g z (Fin.snoc b' β) ∂ν)
           ∂(Measure.pi fun _ : Fin n => ν)
   rw [integral_pi_snoc ν (f := fun b => g z b * p z b) ((hgz z).mul (hpz z)) (C := 1)
@@ -28727,7 +28768,7 @@ theorem integral_mul_indep_pi_snoc {Z B : Type*} [MeasurableSpace Z] [Measurable
       calc ‖g z b‖ * ‖p z b‖ ≤ 1 * 1 := mul_le_mul (hg z b) (hp z b) (norm_nonneg _) zero_le_one
         _ = 1 := one_mul 1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun b' => ?_)
-  show (∫ β, g z (Fin.snoc b' β) * p z (Fin.snoc b' β) ∂ν)
+  change (∫ β, g z (Fin.snoc b' β) * p z (Fin.snoc b' β) ∂ν)
       = (∫ γ, p z (Fin.snoc b' γ) ∂ν) * (∫ β, g z (Fin.snoc b' β) ∂ν)
   have hrep : ∀ β : B, g z (Fin.snoc b' β) * p z (Fin.snoc b' β)
       = (∫ γ, p z (Fin.snoc b' γ) ∂ν) * g z (Fin.snoc b' β) := by
@@ -28749,7 +28790,7 @@ the only coordinate being doubled, so it plays the role of the outer factor of
 `Auto.sq_norm_integral_mul_inner_le`; `Auto.eq_integral_of_indep_last` exhibits it as a function of
 the outer variable without choosing a point of `B`; `Auto.cylStep_prod` shows the doubled function
 is again of the same shape, and `Auto.cylStep_indep` that the surviving factors keep their
-independence.  The base case is `Auto.sq_norm_pow_le_integral_cubeProdSel`, because for one
+independence. The base case is `Auto.sq_norm_pow_le_integral_cubeProdSel`, because for one
 coordinate a `u_0` independent of `b_0` is exactly an outer factor. -/
 theorem sq_norm_pow_le_integral_cubeProdSel_prod {B : Type u} [MeasurableSpace B] {ν : Measure B}
     [IsProbabilityMeasure ν] :
@@ -28800,7 +28841,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel_prod {B : Type u} [MeasurableSpace B
         intro z
         rw [← integral_const_mul]
         refine integral_congr_ae (Filter.Eventually.of_forall fun b => ?_)
-        show v z b * (∏ i, u i z b)
+        change v z b * (∏ i, u i z b)
             = (∫ c, u 0 z c ∂(Measure.pi fun _ : Fin (0 + 1) => ν)) * v z b
         rw [hone z b, hUeq z b]
         ring
@@ -28821,7 +28862,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel_prod {B : Type u} [MeasurableSpace B
         intro z b
         rw [norm_mul, norm_prod]
         have h1 : (∏ j : Fin (r + 1), ‖u j.castSucc z b‖) ≤ 1 :=
-          Finset.prod_le_one (fun j _ => norm_nonneg _) fun j _ => hu _ _ _
+          Finset.prod_le_one₀ (fun j _ => norm_nonneg _) fun j _ => hu _ _ _
         calc ‖v z b‖ * ∏ j : Fin (r + 1), ‖u j.castSucc z b‖ ≤ 1 * 1 :=
               mul_le_mul (hv z b) h1 (Finset.prod_nonneg fun j _ => norm_nonneg _) zero_le_one
           _ = 1 := one_mul 1
@@ -28830,11 +28871,11 @@ theorem sq_norm_pow_le_integral_cubeProdSel_prod {B : Type u} [MeasurableSpace B
           = ∫ z, (∫ b, (v z b * ∏ j : Fin (r + 1), u j.castSucc z b)
               * u (Fin.last (r + 1)) z b ∂(Measure.pi fun _ : Fin (r + 1 + 1) => ν)) ∂μ := by
         refine integral_congr_ae (Filter.Eventually.of_forall fun z => ?_)
-        show (∫ b, v z b * ∏ i, u i z b ∂(Measure.pi fun _ : Fin (r + 1 + 1) => ν))
+        change (∫ b, v z b * ∏ i, u i z b ∂(Measure.pi fun _ : Fin (r + 1 + 1) => ν))
             = ∫ b, (v z b * ∏ j : Fin (r + 1), u j.castSucc z b)
               * u (Fin.last (r + 1)) z b ∂(Measure.pi fun _ : Fin (r + 1 + 1) => ν)
         refine integral_congr_ae (Filter.Eventually.of_forall fun b => ?_)
-        show v z b * (∏ i, u i z b)
+        change v z b * (∏ i, u i z b)
             = (v z b * ∏ j : Fin (r + 1), u j.castSucc z b) * u (Fin.last (r + 1)) z b
         rw [Fin.prod_univ_castSucc]
         ring
@@ -28901,7 +28942,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel_prod {B : Type u} [MeasurableSpace B
               cylStep v y b' * ∏ j : Fin (r + 1), cylStep (u j.castSucc) y b'
               ∂(Measure.pi fun _ : Fin (r + 1) => ν)) ∂(μ.prod (ν.prod ν)) := by
         refine integral_congr_ae (Filter.Eventually.of_forall fun y => ?_)
-        show (∫ b', cylStep (fun (z : Z) (b : Fin (r + 1 + 1) → B) =>
+        change (∫ b', cylStep (fun (z : Z) (b : Fin (r + 1 + 1) → B) =>
               v z b * ∏ j : Fin (r + 1), u j.castSucc z b) y b'
             ∂(Measure.pi fun _ : Fin (r + 1) => ν))
             = ∫ b', cylStep v y b' * ∏ j : Fin (r + 1), cylStep (u j.castSucc) y b'
@@ -28920,7 +28961,7 @@ theorem sq_norm_pow_le_integral_cubeProdSel_prod {B : Type u} [MeasurableSpace B
 
 open MeasureTheory in
 /-- **The right-hand side of `patch:cylinder` is nonnegative**, which the patch asserts alongside
-the inequality.  It is the inequality itself applied with the trivial outer factor: the cube
+the inequality. It is the inequality itself applied with the trivial outer factor: the cube
 average dominates a power of a modulus. -/
 theorem integral_cubeProdSel_re_nonneg {B : Type u} [MeasurableSpace B] {ν : Measure B}
     [IsProbabilityMeasure ν] (r : ℕ) {Z : Type u} [MeasurableSpace Z] (μ : Measure Z)
@@ -28937,7 +28978,7 @@ theorem integral_cubeProdSel_re_nonneg {B : Type u} [MeasurableSpace B] {ν : Me
 open MeasureTheory in
 /-- **The spatially integrated correlation of `patch:signed-vdc`.**
 
-`corrLine mu F t h = ∫ F(x, t+h) conj(F(x,t)) dx`.  The patch bounds exactly this by `V`, using
+`corrLine mu F t h = ∫ F(x, t+h) conj(F(x,t)) dx`. The patch bounds exactly this by `V`, using
 Cauchy-Schwarz in `x` from `∫ |F(x,s)|^2 dx <= V`, and its cut-off replacement moves the `t`-range
 between `I` and `I ∩ (I - h)`. -/
 noncomputable def corrLine {α : Type*} [MeasurableSpace α] (μ : Measure α) (F : α → ℝ → ℂ)
@@ -28957,8 +28998,8 @@ theorem measurable_corrLine {α : Type*} [MeasurableSpace α] {μ : Measure α} 
   exact (hj.stronglyMeasurable.integral_prod_right' (ν := μ)).measurable
 
 open MeasureTheory in
-/-- **The patch's Cauchy-Schwarz bound on the correlation.**  From `∫ |F(x,s)|^2 dx <= V` at the
-two relevant parameter values, `‖corrLine mu F t h‖ <= V`.  This is
+/-- **The patch's Cauchy-Schwarz bound on the correlation.** From `∫ |F(x,s)|^2 dx <= V` at the
+two relevant parameter values, `‖corrLine mu F t h‖ <= V`. This is
 `Auto.norm_integral_mul_conj_le_of_sq_le` in the shape `patch:signed-vdc` uses it. -/
 theorem norm_corrLine_le {α : Type*} [MeasurableSpace α] {μ : Measure α} {F : α → ℝ → ℂ}
     (hsq : ∀ s : ℝ, Integrable (fun x => ‖F x s‖ ^ 2) μ)
@@ -28973,7 +29014,7 @@ open MeasureTheory in
 
 Replacing the parameter range `I ∩ (I - h)` by `I` in the spatially integrated correlation costs at
 most `V |h|`, because the symmetric difference has length at most `|h|` and the integrand is
-bounded by `V`.  Divided by `V N`, this is the patch's `|h|/N`. -/
+bounded by `V`. Divided by `V N`, this is the patch's `|h|/N`. -/
 theorem norm_corrIntegral_sub_capCorr_le {α : Type*} [MeasurableSpace α] {μ : Measure α}
     [SFinite μ] {F : α → ℝ → ℂ} (hFm : Measurable (Function.uncurry F))
     (hsq : ∀ s : ℝ, Integrable (fun x => ‖F x s‖ ^ 2) μ)
@@ -29018,7 +29059,7 @@ theorem norm_corrIntegral_sub_capCorr_le {α : Type*} [MeasurableSpace α] {μ :
 
 
 open MeasureTheory in
-/-- The real part commutes with the integral of an integrable complex function.  The companion of
+/-- The real part commutes with the integral of an integrable complex function. The companion of
 `Auto.integral_re_of_bdd` for the places where integrability, not boundedness, is what is
 available. -/
 theorem integral_re_of_integrable {X : Type*} [MeasurableSpace X] {μ : Measure X} {f : X → ℂ}
@@ -29068,7 +29109,7 @@ theorem measurable_capCorrInt {α : Type*} [MeasurableSpace α] {μ : Measure α
 
 open MeasureTheory in
 /-- **The spatial variable past the parameter variable**, the first of the two Fubini exchanges
-`patch:signed-vdc` needs.  The integrability is taken as an explicit hypothesis, in the house style
+`patch:signed-vdc` needs. The integrability is taken as an explicit hypothesis, in the house style
 of `Auto.integral_sq_norm_le_fejer_autocorr`: the patch supplies it "in applications, by bounded
 factors and their finite-support envelopes". -/
 theorem integral_capPair_eq_setIntegral_corrLine {α : Type*} [MeasurableSpace α] {μ : Measure α}
@@ -29080,7 +29121,7 @@ theorem integral_capPair_eq_setIntegral_corrLine {α : Type*} [MeasurableSpace �
   integral_integral_swap hint
 
 open MeasureTheory in
-/-- **The spatial variable past the Fejer variable**, the second exchange.  Again the integrability
+/-- **The spatial variable past the Fejer variable**, the second exchange. Again the integrability
 is an explicit hypothesis. -/
 theorem integral_fejer_autocorr_swap {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
     {W : α → ℝ → ℂ} {H : ℝ}
@@ -29090,7 +29131,7 @@ theorem integral_fejer_autocorr_swap {α : Type*} [MeasurableSpace α] {μ : Mea
       = ∫ h : ℝ, fejer H h • (∫ x, autocorr (W x) h ∂μ) := by
   rw [integral_integral_swap hint]
   refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-  show (∫ x, fejer H h • autocorr (W x) h ∂μ) = fejer H h • ∫ x, autocorr (W x) h ∂μ
+  change (∫ x, fejer H h • autocorr (W x) h ∂μ) = fejer H h • ∫ x, autocorr (W x) h ∂μ
   exact integral_smul _ _
 
 
@@ -29099,9 +29140,9 @@ open MeasureTheory in
 place.**
 
 `|A|^2 <= 2 V^{-1} N^{-1} Re ∫_x ∫_h kappa_H(h) A_{W_x}(h)`, where `A = V^{-1} ∫ g(x) E_{t in I}
-F(x,t) dx` and `W_x` is `F(x, .)` cut off to `I`.  This is `Auto.sq_norm_normalized_pairing_le`
+F(x,t) dx` and `W_x` is `F(x, .)` cut off to `I`. This is `Auto.sq_norm_normalized_pairing_le`
 followed by `Auto.integral_sq_norm_le_fejer_autocorr`, with the `N^{-2}` of the two averages pulled
-out and `(N + H)/N <= 2` used, which is where `H <= N/4` enters.  The averaged correlation is
+out and `(N + H)/N <= 2` used, which is where `H <= N/4` enters. The averaged correlation is
 nonnegative because the left-hand side of the window inequality is an integrated square; that is
 what lets `(N + H)/N` be relaxed to `2`. -/
 theorem sq_norm_signed_vdc_mid {α : Type*} [MeasurableSpace α] {μ : Measure α}
@@ -29178,7 +29219,7 @@ open MeasureTheory in
 
 Moving the parameter range from `I ∩ (I - h)` to `I` inside the Fejer average costs at most `V H`:
 pointwise the cost is `V |h|` by `Auto.norm_corrIntegral_sub_capCorr_le`, and
-`Auto.integral_fejer_abs_le` averages `|h|` against the kernel to at most `H`.  Divided by `V N`
+`Auto.integral_fejer_abs_le` averages `|h|` against the kernel to at most `H`. Divided by `V N`
 this is the patch's `H/N`. -/
 theorem norm_integral_fejer_capCorr_sub_le {α : Type*} [MeasurableSpace α] {μ : Measure α}
     [SFinite μ] {c N H V : ℝ} (hN : 0 < N) (hH : 0 < H) (hV : 0 ≤ V)
@@ -29250,14 +29291,13 @@ open MeasureTheory in
 
 With `I` of length `N > 0`, `0 < H <= N/4`, `V > 0`, `∫ |g|^2 <= V` and `∫ |F(x,s)|^2 dx <= V` at
 every parameter value, and `A = V^{-1} ∫ g(x) E_{t in I} F(x,t) dx`,
-
     |A|^2 <= 2 Re ∫ kappa_H(h) (V N)^{-1} ∫_I (∫ F(x,t+h) conj(F(x,t)) dx) dt dh + 2H/N.
 
 The three moves are the patch's own: `Auto.sq_norm_normalized_pairing_le` removes `g`, which is
 independent of the parameter; `Auto.integral_sq_norm_le_fejer_autocorr` is the window construction
 with `x` retained, giving `(1 + H/N) <= 2` times the averaged cut-off correlation, which is
 nonnegative because it came from an integrated square; and
-`Auto.norm_integral_fejer_capCorr_sub_le` pays `H/N` for replacing `I ∩ (I - h)` by `I`.  The two
+`Auto.norm_integral_fejer_capCorr_sub_le` pays `H/N` for replacing `I ∩ (I - h)` by `I`. The two
 Fubini exchanges are `Auto.integral_fejer_autocorr_swap` and
 `Auto.integral_capPair_eq_setIntegral_corrLine`.
 
@@ -29296,7 +29336,7 @@ theorem sq_norm_signed_vdc {α : Type*} [MeasurableSpace α] {μ : Measure α} [
     rw [integral_re_of_integrable hRc, integral_fejer_autocorr_swap hswapH]
     congr 1
     refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-    show fejer H h • (∫ x, autocorr ((Set.Ioc c (c + N)).indicator (F x)) h ∂μ)
+    change fejer H h • (∫ x, autocorr ((Set.Ioc c (c + N)).indicator (F x)) h ∂μ)
         = fejer H h • ∫ t in capSet c N h, corrLine μ F t h
     congr 1
     have hae : (∫ x, autocorr ((Set.Ioc c (c + N)).indicator (F x)) h ∂μ)
@@ -29444,7 +29484,7 @@ theorem coeff_bound_of_oscillation_ge (d : ℕ) (hd : 1 ≤ d) : ∃ C : ℝ, 1 
       _ ≤ (C / ε) ^ d := pow_le_pow_left₀ hu.le hule d
 
 
-/-- The two budgets are reciprocal: `l_c(delta)^{-1} = u_c(delta)`.  This is what turns the
+/-- The two budgets are reciprocal: `l_c(delta)^{-1} = u_c(delta)`. This is what turns the
 division by `|lc P_i|` in `patch:triangular` back into a budget. -/
 theorem budLo_inv (c : ℕ) (δ : ℝ) : (budLo c δ)⁻¹ = budHi c δ := by
   rw [budLo, budHi, mul_inv, inv_inv]
@@ -29485,7 +29525,6 @@ theorem coeff_sum_smul_eq {k : ℕ} (d : ℕ → ℕ) (P : ℕ → Polynomial �
 From the exact identity `Auto.coeff_sum_smul_eq`, the admissibility bounds on the leading
 coefficient and on the lower coefficients, and a bound `M` on `N^{d_i} |a_{d_i}|`, the quantities
 `z_i = N^{d_i} |xi_i|` obey the triangular recursion
-
     z_i <= Lo^{-1} M + (Lo^{-1} Hi) * sum_{u > i} z_u.
 
 The powers of `N` cancel exactly: `|[t^{d_i}] P_u| <= Hi N^{d_u - d_i}` and
@@ -29564,7 +29603,7 @@ theorem triangular_step {k : ℕ} {N M Lo Hi : ℝ} (hN : 0 < N) (hLo : 0 < Lo)
   exact hfin
 
 
-/-- A polynomial of degree at most `D` is its constant term plus its nonconstant part.  This is
+/-- A polynomial of degree at most `D` is its constant term plus its nonconstant part. This is
 what lets `patch:triangular` feed the combined phase to `Auto.coeff_bound_of_oscillation_ge`,
 whose phase has no constant term. -/
 theorem eval_eq_const_add_sum_Icc {D : ℕ} (Q : Polynomial ℝ) (hQ : Q.natDegree ≤ D) (t : ℝ) :
@@ -29578,7 +29617,7 @@ theorem eval_eq_const_add_sum_Icc {D : ℕ} (Q : Polynomial ℝ) (hQ : Q.natDegr
   simp
 
 open MeasureTheory in
-/-- **A constant in the phase does not change the modulus of the average.**  `e(c + p) = e(c) e(p)`
+/-- **A constant in the phase does not change the modulus of the average.** `e(c + p) = e(c) e(p)`
 and `|e(c)| = 1`, so the constant term of the combined polynomial can be dropped. -/
 theorem norm_integral_expPhase_const_add (c : ℝ) (φ : ℝ → ℝ) (N : ℝ) :
     ‖N⁻¹ • ∫ t in (0 : ℝ)..N, expPhase (fun s => c + φ s) t‖
@@ -29595,7 +29634,7 @@ theorem norm_integral_expPhase_const_add (c : ℝ) (φ : ℝ → ℝ) (N : ℝ) 
     Complex.norm_exp_ofReal_mul_I, one_mul]
 
 
-/-- **The triangular bound, from the recursion.**  `Auto.triangular_step` fed to
+/-- **The triangular bound, from the recursion.** `Auto.triangular_step` fed to
 `Auto.sum_range_le_of_triangular`. -/
 theorem sum_triangular_le {k : ℕ} {N M Lo Hi : ℝ} (hN : 0 < N) (hLo : 0 < Lo)
     (hM0 : 0 ≤ M) (hHi0 : 0 ≤ Hi)
@@ -29619,7 +29658,6 @@ For polynomials of strictly increasing degrees `d_1 < ... < d_k <= D`, with lead
 least `Lo` and lower coefficients at most `Hi N^{d_i - r}` -- the patch's admissibility, with
 `Lo = l_c(delta)` and `Hi = u_c(delta)` -- a lower bound `eps` on the oscillatory average of the
 combined phase forces
-
     sum_i N^{d_i} |xi_i| <= Lo^{-1} (C_D/eps)^D k (1 + Lo^{-1} Hi)^k.
 
 With the budgets in place, `Lo^{-1} = u_c(delta)` by `Auto.budLo_inv`, `eps` a power of `delta`,
@@ -29674,7 +29712,7 @@ theorem sum_le_of_oscillation_ge (D : ℕ) (hD : 1 ≤ D) : ∃ C : ℝ, 1 ≤ C
 /-! ## `blueprints/task_2_patch_3_updated.tex`, stage 3: the labelled PET update
 
 `patch:pet-update` is a statement about a symbolic state -- an ordered list of vector polynomials
-with function blocks and a leading-coefficient invariant.  Its proof rests on three purely
+with function blocks and a leading-coefficient invariant. Its proof rests on three purely
 algebraic facts about the finite difference `delta_u Q = Q(t+u) - Q(t)`, which are independent of
 all the state bookkeeping and are proved here first:
 
@@ -29686,7 +29724,7 @@ all the state bookkeeping and are proved here first:
 The state itself, the pivot rule and the well-founded termination bound are not in this section. -/
 
 open Polynomial in
-/-- **The finite difference kills the top coefficient.**  `Q(t+u) - Q(t)` has degree at most
+/-- **The finite difference kills the top coefficient.** `Q(t+u) - Q(t)` has degree at most
 `deg Q - 1`. -/
 theorem natDegree_taylor_sub_self_le {R : Type*} [CommRing R] (Q : Polynomial R) (u : R) {e : ℕ}
     (hQ : Q.natDegree = e + 1) : ((taylor u) Q - Q).natDegree ≤ e := by
@@ -29727,14 +29765,14 @@ theorem coeff_taylor_sub_self {R : Type*} [CommRing R] (Q : Polynomial R) (u : R
   ring
 
 open Polynomial in
-/-- **The displayed comparison of `patch:pet-update`.**  The shifted head minus an unshifted child
+/-- **The displayed comparison of `patch:pet-update`.** The shifted head minus an unshifted child
 is the finite difference of the head plus the old difference of the two polynomials -- the pivot
 cancels. -/
 theorem taylor_sub_pivot_sub {R : Type*} [CommRing R] (Q1 Qi Qp : Polynomial R) (u : R) :
     ((taylor u) Q1 - Qp) - (Qi - Qp) = ((taylor u) Q1 - Q1) + (Q1 - Qi) := by
   ring
 
-/-- **A leading coefficient linear in the fresh indeterminate cannot vanish.**  This is the step
+/-- **A leading coefficient linear in the fresh indeterminate cannot vanish.** This is the step
 "it cannot vanish because `u` is a fresh indeterminate": the coefficient is `a + b u` with `b` the
 nonzero old leading polynomial times `d`. -/
 theorem linear_in_fresh_ne_zero {R : Type*} [CommRing R] {a b : R} (hb : b ≠ 0) :
@@ -29744,7 +29782,7 @@ theorem linear_in_fresh_ne_zero {R : Type*} [CommRing R] {a b : R} (hb : b ≠ 0
     rw [h]
     simp
   simp only [Polynomial.coeff_add, Polynomial.coeff_C, Polynomial.coeff_C_mul,
-    Polynomial.coeff_X_one, mul_one, if_neg (one_ne_zero), zero_add] at hc
+    Polynomial.coeff_X_one, mul_one, ite_eq_right (one_ne_zero), zero_add] at hc
   exact hb hc
 
 
@@ -29767,15 +29805,16 @@ open MvPolynomial in
 
 "It cannot vanish because `u` is a fresh indeterminate": the variable `i` does not occur in the old
 part `p`, so the coefficient of any monomial of `q` shifted by `i` is exactly that of `q`. -/
-theorem add_X_mul_ne_zero {σ : Type*} [DecidableEq σ] {i : σ} {p q : MvPolynomial σ ℤ}
+theorem add_X_mul_ne_zero {σ : Type*} {i : σ} {p q : MvPolynomial σ ℤ}
     (hp : i ∉ p.vars) (hq : q ≠ 0) : p + X i * q ≠ 0 := by
+  classical
   intro h
   obtain ⟨m, hm⟩ := MvPolynomial.ne_zero_iff.mp hq
-  have hzero : coeff (Finsupp.single i 1 + m) (p + X i * q) = 0 := by
+  have hzero : (p + X i * q).coeff (Finsupp.single i 1 + m) = 0 := by
     rw [h]
     simp
-  rw [coeff_add, coeff_X_mul] at hzero
-  have hp0 : coeff (Finsupp.single i 1 + m) p = 0 := by
+  rw [AddMonoidAlgebra.coeff_add, Finsupp.add_apply, coeff_X_mul] at hzero
+  have hp0 : p.coeff (Finsupp.single i 1 + m) = 0 := by
     by_contra hne
     have hmem : (Finsupp.single i 1 + m) ∈ p.support :=
       MvPolynomial.mem_support_iff.mpr hne
@@ -29792,11 +29831,11 @@ The patch's sentence "The sum is still `a` times a nonzero integer multilinear p
 asserted homogeneous degree", in the only case that needs an argument: the two compared children
 have equal degree, so the new leading polynomial is `p_R + d u p_S` with `p_R` homogeneous of
 degree `k+1`, `p_S` homogeneous of degree `k`, both multilinear, and `u` a variable occurring in
-neither.  The conclusion is the full invariant for the sum: nonzero, homogeneous of degree `k+1`,
+neither. The conclusion is the full invariant for the sum: nonzero, homogeneous of degree `k+1`,
 multilinear.
 
 Nonvanishing is `Auto.add_X_mul_ne_zero` -- it is exactly where freshness of `u` is used, and it
-is the reason the patch insists `u` is a fresh indeterminate rather than a number.  Multilinearity
+is the reason the patch insists `u` is a fresh indeterminate rather than a number. Multilinearity
 in `u` needs freshness too: `deg_u (u p_S) = 1 + deg_u p_S = 1` only because `p_S` does not
 involve `u`. -/
 theorem petLead_add_fresh {r : ℕ} {k d : ℕ} {iu : Fin r} {pR pS : MvPolynomial (Fin r) ℤ}
@@ -29888,7 +29927,7 @@ theorem leadingCoeff_taylor {R : Type*} [CommRing R] (P : Polynomial R) (u : R) 
 
 
 open Polynomial in
-/-- **The child with its constant term removed.**  `patch:pet-update` subtracts each child's
+/-- **The child with its constant term removed.** `patch:pet-update` subtracts each child's
 constant term in `t` and absorbs it as a translation of the attached function; this is the
 polynomial side of that step, and it is what puts the new state back into the normal form
 `Q_i(0, h) = 0`. -/
@@ -29910,7 +29949,7 @@ theorem petSubConst_coeff {R : Type*} [CommRing R] (P : Polynomial R) {n : ℕ} 
 open Polynomial in
 theorem natDegree_petSubConst_le {R : Type*} [CommRing R] (P : Polynomial R) :
     (petSubConst P).natDegree ≤ P.natDegree := by
-  show (P - Polynomial.C (P.coeff 0)).natDegree ≤ P.natDegree
+  change (P - Polynomial.C (P.coeff 0)).natDegree ≤ P.natDegree
   refine le_trans (natDegree_sub_le _ _) ?_
   simp
 
@@ -29942,11 +29981,11 @@ theorem petSubConst_sub_coeff {R : Type*} [CommRing R] (P Q : Polynomial R) {n :
 
 /-! ### The vector layer of `patch:lead-invariant`
 
-The invariant says `lc_t R = a p_R(h) e_m`.  In Lean the leading coefficient lives in
-`Fin n -> MvPolynomial (Fin r) R`, so `a p(h) e_m` is `Pi.single m (C a * p)`.  These lemmas move
+The invariant says `lc_t R = a p_R(h) e_m`. In Lean the leading coefficient lives in
+`Fin n -> MvPolynomial (Fin r) R`, so `a p(h) e_m` is `Pi.single m (C a * p)`. These lemmas move
 the scalar statements of the previous section across that layer. -/
 
-/-- Multiplying a coordinate vector by a constant vector stays a coordinate vector.  This is how
+/-- Multiplying a coordinate vector by a constant vector stays a coordinate vector. This is how
 the factor `d u` of the finite difference passes through `e_m`. -/
 theorem pi_const_mul_single {n : ℕ} {K : Type*} [CommRing K] (c : K) (m : Fin n) (x : K) :
     ((fun _ => c : Fin n → K)) * Pi.single m x = Pi.single m (c * x) := by
@@ -29965,7 +30004,7 @@ theorem pi_single_add' {n : ℕ} {K : Type*} [CommRing K] (m : Fin n) (x y : K) 
     simp
   · simp [Pi.single_eq_of_ne h]
 
-/-- **The invariant's vector is nonzero.**  `a p(h) e_m` vanishes only if `p` does, because `a` is
+/-- **The invariant's vector is nonzero.** `a p(h) e_m` vanishes only if `p` does, because `a` is
 nonzero and `Z -> R` is injective. -/
 theorem leadVec_ne_zero {r n : ℕ} {a : ℝ} (ha : a ≠ 0) (m : Fin n)
     {p : MvPolynomial (Fin r) ℤ} (hp : p ≠ 0) :
@@ -29997,7 +30036,7 @@ theorem ne_of_sub_coeff_ne_zero {R : Type*} [CommRing R] {A B : Polynomial R} {n
 
 With the old invariant data `lc(Q_1 - Q_i) = a p_R e_m` and `lc(Q_1) = a p_S e_m`, the coefficient
 of the compared children at the new head degree is `a (p_R + d u p_S) e_m` -- the new leading
-polynomial the patch describes.  Here `u` is the fresh indeterminate `X iu`, embedded in the
+polynomial the patch describes. Here `u` is the fresh indeterminate `X iu`, embedded in the
 coefficient ring as the constant vector, which is what shifting the scalar variable `t` by `u`
 means. -/
 theorem coeff_petChild_unshifted_vec {r n : ℕ} {a : ℝ} {m : Fin n} {iu : Fin r} {e : ℕ}
@@ -30040,7 +30079,7 @@ theorem coeff_petChild_unshifted_vec {r n : ℕ} {a : ℝ} {m : Fin n} {iu : Fin
 
 The coefficient computed above is `a` times a nonzero integer polynomial, by
 `Auto.petLead_add_fresh`, hence nonzero by `Auto.leadVec_ne_zero`; so the two children are
-distinct.  This is the step of `patch:pet-update` that guarantees grouping never multiplies
+distinct. This is the step of `patch:pet-update` that guarantees grouping never multiplies
 another factor into the protected head, and it is exactly where the fresh indeterminate earns its
 keep. -/
 theorem petHead_ne_child {r n : ℕ} {a : ℝ} (ha : a ≠ 0) {m : Fin n} {k : ℕ} {iu : Fin r} {e : ℕ}
@@ -30066,9 +30105,9 @@ theorem petHead_ne_child {r n : ℕ} {a : ℝ} (ha : a ≠ 0) {m : Fin n} {k : �
 /-! ### The Lean state of `patch:pet-update`
 
 The patch fixes the representation itself, in its paragraph "Lean state": *"Use an outer polynomial
-in `t` with coefficients in a multivariate polynomial ring in the shift variables.  A factor
-carries its origin index, conjugation flag, and constant-translation polynomial.  Normalization
-groups function lists; it does not discard duplicate factors.  The head list has length one.
+in `t` with coefficients in a multivariate polynomial ring in the shift variables. A factor
+carries its origin index, conjugation flag, and constant-translation polynomial. Normalization
+groups function lists; it does not discard duplicate factors. The head list has length one.
 Polynomial equality can be handled classically."*  The names below are the patch's own Lean nodes.
 
 "The head list has length one" is encoded in the type rather than asserted, so that the update's
@@ -30103,8 +30142,8 @@ input. -/
 @[simp] theorem PetFactor.origin_starFac {r n : ℕ} {ι : Type*} (F : PetFactor r n ι) :
     F.starFac.origin = F.origin := rfl
 
-/-- **`NormalPETState`.**  An ordered list of nonzero distinct vector polynomials vanishing at
-`t = 0`, with the head of maximum degree; a function block for each, and a spatial block.  The head
+/-- **`NormalPETState`.** An ordered list of nonzero distinct vector polynomials vanishing at
+`t = 0`, with the head of maximum degree; a function block for each, and a spatial block. The head
 block is a singleton of origin the protected input `f`. -/
 structure NormalPETState (r n : ℕ) (ι : Type*) (f : ι) where
   /-- The spatial block `g_0`. -/
@@ -30288,7 +30327,7 @@ theorem petNormalized_coeff_zero {r n : ℕ} {ι : Type*} {f : ι}
 
 /-- **Grouping identical polynomials.**  The patch: "Normalization groups *function lists*; it does
 not discard duplicate factors."  Items sharing a polynomial are merged by concatenating their
-blocks, so multiplicities are retained.  Equality of polynomials is decided classically at the use
+blocks, so multiplicities are retained. Equality of polynomials is decided classically at the use
 site, as the patch allows. -/
 noncomputable def petGroup {r n : ℕ} {ι : Type*}
     [DecidableEq (Polynomial (Fin n → MvPolynomial (Fin r) ℝ))]
@@ -30341,7 +30380,7 @@ theorem petNewHead_ne_shiftedChild {r n : ℕ}
     have h0 : (Q1 - Qi).natDegree = 0 := by omega
     have heq := Polynomial.eq_C_of_natDegree_eq_zero h0
     rw [hc0] at heq
-    simp at heq
+    simp only [map_zero] at heq
     exact hd heq
   refine petSubConst_ne_of_natDegree_pos ?_
   rw [petChild_shifted, Polynomial.natDegree_taylor]
@@ -30358,7 +30397,7 @@ theorem petGroup_fst_mem {r n : ℕ} {ι : Type*}
   obtain ⟨k, hk, rfl⟩ := h
   exact List.mem_dedup.mp hk
 
-/-- Consequently any property of the input polynomials transports to the grouped ones.  This is
+/-- Consequently any property of the input polynomials transports to the grouped ones. This is
 what makes every normal-state condition survive "multiplying the function lists attached to
 identical remaining polynomials": grouping changes blocks, never polynomials. -/
 theorem petGroup_property {r n : ℕ} {ι : Type*}
@@ -30375,7 +30414,7 @@ theorem petGroup_property {r n : ℕ} {ι : Type*}
 
 This is the bookkeeping half of `patch:pet-update`: given a head and a list of children that are
 nonzero, vanish at `t = 0`, differ from the head, and have degree at most the head's, grouping
-produces a `NormalPETState`.  All the analytic content -- that the actual children of an update do
+produces a `NormalPETState`. All the analytic content -- that the actual children of an update do
 satisfy those four conditions -- is supplied separately; here nothing is assumed about where the
 list came from. -/
 noncomputable def petAssemble {r n : ℕ} {ι : Type*} {f : ι}
@@ -30480,7 +30519,7 @@ theorem petNormalized_tail_eq {r n : ℕ} {ι : Type*} {f : ι}
           :: (S.rest.flatMap (petChildren u Qp)).map petNormalizeItem := by
   simp [petNormalized, petRawChildren, petAllItems, petChildren]
 
-/-- **Every remaining child is one of three explicit things.**  This is the case analysis the
+/-- **Every remaining child is one of three explicit things.** This is the case analysis the
 distinctness argument of `patch:pet-update` runs over: the unshifted head child, a shifted child of
 another item, or an unshifted child of another item. -/
 theorem mem_petNonConstChildren {r n : ℕ} {ι : Type*} {f : ι}
@@ -30515,8 +30554,8 @@ theorem mem_petNonConstChildren {r n : ℕ} {ι : Type*} {f : ι}
 /-- **The invariant's data with the fresh indeterminate excluded.**
 
 `patch:lead-invariant` itself says nothing about the update's new variable: freshness is a property
-of the *step*, not of the state.  So the update's hypotheses need the invariant in a form that
-exposes the witness, with `iu` avoided.  Nonvanishing of the witness is not required here -- the
+of the *step*, not of the state. So the update's hypotheses need the invariant in a form that
+exposes the witness, with `iu` avoided. Nonvanishing of the witness is not required here -- the
 differences `Q_1 - Q_i` may legitimately have a zero witness, and
 `Auto.petLead_add_fresh` never needed one. -/
 def PetLeadData {r n : ℕ} (a : ℝ) (m : Fin n) (iu : Fin r) (k : ℕ)
@@ -30524,7 +30563,7 @@ def PetLeadData {r n : ℕ} (a : ℝ) (m : Fin n) (iu : Fin r) (k : ℕ)
   ∃ p : MvPolynomial (Fin r) ℤ, p.IsHomogeneous k ∧ (∀ i, p.degreeOf i ≤ 1) ∧
     iu ∉ p.vars ∧ v = Pi.single m (MvPolynomial.C a * p.map (Int.castRingHom ℝ))
 
-/-- The zero vector carries the data, with witness `0`.  This is what covers both the patch's
+/-- The zero vector carries the data, with witness `0`. This is what covers both the patch's
 `p = 1` case -- where the compared child is the head itself, so the difference is zero -- and every
 child whose difference from the head has degree below `d - 1`. -/
 theorem petLeadData_zero {r n : ℕ} (a : ℝ) (m : Fin n) (iu : Fin r) (k : ℕ) :
@@ -30589,7 +30628,7 @@ theorem petSubConst_zero {R : Type*} [CommRing R] : petSubConst (0 : Polynomial 
   simp [petSubConst]
 
 open Polynomial in
-/-- **The new head is nonzero.**  Compare it with the child of the pivot itself, whose polynomial
+/-- **The new head is nonzero.** Compare it with the child of the pivot itself, whose polynomial
 is `Q_p - Q_p = 0`: the same argument that separates the head from every child separates it from
 zero.  This is why the patch's invariant is retained "for every nonzero `Q_1 - Q_i`, including
 `Q_0 = 0`" -- the pivot's own difference is one of the cases. -/
@@ -30652,7 +30691,7 @@ state is normal, its head block is a singleton of origin `f`, and `patch:lead-in
 preserved."
 
 The only hypothesis besides the invariant data and `d >= 2` is the patch's own: that the shifted
-head has maximum degree.  Nonvanishing of the new head and its distinctness from every child are
+head has maximum degree. Nonvanishing of the new head and its distinctness from every child are
 derived, not assumed. -/
 theorem petUpdate_protected_of_invariant {r n : ℕ} {ι : Type*} {f : ι}
     [DecidableEq (Polynomial (Fin n → MvPolynomial (Fin r) ℝ))]
@@ -30699,10 +30738,10 @@ theorem natDegree_petSubConst_sub_le {R : Type*} [CommRing R] (A B : Polynomial 
 open Polynomial in
 /-- **`patch:lead-invariant` is preserved.**
 
-The third conclusion of `patch:pet-update`.  In the case where the old difference does not already
+The third conclusion of `patch:pet-update`. In the case where the old difference does not already
 have the head's degree, the new difference has degree exactly `d - 1`, and its leading coefficient
 is `a (p_R + d u p_S) e_m` -- a nonzero integer multilinear polynomial, homogeneous of degree
-`D - (d - 1)`, by `Auto.petLead_add_fresh`.  The degree bookkeeping is exact: the old head carries
+`D - (d - 1)`, by `Auto.petLead_add_fresh`. The degree bookkeeping is exact: the old head carries
 homogeneity `k = D - d`, and the new difference carries `k + 1 = D - (d - 1)`. -/
 theorem petUpdate_invariant_diff {r n : ℕ} {a : ℝ} (ha : a ≠ 0) {m : Fin n} {k : ℕ} {iu : Fin r}
     {e : ℕ} (he : e ≠ 0)
@@ -30823,7 +30862,7 @@ theorem petUpdate_invariant_diff_highDeg {r n : ℕ} {a : ℝ} (ha : a ≠ 0) {m
 
 `patch:cs-loss` is a scalar statement: a chain of `T` Cauchy-Schwarz steps, each squaring and
 losing `2H/N`, ends at a nonnegative cube power `Q`, and the accumulated loss is `c_T (Q + T H/N)`
-with `c_T = 2^(2^T - 1)`.  The map being iterated is `phi(x) = x^2/2`; the whole content is that
+with `c_T = 2^(2^T - 1)`. The map being iterated is `phi(x) = x^2/2`; the whole content is that
 `phi` is monotone and `1`-Lipschitz on `[0,1]`, so the per-step errors add rather than compound. -/
 
 /-- The map iterated by `patch:cs-loss`. -/
@@ -30842,7 +30881,7 @@ theorem csPhi_mono {x y : ℝ} (hx : 0 ≤ x) (h : x ≤ y) : csPhi x ≤ csPhi 
   nlinarith
 
 /-- **`phi` is `1`-Lipschitz on `[0,1]`**, the patch's "`|phi(x) - phi(y)| <= |x-y|`", proved in
-the one-sided form the induction uses via `(x^2 - y^2)/2 = (x-y)(x+y)/2`.  Nonnegativity of the
+the one-sided form the induction uses via `(x^2 - y^2)/2 = (x-y)(x+y)/2`. Nonnegativity of the
 arguments is not needed: only that they are at most one. -/
 theorem csPhi_lipschitz {x y : ℝ} (hx1 : x ≤ 1) (hy1 : y ≤ 1) (h : y ≤ x) :
     csPhi x - csPhi y ≤ x - y := by
@@ -30880,10 +30919,9 @@ theorem csPhi_iter_eq (r : ℕ) (x : ℝ) : csPhi^[r] x = 2 * x ^ (2 ^ r) / 2 ^ 
 
 A chain of `T` steps with `phi(M_r) <= M_{r+1} + delta` and all `M_r` in `[0,1]`, ending at
 `M_T <= Q`, satisfies
+    M_0 ^ (2^T) <= c_T (Q + T delta), c_T = 2^(2^T) / 2 = 2^(2^T - 1).
 
-    M_0 ^ (2^T) <= c_T (Q + T delta),   c_T = 2^(2^T) / 2 = 2^(2^T - 1).
-
-The patch's `delta` is `H/N`, its per-step error `2H/N` being `phi`'s form of the same thing.  The
+The patch's `delta` is `H/N`, its per-step error `2H/N` being `phi`'s form of the same thing. The
 whole content is that `phi` is monotone and `1`-Lipschitz on `[0,1]`, so the `T` errors add rather
 than compound; the proof is the patch's own "split into `phi^r(M_0) <= M_r` or its reverse". -/
 theorem csLoss {T : ℕ} {M : ℕ → ℝ} {δ Q : ℝ} (hδ : 0 ≤ δ)
@@ -30926,7 +30964,7 @@ theorem csLoss {T : ℕ} {M : ℕ → ℝ} {δ Q : ℝ} (hδ : 0 ≤ δ)
 
 `patch:multiaffine-sublevel` bounds `Pr{|p(u)| <= eps}` by `4 sqrt eps` for a nonzero multilinear
 integer polynomial of degree at most two, the coordinates of `u` independent with density
-`kappa_1`.  Its proof rests on one one-dimensional fact used twice: an affine function with a
+`kappa_1`. Its proof rests on one one-dimensional fact used twice: an affine function with a
 nonzero leading coefficient has a small sublevel set, and the Fejer density is at most one
 (`Auto.fejer_le_inv` at `H = 1`), so the probability is at most the length. -/
 
@@ -30941,7 +30979,7 @@ theorem volume_abs_affine {c b ε : ℝ} (hc : c ≠ 0) :
   have hset : {t : ℝ | |c * t + b| ≤ ε}
       = (fun t : ℝ => c * t) ⁻¹' ((fun x : ℝ => b + x) ⁻¹' (Set.Icc (-ε) ε)) := by
     ext t
-    simp only [Set.mem_setOf_eq, Set.mem_preimage, Set.mem_Icc, abs_le]
+    simp only [Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_Icc, abs_le]
     constructor
     · rintro ⟨h1, h2⟩
       exact ⟨by linarith, by linarith⟩
@@ -30958,7 +30996,7 @@ open MeasureTheory in
 /-- **The one-dimensional sublevel bound against the Fejer density.**
 
 `int kappa_1(t) 1[|c t + b| <= eps] dt <= 2 eps / |c|`: the density is at most one, so the
-integral is at most the length of the sublevel interval.  Used twice in
+integral is at most the length of the sublevel interval. Used twice in
 `patch:multiaffine-sublevel` -- once for the linear case and once, with `c = A(u')`, for the
 conditional probability in the quadratic case. -/
 theorem integral_fejer_indicator_abs_affine_le {c b ε : ℝ} (hc : c ≠ 0) (hε : 0 ≤ ε) :
@@ -31021,7 +31059,7 @@ instance isProbabilityMeasure_fejerMeasure : IsProbabilityMeasure fejerMeasure :
 
 open MeasureTheory in
 /-- **"`kappa_1 <= 1`"**: the Fejer law is dominated by Lebesgue measure, so a probability is at
-most a length.  This is the step that makes the sublevel estimate elementary. -/
+most a length. This is the step that makes the sublevel estimate elementary. -/
 theorem fejerMeasure_le_volume {s : Set ℝ} (hs : MeasurableSet s) :
     fejerMeasure s ≤ volume s := by
   rw [fejerMeasure_apply hs]
@@ -31055,7 +31093,7 @@ open MeasureTheory in
 /-- **Splitting a product measure at the last coordinate, for sets.**
 
 The measure counterpart of `Auto.integral_pi_fin_last`: the measure of a set of `Fin (n+1)`-tuples
-is the product measure of its `Fin.snoc` description.  This is what turns
+is the product measure of its `Fin.snoc` description. This is what turns
 `patch:multiaffine-sublevel`'s conditioning on all but one coordinate into Fubini. -/
 theorem measure_pi_fin_last {B : Type*} [MeasurableSpace B] (ν : Measure B) [SigmaFinite ν]
     {n : ℕ} (s : Set (Fin (n + 1) → B)) :
@@ -31073,7 +31111,7 @@ theorem measure_pi_fin_last {B : Type*} [MeasurableSpace B] (ν : Measure B) [Si
   rw [← h]
   congr 1
   ext p
-  simp only [Set.mem_preimage, Set.mem_setOf_eq, hsymm]
+  simp only [Set.mem_preimage, Set.mem_ofPred_eq, hsymm]
 
 
 open MeasureTheory in
@@ -31083,7 +31121,7 @@ open MeasureTheory in
 the conditional sublevel probability in `u_r` is at most `2 eps / |A| <= 2 sqrt eps`."
 
 Stated with the good event `G` and the lower bound `K` on `|A|` abstract, so that the linear case
-supplies `G = {|A| > sqrt eps}`, `K = sqrt eps` and `q = 2 sqrt eps`.  The conclusion is then
+supplies `G = {|A| > sqrt eps}`, `K = sqrt eps` and `q = 2 sqrt eps`. The conclusion is then
 `2 sqrt eps + 2 eps / sqrt eps = 4 sqrt eps` by `Auto.two_mul_div_sqrt`. -/
 theorem fejerPi_snoc_sublevel_le {r : ℕ} {A B : (Fin r → ℝ) → ℝ}
     (hA : Measurable A) (hB : Measurable B) {ε K q : ℝ} (hε : 0 ≤ ε) (hK : 0 < K)
@@ -31168,7 +31206,7 @@ theorem fejerPi_linear_sublevel_le {r : ℕ} (a : Fin (r + 1) → ℝ) (b : ℝ)
           + ((∑ j : Fin r, a j.castSucc * u j.castSucc) + b) := by
       rw [Fin.sum_univ_castSucc]
       ring
-    simp only [Set.mem_setOf_eq, hsum]
+    simp only [Set.mem_ofPred_eq, hsum]
   rw [hset]
   have h := fejerPi_snoc_sublevel_le (A := fun _ : Fin r → ℝ => a (Fin.last r))
     (B := fun u' : Fin r → ℝ => (∑ j : Fin r, a j.castSucc * u' j) + b)
@@ -31195,7 +31233,7 @@ theorem measure_pi_fin_succAbove {B : Type*} [MeasurableSpace B] (ν : Measure B
   rfl
 
 open MeasureTheory in
-/-- **The conditioning step at an arbitrary coordinate.**  `Auto.fejerPi_snoc_sublevel_le` with the
+/-- **The conditioning step at an arbitrary coordinate.** `Auto.fejerPi_snoc_sublevel_le` with the
 distinguished variable at position `i` rather than last. -/
 theorem fejerPi_succAbove_sublevel_le {r : ℕ} (i : Fin (r + 1)) {A B : (Fin r → ℝ) → ℝ}
     (hA : Measurable A) (hB : Measurable B) {ε K q : ℝ} (hε : 0 ≤ ε) (hK : 0 < K)
@@ -31253,7 +31291,7 @@ theorem fejerPi_succAbove_sublevel_le {r : ℕ} (i : Fin (r + 1)) {A B : (Fin r 
 
 
 /-- **A multilinear polynomial of degree at most two, as explicit integer data**: a constant, a
-linear coefficient vector, and a quadratic coefficient matrix with zero diagonal.  Every
+linear coefficient vector, and a quadratic coefficient matrix with zero diagonal. Every
 multilinear integer polynomial of degree at most two is of this form, and
 `patch:multiaffine-sublevel` is about exactly these. -/
 noncomputable def multiAff {n : ℕ} (c : ℤ) (a : Fin n → ℤ) (b : Fin n → Fin n → ℤ)
@@ -31266,9 +31304,9 @@ noncomputable def multiAffLead {n : ℕ} (a : Fin (n + 1) → ℤ)
     (b : Fin (n + 1) → Fin (n + 1) → ℤ) (i : Fin (n + 1)) (u' : Fin n → ℝ) : ℝ :=
   (a i : ℝ) + ∑ j, ((b i (i.succAbove j) : ℝ) + (b (i.succAbove j) i : ℝ)) * u' j
 
-/-- **Splitting off one variable.**  With zero diagonal the polynomial is affine in each variable
+/-- **Splitting off one variable.** With zero diagonal the polynomial is affine in each variable
 separately; at the coordinate `i` the leading factor is `Auto.multiAffLead` and the remainder is
-again of the same form in the other variables.  This is the patch's
+again of the same form in the other variables. This is the patch's
 `p = A(u') u_r + B(u')`. -/
 theorem multiAff_split {n : ℕ} (c : ℤ) (a : Fin (n + 1) → ℤ)
     (b : Fin (n + 1) → Fin (n + 1) → ℤ) (hb : ∀ k, b k k = 0) (i : Fin (n + 1))
@@ -31335,7 +31373,7 @@ theorem fejerPi_linear_sublevel_le' {r : ℕ} (i : Fin (r + 1)) (a : Fin (r + 1)
         = a i * u i + ((∑ j : Fin r, a (i.succAbove j) * u (i.succAbove j)) + b) := by
       rw [Fin.sum_univ_succAbove (fun k => a k * u k) i]
       ring
-    simp only [Set.mem_setOf_eq, hsum]
+    simp only [Set.mem_ofPred_eq, hsum]
   rw [hset]
   have h := fejerPi_succAbove_sublevel_le i (A := fun _ : Fin r → ℝ => a i)
     (B := fun u' : Fin r → ℝ => (∑ j : Fin r, a (i.succAbove j) * u' j) + b)
@@ -31408,7 +31446,7 @@ theorem multiAff_sublevel_le_of_b_zero {n : ℕ} (c : ℤ) (a : Fin (n + 1) → 
                 (fun j l => b (k.succAbove j) (k.succAbove l))
                 (fun j => u (k.succAbove j))| ≤ ε} := by
     ext u
-    simp only [Set.mem_setOf_eq, multiAff_split c a b hbk k u]
+    simp only [Set.mem_ofPred_eq, multiAff_split c a b hbk k u]
   rw [hset]
   have h := fejerPi_succAbove_sublevel_le k
     (A := fun u' => multiAffLead a b k u')
@@ -31423,8 +31461,8 @@ open MeasureTheory in
 /-- **The quadratic case of `patch:multiaffine-sublevel`, for the explicit form.**
 
 "If a quadratic term is present, write `p = A(u') u_r + B(u')` where `A` is linear and has a
-nonzero integer coefficient.  The probability `|A| <= sqrt eps` is at most `2 sqrt eps` by the
-linear case.  On its complement, the conditional sublevel probability in `u_r` is at most
+nonzero integer coefficient. The probability `|A| <= sqrt eps` is at most `2 sqrt eps` by the
+linear case. On its complement, the conditional sublevel probability in `u_r` is at most
 `2 eps / |A| <= 2 sqrt eps`." -/
 theorem multiAff_sublevel_le_of_quad {n : ℕ} (c : ℤ) (a : Fin (n + 1) → ℤ)
     (b : Fin (n + 1) → Fin (n + 1) → ℤ) (hbu : ∀ k l, ¬ (k < l) → b k l = 0)
@@ -31472,7 +31510,7 @@ theorem multiAff_sublevel_le_of_quad {n : ℕ} (c : ℤ) (a : Fin (n + 1) → �
             |(∑ j, ((b k (k.succAbove j) : ℝ) + (b (k.succAbove j) k : ℝ)) * u' j)
               + (a k : ℝ)| ≤ Real.sqrt ε} := by
       ext u'
-      simp only [Set.mem_setOf_eq, hAform u']
+      simp only [Set.mem_ofPred_eq, hAform u']
     rw [hset]
     refine le_trans (fejerPi_linear_sublevel_le' j0 _ _ hc0 hsqrt) ?_
     refine ENNReal.ofReal_le_ofReal ?_
@@ -31494,7 +31532,7 @@ theorem multiAff_sublevel_le_of_quad {n : ℕ} (c : ℤ) (a : Fin (n + 1) → �
                 (fun j l => b (k.succAbove j) (k.succAbove l))
                 (fun j => u (k.succAbove j))| ≤ ε} := by
     ext u
-    simp only [Set.mem_setOf_eq, multiAff_split c a b hbk k u]
+    simp only [Set.mem_ofPred_eq, multiAff_split c a b hbk k u]
   rw [hset2]
   have h := fejerPi_succAbove_sublevel_le k
     (A := fun u' => multiAffLead a b k u')
@@ -31556,7 +31594,7 @@ theorem multiAff_sublevel_le {n : ℕ} (c : ℤ) (a : Fin (n + 1) → ℤ)
           exact absurd (hb0 k l) hk
       have hempty : {u : Fin (n + 1) → ℝ | |multiAff c a b u| ≤ ε} = ∅ := by
         ext u
-        simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false, not_le]
+        simp only [Set.mem_ofPred_eq, Set.mem_empty_iff_false, iff_false, not_le]
         rw [multiAff_eq_const c a b ha0 hb0 u]
         have h1 := one_le_abs_intCast hc
         linarith
@@ -31569,7 +31607,7 @@ open MvPolynomial in
 
 Every exponent vector in the support has all entries at most one and total at most two, so its
 support has at most two elements: the monomial is `1`, a single variable, or a product of two
-distinct variables.  This is what makes the explicit form `Auto.multiAff` exhaustive. -/
+distinct variables. This is what makes the explicit form `Auto.multiAff` exhaustive. -/
 theorem multilinear_support_cases {n : ℕ} {p : MvPolynomial (Fin n) ℤ}
     (hml : ∀ i, p.degreeOf i ≤ 1) (hdeg : p.totalDegree ≤ 2)
     {d : Fin n →₀ ℕ} (hd : d ∈ p.support) :
@@ -31644,7 +31682,7 @@ noncomputable def monTerm {n : ℕ} (d : Fin n →₀ ℕ) (u : Fin n → ℝ) :
   rw [Finset.prod_eq_single k]
   · simp
   · intro i _ hik
-    rw [Finsupp.single_apply, if_neg (fun h => hik h.symm), pow_zero]
+    rw [Finsupp.single_apply, ite_eq_right (fun h => hik h.symm), pow_zero]
   · intro hk
     exact absurd (Finset.mem_univ k) hk
 
@@ -31671,7 +31709,7 @@ mixed-radius cube quantity, which the file does not yet have. -/
 
 /-- **The Fejer density comparison of `patch:uniformize`.**
 
-For `L_i <= L/2` the narrow density is dominated by `2L/L_i` times the wide one.  Off the narrow
+For `L_i <= L/2` the narrow density is dominated by `2L/L_i` times the wide one. Off the narrow
 support the left side vanishes; on it the wide density is at least `(2L)^{-1}`, because the point
 is then within `L/2` of the origin and the wide kernel has not decayed below half its peak. -/
 theorem fejer_le_scaled {Li L z : ℝ} (hLi : 0 < Li) (hL : 0 < L) (h : Li ≤ L / 2) :
@@ -31708,7 +31746,7 @@ theorem fejerCube_le_scaled {s : ℕ} {L : ℝ} (hL : 0 < L) (Li : Fin s → ℝ
     (hLi : ∀ i, 0 < Li i) (h : ∀ i, Li i ≤ L / 2) (z : Fin s → ℝ) :
     (∏ i, fejer (Li i) (z i)) ≤ (∏ i, 2 * L / Li i) * ∏ i, fejer L (z i) := by
   rw [← Finset.prod_mul_distrib]
-  refine Finset.prod_le_prod (fun i _ => fejer_nonneg (hLi i) (z i)) fun i _ => ?_
+  refine Finset.prod_le_prod₀ (fun i _ => fejer_nonneg (hLi i) (z i)) fun i _ => ?_
   exact fejer_le_scaled (hLi i) hL (h i)
 
 
@@ -31716,7 +31754,7 @@ theorem fejerCube_le_scaled {s : ℕ} {L : ℝ} (hL : 0 < L) (Li : Fin s → ℝ
 /-! ### Mixed radii: one Fejer radius per cube coordinate
 
 `patch:uniformize` compares a cube quantity whose `s` coordinates carry *different* radii `L_i`
-with the one whose coordinates all carry the single radius `L`.  `Auto.locUnifPow` carries one
+with the one whose coordinates all carry the single radius `L`. `Auto.locUnifPow` carries one
 scalar radius, so the mixed-radius quantity is introduced here; at a constant radius vector it is
 the old one on the nose. -/
 
@@ -31730,13 +31768,13 @@ theorem fejerCubeMixed_nonneg {s : ℕ} {H : Fin s → ℝ} (hH : ∀ l, 0 < H l
     0 ≤ fejerCubeMixed H h :=
   Finset.prod_nonneg fun l _ => fejer_nonneg (hH l) (h l)
 
-/-- **The comparison of `patch:uniformize` at the level of the cube.**  Provided every mixed radius
+/-- **The comparison of `patch:uniformize` at the level of the cube.** Provided every mixed radius
 is at most half the common one, the mixed product is dominated by `prod_l (2L/H_l)` times the
 product at the common radius. -/
 theorem fejerCubeMixed_le_scaled {s : ℕ} {L : ℝ} (hL : 0 < L) (H : Fin s → ℝ)
     (hH : ∀ l, 0 < H l) (hhalf : ∀ l, H l ≤ L / 2) (h : Fin s → ℝ) :
     fejerCubeMixed H h ≤ (∏ l : Fin s, 2 * L / H l) * fejerCube L h := by
-  show (∏ l : Fin s, fejer (H l) (h l))
+  change (∏ l : Fin s, fejer (H l) (h l))
       ≤ (∏ l : Fin s, 2 * L / H l) * ∏ l : Fin s, fejer L (h l)
   exact fejerCube_le_scaled hL H hH hhalf h
 
@@ -31758,7 +31796,7 @@ open MeasureTheory in
 
 The patch applies the density comparison "only to the nonnegative `P`, after Jensen".  This is that
 application: against a nonnegative weight the mixed-radius average is dominated by
-`prod_l (2L/H_l)` times the average at the single radius `L`.  Nonnegativity of `P` is what makes
+`prod_l (2L/H_l)` times the average at the single radius `L`. Nonnegativity of `P` is what makes
 the pointwise comparison survive multiplication, and is the reason the patch insists on reaching a
 nonnegative quantity before comparing. -/
 theorem integral_fejerCubeMixed_le_scaled {s : ℕ} {L : ℝ} (hL : 0 < L) (H : Fin s → ℝ)
@@ -31788,7 +31826,7 @@ open MeasureTheory in
 The smoothed function is supported on the box enlarged by `L` in the `j`-th direction, whose volume
 is `V (1 + L/S)`; Cauchy-Schwarz against that support (`Auto.sq_norm_integral_le_measure_mul`) and
 division by `V^2` give the bound, with the normalized square integral `V^{-1} int |F|^2` on the
-right.  That quantity is the patch's `P(z)`, and it is manifestly nonnegative -- which is what lets
+right. That quantity is the patch's `P(z)`, and it is manifestly nonnegative -- which is what lets
 the density comparison be applied to it afterwards. -/
 theorem sq_norm_avg_le_enlarged {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {S : Set α} (hSm : MeasurableSet S) (hSfin : μ S ≠ ⊤)
@@ -31823,10 +31861,9 @@ theorem sq_norm_avg_le_enlarged {α : Type*} [MeasurableSpace α] {μ : Measure 
 /-! ### The mixed-radius cube: basic properties
 
 Ports of the scalar-radius facts about `Auto.fejerCube` needed before the cube-successor identity
-can be re-proved with mixed radii.  Each proof is the scalar one with the constant radius replaced
+can be re-proved with mixed radii. Each proof is the scalar one with the constant radius replaced
 by the radius at the coordinate; nothing about the argument changes, because the cube weight was
 already a product over coordinates. -/
-
 theorem continuous_fejerCubeMixed {s : ℕ} (H : Fin s → ℝ) :
     Continuous fun h : Fin s → ℝ => fejerCubeMixed H h := by
   refine continuous_finsetProd _ fun l _ => ?_
@@ -31845,7 +31882,7 @@ theorem integral_fejerCubeMixed {s : ℕ} {H : Fin s → ℝ} (hH : ∀ l, 0 < H
   refine Finset.prod_eq_one fun l _ => ?_
   exact integral_fejer (hH l)
 
-/-- Splitting off the first coordinate of a mixed-radius cube.  The split coordinate keeps its own
+/-- Splitting off the first coordinate of a mixed-radius cube. The split coordinate keeps its own
 radius; this is the shape in which `patch:uniformize` appends the coordinate carrying the common
 radius `L` to the `s` coordinates carrying the `L_i`. -/
 theorem fejerCubeMixed_cons {s : ℕ} (L : ℝ) (Lv : Fin s → ℝ) (h : Fin (s + 1) → ℝ) :
@@ -31900,7 +31937,7 @@ theorem locUnifPowMixed_swap {N : ℝ} {s : ℕ} {H : Fin s → ℝ} (hH : ∀ l
 
 
 open MeasureTheory in
-/-- Mixed-radius port of `Auto.integrable_split_integrand`.  The split coordinate carries the
+/-- Mixed-radius port of `Auto.integrable_split_integrand`. The split coordinate carries the
 common radius `L`, the remaining cube the mixed radii. -/
 theorem integrable_split_integrand_mixed {s : ℕ} {L : ℝ} (hL : 0 < L) {H : Fin s → ℝ}
     (hH : ∀ l, 0 < H l) (v : E3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -31957,7 +31994,7 @@ open MeasureTheory in
 This is `patch:cube-succ` in the form `patch:uniformize` needs it: "square expansion of `P` appends
 one cube coordinate".  The appended coordinate carries the common radius `L` and the `s` older ones
 keep their own radii `L_i`, so the whole statement is the scalar
-`Auto.locUnifPow_succ_eq` with the cube weight replaced by `Auto.fejerCubeMixed`.  The inner factor
+`Auto.locUnifPow_succ_eq` with the cube weight replaced by `Auto.fejerCubeMixed`. The inner factor
 `Auto.innerFejer L` is reused unchanged: it only ever saw the radius of the split coordinate. -/
 theorem locUnifPowMixed_succ_eq {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {Lv : Fin s → ℝ}
     (hLv : ∀ l, 0 < Lv l) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -32020,7 +32057,7 @@ open MeasureTheory in
 /-- **The mixed-radius cube average is real and nonnegative.**
 
 This is the patch's `P(z) >= 0`, and it is the hypothesis under which the Fejer density comparison
-`Auto.integral_fejerCubeMixed_le_scaled` may be applied.  The proof is the scalar
+`Auto.integral_fejerCubeMixed_le_scaled` may be applied. The proof is the scalar
 `Auto.locUnifPow_re_nonneg` with the mixed cube weight, which is nonnegative coordinatewise. -/
 theorem locUnifPowMixed_re_nonneg {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) (hN : 0 < N)
     {Lv : Fin s → ℝ} (hLv : ∀ l, 0 < Lv l) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f)
@@ -32042,7 +32079,7 @@ theorem locUnifPowMixed_re_nonneg {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) (hN
 
 open MeasureTheory in
 /-- The real part of the mixed-radius cube average, as an average of the nonnegative quantity
-`(innerFejer L ...).re` against the mixed cube weight.  This is the patch's `int P(z) prod_i
+`(innerFejer L ...).re` against the mixed cube weight. This is the patch's `int P(z) prod_i
 kappa_{L_i}(z_i)`. -/
 theorem re_locUnifPowMixed_eq {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {Lv : Fin s → ℝ}
     (hLv : ∀ l, 0 < Lv l) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -32056,7 +32093,7 @@ theorem re_locUnifPowMixed_eq {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {Lv : F
   rw [← integral_re_of_integrable
     (integrable_fejerCubeMixed_innerFejer hL hLv (basisVec j) hf hf1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-  show (((fejerCubeMixed Lv h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
+  change (((fejerCubeMixed Lv h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
       = (innerFejer L (basisVec j) s f h).re * fejerCubeMixed Lv h
   rw [Complex.re_ofReal_mul]
   exact mul_comm _ _
@@ -32075,7 +32112,7 @@ theorem re_locUnifPow_succ_eq {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) (j : Fi
   rw [← integral_re_of_integrable
     (integrable_fejerCube_innerFejer hL (basisVec j) s hf hf1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun h => ?_)
-  show (((fejerCube L h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
+  change (((fejerCube L h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
       = (innerFejer L (basisVec j) s f h).re * fejerCube L h
   rw [Complex.re_ofReal_mul]
   exact mul_comm _ _
@@ -32084,7 +32121,7 @@ open MeasureTheory in
 /-- **The radius half of `patch:uniformize`.**
 
 Replacing the `s` mixed radii `L_i` by the single radius `L` costs the factor
-`prod_i (2L/L_i)`, provided `L >= 2 max_i L_i`.  The comparison is applied to the nonnegative
+`prod_i (2L/L_i)`, provided `L >= 2 max_i L_i`. The comparison is applied to the nonnegative
 `(innerFejer L ...).re`, which is the patch's `P(z)`; this is the step the lemma's title calls
 "positivity before comparison".  The appended coordinate already carries the radius `L` on both
 sides, by `Auto.locUnifPowMixed_succ_eq`. -/
@@ -32102,7 +32139,7 @@ theorem locUnifPowMixed_re_le_scaled {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) 
         (((fejerCubeMixed Lv h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re :=
       (integrable_fejerCubeMixed_innerFejer hL hLv (basisVec j) hf hf1).re
     refine hre.congr (Filter.Eventually.of_forall fun h => ?_)
-    show (((fejerCubeMixed Lv h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
+    change (((fejerCubeMixed Lv h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
         = (innerFejer L (basisVec j) s f h).re * fejerCubeMixed Lv h
     rw [Complex.re_ofReal_mul]
     exact mul_comm _ _
@@ -32112,7 +32149,7 @@ theorem locUnifPowMixed_re_le_scaled {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) 
         (((fejerCube L h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re :=
       (integrable_fejerCube_innerFejer hL (basisVec j) s hf hf1).re
     refine hre.congr (Filter.Eventually.of_forall fun h => ?_)
-    show (((fejerCube L h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
+    change (((fejerCube L h : ℝ) : ℂ) * innerFejer L (basisVec j) s f h).re
         = (innerFejer L (basisVec j) s f h).re * fejerCube L h
     rw [Complex.re_ofReal_mul]
     exact mul_comm _ _
@@ -32132,10 +32169,10 @@ theorem locUnifPowMixed_re_le_scaled {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) 
 open MeasureTheory in
 /-- **The patch's `P(z)` is the smoothed square.**
 
-`patch:uniformize` writes `P(z) = V^{-1} ||T_{L,j} u_z||_2^2` with `u_z = C_s(f; ., z)`.  In the
+`patch:uniformize` writes `P(z) = V^{-1} ||T_{L,j} u_z||_2^2` with `u_z = C_s(f; ., z)`. In the
 file's terms `u_z` is `Auto.fdiffIter`, the smoothing `T_{L,j}` is `Auto.winAvg`, and `P(z)` is
 `Auto.innerFejer`; the identification is `patch:fejer-squares`, already in the file as
-`Auto.integral_fejer_pairAvg_eq_sq`.  This is what makes `P` visibly nonnegative, and hence what
+`Auto.integral_fejer_pairAvg_eq_sq`. This is what makes `P` visibly nonnegative, and hence what
 licenses the density comparison. -/
 theorem innerFejer_eq_sq {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) (h : Fin s → ℝ)
     {f : E3 → ℂ} (hf : Nice f) :
@@ -32163,11 +32200,11 @@ theorem re_innerFejer_eq_sq {H : ℝ} (hH : 0 < H) (v : E3) (s : ℕ) (h : Fin s
 
 `patch:uniformize` appends the coordinate carrying the common radius `L` without saying where: the
 induction that produces it puts it at one end, and the density comparison
-`Auto.locUnifPowMixed_re_le_scaled` consumes it at the other.  The two are reconciled by the
+`Auto.locUnifPowMixed_re_le_scaled` consumes it at the other. The two are reconciled by the
 symmetry of the cube, whose germ is the commutativity of the Fejer difference, already in the file
 as `Auto.fdiff_comm` (line 24533). -/
 
-/-- **The iterated difference is unchanged by swapping its first two increments.**  Peeling both
+/-- **The iterated difference is unchanged by swapping its first two increments.** Peeling both
 increments with `Auto.fdiffIter_cons` leaves `fdiff v b (fdiff v a f)` against
 `fdiff v a (fdiff v b f)`, and those agree by `Auto.fdiff_comm`. -/
 theorem fdiffIter_swap_cons (v : E3) (s : ℕ) (a b : ℝ) (h : Fin s → ℝ) (f : E3 → ℂ) (x : E3) :
@@ -32196,7 +32233,7 @@ theorem locUnifPowMixed_fdiff_eq {N : ℝ} {s : ℕ} {H : Fin s → ℝ} (hH : �
   rw [locUnifPowMixed_swap hH j (nice_fdiff _ a hf) (fun y => norm_fdiff_le _ a hf1 y)]
   congr 1
   refine integral_congr_ae (Filter.Eventually.of_forall fun h' => ?_)
-  show ((fejerCubeMixed H h' : ℝ) : ℂ)
+  change ((fejerCubeMixed H h' : ℝ) : ℂ)
       * ∫ x : E3, fdiffIter (basisVec j) s h' (fdiff (basisVec j) a f) x
       = ((fejerCubeMixed H h' : ℝ) : ℂ)
         * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a
@@ -32206,7 +32243,7 @@ open MeasureTheory in
 /-- **The mixed-radius Fubini selection**, the port of `Auto.locUnifPow_succ_split`.
 
 The cube with radius vector `Fin.cons L Lv` is the Fejer average at radius `L`, over the first
-shift, of the cubes at `Lv` of the differenced function.  This is the form in which the
+shift, of the cubes at `Lv` of the differenced function. This is the form in which the
 zero-vertex induction of `patch:uniformize` consumes one coordinate at a time. -/
 theorem locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {Lv : Fin s → ℝ}
     (hLv : ∀ l, 0 < Lv l) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -32219,7 +32256,7 @@ theorem locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {L
               * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a := by
     rw [← integral_const_mul]
     refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-    show ((fejer L a : ℝ) : ℂ) * locUnifPowMixed N Lv j (fdiff (basisVec j) a f)
+    change ((fejer L a : ℝ) : ℂ) * locUnifPowMixed N Lv j (fdiff (basisVec j) a f)
         = ((N ^ (6 : ℕ))⁻¹ : ℂ) * (((fejer L a : ℝ) : ℂ)
             * ∫ h' : Fin s → ℝ, ((fejerCubeMixed Lv h' : ℝ) : ℂ)
                 * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a)
@@ -32253,7 +32290,7 @@ theorem locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {L
     MeasureTheory.Measure.volume_eq_prod,
     integral_prod _ (integrable_split_integrand_mixed hL hLv (basisVec j) hf hf1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-  show (∫ y : Fin s → ℝ, ((fejer L a : ℝ) : ℂ)
+  change (∫ y : Fin s → ℝ, ((fejer L a : ℝ) : ℂ)
       * (((fejerCubeMixed Lv y : ℝ) : ℂ) * pairAvg (basisVec j) (fdiffIter (basisVec j) s y f) a))
       = ((fejer L a : ℝ) : ℂ) * ∫ h' : Fin s → ℝ, ((fejerCubeMixed Lv h' : ℝ) : ℂ)
           * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a
@@ -32261,7 +32298,7 @@ theorem locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {L
 
 
 open MeasureTheory in
-/-- **The uniform bound in the shift, at mixed radii.**  Port of
+/-- **The uniform bound in the shift, at mixed radii.** Port of
 `Auto.norm_locUnifPow_fdiff_le`: the mixed Fejer cube is again a probability density
 (`Auto.integral_fejerCubeMixed`), so the shifted cube average is bounded by the normalized `L^1`
 norm of `f`, uniformly in the shift. -/
@@ -32290,7 +32327,7 @@ theorem norm_locUnifPowMixed_fdiff_le {N : ℝ} {s : ℕ} {H : Fin s → ℝ} (h
       refine integral_mono_of_nonneg (Filter.Eventually.of_forall fun h' => norm_nonneg _)
         ((integrable_fejerCubeMixed hH).mul_const L)
         (Filter.Eventually.of_forall fun h' => ?_)
-      show ‖((fejerCubeMixed H h' : ℝ) : ℂ)
+      change ‖((fejerCubeMixed H h' : ℝ) : ℂ)
           * pairAvg (basisVec j) (fdiffIter (basisVec j) s h' f) a‖ ≤ fejerCubeMixed H h' * L
       rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
         abs_of_nonneg (fejerCubeMixed_nonneg hH h')]
@@ -32332,7 +32369,7 @@ theorem measurable_locUnifPowMixed_fdiff {N : ℝ} {s : ℕ} {H : Fin s → ℝ}
   Complex.measurable_re.comp (measurable_locUnifPowMixed_fdiff_c hH j hf hf1)
 
 open MeasureTheory in
-/-- Mixed-radius port of `Auto.integrable_fejer_locUnifPow_fdiff`.  The split coordinate carries
+/-- Mixed-radius port of `Auto.integrable_fejer_locUnifPow_fdiff`. The split coordinate carries
 the radius `L`, the remaining cube the mixed radii `Lv`; the integrand is bounded by the Fejer
 kernel times the uniform bound `Auto.norm_locUnifPowMixed_fdiff_le`. -/
 theorem integrable_fejer_locUnifPowMixed_fdiff {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L)
@@ -32354,9 +32391,9 @@ theorem integrable_fejer_locUnifPowMixed_fdiff {N : ℝ} {s : ℕ} {L : ℝ} (hL
       (fejer_nonneg hL a)
 
 open MeasureTheory in
-/-- **The real part of the mixed splitting.**  Real parts pass through the Fejer average, so the
+/-- **The real part of the mixed splitting.** Real parts pass through the Fejer average, so the
 cube at radius vector `Fin.cons L Lv` is the `L`-Fejer average, over the split shift, of the real
-cube at `Lv` of the differenced function.  This is the form the zero-vertex induction of
+cube at `Lv` of the differenced function. This is the form the zero-vertex induction of
 `patch:uniformize` iterates. -/
 theorem re_locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L) {Lv : Fin s → ℝ}
     (hLv : ∀ l, 0 < Lv l) (j : Fin 3) {f : E3 → ℂ} (hf : Nice f) (hf1 : ∀ y, ‖f y‖ ≤ 1) :
@@ -32366,7 +32403,7 @@ theorem re_locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L)
   rw [← Complex.reCLM_apply, ← ContinuousLinearMap.integral_comp_comm _
     (integrable_fejer_locUnifPowMixed_fdiff hL hLv j hf hf1)]
   refine integral_congr_ae (Filter.Eventually.of_forall fun a => ?_)
-  show (((fejer L a : ℝ) : ℂ) * locUnifPowMixed N Lv j (fdiff (basisVec j) a f)).re
+  change (((fejer L a : ℝ) : ℂ) * locUnifPowMixed N Lv j (fdiff (basisVec j) a f)).re
       = fejer L a * (locUnifPowMixed N Lv j (fdiff (basisVec j) a f)).re
   rw [Complex.re_ofReal_mul]
 
@@ -32374,8 +32411,8 @@ theorem re_locUnifPowMixed_succ_split {N : ℝ} {s : ℕ} {L : ℝ} (hL : 0 < L)
 
 `patch:uniformize` appends the coordinate carrying the common radius `L` at the *front*
 (`Auto.locUnifPowMixed_succ_eq`, consumed by `Auto.locUnifPowMixed_re_le_scaled`), while the
-zero-vertex induction below consumes the coordinates of `Lv` at the front as well.  The two meet
-after one adjacent transposition, which is what this section supplies.  Its germ is
+zero-vertex induction below consumes the coordinates of `Lv` at the front as well. The two meet
+after one adjacent transposition, which is what this section supplies. Its germ is
 `Auto.fdiffIter_swap_cons`; the cube integral itself is unchanged because the substitution
 exchanging two shift coordinates is measure preserving. -/
 
@@ -32437,7 +32474,7 @@ open MeasureTheory in
 The substitution exchanging the first two shift coordinates is measure preserving
 (`MeasureTheory.volume_preserving_arrowCongr'`); it carries the radius vector
 `Fin.cons b (Fin.cons a h)` to `Fin.cons a (Fin.cons b h)`, and it leaves the iterated Fejer
-difference alone by `Auto.fdiffIter_swap_cons`.  No positivity or boundedness is needed: this is a
+difference alone by `Auto.fdiffIter_swap_cons`. No positivity or boundedness is needed: this is a
 change of variables, not an estimate.
 
 The cube length is written `s + 1 + 1` throughout, which is the form `Fin.cons` twice actually
@@ -32450,7 +32487,7 @@ theorem locUnifPowMixed_swap_cons {N : ℝ} {s : ℕ} (a b : ℝ) (h : Fin s →
   rw [locUnifPowMixed, locUnifPowMixed]
   congr 1
   refine integral_congr_ae (Filter.Eventually.of_forall fun x => ?_)
-  show (∫ hh : Fin (s + 1 + 1) → ℝ, fdiffIter (basisVec j) (s + 1 + 1) hh f x
+  change (∫ hh : Fin (s + 1 + 1) → ℝ, fdiffIter (basisVec j) (s + 1 + 1) hh f x
         * ∏ l : Fin (s + 1 + 1),
             ((fejer ((Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ))
       = ∫ hh : Fin (s + 1 + 1) → ℝ, fdiffIter (basisVec j) (s + 1 + 1) hh f x
@@ -32506,7 +32543,7 @@ theorem locUnifPowMixed_swap_cons {N : ℝ} {s : ℕ} (a b : ℝ) (h : Fin s →
       have hsw := cons_cons_swap_apply a b h (Equiv.swap (0 : Fin (s + 1 + 1)) 1 l)
       rwa [Equiv.swap_apply_self] at hsw
     rw [hidx]
-  show fdiffIter (basisVec j) (s + 1 + 1) hh f x
+  change fdiffIter (basisVec j) (s + 1 + 1) hh f x
       * ∏ l : Fin (s + 1 + 1),
           ((fejer ((Fin.cons a (Fin.cons b h) : Fin (s + 1 + 1) → ℝ) l) (hh l) : ℝ) : ℂ)
     = fdiffIter (basisVec j) (s + 1 + 1)
@@ -32517,19 +32554,18 @@ theorem locUnifPowMixed_swap_cons {N : ℝ} {s : ℕ} (a b : ℝ) (h : Fin s →
   rw [hdiff, hprod]
 open MeasureTheory in
 /-- **The zero-vertex half of `patch:uniformize`.**
-
     (Q^j_{Lv,V}(f))^2 <= (1 + L/S) Q^j_{cons L Lv,V}(f),
 
-in the file's normalization, where `(1 + L/S) |B_N| / N^6 <= 16 C^3`.  This is the mixed-radius
+in the file's normalization, where `(1 + L/S) |B_N| / N^6 <= 16 C^3`. This is the mixed-radius
 port of `Auto.sq_re_locUnifPow_le`, and it is the patch's first display -- "the zero vertex
 supports `u_z` on the original box, so `|V^{-1} int u_z|^2 <= (1 + L/S) P(z)`" -- averaged over the
 cube against the mixed weight, which is the patch's "after Jensen".
 
-Induction on the number of mixed coordinates.  The base case is the support Cauchy-Schwarz
-`Auto.sq_re_locUnifPow_zero_le`.  The step splits at the first mixed coordinate
+Induction on the number of mixed coordinates. The base case is the support Cauchy-Schwarz
+`Auto.sq_re_locUnifPow_zero_le`. The step splits at the first mixed coordinate
 (`Auto.re_locUnifPowMixed_succ_split`), applies the induction hypothesis to the differenced
 function -- again `Auto.Nice`, one-bounded and supported in the same box, the zero vertex being
-undisplaced -- and closes with Jensen for the Fejer density (`Auto.sq_integral_fejer_le`).  The
+undisplaced -- and closes with Jensen for the Fejer density (`Auto.sq_integral_fejer_le`). The
 appended coordinate carrying the common radius `L` is then moved back past the split one by
 `Auto.locUnifPowMixed_swap_cons`. -/
 theorem sq_re_locUnifPowMixed_le {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN : 0 < N) (j : Fin 3)
@@ -32625,21 +32661,21 @@ theorem sq_re_locUnifPowMixed_le {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN :
             rw [← hsplitR, hgoal]
 
 open MeasureTheory in
-/-- **`patch:uniformize` of `blueprints/task_2_patch_3_updated.tex`** (Mixed radii to one radius, with
+/-- **`patch:uniformize` of `blueprints/task_2_patch_3_updated.tex`** (Mixed radii to one radius,
+  with
 positivity before comparison), in the file's normalization:
-
     (Q^j_{Lv,V}(f))^2 <= (1 + L/S) prod_i (2L/L_i) Q^j_{s+1,L,V}(f),
 
 where the patch's `(1 + L/S)` enters through `(1 + L/S) |B_N| / N^6 <= 16 C^3`, the constant the
 file carries for the enlarged box.
 
-The two halves are proved separately and composed here.  `Auto.sq_re_locUnifPowMixed_le` is the
+The two halves are proved separately and composed here. `Auto.sq_re_locUnifPowMixed_le` is the
 patch's first display -- the zero vertex supports `u_z` on the original box -- averaged over the
 cube against the mixed Fejer weight, which is its "after Jensen".
 `Auto.locUnifPowMixed_re_le_scaled` is the density comparison `kappa_{L_i} <= (2L/L_i) kappa_L`,
 applied only to the nonnegative `P(z) = (Auto.innerFejer L ...).re`, which is the lemma's
 "positivity before comparison"; `Auto.re_innerFejer_eq_sq` identifies that `P` with the patch's
-`V^{-1} ||T_{L,j} u_z||_2^2`.  The hypothesis `L_i <= L/2` is the patch's `L >= 2 max_i L_i`. -/
+`V^{-1} ||T_{L,j} u_z||_2^2`. The hypothesis `L_i <= L/2` is the patch's `L >= 2 max_i L_i`. -/
 theorem sq_re_locUnifPowMixed_le_scaled {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN : 0 < N)
     (j : Fin 3) (hLS : L ≤ 2 * (C * N ^ expo j)) {s : ℕ} {Lv : Fin s → ℝ}
     (hLv : ∀ l, 0 < Lv l) (hhalf : ∀ l, Lv l ≤ L / 2) {f : E3 → ℂ} (hf : Nice f)
@@ -32653,11 +32689,11 @@ theorem sq_re_locUnifPowMixed_le_scaled {C N L : ℝ} (hL : 0 < L) (hC : 0 ≤ C
 /-! ### The bridge of `patch:multiaffine-sublevel`
 
 `Auto.multiAff_sublevel_le` is the estimate the patch asks for, but it is stated for the explicit
-form `Auto.multiAff`.  What the patch applies it to is an arbitrary nonzero multilinear integer
-polynomial of total degree at most two, so the two have to be identified.  That identification was
-recorded as an explicit debt in the Status entry of 2026-09-17T15:25 and is discharged here.  It is
+form `Auto.multiAff`. What the patch applies it to is an arbitrary nonzero multilinear integer
+polynomial of total degree at most two, so the two have to be identified. That identification was
+recorded as an explicit debt in the Status entry of 2026-09-17T15:25 and is discharged here. It is
 pure `Finset` reindexing: both sides are sums of `coeff d p * Auto.monTerm d u`, the left over
-`p.support` and the right over the three families `Auto.multilinear_support_cases` allows.  The
+`p.support` and the right over the three families `Auto.multilinear_support_cases` allows. The
 quadratic matrix is taken upper triangular, which is legitimate because `Auto.multiAff` sums over
 all ordered pairs and a multilinear polynomial never uses the diagonal. -/
 
@@ -32845,8 +32881,8 @@ theorem aeval_eq_multiAff {n : ℕ} {p : MvPolynomial (Fin n) ℤ}
 
 The removal step of the affine endpoint feeds `Auto.sq_norm_signed_vdc` with `g` the block being
 removed and `F` the product of the blocks that survive, each displaced by its slope *gap* against
-`a r` (`Auto.slopeProd_translate`).  That tool asks for joint measurability of `F`, a uniform
-bound, and an `L^2` bound in the point uniform in the parameter.  Those are collected here.  The
+`a r` (`Auto.slopeProd_translate`). That tool asks for joint measurability of `F`, a uniform
+bound, and an `L^2` bound in the point uniform in the parameter. Those are collected here. The
 `L^2` bound is the patch's "a product block is dominated by any one of its factors, so all required
 `L^2` and `L^1` bounds remain at most `V`": the protected index `m` survives every removal, so the
 tail is dominated by the protected block, which the zero vertex dominates by its own input. -/
@@ -32877,7 +32913,7 @@ theorem norm_slopeTail_le_one (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → 
     ‖∏ i ∈ Finset.Icc (r + 1) m,
         headBlock j a (g i) i r h (x + ((a i - a r) * t) • basisVec j)‖ ≤ 1 := by
   rw [norm_prod]
-  exact Finset.prod_le_one (fun i _ => norm_nonneg _)
+  exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _)
     fun i _ => headBlock_norm_le j a i (hg i) r h _
 
 open MeasureTheory in
@@ -32894,7 +32930,7 @@ theorem integral_sq_translate (G : E3 → ℂ) (v : E3) :
   integral_add_right_eq_self (μ := (volume : Measure E3)) (fun x => ‖G x‖ ^ 2) v
 
 open MeasureTheory in
-/-- **The `L^2` bound on the surviving tail, uniform in the parameter.**  At a nonterminal stage
+/-- **The `L^2` bound on the surviving tail, uniform in the parameter.** At a nonterminal stage
 the protected block survives, the tail is dominated by it, and the zero vertex dominates it by the
 protected input; the displacement costs nothing by translation invariance. -/
 theorem integrable_sq_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
@@ -32933,12 +32969,11 @@ theorem integral_sq_slopeTail_le (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 �
 independent of `t` after that translation."  `Auto.slopeProd_translate` is that translation at a
 point; what the removal step consumes is its integrated form, in which the removed block has left
 the parameter integral altogether:
-
     slopeState = V^{-1} int_x G_{r,r}(x) * (N^{-1} int_t (surviving tail)(x,t)).
 
 The translation depends on `t`, so it cannot be performed under the outer point integral directly:
 the order is swapped, the translation is applied at each fixed parameter, and the order is swapped
-back.  Both swaps are explicit hypotheses, in the house style of `Auto.sq_norm_signed_vdc`. -/
+back. Both swaps are explicit hypotheses, in the house style of `Auto.sq_norm_signed_vdc`. -/
 
 open MeasureTheory in
 theorem slopeState_translate (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) {m r : ℕ} (hrm : r ≤ m)
@@ -33003,18 +33038,18 @@ theorem slopeState_translate (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → �
 /-! ### Patch 3: the correlation of the tail is the next stage
 
 "Equation \eqref{patch:affine-block} identifies the resulting correlation with `A_{r+1}`."  This is
-that identification, at a point.  `Auto.sq_norm_signed_vdc` produces the autocorrelation of the
+that identification, at a point. `Auto.sq_norm_signed_vdc` produces the autocorrelation of the
 surviving tail in the parameter, `tail(x, t + u) * conj (tail(x, t))`; the block recursion turns
 each factor of it into a block one level deeper, carrying the new shift `u`.
 
-The conjugation lands on the whole product rather than inside it.  That is the convention bridge
+The conjugation lands on the whole product rather than inside it. That is the convention bridge
 the patch records for `def:local-uniformity` ("the displayed parity cube is globally conjugated
 when `s` is odd; its integrated Fejer power is real, so the two conventions give the same
 quantity"): the removal step takes a real part, and `Re (conj z) = Re z`, so the outer conjugation
-is harmless.  It is kept explicit here rather than absorbed, so that no step silently changes the
+is harmless. It is kept explicit here rather than absorbed, so that no step silently changes the
 convention. -/
 
-/-- **One factor.**  Correlating a block with itself at parameter gap `u` is the conjugate of the
+/-- **One factor.** Correlating a block with itself at parameter gap `u` is the conjugate of the
 block one level deeper, with `u` appended as the new shift. -/
 theorem headBlock_pair_eq_conj_succ (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i r : ℕ)
     (h : Fin r → ℝ) (u : ℝ) (z : E3) :
@@ -33029,7 +33064,7 @@ theorem headBlock_pair_eq_conj_succ (j : Fin 3) (a : ℕ → ℝ) (g : E3 → �
   rw [hcast, hlast, map_mul, Complex.conj_conj]
   ring
 
-/-- **The whole tail.**  Every surviving block advances one level at once, the new shift `u` being
+/-- **The whole tail.** Every surviving block advances one level at once, the new shift `u` being
 appended to all of them. -/
 theorem slopeTail_pair_eq_conj (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) (m r : ℕ)
     (h : Fin r → ℝ) (u : ℝ) (x : E3) (t : ℝ) :
@@ -33085,7 +33120,7 @@ theorem integrable_norm_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 
   exact norm_slopeTail_le_input j a g hrm hg h x t
 
 open MeasureTheory in
-/-- **The cross term.**  At any two parameters the tail correlates integrably with itself: one
+/-- **The cross term.** At any two parameters the tail correlates integrably with itself: one
 copy is dominated by the protected input, the other is one-bounded. -/
 theorem integrable_cross_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ} {m r : ℕ} (hrm : r < m)
     (hgc : ∀ i, Continuous (g i)) (hg : ∀ i y, ‖g i y‖ ≤ 1) (hgL1 : Integrable (g m))
@@ -33116,10 +33151,10 @@ theorem integrable_cross_slopeTail (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3
 /-! ### Patch 3: the windowed average of the surviving tail
 
 `Auto.sq_norm_signed_vdc` pairs the removed block against the tail's average over the parameter
-window.  That average is measurable in the point (a parametric integral of a jointly continuous
+window. That average is measurable in the point (a parametric integral of a jointly continuous
 integrand, by `MeasureTheory.StronglyMeasurable.integral_prod_right'`, which needs no
 integrability), and it is one-bounded once normalized, the tail being one-bounded and the window
-having length `N`.  Its pairing with the removed block is then integrable by domination: the
+having length `N`. Its pairing with the removed block is then integrable by domination: the
 normalized average contributes at most `1`, so the product is dominated by the removed block's own
 input. -/
 
@@ -33167,7 +33202,7 @@ theorem norm_slopeTailAvg_normalized_le (j : Fin 3) (a : ℕ → ℝ) {g : ℕ �
     _ = 1 := inv_mul_cancel₀ hN.ne'
 
 open MeasureTheory in
-/-- **The pairing hypothesis `hgΦ` of `Auto.sq_norm_signed_vdc`.**  The removed block against the
+/-- **The pairing hypothesis `hgΦ` of `Auto.sq_norm_signed_vdc`.** The removed block against the
 normalized windowed average of the tail is integrable, the average contributing at most `1` and
 the block being dominated by its own input. -/
 theorem integrable_headBlock_mul_slopeTailAvg (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → ℂ}
@@ -33194,13 +33229,13 @@ theorem integrable_headBlock_mul_slopeTailAvg (j : Fin 3) (a : ℕ → ℝ) {g :
 /-! ### Patch 3: the correlation produced by the removal step is the next state
 
 `Auto.sq_norm_signed_vdc` leaves its right-hand side as a Fejer average of `Auto.corrLine`, the
-correlation of the surviving tail in the parameter.  Composed with
+correlation of the surviving tail in the parameter. Composed with
 `Auto.slopeTail_pair_eq_conj` this is the stage-`r+1` product integrated in the point, which is
 what the patch means by `A_{r+1}`.
 
-Two bookkeeping moves finish the identification.  The conjugation of the whole product comes out of
+Two bookkeeping moves finish the identification. The conjugation of the whole product comes out of
 the integral (`integral_conj`) -- the convention bridge again, harmless under the real part the
-removal step takes.  And the stage-`r+1` product carries the shifts `a_i t`, whereas the
+removal step takes. And the stage-`r+1` product carries the shifts `a_i t`, whereas the
 correlation produces the *gaps* `(a_i - a_r) t`; the two differ by translating the point by
 `a_r t e_j`, which is the same translation `Auto.slopeState_translate` performed, undone. -/
 
@@ -33244,7 +33279,6 @@ theorem corrLine_slopeTail_eq (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → 
 /-! ### Patch 3: `cs_remove_slope_block`, the integrated removal inequality
 
 The patch's step 2, in full:
-
     |A_r|^2 <= 2 Re E_{u ~ kappa_H} A_{r+1} + 2H/N.
 
 `Auto.slopeState_translate` puts the state in the shape `Auto.sq_norm_signed_vdc` consumes,
@@ -33252,9 +33286,9 @@ The patch's step 2, in full:
 hypotheses about the surviving tail are discharged by the lemmas of the preceding sections.
 
 Six of the tool's hypotheses are *carried* rather than discharged: `hΦ2`, `hLi`, `hRi`, `hRc`,
-`hswapH`, `hswapT`.  They are the ones that need Cauchy-Schwarz in the parameter or a Fubini swap,
+`hswapH`, `hswapT`. They are the ones that need Cauchy-Schwarz in the parameter or a Fubini swap,
 for which no fixed dominating function exists -- the tail is dominated by the protected input
-translated by `(a_m - a_r) t`, and that translation moves with the parameter.  The caller, which
+translated by `(a_m - a_r) t`, and that translation moves with the parameter. The caller, which
 has concrete compactly supported inputs, is where they are settled; carrying them here is the same
 house style `Auto.sq_norm_signed_vdc` itself uses. -/
 
@@ -33347,25 +33381,25 @@ theorem cs_remove_slope_block (j : Fin 3) (a : ℕ → ℝ) {g : ℕ → E3 → 
 /-! ### Patch 3: the pivot decreases the type
 
 "Let `w_q` count distinct leading coefficients of degree-`q` polynomials in the normal state.
-Order `(w_D, ..., w_1)` lexicographically. ...  Thus `w'_q = w_q (q > l)`, `w'_l = w_l - 1`,
+Order `(w_D, ..., w_1)` lexicographically. ... Thus `w'_q = w_q (q > l)`, `w'_l = w_l - 1`,
 `0 <= w'_q <= 2L (q < l)`.  The type strictly decreases and the new length is at most `2L`."
 
 This section proves the type-decrease half, which is the part that makes the recursion well
-founded.  It is a statement about the type vector alone: above the selected degree `l` the counts
-are unchanged, at `l` the count drops, and below `l` they are unconstrained.  The degrees in play
+founded. It is a statement about the type vector alone: above the selected degree `l` the counts
+are unchanged, at `l` the count drops, and below `l` they are unconstrained. The degrees in play
 are `{1, 2, 3}`, so the type is the lexicographic triple the file already uses for
 `Auto.petWeight`.
 
 The *length* half of the patch's sentence -- that the new length is at most `2L` -- is about the
-state, not the type, and is not proved here.  Nor is the pivot selection itself; this lemma takes
+state, not the type, and is not proved here. Nor is the pivot selection itself; this lemma takes
 the selected degree `l` and the two facts about the resulting type as hypotheses, which is exactly
 what the pivot rules deliver. -/
 
 /-- The type of a normal state: the counts of distinct leading coefficients by degree, ordered
-lexicographically from the top degree down.  This is the patch's `(w_D, ..., w_1)` for `D = 3`. -/
+lexicographically from the top degree down. This is the patch's `(w_D, ..., w_1)` for `D = 3`. -/
 def petType (w : ℕ → ℕ) : ℕ ×ₗ ℕ ×ₗ ℕ := toLex (w 3, toLex (w 2, w 1))
 
-/-- **The type strictly decreases at the pivot.**  Above the selected degree the counts are
+/-- **The type strictly decreases at the pivot.** Above the selected degree the counts are
 unchanged and at it one class is lost, so the lexicographic type drops whatever happens below. -/
 theorem petType_lt_of_pivot {w w' : ℕ → ℕ} {l : ℕ} (hl : 1 ≤ l) (hl3 : l ≤ 3)
     (habove : ∀ q, l < q → q ≤ 3 → w' q = w q) (hat : w' l < w l) :
@@ -33383,8 +33417,8 @@ theorem petType_lt_of_pivot {w w' : ℕ → ℕ} {l : ℕ} (hl : 1 ≤ l) (hl3 :
     exact Or.inl hat
   · exact Or.inl hat
 
-/-- **Every run of the pivot recursion stops.**  There is no infinite sequence of types each
-strictly below the last, the lexicographic order on the triple being well founded.  This is
+/-- **Every run of the pivot recursion stops.** There is no infinite sequence of types each
+strictly below the last, the lexicographic order on the triple being well founded. This is
 termination; the patch's uniform bound `B(w, L)` on the number of steps is a separate statement and
 is not proved here. -/
 theorem petType_terminates (W : ℕ → ℕ → ℕ)
@@ -33397,12 +33431,12 @@ theorem petType_terminates (W : ℕ → ℕ → ℕ)
 /-! ### Patch 3: four differences annihilate a cubic
 
 "At `r = 4` the phase is identically one, by the fourth finite-difference identity for cubics."
-This is that identity.  The difference operator is `Q |-> taylor u Q - Q`, whose degree drop is
+This is that identity. The difference operator is `Q |-> taylor u Q - Q`, whose degree drop is
 already in the file as `Auto.natDegree_taylor_sub_self_le` (proved for `patch:pet-update`); what is
 added here is the constant case it does not cover, the iteration, and the vanishing.
 
 The blueprint states the identity as the alternating sum
-`sum_{omega in {0,1}^4} (-1)^{|omega|} p(t + omega . h)`.  That form is the evaluation of the
+`sum_{omega in {0,1}^4} (-1)^{|omega|} p(t + omega . h)`. That form is the evaluation of the
 iterated difference at `t` and is *not* proved here; this brick proves the polynomial identity, of
 which it is a consequence, and the single-step evaluation `Auto.eval_pdiff` that the bridge will
 iterate. -/
@@ -33414,7 +33448,7 @@ theorem eval_pdiff (u : ℝ) (Q : Polynomial ℝ) (t : ℝ) :
     (pdiff u Q).eval t = Q.eval (t + u) - Q.eval t := by
   rw [pdiff, Polynomial.eval_sub, Polynomial.taylor_eval]
 
-/-- A constant is annihilated by one difference.  This is the case
+/-- A constant is annihilated by one difference. This is the case
 `Auto.natDegree_taylor_sub_self_le` does not cover, its hypothesis being a positive degree. -/
 theorem pdiff_of_natDegree_zero (u : ℝ) {Q : Polynomial ℝ} (hQ : Q.natDegree = 0) :
     pdiff u Q = 0 := by
@@ -33462,9 +33496,8 @@ theorem pdiffIter_four_eq_zero (u : Fin 4 → ℝ) {Q : Polynomial ℝ} (hQ : Q.
 The blueprint writes the phase identity as `sum_{omega in {0,1}^r} (-1)^{|omega|} p(t + omega . h)`.
 That is the evaluation of `Auto.pdiffIter`, and this is the bridge: the vertex is split on its
 first bit by `Auto.consBoolEquiv`, the bit `true` contributing the shifted term and `false` the
-unshifted one with a sign.  The sign is written with `Auto.numFalse` rather than `Auto.numTrue`,
+unshifted one with a sign. The sign is written with `Auto.numFalse` rather than `Auto.numTrue`,
 which is the same alternation up to the global factor `(-1)^r` and avoids a natural subtraction. -/
-
 theorem eval_pdiffIter : ∀ (r : ℕ) (u : Fin r → ℝ) (Q : Polynomial ℝ) (t : ℝ),
     (pdiffIter r u Q).eval t
       = ∑ ω : Fin r → Bool, (-1 : ℝ) ^ numFalse ω * Q.eval (t + cubeShift u ω)
@@ -33492,7 +33525,7 @@ theorem eval_pdiffIter : ∀ (r : ℕ) (u : Fin r → ℝ) (Q : Polynomial ℝ) 
         rw [numFalse_cons]; simp
       have harg : t + cubeShift (fun i => u i.succ) σ + u 0
           = t + (u 0 + cubeShift (fun i => u i.succ) σ) := by ring
-      show (-1 : ℝ) ^ numFalse σ * (pdiff (u 0) Q).eval (t + cubeShift (fun i => u i.succ) σ)
+      change (-1 : ℝ) ^ numFalse σ * (pdiff (u 0) Q).eval (t + cubeShift (fun i => u i.succ) σ)
           = (-1 : ℝ) ^ numFalse ((consBoolEquiv r) (true, σ))
               * Q.eval (t + cubeShift u ((consBoolEquiv r) (true, σ)))
             + (-1 : ℝ) ^ numFalse ((consBoolEquiv r) (false, σ))
@@ -33501,7 +33534,7 @@ theorem eval_pdiffIter : ∀ (r : ℕ) (u : Fin r → ℝ) (Q : Polynomial ℝ) 
       rw [eval_pdiff, hcsT, hcsF, hnfT, hnfF, harg, pow_add, pow_one]
       ring
 
-/-- **The alternating-sum form of the patch's phase identity.**  For a cubic, the signed sum over
+/-- **The alternating-sum form of the patch's phase identity.** For a cubic, the signed sum over
 the four-dimensional cube vanishes identically, which is "at `r = 4` the phase is identically
 one". -/
 theorem cube_alternating_sum_cubic (u : Fin 4 → ℝ) {Q : Polynomial ℝ} (hQ : Q.natDegree ≤ 3)
@@ -33513,17 +33546,16 @@ theorem cube_alternating_sum_cubic (u : Fin 4 → ℝ) {Q : Polynomial ℝ} (hQ 
 
 The affine endpoint works with the shifts `a_i t`; the PET recursion that precedes it works with
 arbitrary polynomial shifts `Q_i(t)`, and its analytic update is the patch's
-
     "Apply patch:signed-vdc with g = g_0 and the remaining product as F.  Then translate `x` by
      `-Q_p(t)` in the correlation on its right side."
 
 The translation is the same algebra as `Auto.slopeProd_translate` -- it never used linearity of the
 shift, only that the displacement of the pivot cancels -- so it is proved here once for an
-arbitrary family of shift functions.  `Auto.slopeProd_eq_shiftProd` records that the affine product
+arbitrary family of shift functions. `Auto.slopeProd_eq_shiftProd` records that the affine product
 is the special case, which is a check that the generalization is the same object and not a
 lookalike. -/
 
-/-- The product of the current blocks, each displaced by its own shift.  The general-shift
+/-- The product of the current blocks, each displaced by its own shift. The general-shift
 counterpart of `Auto.slopeProd`. -/
 noncomputable def shiftProd (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m r : ℕ)
     (x : E3) (t : ℝ) : ℂ :=
@@ -33535,9 +33567,9 @@ theorem slopeProd_eq_shiftProd (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 →
     slopeProd j a g m r h x t
       = shiftProd j (fun i s => a i * s) (fun i => headBlock j a (g i) i r h) m r x t := rfl
 
-/-- **Isolating the pivot block at general shifts.**  After translating the point by `-Q_p(t)` the
+/-- **Isolating the pivot block at general shifts.** After translating the point by `-Q_p(t)` the
 pivot block carries no parameter and factors out, every other block being displaced by its shift
-*gap* against the pivot.  This is what lets Cauchy-Schwarz in the point remove it. -/
+*gap* against the pivot. This is what lets Cauchy-Schwarz in the point remove it. -/
 theorem shiftProd_translate (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) {m r : ℕ} (hrm : r ≤ m)
     (x : E3) (t : ℝ) :
     shiftProd j Q G m r (x - (Q r t) • basisVec j) t
@@ -33569,7 +33601,7 @@ theorem norm_shiftProd_le {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3 
     (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) (x : E3) (t : ℝ) :
     ‖shiftProd j Q G m r x t‖ ≤ 1 := by
   rw [shiftProd, norm_prod]
-  exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hG i _
+  exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _) fun i _ => hG i _
 
 /-- The surviving tail at a nonterminal stage is dominated by the protected block, which survives
 every removal. -/
@@ -33585,11 +33617,11 @@ theorem norm_shiftTail_le_input {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ �
 /-! ### Patch 3: the children of a factor under the analytic update
 
 "Apply `patch:signed-vdc` with `g = g_0` and the remaining product as `F`.  Then translate `x` by
-`-Q_p(t)` in the correlation on its right side.  The two children of a factor `(g_i, Q_i)` are
+`-Q_p(t)` in the correlation on its right side. The two children of a factor `(g_i, Q_i)` are
 exactly `(conj g_i, Q_i(t+u) - Q_p(t))`, `(g_i, Q_i(t) - Q_p(t))`."
 
 The order matters and is followed here: the correlation is formed from the *untranslated* product,
-and the translation by `-Q_p(t)` is applied inside it.  That is why both children carry `Q_p(t)`
+and the translation by `-Q_p(t)` is applied inside it. That is why both children carry `Q_p(t)`
 and not `Q_p(t+u)` -- translating first and correlating afterwards would leave `Q_p(t+u)` in the
 shifted child and would not be the patch's recursion.
 
@@ -33602,7 +33634,7 @@ noncomputable def shiftChild (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → 
   G i (x + (Q i (t + u) - Q r t) • basisVec j)
     * (starRingEnd ℂ) (G i (x + (Q i t - Q r t) • basisVec j))
 
-/-- **The correlation, translated, is the product of the children.**  This is the patch's
+/-- **The correlation, translated, is the product of the children.** This is the patch's
 identification of the two children of each factor. -/
 theorem shiftProd_corr_translate (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 → ℂ) (m r : ℕ)
     (x : E3) (t u : ℝ) :
@@ -33624,7 +33656,7 @@ theorem norm_shiftChild_le {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ → E3
     (hG : ∀ i y, ‖G i y‖ ≤ 1) (r : ℕ) (u : ℝ) (i : ℕ) (x : E3) (t : ℝ) :
     ‖shiftChild j Q G r u i x t‖ ≤ 1 := by
   rw [shiftChild, norm_mul, RCLike.norm_conj]
-  exact mul_le_one₀ (hG i _) (norm_nonneg _) (hG i _)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hG i _)).trans (hG i _))
 
 /-- The zero vertex of a child is undisplaced in the shifted copy, so the child is dominated by
 the unshifted value of its own input. -/
@@ -33646,11 +33678,11 @@ theorem shiftChild_pivot (j : Fin 3) (Q : ℕ → ℝ → ℝ) (G : ℕ → E3 �
 
 /-! ### Patch 3: the surviving tail at general shifts
 
-The general-shift counterparts of the tail lemmas proved for the affine endpoint.  These are what
+The general-shift counterparts of the tail lemmas proved for the affine endpoint. These are what
 `Auto.sq_norm_signed_vdc` asks of its `F` when the shifts are arbitrary polynomials.
 
 One hypothesis appears here that the affine case did not need: the shift functions must be
-continuous.  For `a_i t` that was automatic; for a general `Q_i` it has to be assumed, and it is
+continuous. For `a_i t` that was automatic; for a general `Q_i` it has to be assumed, and it is
 what makes the tail jointly continuous in the point and the parameter, hence jointly measurable.
 Everything else is as before, and rests on the protected index surviving every removal. -/
 
@@ -33677,7 +33709,7 @@ theorem norm_shiftTail_le_one {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ →
     (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) (x : E3) (t : ℝ) :
     ‖∏ i ∈ Finset.Icc (r + 1) m, G i (x + (Q i t - Q r t) • basisVec j)‖ ≤ 1 := by
   rw [norm_prod]
-  exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hG i _
+  exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _) fun i _ => hG i _
 
 open MeasureTheory in
 /-- The tail's `L^2` mass in the point, at each parameter. -/
@@ -33746,15 +33778,14 @@ theorem integrable_cross_shiftTail (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : 
     _ ≤ ‖G m (x + (Q m s - Q r s) • basisVec j)‖ := norm_shiftTail_le_input hrm hG x s
 
 /-! ### Patch 3: the state of the analytic update, and its correlation
-
     A = V^{-1} int g_0(x) E_{t in [0,N]} prod_{i=1}^L g_i(x + Q_i(t)) dx.
 
 The block removed by `patch:signed-vdc` here is `g_0`, the *spatial* block, not the pivot: the
 patch says "apply `patch:signed-vdc` with `g = g_0` and the remaining product as `F`".  This
 differs from the affine endpoint, where the removed block was the pivot and the state had to be
-translated first (`Auto.slopeState_translate`) to free it of the parameter.  Here `g_0` carries no
+translated first (`Auto.slopeState_translate`) to free it of the parameter. Here `g_0` carries no
 parameter to begin with, so the state is already in the tool's shape and no translation precedes
-the application.  The translation by `-Q_p(t)` happens afterwards, inside the correlation, which is
+the application. The translation by `-Q_p(t)` happens afterwards, inside the correlation, which is
 what puts `Q_p(t)` rather than `Q_p(t+u)` into both children. -/
 
 open MeasureTheory in
@@ -33765,7 +33796,7 @@ noncomputable def shiftState (j : Fin 3) (Q : ℕ → ℝ → ℝ) (g0 : E3 → 
   (V⁻¹ : ℂ) * ∫ x : E3, g0 x * ((N⁻¹ : ℂ) * ∫ t in c..(c + N), shiftProd j Q G m r x t)
 
 open MeasureTheory in
-/-- **The correlation of the shifted product is the integrated child family.**  Translating the
+/-- **The correlation of the shifted product is the integrated child family.** Translating the
 point by `-Q_p(t)` inside the correlation turns it into the product of the children
 (`Auto.shiftProd_corr_translate`), and the translation costs nothing by invariance of the volume
 on `E3`. -/
@@ -33788,14 +33819,14 @@ theorem norm_shiftChildProd_le {j : Fin 3} {Q : ℕ → ℝ → ℝ} {G : ℕ �
     (hG : ∀ i y, ‖G i y‖ ≤ 1) (m r : ℕ) (u : ℝ) (x : E3) (t : ℝ) :
     ‖∏ i ∈ Finset.Icc r m, shiftChild j Q G r u i x t‖ ≤ 1 := by
   rw [norm_prod]
-  exact Finset.prod_le_one (fun i _ => norm_nonneg _)
+  exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _)
     fun i _ => norm_shiftChild_le hG r u i x t
 
 /-! ### Patch 3: the shifted product as the tool's `F`
 
 The analytic update feeds `Auto.shiftProd` itself to `Auto.sq_norm_signed_vdc`, not the translated
 tail, so the hypotheses are needed for `Auto.shiftProd` over `Finset.Icc r m` at the shifts
-`Q i t`.  They are proved here once, for an arbitrary shift family.
+`Q i t`. They are proved here once, for an arbitrary shift family.
 
 `Auto.shiftTail_eq_shiftProd` records that the translated tail of the preceding section is the
 same object at the shift family `Q' i t = Q i t - Q r t`, so the lemmas of that section are the
@@ -33811,7 +33842,7 @@ open MeasureTheory in
 theorem continuous_shiftProd_uncurry (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Continuous (Q i))
     {G : ℕ → E3 → ℂ} (hGc : ∀ i, Continuous (G i)) (m r : ℕ) :
     Continuous (Function.uncurry fun (x : E3) (t : ℝ) => shiftProd j Q G m r x t) := by
-  show Continuous (Function.uncurry fun (x : E3) (t : ℝ) =>
+  change Continuous (Function.uncurry fun (x : E3) (t : ℝ) =>
     ∏ i ∈ Finset.Icc r m, G i (x + (Q i t) • basisVec j))
   refine continuous_finsetProd _ fun i _ => ?_
   refine (hGc i).comp ?_
@@ -33938,10 +33969,9 @@ theorem integrable_g0_mul_shiftProdAvg (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQ
     _ = ‖g0 x‖ := mul_one _
 
 /-! ### Patch 3: `petStep_signed`, the analytic update
-
     |A|^2 <= 2 Re E_{u ~ kappa_H} A' + 2H/N,
 
-the patch's `patch:pet-analytic-step`, for arbitrary polynomial shifts.  `Auto.sq_norm_signed_vdc`
+the patch's `patch:pet-analytic-step`, for arbitrary polynomial shifts. `Auto.sq_norm_signed_vdc`
 applies directly -- the removed block `g_0` carries no parameter, so unlike the affine endpoint no
 translation precedes it -- and `Auto.corrLine_shiftProd_eq` reads its right-hand side as the
 integrated child family.
@@ -34013,28 +34043,28 @@ theorem petStep_signed (j : Fin 3) {Q : ℕ → ℝ → ℝ} (hQc : ∀ i, Conti
 /-! ### Patch 3: `petIteration_bound`, a uniform bound on the number of steps
 
 "For an actual uniform iteration bound define `B(w, L)` by well-founded recursion on the type, with
-its value a function of the length budget `L` ...  Each `w' < w`, so this is a well-founded
-definition.  The usual induction proves that it bounds the execution on every family of length at
-most `L` and type `w`. ...  This proves uniform complexity, not merely termination of each
+its value a function of the length budget `L` ... Each `w' < w`, so this is a well-founded
+definition. The usual induction proves that it bounds the execution on every family of length at
+most `L` and type `w`. ... This proves uniform complexity, not merely termination of each
 individual execution."
 
 That last sentence is the point of this section, and is why `Auto.petType_terminates` was not
 enough: the absence of an infinite run is strictly weaker than a bound on run length.
 
-**Why the budget cannot be dropped.**  The lexicographic order on the type has no finite height --
+**Why the budget cannot be dropped.** The lexicographic order on the type has no finite height --
 from `(0, 1, 0)` one may descend to `(0, 0, k)` for any `k` -- so no bound depending on the type
 alone exists, and the doubling budget `L` is what makes the lower components finite at each stage.
 A bound depending on the budget alone does not exist either, and a direct estimate is circular: the
 number of steps at a level is bounded by the count there, the counts below are bounded by `2L`, and
-`L` has doubled once per step, so the bound refers to the total length being bounded.  The patch's
+`L` has doubled once per step, so the bound refers to the total length being bounded. The patch's
 resolution, followed here, is that the recursion is on the *type*, which does decrease, with the
 budget merely carried along.
 
 The bound is obtained as an existence statement rather than by defining `B` explicitly: three
 nested strong inductions on the components, with a finite supremum at each level over the
-candidates the step admits.  That the candidate sets are finite is exactly what the budget buys. -/
+candidates the step admits. That the candidate sets are finite is exactly what the budget buys. -/
 
-/-- One admissible move of the pivot recursion on the type, with length budget `L`.  The three
+/-- One admissible move of the pivot recursion on the type, with length budget `L`. The three
 disjuncts are the patch's three cases for the selected degree `l`: above `l` the counts are
 unchanged, at `l` one class is lost, below `l` they are at most `2L`. -/
 def petTypeStep (L : ℕ) (w w' : ℕ × ℕ × ℕ) : Prop :=
@@ -34149,7 +34179,7 @@ theorem petRun_bounded : ∀ (a b c L : ℕ), ∃ R : ℕ, PetRunBounded a b c L
 /-! ### Patch 3: the length half of `petPivot_type_decreases`
 
 "The type strictly decreases and the new length is at most `2L`."  The type half is
-`Auto.petType_lt_of_pivot`; this is the length half.  It is exact at the raw stage -- the update
+`Auto.petType_lt_of_pivot`; this is the length half. It is exact at the raw stage -- the update
 forms precisely two children per factor -- and the two later stages only shrink: dropping the
 constant children is a `filter`, and grouping identical polynomials is a `dedup`. -/
 
@@ -34163,7 +34193,7 @@ theorem length_flatMap_petChildren {r n : ℕ} {ι : Type*}
   | nil => rfl
   | cons hd tl ih =>
       rw [List.flatMap_cons, List.length_append, ih, List.length_cons]
-      show 2 + 2 * tl.length = 2 * (tl.length + 1)
+      change 2 + 2 * tl.length = 2 * (tl.length + 1)
       ring
 
 theorem length_petRawChildren {r n : ℕ} {ι : Type*} {f : ι}
@@ -34213,7 +34243,7 @@ theorem petUpdate_length_le {r n : ℕ} {ι : Type*} {f : ι}
 /-! ### Patch 3: the type of a normal state
 
 "Let `w_q` count distinct leading coefficients of degree-`q` polynomials in the normal state."
-This is that count, on `Auto.NormalPETState` itself.  It is not the existing `Auto.petClasses`,
+This is that count, on `Auto.NormalPETState` itself. It is not the existing `Auto.petClasses`,
 which counts classes of a `Finset` of translation vectors and was built for the superseded
 `lem:pet-reduction`.
 
@@ -34238,7 +34268,7 @@ noncomputable def petStateType {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETS
   (petStateClasses 3 S, petStateClasses 2 S, petStateClasses 1 S)
 
 open scoped Classical in
-/-- **Every component of the type is at most the number of items.**  A count of distinct leading
+/-- **Every component of the type is at most the number of items.** A count of distinct leading
 coefficients among a sublist cannot exceed the length of the list. -/
 theorem petStateClasses_le_length {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
     (S : NormalPETState r n ι f) :
@@ -34270,17 +34300,15 @@ def PetStateTerminal {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETState r n �
 /-! ### Patch 3: the budget half of the pivot display
 
 The patch's display for the selected degree `l` has three parts:
-
-    w'_q = w_q (q > l),    w'_l = w_l - 1,    0 <= w'_q <= 2L (q < l).
+    w'_q = w_q (q > l), w'_l = w_l - 1, 0 <= w'_q <= 2L (q < l).
 
 The third is proved here, and in the stronger form that it holds at *every* degree, not only below
-`l`: after one update every component of the new type is at most `2L`.  That is what
+`l`: after one update every component of the new type is at most `2L`. That is what
 `Auto.petTypeStep` requires of its lower components, so it is the part of the display the
 termination analysis actually consumes.
 
 The first two parts are the genuine content of the selection rules and are not proved here; they
 need the degrees and leading coefficients of the children tracked through the update. -/
-
 theorem length_petAllItems_pos {r n : ℕ} {ι : Type*} {f : ι} (S : NormalPETState r n ι f) :
     1 ≤ (petAllItems S).length := by
   rw [petAllItems, List.length_cons]
@@ -34315,7 +34343,7 @@ theorem length_petAllItems_petAssemble {r n : ℕ} {ι : Type*} {f : ι}
   rfl
 
 open scoped Classical in
-/-- **The budget half of the display.**  After one update from a state with `L` items, the new
+/-- **The budget half of the display.** After one update from a state with `L` items, the new
 state has at most `2L` items. -/
 theorem length_petAllItems_update_le {r n : ℕ} {ι : Type*} {f : ι}
     (u : Fin n → MvPolynomial (Fin r) ℝ)
@@ -34357,17 +34385,16 @@ theorem petStateClasses_update_le {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
 /-! ### Patch 3: how a child's degree and leading coefficient are determined
 
 The content of the pivot selection rules is the behaviour of
+    Q_i(t + u) - Q_p(t) and Q_i(t) - Q_p(t)
 
-    Q_i(t + u) - Q_p(t)   and   Q_i(t) - Q_p(t)
-
-in degree and leading coefficient.  Above the pivot's degree nothing happens: the shift does not
+in degree and leading coefficient. Above the pivot's degree nothing happens: the shift does not
 move either (`Polynomial.natDegree_taylor`, `Auto.leadingCoeff_taylor`) and subtracting something of
-strictly smaller degree does not either.  At the pivot's degree the leading coefficients subtract,
+strictly smaller degree does not either. At the pivot's degree the leading coefficients subtract,
 which is the patch's "the new leading classes are the nonzero differences with the pivot leading
 coefficient"; and the pivot's own children leave that degree, the unshifted one being zero and the
 shifted one dropping by `Auto.natDegree_taylor_sub_self_le`.
 
-These are the polynomial facts.  The counting statement built on them -- that `w'_q = w_q` above the
+These are the polynomial facts. The counting statement built on them -- that `w'_q = w_q` above the
 selected degree and `w'_l = w_l - 1` at it -- is not proved here. -/
 
 section PetChildDegree
@@ -34429,11 +34456,11 @@ end PetChildDegree
 /-! ### Patch 3: counting the leading-coefficient classes across an update
 
 The pivot display's first two parts are counting statements about `Auto.petStateClasses`, which is a
-`dedup` length.  Two tools serve them, and they are the two shapes the update produces.
+`dedup` length. Two tools serve them, and they are the two shapes the update produces.
 
 Above the selected degree the children have the same leading coefficients as their parents
 (`Auto.leadingCoeff_taylor_sub_of_lt`, `Auto.leadingCoeff_sub_of_lt`), so the two lists have the
-same members and the counts agree.  At the selected degree the surviving children's leading
+same members and the counts agree. At the selected degree the surviving children's leading
 coefficients are the nonzero differences with the pivot's
 (`Auto.natDegree_leadingCoeff_sub_of_eq`), so the new list's value set is the old one with the
 pivot's class removed and the rest translated -- an injective image of an erasure, whose count is
@@ -34461,10 +34488,10 @@ theorem dedup_length_sub_one_of_toFinset_eq {α : Type*} [DecidableEq α] [AddGr
 
 /-! ### Patch 3: a normalized child's degree and leading coefficient
 
-`Auto.petNormalizeItem` subtracts each child's constant term in `t`.  That does not disturb a
+`Auto.petNormalizeItem` subtracts each child's constant term in `t`. That does not disturb a
 positive-degree leading coefficient (`Auto.natDegree_petSubConst`,
 `Auto.leadingCoeff_petSubConst`, both from row 392), so the facts of the preceding section survive
-normalization.  This is the per-item form of the identification the counting tools need. -/
+normalization. This is the per-item form of the identification the counting tools need. -/
 
 section PetChildNormalized
 
@@ -34507,16 +34534,16 @@ theorem natDegree_leadingCoeff_petChild_of_eq (Q Qp : Polynomial R) {l : ℕ} (h
 theorem petChild_pivot_unshifted_normalized (Qp : Polynomial R) :
     petSubConst (Qp - Qp) = 0 := by
   rw [petChild_pivot_unshifted]
-  show (0 : Polynomial R) - Polynomial.C ((0 : Polynomial R).coeff 0) = 0
+  change (0 : Polynomial R) - Polynomial.C ((0 : Polynomial R).coeff 0) = 0
   simp
 
 end PetChildNormalized
 
 /-! ### Patch 3: grouping is invisible to the type
 
-The first structural step of the lifting.  The class count depends on the item list only through
+The first structural step of the lifting. The class count depends on the item list only through
 the *set* of polynomials it carries, so any two item lists with the same polynomials have the same
-count at every degree.  `Auto.petGroup` replaces the list by its distinct keys
+count at every degree. `Auto.petGroup` replaces the list by its distinct keys
 (`Auto.petGroup_keys`), which changes multiplicities but not that set, so grouping leaves the type
 alone.
 
@@ -34570,9 +34597,9 @@ theorem petListClasses_petGroup {r n : ℕ} {ι : Type*} (q : ℕ)
 
 /-! ### Patch 3: the polynomials the update produces
 
-The second structural step.  `Auto.petChildren` contributes exactly two polynomials per item, so the
+The second structural step. `Auto.petChildren` contributes exactly two polynomials per item, so the
 set of polynomials carried by the children is the set of the two children of each parent -- and
-after `Auto.petNormalizeItem`, of their constant-subtracted forms.  With
+after `Auto.petNormalizeItem`, of their constant-subtracted forms. With
 `Auto.petListClasses_congr` this is all the count needs to know about the `flatMap`. -/
 
 /-- Membership in a two-element `flatMap`. -/
@@ -34617,9 +34644,9 @@ theorem mem_petNormalized_fst_iff {r n : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Patch 3: the survivors, and the assembled state's count
 
-The last two structural steps.  `Auto.petNonConstChildren` drops the new head with `.tail` and the
+The last two structural steps. `Auto.petNonConstChildren` drops the new head with `.tail` and the
 constant children with a `filter`, and `Auto.petAssemble` puts the head back in front of the
-grouped survivors.  Since the count sees only the set of polynomials
+grouped survivors. Since the count sees only the set of polynomials
 (`Auto.petListClasses_congr`), the grouping disappears and the assembled state's count is that of
 the head consed onto the ungrouped survivors. -/
 
@@ -34661,7 +34688,7 @@ theorem petStateClasses_petAssemble {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
   rw [petStateClasses_eq_petListClasses]
   refine petListClasses_congr q ?_
   intro Q
-  show Q ∈ (((hdPoly, [hdFac]) :: petGroup l).map Prod.fst)
+  change Q ∈ (((hdPoly, [hdFac]) :: petGroup l).map Prod.fst)
     ↔ Q ∈ (((hdPoly, [hdFac]) :: l).map Prod.fst)
   simp only [List.map_cons, List.mem_cons]
   constructor
@@ -34674,9 +34701,9 @@ theorem petStateClasses_petAssemble {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
 
 /-! ### Patch 3: comparing states by their leading-coefficient data
 
-`Auto.petListClasses_congr` compares two item lists that carry the *same* polynomials.  The update
+`Auto.petListClasses_congr` compares two item lists that carry the *same* polynomials. The update
 does not: the children are different polynomials from their parents, and what is preserved is their
-degree and leading coefficient.  The comparison therefore has to be made on that data, which is
+degree and leading coefficient. The comparison therefore has to be made on that data, which is
 what this section supplies.
 
 `Auto.petListClasses_congr_lc` is the form the assembly uses: two lists have the same count at
@@ -34699,7 +34726,7 @@ theorem mem_lcList_iff {r n : ℕ} {ι : Type*} (q : ℕ)
     exact ⟨P, ⟨hP, hdeg⟩, rfl⟩
 
 open scoped Classical in
-/-- **The comparison the assembly uses.**  Two item lists have the same count at degree `q` as soon
+/-- **The comparison the assembly uses.** Two item lists have the same count at degree `q` as soon
 as the same leading coefficients are realized there, by whatever polynomials. -/
 theorem petListClasses_congr_lc {r n : ℕ} {ι : Type*} (q : ℕ)
     {l₁ l₂ : List (Polynomial (Fin n → MvPolynomial (Fin r) ℝ) × List (PetFactor r n ι))}
@@ -34723,11 +34750,11 @@ theorem petStateClasses_congr_lc {r n : ℕ} {ι : Type*} {f : ι} (q : ℕ)
 
 /-! ### Patch 3: above the pivot's degree, a child lands there exactly when its parent does
 
-The per-parent case analysis behind `w'_q = w_q` for `q > l`.  The pivot has degree `l` and `l` is
+The per-parent case analysis behind `w'_q = w_q` for `q > l`. The pivot has degree `l` and `l` is
 the minimum degree present, so every parent has degree at least `l`, and there are two cases.
 
 If the parent also has degree `l`, both children have degree at most `l`, because the leading terms
-are then at the same degree and can only cancel or stay; either way the child is below `q`.  If the
+are then at the same degree and can only cancel or stay; either way the child is below `q`. If the
 parent has degree above `l`, the pivot is of strictly smaller degree and the children keep the
 parent's degree and leading coefficient.
 
@@ -34768,8 +34795,8 @@ end PetChildHigh
 
 /-! ### Patch 3: at the pivot's degree, the leading coefficients subtract
 
-The per-parent case analysis behind `w'_l = w_l - 1`.  A parent above the pivot's degree keeps that
-higher degree in both children, so it contributes nothing at `l`.  A parent *at* the pivot's degree
+The per-parent case analysis behind `w'_l = w_l - 1`. A parent above the pivot's degree keeps that
+higher degree in both children, so it contributes nothing at `l`. A parent *at* the pivot's degree
 contributes, in both children, the difference of leading coefficients -- and stays at degree `l`
 exactly when that difference is nonzero.
 
@@ -34846,7 +34873,7 @@ end PetChildAtPivot
 
 /-! ### Patch 3: above the pivot's degree the children realize exactly the parents' classes
 
-The per-parent analysis of `Auto.petChild_high_data`, lifted across the item list.  At a degree
+The per-parent analysis of `Auto.petChild_high_data`, lifted across the item list. At a degree
 above the pivot's, a leading coefficient is realized by some normalized child exactly when it is
 realized by some parent: forward because a child at that degree forces its parent there with the
 same leading coefficient, backward because the unshifted child of such a parent is itself at that
@@ -34883,13 +34910,13 @@ theorem lc_realized_high {r n : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Patch 3: at the pivot's degree the children realize the nonzero differences
 
-The companion of `Auto.lc_realized_high`, at `q = l`.  A leading coefficient is realized there by
+The companion of `Auto.lc_realized_high`, at `q = l`. A leading coefficient is realized there by
 some normalized child exactly when it is a *nonzero* difference `lc Q - lc Q_p` for some parent `Q`
 of degree `l`.
 
-Three cases make the forward direction.  A parent above the pivot's degree has both children there
-too, so neither is at `l`.  A parent at the pivot's degree whose difference vanishes has both
-children below `l`.  Otherwise the difference is the child's leading coefficient.  The pivot is the
+Three cases make the forward direction. A parent above the pivot's degree has both children there
+too, so neither is at `l`. A parent at the pivot's degree whose difference vanishes has both
+children below `l`. Otherwise the difference is the child's leading coefficient. The pivot is the
 instance of the middle case, which is why exactly one class is lost. -/
 
 open scoped Classical in
@@ -34939,9 +34966,9 @@ theorem lc_realized_at_pivot {r n : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Patch 3: the assembled items are the nonzero normalized children
 
-The head/filter bookkeeping.  `Auto.petNewHead` is the first normalized child -- the shifted child
+The head/filter bookkeeping. `Auto.petNewHead` is the first normalized child -- the shifted child
 of the head item -- so splitting it off and filtering the constants from the rest, then putting it
-back in front, recovers exactly the nonzero normalized children.  The head is kept whether or not
+back in front, recovers exactly the nonzero normalized children. The head is kept whether or not
 it is constant, which is why it has to be nonzero for this to be an equality; in the update it is,
 because the new state requires it. -/
 
@@ -35030,7 +35057,7 @@ theorem petStateClasses_update_high {r n : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Patch 3: `w'_l = w_l - 1` at the selected degree
 
-The second half of the pivot display's conclusion.  At the selected degree the surviving children
+The second half of the pivot display's conclusion. At the selected degree the surviving children
 realize exactly the *nonzero* differences with the pivot's leading coefficient
 (`Auto.lc_realized_at_pivot`), so the new value set is the old one with the pivot's class erased and
 the remainder translated -- and `Auto.dedup_length_sub_one_of_toFinset_eq` turns that into the drop
@@ -35097,12 +35124,11 @@ theorem petStateClasses_update_at_pivot {r n : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Patch 3: admissible polynomial shifts
 
-The scale convention of `blueprints/task_2_patch_3_updated.tex` (lines 206-213).  A shift `P` is
+The scale convention of `blueprints/task_2_patch_3_updated.tex` (lines 206-213). A shift `P` is
 admissible with budget `c` when its degree is the prescribed `d`, its leading coefficient lies
 between the two budgets, and each lower coefficient is bounded by the upper budget scaled by the
 matching power of `N`:
-
-    deg P = d,   l_c(delta) <= |lc P| <= u_c(delta),   |[t^r] P| <= u_c(delta) N^(d-r)  (r < d).
+    deg P = d, l_c(delta) <= |lc P| <= u_c(delta), |[t^r] P| <= u_c(delta) N^(d-r) (r < d).
 
 The file's existing `Auto.Admissible` is unrelated -- it is the admissibility of a *trilinear
 operator*, from the Marcinkiewicz development -- so this carries its own name.
@@ -35131,7 +35157,7 @@ theorem AdmissiblePoly.coeff_le {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial
     (h : AdmissiblePoly c δ N d P) {r : ℕ} (hr : r < d) :
     |P.coeff r| ≤ budHi c δ * N ^ (d - r) := h.2.2.2 r hr
 
-/-- **An admissible polynomial is nonzero.**  Its leading coefficient is bounded below by a
+/-- **An admissible polynomial is nonzero.** Its leading coefficient is bounded below by a
 positive budget. -/
 theorem AdmissiblePoly.leadingCoeff_ne_zero {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
     (h : AdmissiblePoly c δ N d P) (hδ : 0 < δ) (hc : 1 ≤ c) : P.leadingCoeff ≠ 0 := by
@@ -35155,14 +35181,13 @@ theorem AdmissiblePoly.natDegree_pos {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polyn
 /-! ### Patch 3: the correlation the proposition bounds below
 
 The quantity `patch:highest-control` assumes a power lower bound for,
-
     int f_0(x) E_{t in [0,N]} prod_{i=1}^m f_i(x - P_i(t) e_i) e(p_x(t)) dx,
 
 with the phase `e(u) = exp(2 pi i u)` carried by `Auto.expPhase` from
 `DFR/Auto/VanDerCorput.lean`.
 
 Each input has its *own* coordinate direction `e_i`, unlike `Auto.shiftProd`, whose factors all lie
-along one direction because they have already been reduced to it.  The assignment is therefore a
+along one direction because they have already been reduced to it. The assignment is therefore a
 parameter `j : ℕ → Fin 3`; the blueprint's own instance sends input `i` to the `i`-th coordinate.
 
 The phase is unimodular, so it does not disturb any of the bounds: the integrand is still dominated
@@ -35188,7 +35213,7 @@ theorem norm_phaseProd_le (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f
     ‖phaseProd m f P p j x t‖ ≤ 1 := by
   classical
   rw [phaseProd, norm_mul, norm_expPhase, mul_one, norm_prod]
-  exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hf i _
+  exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _) fun i _ => hf i _
 
 /-- and the product is dominated by any one of its factors, the phase costing nothing. -/
 theorem norm_phaseProd_le_single (m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
@@ -35213,14 +35238,14 @@ theorem conjPar_expPhase (n : ℕ) (φ : ℝ → ℝ) (y : ℝ) :
     conjPar n (expPhase φ y) = Complex.exp (((((-1 : ℝ) ^ n * φ y : ℝ)) : ℂ) * Complex.I) := by
   rw [conjPar, expPhase]
   by_cases h : Even n
-  · rw [if_pos h, h.neg_one_pow]
+  · rw [ite_eq_left h, h.neg_one_pow]
     push_cast
     ring_nf
-  · rw [if_neg h, (Nat.not_even_iff_odd.mp h).neg_one_pow, ← Complex.exp_conj]
+  · rw [ite_eq_right h, (Nat.not_even_iff_odd.mp h).neg_one_pow, ← Complex.exp_conj]
     congr 1
     simp [Complex.conj_I]
 
-/-- **The phase cube of a cubic is one.**  The parity cube of `Auto.expPhase` over the
+/-- **The phase cube of a cubic is one.** The parity cube of `Auto.expPhase` over the
 four-dimensional cube of shifts collapses to the exponential of the alternating sum, which vanishes
 for a polynomial of degree at most three. -/
 theorem phase_cube_eq_one {p : Polynomial ℝ} (hp : p.natDegree ≤ 3) (t : ℝ) (u : Fin 4 → ℝ) :
@@ -35250,12 +35275,12 @@ theorem phase_cube_eq_one {p : Polynomial ℝ} (hp : p.natDegree ≤ 3) (t : ℝ
 /-! ### Patch 3: the degree-one branch, and the phase-free case
 
 "There is one degenerate initial case to treat separately.  If the highest active degree is one,
-there is only one active input.  After the four steps, translating `x` by its affine `P_1(t)`
+there is only one active input. After the four steps, translating `x` by its affine `P_1(t)`
 removes `t` and gives the raw order-four cube of `f_1` ... directly."
 
-Two elementary facts behind that branch.  With a single active input the product is that input
+Two elementary facts behind that branch. With a single active input the product is that input
 alone, and translating the point by its shift cancels the shift -- which is what "removes `t`"
-means, the remaining `t`-dependence sitting only in the phase.  Since the branch is taken *after*
+means, the remaining `t`-dependence sitting only in the phase. Since the branch is taken *after*
 the four steps, where `Auto.phase_cube_eq_one` has already removed the phase, the phase-free form is
 recorded as well. -/
 
@@ -35295,7 +35320,7 @@ theorem phaseProd_zero_phase (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Pol
 
 /-! ### Patch 3: the phase drops out of the fourfold cube
 
-The consequence of `Auto.phase_cube_eq_one` that the four phase steps actually use.  After four
+The consequence of `Auto.phase_cube_eq_one` that the four phase steps actually use. After four
 applications of `patch:signed-vdc` the parameter-dependent part is the parity cube of the phased
 product; since `Auto.conjPar` is multiplicative and the phase's own cube is one, the phase drops out
 entirely and what remains is the parity cube of the bare shifted inputs.
@@ -35405,7 +35430,7 @@ theorem integrable_cross_phaseProd {m : ℕ} {f : ℕ → E3 → ℂ} {P : ℕ �
 /-! ### Patch 3: the windowed average of the phased product
 
 The remaining `Auto.sq_norm_signed_vdc` input for the first phase step: the spatial factor `f_0`
-paired against the window average of the phased product.  As before the normalized average is
+paired against the window average of the phased product. As before the normalized average is
 one-bounded, so the pairing is dominated by `f_0` itself.
 
 Measurability of the average comes from the *measurability* hypothesis on the product, promoted to
@@ -35483,7 +35508,7 @@ theorem integrable_f0_mul_phaseProdAvg {m : ℕ} {f : ℕ → E3 → ℂ} {P : �
 `x` as a fixed outer variable.  ...  The initial step removes the original spatial factor."
 
 This is that initial step: `Auto.sq_norm_signed_vdc` applied with `g = f_0`, the original spatial
-factor, and `F = Auto.phaseProd`.  Nine hypotheses are discharged from the preceding two sections;
+factor, and `F = Auto.phaseProd`. Nine hypotheses are discharged from the preceding two sections;
 the six that need Cauchy-Schwarz in the parameter or a Fubini swap are carried, on the same terms as
 in `Auto.cs_remove_slope_block` and `Auto.petStep_signed`.
 
@@ -35543,12 +35568,11 @@ theorem phaseStep_signed (m : ℕ) (hm : 1 ≤ m) {f : ℕ → E3 → ℂ} {P : 
 /-! ### Patch 3: the `r`-step phased cube
 
 "After `r` steps the parameter-dependent part is
-
     prod_i prod_{omega in {0,1}^r} C^{|omega|} f_i(x - P_i(t + omega . h) e_i)
       e(sum_omega (-1)^{|omega|} p_x(t + omega . h))."
 
 That object is the parity cube of `Auto.phaseProd`, which is what the four steps iterate and what
-`Auto.csLoss` will be applied to.  At `r = 4` the phase leaves it entirely
+`Auto.csLoss` will be applied to. At `r = 4` the phase leaves it entirely
 (`Auto.phaseProd_cube_eq`), which is restated here in terms of the iterate. -/
 
 open scoped Classical in
@@ -35571,7 +35595,7 @@ theorem norm_phaseProdIter_le_one (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀
     (h : Fin r → ℝ) (t : ℝ) :
     ‖phaseProdIter r m f P p j x h t‖ ≤ 1 := by
   rw [phaseProdIter, norm_prod]
-  refine Finset.prod_le_one (fun ω _ => norm_nonneg _) fun ω _ => ?_
+  refine Finset.prod_le_one₀ (fun ω _ => norm_nonneg _) fun ω _ => ?_
   rw [norm_conjPar]
   exact norm_phaseProd_le m hf P p j x _
 
@@ -35593,7 +35617,7 @@ theorem phaseProdIter_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Po
 the integrand there for `t` in `[0, N]`."
 
 The vertex `omega = 0` of the parity cube carries no shift, so its factor is the undifferenced
-phased product at `t` itself.  A product vanishes as soon as one factor does, so wherever the
+phased product at `t` itself. A product vanishes as soon as one factor does, so wherever the
 zero-shift vertex vanishes the whole cube does -- which is what confines the cube to the enlarged
 box and lets the later steps use its indicator. -/
 
@@ -35637,8 +35661,7 @@ The coefficient half of that: on `0 <= t <= N` an admissible shift of degree `d`
 
 Each coefficient contributes at most `u_c(delta) N^d`: the lower ones because
 `|[t^r] P| <= u_c(delta) N^(d-r)` and `t^r <= N^r`, the leading one because `|lc P| <= u_c(delta)`
-and `t^d <= N^d`.  There are `d + 1` of them. -/
-
+and `t^d <= N^d`. There are `d + 1` of them. -/
 theorem AdmissiblePoly.abs_eval_le {c : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial ℝ}
     (h : AdmissiblePoly c δ N d P) (hδ : 0 < δ) (hc : 1 ≤ c) (hN : 0 ≤ N)
     {t : ℝ} (ht0 : 0 ≤ t) (htN : t ≤ N) :
@@ -35688,11 +35711,10 @@ The enlargement is taken in the same family rather than in a new one: at scale `
 `C N^{d_i}` grows to at most `(C + K) N^{d_i}`, so the enlarged box is `Auto.petBox (C + K) N` and
 no new notion of box is needed.  This is what "a single power-controlled volume for this box" asks
 for, since `C + K` is again a budget when `K` is. -/
-
 theorem basisVec_apply (j k : Fin 3) : basisVec j k = if k = j then 1 else 0 := by
   simp [basisVec, PiLp.single_apply]
 
-/-- **Translating by a bounded shift lands in an enlarged box.**  Only the shifted coordinate
+/-- **Translating by a bounded shift lands in an enlarged box.** Only the shifted coordinate
 moves, and at scale `N >= 1` the enlargement is absorbed into the budget. -/
 theorem mem_petBox_of_sub_mem {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K) {j : Fin 3} {a : ℝ}
     (ha : |a| ≤ K) {x : E3} (hx : x - a • basisVec j ∈ petBox C N) :
@@ -35705,20 +35727,20 @@ theorem mem_petBox_of_sub_mem {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K) {j : F
   have hNi : (1 : ℝ) ≤ N ^ expo i := one_le_pow₀ hN
   rw [hxi] at hmem
   by_cases hij : i = j
-  · rw [if_pos hij, mul_one] at hmem
+  · rw [ite_eq_left hij, mul_one] at hmem
     constructor
     · nlinarith [abs_le.mp ha, hmem.1, hmem.2]
     · nlinarith [abs_le.mp ha, hmem.1, hmem.2]
-  · rw [if_neg hij, mul_zero, sub_zero] at hmem
+  · rw [ite_eq_right hij, mul_zero, sub_zero] at hmem
     constructor
     · nlinarith [hmem.1, hmem.2]
     · nlinarith [hmem.1, hmem.2]
 
 /-! ### Patch 3: the cube lives in the enlarged box
 
-The two preceding facts combined.  The zero-shift vertex of the cube carries the protected input
+The two preceding facts combined. The zero-shift vertex of the cube carries the protected input
 undifferenced at `x - P_m(t) e_{j m}`; if that point left the budgeted box the input would vanish
-there and take the whole cube with it.  So wherever the cube is nonzero, that point is in the box,
+there and take the whole cube with it. So wherever the cube is nonzero, that point is in the box,
 and therefore `x` is in the enlarged one.
 
 This is the support statement the later phase steps use: it is what makes the indicator of a fixed
@@ -35739,7 +35761,7 @@ theorem phaseProdIter_eq_zero_of_notMem (r m : ℕ) (f : ℕ → E3 → ℂ) (P 
   rw [Finset.prod_eq_zero (Finset.mem_Icc.mpr ⟨hm, le_refl m⟩) hzero, zero_mul]
 
 open scoped Classical in
-/-- **The same with the shift bound supplied by admissibility.**  On the window `0 <= t <= N` the
+/-- **The same with the shift bound supplied by admissibility.** On the window `0 <= t <= N` the
 admissible shift is at most `(d + 1) u_c(delta) N^d`, so that is the enlargement. -/
 theorem phaseProdIter_eq_zero_of_notMem_admissible (r m : ℕ) (f : ℕ → E3 → ℂ)
     (P : ℕ → Polynomial ℝ) (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3)
@@ -35777,7 +35799,7 @@ theorem integrable_of_bdd_support_box {C N M : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N
   have hfin : volume (petBox C N) ≠ ⊤ := by
     rw [volume_petBox hC hN]
     exact ENNReal.ofReal_ne_top
-  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+  have : IsFiniteMeasure (volume.restrict (petBox C N)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_of_le_of_ne le_top hfin
@@ -35799,7 +35821,7 @@ theorem integrable_of_bdd_support_box_real {C N M : ℝ} (hC : 0 ≤ C) (hN : 0 
   have hfin : volume (petBox C N) ≠ ⊤ := by
     rw [volume_petBox hC hN]
     exact ENNReal.ofReal_ne_top
-  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+  have : IsFiniteMeasure (volume.restrict (petBox C N)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_of_le_of_ne le_top hfin
@@ -35822,7 +35844,7 @@ theorem integral_sq_le_volume_of_bdd_support {C N : ℝ} (hC : 0 ≤ C) (hN : 0 
   have hfin : volume (petBox C N) ≠ ⊤ := by
     rw [volume_petBox hC hN]
     exact ENNReal.ofReal_ne_top
-  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+  have : IsFiniteMeasure (volume.restrict (petBox C N)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_of_le_of_ne le_top hfin
@@ -35850,10 +35872,9 @@ theorem integral_sq_le_volume_of_bdd_support {C N : ℝ} (hC : 0 ≤ C) (hN : 0 
 "At later steps use the indicator of a fixed enlarged spatial box ...  The indicator is removed by
 the same Cauchy-Schwarz step."
 
-The `g`-side hypotheses of `Auto.sq_norm_signed_vdc` for that block.  The indicator is one-bounded
+The `g`-side hypotheses of `Auto.sq_norm_signed_vdc` for that block. The indicator is one-bounded
 and supported in the box by construction, so the lemmas of the preceding section apply directly, and
 its `L^2` mass is exactly the box's volume -- which is the `V` the later steps use. -/
-
 theorem indicator_box_eq_zero (C N : ℝ) {x : E3} (hx : x ∉ petBox C N) :
     (petBox C N).indicator (fun _ => (1 : ℂ)) x = 0 := Set.indicator_of_notMem hx _
 
@@ -35910,7 +35931,7 @@ theorem integral_sq_indicator_box (C N : ℝ) :
 /-! ### Patch 3: the state of the phase iteration
 
 The object the four steps iterate: a removed block `g` against the window average of the `r`-step
-phased cube, normalized by `V`.  It is a function of the accumulated shifts `h`, and the recursion
+phased cube, normalized by `V`. It is a function of the accumulated shifts `h`, and the recursion
 of `patch:signed-vdc` relates `|A_r(h)|^2` to the Fejer average over the new shift of
 `Re A_{r+1}(h, u)` -- which is the shape `Auto.csLoss` consumes.
 
@@ -35985,7 +36006,7 @@ theorem norm_phaseState_le (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, �
 
 /-! ### Patch 3: the state after four steps carries no phase
 
-Composing `Auto.phaseProdIter_four_eq` with the state.  After the four phase steps the state is the
+Composing `Auto.phaseProdIter_four_eq` with the state. After the four phase steps the state is the
 removed block against the window average of the parity cube of the *bare* shifted inputs -- the
 phase has left the argument, and what remains is an object of the kind the PET recursion and the
 affine endpoint already handle.
@@ -36021,13 +36042,13 @@ theorem phaseState_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polyn
 /-! ### The correlation step doubles the cube
 
 The step that `patch:signed-vdc` performs on the level-`r` state replaces the integrand by its
-correlation `F x (t + u) * conj (F x t)`.  For `F = phaseProdIter r`, that correlation is again a
+correlation `F x (t + u) * conj (F x t)`. For `F = phaseProdIter r`, that correlation is again a
 cube of the same shape, one dimension taller, with the new shift `u` prepended: the parity count of
 a vertex `Fin.cons b σ` is `numFalse σ` when `b = true` and `numFalse σ + 1` when `b = false`, and
 `conjPar (n + 1) = conj ∘ conjPar n`, so the `false` half of the cube assembles exactly into the
-conjugated factor.  This is what lets the same step be iterated. -/
+conjugated factor. This is what lets the same step be iterated. -/
 
-/-- **The cube doubles under a correlation step.**  Splitting a vertex of the `(r+1)`-cube into its
+/-- **The cube doubles under a correlation step.** Splitting a vertex of the `(r+1)`-cube into its
 first coordinate and the rest sends the `true` half to the shifted cube and the `false` half to the
 conjugate of the unshifted one. -/
 theorem phaseProdIter_succ (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
@@ -36065,7 +36086,7 @@ theorem phaseProdIter_cons (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Pol
   simp
 
 open MeasureTheory in
-/-- **The correlation of the level-`r` cube is the level-`(r+1)` cube.**  This is the identity that
+/-- **The correlation of the level-`r` cube is the level-`(r+1)` cube.** This is the identity that
 turns `Auto.sq_norm_signed_vdc` into a recursion: the `corrLine` its conclusion produces at shift
 `u` is the spatial integral of the cube one level up. -/
 theorem corrLine_phaseProdIter (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
@@ -36083,7 +36104,7 @@ theorem corrLine_phaseProdIter (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ →
 /-! ### The iterate inherits its analytic hypotheses from its zero-shift vertex
 
 `Auto.sq_norm_signed_vdc` asks of its `F` a one-bound, `L^2` integrability at each parameter, an
-integrable cross term, and an `L^2` budget.  For `F = phaseProdIter r` all four come for free: the
+integrable cross term, and an `L^2` budget. For `F = phaseProdIter r` all four come for free: the
 vertex `omega = (fun _ => false)` contributes the factor `phaseProd m f P p j x t` with no shift and
 no conjugation, every other factor is one-bounded, so the whole iterate is dominated *pointwise* by
 that single factor -- for which the four facts are already proved. -/
@@ -36131,7 +36152,7 @@ theorem measurable_uncurry_phaseProdIter (r m : ℕ) {f : ℕ → E3 → ℂ} {P
       conjPar (numFalse ω) (phaseProd m f P p j q.1 (q.2 + cubeShift h ω)) := by
     intro ω
     -- The composition is introduced with its own `∘` type and only then coerced to the
-    -- applied form.  Asking `Measurable.comp` to produce the applied form directly sends the
+    -- applied form. Asking `Measurable.comp` to produce the applied form directly sends the
     -- unifier into `phaseProd` and does not terminate within the heartbeat budget.
     have hshift : Measurable ((Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t)
         ∘ fun q : E3 × ℝ => ((q.1, q.2 + cubeShift h ω) : E3 × ℝ)) :=
@@ -36142,7 +36163,7 @@ theorem measurable_uncurry_phaseProdIter (r m : ℕ) {f : ℕ → E3 → ℂ} {P
         fun q : E3 × ℝ => phaseProd m f P p j q.1 (q.2 + cubeShift h ω)) :=
       (measurable_conjPar (numFalse ω)).comp hg
     exact hcomp
-  show Measurable fun q : E3 × ℝ =>
+  change Measurable fun q : E3 × ℝ =>
     ∏ ω : Fin r → Bool, conjPar (numFalse ω) (phaseProd m f P p j q.1 (q.2 + cubeShift h ω))
   exact Finset.measurable_prod _ fun ω _ => hfac ω
 
@@ -36196,9 +36217,9 @@ theorem integral_sq_phaseProdIter_le (r : ℕ) {m : ℕ} {f : ℕ → E3 → ℂ
     (norm_phaseProdIter_le_zero_vertex r m hf P p j x h t) 2
 
 open MeasureTheory in
-/-- **The signed van der Corput step at level `r`.**  This is `Auto.phaseStep_signed` with the
+/-- **The signed van der Corput step at level `r`.** This is `Auto.phaseStep_signed` with the
 block `phaseProd` replaced by its `r`-fold iterate and the removed factor `g` left abstract, so
-that the enlarged box's indicator can be supplied for it.  Its conclusion is stated in terms of the
+that the enlarged box's indicator can be supplied for it. Its conclusion is stated in terms of the
 level-`(r+1)` iterate, via `Auto.corrLine_phaseProdIter`, which is what makes the step iterable. -/
 theorem phaseStepIter_signed (r m : ℕ) (hm : 1 ≤ m) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
     {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {h : Fin r → ℝ}
@@ -36254,7 +36275,7 @@ theorem phaseStepIter_signed (r m : ℕ) (hm : 1 ≤ m) {f : ℕ → E3 → ℂ}
 
 /-! ### Reinstating the block, and the level-`r` mean
 
-The step removes its block `g`; to apply it again a block must be put back.  The patch's answer is
+The step removes its block `g`; to apply it again a block must be put back. The patch's answer is
 the indicator of a fixed enlarged spatial box: the iterate vanishes off that box, so inserting the
 indicator changes nothing, and the indicator is exactly the block the next step removes.
 
@@ -36263,7 +36284,7 @@ selects shifts only once, at the very end, against the sublevel exclusion -- so 
 recursion is stated for is the Fejer mean below. -/
 
 open MeasureTheory in
-/-- **Reinstating the removed block.**  Multiplying by the enlarged box's indicator changes
+/-- **Reinstating the removed block.** Multiplying by the enlarged box's indicator changes
 nothing, because the iterate already vanishes off that box. -/
 theorem integral_phaseProdIter_eq_indicator (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
@@ -36284,7 +36305,7 @@ theorem integral_phaseProdIter_eq_indicator (r m : ℕ) (f : ℕ → E3 → ℂ)
 
 open MeasureTheory in
 /-- **The level-`r` mean**: the magnitude of the level-`r` state, averaged over all `r` shifts
-introduced so far against the product Fejer density.  This is the `M r` the Cauchy--Schwarz chain
+introduced so far against the product Fejer density. This is the `M r` the Cauchy--Schwarz chain
 of `Auto.csLoss` consumes. -/
 noncomputable def phaseMean (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N H : ℝ) : ℝ :=
@@ -36332,7 +36353,7 @@ theorem phaseMean_zero (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomia
   simp
 
 open MeasureTheory in
-/-- **Off the enlarged box the whole window average vanishes.**  The shift bound is needed at every
+/-- **Off the enlarged box the whole window average vanishes.** The shift bound is needed at every
 parameter of the window, not just at one, so it is hypothesized on `Set.uIcc`. -/
 theorem integral_window_phaseProdIter_eq_zero (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
@@ -36346,7 +36367,7 @@ theorem integral_window_phaseProdIter_eq_zero (r m : ℕ) (f : ℕ → E3 → �
   simp
 
 open MeasureTheory in
-/-- **Reinstating the block around the window average.**  This is the form the recursion uses: after
+/-- **Reinstating the block around the window average.** This is the form the recursion uses: after
 the `t`- and `x`-integrals are swapped, the indicator goes back in outside the window average. -/
 theorem integral_window_eq_indicator (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N : ℝ} (hN : 1 ≤ N) (hK : 0 ≤ K)
@@ -36397,9 +36418,9 @@ theorem step_rhs_le_phaseMean_integrand (r m : ℕ) (f : ℕ → E3 → ℂ) (P 
   exact re_le_norm_smul_smul (le_of_lt (inv_pos.mpr hV)) (le_of_lt (inv_pos.mpr hN)) _
 
 open MeasureTheory in
-/-- **Splitting the shift average along its newest coordinate.**  An integral over
+/-- **Splitting the shift average along its newest coordinate.** An integral over
 `Fin (r+1) -> R` is the iterated integral over the new shift `u` and the old ones, in exactly the
-`Fin.cons` orientation that `Auto.phaseProdIter_cons` produces.  The peeling map is
+`Fin.cons` orientation that `Auto.phaseProdIter_cons` produces. The peeling map is
 `Auto.measurePreserving_piFinSucc`, whose inverse is `Fin.cons`. -/
 theorem integral_cons_split {r : ℕ} {G : (Fin (r + 1) → ℝ) → ℂ}
     (hG : Integrable (fun q : ℝ × (Fin r → ℝ) => G (Fin.cons q.1 q.2))) :
@@ -36442,17 +36463,17 @@ theorem prod_fejer_cons {H : ℝ} {r : ℕ} (u : ℝ) (h : Fin r → ℝ) :
 
 /-! ### The product Fejer weight is a probability density, and Jensen against it
 
-`Auto.sq_integral_fejer_le` (line 11262) is Jensen for a *single* Fejer variable.  The recursion
+`Auto.sq_integral_fejer_le` (line 11262) is Jensen for a *single* Fejer variable. The recursion
 averages over all `r` shifts at once, against `∏ l, fejer H (h l)` on `Fin r -> R`, so what is
-needed is Jensen against that product weight.  Rather than redo the argument for it, the weighted
+needed is Jensen against that product weight. Rather than redo the argument for it, the weighted
 Cauchy--Schwarz below is stated for an arbitrary probability density on an arbitrary measure space;
 the two facts that make the product weight one -- that it is integrable and has total mass `1` --
 are already in Mathlib, as `MeasureTheory.Integrable.fintype_prod` and
 `MeasureTheory.integral_fintype_prod_volume_eq_pow`. -/
 
 open MeasureTheory in
-/-- **Weighted Cauchy--Schwarz against a probability density.**  The square of a weighted mean is at
-most the weighted mean of the square.  Proved by expanding `∫ w (g - lam)^2 >= 0` at
+/-- **Weighted Cauchy--Schwarz against a probability density.** The square of a weighted mean is at
+most the weighted mean of the square. Proved by expanding `∫ w (g - lam)^2 >= 0` at
 `lam = ∫ w g`. -/
 theorem sq_integral_weight_le {α : Type*} [MeasurableSpace α] {μ : Measure α} {w g : α → ℝ}
     (hw0 : ∀ x, 0 ≤ w x) (hw1 : (∫ x, w x ∂μ) = 1)
@@ -36486,16 +36507,16 @@ theorem integrable_prod_fejer {H : ℝ} (hH : 0 < H) (r : ℕ) :
 
 open MeasureTheory in
 /-- **The product Fejer weight has total mass one**, so the shift averages are genuine convex
-means.  Each factor has mass one by `Auto.integral_fejer`, and Fubini in `r` variables is
+means. Each factor has mass one by `Auto.integral_fejer`, and Fubini in `r` variables is
 `MeasureTheory.integral_fintype_prod_volume_eq_pow`. -/
 theorem integral_prod_fejer {H : ℝ} (hH : 0 < H) (r : ℕ) :
     (∫ h : Fin r → ℝ, ∏ l : Fin r, fejer H (h l)) = 1 := by
   rw [integral_fintype_prod_volume_eq_pow (fejer H), integral_fejer hH, one_pow]
 
 open MeasureTheory in
-/-- **Averaging a pointwise Cauchy--Schwarz recursion against a probability density.**  If
+/-- **Averaging a pointwise Cauchy--Schwarz recursion against a probability density.** If
 `A^2 <= 2 S + delta` holds at every point, then the same holds for the weighted mean of `A`, with
-the *square* on the outside: `(∫ w A)^2 <= 2 ∫ w S + delta`.  Jensen supplies the passage from the
+the *square* on the outside: `(∫ w A)^2 <= 2 ∫ w S + delta`. Jensen supplies the passage from the
 square of the mean to the mean of the square. -/
 theorem sq_weighted_mean_le_of_pointwise {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {w A S : α → ℝ} {δ : ℝ}
@@ -36520,7 +36541,7 @@ theorem sq_weighted_mean_le_of_pointwise {α : Type*} [MeasurableSpace α] {μ :
 
 open MeasureTheory in
 /-- **The same for `Auto.phaseMean`**: the product Fejer weight qualifies as the density, by
-`Auto.prod_fejer_nonneg`, `Auto.integral_prod_fejer` and `Auto.integrable_prod_fejer`.  This turns
+`Auto.prod_fejer_nonneg`, `Auto.integral_prod_fejer` and `Auto.integrable_prod_fejer`. This turns
 a bound holding at every fixed shift into a bound on the mean. -/
 theorem sq_phaseMean_le_of_pointwise (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) {V N H : ℝ} (hH : 0 < H)
@@ -36543,8 +36564,8 @@ theorem sq_phaseMean_le_of_pointwise (r m : ℕ) (f : ℕ → E3 → ℂ) (P : �
     (integral_prod_fejer hH r) (integrable_prod_fejer hH r) hwA hwA2 hwS hptwise
 
 open MeasureTheory in
-/-- **Recombining the level-`(r+1)` mean.**  The mean over the old shifts of the Fejer average over
-the new one is the mean over all `r+1` shifts at once.  The old weight is pulled inside the new
+/-- **Recombining the level-`(r+1)` mean.** The mean over the old shifts of the Fejer average over
+the new one is the mean over all `r+1` shifts at once. The old weight is pulled inside the new
 average, the two integrals are swapped, and `Auto.integral_cons_split_real` together with
 `Auto.prod_fejer_cons` reassembles the product weight. -/
 theorem integral_prod_fejer_mul_inner_eq (r : ℕ) {H : ℝ} {B : (Fin (r + 1) → ℝ) → ℝ}
@@ -36583,7 +36604,7 @@ theorem integral_prod_fejer_mul_inner_eq (r : ℕ) {H : ℝ} {B : (Fin (r + 1) �
   exact integral_congr_ae (Filter.Eventually.of_forall hinner)
 
 open MeasureTheory in
-/-- **The level-`r` amplitude at a fixed shift.**  `Auto.phaseMean` is its Fejer average.  Naming it
+/-- **The level-`r` amplitude at a fixed shift.** `Auto.phaseMean` is its Fejer average. Naming it
 keeps the recursion's statement readable; it unfolds to the expression the earlier lemmas use. -/
 noncomputable def phaseAmp (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) (V N : ℝ) (h : Fin r → ℝ) : ℝ :=
@@ -36599,10 +36620,10 @@ theorem phaseMean_eq_integral_amp (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ 
           * phaseAmp r m f P p j g V N h := rfl
 
 open MeasureTheory in
-/-- **The recursion.**  A bound holding at every fixed shift, of the form the signed van der Corput
+/-- **The recursion.** A bound holding at every fixed shift, of the form the signed van der Corput
 step produces, becomes the Cauchy--Schwarz recursion between consecutive means:
-`M r ^ 2 <= 2 * M (r+1) + 2H/N`.  Divided by two this is exactly the hypothesis `Auto.csLoss`
-consumes, at `delta = H/N`.  The block at level `r+1` is the enlarged box's indicator, reinstated
+`M r ^ 2 <= 2 * M (r+1) + 2H/N`. Divided by two this is exactly the hypothesis `Auto.csLoss`
+consumes, at `delta = H/N`. The block at level `r+1` is the enlarged box's indicator, reinstated
 by `Auto.integral_window_eq_indicator`. -/
 theorem phaseMean_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) {C K N H V : ℝ} (hH : 0 < H)
@@ -36642,7 +36663,7 @@ theorem phaseMean_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynom
   exact h1
 
 open MeasureTheory in
-/-- **A weighted average of real parts, bounded termwise.**  Pushing `Complex.re` through the
+/-- **A weighted average of real parts, bounded termwise.** Pushing `Complex.re` through the
 average, pulling the two scalars in, and comparing termwise. -/
 theorem integral_weight_re_le_of_bound {V N : ℝ} {w : ℝ → ℝ} (hw0 : ∀ u, 0 ≤ w u)
     {Z : ℝ → ℂ} {Amp : ℝ → ℝ}
@@ -36664,10 +36685,10 @@ theorem integral_weight_re_le_of_bound {V N : ℝ} {w : ℝ → ℝ} (hw0 : ∀ 
     _ ≤ w u * Amp u := mul_le_mul_of_nonneg_left (hbound u) (hw0 u)
 
 open MeasureTheory in
-/-- **Feeding the step into the recursion.**  The conclusion of `Auto.phaseStepIter_signed` at a
+/-- **Feeding the step into the recursion.** The conclusion of `Auto.phaseStepIter_signed` at a
 fixed shift, rewritten into the pointwise hypothesis `Auto.phaseMean_step` consumes: the Fejer
 average over the new shift of the level-`(r+1)` amplitude, with the enlarged box's indicator as its
-block.  `Auto.step_rhs_le_phaseMean_integrand` supplies the termwise bound. -/
+block. `Auto.step_rhs_le_phaseMean_integrand` supplies the termwise bound. -/
 theorem phaseAmp_sq_le_of_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) (g : E3 → ℂ) {C K N H V : ℝ}
     (hH : 0 < H) (hV : 0 < V) (hN : 0 < N) (hN1 : 1 ≤ N) (hK : 0 ≤ K) (hm : 1 ≤ m)
@@ -36722,7 +36743,7 @@ theorem phaseMean_le_one {H : ℝ} (hH : 0 < H) (r m : ℕ) (f : ℕ → E3 → 
   rw [phaseMean_eq_integral_amp]
   linarith [hmono, hval]
 
-/-- **The Cauchy--Schwarz chain at four steps.**  `Auto.csLoss` specialized to `T = 4` and
+/-- **The Cauchy--Schwarz chain at four steps.** `Auto.csLoss` specialized to `T = 4` and
 `delta = H/N`, in the form `Auto.phaseMean_step` produces its recursion: the step gives
 `M r ^ 2 <= 2 M (r+1) + 2H/N`, which halved is `csPhi (M r) <= M (r+1) + H/N`. -/
 theorem csLoss_four {M : ℕ → ℝ} {H N Q : ℝ} (hH : 0 < H) (hN : 0 < N)
@@ -36739,7 +36760,7 @@ theorem csLoss_four {M : ℕ → ℝ} {H N Q : ℝ} (hH : 0 < H) (hN : 0 < N)
 
 /-! ### The chain as a concrete sequence
 
-`Auto.csLoss` consumes a sequence `M : N -> R`.  The means at different levels have blocks of
+`Auto.csLoss` consumes a sequence `M : N -> R`. The means at different levels have blocks of
 different kinds -- the original spatial factor `f 0` at level zero, the enlarged box's indicator at
 every later level, since the step removes its block and the indicator is what is put back -- so the
 sequence carries the block as a function of the level. -/
@@ -36755,11 +36776,11 @@ noncomputable def phaseMeanSeq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → P
   phaseMean r m f P p j (phaseBlock f C K N r) V N H
 
 theorem phaseBlock_zero (f : ℕ → E3 → ℂ) (C K N : ℝ) : phaseBlock f C K N 0 = f 0 := by
-  rw [phaseBlock, if_pos rfl]
+  rw [phaseBlock, ite_eq_left rfl]
 
 theorem phaseBlock_succ (f : ℕ → E3 → ℂ) (C K N : ℝ) (r : ℕ) :
     phaseBlock f C K N (r + 1) = (petBox (C + K) N).indicator fun _ => (1 : ℂ) := by
-  rw [phaseBlock, if_neg (Nat.succ_ne_zero r)]
+  rw [phaseBlock, ite_eq_right (Nat.succ_ne_zero r)]
 
 open MeasureTheory in
 theorem phaseMeanSeq_zero (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
@@ -36782,7 +36803,7 @@ theorem phaseMeanSeq_nonneg {H : ℝ} (hH : 0 < H) (m : ℕ) (f : ℕ → E3 →
   phaseMean_nonneg hH r m f P p j _ V N
 
 open MeasureTheory in
-/-- **The chain, run.**  Given the recursion at each of the four levels, the sequence bounds, and a
+/-- **The chain, run.** Given the recursion at each of the four levels, the sequence bounds, and a
 terminal bound `Q` on the level-four mean, the level-zero mean -- which is the correlation the
 proposition's hypothesis bounds below -- obeys the power bound `Auto.csLoss` delivers. -/
 theorem phaseMean_chain (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
@@ -36799,7 +36820,7 @@ theorem phaseMean_chain (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomi
 
 open MeasureTheory in
 /-- **The chain's recursion at one level**, from `Auto.phaseMean_step` with the level's own block
-supplied.  At level zero that block is `f 0`; afterwards it is the enlarged box's indicator, which
+supplied. At level zero that block is `f 0`; afterwards it is the enlarged box's indicator, which
 is exactly what the step puts back. -/
 theorem phaseMeanSeq_rec_of_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
     (p : E3 → Polynomial ℝ) (j : ℕ → Fin 3) {C K N H V : ℝ} (hH : 0 < H)
@@ -36830,7 +36851,7 @@ theorem phaseMeanSeq_rec_of_step (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ �
   exact phaseMean_step r m f P p j (phaseBlock f C K N r) hH hwA hwA2 hwS hptwise hswap hint
 
 open MeasureTheory in
-/-- **At level four the phase is gone from the amplitude.**  By
+/-- **At level four the phase is gone from the amplitude.** By
 `Auto.phaseProdIter_four_eq`: the fourth finite difference of a cubic phase vanishes, so what
 remains is the raw parity cube of the shifted inputs -- the object `patch:uniformize` consumes. -/
 theorem phaseAmp_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynomial ℝ)
@@ -36858,7 +36879,7 @@ theorem phaseAmp_four_eq (m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polynom
   rw [phaseAmp, integral_congr_ae (Filter.Eventually.of_forall hptx)]
 
 open MeasureTheory in
-/-- **The amplitude is bounded by the block's `L^1` mass over the volume.**  The real-scalar twin of
+/-- **The amplitude is bounded by the block's `L^1` mass over the volume.** The real-scalar twin of
 `Auto.norm_phaseState_le`: the iterate is one-bounded, so the window average is, and what is left is
 the block. -/
 theorem phaseAmp_le (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
@@ -36897,7 +36918,7 @@ theorem phaseAmp_le (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y
     hgi.norm (Filter.Eventually.of_forall hptw)
 
 open MeasureTheory in
-/-- **The amplitude is at most one** when the block's `L^1` mass is at most the volume.  For the
+/-- **The amplitude is at most one** when the block's `L^1` mass is at most the volume. For the
 enlarged box's indicator with `V` the box's volume this holds with equality, which is why that is
 the `V` the later steps use. -/
 theorem phaseAmp_le_one (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f i y‖ ≤ 1)
@@ -36913,12 +36934,11 @@ theorem phaseAmp_le_one (r m : ℕ) {f : ℕ → E3 → ℂ} (hf : ∀ i y, ‖f
 
 The integrability conditions the chain carries are all about functions of the *shift* -- the mean
 integrates over `Fin r -> R` -- so they need the iterate to be measurable in the shift as well as in
-the point and the parameter.  `Auto.measurable_uncurry_phaseProdIter` gives the latter at a fixed
+the point and the parameter. `Auto.measurable_uncurry_phaseProdIter` gives the latter at a fixed
 shift; this section adds the shift itself. -/
-
 theorem measurable_cubeShift {r : ℕ} (ω : Fin r → Bool) :
     Measurable fun h : Fin r → ℝ => cubeShift h ω := by
-  show Measurable fun h : Fin r → ℝ => ∑ i : Fin r, if ω i then h i else 0
+  change Measurable fun h : Fin r → ℝ => ∑ i : Fin r, if ω i then h i else 0
   refine Finset.measurable_sum _ fun i _ => ?_
   split_ifs with hb
   · exact measurable_pi_apply i
@@ -36931,7 +36951,7 @@ theorem measurable_phaseProdIter_shift (r m : ℕ) {f : ℕ → E3 → ℂ} {P :
     (hFm : Measurable (Function.uncurry fun (x : E3) (t : ℝ) => phaseProd m f P p j x t)) :
     Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
       phaseProdIter r m f P p j q.1.1 q.1.2 q.2 := by
-  show Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
+  change Measurable fun q : (E3 × (Fin r → ℝ)) × ℝ =>
     ∏ ω : Fin r → Bool, conjPar (numFalse ω)
       (phaseProd m f P p j q.1.1 (q.2 + cubeShift q.1.2 ω))
   refine Finset.measurable_prod _ fun ω _ => ?_
@@ -36954,7 +36974,7 @@ theorem measurable_phaseProdIter_shift (r m : ℕ) {f : ℕ → E3 → ℂ} {P :
   exact hfin
 
 open MeasureTheory in
-/-- **The window average is strongly measurable in point and shift jointly.**  Integrating the
+/-- **The window average is strongly measurable in point and shift jointly.** Integrating the
 parameter out of `Auto.measurable_phaseProdIter_shift`, by
 `MeasureTheory.StronglyMeasurable.integral_prod_right'` -- the same route the `locUnifPow`
 development takes at `Auto.stronglyMeasurable_innerFejer` (line 20067). -/
@@ -36979,7 +36999,7 @@ theorem stronglyMeasurable_windowAvg (r m : ℕ) {f : ℕ → E3 → ℂ} {P : �
   exact hres
 
 open MeasureTheory in
-/-- **The amplitude is strongly measurable in the shift.**  This is the ingredient every one of the
+/-- **The amplitude is strongly measurable in the shift.** This is the ingredient every one of the
 chain's integrability hypotheses needs: the mean integrates over the shift, so the amplitude must be
 measurable there. -/
 theorem stronglyMeasurable_phaseAmp (r m : ℕ) {f : ℕ → E3 → ℂ} {P : ℕ → Polynomial ℝ}
@@ -37005,7 +37025,7 @@ theorem phaseAmp_nonneg (r m : ℕ) (f : ℕ → E3 → ℂ) (P : ℕ → Polyno
 
 open MeasureTheory in
 /-- **The weighted amplitude is integrable**, being a one-bounded measurable function against the
-integrable Fejer weight.  This discharges the `hwA` hypothesis of `Auto.phaseMean_step` and the
+integrable Fejer weight. This discharges the `hwA` hypothesis of `Auto.phaseMean_step` and the
 `hint` hypothesis of `Auto.phaseMean_le_one`. -/
 theorem integrable_prod_fejer_mul_phaseAmp {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
     {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
@@ -37027,7 +37047,7 @@ theorem integrable_prod_fejer_mul_phaseAmp {H : ℝ} (hH : 0 < H) (r m : ℕ) {f
     _ = ∏ l : Fin r, fejer H (h l) := mul_one _
 
 open MeasureTheory in
-/-- The same for the square, which is what Jensen consumes.  This discharges the `hwA2` hypothesis
+/-- The same for the square, which is what Jensen consumes. This discharges the `hwA2` hypothesis
 of `Auto.phaseMean_step`. -/
 theorem integrable_prod_fejer_mul_phaseAmp_sq {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
     {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
@@ -37052,7 +37072,7 @@ theorem integrable_prod_fejer_mul_phaseAmp_sq {H : ℝ} (hH : 0 < H) (r m : ℕ)
 
 theorem measurable_cons_left {r : ℕ} (h : Fin r → ℝ) :
     Measurable fun u : ℝ => (Fin.cons u h : Fin (r + 1) → ℝ) := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   induction i using Fin.cases with
   | zero =>
       simp only [Fin.cons_zero]
@@ -37063,7 +37083,7 @@ theorem measurable_cons_left {r : ℕ} (h : Fin r → ℝ) :
 
 theorem measurable_cons_pair {r : ℕ} :
     Measurable fun q : (Fin r → ℝ) × ℝ => (Fin.cons q.2 q.1 : Fin (r + 1) → ℝ) := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   induction i using Fin.cases with
   | zero =>
       simp only [Fin.cons_zero]
@@ -37073,7 +37093,7 @@ theorem measurable_cons_pair {r : ℕ} :
       exact (measurable_pi_apply k).comp measurable_fst
 
 open MeasureTheory in
-/-- The Fejer-weighted amplitude over the *new* shift is integrable.  This discharges the `hmono2`
+/-- The Fejer-weighted amplitude over the *new* shift is integrable. This discharges the `hmono2`
 hypothesis of `Auto.phaseAmp_sq_le_of_step`. -/
 theorem integrable_fejer_mul_phaseAmp_cons {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
     {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
@@ -37139,7 +37159,7 @@ theorem innerAvg_le_one {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → �
   linarith [hmono, hval]
 
 open MeasureTheory in
-/-- The old-shift weighting of the inner average is integrable.  This discharges the `hwS`
+/-- The old-shift weighting of the inner average is integrable. This discharges the `hwS`
 hypothesis of `Auto.phaseMean_step`. -/
 theorem integrable_prod_fejer_mul_innerAvg {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
     {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
@@ -37164,7 +37184,7 @@ theorem integrable_prod_fejer_mul_innerAvg {H : ℝ} (hH : 0 < H) (r m : ℕ) {f
 
 theorem measurable_cons_pair' {r : ℕ} :
     Measurable fun q : ℝ × (Fin r → ℝ) => (Fin.cons q.1 q.2 : Fin (r + 1) → ℝ) := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   induction i using Fin.cases with
   | zero =>
       simp only [Fin.cons_zero]
@@ -37174,9 +37194,9 @@ theorem measurable_cons_pair' {r : ℕ} :
       exact (measurable_pi_apply k).comp measurable_snd
 
 open MeasureTheory in
-/-- **The cons-split integrand is integrable on the product.**  This discharges the `hint`
+/-- **The cons-split integrand is integrable on the product.** This discharges the `hint`
 hypothesis of `Auto.phaseMean_step`, the joint integrability
-`Auto.integral_cons_split_real` needs.  The weight is split by `Auto.prod_fejer_cons` first, after
+`Auto.integral_cons_split_real` needs. The weight is split by `Auto.prod_fejer_cons` first, after
 which it is a product of an integrable function of the new shift and one of the old shifts, and
 `MeasureTheory.Integrable.mul_prod` applies. -/
 theorem integrable_cons_prod_fejer_mul_phaseAmp {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
@@ -37242,7 +37262,7 @@ theorem integrable_uncurry_swap {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → 
       ((continuous_fejer.comp continuous_snd).aestronglyMeasurable) ?_
     exact ((stronglyMeasurable_phaseAmp (r + 1) m hN hFm hg).comp_measurable
       measurable_cons_pair).aestronglyMeasurable
-  · show ‖(∏ l : Fin r, fejer H (q.1 l))
+  · change ‖(∏ l : Fin r, fejer H (q.1 l))
           * (fejer H q.2 * phaseAmp (r + 1) m f P p j g V N (Fin.cons q.2 q.1))‖
         ≤ (∏ l : Fin r, fejer H (q.1 l)) * fejer H q.2
     have hw0 : 0 ≤ ∏ l : Fin r, fejer H (q.1 l) := prod_fejer_nonneg hH q.1
@@ -37257,7 +37277,7 @@ theorem integrable_uncurry_swap {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → 
       _ = (∏ l : Fin r, fejer H (q.1 l)) * fejer H q.2 := by rw [mul_one]
 
 open MeasureTheory in
-/-- **The Fubini swap between the old and new shift averages.**  This discharges the `hswap`
+/-- **The Fubini swap between the old and new shift averages.** This discharges the `hswap`
 hypothesis of `Auto.phaseMean_step`. -/
 theorem phaseMean_swap {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → ℂ}
     {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {g : E3 → ℂ} {V N : ℝ}
@@ -37272,7 +37292,7 @@ theorem phaseMean_swap {H : ℝ} (hH : 0 < H) (r m : ℕ) {f : ℕ → E3 → �
   integral_integral_swap (integrable_uncurry_swap hH r m hN hFm hg hamp)
 
 open MeasureTheory in
-/-- **A one-bounded function supported in the box has `L^1` mass at most the box's volume.**  The
+/-- **A one-bounded function supported in the box has `L^1` mass at most the box's volume.** The
 `L^1` twin of `Auto.integral_sq_le_volume_of_bdd_support`; the remaining conditions of the chain
 integrate the iterate over all of `E3`, which is finite only for this reason. -/
 theorem integral_norm_le_volume_of_bdd_support {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) {W : E3 → ℂ}
@@ -37283,7 +37303,7 @@ theorem integral_norm_le_volume_of_bdd_support {C N : ℝ} (hC : 0 ≤ C) (hN : 
   have hfin : volume (petBox C N) ≠ ⊤ := by
     rw [volume_petBox hC hN]
     exact ENNReal.ofReal_ne_top
-  haveI : IsFiniteMeasure (volume.restrict (petBox C N)) := by
+  have : IsFiniteMeasure (volume.restrict (petBox C N)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_of_le_of_ne le_top hfin
@@ -37346,7 +37366,7 @@ theorem norm_integral_phaseProdIter_x_le (r m : ℕ) {f : ℕ → E3 → ℂ} {P
     (fun x hx => phaseProdIter_eq_zero_of_notMem r m f P p j hN1 hK hm hsupp hbd hx k)
 
 open MeasureTheory in
-/-- **Joint integrability of the iterate over the window and the space.**  The window has finite
+/-- **Joint integrability of the iterate over the window and the space.** The window has finite
 length and the iterate is one-bounded and supported in the enlarged box at every parameter of the
 window, so it is dominated by the box's indicator on the product. -/
 theorem integrable_uncurry_phaseProdIter_window (r m : ℕ) {f : ℕ → E3 → ℂ}
@@ -37363,11 +37383,11 @@ theorem integrable_uncurry_phaseProdIter_window (r m : ℕ) {f : ℕ → E3 → 
   have hBfin : volume (petBox (C + K) N) ≠ ⊤ := by
     rw [volume_petBox hCK hN0]
     exact ENNReal.ofReal_ne_top
-  haveI : IsFiniteMeasure ((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))) := by
+  have : IsFiniteMeasure ((volume : Measure ℝ).restrict (Set.uIoc (0 : ℝ) (0 + N))) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact measure_Ioc_lt_top
-  haveI : IsFiniteMeasure ((volume : Measure E3).restrict (petBox (C + K) N)) := by
+  have : IsFiniteMeasure ((volume : Measure E3).restrict (petBox (C + K) N)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_of_le_of_ne le_top hBfin
@@ -37396,7 +37416,7 @@ theorem integrable_uncurry_phaseProdIter_window (r m : ℕ) {f : ℕ → E3 → 
   refine (ae_restrict_iff' (measurableSet_uIoc.prod MeasurableSet.univ)).mpr
     (Filter.Eventually.of_forall fun q hq => ?_)
   have ht : q.1 ∈ Set.uIcc (0 : ℝ) (0 + N) := Set.uIoc_subset_uIcc hq.1
-  show ‖phaseProdIter r m f P p j q.2 k q.1‖
+  change ‖phaseProdIter r m f P p j q.2 k q.1‖
     ≤ (petBox (C + K) N).indicator (fun _ => (1 : ℝ)) q.2
   by_cases hx : q.2 ∈ petBox (C + K) N
   · rw [Set.indicator_of_mem hx]
@@ -37405,7 +37425,7 @@ theorem integrable_uncurry_phaseProdIter_window (r m : ℕ) {f : ℕ → E3 → 
       phaseProdIter_eq_zero_of_notMem r m f P p j hN1 hK hm hsupp (hbd q.1 ht) hx k, norm_zero]
 
 open MeasureTheory in
-/-- **The Fubini swap of the window and the space.**  This discharges the `hfub` hypothesis of
+/-- **The Fubini swap of the window and the space.** This discharges the `hfub` hypothesis of
 `Auto.step_rhs_le_phaseMean_integrand`, the last of the chain's deferred conditions. -/
 theorem phaseProdIter_window_swap (r m : ℕ) {f : ℕ → E3 → ℂ}
     {P : ℕ → Polynomial ℝ} {p : E3 → Polynomial ℝ} {j : ℕ → Fin 3} {C K N : ℝ}
@@ -37420,7 +37440,7 @@ theorem phaseProdIter_window_swap (r m : ℕ) {f : ℕ → E3 → ℂ}
     (integrable_uncurry_phaseProdIter_window r m hCK hN0 hN1 hK hm hf hsupp hbd hFm k)
 
 open MeasureTheory in
-/-- The window-space double integral is strongly measurable in the new shift.  Measurability is
+/-- The window-space double integral is strongly measurable in the new shift. Measurability is
 read off the *swapped* order, where the inner integral is `Auto.stronglyMeasurable_windowAvg`;
 `Auto.phaseProdIter_window_swap` transports it back. -/
 theorem stronglyMeasurable_windowSpace (r m : ℕ) {f : ℕ → E3 → ℂ}
@@ -37541,12 +37561,11 @@ theorem integrable_scaled_fejer_mul_re_windowSpace {H : ℝ} (hH : 0 < H) (r m :
 /-! ### The two cube conventions agree in even dimension
 
 The affine development writes its cubes with `Auto.numTrue` and `Auto.slopeShift`; the Fejer
-difference and the local uniformity norms use `Auto.numFalse` and `Auto.cubeShift`.  The shifts
+difference and the local uniformity norms use `Auto.numFalse` and `Auto.cubeShift`. The shifts
 differ only by scaling each coordinate by its slope gap, and the two parity counts sum to the cube's
 dimension -- so in *even* dimension, and in particular at the four steps this proposition runs, the
 two conjugation conventions coincide.  This is the "translation/conjugation invariance" by which
 `patch:affine-terminal` identifies its integrated power with that of `f`. -/
-
 theorem slopeShift_eq_cubeShift (a : ℕ → ℝ) (i : ℕ) {r : ℕ} (h : Fin r → ℝ)
     (ω : Fin r → Bool) :
     slopeShift a i h ω = cubeShift (fun ν : Fin r => (a i - a ν.val) * h ν) ω := by
@@ -37569,8 +37588,8 @@ theorem conjPar_numTrue_eq_numFalse {s : ℕ} (hs : Even s) (ω : Fin s → Bool
   have hiff : Even (numTrue ω) ↔ Even (numFalse ω) := Nat.even_add.mp hsum
   rw [conjPar, conjPar]
   by_cases hT : Even (numTrue ω)
-  · rw [if_pos hT, if_pos (hiff.mp hT)]
-  · rw [if_neg hT, if_neg fun hF => hT (hiff.mpr hF)]
+  · rw [ite_eq_left hT, ite_eq_left (hiff.mp hT)]
+  · rw [ite_eq_right hT, ite_eq_right fun hF => hT (hiff.mpr hF)]
 
 /-- The affine block, written in the Fejer-difference convention. -/
 theorem headBlock_cube_eq_cubeProd (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i : ℕ) {r : ℕ}
@@ -37582,9 +37601,9 @@ theorem headBlock_cube_eq_cubeProd (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ
   refine Finset.prod_congr rfl fun ω _ => ?_
   rw [conjPar_numTrue_eq_numFalse hr ω, slopeShift_eq_cubeShift]
 
-/-- **The affine block is an iterated Fejer difference.**  This is the bridge from the affine
+/-- **The affine block is an iterated Fejer difference.** This is the bridge from the affine
 development -- `Auto.headBlock` and the results of row 394 -- to the local uniformity norms of
-`Auto.locUnifPow`, whose cubes are `Auto.fdiffIter`.  The increments are the slope gaps times the
+`Auto.locUnifPow`, whose cubes are `Auto.fdiffIter`. The increments are the slope gaps times the
 shifts. -/
 theorem headBlock_eq_fdiffIter (j : Fin 3) (a : ℕ → ℝ) (g : E3 → ℂ) (i : ℕ) {r : ℕ}
     (hr : Even r) (h : Fin r → ℝ) (x : E3) :
@@ -37604,7 +37623,7 @@ theorem integral_headBlock_translate (j : Fin 3) (a : ℕ → ℝ) (g : E3 → �
   integral_add_right_eq_self (fun x : E3 => headBlock j a g i r h x) (v • basisVec j)
 
 open MeasureTheory in
-/-- **The affine terminal identity**, the patch's `patch:affine-terminal`.  At the last stage the
+/-- **The affine terminal identity**, the patch's `patch:affine-terminal`. At the last stage the
 surviving product is a single block, translating the point removes the parameter, and the parameter
 average collapses. -/
 theorem slopeState_terminal (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → ℂ) {V N c : ℝ} (hN : 0 < N)
@@ -37635,9 +37654,9 @@ theorem slopeState_terminal (j : Fin 3) (a : ℕ → ℝ) (g : ℕ → E3 → �
 /-! ### The Fejer kernel's scaling law
 
 The affine terminal cube carries the *gap-scaled* shifts `(a i - a nu) * h nu`, while the local
-uniformity norms integrate against `fejer` in the shift itself.  Passing between them is a change of
+uniformity norms integrate against `fejer` in the shift itself. Passing between them is a change of
 variables `z = c h`, and what makes it work is that the kernel scales: dilating both the radius and
-the point by `c` divides the kernel by `c`, so the Jacobian is absorbed exactly.  This is the
+the point by `c` divides the kernel by `c`, so the Jacobian is absorbed exactly. This is the
 patch's "changing the new affine increments by `z_i = a p_i(h) u_i` produces Fejer radii
 `L_i = |a p_i(h)| H`". -/
 
@@ -37666,7 +37685,7 @@ open MeasureTheory in
 /-- **Scaling each factor of a product measure scales the product by the product of the scalars.**
 Mathlib has `MeasureTheory.Measure.pi_map_pi`, which pushes a product measure forward along a
 product of maps, and `Real.map_volume_mul_left`, which scales one-dimensional Lebesgue measure; what
-it does not have is this last step, which combines them.  It is what turns the coordinatewise
+it does not have is this last step, which combines them. It is what turns the coordinatewise
 dilation `z = c h` on `Fin s -> R` into a single Jacobian factor. -/
 theorem pi_smul_eq {ι : Type*} [Fintype ι] {α : ι → Type*} [∀ i, MeasurableSpace (α i)]
     (μ : ∀ i, Measure (α i)) [∀ i, SigmaFinite (μ i)] (k : ι → ENNReal)
@@ -37678,7 +37697,7 @@ theorem pi_smul_eq {ι : Type*} [Fintype ι] {α : ι → Type*} [∀ i, Measura
   exact Finset.prod_congr rfl fun i _ => by rw [Measure.smul_apply, smul_eq_mul]
 
 open MeasureTheory in
-/-- A finite multiple of a sigma-finite measure is sigma-finite.  Mathlib has no instance for this,
+/-- A finite multiple of a sigma-finite measure is sigma-finite. Mathlib has no instance for this,
 and both `MeasureTheory.Measure.pi_map_pi` and `Auto.pi_smul_eq` require it. -/
 theorem sigmaFinite_smul {α : Type*} [MeasurableSpace α] (μ : Measure α) [SigmaFinite μ]
     {c : ENNReal} (hc : c ≠ ⊤) : SigmaFinite (c • μ) := by
@@ -37697,10 +37716,10 @@ theorem map_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i) :
       = ENNReal.ofReal ((c i)⁻¹) • (volume : Measure ℝ) := by
     intro i
     rw [Real.map_volume_mul_left (ne_of_gt (hc i)), abs_of_pos (inv_pos.mpr (hc i))]
-  haveI hsf2 : ∀ i : Fin s,
+  have hsf2 : ∀ i : Fin s,
       SigmaFinite (ENNReal.ofReal ((c i)⁻¹) • (volume : Measure ℝ)) := fun i =>
     sigmaFinite_smul _ ENNReal.ofReal_ne_top
-  haveI hsf1 : ∀ i : Fin s,
+  have hsf1 : ∀ i : Fin s,
       SigmaFinite (Measure.map (fun x : ℝ => c i * x) (volume : Measure ℝ)) := by
     intro i
     rw [hmap i]
@@ -37711,7 +37730,7 @@ theorem map_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i) :
     pi_smul_eq]
 
 open MeasureTheory in
-/-- **The change of variables `z = c h`, in integral form.**  Composing
+/-- **The change of variables `z = c h`, in integral form.** Composing
 `Auto.map_diag_scale` with `MeasureTheory.integral_map`: dilating the shift coordinatewise costs
 exactly the inverse Jacobian. -/
 theorem integral_comp_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i)
@@ -37719,7 +37738,7 @@ theorem integral_comp_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < 
     (∫ h : Fin s → ℝ, F (fun i => c i * h i))
       = (∏ i : Fin s, (c i)⁻¹) • ∫ z : Fin s → ℝ, F z := by
   have hφ : Measurable (fun h : Fin s → ℝ => fun i => c i * h i) :=
-    measurable_pi_lambda _ fun i => (measurable_const_mul (c i)).comp (measurable_pi_apply i)
+    Measurable.of_eval fun i => (measurable_const_mul (c i)).comp (measurable_pi_apply i)
   have hFm : AEStronglyMeasurable F
       (Measure.map (fun h : Fin s → ℝ => fun i => c i * h i)
         (volume : Measure (Fin s → ℝ))) := by
@@ -37734,9 +37753,9 @@ theorem integral_comp_diag_scale {s : ℕ} {c : Fin s → ℝ} (hc : ∀ i, 0 < 
     ENNReal.toReal_ofReal (le_of_lt (inv_pos.mpr (hc i)))
 
 open MeasureTheory in
-/-- **The gap-scaled cube is a mixed-radii average.**  Averaging a cube whose increments are the
+/-- **The gap-scaled cube is a mixed-radii average.** Averaging a cube whose increments are the
 *scaled* shifts `c l * h l` against a single-radius Fejer weight is the same as averaging the plain
-cube against Fejer weights at the scaled radii `c l * H`.  The Jacobian of the substitution cancels
+cube against Fejer weights at the scaled radii `c l * H`. The Jacobian of the substitution cancels
 exactly against the kernel's own scaling (`Auto.prod_fejer_scale`), so the identity carries no
 constant.
 
@@ -37770,7 +37789,7 @@ theorem integral_prod_fejer_mul_comp_diag {s : ℕ} {H : ℝ} {c : Fin s → ℝ
 
 open MeasureTheory in
 /-- **The same in the orientation `Auto.locUnifPowMixed` uses**, with the cube first and the Fejer
-weight distributed over the product.  This is `Auto.integral_prod_fejer_mul_comp_diag` with the
+weight distributed over the product. This is `Auto.integral_prod_fejer_mul_comp_diag` with the
 factors reordered and the cast pushed inside. -/
 theorem integral_fdiffIter_fejer_comp_diag {s : ℕ} {H : ℝ} {c : Fin s → ℝ} (hc : ∀ i, 0 < c i)
     (j : Fin 3) (f : E3 → ℂ) (x : E3)
@@ -37831,7 +37850,7 @@ theorem locUnifPowMixed_eq_integral (N : ℝ) {s : ℕ} (Lv : Fin s → ℝ) (j 
 
 open MeasureTheory in
 /-- **The mixed-radii uniformity norm at the gap-scaled radii is the single-radius average of the
-gap-scaled cube.**  This is the identification the terminal bound needs: the affine terminal cube --
+gap-scaled cube.** This is the identification the terminal bound needs: the affine terminal cube --
 whose increments are the slope gaps times the shifts, averaged against one Fejer radius `H` -- is
 literally an `Auto.locUnifPowMixed` at radii `c l * H`, which is what
 `Auto.sq_re_locUnifPowMixed_le_scaled` consumes. -/
@@ -37852,9 +37871,9 @@ theorem locUnifPowMixed_comp_diag {s : ℕ} {N H : ℝ} {c : Fin s → ℝ} (hc 
   rw [hdef, ← integral_x_fdiffIter_fejer_comp_diag hc j f hF]
 
 open MeasureTheory in
-/-- **The terminal bound.**  The single-radius average of the gap-scaled cube -- which is what the
+/-- **The terminal bound.** The single-radius average of the gap-scaled cube -- which is what the
 affine terminal identity produces -- obeys the `patch:uniformize` estimate, so its square is
-controlled by a *single-radius* directional uniformity norm of `f` at order `s + 1`.  This is the
+controlled by a *single-radius* directional uniformity norm of `f` at order `s + 1`. This is the
 form in which the proposition's conclusion is stated. -/
 theorem sq_re_gapScaled_le_locUnifPow {C N L H : ℝ} (hL : 0 < L) (hC : 0 ≤ C) (hN : 0 < N)
     (j : Fin 3) (hLS : L ≤ 2 * (C * N ^ expo j)) {s : ℕ} {c : Fin s → ℝ}
@@ -37902,7 +37921,7 @@ theorem eLpNorm_prod_le {α ι : Type*} [MeasurableSpace α] {μ : Measure α}
     have hr : r = ⊤ := by simpa using hpr.symm
     subst hr
     simp only [Finset.prod_empty]
-    refine (eLpNorm_le_of_ae_bound (C := 1) (.of_forall fun x => by simp)).trans ?_
+    refine (eLpNorm_le_of_ae_bound (C := 1) (by fun_prop) (.of_forall fun x => by simp)).trans ?_
     simp only [ENNReal.toReal_top, inv_zero, ENNReal.rpow_zero, mul_one,
       ENNReal.ofReal_one, le_refl]
   | insert a s ha ih =>
@@ -37910,11 +37929,11 @@ theorem eLpNorm_prod_le {α ι : Type*} [MeasurableSpace α] {μ : Measure α}
     have hfs : ∀ i ∈ s, AEStronglyMeasurable (f i) μ := fun i hi =>
       hf i (Finset.mem_insert_of_mem hi)
     have ih' := ih hfs (r := (∑ i ∈ s, (p i)⁻¹)⁻¹) (by rw [inv_inv])
-    haveI : ENNReal.HolderTriple (p a) (∑ i ∈ s, (p i)⁻¹)⁻¹ r := ⟨by rw [inv_inv, hpr]⟩
+    have : ENNReal.HolderTriple (p a) (∑ i ∈ s, (p i)⁻¹)⁻¹ r := ⟨by rw [inv_inv, hpr]⟩
     have hprod : AEStronglyMeasurable (fun x => ∏ i ∈ s, f i x) μ :=
       Finset.aestronglyMeasurable_fun_prod s hfs
     have h := eLpNorm_smul_le_mul_eLpNorm (p := p a) (q := (∑ i ∈ s, (p i)⁻¹)⁻¹) (r := r)
-      hprod (hf a (Finset.mem_insert_self a s))
+      (hf a (Finset.mem_insert_self a s)) hprod
     simp only [Finset.prod_insert ha]
     refine le_trans (le_of_eq ?_) (h.trans (mul_le_mul' le_rfl ih'))
     congr 1
@@ -37941,15 +37960,18 @@ theorem eLpNorm_lintegral_le {α β : Type*} [MeasurableSpace α] [MeasurableSpa
       hF.comp measurable_swap
     exact this.lintegral_prod_right'
   set R : ℝ≥0∞ := ∫⁻ u, eLpNorm (F u) p μ ∂ν with hRdef
-  have hnorm : ∀ g : α → ℝ≥0∞, eLpNorm g p μ = (∫⁻ x, g x ^ P ∂μ) ^ (1 / P) := fun g => by
-    rw [eLpNorm_eq_eLpNorm' hp0 hptop, eLpNorm']
+  have hnorm : ∀ (g : α → ℝ≥0∞) (_ : Measurable g), eLpNorm g p μ = (∫⁻ x, g x ^ P ∂μ) ^ (1 / P)
+    := fun g hg => by
+    rw [eLpNorm_eq_eLpNorm' hp0 hptop (by fun_prop), eLpNorm']
     simp [hPdef]
   rcases eq_or_lt_of_le hP1 with hP | hP
   · -- the case `p = 1`: Tonelli
     have hp : p = 1 := by
       rw [← ENNReal.ofReal_toReal hptop, ← hPdef, ← hP, ENNReal.ofReal_one]
     subst hp
-    simp only [eLpNorm_one_eq_lintegral_enorm, enorm_eq_self, hHdef, hRdef]
+    have hsec (u : β) := eLpNorm_one_eq_lintegral_enorm (hFu u).aestronglyMeasurable (μ := μ)
+    rw [eLpNorm_one_eq_lintegral_enorm hHm.aestronglyMeasurable]
+    simp only [hRdef, hsec, enorm_eq_self]
     exact (lintegral_lintegral_swap (f := fun x u => F u x) (μ := μ) (ν := ν)
       (hF.comp measurable_swap).aemeasurable).le
   -- the case `1 < p`
@@ -38013,8 +38035,8 @@ theorem eLpNorm_lintegral_le {α β : Type*} [MeasurableSpace α] [MeasurableSpa
               have := hPQ.symm.inv_pos; positivity) (hfin n))]
             congr 1
             refine lintegral_congr fun u => ?_
-            rw [hnorm]
-    rw [hnorm]
+            rw [hnorm _ (by fun_prop)]
+    rw [hnorm _ (by fun_prop)]
     rcases eq_or_ne I 0 with hI0 | hI0
     · rw [← hIdef, hI0, ENNReal.zero_rpow_of_pos (by positivity)]
       exact bot_le
@@ -38059,7 +38081,7 @@ theorem eLpNorm_lintegral_le {α β : Type*} [MeasurableSpace α] [MeasurableSpa
           refine le_trans ?_ (le_iSup _ (max n N))
           rw [hev _ (le_max_right _ _)]
           exact min_le_min le_rfl (by exact_mod_cast le_max_left n N)
-  rw [hnorm]
+  rw [hnorm _ (by fun_prop)]
   have hlimP : ∫⁻ x, H x ^ P ∂μ = ⨆ n, ∫⁻ x, Hn n x ^ P ∂μ := by
     rw [← lintegral_iSup (fun n => (hHnm n).pow_const _)
       (fun m n hmn x => ENNReal.rpow_le_rpow (hmono hmn x) hP0.le)]
@@ -38070,7 +38092,7 @@ theorem eLpNorm_lintegral_le {α β : Type*} [MeasurableSpace α] [MeasurableSpa
   rw [hlimP, h1P]
   refine iSup_le fun n => ?_
   have := hstep n
-  rwa [hnorm] at this
+  rwa [hnorm _ (by fun_prop)] at this
 
 open MeasureTheory in
 /-- **Blueprint `new:integral-inequalities`, Minkowski's integral inequality** for Bochner
@@ -38079,12 +38101,16 @@ theorem eLpNorm_integral_le_lintegral {α β : Type*} [MeasurableSpace α] [Meas
     {μ : Measure α} {ν : Measure β} [SigmaFinite μ] [SFinite ν] {p : ℝ≥0∞} (hp1 : 1 ≤ p)
     (hptop : p ≠ ⊤) {F : β → α → ℂ} (hF : Measurable (Function.uncurry F)) :
     eLpNorm (fun x => ∫ u, F u x ∂ν) p μ ≤ ∫⁻ u, eLpNorm (F u) p μ ∂ν := by
-  refine (eLpNorm_mono_enorm fun x => ?_).trans
+  refine (eLpNorm_mono_enorm
+    ((show StronglyMeasurable (Function.uncurry fun x u => F u x) from
+      (hF.comp measurable_swap).stronglyMeasurable).integral_prod_right.aestronglyMeasurable) fun
+        x => ?_).trans
     ((eLpNorm_lintegral_le (μ := μ) (ν := ν) hp1 hptop (F := fun u x => ‖F u x‖ₑ)
       hF.enorm).trans_eq ?_)
   · simpa using enorm_integral_le_lintegral_enorm (fun u => F u x)
   · refine lintegral_congr fun u => ?_
     exact eLpNorm_enorm (F u)
+      (hF.comp (measurable_const.prodMk measurable_id)).aestronglyMeasurable
 
 open MeasureTheory in
 /-- **Blueprint `new:integral-inequalities`, the one-coordinate convolution bound**:
@@ -38107,7 +38133,7 @@ theorem eLpNorm_integral_smul_translate_le {V : Type*} [NormedAddCommGroup V] [N
     rw [h1, eLpNorm_const_smul, eLpNorm_comp_add_right_of_aestronglyMeasurable
       hf.aestronglyMeasurable]
   simp_rw [hsec]
-  rw [lintegral_mul_const _ ha.enorm, eLpNorm_one_eq_lintegral_enorm]
+  rw [lintegral_mul_const _ ha.enorm, eLpNorm_one_eq_lintegral_enorm (by fun_prop)]
 
 open MeasureTheory in
 /-- **Blueprint `new:translation-continuity`, approximation**: for `p < ∞`, every `f ∈ L^p` of a
@@ -38140,11 +38166,10 @@ theorem exists_simpleFunc_isBounded_support_eLpNorm_sub_le {V : Type*} [NormedAd
     rw [hsplit]
     calc eLpNorm ((f - g) + K.indicator (g - ⇑s)) p μ
         ≤ eLpNorm (f - g) p μ + eLpNorm (K.indicator (g - ⇑s)) p μ :=
-          eLpNorm_add_le (hf.1.sub hgcont.aestronglyMeasurable)
-            ((hgcont.aestronglyMeasurable.sub s.aestronglyMeasurable).indicator hK) hp1
+          eLpNorm_add_le hp1
       _ ≤ ε / 2 + ε / 2 := by
           gcongr
-          exact (eLpNorm_indicator_le _).trans hgs.le
+          exact (eLpNorm_indicator_le _ (by measurability)).trans hgs.le
       _ = ε := ENNReal.add_halves ε
 
 open MeasureTheory in
@@ -38155,7 +38180,7 @@ theorem tendsto_eLpNorm_comp_add_sub {V : Type*} [NormedAddCommGroup V]
     {μ : Measure V} [μ.IsAddHaarMeasure] {p : ℝ≥0∞} [hp1 : Fact (1 ≤ p)] (hp : p ≠ ⊤)
     {f : V → ℂ} (hf : MemLp f p μ) :
     Filter.Tendsto (fun h : V => eLpNorm (fun x => f (x + h) - f x) p μ) (nhds 0) (nhds 0) := by
-  haveI : Fact (p ≠ ⊤) := ⟨hp⟩
+  have : Fact (p ≠ ⊤) := ⟨hp⟩
   set F := hf.toLp f
   have hcont : Continuous fun h : V => (DomAddAct.mk h) +ᵥ F :=
     (continuous_id.vadd continuous_const).comp DomAddAct.continuous_mk
@@ -38286,7 +38311,8 @@ theorem eLpNorm_le_of_pairing_bound_of_measurable {V : Type*} [NormedAddCommGrou
           exact Real.rpow_le_rpow (norm_nonneg _) hx.2.2 hp0.le
       · exact .of_forall fun x => by positivity
     have hR : eLpNorm (h M) (ENNReal.ofReal p') μ = J M ^ (1 / p') := by
-      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp'0) ENNReal.ofReal_ne_top,
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp'0) ENNReal.ofReal_ne_top
+        (by fun_prop),
         ENNReal.toReal_ofReal hp'0.le]
       congr 1
       change _ = ∫⁻ x in E M, ‖F x‖ₑ ^ p ∂μ
@@ -38341,7 +38367,8 @@ theorem eLpNorm_le_of_pairing_bound_of_measurable {V : Type*} [NormedAddCommGrou
     · obtain ⟨M, hM⟩ := hcover x hx
       refine le_antisymm ?_ (iSup_le fun N => Set.indicator_le_self _ _ x)
       exact le_iSup_of_le M (by rw [Set.indicator_of_mem hM])
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp0) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hp0.le, hsup]
   have h1p : (⨆ M, J M) ^ (1 / p) = ⨆ M, J M ^ (1 / p) :=
     (ENNReal.orderIsoRpow (1 / p) (by positivity)).map_iSup _
@@ -38398,7 +38425,7 @@ theorem eLpNorm_le_of_pairing_bound_simpleFunc {V : Type*} [NormedAddCommGroup V
   have hhfin : eLpNorm (fun x => h x - 0) (ENNReal.ofReal p') μ < ⊤ := by
     simp only [sub_zero]
     have hμK : μ K ≠ ⊤ := hK.measure_lt_top.ne
-    refine (eLpNorm_mono (g := K.indicator fun _ => C) fun x => ?_).trans_lt ?_
+    refine (eLpNorm_mono (by fun_prop) (g := K.indicator fun _ => C) fun x => ?_).trans_lt ?_
     · by_cases hx : x ∈ K
       · rw [Set.indicator_of_mem hx, Real.norm_eq_abs]
         exact (hC x).trans (le_abs_self C)
@@ -38406,7 +38433,8 @@ theorem eLpNorm_le_of_pairing_bound_simpleFunc {V : Type*} [NormedAddCommGroup V
           by_contra hx0
           exact hx (subset_closure hx0)
         rw [this, norm_zero]; exact norm_nonneg _
-    · refine (eLpNorm_indicator_const_le _ _).trans_lt ?_
+    · refine (eLpNorm_indicator_const_le _ _ hK.isClosed.measurableSet.nullMeasurableSet).trans_lt
+        ?_
       exact ENNReal.mul_lt_top ENNReal.coe_lt_top
         (ENNReal.rpow_lt_top_of_nonneg (by positivity) hμK)
   have hlimN : Tendsto (fun n => eLpNorm (⇑(s n) - h) (ENNReal.ofReal p') μ) atTop (𝓝 0) :=
@@ -38416,7 +38444,7 @@ theorem eLpNorm_le_of_pairing_bound_simpleFunc {V : Type*} [NormedAddCommGroup V
   -- pass to the limit
   rcases eq_or_ne B ⊤ with hB | hB
   · rcases eq_or_ne (eLpNorm h (ENNReal.ofReal p') μ) 0 with h0 | h0
-    · have hae : h =ᵐ[μ] 0 := (eLpNorm_eq_zero_iff hmh (by simpa using hp'0)).mp h0
+    · have hae : h =ᵐ[μ] 0 := (eLpNorm_eq_zero_iff (by simpa using hp'0)).mp h0
       have : ∫ x, F x * h x ∂μ = 0 := by
         rw [integral_eq_zero_of_ae]
         filter_upwards [hae] with x hx
@@ -38432,7 +38460,7 @@ theorem eLpNorm_le_of_pairing_bound_simpleFunc {V : Type*} [NormedAddCommGroup V
   refine (hpair (s n) (hsupp.subset (hssupp n))).trans (mul_le_mul' le_rfl ?_)
   calc eLpNorm (⇑(s n)) (ENNReal.ofReal p') μ
       = eLpNorm (h + (⇑(s n) - h)) (ENNReal.ofReal p') μ := by congr 1; abel
-    _ ≤ _ := eLpNorm_add_le hmh ((s n).aestronglyMeasurable.sub hmh)
+    _ ≤ _ := eLpNorm_add_le
         (by
           have h1 : p'⁻¹ ≤ 1 := by linarith [inv_pos.mpr (show (0 : ℝ) < p by linarith)]
           have h2 : (1 : ℝ) ≤ p' := (inv_le_one₀ hp'0).mp h1
@@ -38612,7 +38640,7 @@ theorem norm_P_le_of_norm_le_one {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → 
   simpa using norm_P_le hR j hf1 y
 
 /-- **Blueprint `new:kernel-facts`, the Lipschitz bound**: for a measurable `f` with `|f| ≤ 1`,
-`|P_R f(x + v e_j) - P_R f(x)| ≤ R B_1 |v|`.  No differentiability of `f` is used. -/
+`|P_R f(x + v e_j) - P_R f(x)| ≤ R B_1 |v|`. No differentiability of `f` is used. -/
 theorem norm_P_add_sub_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f)
     (hf1 : ∀ x, ‖f x‖ ≤ 1) (x : E3) (v : ℝ) :
     ‖P R j f (x + v • basisVec j) - P R j f x‖ ≤ R * etaKerDerivL1 * |v| := by
@@ -38758,19 +38786,9 @@ theorem fourier_P_of_measurable {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → �
     _ = (eta (ξ j / R) : ℂ) * 𝓕 f ξ := by
         rw [← Real.fourier_eq, fourier_projKernel hR]
 
-/-- `P_R^{(j)}` maps measurable functions to measurable functions (a parametric integral). -/
-theorem measurable_P {R : ℝ} (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f) :
-    Measurable (P R j f) := by
-  have hm : Measurable (Function.uncurry fun (x : E3) (u : ℝ) =>
-      projKernel R u * f (x - u • basisVec j)) :=
-    ((projKernel_continuous R).measurable.comp measurable_snd).mul
-      (hf.comp (measurable_fst.sub (measurable_snd.smul measurable_const)))
-  exact hm.stronglyMeasurable.integral_prod_right'.measurable
-
 /-- `P_R^{(j)}` maps `L²` to `L²`, with the crude bound `B_0`. -/
 theorem memLp_two_P {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf : Measurable f)
     (hf2 : MemLp f 2) : MemLp (P R j f) 2 := by
-  refine ⟨(measurable_P j hf).aestronglyMeasurable, ?_⟩
   have h := eLpNorm_integral_smul_translate_le (μ := volume) (p := 2) (by norm_num) (by simp)
     (projKernel_continuous R).measurable hf (basisVec j)
   refine h.trans_lt (ENNReal.mul_lt_top ?_ hf2.eLpNorm_lt_top)
@@ -38783,7 +38801,9 @@ theorem eLpNorm_two_P_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ} (hf
     eLpNorm (P R j f) 2 volume ≤ eLpNorm f 2 volume := by
   rw [← eLpNorm_two_fourier (integrable_P_of_measurable hR j hf hfi) (memLp_two_P hR j hf hf2),
     ← eLpNorm_two_fourier hfi hf2]
-  refine eLpNorm_mono fun ξ => ?_
+  refine eLpNorm_mono
+    (continuous_fourier_of_integrable (integrable_P_of_measurable hR j hf
+      hfi)).aestronglyMeasurable fun ξ => ?_
   rw [fourier_P_of_measurable hR j hf hfi, norm_mul, Complex.norm_real, Real.norm_eq_abs,
     abs_of_nonneg (eta_nonneg _)]
   exact mul_le_of_le_one_left (norm_nonneg _) (eta_le_one _)
@@ -38894,7 +38914,7 @@ theorem P_sub_P_ae_eq_zero {L R : ℝ} (hL : 0 < L) (hLR : 2 * L ≤ R) (j : Fin
   rw [hzero] at h2
   have h0 : eLpNorm (P L j g) 2 volume = 0 := by
     rw [← h2]; simp
-  exact (eLpNorm_eq_zero_iff (measurable_P j hgm).aestronglyMeasurable (by norm_num)).mp h0
+  exact (eLpNorm_eq_zero_iff (by norm_num)).mp h0
 
 end
 
@@ -38953,7 +38973,7 @@ theorem measurePreserving_secSwap (i : Fin 3) :
     have h0 : 0 ≤ |LinearMap.det (secSwapLin i)| := abs_nonneg _
     have : |LinearMap.det (secSwapLin i)| = 1 := by nlinarith
     rw [this, inv_one]
-  haveI : (volume : Measure (E3 × ℝ)).IsAddHaarMeasure := by
+  have : (volume : Measure (E3 × ℝ)).IsAddHaarMeasure := by
     rw [Measure.volume_eq_prod]; infer_instance
   refine ⟨(secSwapLin i).continuous_of_finiteDimensional.measurable, ?_⟩
   change Measure.map (secSwapLin i) volume = volume
@@ -39123,8 +39143,7 @@ theorem memLp_avgTranslate {ν : Measure Θ} [IsProbabilityMeasure ν] {b : Θ �
     (hb : Measurable b) (hb1 : ∀ t, ‖b t‖ ≤ 1) {v : Θ → E3} (hv : Measurable v) {f : E3 → ℂ}
     (hf : Measurable f) {p : ℝ≥0∞} (hp1 : 1 ≤ p) (hptop : p ≠ ⊤) (hfp : MemLp f p) :
     MemLp (avgTranslate ν b v f) p :=
-  ⟨(measurable_avgTranslate hb hv hf).aestronglyMeasurable,
-    (eLpNorm_avgTranslate_le hb hb1 hv hf hp1 hptop).trans_lt hfp.eLpNorm_lt_top⟩
+  (eLpNorm_avgTranslate_le hb hb1 hv hf hp1 hptop).trans_lt hfp.eLpNorm_lt_top
 
 /-- **Blueprint `new:average-multiplier`, the multiplier**: for measurable integrable `f`,
 `𝓕 (T f) ξ = m(ξ) 𝓕 f ξ`. -/
@@ -39272,23 +39291,25 @@ meaning `∞`): on an edge where the exponent path has real part `p / p_ℓ`,
 `‖F(z)‖_{L^{p_ℓ}} ≤ ‖f‖_{L^p} ^ (p / p_ℓ)`. -/
 theorem eLpNorm_anFam_edge_le {p p₀ p₁ pℓ : ℝ} (hp : 0 < p) (hpℓ : 0 ≤ pℓ)
     {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ} {z : ℂ}
-    (hrz : (interpExp p p₀ p₁ z).re = p * pℓ⁻¹) :
+    (hrz : (interpExp p p₀ p₁ z).re = p * pℓ⁻¹) (hfm : AEStronglyMeasurable f μ) :
     eLpNorm (anFam p p₀ p₁ f z) (eIn pℓ) μ ≤ eLpNorm f (ENNReal.ofReal p) μ ^ (p * pℓ⁻¹) := by
   rcases eq_or_lt_of_le hpℓ with h0 | hpos
   · subst h0
-    simp only [eIn, if_true, inv_zero, mul_zero, ENNReal.rpow_zero]
-    refine eLpNorm_le_of_ae_bound (C := 1) (.of_forall fun x => ?_) |>.trans ?_
+    simp only [eIn, ite_true, inv_zero, mul_zero, ENNReal.rpow_zero]
+    refine eLpNorm_le_of_ae_bound (C := 1) (aestronglyMeasurable_anFam hfm _ _ _ _)
+      (.of_forall fun x => ?_) |>.trans ?_
     · exact norm_anFam_le_one_of_re_zero (by simpa using hrz) x
     · simp only [ENNReal.toReal_top, inv_zero, ENNReal.rpow_zero, mul_one, ENNReal.ofReal_one]
       exact le_rfl
-  · have h := eLpNorm_anFam (μ := μ) (f := f) (P := pℓ) hrz (mul_pos hp (inv_pos.mpr hpos)) hpos
+  · have h := eLpNorm_anFam (μ := μ) (f := f) (P := pℓ) hrz
+      (mul_pos hp (inv_pos.mpr hpos)) hpos hfm
     rw [inv_mul_cancel_right₀ hpos.ne'] at h
-    simp only [eIn, if_neg hpos.ne']
+    simp only [eIn, ite_eq_right hpos.ne']
     exact h.le
 
 /-- **Blueprint `new:interpolation`, the analytic-family form**, allowing `L^∞` input endpoints:
 input exponents `p_{i,ℓ} ≥ 0` with `0` standing for `∞` (see `Auto.eIn`), finite positive
-interpolated input exponents and positive output exponents.  As in
+interpolated input exponents and positive output exponents. As in
 `Auto.interpolate_of_analyticFamily`, the analyticity, continuity, boundedness and measurability
 of the composed family are hypotheses, discharged for multilinear operators on simple functions
 by `Auto.interpolate_trilin_simple`. -/
@@ -39303,6 +39324,8 @@ theorem interpolate_of_analyticFamily_ext
     (hSfam : ∀ u : E3 → ℂ, S u → ∀ (i : Fin 3) (z : ℂ), z.re ∈ Set.Icc (0 : ℝ) 1 →
       S (anFam (p i) (p₀ i) (p₁ i) u z))
     (f : Fin 3 → E3 → ℂ) (hf : ∀ i, S (f i))
+    (hfm : ∀ i, AEStronglyMeasurable (f i) volume)
+    (hmeas : AEStronglyMeasurable (T f) volume)
     (hmeas₀ : AEStronglyMeasurable
       (fun w : E3 × ℝ =>
         T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) ((w.2 : ℂ) * Complex.I)) w.1)
@@ -39341,20 +39364,21 @@ theorem interpolate_of_analyticFamily_ext
       (fun y : E3 => T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) ((t : ℂ) * Complex.I)) y)
       (ENNReal.ofReal q₀) volume ≤ ENNReal.ofReal M₀ * ∏ i, A i ^ (p i * (p₀ i)⁻¹) := by
     intro t
-    refine (h0 _ (hFS _ (hmemL t))).trans (mul_le_mul' le_rfl (Finset.prod_le_prod' fun i _ => ?_))
-    exact eLpNorm_anFam_edge_le (hp i) (hp₀ i) (by rw [interpExp_re']; simp)
+    refine (h0 _ (hFS _ (hmemL t))).trans (mul_le_mul' le_rfl (Finset.prod_le_prod fun i _ => ?_))
+    exact eLpNorm_anFam_edge_le (hp i) (hp₀ i) (by rw [interpExp_re']; simp) (hfm i)
   have hb1 : ∀ t : ℝ, eLpNorm
       (fun y : E3 => T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) (1 + (t : ℂ) * Complex.I)) y)
       (ENNReal.ofReal q₁) volume ≤ ENNReal.ofReal M₁ * ∏ i, A i ^ (p i * (p₁ i)⁻¹) := by
     intro t
-    refine (h1 _ (hFS _ (hmemR t))).trans (mul_le_mul' le_rfl (Finset.prod_le_prod' fun i _ => ?_))
-    exact eLpNorm_anFam_edge_le (hp i) (hp₁ i) (by rw [interpExp_re']; simp)
-  have hmain := eLpNorm_le_of_analyticFamily (μ := (volume : Measure E3))
-    (H := fun z y => T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) z) y)
-    ⟨hθ0, hθ1⟩ hq₀ hq₁ hq hqrel hmeas₀ hmeas₁ hcont hdiff hbdd hb0 hb1
+    refine (h1 _ (hFS _ (hmemR t))).trans (mul_le_mul' le_rfl (Finset.prod_le_prod fun i _ => ?_))
+    exact eLpNorm_anFam_edge_le (hp i) (hp₁ i) (by rw [interpExp_re']; simp) (hfm i)
   have hFθ : (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) (θ : ℂ)) = f := by
     funext i x
     exact anFam_at' (hp i) (hrel i) (f i) x
+  have hmain := eLpNorm_le_of_analyticFamily (μ := (volume : Measure E3))
+    (H := fun z y => T (fun i => anFam (p i) (p₀ i) (p₁ i) (f i) z) y)
+    ⟨hθ0, hθ1⟩ hq₀ hq₁ hq hqrel (by simpa only [hFθ] using hmeas) hmeas₀ hmeas₁ hcont hdiff hbdd
+      hb0 hb1
   rw [hFθ] at hmain
   refine hmain.trans (le_of_eq ?_)
   have hL : (∏ i, A i ^ (p i * (p₀ i)⁻¹)) ^ (1 - θ)
@@ -39507,10 +39531,10 @@ theorem norm_sum3_le {s₀ s₁ s₂ : Finset ℂ} {a₀ a₁ a₂ : ℂ → ℂ
   rw [norm_mul]
   exact mul_le_mul_of_nonneg_right (h₂ n₂) (norm_nonneg _)
 
-/-- **Blueprint `new:interpolation`**: multilinear interpolation on a fixed support domain.  Let
+/-- **Blueprint `new:interpolation`**: multilinear interpolation on a fixed support domain. Let
 `T` be trilinear on bounded measurable functions, with measurable values, and bounded
 `∏ L^{p_{i,ℓ}} → L^{q_ℓ}` with constant `M_ℓ` on finite-valued functions vanishing off a fixed
-measurable set `B` (`ℓ = 0, 1`; input exponent `0` stands for `L^∞`).  Then for `0 < θ < 1` it is
+measurable set `B` (`ℓ = 0, 1`; input exponent `0` stands for `L^∞`). Then for `0 < θ < 1` it is
 bounded `∏ L^{p_i} → L^q` with constant `M₀^{1-θ} M₁^θ` on that class. -/
 theorem interpolate_trilin_simple {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (hT : Trilin T)
     (hTm : ∀ g : Fin 3 → E3 → ℂ, (∀ l, BddMeasC (g l)) → Measurable (T g)) {B : Set E3}
@@ -39565,7 +39589,10 @@ theorem interpolate_trilin_simple {T : (Fin 3 → E3 → ℂ) → E3 → ℂ} (h
         (hcm 2 n₂).mul ((hVm n₀ n₁ n₂).comp measurable_fst)))
   refine interpolate_of_analyticFamily_ext (S := SimpleOn B) hp₀ hp₁ hp hq₀ hq₁ hq hM₀ hM₁ hθ
     hrel hqrel
-    (fun u hu i z _ => simpleOn_anFam hu _ _ _ z) f hf ?_ ?_
+    (fun u hu i z _ => simpleOn_anFam hu _ _ _ z) f hf (fun i => (hf i).1.aestronglyMeasurable)
+      ((hTm f (fun i => by
+        obtain ⟨C, hC⟩ := (hf i).2.1.isBounded.exists_norm_le
+        exact ⟨(hf i).1, C, fun x => hC _ ⟨x, rfl⟩⟩)).aestronglyMeasurable) ?_ ?_
     (fun y => (hdiffAll y).continuous.continuousOn) (fun y => (hdiffAll y).differentiableOn)
     ?_ h0 h1
   · simpa using hmeasAt 0
@@ -39610,7 +39637,7 @@ theorem adjoint_identity_of_integrable {N : ℝ} (hN : 0 < N) (j : Fin 3) {f0 : 
       prodShift f x t * conj (f0 x)) ((volume : Measure E3).prod
         (volume.restrict (Set.Ioc (0 : ℝ) N)))) :
     Lambda N f0 f = ∫ y : E3, f j y * conj (Astar N j f0 f y) := by
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
     ⟨by rw [Measure.restrict_apply_univ, Real.volume_Ioc]; exact ENNReal.ofReal_lt_top⟩
   set ν := volume.restrict (Set.Ioc (0 : ℝ) N) with hν
   have hcm : Measurable (curve j) := (continuous_curve j).measurable
@@ -39735,7 +39762,7 @@ theorem lintegral_prodShift_mul_le {N : ℝ} (hN : 0 < N) {r : Fin 3 → ℝ} {K
         ∂((volume : Measure E3).prod (volume.restrict (Set.Ioc (0 : ℝ) N)))
       ≤ ENNReal.ofReal N * (K * ∏ i, eLpNorm (f i) (ENNReal.ofReal (r i)) volume)
         * eLpNorm g0 (ENNReal.ofReal 6) volume := by
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
     ⟨by rw [Measure.restrict_apply_univ, Real.volume_Ioc]; exact ENNReal.ofReal_lt_top⟩
   set ν := volume.restrict (Set.Ioc (0 : ℝ) N) with hν
   have hcm : ∀ i, Measurable (curve i) := fun i => (continuous_curve i).measurable
@@ -39747,12 +39774,12 @@ theorem lintegral_prodShift_mul_le {N : ℝ} (hN : 0 < N) {r : Fin 3 → ℝ} {K
       (hg0.comp measurable_fst).enorm
   have hFmono : Monotone F := fun m n hmn z => by
     simp only [hF]
-    refine mul_le_mul' (Finset.prod_le_prod' fun i _ => ?_) le_rfl
+    refine mul_le_mul' (Finset.prod_le_prod fun i _ => ?_) le_rfl
     exact ENNReal.ofReal_le_ofReal (truncAbs_mono _ _ hmn)
   have hFsup : ∀ z, ⨆ n, F n z = (∏ i, ‖f i (z.1 + curve i z.2)‖ₑ) * ‖g0 z.1‖ₑ := by
     intro z
     refine le_antisymm (iSup_le fun n => ?_) ?_
-    · refine mul_le_mul' (Finset.prod_le_prod' fun i _ => ?_) le_rfl
+    · refine mul_le_mul' (Finset.prod_le_prod fun i _ => ?_) le_rfl
       rw [← ofReal_norm]; exact ENNReal.ofReal_le_ofReal (truncAbs_le_norm _ _ _)
     · choose Nf hNf using fun i => truncAbs_eventually (f i) (z.1 + curve i z.2)
       refine le_iSup_of_le (Nf 0 + Nf 1 + Nf 2) (le_of_eq ?_)
@@ -39801,7 +39828,7 @@ theorem lintegral_prodShift_mul_le {N : ℝ} (hN : 0 < N) {r : Fin 3 → ℝ} {K
       rw [ENNReal.ofReal_prod_of_nonneg fun i _ => truncAbs_nonneg _ _ _]
     have hce : (ENNReal.ofReal (6 / 5))⁻¹ + (ENNReal.ofReal 6)⁻¹ = 1 :=
       ennreal_conj_exponent (by norm_num) (by norm_num) (by norm_num)
-    haveI : ENNReal.HolderTriple (ENNReal.ofReal (6 / 5)) (ENNReal.ofReal 6) 1 :=
+    have : ENNReal.HolderTriple (ENNReal.ofReal (6 / 5)) (ENNReal.ofReal 6) 1 :=
       ⟨by simpa using hce⟩
     calc ∫⁻ z, F n z ∂((volume : Measure E3).prod ν)
         = ∫⁻ x, (∫⁻ t, ∏ i, ENNReal.ofReal (truncAbs n (f i) (x + curve i t)) ∂ν)
@@ -39816,18 +39843,19 @@ theorem lintegral_prodShift_mul_le {N : ℝ} (hN : 0 < N) {r : Fin 3 → ℝ} {K
           simp_rw [hinner, enorm_mul, mul_assoc]
           rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
       _ = ENNReal.ofReal N * eLpNorm (A N v • g0) 1 volume := by
-          rw [eLpNorm_one_eq_lintegral_enorm]; rfl
+          rw [eLpNorm_one_eq_lintegral_enorm
+            ((measurable_A hN.le hvm).aestronglyMeasurable.smul hg0.aestronglyMeasurable)]; rfl
       _ ≤ ENNReal.ofReal N * (eLpNorm (A N v) (ENNReal.ofReal (6 / 5)) volume
             * eLpNorm g0 (ENNReal.ofReal 6) volume) := by
           gcongr
-          exact eLpNorm_smul_le_mul_eLpNorm hg0.aestronglyMeasurable
-            (measurable_A hN.le hvm).aestronglyMeasurable
+          exact eLpNorm_smul_le_mul_eLpNorm (measurable_A hN.le hvm).aestronglyMeasurable
+            hg0.aestronglyMeasurable
       _ ≤ ENNReal.ofReal N * (K * ∏ i, eLpNorm (f i) (ENNReal.ofReal (r i)) volume)
             * eLpNorm g0 (ENNReal.ofReal 6) volume := by
           rw [mul_assoc]
           gcongr
-          refine (hA v hvm).trans (mul_le_mul' le_rfl (Finset.prod_le_prod' fun i _ => ?_))
-          refine eLpNorm_mono fun x => ?_
+          refine (hA v hvm).trans (mul_le_mul' le_rfl (Finset.prod_le_prod fun i _ => ?_))
+          refine eLpNorm_mono (by fun_prop) fun x => ?_
           rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (truncAbs_nonneg _ _ _)]
           exact truncAbs_le_norm _ _ _
   calc ∫⁻ z : E3 × ℝ, (∏ i, ‖f i (z.1 + curve i z.2)‖ₑ) * ‖g0 z.1‖ₑ ∂((volume : Measure E3).prod ν)
@@ -39835,25 +39863,6 @@ theorem lintegral_prodShift_mul_le {N : ℝ} (hN : 0 < N) {r : Fin 3 → ℝ} {K
         lintegral_congr fun z => (hFsup z).symm
     _ = ⨆ n, ∫⁻ z, F n z ∂((volume : Measure E3).prod ν) := lintegral_iSup hFm hFmono
     _ ≤ _ := iSup_le hstep
-
-/-- The adjoint of measurable inputs is measurable. -/
-theorem measurable_Astar {N : ℝ} (j : Fin 3) {f0 : E3 → ℂ} (hf0 : Measurable f0)
-    {f : Fin 3 → E3 → ℂ} (hf : ∀ i, Measurable (f i)) : Measurable (Astar N j f0 f) := by
-  have hcm : Measurable (curve j) := (continuous_curve j).measurable
-  have hadjm : Measurable fun z : E3 × ℝ => adjShift j f0 f z.1 z.2 := by
-    simp only [adjShift]
-    have hc0 : Measurable fun z : E3 × ℝ => z.1 - curve j z.2 :=
-      measurable_fst.sub (hcm.comp measurable_snd)
-    refine (hf0.comp hc0).mul (Finset.measurable_prod _ fun i _ => ?_)
-    exact Complex.continuous_conj.measurable.comp ((hf i).comp
-      (hc0.add (((continuous_curve i).measurable).comp measurable_snd)))
-  unfold Astar
-  refine measurable_const.mul ?_
-  simp only [intervalIntegral]
-  exact ((hadjm.stronglyMeasurable.integral_prod_right'
-    (ν := volume.restrict (Set.Ioc 0 N))).measurable).sub
-    ((hadjm.stronglyMeasurable.integral_prod_right'
-      (ν := volume.restrict (Set.Ioc N 0))).measurable)
 
 /-- **Blueprint `new:improving`, the adjoint estimate for all finite-norm inputs**:
 `‖A_N^{*j}(g)‖_2 ≤ C N^{-1/20} ‖g₀‖_6 ‖g_{m}‖_{40/7} ‖g_k‖_6` for measurable inputs with finite
@@ -39902,7 +39911,7 @@ theorem kosz53_of_memLp {j m k : Fin 3} (hjm : j ≠ m) (hkm : k ≠ m) (hjk : j
     have hfk' : f k = g k := by rw [hfdef, Function.update_of_ne (Ne.symm hjk)]
     rw [hfm', hfk']
     congr 1
-    exact eLpNorm_congr_norm_ae (.of_forall fun x => RCLike.norm_conj _)
+    exact eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (.of_forall fun x => RCLike.norm_conj _)
   have hA := fun f hf => hC N hN f hf
   -- the joint integrand is integrable
   have hint1 : Integrable (Function.uncurry fun (x : E3) (t : ℝ) =>
@@ -40089,7 +40098,7 @@ theorem integrable_prod_restrict_of_bdd_ball {S : Set ℝ} (hS : MeasurableSet S
     (hf : AEStronglyMeasurable f ((volume : Measure E3).prod (volume.restrict S))) {C R : ℝ}
     (hC : ∀ z, ‖f z‖ ≤ C) (hR : ∀ z, z.2 ∈ S → R < ‖z.1‖ → f z = 0) :
     Integrable f ((volume : Measure E3).prod (volume.restrict S)) := by
-  haveI : IsFiniteMeasure (volume.restrict S) :=
+  have : IsFiniteMeasure (volume.restrict S) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact hSfin.lt_top⟩
   have hae : ∀ᵐ z ∂((volume : Measure E3).prod (volume.restrict S)), z.2 ∈ S := by
     have h0 : ((volume : Measure E3).prod (volume.restrict S)) (Set.univ ×ˢ Sᶜ) = 0 := by
@@ -40175,7 +40184,7 @@ theorem windowAutocorr_facts {F : E3 → ℝ → ℂ} (hFm : Measurable (Functio
           by_cases ht' : t + h ∈ Set.Ioc c (c + N)
           · rw [Set.indicator_of_mem ht']; exact hF1 _ _
           · rw [Set.indicator_of_notMem ht', norm_zero]; exact zero_le_one
-        exact mul_le_one₀ h1 (norm_nonneg _) (hF1 x t)
+        exact ((mul_le_of_le_one_left (norm_nonneg _) h1).trans (hF1 x t))
       · rw [Set.indicator_of_notMem ht, Set.indicator_of_notMem ht, norm_zero, mul_zero]
     refine (norm_integral_le_of_norm_le
       ((continuous_const.integrableOn_Ioc (μ := volume)).integrable_indicator hI)
@@ -40252,7 +40261,7 @@ theorem sq_norm_signed_vdc_bdd {c N H V R : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN 
       ((hgm.norm.mul (hAm.const_smul (N⁻¹ : ℝ)).norm).aestronglyMeasurable)
       (C := 1) (R := R) (fun x => ?_) (fun x hx => by simp [hgR x hx])
     rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
-    exact mul_le_one₀ (hg1 x) (norm_nonneg _) (hscal x)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hg1 x)).trans (hscal x))
   · -- hLi
     simp_rw [hind]
     refine integrable_of_bdd_ball ((hAm.norm.pow_const 2).aestronglyMeasurable) (C := N ^ 2)
@@ -40294,7 +40303,7 @@ theorem sq_norm_signed_vdc_bdd {c N H V R : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN 
         (Complex.continuous_conj.measurable.comp hFm)).aestronglyMeasurable
     · simp only [Function.uncurry]
       rw [norm_mul, RCLike.norm_conj]
-      exact mul_le_one₀ (hF1 _ _) (norm_nonneg _) (hF1 _ _)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (hF1 _ _)).trans (hF1 _ _))
     · simp only [Function.uncurry]
       have ht : z.2 ∈ Set.Icc c (c + N) := ⟨le_of_lt hz.1.1, hz.1.2⟩
       rw [hFR z.1 z.2 ht hzR, map_zero, mul_zero]
@@ -40353,8 +40362,8 @@ theorem norm_vecProd_le {L : PetFam} (hL : ∀ b ∈ L, ∀ y, ‖b.1 y‖ ≤ 1
   | nil => simp
   | cons b L ih =>
     rw [vecProd_cons, norm_mul]
-    exact mul_le_one₀ (hL b (by simp) _) (norm_nonneg _)
-      (ih fun b' hb' => hL b' (List.mem_cons_of_mem _ hb'))
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hL b (by simp) _)).trans (ih fun b' hb' => hL
+      b' (List.mem_cons_of_mem _ hb')))
 
 theorem measurable_vecProd {L : PetFam} (hL : ∀ b ∈ L, Measurable b.1 ∧ Continuous b.2) :
     Measurable (Function.uncurry (vecProd L)) := by
@@ -40425,7 +40434,7 @@ theorem vecStep {c N H V R₀ Rg : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N
     integrable_of_bdd_ball (((hmeas_s s).norm.mul (hmeas_s s').norm).aestronglyMeasurable)
       (C := 1) (R := R₀ + ‖b.2 s‖) (fun x => by
         rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
-        exact mul_le_one₀ (hF1 x s) (norm_nonneg _) (hF1 x s'))
+        exact ((mul_le_of_le_one_left (norm_nonneg _) (hF1 x s)).trans (hF1 x s')))
       (fun x hx => by simp [hsecR s x hx])
   have hFV : ∀ s : ℝ, (∫ x, ‖vecProd (b :: L) x s‖ ^ 2) ≤ V := by
     intro s
@@ -40505,7 +40514,8 @@ theorem vecStep_phase {c N H V : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N /
   have hFdef : ∀ x s, F x s = vecProd (b :: L) x s * φ x s := fun _ _ => rfl
   have hFm : Measurable (Function.uncurry F) := (measurable_vecProd hL).mul hφm
   have hF1 : ∀ x t, ‖F x t‖ ≤ 1 := fun x t => by
-    rw [hFdef x t, norm_mul]; exact mul_le_one₀ (norm_vecProd_le hL1 x t) (norm_nonneg _) (hφ1 x t)
+    rw [hFdef x t, norm_mul]
+    exact (mul_le_of_le_one_left (norm_nonneg _) (norm_vecProd_le hL1 x t)).trans (hφ1 x t)
   have hb2 := (hL b (by simp)).2
   obtain ⟨R₀, hR₀⟩ := (hKb.subset_closedBall (0 : E3))
   obtain ⟨B, hB⟩ : ∃ B, ∀ t ∈ Set.Icc c (c + N), ‖b.2 t‖ ≤ B :=
@@ -40541,7 +40551,7 @@ theorem vecStep_phase {c N H V : ℝ} (hN : 0 < N) (hH : 0 < H) (hHN : H ≤ N /
     integrable_of_bdd_ball (((hmeas_s s).norm.mul (hmeas_s s').norm).aestronglyMeasurable)
       (C := 1) (R := R₀ + ‖b.2 s‖) (fun x => by
         rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
-        exact mul_le_one₀ (hF1 x s) (norm_nonneg _) (hF1 x s'))
+        exact ((mul_le_of_le_one_left (norm_nonneg _) (hF1 x s)).trans (hF1 x s')))
       (fun x hx => by simp [hsecR s x hx])
   have hKfin : volume K ≠ ⊤ := (hKb.measure_lt_top).ne
   have hind0 : Integrable (K.indicator fun _ => (1 : ℝ)) :=
@@ -40596,7 +40606,7 @@ theorem PetPolyBelow.mono {r n s s' : ℕ} (hs : s ≤ s')
   intro q k
   have hsub : {v : Fin r | v.val < s} ⊆ {v : Fin r | v.val < s'} := by
     intro v hv
-    simp only [Set.mem_setOf_eq] at hv ⊢
+    simp only [Set.mem_ofPred_eq] at hv ⊢
     omega
   exact MvPolynomial.supported_mono hsub (h q k)
 
@@ -40873,7 +40883,7 @@ theorem ProtectedLeadingInvariant.taylor_subConst {r n : ℕ} {a : ℝ} {m : Fin
   obtain ⟨p, hp0, hhom, hml, hlc⟩ := h
   exact ⟨p, hp0, by rw [natDegree_taylor]; exact hhom, hml, by rw [leadingCoeff_taylor]; exact hlc⟩
 
-/-- **The new head satisfies `patch:lead-invariant`.**  For a pivot among the other items the
+/-- **The new head satisfies `patch:lead-invariant`.** For a pivot among the other items the
 shifted head has the head's degree and its leading coefficient is that of `Q_1 - Q_p`; for the
 head itself as pivot (case C) it is the finite difference, with leading coefficient
 `d X_u lc(Q_1)`. -/
@@ -41459,14 +41469,14 @@ theorem petRunMove_pos {a : ℝ} (ha : a ≠ 0) {m : Fin n} {D s0 : ℕ} (hD3 : 
       = Classical.choose (Classical.choose_spec (petRunStepBd ha hD3
           (mul_nonneg hB0 (by positivity)) x.2.1 x.2.2 (iu := ⟨s0 + k, h.2⟩) rfl h.1)).2 := by
   unfold petRunMove
-  rw [dif_pos h]
+  rw [dite_eq_left h]
 
 theorem petRunMove_neg {a : ℝ} (ha : a ≠ 0) {m : Fin n} {D s0 : ℕ} (hD3 : D ≤ 3) {B0 : ℝ}
     (hB0 : 0 ≤ B0) (k : ℕ) (x : PetRunState (ι := ι) (f := f) (r := r) a m D s0 B0 k)
     (h : ¬ (2 ≤ x.1.headPoly.natDegree ∧ s0 + k < r)) :
     petRunMove ha hD3 hB0 k x = x.1 := by
   unfold petRunMove
-  rw [dif_neg h]
+  rw [dite_eq_right h]
 
 /-- When a move is made, the next state is the update at some pivot, with the invariant, the
 bound, the type move and the length doubling. -/
@@ -41611,7 +41621,7 @@ open Filter Topology MeasureTheory
 
 Blueprint `patch:cs-loss`, last sentence: "The same assertion holds with all earlier shift
 parameters retained and averaged."  A level `r` is a real function of the `r` shifts introduced so
-far; its mean is the average against the product Fejer density.  All the integrability side
+far; its mean is the average against the product Fejer density. All the integrability side
 conditions follow from measurability and the bound by one. -/
 
 /-- The mean of a level-`r` quantity over the `r` shifts, against the product Fejer density. -/
@@ -41669,7 +41679,7 @@ theorem fejerMean_zero (H : ℝ) (a : (Fin 0 → ℝ) → ℝ) : fejerMean H 0 a
     one_mul, one_smul]
   exact congrArg a (Subsingleton.elim _ _)
 
-/-- **One step of the chain, averaged over the earlier shifts.**  A pointwise bound
+/-- **One step of the chain, averaged over the earlier shifts.** A pointwise bound
 `a(h)^2 <= 2 E_{u ~ κ_H} b(u, h) + δ` becomes `(E a)^2 <= 2 E b + δ` for the Fejer means at levels
 `r` and `r + 1`: Jensen against the product density, and Fubini to recombine the new shift with the
 old ones. -/
@@ -41739,9 +41749,9 @@ theorem fejerMean_sq_le {H δ : ℝ} (hH : 0 < H) {r : ℕ} {a : (Fin r → ℝ)
   rw [hrec] at hmain
   exact hmain
 
-/-- **`patch:cs-loss` with all earlier shifts retained and averaged.**  Levels `a r` of the
+/-- **`patch:cs-loss` with all earlier shifts retained and averaged.** Levels `a r` of the
 chain, each a measurable function of the `r` shifts bounded by one, nonnegative before the last
-level, with the step `a_r(h)^2 <= 2 E_{u ~ κ_H} a_{r+1}(u, h) + 2δ` at every level `r < T`.  The
+level, with the step `a_r(h)^2 <= 2 E_{u ~ κ_H} a_{r+1}(u, h) + 2δ` at every level `r < T`. The
 last level is the signed average; its mean `Q` enters through `max Q 0`. -/
 theorem fejerChain {T : ℕ} {a : (r : ℕ) → (Fin r → ℝ) → ℝ} {H δ : ℝ} (hH : 0 < H)
     (hδ : 0 ≤ δ) (ham : ∀ r, Measurable (a r)) (ha1 : ∀ r h, |a r h| ≤ 1)
@@ -41751,18 +41761,18 @@ theorem fejerChain {T : ℕ} {a : (r : ℕ) → (Fin r → ℝ) → ℝ} {H δ :
     a 0 Fin.elim0 ^ (2 ^ T) ≤ 2 ^ (2 ^ T) / 2 * (max (fejerMean H T (a T)) 0 + T * δ) := by
   classical
   let M : ℕ → ℝ := fun r => if r < T then fejerMean H r (a r) else max (fejerMean H T (a T)) 0
-  have hMlt : ∀ r < T, M r = fejerMean H r (a r) := fun r hr => if_pos hr
-  have hMT : M T = max (fejerMean H T (a T)) 0 := if_neg (lt_irrefl T)
+  have hMlt : ∀ r < T, M r = fejerMean H r (a r) := fun r hr => ite_eq_left hr
+  have hMT : M T = max (fejerMean H T (a T)) 0 := ite_eq_right (lt_irrefl T)
   have hM0 : ∀ r, 0 ≤ M r := by
     intro r
     by_cases hr : r < T
     · rw [hMlt r hr]; exact fejerMean_nonneg hH (ha0 r hr)
-    · simp only [M, if_neg hr]; exact le_max_right _ _
+    · simp only [M, ite_eq_right hr]; exact le_max_right _ _
   have hM1 : ∀ r, M r ≤ 1 := by
     intro r
     by_cases hr : r < T
     · rw [hMlt r hr]; exact (abs_le.mp (abs_fejerMean_le_one hH (ham r) (ha1 r))).2
-    · simp only [M, if_neg hr]
+    · simp only [M, ite_eq_right hr]
       exact max_le (abs_le.mp (abs_fejerMean_le_one hH (ham T) (ha1 T))).2 zero_le_one
   have hrec : ∀ r, r < T → csPhi (M r) ≤ M (r + 1) + δ := by
     intro r hr
@@ -41792,7 +41802,7 @@ open Filter Topology MeasureTheory
 /-! ### A level of the chain and the step to the next level
 
 A level of the chain is the normalized correlation `A = V⁻¹ ∫ g(x) E_{t ∈ [0,N]} F(x,t) dx` of
-a spatial block `g` against a PET family times a phase.  `Auto.vecStep_phase` bounds `|A|^2` by the
+a spatial block `g` against a PET family times a phase. `Auto.vecStep_phase` bounds `|A|^2` by the
 Fejer average of the children's correlation; the next level puts a spatial block back (the enlarged
 box's indicator, or the constant children) and averages over `x` last again. -/
 
@@ -41833,7 +41843,7 @@ theorem measurable_phaseChild {φ : E3 → ℝ → ℂ} (hφm : Measurable (Func
 theorem norm_phaseChild_le {φ : E3 → ℝ → ℂ} (hφ1 : ∀ x t, ‖φ x t‖ ≤ 1) (Qp : ℝ → E3)
     (u : ℝ) (x : E3) (t : ℝ) : ‖phaseChild φ Qp u x t‖ ≤ 1 := by
   rw [phaseChild, norm_mul, Complex.norm_conj]
-  exact mul_le_one₀ (hφ1 _ _) (norm_nonneg _) (hφ1 _ _)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hφ1 _ _)).trans (hφ1 _ _))
 
 /-- **The correlation of the children is `V N` times the next level**, when the children's
 integrand factors as a spatial block times the next family and phase for `t ∈ [0, N]`: the
@@ -41858,7 +41868,8 @@ theorem integral_children_eq_vecAmp {N V : ℝ} (hN : 0 < N) {b : (E3 → ℂ) �
     (measurable_vecProd hcm).mul (measurable_phaseChild hφm hQp u)
   have hX1 : ∀ x t, ‖X x t‖ ≤ 1 := fun x t => by
     simp only [hX, norm_mul]
-    exact mul_le_one₀ (norm_vecProd_le hc1 x t) (norm_nonneg _) (norm_phaseChild_le hφ1 Qp u x t)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_vecProd_le hc1 x t)).trans
+      (norm_phaseChild_le hφ1 Qp u x t))
   obtain ⟨R₀, hR₀⟩ := hKb.subset_closedBall (0 : E3)
   have hsc : Continuous fun t => b.2 (t + u) - Qp t :=
     ((hL b (by simp)).2.comp (continuous_id.add continuous_const)).sub hQp
@@ -42058,7 +42069,7 @@ theorem norm_vecAmp_le_one {V N : ℝ} (hV : 0 < V) (hN : 0 < N) {g : E3 → ℂ
     have hb : ‖∫ t in (0 : ℝ)..(0 + N), vecProd L x t * φ x t‖ ≤ 1 * |0 + N - 0| :=
       intervalIntegral.norm_integral_le_of_norm_le_const fun t _ => by
         rw [norm_mul]
-        exact mul_le_one₀ (norm_vecProd_le hL1 x t) (norm_nonneg _) (hφ1 x t)
+        exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_vecProd_le hL1 x t)).trans (hφ1 x t))
     have e : (1 : ℝ) * |0 + N - 0| = N := by rw [zero_add, sub_zero, abs_of_pos hN, one_mul]
     rw [e] at hb
     rw [norm_mul, norm_smul, Real.norm_eq_abs, abs_of_nonneg (inv_nonneg.mpr hN.le)]
@@ -42189,10 +42200,10 @@ theorem mem_petBox_of_sub_mem_scaled {C K N : ℝ} (hK : 0 ≤ K) (hN : 0 ≤ N)
   have hNi : (0 : ℝ) ≤ N ^ expo i := pow_nonneg hN _
   by_cases hij : i = j
   · subst hij
-    rw [if_pos rfl, mul_one] at hmem
+    rw [ite_eq_left rfl, mul_one] at hmem
     have := abs_le.mp ha
     constructor <;> nlinarith [hmem.1, hmem.2]
-  · rw [if_neg hij, mul_zero, sub_zero] at hmem
+  · rw [ite_eq_right hij, mul_zero, sub_zero] at hmem
     have : 0 ≤ K * N ^ expo i := mul_nonneg hK hNi
     constructor <;> nlinarith [hmem.1, hmem.2]
 
@@ -42212,7 +42223,7 @@ theorem phaseProdIter_eq_zero_of_notMem_scaled (r m : ℕ) (f : ℕ → E3 → �
     exact hx (mem_petBox_of_sub_mem_scaled hK hN hbd hmem)
   rw [Finset.prod_eq_zero (Finset.mem_Icc.mpr ⟨hm, le_refl m⟩) hzero, zero_mul]
 
-/-- **One phase step between consecutive levels.**  The level-`r` cube against a spatial block `g`
+/-- **One phase step between consecutive levels.** The level-`r` cube against a spatial block `g`
 is controlled by the Fejer average of the level-`(r+1)` cube against the enlarged box's
 indicator, where `V` is that box's volume. -/
 theorem phaseLevel_step {N H C K : ℝ} (hN1 : 1 ≤ N) (hH : 0 < H) (hHN : H ≤ N / 4)
@@ -42298,7 +42309,7 @@ theorem measurableSet_fejerBox (H : ℝ) (r : ℕ) : MeasurableSet (fejerBox H r
 
 theorem prod_fejer_eq_zero_of_notMem {H : ℝ} (hH : 0 < H) {r : ℕ} {h : Fin r → ℝ}
     (hh : h ∉ fejerBox H r) : ∏ l : Fin r, fejer H (h l) = 0 := by
-  simp only [fejerBox, Set.mem_setOf_eq, not_forall, not_le] at hh
+  simp only [fejerBox, Set.mem_ofPred_eq, not_forall, not_le] at hh
   obtain ⟨l, hl⟩ := hh
   exact Finset.prod_eq_zero (Finset.mem_univ l) (fejer_eq_zero_of_le hH hl.le)
 
@@ -42325,8 +42336,8 @@ theorem fejerChain_box {T : ℕ} {a : (r : ℕ) → (Fin r → ℝ) → ℝ} {H 
     a 0 Fin.elim0 ^ (2 ^ T) ≤ 2 ^ (2 ^ T) / 2 * (max (fejerMean H T (a T)) 0 + T * δ) := by
   classical
   let a' : (r : ℕ) → (Fin r → ℝ) → ℝ := fun r h => if h ∈ fejerBox H r then a r h else 0
-  have ha'in : ∀ r, ∀ h ∈ fejerBox H r, a' r h = a r h := fun r h hh => if_pos hh
-  have ha'out : ∀ r, ∀ h ∉ fejerBox H r, a' r h = 0 := fun r h hh => if_neg hh
+  have ha'in : ∀ r, ∀ h ∈ fejerBox H r, a' r h = a r h := fun r h hh => ite_eq_left hh
+  have ha'out : ∀ r, ∀ h ∉ fejerBox H r, a' r h = 0 := fun r h hh => ite_eq_right hh
   have hmean : ∀ r, fejerMean H r (a' r) = fejerMean H r (a r) := by
     intro r
     refine integral_congr_ae (.of_forall fun h => ?_)
@@ -42394,7 +42405,7 @@ Blueprint `patch:pet-analytic-step`: "For fixed old shifts let
 `A = V⁻¹ ∫ g_0(x) E_t ∏ g_i(x + Q_i(t))`."
 A symbolic state is evaluated at shifts `η : Fin r → ℝ` and inputs `G : ι → E3 → ℂ`: the
 coefficients are evaluated at `η`, a factor is its input translated by its evaluated translation and
-conjugated by its flag.  The evaluation carries a global conjugation flag `c`, flipped at every
+conjugated by its flag. The evaluation carries a global conjugation flag `c`, flipped at every
 step: the analytic correlation conjugates the unshifted child, the symbolic update the shifted one,
 and the two differ by a global conjugation. -/
 
@@ -42421,7 +42432,7 @@ theorem prod_group_eq {α β M : Type*} [DecidableEq α] [CommMonoid M] (l : Lis
       · simp [hk]
     simp_rw [hsplit]
     rw [Finset.prod_mul_distrib, Finset.prod_ite_eq]
-    simp only [Finset.mem_insert, true_or, if_true]
+    simp only [Finset.mem_insert, true_or, ite_true]
     congr 1
     by_cases ha : a.1 ∈ (l.map Prod.fst).toFinset
     · rw [Finset.insert_eq_of_mem ha, ih]
@@ -42602,11 +42613,11 @@ theorem prod_map_filter_mul_not {α M : Type*} [CommMonoid M] (l : List α) (p :
   | nil => simp
   | cons a l ih =>
     by_cases hp : p a
-    · simp only [List.filter_cons, hp, if_true, Bool.not_true, List.map_cons, List.prod_cons,
-        Bool.false_eq_true, if_false]
+    · simp only [List.filter_cons, hp, ite_true, Bool.not_true, List.map_cons, List.prod_cons,
+        Bool.false_eq_true, ite_false]
       rw [mul_assoc, ih]
-    · simp only [List.filter_cons, hp, Bool.not_false, if_true, List.map_cons, List.prod_cons,
-        Bool.false_eq_true, if_false]
+    · simp only [List.filter_cons, hp, Bool.not_false, ite_true, List.map_cons, List.prod_cons,
+        Bool.false_eq_true, ite_false]
       rw [mul_left_comm, ih]
 
 /-- **Grouping does not change the evaluated product**: items sharing a polynomial are merged by
@@ -42668,7 +42679,7 @@ theorem vecProd_vecChildren_update
   have hhead2 : (petNewHead u Qp S).2 = [petNewHeadFactor u Qp S] := by
     simp [petNewHead, petNormalizeItem, petNewHeadFactor]
   have hsp : petNewSpatial u Qp S = (tl.filter fun it => decide (it.1 = 0)).flatMap Prod.snd := by
-    rw [petNewSpatial, htl, List.filter_cons, if_neg (by simpa using hne)]
+    rw [petNewSpatial, htl, List.filter_cons, ite_eq_right (by simpa using hne)]
   have hnc : petNonConstChildren u Qp S = tl.filter fun it => !decide (it.1 = 0) := by
     rw [petNonConstChildren, htl, List.tail_cons]
     exact List.filter_congr fun it _ => by simp
@@ -42699,7 +42710,7 @@ variable {r n : ℕ} {ι : Type*} {f : ι}
 /-! ### Translation records use only the shift variables already introduced
 
 The level-`k` correlation must be a function of the first `k` shifts alone, so every constant
-translation absorbed into a factor must use only the variables introduced so far.  The constants
+translation absorbed into a factor must use only the variables introduced so far. The constants
 come from children's constant terms, which use at most the fresh variable. -/
 
 /-- A factor's translation uses only the first `s` shift variables. -/
@@ -42708,7 +42719,7 @@ def PetFacBelow (s : ℕ) (F : PetFactor r n ι) : Prop := ∀ k, F.transl k ∈
 theorem PetFacBelow.mono {s s' : ℕ} (hs : s ≤ s') {F : PetFactor r n ι} (h : PetFacBelow s F) :
     PetFacBelow s' F := fun k => by
   have hsub : {v : Fin r | v.val < s} ⊆ {v : Fin r | v.val < s'} := fun v hv => by
-    simp only [Set.mem_setOf_eq] at hv ⊢; omega
+    simp only [Set.mem_ofPred_eq] at hv ⊢; omega
   exact MvPolynomial.supported_mono hsub (h k)
 
 theorem PetFacBelow.starFac {s : ℕ} {F : PetFactor r n ι} (h : PetFacBelow s F) :
@@ -42835,7 +42846,7 @@ Blueprint `patch:pet-producer`, "Full coefficient and translation bounds": "A sh
 `|u| ≤ H ≤ N`, transforms that coefficient [bound] ... Subtracting the pivot multiplies this bound
 by at most two ... This proves every support-envelope ... bound used by the analytic execution."
 Only the envelope is needed: at shifts of size at most `H` and parameters `|t| ≤ R`, the `k`-th
-coordinate of every evaluated shift is at most `M N^{expo k}`.  An update costs a factor `4` and
+coordinate of every evaluated shift is at most `M N^{expo k}`. An update costs a factor `4` and
 shrinks the parameter range by `H`. -/
 
 @[simp] theorem petEvalPoly_apply (η : Fin r → ℝ) (Q : Polynomial (Fin 3 → MvPolynomial (Fin r) ℝ))
@@ -42882,7 +42893,7 @@ theorem PetEnv.normalize {N H R M : ℝ} (hH : 0 ≤ H)
     intro s hs
     cases shifted
     · exact hQ η hη s (by linarith) k
-    · simp only [if_true]
+    · simp only [ite_true]
       rw [petEvalPoly_taylor]
       refine hQ η hη _ ?_ k
       calc |s + η iu| ≤ |s| + |η iu| := abs_add_le _ _
@@ -42977,7 +42988,6 @@ open Filter Topology MeasureTheory
 variable {r : ℕ} {ι : Type*} {f : ι}
 
 /-! ### Evaluations: continuity, measurability, and independence of unused variables -/
-
 theorem continuous_mvEval (p : MvPolynomial (Fin r) ℝ) :
     Continuous fun η : Fin r → ℝ => MvPolynomial.eval η p := by
   induction p using MvPolynomial.induction_on with
@@ -43040,7 +43050,7 @@ theorem norm_petBlockFun_le {G : ι → E3 → ℂ} (hG1 : ∀ i y, ‖G i y‖ 
     have : petBlockFun G η c (F :: l) y = petFacFun G η c F y * petBlockFun G η c l y := by
       simp [petBlockFun]
     rw [this, norm_mul]
-    refine mul_le_one₀ ?_ (norm_nonneg _) ih
+    refine ((mul_le_of_le_one_left (norm_nonneg _) ?_).trans ih)
     rw [petFacFun, norm_condConj]
     exact hG1 _ _
 
@@ -43143,7 +43153,6 @@ section
 open Filter Topology MeasureTheory
 
 /-! ### A translated box times a bounded block, as a spatial block -/
-
 theorem translBox_facts (Cs N : ℝ) (v : E3) {B : E3 → ℂ} (hBm : Measurable B)
     (hB1 : ∀ x, ‖B x‖ ≤ 1) :
     Measurable (fun x => boxInd Cs N (x + v) * B x)
@@ -43155,7 +43164,8 @@ theorem translBox_facts (Cs N : ℝ) (v : E3) {B : E3 → ℂ} (hBm : Measurable
   have hm : Measurable fun x => boxInd Cs N (x + v) * B x :=
     ((measurable_boxInd Cs N).comp (measurable_id.add_const v)).mul hBm
   have h1 : ∀ x, ‖boxInd Cs N (x + v) * B x‖ ≤ 1 := fun x => by
-    rw [norm_mul]; exact mul_le_one₀ (norm_boxInd_le _ _ _) (norm_nonneg _) (hB1 x)
+    rw [norm_mul]
+    exact (mul_le_of_le_one_left (norm_nonneg _) (norm_boxInd_le _ _ _)).trans (hB1 x)
   have hle : ∀ x, ‖boxInd Cs N (x + v) * B x‖ ≤ ‖boxInd Cs N (x + v)‖ := fun x => by
     rw [norm_mul]; exact mul_le_of_le_one_right (norm_nonneg _) (hB1 x)
   have hz : ∀ x, (∑ i : Fin 3, |Cs * N ^ expo i|) + ‖v‖ < ‖x‖ →
@@ -43218,9 +43228,9 @@ theorem petLevel_norm_le_one {G : ι → E3 → ℂ} (hG : ∀ i, Measurable (G 
   exact norm_vecAmp_le_one hV hN hi hL1 (petEvalFam_facts hG hG1 η c S).2 fun _ _ => by simp
 
 open scoped Classical in
-/-- **Blueprint `patch:pet-analytic-step` between consecutive PET levels.**  For fixed old shifts
+/-- **Blueprint `patch:pet-analytic-step` between consecutive PET levels.** For fixed old shifts
 `η` in the Fejer box, the level of a state is controlled by the Fejer average over the fresh shift
-of the level of the updated state, with the global conjugation flag flipped.  The spatial block of
+of the level of the updated state, with the global conjugation flag flipped. The spatial block of
 each level is the enlarged box translated with the protected input; the support envelope of the
 new head puts the children inside it. -/
 theorem petLevel_step {N H C Cs M : ℝ} (hN1 : 1 ≤ N) (hH : 0 < H) (hHN : H ≤ N / 4)
@@ -43350,7 +43360,7 @@ variable {r : ℕ}
 /-! ### The initial shifted family as symbolic polynomials
 
 Blueprint `patch:initial-shift-family`: after the four phase steps the shifts are
-`P_i(t + ω·h) e_i - P_i(ω·h) e_i`.  A real polynomial `P` along the coordinate `j` is lifted to a
+`P_i(t + ω·h) e_i - P_i(ω·h) e_i`. A real polynomial `P` along the coordinate `j` is lifted to a
 vector polynomial with coefficients in the shift ring; the vertex shift `ω·h` becomes the symbolic
 sum of the corresponding shift variables. -/
 
@@ -43519,12 +43529,12 @@ theorem petShiftVec_cons {k : ℕ} (hk : k < r) (u : ℝ) (h : Fin k → ℝ) :
   · rw [Function.update_of_ne hv]
     have hvk : v.val ≠ k := fun h => hv (Fin.ext h)
     by_cases hlt : v.val < k
-    · simp only [petShiftVec, dif_pos hlt, dif_pos (show v.val < k + 1 by omega)]
+    · simp only [petShiftVec, dite_eq_left hlt, dite_eq_left (show v.val < k + 1 by omega)]
       have : (⟨k + 1 - 1 - v.val, by omega⟩ : Fin (k + 1))
           = (⟨k - 1 - v.val, by omega⟩ : Fin k).succ := by
         ext; simp; omega
       rw [this, Fin.cons_succ]
-    · simp only [petShiftVec, dif_neg hlt, dif_neg (show ¬ v.val < k + 1 by omega)]
+    · simp only [petShiftVec, dite_eq_right hlt, dite_eq_right (show ¬ v.val < k + 1 by omega)]
 
 theorem abs_petShiftVec_le {H : ℝ} (hH : 0 ≤ H) {k : ℕ} {h : Fin k → ℝ}
     (hh : ∀ l, |h l| ≤ H) (v : Fin r) : |petShiftVec k h v| ≤ H := by
@@ -43554,7 +43564,7 @@ theorem eval_vShift (hr : 4 ≤ r) (ω : Fin 4 → Bool) (h : Fin 4 → ℝ) :
   refine Finset.sum_congr rfl fun l _ => ?_
   split_ifs
   · simp only [MvPolynomial.map_X, MvPolynomial.eval_X, petShiftVec]
-    rw [dif_pos (show 3 - l.val < 4 by omega)]
+    rw [dite_eq_left (show 3 - l.val < 4 by omega)]
     congr 1; ext; simp only; omega
   · simp
 
@@ -43659,7 +43669,7 @@ theorem vShift_mem (hr : 4 ≤ r) (ω : Fin 4 → Bool) : vShift hr ω ∈ petVa
     exact MvPolynomial.mem_supported.mpr (by
       rw [MvPolynomial.vars_X]; intro v hv
       simp only [Finset.coe_singleton, Set.mem_singleton_iff] at hv
-      subst hv; simp only [Set.mem_setOf_eq]; omega)
+      subst hv; simp only [Set.mem_ofPred_eq]; omega)
   · rw [map_zero]; exact zero_mem _
 
 theorem petPolyBelow_initPoly (hr : 4 ≤ r) (P : Polynomial ℝ) (j : Fin 3) (ω : Fin 4 → Bool) :
@@ -43986,7 +43996,7 @@ theorem initState_env {hr : 4 ≤ r} {P : ℕ → Polynomial ℝ} {j : ℕ → F
     simp only [PiLp.neg_apply, PiLp.smul_apply, smul_eq_mul, basisVec, abs_neg]
     by_cases hk : k = j q.2
     · subst hk
-      simp only [PiLp.single_apply, if_true, mul_one]
+      simp only [PiLp.single_apply, ite_true, mul_one]
       have h1 := hPb q.2 hq (t + MvPolynomial.eval η (vShift hr q.1))
         (by calc |t + _| ≤ |t| + |_| := abs_add_le _ _
               _ ≤ R + 4 * H := add_le_add ht hs)
@@ -43996,7 +44006,7 @@ theorem initState_env {hr : 4 ≤ r} {P : ℕ → Polynomial ℝ} {j : ℕ → F
             + |(P q.2).eval (MvPolynomial.eval η (vShift hr q.1))| := abs_sub _ _
         _ ≤ M / 2 * N ^ expo (j q.2) + M / 2 * N ^ expo (j q.2) := add_le_add h1 h2
         _ = M * N ^ expo (j q.2) := by ring
-    · simp only [PiLp.single_apply, hk, if_false, mul_zero, abs_zero]
+    · simp only [PiLp.single_apply, hk, ite_false, mul_zero, abs_zero]
       positivity
   intro it hit
   rw [petAllItems, List.mem_cons] at hit
@@ -44137,7 +44147,6 @@ variable {r : ℕ} {ι : Type*} {f : ι}
 Blueprint `patch:cs-loss` along the run of `patch:pet-producer`: the `k`-th state of the run,
 evaluated at the first `s₀ + k` shifts, with the conjugation flag of parity `k`, is level `s₀ + k`
 of the chain, and consecutive levels satisfy the Cauchy--Schwarz recursion. -/
-
 theorem abs_petShiftVec_le' {H : ℝ} (hH : 0 < H) {k : ℕ} {h : Fin k → ℝ}
     (hh : h ∈ fejerBox H k) (v : Fin r) : |petShiftVec k h v| ≤ H :=
   abs_petShiftVec_le hH.le hh v
@@ -44384,7 +44393,7 @@ theorem measurable_fdiffIter_param {Θ : Type*} [MeasurableSpace Θ] (v : E3) :
       have ih := measurable_fdiffIter_param v s hg
       have htail : Measurable fun q : Θ × (Fin (s + 1) → ℝ) × E3 =>
           (fun i : Fin s => q.2.1 i.succ) :=
-        measurable_pi_lambda _ fun i => (measurable_pi_apply i.succ).comp
+        Measurable.of_eval fun i => (measurable_pi_apply i.succ).comp
           (measurable_fst.comp measurable_snd)
       have h0 : Measurable fun q : Θ × (Fin (s + 1) → ℝ) × E3 => q.2.1 0 :=
         (measurable_pi_apply 0).comp (measurable_fst.comp measurable_snd)
@@ -44409,7 +44418,7 @@ theorem measurable_affG_joint (em : E3) (b : ℕ → ℝ) {g : ℕ → E3 → �
   have hκ : Measurable fun q : (Fin r → ℝ) × E3 =>
       (((), (fun ν : Fin r => (b i - b (r - 1 - ν.val)) * q.1 ν), q.2) :
         Unit × (Fin r → ℝ) × E3) :=
-    measurable_const.prodMk ((measurable_pi_lambda _ fun ν =>
+    measurable_const.prodMk ((Measurable.of_eval fun ν =>
       ((measurable_pi_apply ν).comp measurable_fst).const_mul _).prodMk measurable_snd)
   exact h.comp hκ
 
@@ -44660,7 +44669,7 @@ variable {r : ℕ} {ι : Type*} {f : ι}
 
 Blueprint `patch:affine-terminal` and "The affine endpoint": "At a formal linear state,
 `patch:lead-invariant` says that the head slope and its differences with every other slope are
-multiples of `e_m`.  Hence all the slopes are multiples of `e_m`.  Include the spatial block as a
+multiples of `e_m`. Hence all the slopes are multiples of `e_m`. Include the spatial block as a
 nuisance of slope zero ... and place the protected block last." -/
 
 /-- A linear shift along `e_m` evaluates to a multiple of `e_m`. -/
@@ -44867,12 +44876,14 @@ theorem petLevel_eq_affAmp_zero {a : ℝ} {m : Fin 3} {D s : ℕ} {S : NormalPET
       obtain ⟨h1, h0, hm⟩ := hlf _ (List.mem_cons_of_mem _ hmem)
       have e : 0 + 1 + k = k + 1 := by omega
       simp only [Function.comp, e, linBlocks, linSlopes, petEvalItem, Nat.add_sub_cancel]
-      rw [if_neg (by omega), if_pos (by omega), if_neg (by omega), if_pos (by omega),
+      rw [ite_eq_right (by omega), ite_eq_left (by omega), ite_eq_right (by omega), ite_eq_left
+        (by omega),
         petEvalPoly_linear h1 h0 hm, sub_zero]
       rfl
     · obtain ⟨h1, h0, hm⟩ := hlf _ (List.mem_cons_self)
       simp only [linBlocks, linSlopes, petEvalItem]
-      rw [if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
+      rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right
+        (by omega),
         petEvalPoly_linear h1 h0 hm, sub_zero]
       rfl
   rw [petLevel, affAmp, vecAmp, vecAmp]
@@ -44917,7 +44928,6 @@ section
 open Filter Topology MeasureTheory
 
 /-! ### Bookkeeping for the chain: parametric measurability and index transport -/
-
 theorem measurable_affG_param {Θ : Type*} [MeasurableSpace Θ] (em : E3)
     {b : Θ → ℕ → ℝ} (hb : ∀ i, Measurable fun θ => b θ i) {g : Θ → ℕ → E3 → ℂ}
     (hg : ∀ i, Measurable fun q : Θ × E3 => g q.1 i q.2) (i r : ℕ) :
@@ -44926,7 +44936,7 @@ theorem measurable_affG_param {Θ : Type*} [MeasurableSpace Θ] (em : E3)
   have hκ : Measurable fun q : (Θ × (Fin r → ℝ)) × E3 =>
       ((q.1.1, (fun ν : Fin r => (b q.1.1 i - b q.1.1 (r - 1 - ν.val)) * q.1.2 ν), q.2) :
         Θ × (Fin r → ℝ) × E3) :=
-    (measurable_fst.comp measurable_fst).prodMk ((measurable_pi_lambda _ fun ν =>
+    (measurable_fst.comp measurable_fst).prodMk ((Measurable.of_eval fun ν =>
       (((hb i).comp (measurable_fst.comp measurable_fst)).sub
         ((hb _).comp (measurable_fst.comp measurable_fst))).mul
         ((measurable_pi_apply ν).comp (measurable_snd.comp measurable_fst))).prodMk
@@ -45005,20 +45015,20 @@ theorem hcOld_cons {k K₀ : ℕ} (hk : K₀ ≤ k) (u : ℝ) (h : Fin k → ℝ
     hcOld (k + 1) K₀ (Fin.cons u h) = hcOld k K₀ h := by
   funext i
   simp only [hcOld]
-  rw [dif_pos (by omega), dif_pos (by omega)]
+  rw [dite_eq_left (by omega), dite_eq_left (by omega)]
   have e1 : (⟨i.val + (k + 1 - K₀), by omega⟩ : Fin (k + 1))
       = (⟨i.val + (k - K₀), by omega⟩ : Fin k).succ := Fin.ext (by simp; omega)
   rw [e1, Fin.cons_succ]
 
 theorem hcOld_self (K₀ : ℕ) (h : Fin K₀ → ℝ) : hcOld K₀ K₀ h = h := by
   funext i
-  simp only [hcOld, Nat.sub_self, add_zero, dif_pos i.isLt]
+  simp only [hcOld, Nat.sub_self, add_zero, dite_eq_left i.isLt]
 
 theorem measurable_hcW (k K₀ : ℕ) : Measurable (hcW k K₀) :=
-  measurable_pi_lambda _ fun _ => measurable_pi_apply _
+  Measurable.of_eval fun _ => measurable_pi_apply _
 
 theorem measurable_hcOld (k K₀ : ℕ) : Measurable (hcOld k K₀) := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   simp only [hcOld]
   split_ifs
   · exact measurable_pi_apply _
@@ -45077,7 +45087,7 @@ theorem hcLevel_phase {k : ℕ} (hk0 : k ≠ 0) (hk : k < 4) (h : Fin k → ℝ)
 theorem hcLevel_pet {k : ℕ} (hk4 : 4 ≤ k) (hk : k ≤ 4 + T) (h : Fin k → ℝ) :
     hcLevel V N C Cs m f P p j seq T k h
       = ‖petLevel V N Cs f (Nat.bodd (k - 4)) (seq (k - 4)) (petShiftVec k h)‖ := by
-  rw [hcLevel, if_neg (by omega), if_neg (by omega), if_pos hk]
+  rw [hcLevel, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left hk]
 
 theorem hcLevel_aff {k : ℕ} (hk1 : 4 + T < k) (hk2 : k < 4 + T + ((seq T).rest.length + 1))
     (h : Fin k → ℝ) :
@@ -45086,7 +45096,8 @@ theorem hcLevel_aff {k : ℕ} (hk1 : 4 + T < k) (hk2 : k < 4 + T + ((seq T).rest
           (linSlopes (petShiftVec (4 + T) (hcOld k (4 + T) h)) (j m) (seq T))
           (linBlocks N Cs f (petShiftVec (4 + T) (hcOld k (4 + T) h)) (Nat.bodd T) (seq T))
           ((seq T).rest.length + 1) (k - (4 + T)) (hcW k (4 + T) h)‖ := by
-  rw [hcLevel, if_neg (by omega), if_neg (by omega), if_neg (by omega), if_pos hk2]
+  rw [hcLevel, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+    ite_eq_left hk2]
 
 theorem hcLevel_last {k : ℕ} (hk : k = 4 + T + ((seq T).rest.length + 1)) (h : Fin k → ℝ) :
     hcLevel V N C Cs m f P p j seq T k h
@@ -45094,13 +45105,15 @@ theorem hcLevel_last {k : ℕ} (hk : k = 4 + T + ((seq T).rest.length + 1)) (h :
           (linSlopes (petShiftVec (4 + T) (hcOld k (4 + T) h)) (j m) (seq T))
           (linBlocks N Cs f (petShiftVec (4 + T) (hcOld k (4 + T) h)) (Nat.bodd T) (seq T))
           ((seq T).rest.length + 1) (k - (4 + T)) (hcW k (4 + T) h)).re := by
-  rw [hcLevel, if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-    if_pos hk]
+  rw [hcLevel, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+    ite_eq_right (by omega),
+    ite_eq_left hk]
 
 theorem hcLevel_beyond {k : ℕ} (hk : 4 + T + ((seq T).rest.length + 1) < k) (h : Fin k → ℝ) :
     hcLevel V N C Cs m f P p j seq T k h = 0 := by
-  rw [hcLevel, if_neg (by omega), if_neg (by omega), if_neg (by omega), if_neg (by omega),
-    if_neg (by omega)]
+  rw [hcLevel, ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
+    ite_eq_right (by omega),
+    ite_eq_right (by omega)]
 
 end
 
@@ -45493,7 +45506,6 @@ open Filter Topology MeasureTheory
 /-! ### The terminal mean as the averaged raw cube of the protected input
 
 "Translation/conjugation invariance identifies its integrated power with that of `f`." -/
-
 theorem fdiffIter_translate (v : E3) : ∀ (s : ℕ) (c : Fin s → ℝ) (F : E3 → ℂ) (a x : E3),
     fdiffIter v s c (fun y => F (y + a)) x = fdiffIter v s c F (x + a)
   | 0, _, _, _, _ => rfl
@@ -45557,7 +45569,7 @@ theorem hcLevel_terminal {V N C Cs : ℝ} (hN : 0 < N) {m : ℕ} {f : ℕ → E3
           (f m (y + petEvalVec (petShiftVec (4 + T) (hcOld _ (4 + T) h))
             (seq T).headFactor.transl)) := by
     funext y
-    rw [linBlocks, if_neg (Nat.succ_ne_zero _), if_neg (by omega)]
+    rw [linBlocks, ite_eq_right (Nat.succ_ne_zero _), ite_eq_right (by omega)]
     simp only [petBlockFun, List.map_cons, List.map_nil, List.prod_cons, List.prod_nil, mul_one,
       petFacFun, (seq T).head_origin]
   rw [hblk, re_integral_fdiffIter_condConj]
@@ -45580,7 +45592,7 @@ theorem hcWs_cons {K s : ℕ} (u : ℝ) (h : Fin (K + s) → ℝ) :
     rw [this, Fin.cons_succ]
 
 theorem measurable_hcWs (K s : ℕ) : Measurable (hcWs K s) :=
-  measurable_pi_lambda _ fun _ => measurable_pi_apply _
+  Measurable.of_eval fun _ => measurable_pi_apply _
 
 /-- **Recombining a Fejer average over a new first shift with the product mean** for a bounded
 measurable integrand. -/
@@ -45701,7 +45713,7 @@ theorem measurable_hcTerm (V : ℝ) {m : ℕ} {f : ℕ → E3 → ℂ} (hf : ∀
   have hκ : Measurable fun q : ((Fin s → ℝ) × (Fin K → ℝ)) × E3 =>
       (((), (fun ν : Fin s => hcGap (petShiftVec K q.1.2) (j m) S ν.val * q.1.1 ν), q.2) :
         Unit × (Fin s → ℝ) × E3) :=
-    measurable_const.prodMk ((measurable_pi_lambda _ fun ν : Fin s =>
+    measurable_const.prodMk ((Measurable.of_eval fun ν : Fin s =>
       ((measurable_hcGap (j m) S ν.val).comp ((continuous_petShiftVec K).measurable.comp
         (measurable_snd.comp measurable_fst))).mul
         ((measurable_pi_apply ν).comp (measurable_fst.comp measurable_fst))).prodMk
@@ -45764,7 +45776,6 @@ open Filter Topology MeasureTheory
 
 "By `patch:multiaffine-sublevel`, the union of all bad gap sets has probability at most `κ/4` ...
 Hence there are old shifts outside the union with `F ≥ κ/2`." -/
-
 theorem integrable_prod_fejer_one (n : ℕ) :
     Integrable (fun u : Fin n → ℝ => ∏ l, fejer 1 (u l)) := integrable_prod_fejer one_pos n
 
@@ -45810,7 +45821,7 @@ theorem mvPoly_sublevel_le {n : ℕ} {q : MvPolynomial (Fin (n + 1)) ℤ} (hq : 
       = {u | |multiAff (q.coeff 0) (fun k => q.coeff (Finsupp.single k 1))
           (fun k l => if k < l then q.coeff (Finsupp.single k 1 + Finsupp.single l 1) else 0)
           u| ≤ ε} := by
-    ext u; simp only [Set.mem_setOf_eq, aeval_eq_multiAff hml hdeg]
+    ext u; simp only [Set.mem_ofPred_eq, aeval_eq_multiAff hml hdeg]
   rw [hset]
   refine multiAff_sublevel_le _ _ _ (fun k l hkl => by simp [hkl]) ?_ hε0 hε1
   obtain ⟨d, hd⟩ := MvPolynomial.ne_zero_iff.mp hq
@@ -45996,7 +46007,7 @@ theorem exists_reverse_poly {K : ℕ} (hK : K ≤ r) {p : MvPolynomial (Fin r) �
     have hfun : (petShiftVec K o ∘ ι) = o := by
       funext i
       simp only [Function.comp, petShiftVec, ι]
-      rw [dif_pos (by omega)]
+      rw [dite_eq_left (by omega)]
       congr 1
       ext; simp; omega
     rw [hfun]
@@ -46043,7 +46054,7 @@ theorem linState_gap_witness {a : ℝ} (ha : a ≠ 0) {m : Fin 3} {D K : ℕ} {B
         rwa [Polynomial.leadingCoeff, hh1]
       · rw [hcGap, hν0]
         simp only [linSlopes]
-        rw [if_neg (by omega), if_neg (by omega), if_pos trivial, sub_zero,
+        rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_left trivial, sub_zero,
           linState_headSlope hlin hlc]
     · set it := S.rest.getD (S.rest.length - ν - 1) (0, []) with hitdef
       have hit : it ∈ S.rest := getD_mem_of_lt _ (by omega)
@@ -46055,7 +46066,8 @@ theorem linState_gap_witness {a : ℝ} (ha : a ≠ 0) {m : Fin 3} {D K : ℕ} {B
         rwa [Polynomial.leadingCoeff, hd1]
       · rw [hcGap, ← linState_gap hlin hit hlc η]
         simp only [linSlopes]
-        rw [if_neg (by omega), if_neg (by omega), if_neg hν0, if_pos (by omega)]
+        rw [ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right hν0, ite_eq_left
+          (by omega)]
   obtain ⟨q, hqev, hq0, hqhom, hqml⟩ := exists_reverse_poly hK hlc
   refine ⟨q, hq0 hp0, hqhom _ hphom, hqml hpml, fun u hu => ?_, fun o => by rw [hgap, hqev]⟩
   rw [hqev]
@@ -46127,7 +46139,6 @@ section
 open Filter Topology MeasureTheory
 
 /-! ### Sign symmetry of the Fejer density and the change to positive gaps -/
-
 theorem fejer_mul_sign {H t σ : ℝ} (hσ : |σ| = 1) : fejer H (σ * t) = fejer H t := by
   simp [fejer, abs_mul, hσ]
 
@@ -46138,8 +46149,8 @@ def signFlip {s : ℕ} (σ : Fin s → ℝ) (hσ : ∀ l, σ l * σ l = 1) :
   invFun w l := σ l * w l
   left_inv w := funext fun l => by simp only; rw [← mul_assoc, hσ l, one_mul]
   right_inv w := funext fun l => by simp only; rw [← mul_assoc, hσ l, one_mul]
-  measurable_toFun := measurable_pi_lambda _ fun l => (measurable_pi_apply l).const_mul _
-  measurable_invFun := measurable_pi_lambda _ fun l => (measurable_pi_apply l).const_mul _
+  measurable_toFun := Measurable.of_eval fun l => (measurable_pi_apply l).const_mul _
+  measurable_invFun := Measurable.of_eval fun l => (measurable_pi_apply l).const_mul _
 
 theorem measurePreserving_signFlip {s : ℕ} (σ : Fin s → ℝ) (hσ : ∀ l, σ l * σ l = 1) :
     MeasurePreserving (signFlip σ hσ) := by
@@ -46204,7 +46215,7 @@ theorem fejer_mean_hcTerm_eq {V N H : ℝ} (hN : 0 < N) (hH : 0 < H) {m : ℕ} {
   have hΦm : Measurable Φ := by
     have h1 : Measurable fun q : (Fin s → ℝ) × E3 =>
         fdiffIter v s (fun i => g i * q.1 i) (f m) q.2 :=
-      hjm.comp ((measurable_pi_lambda _ fun i =>
+      hjm.comp ((Measurable.of_eval fun i =>
         ((measurable_pi_apply i).comp measurable_fst).const_mul _).prodMk measurable_snd)
     exact ((measurable_prod_fejer s).comp measurable_fst).complex_ofReal.mul h1
   have hΦi : Integrable Φ ((volume : Measure (Fin s → ℝ)).prod (volume : Measure E3)) := by
@@ -46636,7 +46647,7 @@ theorem hc_core {N H C Kb M0 C' L lam : ℝ} (hN1 : 1 ≤ N) (hH : 0 < H) (hHN :
   have hprod : (∏ ν : Fin s, 2 * L / (|hcGap (petShiftVec (4 + T) o) (j m) S ν.val| * H))
       ≤ (2 * L / (|(P m).leadingCoeff| * ε * H ^ D)) ^ s := by
     rw [← Fin.prod_const]
-    refine Finset.prod_le_prod (fun ν _ => by positivity) fun ν _ => ?_
+    refine Finset.prod_le_prod₀ (fun ν _ => by positivity) fun ν _ => ?_
     have hlow := (hgap ν.val (Nat.lt_succ_iff.mp ν.isLt)).1
     rw [← habs]
     have hpos : 0 < |a| * ε * H ^ D := by positivity
@@ -47439,7 +47450,7 @@ theorem fejer_mean_cube_eq {V N H : ℝ} (hN : 0 < N) (hH : 0 < H) {F : E3 → �
   have hΦm : Measurable Φ := by
     have h1 : Measurable fun q : (Fin s → ℝ) × E3 =>
         fdiffIter v s (fun i => g i * q.1 i) F q.2 :=
-      hjm.comp ((measurable_pi_lambda _ fun i =>
+      hjm.comp ((Measurable.of_eval fun i =>
         ((measurable_pi_apply i).comp measurable_fst).const_mul _).prodMk measurable_snd)
     exact ((measurable_prod_fejer s).comp measurable_fst).complex_ofReal.mul h1
   have hΦi : Integrable Φ ((volume : Measure (Fin s → ℝ)).prod (volume : Measure E3)) := by
@@ -47655,8 +47666,8 @@ theorem d1_chain {N H C Kb : ℝ} (hN1 : 1 ≤ N) (hH : 0 < H) (hHN : H ≤ N / 
 set_option maxHeartbeats 1000000 in
 -- The proof assembles the chain and the budgets in one context.
 /-- **`patch:highest-control`, the degree-one branch**, continuous protected input: "If the
-highest active degree is one, there is only one active input.  After the four steps, translating
-`x` by its affine `P_1(t)` removes `t` and gives the raw order-four cube of `f_1` ...  Its radius
+highest active degree is one, there is only one active input. After the four steps, translating
+`x` by its affine `P_1(t)` removes `t` and gives the raw order-four cube of `f_1` ... Its radius
 is `|lc(P_1)| H` ... Uniformize and pad as above." -/
 theorem highestControl_one (j : ℕ → Fin 3) (hj1 : expo (j 1) = 1) (c : ℕ) (hc : 1 ≤ c) :
     ∃ C₂ : ℕ, 1 ≤ C₂ ∧ ∀ δ N : ℝ, 0 < δ → δ ≤ 1 → 1 ≤ N →
@@ -47732,7 +47743,7 @@ theorem highestControl_one (j : ℕ → Fin 3) (hj1 : expo (j 1) = 1) (c : ℕ) 
   have hterm : ∀ h : Fin 4 → ℝ, d1Level V N C (C + Kb) f P p j 4 h
       = V⁻¹ * (∫ x, fdiffIter (basisVec (j 1)) 4 (fun i => g i * h i) (f 1) x).re := by
     intro h
-    simp only [d1Level, show (4 : ℕ) ≠ 0 by norm_num, if_false, lt_irrefl, if_true]
+    simp only [d1Level, show (4 : ℕ) ≠ 0 by norm_num, ite_false, lt_irrefl, ite_true]
     rw [phaseLevel_four_linear hN0 hKb (hf 1) (hf1 1) (hfs 1) hdeg1.le hp3 hbd h,
       Complex.smul_re]
     rfl
@@ -47805,13 +47816,13 @@ section
 open Filter Topology MeasureTheory
 
 /-- **Proposition `patch:highest-control` (highest-active-input control, including measurable
-polynomial phases), for a continuous protected input.**  Fix the directions `j` of the active
+polynomial phases), for a continuous protected input.** Fix the directions `j` of the active
 inputs `1, …, m`, whose degrees `d_i = expo (j i)` increase towards the protected input `m`, and
-an input budget `c`.  There are an order `s₀` and budgets `C₁`, `C₂` such that for `0 < δ ≤ 1`,
+an input budget `c`. There are an order `s₀` and budgets `C₁`, `C₂` such that for `0 < δ ≤ 1`,
 `N ≥ 1`, admissible `P_i`, Borel one-bounded inputs supported in the budget box (the protected one
 continuous), and a phase `p_x` of degree at most three with measurable coefficients, the lower bound
 `|∫ f_0(x) E_{t ∈ [0,N]} ∏ f_i(x - P_i(t) e_i) e(p_x(t)) dx| ≥ ℓ_c(δ) N^6` implies
-`Q_{s₀, H}(f_m) ≥ ℓ_{C₂}(δ)` at the radius `H = u_{C₁}(δ) N^{d_m}`.  The radius and the lower bound
+`Q_{s₀, H}(f_m) ≥ ℓ_{C₂}(δ)` at the radius `H = u_{C₁}(δ) N^{d_m}`. The radius and the lower bound
 carry separate budgets (see `automation/ErrorReport.md`). -/
 theorem highestControl_nice (m : ℕ) (hm1 : 1 ≤ m) (j : ℕ → Fin 3)
     (hj : ∀ i ∈ Finset.Icc 1 m, i ≠ m → expo (j i) < expo (j m)) (c : ℕ) (hc : 1 ≤ c) :
@@ -47889,7 +47900,7 @@ theorem AdmissiblePoly.mono {c c' : ℕ} {δ N : ℝ} {d : ℕ} {P : Polynomial 
 theorem integrable_window_translate {w : E3 → ℝ} (hw : Integrable w) {Q : ℝ → E3}
     (hQ : Continuous Q) (N : ℝ) :
     Integrable fun x => (N⁻¹ : ℝ) * ∫ t in Set.Ioc (0 : ℝ) N, w (x - Q t) := by
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
   have hsh := measurePreserving_shear (ν := volume.restrict (Set.Ioc (0 : ℝ) N))
     (c := fun t => -Q t) hQ.measurable.neg
@@ -47910,7 +47921,7 @@ theorem integrable_window_translate {w : E3 → ℝ} (hw : Integrable w) {Q : �
 theorem integral_window_translate {w : E3 → ℝ} (hw : Integrable w) {Q : ℝ → E3}
     (hQ : Continuous Q) {N : ℝ} (hN : 0 < N) :
     (∫ x, (N⁻¹ : ℝ) * ∫ t in Set.Ioc (0 : ℝ) N, w (x - Q t)) = ∫ x, w x := by
-  haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
+  have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
     ⟨by rw [Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
   have hsh := measurePreserving_shear (ν := volume.restrict (Set.Ioc (0 : ℝ) N))
     (c := fun t => -Q t) hQ.measurable.neg
@@ -47965,7 +47976,7 @@ theorem norm_phaseCorr_update_sub_le {N : ℝ} (hN : 0 < N) {m : ℕ} (hm : 1 �
     rw [hrest, ← sub_mul, ← sub_mul, norm_mul, norm_expPhase, mul_one, norm_mul]
     refine mul_le_of_le_one_right (norm_nonneg _) ?_
     rw [norm_prod]
-    exact Finset.prod_le_one (fun i _ => norm_nonneg _) fun i _ => hf1 i _
+    exact Finset.prod_le_one₀ (fun i _ => norm_nonneg _) fun i _ => hf1 i _
   -- integrate
   set w : E3 → ℝ := fun y => ‖f m y - g y‖ with hw
   have hwi : Integrable w := hfg.norm
@@ -47998,7 +48009,7 @@ theorem norm_phaseCorr_update_sub_le {N : ℝ} (hN : 0 < N) {m : ℕ} (hm : 1 �
     refine (norm_integral_le_integral_norm _).trans (integral_mono_of_nonneg
       (.of_forall fun t => norm_nonneg _) ?_ (.of_forall fun t => hdiff x t))
     have hc : Continuous fun t => x - ((P m).eval t) • basisVec (j m) := continuous_const.sub hQ
-    haveI : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
+    have : IsFiniteMeasure (volume.restrict (Set.Ioc (0 : ℝ) N)) :=
       ⟨by rw [Measure.restrict_apply_univ]; exact measure_Ioc_lt_top⟩
     refine Integrable.mono' (integrable_const (1 + 1 : ℝ))
       (((((hf m).sub hg).norm).comp hc.measurable).aestronglyMeasurable)
@@ -48263,14 +48274,14 @@ theorem exists_boxCutoff (C : ℝ) {N : ℝ} (hN : 0 < N) :
     isOpen_lt (continuous_abs.comp (continuous_coord i)) continuous_const
   have hsub : petBox C N ⊆ U := by
     intro x hx
-    simp only [hU, Set.mem_iInter, Set.mem_setOf_eq]
+    simp only [hU, Set.mem_iInter, Set.mem_ofPred_eq]
     intro i
     have h := hx i
     have hNi : 0 < N ^ expo i := pow_pos hN _
     rw [abs_lt]; constructor <;> nlinarith [h.1, h.2]
   have hU2 : U ⊆ petBox (C + 1) N := by
     intro x hx i
-    simp only [hU, Set.mem_iInter, Set.mem_setOf_eq] at hx
+    simp only [hU, Set.mem_iInter, Set.mem_ofPred_eq] at hx
     have := abs_lt.mp (hx i)
     exact ⟨this.1.le, this.2.le⟩
   obtain ⟨χ, h0, h1, h01⟩ := exists_continuous_zero_one_of_isClosed hUo.isClosed_compl
@@ -48295,7 +48306,7 @@ theorem exists_nice_approx {C N : ℝ} (hN : 0 < N) {f : E3 → ℂ} (hfm : Meas
     (Complex.continuous_ofReal.comp hχc).mul (continuous_diskClamp.comp hg0c)
   have hg1 : ∀ y, ‖g y‖ ≤ 1 := fun y => by
     rw [hg, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (hχ01 y).1]
-    exact mul_le_one₀ (hχ01 y).2 (norm_nonneg _) (norm_diskClamp_le _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hχ01 y).2).trans (norm_diskClamp_le _))
   have hgs : ∀ y, y ∉ petBox (C + 1) N → g y = 0 := fun y hy => by
     simp only [hg]; rw [hχ0 y hy, Complex.ofReal_zero, zero_mul]
   obtain ⟨R₁, hR₁⟩ := (isBounded_petBox (C + 1) N).subset_closedBall (0 : E3)
@@ -48336,13 +48347,13 @@ theorem budLo_two_mul_le {δ : ℝ} (hδ0 : 0 < δ) (hδ1 : δ ≤ 1) {c : ℕ} 
 set_option maxHeartbeats 1000000 in
 -- The proof combines the approximation with the continuous case in one context.
 /-- **Proposition `patch:highest-control` (highest-active-input control, including measurable
-polynomial phases).**  Fix the directions `j` of the active inputs `1, …, m`, whose degrees
+polynomial phases).** Fix the directions `j` of the active inputs `1, …, m`, whose degrees
 `d_i = expo (j i)` increase towards the protected input `m`, and an integer budget `c ≥ 1`.
 There are an order `s₀` and budgets `C₁`, `C₂` such that for `0 < δ ≤ 1`, `N ≥ 1`, admissible
 `P_i`, Borel inputs `f_0, …, f_m` bounded by one and supported in the budget box, and a phase
 `p_x(t)` of degree at most three with Borel coefficients in `x`, the lower bound
 `|∫ f_0(x) E_{t ∈ [0,N]} ∏ f_i(x - P_i(t) e_i) e(p_x(t)) dx| ≥ ℓ_c(δ) N^6` implies
-`Q_{s₀, H}(f_m) ≥ ℓ_{C₂}(δ)` at the deterministic radius `H = u_{C₁}(δ) N^{d_m}`.  The radius
+`Q_{s₀, H}(f_m) ≥ ℓ_{C₂}(δ)` at the deterministic radius `H = u_{C₁}(δ) N^{d_m}`. The radius
 and the lower bound carry separate budgets (see `automation/ErrorReport.md`). -/
 theorem highestControl (m : ℕ) (hm1 : 1 ≤ m) (j : ℕ → Fin 3)
     (hj : ∀ i ∈ Finset.Icc 1 m, i ≠ m → expo (j i) < expo (j m)) (c : ℕ) (hc : 1 ≤ c) :
@@ -48463,8 +48474,8 @@ theorem lintegral_unifMeas {H : ℝ} (g : ℝ → ℝ≥0∞) :
 theorem lintegral_enorm_sq_fourier {g : ℝ → ℂ} (hg1 : Integrable g) (hg2 : MemLp g 2) :
     ∫⁻ ξ, ‖𝓕 g ξ‖ₑ ^ (2 : ℕ) = ∫⁻ x, ‖g x‖ₑ ^ (2 : ℕ) := by
   have h := eLpNorm_two_fourier hg1 hg2
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top] at h
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top (by fun_prop),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal two_ne_zero ENNReal.ofNat_ne_top (by fun_prop)] at h
   have h2 := congrArg (fun z : ℝ≥0∞ => z ^ (2 : ℝ)) h
   simp only [ENNReal.toReal_ofNat] at h2
   rw [← ENNReal.rpow_mul, ← ENNReal.rpow_mul] at h2
@@ -48494,7 +48505,7 @@ theorem norm_fourier_comp_add_right (g : ℝ → ℂ) (b ξ : ℝ) :
 theorem lintegral_unif_sub_le {H : ℝ} (hH : 0 < H) {φ : ℝ → ℝ≥0∞} (hφ : Measurable φ) :
     ∫⁻ p : ℝ × ℝ, φ (p.2 - p.1) ∂((unifMeas H).prod (unifMeas H))
       ≤ (ENNReal.ofReal H)⁻¹ * ∫⁻ u, φ u := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   rw [lintegral_prod (fun p : ℝ × ℝ => φ (p.2 - p.1))
     (hφ.comp (measurable_snd.sub measurable_fst)).aemeasurable]
   calc ∫⁻ b, ∫⁻ c, φ (c - b) ∂unifMeas H ∂unifMeas H
@@ -48536,7 +48547,7 @@ theorem measurable_avgH {H : ℝ} {G : ℝ → ℂ} (hG : Measurable G) : Measur
 
 theorem norm_avgH_le {H : ℝ} (hH : 0 < H) {G : ℝ → ℂ} {C : ℝ} (hC : ∀ x, ‖G x‖ ≤ C) (x : ℝ) :
     ‖avgH H G x‖ ≤ C := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have := norm_integral_le_of_norm_le_const (μ := unifMeas H) (f := fun a => G (x + a))
     (C := C) (Eventually.of_forall fun a => hC _)
   rw [avgH]
@@ -48555,7 +48566,7 @@ theorem avgH_eq_zero {H : ℝ} (hH : 0 < H) {G : ℝ → ℂ} {p q : ℝ}
 /-- **The multiplier formula for the window average**: `𝓕 (T_H G) = m_H 𝓕 G`. -/
 theorem fourier_avgH {H : ℝ} (hH : 0 < H) {G : ℝ → ℂ} (hG : Measurable G) (hGi : Integrable G)
     (ξ : ℝ) : 𝓕 (avgH H G) ξ = avgMult H ξ * 𝓕 G ξ := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have hc : Continuous fun p : ℝ × ℝ => ((𝐞 (-(p.1 * ξ)) : Circle) : ℂ) := by fun_prop
   have hm : Measurable (Function.uncurry fun (x a : ℝ) =>
       ((𝐞 (-(x * ξ)) : Circle) : ℂ) * G (x + a)) :=
@@ -48690,7 +48701,7 @@ theorem fourier_corrFT {f : ℝ → ℂ} (hf : Measurable f) (hf1 : ∀ x, ‖f 
     refine integrable_of_bdd_rect hKm (C := 1) (p := -S) (q := S) (p' := c) (q' := c + S)
       (fun z => ?_) (fun z hz => ?_)
     · simp only [hK, norm_mul, Circle.norm_coe, one_mul, RCLike.norm_conj]
-      exact mul_le_one₀ (hf1 _) (norm_nonneg _) (hf1 _)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (hf1 _)).trans (hf1 _))
     · simp only [hK]
       by_cases h2 : z.2 ∈ Set.Icc c (c + S)
       · have h1 : z.1 ∉ Set.Icc (-S) S := fun h1 => hz ⟨h1, h2⟩
@@ -48835,7 +48846,7 @@ theorem lintegral_avgH_pairCorr_eq {H : ℝ} (hH : 0 < H) {f : ℝ → ℂ} (hf 
       (Complex.continuous_conj.measurable.comp (hf.comp (measurable_id.add_const b')))
   have hG1 : ∀ y, ‖pairCorr f b b' y‖ ≤ 1 := fun y => by
     rw [pairCorr, norm_mul, RCLike.norm_conj]
-    exact mul_le_one₀ (hf1 _) (norm_nonneg _) (hf1 _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hf1 _)).trans (hf1 _))
   have hGs : ∀ y, y ∉ Set.Icc (c - b) (c + S - b) → pairCorr f b b' y = 0 := fun y hy => by
     have : y + b ∉ Set.Icc c (c + S) := fun h => hy ⟨by linarith [h.1], by linarith [h.2]⟩
     rw [pairCorr, hfs _ this, zero_mul]
@@ -48918,7 +48929,7 @@ theorem integral_cube_two_eq {H : ℝ} (hH : 0 < H) {f : ℝ → ℂ} (hf : Meas
         ∂((Measure.pi fun _ => unifMeas H).prod (Measure.pi fun _ => unifMeas H)))
       = ∫ p : ℝ × ℝ, ((‖avgH H (pairCorr f p.1 p.2) x‖ ^ 2 : ℝ) : ℂ)
           ∂((unifMeas H).prod (unifMeas H)) := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set w : (Fin 2 → ℝ) → ℂ := fun β => f (x + ∑ i, β i) with hw
   have hwm : Measurable w := measurable_cubeArg hf x
   have hwb : ∀ β, ‖w β‖ ≤ 1 := fun β => hf1 _
@@ -48964,7 +48975,7 @@ theorem unifPow1_two_le {H S c M : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → �
     (hf : Measurable f) (hf1 : ∀ x, ‖f x‖ ≤ 1) (hfs : ∀ x, x ∉ Set.Icc c (c + S) → f x = 0)
     (hM : ∀ ζ, ‖𝓕 f ζ‖ ≤ M) :
     unifPow1 H S 2 f ≤ (H ^ 2)⁻¹ * M ^ 2 := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
   set F : ℝ → ℝ × ℝ → ℝ := fun (x : ℝ) (p : ℝ × ℝ) => ‖avgH H (pairCorr f p.1 p.2) x‖ ^ 2 with hF
   have hFm : Measurable (Function.uncurry F) :=
@@ -48972,7 +48983,7 @@ theorem unifPow1_two_le {H S c M : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → �
   have hF0 : ∀ x p, 0 ≤ F x p := fun x p => by positivity
   have hG1 : ∀ (p : ℝ × ℝ) (y : ℝ), ‖pairCorr f p.1 p.2 y‖ ≤ 1 := fun p y => by
     rw [pairCorr, norm_mul, RCLike.norm_conj]
-    exact mul_le_one₀ (hf1 _) (norm_nonneg _) (hf1 _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hf1 _)).trans (hf1 _))
   have hF1 : ∀ x p, F x p ≤ 1 := fun x p => by
     simp only [hF]
     exact pow_le_one₀ (norm_nonneg _) (norm_avgH_le hH (hG1 p) x)
@@ -49036,7 +49047,7 @@ open Filter Topology MeasureTheory
 
 /-- **Measurable least-index selection of frequencies** (`patch:u2-fourier-selection`): if every
 section `g θ` is continuous and `θ ↦ g θ ζ` is measurable for each `ζ`, there is a measurable
-choice `ξ θ` with `‖g θ (ξ θ)‖ > a` wherever some frequency exceeds `a`.  The frequency is the first
+choice `ξ θ` with `‖g θ (ξ θ)‖ > a` wherever some frequency exceeds `a`. The frequency is the first
 term of a countable dense sequence at which the modulus exceeds `a`; no finite frequency set is
 assumed. -/
 theorem exists_measurable_freq {Θ : Type*} [MeasurableSpace Θ] {g : Θ → ℝ → ℂ}
@@ -49200,8 +49211,8 @@ theorem ephase_sum {ι : Type*} (s : Finset ι) (f : ι → ℝ) :
 
 theorem conjPar_ephase (n : ℕ) (s : ℝ) : conjPar n (ephase s) = ephase ((-1) ^ n * s) := by
   rcases Nat.even_or_odd n with h | h
-  · rw [conjPar, if_pos h, h.neg_one_pow, one_mul]
-  · rw [conjPar, if_neg (Nat.not_even_iff_odd.mpr h), h.neg_one_pow, neg_one_mul, ephase_neg]
+  · rw [conjPar, ite_eq_left h, h.neg_one_pow, one_mul]
+  · rw [conjPar, ite_eq_right (Nat.not_even_iff_odd.mpr h), h.neg_one_pow, neg_one_mul, ephase_neg]
 
 theorem conjPar_ite_one_zero (n : ℕ) (P : Prop) [Decidable P] :
     conjPar n (if P then (1 : ℂ) else 0) = if P then 1 else 0 := by
@@ -49330,7 +49341,7 @@ theorem prod_indicator_vertices {r : ℕ} (E : Set ((Fin r → ℝ) × (Fin r �
     refine Finset.prod_eq_one fun ω _ => ?_
     rw [Set.indicator_of_mem (h ω), conjPar_one_val]
   · rw [Set.indicator_of_notMem h]
-    simp only [cubeBoxSet, Set.mem_setOf_eq, not_forall] at h
+    simp only [cubeBoxSet, Set.mem_ofPred_eq, not_forall] at h
     obtain ⟨ω, hω⟩ := h
     refine Finset.prod_eq_zero (Finset.mem_univ ω) ?_
     rw [Set.indicator_of_notMem hω, conjPar_zero_val]
@@ -49382,7 +49393,7 @@ theorem integral_prod_ddVert {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
     rw [Fintype.prod_prod_type]
     refine Finset.prod_congr rfl fun ω _ => ?_
     rw [Fintype.prod_bool]
-    simp only [hh, ddVert, if_true, Bool.false_eq_true, if_false]
+    simp only [hh, ddVert, ite_true, Bool.false_eq_true, ite_false]
     ring
   simp_rw [hpt]
   rw [integral_fintype_prod_eq_prod, Fintype.prod_prod_type]
@@ -49390,7 +49401,7 @@ theorem integral_prod_ddVert {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
   rw [map_prod, ← Finset.prod_mul_distrib]
   refine Finset.prod_congr rfl fun ω _ => ?_
   rw [Fintype.prod_bool]
-  simp only [hh, if_true, Bool.false_eq_true, if_false]
+  simp only [hh, ite_true, Bool.false_eq_true, ite_false]
   rw [integral_conj, integral_conjPar, integral_conjPar, mul_comm]
 
 /-- Two distinct coordinates of an independent family are independent. -/
@@ -49476,7 +49487,7 @@ theorem norm_ddVert_le {Ω : Type*} {Ft : Ω → ℝ → ℂ} (hF1 : ∀ t x, �
     (ω : Fin r → Bool) (z : (Fin r → ℝ) × (ℝ × ℝ) × ((Fin r → Bool) × Bool → Ω))
     (b : Fin r → ℝ) : ‖ddVert Ft ω z b‖ ≤ 1 := by
   rw [ddVert, norm_mul, RCLike.norm_conj, norm_conjPar, norm_conjPar]
-  exact mul_le_one₀ (hF1 _ _) (norm_nonneg _) (hF1 _ _)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (hF1 _ _)).trans (hF1 _ _))
 
 theorem measurable_ddHead {Ω : Type*} [MeasurableSpace Ω] {Ft : Ω → ℝ → ℂ}
     (hFm : Measurable (Function.uncurry Ft)) {r : ℕ} {E : Set ((Fin r → ℝ) × (Fin r → ℝ))}
@@ -49499,7 +49510,8 @@ theorem norm_ddHead_le {Ω : Type*} {Ft : Ω → ℝ → ℂ} (hF1 : ∀ t x, �
     (z : (Fin r → ℝ) × (ℝ × ℝ) × ((Fin r → Bool) × Bool → Ω)) (b : Fin r → ℝ) :
     ‖ddHead E φ Ft z b‖ ≤ 1 := by
   rw [ddHead, norm_mul, norm_mul, norm_ephase, mul_one]
-  exact mul_le_one₀ (norm_indicator_one_le _ _) (norm_nonneg _) (norm_ddVert_le hF1 _ _ _)
+  exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_indicator_one_le _ _)).trans (norm_ddVert_le
+    hF1 _ _ _))
 
 theorem measurable_ddNuis {Ω : Type*} [MeasurableSpace Ω] {Ft : Ω → ℝ → ℂ}
     (hFm : Measurable (Function.uncurry Ft)) {r : ℕ} (i : Fin r) :
@@ -49514,7 +49526,7 @@ theorem norm_ddNuis_le {Ω : Type*} {Ft : Ω → ℝ → ℂ} (hF1 : ∀ t x, �
     ‖ddNuis Ft i z b‖ ≤ 1 := by
   rw [ddNuis]
   exact (Finset.norm_prod_le _ _).trans
-    (Finset.prod_le_one (fun _ _ => norm_nonneg _) fun ω _ => norm_ddVert_le hF1 ω z b)
+    (Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun ω _ => norm_ddVert_le hF1 ω z b)
 
 /-- The normalized square `|L⁻¹ I|² = (S/L)² |S⁻¹ I|²`. -/
 theorem sq_norm_inv_mul_eq {S L : ℝ} (hS : 0 < S) (hL : 0 < L) (I : ℂ) :
@@ -49541,7 +49553,7 @@ theorem integral_ddHead_nuis {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
               * ephase (φ (a, b) * x)‖ ^ 2) : ℝ) : ℂ) := by
   have hr0 : (0 : ℝ) ≤ r * H := by positivity
   have hpq : c - r * H < c + S := by linarith
-  haveI := isProbabilityMeasure_unifIcc hpq
+  have := isProbabilityMeasure_unifIcc hpq
   set uJ := unifIcc (c - r * H) (c + S) with huJ
   set K : (ℝ × ℝ) → ((Fin r → Bool) × Bool → Ω) → ℂ := fun xy tt =>
     ddHead E φ Ft (a, (xy, tt)) b * ∏ i, ddNuis Ft i (a, (xy, tt)) b with hK
@@ -49555,9 +49567,9 @@ theorem integral_ddHead_nuis {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
     exact h3
   have hKb : ∀ xy tt, ‖K xy tt‖ ≤ 1 := fun xy tt => by
     simp only [hK, norm_mul]
-    exact mul_le_one₀ (norm_ddHead_le hF1 _ _ _ _) (norm_nonneg _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_ddHead_le hF1 _ _ _ _)).trans
       ((Finset.norm_prod_le _ _).trans
-        (Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => norm_ddNuis_le hF1 i _ _))
+        (Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun i _ => norm_ddNuis_le hF1 i _ _)))
   have hstep := integral_prod_of_bdd (μ := uJ.prod uJ)
     (ν := Measure.pi fun _ : (Fin r → Bool) × Bool => μ) hKm hKb
   simp only [hK] at hstep
@@ -49615,7 +49627,7 @@ theorem integral_cube_ddHead {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
   classical
   have hr0 : (0 : ℝ) ≤ r * H := by positivity
   have hpq : c - r * H < c + S := by linarith
-  haveI := isProbabilityMeasure_unifIcc hpq
+  have := isProbabilityMeasure_unifIcc hpq
   set uJ := unifIcc (c - r * H) (c + S) with huJ
   set K : (ℝ × ℝ) → ((Fin r → Bool) × Bool → Ω) → ℂ := fun xy tt =>
     cubeProdSel (ddHead E φ Ft (a, (xy, tt))) b c' with hK
@@ -49669,10 +49681,10 @@ theorem integral_cube_ddHead {Ω : Type*} [MeasurableSpace Ω] {μ : Measure Ω}
 
 set_option maxHeartbeats 1000000 in
 -- The Fubini rearrangements of both sides of the cylinder inequality share one context.
-/-- **Lemma `patch:dual-difference`, inequality `patch:dual-diff-bound`.**  Let
+/-- **Lemma `patch:dual-difference`, inequality `patch:dual-diff-bound`.** Let
 `F = E_t F_t` with `F_t` jointly measurable, one-bounded and supported in `J = [c, c + S]`, let
 `E ⊆ [0,H]^{2r}` and `φ` be measurable, `r ≥ 1`, and put
-`θ = E_{a,b} 1_E(a,b) |S⁻¹ ∫ D^r_{a,b} F(x) e(φ(a,b) x) dx|²`.  Then with
+`θ = E_{a,b} 1_E(a,b) |S⁻¹ ∫ D^r_{a,b} F(x) e(φ(a,b) x) dx|²`. Then with
 `G_{b,c} = E_t D^r_{c,b} F_t`, `ψ(a,b,c) = Σ_ω (-1)^{|ω|} φ(a,b^ω)` and `T = (S + r H)/S`,
 `θ^{2^r} ≤ T^{2(2^r - 1)} E_{a,b,c} 1_{□^r E}(a,b,c) |S⁻¹ ∫ G_{b,c}(x) e(ψ(a,b,c) x) dx|²`. -/
 theorem dual_diff_bound {Ω : Type} [MeasurableSpace Ω] {μ : Measure Ω} [IsProbabilityMeasure μ]
@@ -49692,10 +49704,10 @@ theorem dual_diff_bound {Ω : Type} [MeasurableSpace Ω] {μ : Measure Ω} [IsPr
           ∂(Measure.pi fun _ => unifMeas H) ∂(Measure.pi fun _ => unifMeas H)
           ∂(Measure.pi fun _ => unifMeas H) := by
   obtain ⟨n, rfl⟩ : ∃ n, r = n + 1 := ⟨r - 1, by omega⟩
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have hr0 : (0 : ℝ) ≤ ((n + 1 : ℕ) : ℝ) * H := by positivity
   have hpq : c - ((n + 1 : ℕ) : ℝ) * H < c + S := by linarith
-  haveI := isProbabilityMeasure_unifIcc hpq
+  have := isProbabilityMeasure_unifIcc hpq
   set πr := Measure.pi fun _ : Fin (n + 1) => unifMeas H with hπr
   set W := ((unifIcc (c - ((n + 1 : ℕ) : ℝ) * H) (c + S)).prod
     (unifIcc (c - ((n + 1 : ℕ) : ℝ) * H) (c + S))).prod
@@ -49721,9 +49733,9 @@ theorem dual_diff_bound {Ω : Type} [MeasurableSpace Ω] {μ : Measure Ω} [IsPr
     exact h
   have hKhb : ∀ z b, ‖Kh z b‖ ≤ 1 := fun z b => by
     simp only [hKh, norm_mul]
-    exact mul_le_one₀ (norm_ddHead_le hF1 _ _ _ _) (norm_nonneg _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (norm_ddHead_le hF1 _ _ _ _)).trans
       ((Finset.norm_prod_le _ _).trans
-        (Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => norm_ddNuis_le hF1 i _ _))
+        (Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun i _ => norm_ddNuis_le hF1 i _ _)))
   have hA : (∫ z, ∫ b, Kh z b ∂πr ∂(πr.prod W)) = ((q ^ 2 * θ : ℝ) : ℂ) := by
     have hm1 : Measurable (Function.uncurry fun (a : Fin (n + 1) → ℝ)
         (w : (ℝ × ℝ) × ((Fin (n + 1) → Bool) × Bool → Ω)) => ∫ b, Kh (a, w) b ∂πr) := by
@@ -49828,7 +49840,7 @@ end
 /-! ### `patch:missing-phase`: removal of missing-coordinate phases
 
 The dual-difference bound with a one-point parameter space and `E` the whole cube: the alternating
-sum of phases independent of one coordinate vanishes.  The support Cauchy-Schwarz and the order
+sum of phases independent of one coordinate vanishes. The support Cauchy-Schwarz and the order
 raising `S Q_{r+1} = E_{b,c} ‖T_H D^r_{c,b} f‖²` finish the proof. -/
 
 section
@@ -49837,7 +49849,7 @@ open Filter Topology MeasureTheory
 /-- The window average preserves the integral on the line. -/
 theorem integral_avgH {H : ℝ} (hH : 0 < H) {G : ℝ → ℂ} (hG : Measurable G) (hGi : Integrable G) :
     ∫ x, avgH H G x = ∫ x, G x := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have hm : Measurable (Function.uncurry fun (x a : ℝ) => G (x + a)) :=
     hG.comp (measurable_fst.add measurable_snd)
   have hint : Integrable (Function.uncurry fun (x a : ℝ) => G (x + a))
@@ -49979,7 +49991,7 @@ theorem unifPow1_succ_eq {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → �
       = ∫ b : Fin r → ℝ, ∫ c' : Fin r → ℝ,
           (∫ x, ‖avgH H (fun y => cubeProdSel (fun β => f (y + ∑ i, β i)) b c') x‖ ^ 2)
           ∂(Measure.pi fun _ => unifMeas H) ∂(Measure.pi fun _ => unifMeas H) := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   set U : (Fin r → ℝ) × (Fin r → ℝ) → ℝ → ℂ := fun q y =>
     cubeProdSel (fun β => f (y + ∑ i, β i)) q.1 q.2 with hU
@@ -50020,7 +50032,7 @@ theorem unifPow1_succ_eq {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → �
     have := integral_swap_of_bdd (μ := (unifMeas H).prod (unifMeas H)) (ν := πr.prod πr) hm2
       (C := 1) fun p q => by
         rw [norm_mul, RCLike.norm_conj]
-        exact mul_le_one₀ (hU1 _ _) (norm_nonneg _) (hU1 _ _)
+        exact ((mul_le_of_le_one_left (norm_nonneg _) (hU1 _ _)).trans (hU1 _ _))
     simp only [hU] at this
     rw [this, ← integral_complex_ofReal]
     refine integral_congr_ae (Eventually.of_forall fun q => ?_)
@@ -50136,9 +50148,9 @@ theorem integral_sq_avgH_pairedCube_le {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {
 
 set_option maxHeartbeats 1000000 in
 -- The dual-difference bound, the support Cauchy-Schwarz and the order raising share one context.
-/-- **Lemma `patch:missing-phase`, inequality `patch:missing-phase-bound`.**  Let `f` be one-bounded
+/-- **Lemma `patch:missing-phase`, inequality `patch:missing-phase-bound`.** Let `f` be one-bounded
 and supported in `J = [c, c + S]`, and let `φ_i(a,b)` be measurable and independent of `b_i`,
-`1 ≤ i ≤ r`.  If `θ = E_{a,b} |S⁻¹ ∫ D^r_{a,b} f(x) e((Σ_i φ_i(a,b)) x) dx|²`, then
+`1 ≤ i ≤ r`. If `θ = E_{a,b} |S⁻¹ ∫ D^r_{a,b} f(x) e((Σ_i φ_i(a,b)) x) dx|²`, then
 `θ^{2^r} ≤ T^{2(2^r - 1)} (1 + H/S) Q_{r+1,H,S}(f)` with `T = (S + r H)/S`. -/
 theorem missing_phase_bound {r : ℕ} (hr : 1 ≤ r) {c S H : ℝ} (hS : 0 < S) (hH : 0 < H)
     {f : ℝ → ℂ} (hf : Measurable f) (hf1 : ∀ x, ‖f x‖ ≤ 1)
@@ -50149,7 +50161,7 @@ theorem missing_phase_bound {r : ℕ} (hr : 1 ≤ r) {c S H : ℝ} (hS : 0 < S) 
           * ephase ((∑ i, φ i (a, b)) * x)‖ ^ 2
         ∂(Measure.pi fun _ => unifMeas H) ∂(Measure.pi fun _ => unifMeas H)) ^ (2 ^ r)
       ≤ ((S + r * H) / S) ^ (2 * (2 ^ r - 1)) * ((1 + H / S) * unifPow1 H S (r + 1) f) := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   have hFm : Measurable (Function.uncurry fun (_ : Unit) (x : ℝ) => f x) := hf.comp measurable_snd
   have hdd := dual_diff_bound (μ := Measure.dirac ()) hr hS hH hFm (fun _ x => hf1 x)
@@ -50236,7 +50248,7 @@ theorem sum_neg_one_pow_prod_cubeSel {r : ℕ} (b c : Fin r → ℝ) :
   have h1 : ∏ i, (b i - c i) = ∏ i, ∑ β : Bool, (if β then -c i else b i) := by
     refine Finset.prod_congr rfl fun i _ => ?_
     rw [Fintype.sum_bool]
-    simp only [if_true, Bool.false_eq_true, if_false]
+    simp only [ite_true, Bool.false_eq_true, ite_false]
     ring
   rw [h1, Finset.prod_univ_sum, Fintype.piFinset_univ]
   refine Finset.sum_congr rfl fun ω _ => ?_
@@ -50283,16 +50295,16 @@ theorem measurePreserving_coord_pair {H : ℝ} (hH : 0 < H) {r : ℕ} (i : Fin r
       ((Measure.pi fun _ => unifMeas H).prod
         ((Measure.pi fun _ => unifMeas H).prod (Measure.pi fun _ => unifMeas H)))
       ((unifMeas H).prod (unifMeas H)) := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have he := measurePreserving_eval (fun _ : Fin r => unifMeas H) i
   have h2 := he.prod he
   exact h2.comp (measurePreserving_snd (μ := Measure.pi fun _ : Fin r => unifMeas H)
     (ν := (Measure.pi fun _ => unifMeas H).prod (Measure.pi fun _ => unifMeas H)))
 
-/-- **Lemma `patch:dummy-phase`, a measurable dummy phase with a small exceptional set.**  For
+/-- **Lemma `patch:dummy-phase`, a measurable dummy phase with a small exceptional set.** For
 `r ≥ 1`, `H, M > 0` and `0 < ε < 1` there is a finite-valued measurable `Φ(a,b)` whose alternating
 sum `Ψ(a,b,c) = Σ_ω (-1)^{|ω|} Φ(a, b^ω)` satisfies `|Ψ| > M` off a set of relative measure at
-most `ε` in `[0,H]^{3r}`.  (Here `Φ(a,b) = L ∏_i b_i`, so that `Ψ = L ∏_i (b_i - c_i)`.) -/
+most `ε` in `[0,H]^{3r}`. (Here `Φ(a,b) = L ∏_i b_i`, so that `Ψ = L ∏_i (b_i - c_i)`.) -/
 theorem exists_dummy_phase {r : ℕ} (hr : 1 ≤ r) {H M ε : ℝ} (hH : 0 < H) (hM : 0 < M)
     (hε : 0 < ε) (_hε1 : ε < 1) :
     ∃ Φ : (Fin r → ℝ) × (Fin r → ℝ) → ℝ, Measurable Φ ∧
@@ -50318,13 +50330,13 @@ theorem exists_dummy_phase {r : ℕ} (hr : 1 ≤ r) {H M ε : ℝ} (hH : 0 < H) 
       ⊆ ⋃ i, (fun p : (Fin r → ℝ) × (Fin r → ℝ) × (Fin r → ℝ) => (p.2.1 i, p.2.2 i)) ⁻¹'
         {q : ℝ × ℝ | |q.1 - q.2| ≤ η} := by
     intro p hp
-    simp only [Set.mem_setOf_eq, halt] at hp
+    simp only [Set.mem_ofPred_eq, halt] at hp
     by_contra hno
-    simp only [Set.mem_iUnion, Set.mem_preimage, Set.mem_setOf_eq, not_exists, not_le] at hno
+    simp only [Set.mem_iUnion, Set.mem_preimage, Set.mem_ofPred_eq, not_exists, not_le] at hno
     have hprod : η ^ r ≤ ∏ i, |p.2.1 i - p.2.2 i| := by
       calc η ^ r = ∏ _i : Fin r, η := by simp
         _ ≤ ∏ i, |p.2.1 i - p.2.2 i| :=
-          Finset.prod_le_prod (fun _ _ => hη0.le) fun i _ => (hno i).le
+          Finset.prod_le_prod₀ (fun _ _ => hη0.le) fun i _ => (hno i).le
     have : M + 1 ≤ |L * ∏ i, (p.2.1 i - p.2.2 i)| := by
       rw [abs_mul, abs_of_pos hL0, Finset.abs_prod]
       calc M + 1 = L * η ^ r := by rw [hL]; field_simp
@@ -50377,7 +50389,7 @@ def maSet (m l k : ℕ) (j : ℕ → Fin 3) (C : ℕ) (δ N : ℝ) (ζ : ℕ →
 (of degrees `d_i = expo (j i)`): for every input budget `c ≥ 1` there is an output budget
 `C ≥ c` such that a lower bound `ℓ_c(δ) N^6` for the correlation `patch:ma-correlation` of
 `g_0, …, g_{m-1}` with the phase `Σ_{i=m}^{l} ζ_i(x) P_i(t) + Σ_{i>l} θ_i P_i(t)` implies that the
-canonical set `patch:ma-set` has measure at least `ℓ_C(δ) N^6`.  The functions live on `ℝ³`; the
+canonical set `patch:ma-set` has measure at least `ℓ_C(δ) N^6`. The functions live on `ℝ³`; the
 coordinates outside `j 1, …, j (m-1)` are passive (see `automation/ErrorReport.md`). -/
 def MajorArcProperty (k : ℕ) (j : ℕ → Fin 3) (m l : ℕ) : Prop :=
   ∀ c : ℕ, 1 ≤ c → ∃ C : ℕ, c ≤ C ∧ ∀ δ N : ℝ, 0 < δ → δ ≤ 1 → 1 ≤ N →
@@ -50446,7 +50458,7 @@ theorem unifPow1_add_two {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → �
       = ∫ b : Fin r → ℝ, ∫ c' : Fin r → ℝ,
           unifPow1 H S 2 (fun y => cubeProdSel (fun β => f (y + ∑ i, β i)) b c')
           ∂(Measure.pi fun _ => unifMeas H) ∂(Measure.pi fun _ => unifMeas H) := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set I : (Fin (r + 1) → ℝ) × (Fin (r + 1) → ℝ) → ℝ := fun q =>
     ∫ x, ‖avgH H (fun y => cubeProdSel (fun β => f (y + ∑ i, β i)) q.1 q.2) x‖ ^ 2 with hI
   have hIm : Measurable I := measurable_integral_sq_avgH_pairedCube hf (r + 1)
@@ -50569,7 +50581,7 @@ theorem unifPow1_add_two {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → �
 theorem integral_sq_avgH_le_integral_norm {H p q : ℝ} (hH : 0 < H) {u : ℝ → ℂ}
     (hu : Measurable u) (hu1 : ∀ x, ‖u x‖ ≤ 1) (hus : ∀ x, x ∉ Set.Icc p q → u x = 0) :
     ∫ x, ‖avgH H u x‖ ^ 2 ≤ ∫ x, ‖u x‖ := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set G : ℝ → ℂ := fun x => ((‖u x‖ : ℝ) : ℂ) with hG
   have hGm : Measurable G := Complex.measurable_ofReal.comp hu.norm
   have hG1 : ∀ x, ‖G x‖ ≤ 1 := fun x => by simp [hG, hu1 x]
@@ -50612,7 +50624,7 @@ one-bounded function supported in an interval of length `S` and order `r + 1 ≥
 theorem unifPow1_mem_Icc {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → ℂ} (hf : Measurable f)
     (hf1 : ∀ x, ‖f x‖ ≤ 1) (hfs : ∀ x, x ∉ Set.Icc c (c + S) → f x = 0) (r : ℕ) :
     unifPow1 H S (r + 1) f ∈ Set.Icc 0 1 := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have h := unifPow1_succ_eq hH hS hf hf1 hfs r
   set I : (Fin r → ℝ) → (Fin r → ℝ) → ℝ := fun b c' =>
     ∫ x, ‖avgH H (fun y => cubeProdSel (fun β => f (y + ∑ i, β i)) b c') x‖ ^ 2 with hI
@@ -50754,7 +50766,7 @@ theorem measurable_sectionCube {Y : Type*} [MeasurableSpace Y] {F : Y → ℝ �
   have h := hc.comp hmap
   exact h
 
-/-- **`patch:conditional-degree`, Step 1: Fourier coefficients on popular sections.**  If the
+/-- **`patch:conditional-degree`, Step 1: Fourier coefficients on popular sections.** If the
 order-`(r+2)` powers of the sections of `F` average at least `a`, there are a measurable frequency
 `φ(y, b, c)` and a measurable set `E` of `(y, b, c)` on which the normalized coefficient of
 `D^r_{c,b} F_y` at `φ` exceeds `(H/2S) √(a/2)`, and the set of `y` whose `E` section has measure
@@ -50770,7 +50782,7 @@ theorem cdl_step1 {Y : Type*} [MeasurableSpace Y] {μ : Measure Y} [IsProbabilit
               * ephase (φ p * z)‖) ∧
         a / 4 ≤ (μ {y | a / 4 ≤ (((Measure.pi fun _ : Fin r => unifMeas H).prod
           (Measure.pi fun _ : Fin r => unifMeas H)) {q | (y, q) ∈ E}).toReal}).toReal := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   set u : Y × ((Fin r → ℝ) × (Fin r → ℝ)) → ℝ → ℂ := fun θ z =>
     cubeProdSel (fun β => F θ.1 (z + ∑ i, β i)) θ.2.1 θ.2.2 with hu
@@ -51004,7 +51016,7 @@ theorem cdl_step2 {Ω : Type} [MeasurableSpace Ω] {ν : Measure Ω} [IsProbabil
         ((Measure.pi fun _ : Fin r => unifMeas H).prod
           (Measure.pi fun _ : Fin r => unifMeas H))) := by
   classical
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   set Ed : Set ((Fin r → ℝ) × (Fin r → ℝ)) := {q | (y, (q.2, q.1)) ∈ E} with hEd
   have hEdm : MeasurableSet Ed := by
@@ -51274,10 +51286,10 @@ theorem norm_cdlCoef_sub_le {S p Z : ℝ} (hS : 0 < S) {g : ℝ → ℂ} (hg : M
         mul_le_mul_of_nonneg_left hb (inv_nonneg.mpr hS.le)
     _ = 2 * Real.pi * Z * |φ - φ'| := by field_simp
 
-/-- **`patch:conditional-degree`, Step 8 on one section.**  Suppose that on a set of `(a, b)` of
+/-- **`patch:conditional-degree`, Step 8 on one section.** Suppose that on a set of `(a, b)` of
 measure at least `m₁` the coefficient of `D^r_{a,b} f` at `φ(a,b)` exceeds `b₀`, the shifts lie in
 `[0,H]^r`, and `φ` is within `Δ/2` of a sum `Σ_i α_i` of phases independent of `b_i`, where
-`2π Z Δ/2 ≤ b₀/2`.  Then the missing-phase lemma gives
+`2π Z Δ/2 ≤ b₀/2`. Then the missing-phase lemma gives
 `((b₀/2)² m₁)^{2^r} ≤ T^{2(2^r-1)} (1 + H/S) Q_{r+1,H,S}(f)`. -/
 theorem cdl_step8 {r : ℕ} (hr : 1 ≤ r) {c S H : ℝ} (hS : 0 < S) (hH : 0 < H)
     {f : ℝ → ℂ} (hf : Measurable f) (hf1 : ∀ x, ‖f x‖ ≤ 1)
@@ -51297,7 +51309,7 @@ theorem cdl_step8 {r : ℕ} (hr : 1 ≤ r) {c S H : ℝ} (hS : 0 < S) (hH : 0 < 
     ((b₀ / 2) ^ 2 * m₁) ^ (2 ^ r)
       ≤ ((S + r * H) / S) ^ (2 * (2 ^ r - 1)) * ((1 + H / S) * unifPow1 H S (r + 1) f) := by
   classical
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   have hmp := missing_phase_bound hr hS hH hf hf1 hfs hαm hαi
   refine le_trans ?_ hmp
@@ -51481,7 +51493,7 @@ theorem exists_section_last {Y : Type*} [MeasurableSpace Y] {H : ℝ} (hH : 0 < 
         {k | (y, k) ∈ W}).toReal) :
     ∃ c : Fin r → ℝ, m ≤ (((Measure.pi fun _ : Fin r => unifMeas H).prod
       (Measure.pi fun _ : Fin r => unifMeas H)) {q | (y, (q.1, (q.2, c))) ∈ W}).toReal := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   have hWy : MeasurableSet {k : (Fin r → ℝ) × (Fin r → ℝ) × (Fin r → ℝ) | (y, k) ∈ W} :=
     measurable_prodMk_left hW
@@ -51595,9 +51607,9 @@ theorem cdlAlpha_sum {Y : Type*} {r : ℕ} (hr : 1 ≤ r)
 
 set_option maxHeartbeats 2000000 in
 -- The eight steps share their measurable sets and thresholds.
-/-- **`patch:conditional-degree`, Steps 1-8 for a family of sections.**  Let `F = E_t F_t` be a
+/-- **`patch:conditional-degree`, Steps 1-8 for a family of sections.** Let `F = E_t F_t` be a
 jointly measurable one-bounded family of sections supported in `[c, c + S]` over a probability space
-`Y`, and suppose its order-`(r+2)` powers average at least `a > 0`, `r ≥ 1`.  If the structured
+`Y`, and suppose its order-`(r+2)` powers average at least `a > 0`, `r ≥ 1`. If the structured
 input of Step 5 holds (a lower bound `cdlThr` for `E_y |S⁻¹ ∫ G_{y,b,c}(z) e(ψ(y) z) dz|` forces
 `μ{|ψ| ≤ B} ≥ ρ`, for every measurable `ψ` and shifts in `[0,H]^r`), then the order-`(r+1)` powers
 average at least `cdlOut`. -/
@@ -51615,7 +51627,7 @@ theorem cdl_abstract {Ω : Type} [MeasurableSpace Ω] {ν : Measure Ω} [IsProba
       ρ ≤ (μ {y | |ψ y| ≤ B}).toReal) :
     cdlOut a H S c r B ρ ≤ ∫ y, unifPow1 H S (r + 1) (fun z => ∫ t, Ft t y z ∂ν) ∂μ := by
   classical
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin r => unifMeas H with hπr
   set π3 := πr.prod (πr.prod πr) with hπ3
   -- the averaged family
@@ -51725,7 +51737,8 @@ theorem cdl_abstract {Ω : Type} [MeasurableSpace Ω] {ν : Measure Ω} [IsProba
         ≤ ‖cdlCoef S (cdlG ν Ft y k.2.1 k.2.2) (ψs (y, k))‖ := by
       intro y hy
       have hp := (hZprop (y, k) hy).2
-      have hψe : ψs (y, k) = cdlPsi φ (y, k) := by simp only [hψs, if_pos (show (y, k) ∈ Z from hy)]
+      have hψe : ψs (y, k) = cdlPsi φ (y, k) :=
+        by simp only [hψs, ite_eq_left (show (y, k) ∈ Z from hy)]
       rw [hψe]
       calc Real.sqrt (cdlD a H S r / 2)
           ≤ Real.sqrt (‖cdlCoef S (cdlG ν Ft y k.2.1 k.2.2) (cdlPsi φ (y, k))‖ ^ 2) :=
@@ -51768,12 +51781,12 @@ theorem cdl_abstract {Ω : Type} [MeasurableSpace Ω] {ν : Measure Ω} [IsProba
       have h := hψsm.comp (measurable_id.prodMk (measurable_const (a := k)))
       exact h) (hthr k hkK)
     refine h.trans (ENNReal.toReal_mono (measure_ne_top _ _) (measure_mono fun y hy => ?_))
-    simp only [Set.mem_setOf_eq] at hy ⊢
+    simp only [Set.mem_ofPred_eq] at hy ⊢
     by_cases hyZ : (y, k) ∈ Z
     · refine ⟨hyZ, ?_⟩
-      simpa only [hψs, if_pos hyZ] using hy
+      simpa only [hψs, ite_eq_left hyZ] using hy
     · exfalso
-      simp only [hψs, if_neg hyZ] at hy
+      simp only [hψs, ite_eq_right hyZ] at hy
       exact hkE (show |altPhase Φ k| ≤ B + 1 by linarith)
   have hWmass : cdlZ0 a H S r / 4 * ρ ≤ ((μ.prod π3) W).toReal :=
     (mul_le_mul_of_nonneg_right hKgmass hρ.le).trans
@@ -52385,9 +52398,9 @@ theorem norm_cdlGamma_le {r : ℕ} {m l : ℕ} {f : ℕ → E3 → ℂ} (hf1 : �
     (P : ℕ → Polynomial ℝ) (ξ : ℕ → E3 → ℝ) (j : ℕ → Fin 3) (b c : Fin r → ℝ) (ψ t : ℝ)
     (x : E3) : ‖cdlGamma m l f P ξ j b c ψ t x‖ ≤ 1 := by
   rw [cdlGamma, norm_mul, norm_mul, norm_mul, norm_ephase, norm_ephase, mul_one, mul_one]
-  refine mul_le_one₀ (norm_dirCube_le (hf1 0) _ _ _ _) (norm_nonneg _) ?_
+  refine ((mul_le_of_le_one_left (norm_nonneg _) (norm_dirCube_le (hf1 0) _ _ _ _)).trans ?_)
   exact (Finset.norm_prod_le _ _).trans
-    (Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => norm_dirCube_le (hf1 i) _ _ _ _)
+    (Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun i _ => norm_dirCube_le (hf1 i) _ _ _ _)
 
 theorem cdlGamma_eq_zero {r : ℕ} {m l : ℕ} {f : ℕ → E3 → ℂ} {C N : ℝ}
     (hfs : ∀ x, x ∉ petBox C N → f 0 x = 0) (P : ℕ → Polynomial ℝ) (ξ : ℕ → E3 → ℝ)
@@ -52441,7 +52454,7 @@ theorem measurableSet_transBox (m : Fin 3) (C N : ℝ) : MeasurableSet (transBox
 theorem volume_transBox_lt_top (m : Fin 3) (C N : ℝ) : volume (transBox m C N) < ⊤ := by
   have : transBox m C N = Set.univ.pi fun i =>
       Set.Icc (-(C * N ^ expo (m.succAbove i))) (C * N ^ expo (m.succAbove i)) := by
-    ext y; simp only [transBox, Set.mem_setOf_eq, Set.mem_univ_pi]
+    ext y; simp only [transBox, Set.mem_ofPred_eq, Set.mem_univ_pi]
   rw [this, volume_pi_pi]
   exact ENNReal.prod_lt_top fun i _ => by simp
 
@@ -52586,7 +52599,7 @@ theorem cdl_step5_identity {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 0 < N) {m l 
         (Set.Icc (-(C * N ^ expo (j m)) - sb) (C * N ^ expo (j m) - sb)
         ×ˢ transBox (j m) C N) := by
       ext x
-      simp only [hSx, Set.mem_setOf_eq, Set.mem_preimage, Set.mem_prod]
+      simp only [hSx, Set.mem_ofPred_eq, Set.mem_preimage, Set.mem_prod]
       constructor
       · rintro ⟨h1, h2⟩; exact ⟨h2, h1⟩
       · rintro ⟨h2, h1⟩; exact ⟨h1, h2⟩
@@ -52677,7 +52690,7 @@ theorem cdl_step5_identity {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 0 < N) {m l 
       = cdlGs f (j m) b c ψ u 0 x * phaseProd (m - 1) (cdlGs f (j m) b c ψ u) P
           (maPhase m l k (cdlZs ξ m (j m) b c ψ) (fun _ => 0) P) j x t := by
     intro t x
-    simp only [cdlGs, if_true, cdlG0, phaseProd, cdlGamma]
+    simp only [cdlGs, ite_true, cdlG0, phaseProd, cdlGamma]
     rw [expPhase_eq_ephase, maPhase_eval]
     simp only [zero_mul, Finset.sum_const_zero, add_zero]
     have hIcc : Finset.Icc m l = insert m (Finset.Icc (m + 1) l) := by
@@ -52723,7 +52736,8 @@ theorem cdl_step5_identity {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 0 < N) {m l 
     have hgi : Integrable g := by
       refine integrable_of_bdd_of_support hgm (C := 1) (fun x => ?_) hSxμ (fun x hx => ?_)
       · rw [hg, norm_mul]
-        exact mul_le_one₀ (hu1 _) (norm_nonneg _) (norm_cdlGamma_le hf1 P ξ j b c _ _ _)
+        exact ((mul_le_of_le_one_left (norm_nonneg _) (hu1 _)).trans (norm_cdlGamma_le hf1 P ξ j b
+          c _ _ _))
       · rw [hg]; simp only; rw [hGx t x hx, mul_zero]
     have h4 := integral_embT (j m) hgi
     have e1 : (∫ y, u y * ∫ w, Γ t y w) = ∫ y : Fin 2 → ℝ, ∫ z : ℝ, g (embT (j m) y z) := by
@@ -52747,7 +52761,8 @@ theorem cdl_step5_identity {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 0 < N) {m l 
     exact h
   have hK1 : ∀ x t, ‖K x t‖ ≤ 1 := fun x t => by
     rw [hK]; simp only [norm_mul]
-    exact mul_le_one₀ (hu1 _) (norm_nonneg _) (norm_cdlGamma_le hf1 P ξ j b c _ _ _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hu1 _)).trans (norm_cdlGamma_le hf1 P ξ j b c _
+      _ _))
   have hKs : ∀ x t, x ∉ Sx → K x t = 0 := fun x t hx => by
     rw [hK]; simp only; rw [hGx t x hx, mul_zero]
   have hint : Integrable (Function.uncurry fun (t : ℝ) (x : E3) =>
@@ -52805,7 +52820,7 @@ theorem volume_transBox (m : Fin 3) {C N : ℝ} (hC : 0 ≤ C) (hN : 0 ≤ N) :
     (volume (transBox m C N)).toReal = (2 * C) ^ 2 * N ^ (6 - expo m) := by
   have : transBox m C N = Set.univ.pi fun i =>
       Set.Icc (-(C * N ^ expo (m.succAbove i))) (C * N ^ expo (m.succAbove i)) := by
-    ext y; simp only [transBox, Set.mem_setOf_eq, Set.mem_univ_pi]
+    ext y; simp only [transBox, Set.mem_ofPred_eq, Set.mem_univ_pi]
   rw [this, volume_pi_pi, ENNReal.toReal_prod]
   simp only [Real.volume_Icc, sub_neg_eq_add]
   rw [Finset.prod_congr rfl fun i _ => ENNReal.toReal_ofReal (by positivity)]
@@ -52911,7 +52926,8 @@ theorem norm_cdlFt_le {N : ℝ} {m l k : ℕ} {f : ℕ → E3 → ℂ} (hf1 : �
   rw [cdlFt]
   by_cases ht : t ∈ Set.Icc 0 N
   · rw [Set.indicator_of_mem ht, cdlPhi, norm_mul]
-    exact mul_le_one₀ (hf1 0 _) (norm_nonneg _) (norm_phaseProd_le _ hf1 _ _ _ _ _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hf1 0 _)).trans (norm_phaseProd_le _ hf1 _ _ _
+      _ _))
   · rw [Set.indicator_of_notMem ht, norm_zero]; exact zero_le_one
 
 /-- The section integrand vanishes off the transverse box of the first input. -/
@@ -52979,7 +52995,7 @@ theorem dirCube_eq_zero_of_box {r : ℕ} {f : E3 → ℂ} {u u' N : ℝ} (hN : 0
 
 set_option maxHeartbeats 1000000 in
 -- The unit phase, the identity of Step 5 and the projection of the canonical set share one context.
-/-- **`patch:conditional-degree`, Step 5: the application of `MA(m, l)`.**  A lower bound `thr` for
+/-- **`patch:conditional-degree`, Step 5: the application of `MA(m, l)`.** A lower bound `thr` for
 `E_y |S⁻¹ ∫ G_{y,b,c}(z) e(ψ(y) z) dz|` over the normalized transverse box gives, through
 `MA(m, l)` applied to the correlation of `Auto.cdl_step5_identity` (with `ψ` replaced by `B + 1` off
 the box), a lower bound for the measure of `{|ψ| ≤ u_C(δ) N^{-d_m}}`. -/
@@ -53003,7 +53019,7 @@ theorem cdl_step5 {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (
   classical
   have hN0 : 0 < N := by linarith
   have hCin : 0 < budHi c δ := budHi_pos hδ0 hc
-  haveI := isProbabilityMeasure_transMeas (j m) hCin hN0
+  have := isProbabilityMeasure_transMeas (j m) hCin hN0
   set Yin := transBox (j m) (budHi c δ) N with hYin
   set μY := transMeas (j m) (budHi c δ) N with hμY
   set B := budHi C δ / N ^ expo (j m) with hB
@@ -53085,7 +53101,7 @@ theorem cdl_step5 {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (
       exact Measure.smul_absolutelyContinuous.ae_le
         (ae_restrict_mem (measurableSet_transBox _ _ _))
     refine integral_congr_ae (hae.mono fun y hy => ?_)
-    simp only [hcoef, hψ', if_pos hy]
+    simp only [hcoef, hψ', ite_eq_left hy]
   -- the lower bound for the correlation
   have hcorr : budLo c₁ δ * N ^ (6 : ℕ) ≤ ‖phaseCorr N (m - 1) (cdlGs f (j m) b c' ψ' u) P
       (maPhase m l k (cdlZs ξ m (j m) b c' ψ') (fun _ => 0) P) j‖ := by
@@ -53120,7 +53136,8 @@ theorem cdl_step5 {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (
     split_ifs
     · unfold cdlG0
       rw [norm_mul, norm_mul, norm_ephase, mul_one]
-      exact mul_le_one₀ (hu1 _) (norm_nonneg _) (norm_dirCube_le (hf1 0) _ _ _ _)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (hu1 _)).trans (norm_dirCube_le (hf1 0) _ _ _
+        _))
     · exact norm_dirCube_le (hf1 i) _ _ _ _
   have hgs : ∀ i x, x ∉ petBox (budHi c₁ δ) N → cdlGs f (j m) b c' ψ' u i x = 0 := by
     intro i x hx
@@ -53189,8 +53206,8 @@ theorem cdl_step5 {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (
               rw [projT_embT] at hzψ
               have hyA : y ∈ A := by
                 by_cases hy : y ∈ Yin
-                · simp only [hψ', if_pos hy] at hzψ; exact ⟨hy, hzψ⟩
-                · simp only [hψ', if_neg hy] at hzψ
+                · simp only [hψ', ite_eq_left hy] at hzψ; exact ⟨hy, hzψ⟩
+                · simp only [hψ', ite_eq_right hy] at hzψ
                   exfalso; rw [abs_of_pos (by linarith)] at hzψ; linarith
               have hzI : z ∈ Set.Icc (-(budHi C δ * N ^ expo (j m)))
                   (budHi C δ * N ^ expo (j m)) := by
@@ -53216,7 +53233,7 @@ theorem cdl_step5 {r : ℕ} (hr : 1 ≤ r) {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (
     rw [hμY, measure_transMeas (j m) (A := {y | |ψ y| ≤ B})
       (measurableSet_le (continuous_abs.measurable.comp hψ) measurable_const)]
     have hset : {y | |ψ y| ≤ B} ∩ transBox (j m) (budHi c δ) N = A := by
-      ext y; simp only [hA, hYin, Set.mem_inter_iff, Set.mem_setOf_eq]; tauto
+      ext y; simp only [hA, hYin, Set.mem_inter_iff, Set.mem_ofPred_eq]; tauto
     rw [hset]
   rw [hμA, div_le_div_iff₀ (mul_pos hden hVpos) hVpos]
   nlinarith
@@ -53472,8 +53489,8 @@ theorem cdlF_embT_eq_zero {N C : ℝ} {m : ℕ} {f : ℕ → E3 → ℂ}
 
 set_option maxHeartbeats 2000000 in
 -- The budget choices and the application of the abstract lemma share one context.
-/-- **Lemma `patch:conditional-degree` (conditional structured degree lowering).**  Assume
-`MA(m, l)` for every budget.  For admissible data, the adjoint-type function
+/-- **Lemma `patch:conditional-degree` (conditional structured degree lowering).** Assume
+`MA(m, l)` for every budget. For admissible data, the adjoint-type function
 `F(x) = E_t f_0(x + P_m(t) e_m) ∏_{i<m} f_i(x - P_i(t) e_i + P_m(t) e_m) e(p_{x + P_m(t)e_m}(t))`
 with `p_x = Σ_{i=m+1}^{l} ξ_i(x) P_i + Σ_{i>l} η_i P_i`, and `H` comparable to `N^{d_m}`, a power
 lower bound for the order-`(r+2)` powers of the sections of `F` in the direction `e_m` (in units
@@ -53564,8 +53581,8 @@ theorem conditionalDegreeLowering {k : ℕ} {j : ℕ → Fin 3} {m l : ℕ} (hm 
     calc H ≤ u * N ^ expo (j m) := hH2
       _ = 1 / 10 * (10 * u * N ^ expo (j m)) := by ring
   -- the measure spaces
-  haveI := isProbabilityMeasure_transMeas (j m) hu0 hN0
-  haveI := isProbabilityMeasure_unifIcc (by linarith : (0 : ℝ) < N)
+  have := isProbabilityMeasure_transMeas (j m) hu0 hN0
+  have := isProbabilityMeasure_unifIcc (by linarith : (0 : ℝ) < N)
   have hP3 : ∀ i ∈ Finset.Icc (m + 1) k, (P i).natDegree ≤ 3 := by
     intro i hi
     rw [(hadm i (by rw [Finset.mem_Icc] at hi ⊢; omega)).natDegree_eq]
@@ -53718,10 +53735,10 @@ theorem maPhase_one_eq {l k : ℕ} (hlk : l ≤ k) (ζ : ℕ → E3 → ℝ) (θ
     sum_Icc_split hlk, maPhase]
   congr 1
   · refine Finset.sum_congr rfl fun i hi => ?_
-    rw [maCoef, if_pos (Finset.mem_Icc.mp hi).2]
+    rw [maCoef, ite_eq_left (Finset.mem_Icc.mp hi).2]
   · refine Finset.sum_congr rfl fun i hi => ?_
     have : ¬ i ≤ l := by rw [Finset.mem_Icc] at hi; omega
-    rw [maCoef, if_neg this]
+    rw [maCoef, ite_eq_right this]
 
 theorem maSize_one_eq {l k : ℕ} (hlk : l ≤ k) (j : ℕ → Fin 3) (N : ℝ) (ζ : ℕ → E3 → ℝ)
     (θ : ℕ → ℝ) (x : E3) :
@@ -53731,14 +53748,14 @@ theorem maSize_one_eq {l k : ℕ} (hlk : l ≤ k) (j : ℕ → Fin 3) (N : ℝ) 
     sum_Icc_split hlk, maSize]
   congr 1
   · refine Finset.sum_congr rfl fun i hi => ?_
-    rw [maCoef, if_pos (Finset.mem_Icc.mp hi).2]
+    rw [maCoef, ite_eq_left (Finset.mem_Icc.mp hi).2]
   · refine Finset.sum_congr rfl fun i hi => ?_
     have : ¬ i ≤ l := by rw [Finset.mem_Icc] at hi; omega
-    rw [maCoef, if_neg this]
+    rw [maCoef, ite_eq_right this]
 
 set_option maxHeartbeats 1000000 in
 -- The popularity argument and the triangular bound share one context.
-/-- **Theorem `patch:major-arc`, the base case `m = 1`.**  With no active inputs the correlation is
+/-- **Theorem `patch:major-arc`, the base case `m = 1`.** With no active inputs the correlation is
 `∫ g_0(x) E_t e(p_x(t)) dx`; on a popular set of `x` the exponential average is large, and
 `patch:triangular` bounds the frequencies there. -/
 theorem majorArc_base {k : ℕ} {j : ℕ → Fin 3}
@@ -53949,7 +53966,8 @@ theorem phaseCorr_eq_inner_maAdj {N : ℝ} (hN : 0 < N) {m l k : ℕ} (hm : 1 �
     ((hg 0).comp measurable_fst).mul hpm
   have hK1 : ∀ x t, ‖K x t‖ ≤ 1 := fun x t => by
     rw [hK, norm_mul]
-    exact mul_le_one₀ (hg1 0 x) (norm_nonneg _) (norm_phaseProd_le m hg1 P p j x t)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hg1 0 x)).trans (norm_phaseProd_le m hg1 P p j
+      x t))
   have hKs : ∀ x t, x ∉ petBox C N → K x t = 0 := fun x t hx => by rw [hK]; simp [hgs 0 x hx]
   have hKi : Integrable (Function.uncurry K) ((volume : Measure E3).prod (volume.restrict I)) := by
     refine IntegrableOn.integrable_of_forall_notMem_eq_zero (s := petBox C N ×ˢ Set.univ)
@@ -53997,8 +54015,9 @@ theorem phaseCorr_eq_inner_maAdj {N : ℝ} (hN : 0 < N) {m l k : ℕ} (hm : 1 �
     rw [hK', norm_mul, norm_mul, norm_mul, norm_expPhase, mul_one]
     have hp1 : ‖∏ i ∈ Finset.Icc 1 (m - 1), g i (y + v t - (P i).eval t • basisVec (j i))‖ ≤ 1 := by
       rw [norm_prod]
-      exact Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => hg1 i _
-    exact mul_le_one₀ (hg1 m y) (by positivity) (mul_le_one₀ (hg1 0 _) (norm_nonneg _) hp1)
+      exact Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun i _ => hg1 i _
+    exact ((mul_le_of_le_one_left (by positivity) (hg1 m y)).trans (((mul_le_of_le_one_left
+      (norm_nonneg _) (hg1 0 _)).trans hp1)))
   have hK'i : Integrable (Function.uncurry K')
       ((volume : Measure E3).prod (volume.restrict I)) := by
     refine IntegrableOn.integrable_of_forall_notMem_eq_zero (s := petBox C N ×ˢ Set.univ)
@@ -54053,7 +54072,9 @@ theorem norm_cdlF_le {N : ℝ} (hN : 0 < N) {m : ℕ} {f : ℕ → E3 → ℂ} (
     (f := fun t => f 0 (x + (P m).eval t • basisVec (j m))
       * phaseProd (m - 1) f P p j (x + (P m).eval t • basisVec (j m)) t)
     fun t _ => by
-      rw [norm_mul]; exact mul_le_one₀ (hf1 0 _) (norm_nonneg _) (norm_phaseProd_le _ hf1 _ _ _ _ _)
+      rw [norm_mul]
+      exact (mul_le_of_le_one_left (norm_nonneg _) (hf1 0 _)).trans
+        (norm_phaseProd_le _ hf1 _ _ _ _ _)
   rwa [one_mul, sub_zero, abs_of_pos hN] at h
 
 /-- The adjoint-type function is supported in the box enlarged by `4 u_c(δ) N^{d_m}` in the
@@ -54082,7 +54103,7 @@ theorem cdlF_eq_zero_of_box {N : ℝ} (hN : 1 ≤ N) {c : ℕ} (hc : 1 ≤ c) {�
       add_zero] at hi
     constructor <;> nlinarith [hi.1, hi.2]
 
-/-- **`patch:ma-adjoint`.**  For admissible data, the exact adjoint `F` of the last active input is
+/-- **`patch:ma-adjoint`.** For admissible data, the exact adjoint `F` of the last active input is
 measurable, one-bounded and supported in the box enlarged by `5`; replacing `g_m` by `F` turns the
 correlation into `‖F‖₂²`, and `|Γ|² ≤ V ‖F‖₂²` with `V = 8 u_c(δ)^3 N^6` the volume of the box. -/
 theorem ma_adjoint {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (hδ0 : 0 < δ) {c : ℕ} (hc : 1 ≤ c)
@@ -54170,7 +54191,7 @@ theorem ma_adjoint {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (hδ0 : 0 < δ) {c : ℕ}
       integrable_real_of_bdd_of_support ((hg m).norm.mul
         (Complex.continuous_conj.measurable.comp hFm).norm) (C := 1) (fun y => by
           rw [abs_of_nonneg (by positivity), RCLike.norm_conj]
-          exact mul_le_one₀ (hg1 m y) (norm_nonneg _) (hF1 y)) hbox1fin
+          exact ((mul_le_of_le_one_left (norm_nonneg _) (hg1 m y)).trans (hF1 y))) hbox1fin
           (fun y hy => by simp [hgs m y hy])
     refine (sq_norm_integral_mul_le hgm2 hF2 hgF).trans ?_
     simp_rw [RCLike.norm_conj]
@@ -54212,8 +54233,8 @@ theorem conjPar_congr_parity {a b : ℕ} (h : Even a ↔ Even b) (z : ℂ) :
     conjPar a z = conjPar b z := by
   unfold conjPar
   by_cases ha : Even a
-  · rw [if_pos ha, if_pos (h.mp ha)]
-  · rw [if_neg ha, if_neg (fun hb => ha (h.mpr hb))]
+  · rw [ite_eq_left ha, ite_eq_left (h.mp ha)]
+  · rw [ite_eq_right ha, ite_eq_right (fun hb => ha (h.mpr hb))]
 
 theorem conjPar_numTrue_eq {s : ℕ} (ω : Fin s → Bool) (z : ℂ) :
     conjPar (numTrue ω) z = conjPar s (conjPar (numFalse ω) z) := by
@@ -54249,7 +54270,7 @@ theorem integral_unif_sub_eq_fejer {H : ℝ} (hH : 0 < H) {Φ : ℝ → ℂ} (h�
     (hM : ∀ d, ‖Φ d‖ ≤ M) :
     ∫ p : ℝ × ℝ, Φ (p.2 - p.1) ∂((unifMeas H).prod (unifMeas H))
       = ∫ d, ((fejer H d : ℝ) : ℂ) * Φ d := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have hm : Measurable (Function.uncurry fun (b c : ℝ) => Φ (c - b)) :=
     hΦ.comp (measurable_snd.sub measurable_fst)
   rw [integral_prod_of_bdd (f := fun b c => Φ (c - b)) hm (C := M) fun b c => hM _]
@@ -54275,7 +54296,7 @@ theorem integral_pi_sub_eq_fejerCube {H : ℝ} (hH : 0 < H) :
       ∫ Q : (Fin s → ℝ) × (Fin s → ℝ), φ (Q.2 - Q.1)
           ∂((Measure.pi fun _ => unifMeas H).prod (Measure.pi fun _ => unifMeas H))
         = ∫ h, ((fejerCube H h : ℝ) : ℂ) * φ h := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   intro s
   induction s with
   | zero =>
@@ -54459,7 +54480,7 @@ theorem re_locUnifPow_eq_sections {N H : ℝ} (hN : 0 < N) (hH : 0 < H) (jm : Fi
     (hGs : ∀ x, x ∉ petBox C N → G x = 0) {S : ℝ} (hS : 0 < S) :
     N ^ (6 : ℕ) * (locUnifPow N H jm s G).re
       = ∫ y, S * unifPow1 H S s (fun z => G (embT jm y z)) := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set e := basisVec jm with he
   set πs := Measure.pi fun _ : Fin s => unifMeas H with hπs
   obtain ⟨R₀, hR₀⟩ := (isBounded_petBox C N).subset_closedBall (0 : E3)
@@ -54701,7 +54722,7 @@ theorem mul_unifPow1_eq {H S S' : ℝ} (hS : S ≠ 0) (hS' : S' ≠ 0) (n : ℕ)
 theorem sq_unifPow1_le {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → ℂ} (hf : Measurable f)
     (hf1 : ∀ x, ‖f x‖ ≤ 1) (hfs : ∀ x, x ∉ Set.Icc c (c + S) → f x = 0) (r : ℕ) :
     unifPow1 H S (r + 1) f ^ 2 ≤ (1 + H / S) * unifPow1 H S (r + 2) f := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   set πr := Measure.pi fun _ : Fin (r + 1) => unifMeas H with hπr
   -- `Q_{r+1}` as an average over the pairs of normalized integrals
   set X : (Fin (r + 1) → ℝ) × (Fin (r + 1) → ℝ) → ℂ := fun Q =>
@@ -54854,8 +54875,8 @@ open Filter Topology MeasureTheory
 set_option maxHeartbeats 2000000 in
 -- The budget choices and the application of the abstract lemma share one context.
 /-- **Lemma `patch:conditional-degree`** with a separate budget `cL` for the lower bound (the
-support, coefficient and radius budget `c` fixes the section length).  Assume
-`MA(m, l)` for every budget.  For admissible data, the adjoint-type function
+support, coefficient and radius budget `c` fixes the section length). Assume
+`MA(m, l)` for every budget. For admissible data, the adjoint-type function
 `F(x) = E_t f_0(x + P_m(t) e_m) ∏_{i<m} f_i(x - P_i(t) e_i + P_m(t) e_m) e(p_{x + P_m(t)e_m}(t))`
 with `p_x = Σ_{i=m+1}^{l} ξ_i(x) P_i + Σ_{i>l} η_i P_i`, and `H` comparable to `N^{d_m}`, a power
 lower bound for the order-`(r+2)` powers of the sections of `F` in the direction `e_m` (in units
@@ -54948,8 +54969,8 @@ theorem conditionalDegreeLowering' {k : ℕ} {j : ℕ → Fin 3} {m l : ℕ} (hm
     calc H ≤ u * N ^ expo (j m) := hH2
       _ = 1 / 10 * (10 * u * N ^ expo (j m)) := by ring
   -- the measure spaces
-  haveI := isProbabilityMeasure_transMeas (j m) hu0 hN0
-  haveI := isProbabilityMeasure_unifIcc (by linarith : (0 : ℝ) < N)
+  have := isProbabilityMeasure_transMeas (j m) hu0 hN0
+  have := isProbabilityMeasure_unifIcc (by linarith : (0 : ℝ) < N)
   have hP3 : ∀ i ∈ Finset.Icc (m + 1) k, (P i).natDegree ≤ 3 := by
     intro i hi
     rw [(hadm i (by rw [Finset.mem_Icc] at hi ⊢; omega)).natDegree_eq]
@@ -55063,7 +55084,7 @@ theorem unifPow1_zero_eq (H S : ℝ) (f : ℝ → ℂ) :
   simp_rw [h]
   have hp : (Measure.pi fun _ : Fin 0 => unifMeas H) Set.univ = 1 := by
     rw [Measure.pi_of_empty]; simp
-  simp only [integral_const, Measure.real, smul_eq_mul]
+  simp only [integral_const, Measure.real]
   rw [← Set.univ_prod_univ, Measure.prod_prod, hp]
   simp
 
@@ -55071,7 +55092,7 @@ theorem unifPow1_zero_eq (H S : ℝ) (f : ℝ → ℂ) :
 theorem sq_unifPow1_zero_le {H S c : ℝ} (hH : 0 < H) (hS : 0 < S) {f : ℝ → ℂ}
     (hf : Measurable f) (hf1 : ∀ x, ‖f x‖ ≤ 1) (hfs : ∀ x, x ∉ Set.Icc c (c + S) → f x = 0) :
     unifPow1 H S 0 f ^ 2 ≤ (1 + H / S) * unifPow1 H S 1 f := by
-  haveI := isProbabilityMeasure_unifMeas hH
+  have := isProbabilityMeasure_unifMeas hH
   have h1 := unifPow1_succ_eq hH hS hf hf1 hfs 0
   have h0 : ∀ b c' : Fin 0 → ℝ, (∫ x, ‖avgH H (fun y =>
       cubeProdSel (fun β : Fin 0 → ℝ => f (y + ∑ i, β i)) b c') x‖ ^ 2)
@@ -55465,12 +55486,12 @@ theorem measurable_spIn {g : ℕ → E3 → ℂ} (hg : ∀ i, Measurable (g i)) 
     Measurable (spIn g w lam jm i) := by
   unfold spIn
   by_cases hi : i = 0
-  · simp only [hi, if_true]
+  · simp only [hi, ite_true]
     have hp := measurable_projT jm
     have hx : Measurable fun x : E3 => x jm := (EuclideanSpace.proj jm).continuous.measurable
     exact (hg 0).mul ((Complex.continuous_conj.measurable.comp (hw.comp hp)).mul
       (continuous_ephase.measurable.comp ((hlam.comp hp).mul hx).neg))
-  · simp only [hi, if_false]; exact hg i
+  · simp only [hi, ite_false]; exact hg i
 
 theorem norm_spIn_le {g : ℕ → E3 → ℂ} (hg1 : ∀ i x, ‖g i x‖ ≤ 1) {w : (Fin 2 → ℝ) → ℂ}
     (hw1 : ∀ y, ‖w y‖ ≤ 1) (lam : (Fin 2 → ℝ) → ℝ) (jm : Fin 3) (i : ℕ) (x : E3) :
@@ -55478,7 +55499,7 @@ theorem norm_spIn_le {g : ℕ → E3 → ℂ} (hg1 : ∀ i x, ‖g i x‖ ≤ 1)
   unfold spIn
   split_ifs
   · rw [norm_mul, norm_mul, RCLike.norm_conj, norm_ephase, mul_one]
-    exact mul_le_one₀ (hg1 0 x) (norm_nonneg _) (hw1 _)
+    exact ((mul_le_of_le_one_left (norm_nonneg _) (hg1 0 x)).trans (hw1 _))
   · exact hg1 i x
 
 theorem spIn_eq_zero {g : ℕ → E3 → ℂ} {C N : ℝ} (hgs : ∀ i x, x ∉ petBox C N → g i x = 0)
@@ -55494,8 +55515,8 @@ theorem measurable_spFreq {ζ : ℕ → E3 → ℝ} (hζ : ∀ i, Measurable (ζ
     Measurable (spFreq ζ lam m jm i) := by
   unfold spFreq
   by_cases hi : i = m
-  · simp only [hi, if_true]; exact hlam.comp (measurable_projT jm)
-  · simp only [hi, if_false]; exact hζ i
+  · simp only [hi, ite_true]; exact hlam.comp (measurable_projT jm)
+  · simp only [hi, ite_false]; exact hζ i
 
 open scoped Classical in
 /-- **The smaller pattern, pointwise form**: replacing `g_m` by the conjugated modulation
@@ -55549,8 +55570,9 @@ theorem phaseCorr_update_eq_sp {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (hδ0 : 0 < �
   simp only [phaseProd]
   rw [prod_Icc_one_succ_top hm]
   simp only [Function.update_self]
-  rw [if_pos hbox, projT_sub_smul, sub_smul_basisVec_apply_self]
-  have hL : ∏ i ∈ Finset.Icc 1 (m - 1), Function.update g m (fun x => if x ∈ petBox (5 * budHi c δ) N
+  rw [ite_eq_left hbox, projT_sub_smul, sub_smul_basisVec_apply_self]
+  have hL : ∏ i ∈ Finset.Icc 1 (m - 1), Function.update g m (fun x => if x ∈ petBox (5 * budHi c
+    δ) N
       then conj (w (projT (j m) x) * ephase (lam (projT (j m) x) * x (j m))) else 0) i
         (x - (P i).eval t • basisVec (j i))
       = ∏ i ∈ Finset.Icc 1 (m - 1), g i (x - (P i).eval t • basisVec (j i)) :=
@@ -55559,11 +55581,12 @@ theorem phaseCorr_update_eq_sp {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (hδ0 : 0 < �
   have hR : ∏ i ∈ Finset.Icc 1 (m - 1), spIn g w lam (j m) i (x - (P i).eval t • basisVec (j i))
       = ∏ i ∈ Finset.Icc 1 (m - 1), g i (x - (P i).eval t • basisVec (j i)) :=
     Finset.prod_congr rfl fun i hi => by
-      simp only [spIn, show i ≠ 0 by rw [Finset.mem_Icc] at hi; omega, if_false]
+      simp only [spIn, show i ≠ 0 by rw [Finset.mem_Icc] at hi; omega, ite_false]
   rw [hL, hR, expPhase_eq_ephase, expPhase_eq_ephase, maPhase_spFreq_eval hml, ephase_add,
     map_mul, ← ephase_neg]
   have e1 : ephase (-(lam (projT (j m) x) * (x (j m) - (P m).eval t)))
-      = ephase (-(lam (projT (j m) x) * x (j m))) * ephase (lam (projT (j m) x) * (P m).eval t) := by
+      = ephase (-(lam (projT (j m) x) * x (j m))) * ephase (lam (projT (j m) x) * (P m).eval t) :=
+        by
     rw [← ephase_add]; congr 1; ring
   rw [e1]
   ring
@@ -55600,7 +55623,7 @@ theorem norm_sections_eq_sp {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (hδ0 : 0 < δ) 
     IntegrableOn.integrable_of_forall_notMem_eq_zero (s := petBox (5 * budHi c δ) N)
       (Measure.integrableOn_of_bounded (M := 1) hboxfin (hAm.mul hFm).aestronglyMeasurable
         (Eventually.of_forall fun x => by
-          rw [norm_mul]; exact mul_le_one₀ (hA1 x) (norm_nonneg _) (hF1 x)))
+          rw [norm_mul]; exact ((mul_le_of_le_one_left (norm_nonneg _) (hA1 x)).trans (hF1 x))))
       (fun x hx => by rw [hFs x hx, mul_zero])
   have hL : ∫ y, w y * ∫ z, F (embT (j m) y z) * ephase (lam y * z) = ∫ x, A x * F x := by
     rw [integral_embT (j m) hint]
@@ -55622,7 +55645,7 @@ theorem norm_sections_eq_sp {N : ℝ} (hN : 1 ≤ N) {δ : ℝ} (hδ0 : 0 < δ) 
     · rw [RCLike.norm_conj]; exact hA1 x
     · simp
   have hhs : ∀ x, x ∉ petBox (5 * budHi c δ) N → h x = 0 := fun x hx => by
-    rw [hhdef]; simp only [if_neg hx]
+    rw [hhdef]; simp only [ite_eq_right hx]
   have hbox : petBox (budHi c δ) N ⊆ petBox (5 * budHi c δ) N := petBox_mono (by linarith) hN0.le
   have hGm : ∀ i, Measurable (Function.update g m h i) := fun i => by
     by_cases hi : i = m
@@ -55699,8 +55722,8 @@ theorem measurable_unitScalar : Measurable unitScalar := by
 
 set_option maxHeartbeats 1000000 in
 -- The selection, the popularity estimate and the budgets share one context.
-/-- **`patch:ma-smaller-pattern`, Fourier selection and the smaller pattern.**  Assume `MA(m, l)`
-for every budget.  If the correlation of `MA(m+1, l)` is power-large, then there are a measurable
+/-- **`patch:ma-smaller-pattern`, Fourier selection and the smaller pattern.** Assume `MA(m, l)`
+for every budget. If the correlation of `MA(m+1, l)` is power-large, then there are a measurable
 frequency `λ` and a measurable scalar `c` of modulus at most one on the transverse plane such that
 the `MA(m, l)` correlation `patch:ma-smaller-pattern` of `spIn` with the frequencies `spFreq` is
 power-large: `patch:u2-fourier-selection` on a popular set of sections, then the smaller pattern. -/
@@ -55799,7 +55822,8 @@ theorem ma_smaller_pattern {k : ℕ} {j : ℕ → Fin 3} {m l : ℕ} (hm : 1 ≤
       Integrable (s.indicator fun _ => (1 : ℝ)) := fun hs hsf =>
     (Measure.integrableOn_of_bounded (M := 1) hsf measurable_const.aestronglyMeasurable
       (Eventually.of_forall fun _ => by simp)).integrable_indicator hs
-  have hpt : ∀ y, Q y ≤ η * A.indicator (fun _ => (1 : ℝ)) y + Y.indicator (fun _ => (1 : ℝ)) y := by
+  have hpt : ∀ y, Q y ≤ η * A.indicator (fun _ => (1 : ℝ)) y + Y.indicator (fun _ => (1 : ℝ)) y :=
+    by
     intro y
     by_cases hy : y ∈ Y
     · rw [Set.indicator_of_mem hy, Set.indicator_of_mem (hYA hy)]
@@ -55860,7 +55884,8 @@ theorem ma_smaller_pattern {k : ℕ} {j : ℕ → Fin 3} {m l : ℕ} (hm : 1 ≤
     rw [← integral_complex_ofReal]
     refine integral_congr_ae (Eventually.of_forall fun y => ?_)
     exact unitScalar_mul (B y)
-  rw [← key, hint_eq, Complex.norm_real, Real.norm_of_nonneg (integral_nonneg fun y => norm_nonneg _)]
+  rw [← key, hint_eq, Complex.norm_real, Real.norm_of_nonneg (integral_nonneg fun y => norm_nonneg
+    _)]
   -- the lower bound
   have hlow : ∀ y, Y.indicator (fun _ => H * Real.sqrt η / 2) y ≤ ‖B y‖ := fun y => by
     by_cases hy : y ∈ Y
@@ -55917,7 +55942,7 @@ theorem maSet_sp_subset {m l k : ℕ} (hml : m ≤ l) (j : ℕ → Fin 3) (C : �
   fun x hx => ⟨hx.1, (maSize_succ_le_spFreq hml j hN ζ lam θ x).trans hx.2⟩
 
 /-- **Theorem `patch:major-arc`, the induction step**: `MA(m, l)` for every budget implies
-`MA(m+1, l)` for every budget.  The smaller pattern of `patch:ma-smaller-pattern` is an `MA(m, l)`
+`MA(m+1, l)` for every budget. The smaller pattern of `patch:ma-smaller-pattern` is an `MA(m, l)`
 correlation on all of `ℝ³` (the coordinate `x_m` is passive for it), so the induction hypothesis
 applies to it directly; its canonical set lies in that of `MA(m+1, l)`. -/
 theorem majorArc_step {k : ℕ} {j : ℕ → Fin 3} {m l : ℕ} (hm : 1 ≤ m) (hml : m ≤ l)
@@ -55945,13 +55970,14 @@ theorem majorArc_step {k : ℕ} {j : ℕ → Fin 3} {m l : ℕ} (hm : 1 ≤ m) (
     (measurable_spIn hg hwm hlamm (j m)) (norm_spIn_le hg1 hw1 lam (j m))
     (fun i x hx => spIn_eq_zero hgs w lam (j m) i fun h => hx (hbox h))
     (measurable_spFreq hζ hlamm m (j m)) hlow'
-  refine hvol.trans (ENNReal.toReal_mono ?_ (measure_mono (maSet_sp_subset hml j C' δ hN0.le ζ lam θ)))
+  refine hvol.trans (ENNReal.toReal_mono ?_ (measure_mono (maSet_sp_subset hml j C' δ hN0.le ζ lam
+    θ)))
   refine ne_top_of_le_ne_top (isBounded_petBox (budHi C' δ) N).measure_lt_top.ne
     (measure_mono fun x hx => hx.1)
 
-/-- **Theorem `patch:major-arc` (real major-arc property).**  For an increasing degree list
+/-- **Theorem `patch:major-arc` (real major-arc property).** For an increasing degree list
 `d_1 < ⋯ < d_k` in `{1, 2, 3}` and every `1 ≤ m ≤ l ≤ k`, the property `MA(m, l)` holds, with
-output budgets depending only on the input budget and the degree list.  The induction on `m` is
+output budgets depending only on the input budget and the degree list. The induction on `m` is
 noncircular: `MA(m, l) ⟹ ConditionalDL(m, l) ⟹ MA(m+1, l)`. -/
 theorem majorArc {k : ℕ} {j : ℕ → Fin 3}
     (hjm : ∀ u v, 1 ≤ u → u < v → v ≤ k → expo (j u) < expo (j v)) {l : ℕ} (hl : 1 ≤ l)
@@ -55976,8 +56002,9 @@ open Filter Topology MeasureTheory
 For an increasing degree list, the `l`-th adjoint `F_l` of the modulated average with active inputs
 `1, …, l` and the fixed phase `e(Σ_{i>l} η_i P_i(t))` (here `cdlF` with `m = l`; the variable
 frequencies `ξ` do not occur) satisfies: a power-large order-`(r+2)` power of its sections in the
-direction `e_l` at `H ≍ N^{d_l}` gives a power-large order-`(r+1)` power at the same `H`.  The
-passive coordinates are the transverse coordinates of the sections; `MA(l, l)` is `Auto.majorArc`. -/
+direction `e_l` at `H ≍ N^{d_l}` gives a power-large order-`(r+1)` power at the same `H`. The
+passive coordinates are the transverse coordinates of the sections; `MA(l, l)` is
+`Auto.majorArc`. -/
 theorem structuredDegree {k : ℕ} {j : ℕ → Fin 3}
     (hjm : ∀ u v, 1 ≤ u → u < v → v ≤ k → expo (j u) < expo (j v)) {l : ℕ} (hl : 1 ≤ l)
     (hlk : l ≤ k) {r : ℕ} (hr : 1 ≤ r) {c : ℕ} (hc : 1 ≤ c) :
@@ -56025,9 +56052,9 @@ open Filter Topology MeasureTheory
 
 set_option maxHeartbeats 1000000 in
 -- The selection and the popularity estimate share one context.
-/-- **`patch:high-section-coeff`, measurable section frequencies.**  Let `G` be a one-bounded Borel
+/-- **`patch:high-section-coeff`, measurable section frequencies.** Let `G` be a one-bounded Borel
 function supported in `petBox C N`, and suppose its sections in the direction `e_m` have
-`∫_y Q_{2,H,S}(G_y) dy ≥ b N^{6-d_m}` with `S ≥ 2 C N^{d_m}`.  By `patch:u2-fourier-selection` and
+`∫_y Q_{2,H,S}(G_y) dy ≥ b N^{6-d_m}` with `S ≥ 2 C N^{d_m}`. By `patch:u2-fourier-selection` and
 popularity there are a measurable frequency `ξ(y)` and a measurable set `Y` of transverse points,
 inside the transverse box, of measure at least `b N^{6-d_m}/2`, on which
 `|∫ G(y, z) e(-ξ(y) z) dz| > H √(b/(8C²)) / 2`. -/
@@ -56087,7 +56114,8 @@ theorem exists_section_freq {G : E3 → ℂ} (hG : Measurable G) (hG1 : ∀ x, �
       Integrable (s.indicator fun _ => (1 : ℝ)) := fun hs hsf =>
     (Measure.integrableOn_of_bounded (M := 1) hsf measurable_const.aestronglyMeasurable
       (Eventually.of_forall fun _ => by simp)).integrable_indicator hs
-  have hpt : ∀ y, Q y ≤ η * A.indicator (fun _ => (1 : ℝ)) y + Y.indicator (fun _ => (1 : ℝ)) y := by
+  have hpt : ∀ y, Q y ≤ η * A.indicator (fun _ => (1 : ℝ)) y + Y.indicator (fun _ => (1 : ℝ)) y :=
+    by
     intro y
     by_cases hy : y ∈ Y
     · rw [Set.indicator_of_mem hy, Set.indicator_of_mem (hYA hy)]
@@ -56133,14 +56161,14 @@ theorem maSize_self_eq {l k : ℕ} (j : ℕ → Fin 3) (N : ℝ) (ζ : ℕ → E
       = N ^ expo (j l) * |ζ l x| + ∑ i ∈ Finset.Icc (l + 1) k, N ^ expo (j i) * |θ i| := by
   simp [maSize]
 
-open scoped Classical in
 set_option maxHeartbeats 2000000 in
 -- The selection, the dummy extension, `MA(l, l)` and the budgets share one context.
-/-- **`patch:remove-high-inputs`, small frequencies via `MA(l, l)` and the dummy value.**  For an
+open scoped Classical in
+/-- **`patch:remove-high-inputs`, small frequencies via `MA(l, l)` and the dummy value.** For an
 increasing degree list, a power-large `Γ_l` with fixed higher phase gives a measurable frequency
 `ξ` and a power-large measurable set `Y` of transverse points on which `N^{d_l} |ξ(y)|` is
 power-bounded and the section coefficient `|∫ F_l(y, z) e(-ξ(y) z) dz|` of the exact adjoint is
-power-large in units `N^{d_l}`.  The frequency is first selected on the popular sections, extended
+power-large in units `N^{d_l}`. The frequency is first selected on the popular sections, extended
 off them by a dummy value larger than the major-arc bound, and `MA(l, l)` is applied to the smaller
 pattern; every point of its canonical set lies over a selected section. -/
 theorem removeHigh_small {k : ℕ} {j : ℕ → Fin 3}
@@ -56226,7 +56254,7 @@ theorem removeHigh_small {k : ℕ} {j : ℕ → Fin 3}
     exact hy (mem_of_embT_ne_zero hFs (j l) h).1
   set B : (Fin 2 → ℝ) → ℂ := fun y => ∫ z, Fy y z * ephase (lam y * z) with hBdef
   have hBY : ∀ y ∈ Y, B y = ∫ z, F (embT (j l) y z) * ephase (-ξ y * z) := fun y hy => by
-    simp only [hBdef, hFydef, hlamdef, if_pos hy]
+    simp only [hBdef, hFydef, hlamdef, ite_eq_left hy]
   have hBm : Measurable B := by
     have hjm' : Measurable fun q : (Fin 2 → ℝ) × ℝ => Fy q.1 q.2 * ephase (lam q.1 * q.2) :=
       hFym.mul (continuous_ephase.measurable.comp ((hlamm.comp measurable_fst).mul measurable_snd))
@@ -56315,10 +56343,10 @@ theorem removeHigh_small {k : ℕ} {j : ℕ → Fin 3}
       rw [this] at hxs; linarith
     have hyY : projT (j l) x ∈ Y := by
       by_contra hn
-      simp only [hlamdef, if_neg hn, hΛdef] at hlx
+      simp only [hlamdef, ite_eq_right hn, hΛdef] at hlx
       rw [abs_of_pos (by positivity), mul_div_cancel₀ _ hNd.ne'] at hlx
       linarith
-    simp only [hlamdef, if_pos hyY, abs_neg] at hlx
+    simp only [hlamdef, ite_eq_left hyY, abs_neg] at hlx
     exact ⟨hxb (j l), hyY, hlx⟩
   have hcyl := volume_cyl (j l) (measurableSet_Icc (a := -R) (b := R)) hY'
   have hY'fin : volume Y' ≠ ⊤ := ne_top_of_le_ne_top hYfin (measure_mono Set.inter_subset_left)
@@ -56366,7 +56394,7 @@ theorem maPhase_spFreq_const {l k : ℕ} (hl : 1 ≤ l) (hlk : l ≤ k) (ζ : �
   have hJ : Finset.Icc l k = insert l (Finset.Icc (l + 1) k) := by
     ext i; simp only [Finset.mem_Icc, Finset.mem_insert]; omega
   simp only [maPhase, Finset.Icc_self, Finset.sum_singleton, hl', hI, Finset.sum_empty, zero_add,
-    spFreq, if_true]
+    spFreq, ite_true]
   rw [hJ, Finset.sum_insert (by simp), Function.update_self]
   congr 1
   refine Finset.sum_congr rfl fun i hi => ?_
@@ -56380,13 +56408,13 @@ theorem spIn_eq_update (g : ℕ → E3 → ℂ) (w : (Fin 2 → ℝ) → ℂ) (l
   · subst hi; rw [Function.update_self]
   · rw [Function.update_of_ne hi]; simp [spIn, hi]
 
-open scoped Classical in
 set_option maxHeartbeats 2000000 in
 -- The cell selection, the phase removal and the budgets share one context.
-/-- **`patch:remove-high-inputs`, the constant frequency and the backward step.**  For an increasing
+open scoped Classical in
+/-- **`patch:remove-high-inputs`, the constant frequency and the backward step.** For an increasing
 degree list and `2 ≤ l ≤ k`, a power-large `Γ_l(g_0; g_1, …, g_l; θ_{>l})` gives a measurable
 `g'_0` with `|g'_0| ≤ |g_0|` and a frequency vector `θ'` agreeing with `θ` above `l` such that
-`Γ_{l-1}(g'_0; g_1, …, g_{l-1}; θ'_{≥l})` is power-large, the lower inputs being unchanged.  The
+`Γ_{l-1}(g'_0; g_1, …, g_{l-1}; θ'_{≥l})` is power-large, the lower inputs being unchanged. The
 small selected frequencies are frozen to one centre `λ₀` of a heavy cell of width `τ N^{-d_l}`, and
 the phase-removed coefficient integral is the smaller pattern with `ζ_l = λ₀`. -/
 theorem removeHigh_step {k : ℕ} {j : ℕ → Fin 3}
@@ -56461,7 +56489,7 @@ theorem removeHigh_step {k : ℕ} {j : ℕ → Fin 3}
   have hΔ : 0 < Δ := by positivity
   set ψ : (Fin 2 → ℝ) → ℝ := fun y => -ξ y with hψdef
   have hψm : Measurable ψ := hξm.neg
-  haveI : IsFiniteMeasure (volume.restrict A) := isFiniteMeasure_restrict.mpr hAfin
+  have : IsFiniteMeasure (volume.restrict A) := isFiniteMeasure_restrict.mpr hAfin
   obtain ⟨lam0, W, hW, hWY, hWψ, hWvol⟩ := exists_heavy_cell (μ := volume.restrict A) hY hψm
     (B := v / N ^ d) hΔ (fun y hy => by
       rw [hψdef, abs_neg, le_div_iff₀ hNd, mul_comm]; exact (hYB y hy).1)
@@ -56541,16 +56569,16 @@ theorem removeHigh_step {k : ℕ} {j : ℕ → Fin 3}
     rw [← integral_complex_ofReal]
     refine integral_congr_ae (Eventually.of_forall fun y => ?_)
     by_cases hy : y ∈ W
-    · simp only [hwdef, if_pos hy, Set.indicator_of_mem hy]
+    · simp only [hwdef, ite_eq_left hy, Set.indicator_of_mem hy]
       exact unitScalar_mul (B0 y)
-    · simp only [hwdef, if_neg hy, Set.indicator_of_notMem hy, zero_mul, Complex.ofReal_zero]
+    · simp only [hwdef, ite_eq_right hy, Set.indicator_of_notMem hy, zero_mul, Complex.ofReal_zero]
   rw [hint_eq, Complex.norm_real, Real.norm_of_nonneg (integral_nonneg fun y =>
     Set.indicator_nonneg (fun y _ => norm_nonneg _) y), spIn_eq_update,
     maPhase_spFreq_const hl1 hlk ζ lam0 (j l) θ P ζ] at key
   refine ⟨spIn g w (fun _ => lam0) (j l) 0, Function.update θ l lam0,
     measurable_spIn hg hwm measurable_const (j l) 0, fun x => ?_,
     fun i hi => Function.update_of_ne (by omega) _ _, ?_⟩
-  · simp only [spIn, if_true, norm_mul, RCLike.norm_conj, norm_ephase, mul_one]
+  · simp only [spIn, ite_true, norm_mul, RCLike.norm_conj, norm_ephase, mul_one]
     exact mul_le_of_le_one_right (norm_nonneg _) (hw1 _)
   rw [← key]
   -- the lower bound
@@ -56576,10 +56604,10 @@ theorem removeHigh_step {k : ℕ} {j : ℕ → Fin 3}
         mul_le_mul_of_nonneg_right h4 (by positivity)
     _ ≤ _ := by rw [← h3]; exact h2.trans h1
 
-/-- **Lemma `patch:remove-high-inputs` (backward elimination of higher inputs).**  For an increasing
+/-- **Lemma `patch:remove-high-inputs` (backward elimination of higher inputs).** For an increasing
 degree list, a power-large `Γ_l(g_0; g_1, …, g_l; θ_{>l})` produces a measurable `g'_0` with
 `|g'_0| ≤ |g_0|` and a frequency vector `θ'` agreeing with `θ` above `l` such that
-`Γ_1(g'_0; g_1; θ'_{>1})` is power-large; the input `g_1` is the original one.  Backward induction
+`Γ_1(g'_0; g_1; θ'_{>1})` is power-large; the input `g_1` is the original one. Backward induction
 on `l`, one application of `Auto.removeHigh_step` per step. -/
 theorem removeHighInputs {k : ℕ} {j : ℕ → Fin 3}
     (hjm : ∀ u v, 1 ≤ u → u < v → v ≤ k → expo (j u) < expo (j v)) :
@@ -56697,11 +56725,11 @@ theorem maPhase_one_one_eval {k : ℕ} (a : ℝ) (θ : ℕ → ℝ) (P : ℕ →
 set_option maxHeartbeats 2000000 in
 -- The elimination, Cauchy-Schwarz, Plancherel, the oscillation bound and the budgets share one
 -- context.
-/-- **Theorem `patch:lowest-energy` (lowest-input positive Fourier energy).**  Fix an increasing
-degree list `d_1 < ⋯ < d_k` and an input budget `c`.  There is a structural integer `C` such that a
+/-- **Theorem `patch:lowest-energy` (lowest-input positive Fourier energy).** Fix an increasing
+degree list `d_1 < ⋯ < d_k` and an input budget `c`. There is a structural integer `C` such that a
 power-large correlation `Γ_k(g_0; g_1, …, g_k)` implies
 `⟨g_1, P_L^{(1)} g_1⟩ = ∫ η(ξ_1 / L) |ĝ_1(ξ)|² dξ ≥ ℓ_C(δ) N^6` at `L = u_C(δ) N^{-d_1}`, the
-coordinate `ξ_1` being the one of the direction `e_{j 1}`.  Proof: `patch:remove-high-inputs`,
+coordinate `ξ_1` being the one of the direction `e_{j 1}`. Proof: `patch:remove-high-inputs`,
 Cauchy-Schwarz with the supported output factor, `new:average-multiplier` with
 `new:integral-plancherel`, and `patch:triangular` for the multiplier. -/
 theorem lowestEnergy {k : ℕ} {j : ℕ → Fin 3}
@@ -56759,13 +56787,13 @@ theorem lowestEnergy {k : ℕ} {j : ℕ → Fin 3}
   have hbm : Measurable b := continuous_ephase.measurable.comp q.continuous.measurable
   have hb1 : ∀ t, ‖b t‖ ≤ 1 := fun t => (norm_ephase _).le
   have hvm : Measurable v := ((P 1).continuous.measurable).smul_const _
-  haveI := isProbabilityMeasure_unifIcc hN0
+  have := isProbabilityMeasure_unifIcc hN0
   set T := avgTranslate (unifIcc 0 N) b v (g 1) with hTdef
   have hTm : Measurable T := measurable_avgTranslate hbm hvm (hg 1)
   have hT1 : ∀ x, ‖T x‖ ≤ 1 := fun x => by
     have h := norm_integral_le_of_norm_le_const (μ := unifIcc 0 N) (C := 1)
       (f := fun t => b t * g 1 (x - v t)) (Eventually.of_forall fun t => by
-        rw [norm_mul]; exact mul_le_one₀ (hb1 t) (norm_nonneg _) (hg1 1 _))
+        rw [norm_mul]; exact ((mul_le_of_le_one_left (norm_nonneg _) (hb1 t)).trans (hg1 1 _)))
     rwa [probReal_univ, mul_one] at h
   -- the input `g_1`
   set box := petBox u N with hboxdef
@@ -56793,12 +56821,12 @@ theorem lowestEnergy {k : ℕ} {j : ℕ → Fin 3}
     (integrable_of_bdd_support_box_real (M := 1) hu0.le hN0.le
       ((hg₀m.mul hTm).norm.pow_const 2) (fun x => by
         rw [Real.norm_of_nonneg (by positivity), norm_mul, mul_pow]
-        exact mul_le_one₀ (pow_le_one₀ (norm_nonneg _) ((hg₀ x).trans (hg1 0 x))) (by positivity)
-          (pow_le_one₀ (norm_nonneg _) (hT1 x)))
+        exact ((mul_le_of_le_one_left (by positivity) (pow_le_one₀ (norm_nonneg _) ((hg₀ x).trans
+          (hg1 0 x)))).trans (pow_le_one₀ (norm_nonneg _) (hT1 x))))
       (fun x hx => by rw [hg₀s x hx, zero_mul, norm_zero]; norm_num))
     (integrable_of_bdd_support_box_real (M := 1) hu0.le hN0.le (hg₀m.mul hTm).norm (fun x => by
         rw [norm_norm, norm_mul]
-        exact mul_le_one₀ ((hg₀ x).trans (hg1 0 x)) (norm_nonneg _) (hT1 x))
+        exact ((mul_le_of_le_one_left (norm_nonneg _) ((hg₀ x).trans (hg1 0 x))).trans (hT1 x)))
       (fun x hx => by rw [hg₀s x hx, zero_mul, norm_zero]))
   have hFT : ∫ x, ‖g₀ x * T x‖ ^ 2 ≤ ∫ x, ‖T x‖ ^ 2 := by
     refine integral_mono_of_nonneg (Eventually.of_forall fun x => by positivity) hT2
@@ -56866,14 +56894,15 @@ theorem lowestEnergy {k : ℕ} {j : ℕ → Fin 3}
       hosc'
     have h0 := Finset.single_le_sum (f := fun u => N ^ expo (j (u + 1))
       * |maCoef 1 (fun _ _ => a) θ' 0 (u + 1)|) (fun u _ => by positivity) hk0
-    simp only [maCoef, le_refl, if_true, zero_add, hadef, abs_neg] at h0
-    show N ^ expo (j 1) * |ξ (j 1)| ≤ Rb
+    simp only [maCoef, le_refl, ite_true, zero_add, hadef, abs_neg] at h0
+    change N ^ expo (j 1) * |ξ (j 1)| ≤ Rb
     exact h0.trans h
   -- the energy in the band
   have hF2 : Integrable fun ξ => ‖𝓕 (g 1) ξ‖ ^ 2 :=
     (memLp_two_fourier hfi hf2).integrable_norm_pow (by norm_num)
   have hmm : Measurable m := by
-    have hjoint : Measurable fun q : E3 × ℝ => b q.2 * ((𝐞 (-(inner ℝ (v q.2) q.1)) : Circle) : ℂ) := by
+    have hjoint : Measurable fun q : E3 × ℝ => b q.2 * ((𝐞 (-(inner ℝ (v q.2) q.1)) : Circle) : ℂ)
+      := by
       refine (hbm.comp measurable_snd).mul ?_
       have : Continuous fun q : E3 × ℝ => ((𝐞 (-(inner ℝ (v q.2) q.1)) : Circle) : ℂ) := by
         have hv' : Continuous v := (P 1).continuous.smul continuous_const
@@ -57055,15 +57084,15 @@ theorem integrable_memLp_of_box {f : E3 → ℂ} (hf : Measurable f) (hf1 : ∀ 
     rw [Metric.mem_closedBall, dist_zero_right] at this
     linarith) 2
 
-open scoped Classical in
 set_option maxHeartbeats 2000000 in
 -- The reordering, the adjoint, the lowest-input energy and the smoothing share one context.
-/-- **`patch:energy-core`, step 1: replace the first input, and smooth that adjoint.**  For an
+open scoped Classical in
+/-- **`patch:energy-core`, step 1: replace the first input, and smooth that adjoint.** For an
 increasing degree list and `k ≥ 2`, a power-large unmodulated `Γ_k(g_0; g_1, …, g_k)` gives a
 measurable one-bounded `G` (the normalized smoothing `M⁻¹ P_{L_1}^{(1)} F_1` of the exact adjoint
 `F_1` of the first input) with the Lipschitz bound `|G(x + v e_1) - G(x)| ≤ u_C(δ) N^{-d_1} |v|`,
 such that the correlation with first input `G` (cut off to the enlarged box) and the other inputs
-unchanged is power-large.  `F_1` is `Auto.maAdj` for the inputs rotated so that the first comes
+unchanged is power-large. `F_1` is `Auto.maAdj` for the inputs rotated so that the first comes
 last (`Auto.phaseCorr_rot`); the lower bound is `⟨G, F_1⟩ = M⁻¹ ⟨F_1, P_{L_1} F_1⟩` and
 `patch:lowest-energy` for the correlation with first input `F_1`. -/
 theorem energyCore_step1 {k : ℕ} {j : ℕ → Fin 3}
@@ -57206,7 +57235,7 @@ theorem energyCore_step1 {k : ℕ} {j : ℕ → Fin 3}
     · exact hG1 x
     · simp
   have hHs : ∀ x, x ∉ petBox (5 * u) N → H x = 0 := fun x hx => by
-    rw [hHdef]; simp only [if_neg hx]
+    rw [hHdef]; simp only [ite_eq_right hx]
   have hUm : ∀ i, Measurable (Function.update g' k H i) := fun i => by
     by_cases hi : i = k
     · rw [hi, Function.update_self]; exact hHm
@@ -57237,7 +57266,7 @@ theorem energyCore_step1 {k : ℕ} {j : ℕ → Fin 3}
       integral_mul_conj_P_eq hL₁ (j 1) hFm hFi hF2]
   have hgoal := hupd H
   rw [hinner] at hgoal
-  show budLo C δ * N ^ (6 : ℕ) ≤ ‖phaseCorr N k (Function.update g 1 H) P (fun _ => 0) j‖
+  change budLo C δ * N ^ (6 : ℕ) ≤ ‖phaseCorr N k (Function.update g 1 H) P (fun _ => 0) j‖
   rw [hgoal, hHF, hPF, norm_mul, norm_inv, Complex.norm_real, Complex.norm_real,
     Real.norm_of_nonneg hM'0.le,
     Real.norm_of_nonneg (integral_eta_mul_norm_sq_nonneg _ _ _)]
@@ -57326,7 +57355,7 @@ theorem phaseCorr_frozen (n : ℝ) {k : ℕ} (hk : 1 ≤ k) (g : ℕ → E3 → 
           * ∫ t in a..a + n, ∏ i ∈ Finset.Icc 2 k, g i (x - (P i).eval t • basisVec (j i))) := by
   rw [phaseCorr]
   refine integral_congr_ae (Eventually.of_forall fun x => ?_)
-  simp only [frozenIn, if_true, mul_assoc]
+  simp only [frozenIn, ite_true, mul_assoc]
   congr 2
   have e : ∀ u, phaseProd (k - 1) (frozenIn g G P j a) (frozenPoly P a) (fun _ => 0)
       (fun i => j (i + 1)) x u
@@ -57338,7 +57367,7 @@ theorem phaseCorr_frozen (n : ℝ) {k : ℕ} (hk : 1 ≤ k) (g : ℕ → E3 → 
       (fun a _ b _ h => by simpa using h) (fun b hb => ⟨b - 1, by simp at hb ⊢; omega,
         by simp at hb ⊢; omega⟩) (fun i hi => ?_)
     have hi0 : i ≠ 0 := by simp at hi; omega
-    simp only [frozenIn, if_neg hi0, frozenPoly_eval]
+    simp only [frozenIn, ite_eq_right hi0, frozenPoly_eval]
     congr 1
     rw [sub_sub, ← add_smul]
     congr 2
@@ -57385,10 +57414,10 @@ theorem intervalIntegrable_of_norm_le_one {f : ℝ → ℂ} (hf : Measurable f) 
   (intervalIntegrable_const (c := (1 : ℝ))).mono_fun' hf.aestronglyMeasurable
     (Eventually.of_forall hf1)
 
-open scoped Classical in
 set_option maxHeartbeats 2000000 in
 -- The decomposition of `[0, N]`, the pointwise freezing error and the pigeonhole share one context.
-/-- **`patch:energy-core`, step 2: freezing on one of `K` equal intervals.**  If the correlation
+open scoped Classical in
+/-- **`patch:energy-core`, step 2: freezing on one of `K` equal intervals.** If the correlation
 with a smoothed first input `G` (one-bounded, Lipschitz with constant `Λ` along `e_1`) is at least
 `κ N^6`, and `192 u^4 Λ N^{d_1} ≤ κ K`, then on one of the `K` intervals `[a, a + n]`,
 `n = N/K`, `a = r n`, freezing `G(x - P_1(t) e_1)` at `t = a` leaves a scalar of modulus at least
@@ -57432,7 +57461,7 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
       measurable_snd).smul_const _))
   have hPr1 : ∀ x t, ‖Pr x t‖ ≤ 1 := fun x t => by
     rw [hPrdef]; simp only; rw [norm_prod]
-    exact Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => hg1 i _
+    exact Finset.prod_le_one₀ (fun _ _ => norm_nonneg _) fun i _ => hg1 i _
   have hv1m : Measurable fun q : E3 × ℝ => q.1 - (P 1).eval q.2 • basisVec (j 1) :=
     measurable_fst.sub (((P 1).continuous.measurable.comp measurable_snd).smul_const _)
   have hLm : ∀ x, Measurable fun t => Hc (x - (P 1).eval t • basisVec (j 1)) * Pr x t :=
@@ -57444,7 +57473,7 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
     have h := hPrm.comp (measurable_const.prodMk measurable_id : Measurable fun t : ℝ => (x, t))
     exact h
   have hL1 : ∀ x t, ‖Hc (x - (P 1).eval t • basisVec (j 1)) * Pr x t‖ ≤ 1 := fun x t => by
-    rw [norm_mul]; exact mul_le_one₀ (hHc1 _) (norm_nonneg _) (hPr1 x t)
+    rw [norm_mul]; exact ((mul_le_of_le_one_left (norm_nonneg _) (hHc1 _)).trans (hPr1 x t))
   -- `Γ` and the frozen scalars as integrals over `x`
   set A : E3 → ℂ := fun x => (N : ℂ)⁻¹ * ∫ t in (0 : ℝ)..N,
     Hc (x - (P 1).eval t • basisVec (j 1)) * Pr x t with hAdef
@@ -57483,7 +57512,7 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
       mul_one]
     have h := intervalIntegral.norm_integral_le_of_norm_le_const (a := 0) (b := N) (C := 1)
       (f := fun t => Hc (x - (P 1).eval t • basisVec (j 1)) * Pr x t) fun t _ => by
-        rw [norm_mul]; exact mul_le_one₀ (hHc1 _) (norm_nonneg _) (hPr1 x t)
+        rw [norm_mul]; exact ((mul_le_of_le_one_left (norm_nonneg _) (hHc1 _)).trans (hPr1 x t))
     rwa [one_mul, sub_zero, abs_of_pos hN0] at h
   have hBm : ∀ r, Measurable (B r) := fun r => by
     have hG' : Measurable fun x : E3 => G (x - (P 1).eval (a r) • basisVec (j 1)) :=
@@ -57493,7 +57522,7 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
   have hB1 : ∀ r x, ‖B r x‖ ≤ 1 := fun r x => by
     rw [hBdef]; simp only
     rw [norm_mul]
-    refine mul_le_one₀ (hG1 _) (norm_nonneg _) ?_
+    refine ((mul_le_of_le_one_left (norm_nonneg _) (hG1 _)).trans ?_)
     rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hn0.le, inv_mul_le_iff₀ hn0,
       mul_one]
     have h := intervalIntegral.norm_integral_le_of_norm_le_const (a := a r) (b := a r + n) (C := 1)
@@ -57502,7 +57531,9 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
   have hint : ∀ {f : E3 → ℂ}, Measurable f → (∀ x, ‖f x‖ ≤ 1) →
       Integrable fun x => g 0 x * f x := fun {f} hf hf1 =>
     integrable_of_bdd_support_box hu0.le hN0.le ((hg 0).mul hf)
-      (fun x => by rw [norm_mul]; exact mul_le_one₀ (hg1 0 x) (norm_nonneg _) (hf1 x))
+      (fun x => by
+        rw [norm_mul]
+        exact (mul_le_of_le_one_left (norm_nonneg _) (hg1 0 x)).trans (hf1 x))
       (fun x hx => by rw [hgs 0 x hx, zero_mul])
   -- the pointwise freezing error
   set E := 12 * u * N ^ (d - 1) * n * Λ with hEdef
@@ -57535,7 +57566,7 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
       have hGPm : Measurable fun t => G (x - (P 1).eval (a r) • basisVec (j 1)) * Pr x t :=
         measurable_const.mul (hPrx x)
       have hGP1 : ∀ t, ‖G (x - (P 1).eval (a r) • basisVec (j 1)) * Pr x t‖ ≤ 1 := fun t => by
-        rw [norm_mul]; exact mul_le_one₀ (hG1 _) (norm_nonneg _) (hPr1 x t)
+        rw [norm_mul]; exact ((mul_le_of_le_one_left (norm_nonneg _) (hG1 _)).trans (hPr1 x t))
       rw [← intervalIntegral.integral_const_mul, ← intervalIntegral.integral_sub
         (intervalIntegrable_of_norm_le_one (hLm x) (hL1 x) _ _)
         (intervalIntegrable_of_norm_le_one hGPm hGP1 _ _)]
@@ -57547,7 +57578,7 @@ theorem energyCore_freeze {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
         have har' : a r ∈ Set.Icc 0 N := ⟨har0, by linarith⟩
         have hmem : x - (P 1).eval t • basisVec (j 1) ∈ petBox (5 * u) N :=
           sub_eval_smul_mem_petBox hN hδ0 hc (hadm 1 h1k) hx ht'
-        simp only [hHcdef, if_pos hmem]
+        simp only [hHcdef, ite_eq_left hmem]
         rw [← sub_mul, norm_mul]
         refine le_trans (mul_le_of_le_one_right (norm_nonneg _) (hPr1 x t)) ?_
         have e : x - (P 1).eval t • basisVec (j 1)
@@ -57780,7 +57811,7 @@ theorem phaseCorr_frozenCut (n : ℝ) (k : ℕ) (g : ℕ → E3 → ℂ) (G : E3
       = phaseCorr n (k - 1) (frozenIn g G P j a) Q p j' :=
   phaseCorr_congr_inputs (fun i hi => by funext x; simp [frozenCut, hi]) Q p j'
 
-/-- **`patch:energy-core`, step 3: the lower-dimensional polynomial family.**  For `a ∈ [0, N]`,
+/-- **`patch:energy-core`, step 3: the lower-dimensional polynomial family.** For `a ∈ [0, N]`,
 `n = N/K` with `1 ≤ K ≤ K_b`, and a budget `c' ≥ c` with `32 u_c(δ) K_b^3 ≤ u_{c'}(δ)`, the frozen
 polynomials `Q_i(u) = P_{i+1}(a + u) - P_{i+1}(a)` are admissible at scale `n` with budget `c'`
 (same degrees and leading coefficients, binomial bounds for the rest, no constant term), and the
@@ -57827,7 +57858,7 @@ theorem energyCore_frozen {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
       · subst h; rw [Polynomial.taylor_coeff_zero, sub_self]
       · rw [sub_zero]
     have hlc : (frozenPoly P a i).leadingCoeff = (P (i + 1)).leadingCoeff := by
-      rw [Polynomial.leadingCoeff, hdegQ, hcoeff, if_neg (by omega),
+      rw [Polynomial.leadingCoeff, hdegQ, hcoeff, ite_eq_right (by omega),
         ← hP.natDegree_eq, ← Polynomial.natDegree_taylor (P (i + 1)) a]
       exact leadingCoeff_taylor (P (i + 1)) a
     obtain ⟨_, hlo, hhi, _⟩ := hP
@@ -57850,17 +57881,17 @@ theorem energyCore_frozen {k : ℕ} (hk : 2 ≤ k) {j : ℕ → Fin 3} {c : ℕ}
   · -- measurability
     unfold frozenCut frozenIn
     by_cases hik : i ≤ k - 1
-    · simp only [hik, if_true]
+    · simp only [hik, ite_true]
       by_cases hi : i = 0
-      · simp only [hi, if_true]
+      · simp only [hi, ite_true]
         exact (hg 0).mul (hGm.comp (measurable_id.sub_const _))
-      · simp only [hi, if_false]
+      · simp only [hi, ite_false]
         exact (hg (i + 1)).comp (measurable_id.sub_const _)
-    · simp only [hik, if_false]; exact measurable_const
+    · simp only [hik, ite_false]; exact measurable_const
   · -- bounds
     unfold frozenCut frozenIn
     split_ifs
-    · rw [norm_mul]; exact mul_le_one₀ (hg1 0 x) (norm_nonneg _) (hG1 _)
+    · rw [norm_mul]; exact ((mul_le_of_le_one_left (norm_nonneg _) (hg1 0 x)).trans (hG1 _))
     · exact hg1 _ _
     · simp
   · -- supports
@@ -57907,13 +57938,13 @@ theorem frozenCut_pred {k i : ℕ} (hi : i ∈ Finset.Icc 2 k) (g : ℕ → E3 �
   have h1 : i - 1 ≤ k - 1 := by omega
   have h2 : i - 1 ≠ 0 := by omega
   have h3 : i - 1 + 1 = i := by omega
-  simp only [frozenCut, frozenIn, h1, h2, if_true, if_false, h3]
+  simp only [frozenCut, frozenIn, h1, h2, ite_true, ite_false, h3]
 
 set_option maxHeartbeats 4000000 in
 -- The induction on the number of inputs and all budget choices share one context.
-/-- **Theorem `patch:energy-core` (every-input positive energy, independently proved).**  Fix an
+/-- **Theorem `patch:energy-core` (every-input positive energy, independently proved).** Fix an
 increasing degree list `d_1 < ⋯ < d_k` (the degrees of the directions `j i`) and an input budget
-`c ≥ 1`.  There is `C ≥ c` such that for `0 < δ ≤ 1`, `N ≥ u_C(δ)`, admissible `P_i`, and
+`c ≥ 1`. There is `C ≥ c` such that for `0 < δ ≤ 1`, `N ≥ u_C(δ)`, admissible `P_i`, and
 one-bounded Borel `g_0, …, g_k` supported in the budget-`c` box, a lower bound
 `|Γ_k(g_0; g_1, …, g_k)| ≥ ℓ_c(δ) N^6` gives, for every `j ∈ {1, …, k}`,
 `⟨g_j, P_{L_j}^{(j)} g_j⟩ = ∫ η(ξ_j / L_j) |ĝ_j|² ≥ ℓ_C(δ) N^6` at `L_j = u_C(δ) N^{-d_j}`.
@@ -58169,7 +58200,7 @@ theorem Lambda_eq_phaseCorr (N : ℝ) (f0 : E3 → ℂ) (f : Fin 3 → E3 → �
     Lambda N f0 f = phaseCorr N 3 (monoIn f0 f) monoPoly (fun _ => 0) monoDir := by
   rw [Lambda, phaseCorr]
   refine integral_congr_ae (Eventually.of_forall fun x => ?_)
-  simp only [monoIn, if_true, A]
+  simp only [monoIn, ite_true, A]
   rw [mul_comm]
   congr 2
   refine intervalIntegral.integral_congr fun t _ => ?_
@@ -58179,11 +58210,11 @@ theorem Lambda_eq_phaseCorr (N : ℝ) (f0 : E3 → ℂ) (f : Fin 3 → E3 → �
   simp [monoIn, monoPoly, monoDir, curve, expo, Finset.prod_insert, mul_assoc]
 
 /-- **Theorem `new:monomial-inverse`** (the precise inverse statement used in the adjoint
-argument).  For every `C₀ ≥ 1` there is an integer `A ≥ 1` such that for `0 < δ ≤ 1`,
+argument). For every `C₀ ≥ 1` there is an integer `A ≥ 1` such that for `0 < δ ≤ 1`,
 `N ≥ A δ^{-A}` and Borel `f_0, f_1, f_2, f_3` bounded by one and supported in `B_N(C₀)`, the
 bound `|⟨A_N(f_1, f_2, f_3), f_0⟩| ≥ δ N^6` implies, for every `j`,
-`⟨f_j, P^{(j)}_{A δ^{-A} N^{-j}} f_j⟩ = E_j` with `E_j ≥ A^{-1} δ^A N^6` real.  The witness is
-`h_j = f_j`.  This is `Auto.energyCore` for the degree list `(1, 2, 3)`. -/
+`⟨f_j, P^{(j)}_{A δ^{-A} N^{-j}} f_j⟩ = E_j` with `E_j ≥ A^{-1} δ^A N^6` real. The witness is
+`h_j = f_j`. This is `Auto.energyCore` for the degree list `(1, 2, 3)`. -/
 theorem monomialInverse {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
     ∃ A : ℕ, 1 ≤ A ∧ ∀ δ N : ℝ, 0 < δ → δ ≤ 1 → A * (δ ^ A)⁻¹ ≤ N →
       ∀ (f0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ), Measurable f0 → (∀ i, Measurable (f i)) →
@@ -58239,7 +58270,7 @@ theorem monomialInverse {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
   have hj : (j : ℕ) + 1 ∈ Finset.Icc 1 3 := Finset.mem_Icc.mpr ⟨by omega, by omega⟩
   have hEj := hE δ N hδ0 hδ1 hNC monoPoly (monoIn f0 f)
     (fun i hi => admissible_monoPoly hc hδ0 hδ1 hN0.le hi) hgm hg1 hgs hcorr _ hj
-  simp only [monoDir_succ, monoIn, show (j : ℕ) + 1 ≠ 0 by omega, if_false] at hEj
+  simp only [monoDir_succ, monoIn, show (j : ℕ) + 1 ≠ 0 by omega, ite_false] at hEj
   obtain ⟨hfi, hf2⟩ := integrable_memLp_of_box (hf j) (hf1 j) (by linarith) hN0.le (hfs j)
   have hL : 0 < C * (δ ^ C)⁻¹ * (N ^ expo j)⁻¹ := by
     have : (1 : ℝ) ≤ C := by exact_mod_cast hC
@@ -58277,9 +58308,9 @@ theorem Astar_basic {N : ℝ} (hN : 0 < N) (j : Fin 3) {C₀ : ℝ} {g0 : E3 →
     (∀ y, ‖Astar N j g0 f y‖ ≤ 1) ∧ (∀ y, y ∉ petBox (C₀ + 1) N → Astar N j g0 f y = 0) := by
   have hadj1 : ∀ y t, ‖adjShift j g0 f y t‖ ≤ 1 := fun y t => by
     rw [adjShift, norm_mul, norm_prod]
-    exact mul_le_one₀ (hg01 _) (by positivity)
-      (Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => by
-        rw [RCLike.norm_conj]; exact hf1 i _)
+    exact ((mul_le_of_le_one_left (by positivity) (hg01 _)).trans (Finset.prod_le_one₀ (fun _ _ =>
+      norm_nonneg _) fun i _ => by
+        rw [RCLike.norm_conj]; exact hf1 i _))
   refine ⟨fun y => ?_, fun y hy => ?_⟩
   · rw [Astar, norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hN.le,
       inv_mul_le_iff₀ hN, mul_one]
@@ -58298,10 +58329,10 @@ theorem Astar_basic {N : ℝ} (hN : 0 < N) (j : Fin 3) {C₀ : ℝ} {g0 : E3 →
         have ht1 : 0 ≤ t ^ expo i := pow_nonneg ht.1 _
         have ht2 : t ^ expo i ≤ N ^ expo i := pow_le_pow_left₀ ht.1 ht.2 _
         simp only [curve, PiLp.sub_apply, PiLp.smul_apply, smul_eq_mul, basisVec,
-          PiLp.single_apply, if_true, mul_one] at hi
+          PiLp.single_apply, ite_true, mul_one] at hi
         constructor <;> nlinarith [hi.1, hi.2]
       · simp only [curve, PiLp.sub_apply, PiLp.smul_apply, smul_eq_mul, basisVec,
-          PiLp.single_apply, if_neg hij, mul_zero, sub_zero] at hi
+          PiLp.single_apply, ite_eq_right hij, mul_zero, sub_zero] at hi
         constructor <;> nlinarith [hi.1, hi.2]
     rw [intervalIntegral.integral_congr h0]
     simp
@@ -58310,9 +58341,9 @@ theorem Astar_basic {N : ℝ} (hN : 0 < N) (j : Fin 3) {C₀ : ℝ} {g0 : E3 →
 theorem adjShift_eq_prod (j : Fin 3) (g0 : E3 → ℂ) (f : Fin 3 → E3 → ℂ) (y : E3) (t : ℝ) :
     adjShift j g0 f y t = ∏ k : Fin 3, (if k = j then g0 (y - curve j t)
       else conj (f k (y - curve j t + curve k t))) := by
-  rw [adjShift, ← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ j), if_pos rfl]
+  rw [adjShift, ← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ j), ite_eq_left rfl]
   congr 1
-  exact Finset.prod_congr rfl fun k hk => by rw [if_neg (Finset.ne_of_mem_erase hk)]
+  exact Finset.prod_congr rfl fun k hk => by rw [ite_eq_right (Finset.ne_of_mem_erase hk)]
 
 /-- **`new:adjoint-basic`, the crude `L^r` bound**: for exponents with
 `1/r = 1/r₀ + Σ_{i ≠ j} 1/r_i` and `1 ≤ r < ∞`,
@@ -58339,12 +58370,12 @@ theorem eLpNorm_Astar_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g0 : E3 → ℂ} (h
           ((hf k).comp ((measurable_id.sub_const _).add_const _))).aestronglyMeasurable
     · rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ j)]
       congr 1
-      · simp only [if_true]
+      · simp only [ite_true]
         have h := eLpNorm_comp_add_right_of_aestronglyMeasurable (μ := (volume : Measure E3))
           hg0.aestronglyMeasurable (-curve j t) (p j)
         simpa [sub_eq_add_neg] using h
       · refine Finset.prod_congr rfl fun k hk => ?_
-        simp only [if_neg (Finset.ne_of_mem_erase hk)]
+        simp only [ite_eq_right (Finset.ne_of_mem_erase hk)]
         have h := eLpNorm_comp_add_right_of_aestronglyMeasurable (μ := (volume : Measure E3))
           (hf k).aestronglyMeasurable (-curve j t + curve k t) (p k)
         have e : (fun y => conj (f k (y - curve j t + curve k t)))
@@ -58352,7 +58383,7 @@ theorem eLpNorm_Astar_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g0 : E3 → ℂ} (h
           funext y; congr 2; abel
         rw [e]
         rw [← h]
-        exact eLpNorm_congr_norm_ae (Eventually.of_forall fun y => RCLike.norm_conj _)
+        exact MeasureTheory.eLpNorm_conj _ _ _
   -- Minkowski
   rw [hA]
   have hsm : eLpNorm (fun y => (N : ℂ)⁻¹ * ∫ t, adjShift j g0 f y t ∂ν) r volume
@@ -58384,7 +58415,7 @@ theorem eLpNorm_Astar_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g0 : E3 → ℂ} (h
 /-- `‖k_R‖_1 = B_0` as an extended norm. -/
 theorem eLpNorm_projKernel {R : ℝ} (hR : 0 < R) :
     eLpNorm (projKernel R) 1 volume = ENNReal.ofReal etaKerL1 := by
-  rw [eLpNorm_one_eq_lintegral_enorm, ← ofReal_integral_norm_eq_lintegral_enorm
+  rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop), ← ofReal_integral_norm_eq_lintegral_enorm
     (projKernel_integrable hR), projKernel_L1 hR]
 
 /-- `‖P_R^{(j)} G‖_r ≤ B_0 ‖G‖_r`. -/
@@ -58404,7 +58435,7 @@ theorem eLpNorm_sub_P_le {R : ℝ} (hR : 0 < R) (j : Fin 3) {G : E3 → ℂ} (hG
     eLpNorm (fun y => G y - P R j G y) r volume
       ≤ (1 + ENNReal.ofReal etaKerL1) * eLpNorm G r volume := by
   have h := eLpNorm_sub_le (μ := (volume : Measure E3)) (f := G) (g := P R j G)
-    hG.aestronglyMeasurable (measurable_P j hG).aestronglyMeasurable hr1
+     hr1
   refine le_trans (le_of_eq rfl) (h.trans ?_)
   rw [add_mul, one_mul]
   exact add_le_add le_rfl (eLpNorm_P_le_of_measurable hR j hG hr1 hrtop)
@@ -58565,14 +58596,14 @@ theorem highpass_tail {N C R : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3)
             mul_zero, sub_zero] at hi
           constructor <;> nlinarith [hi.1, hi.2]
   rw [hpt]
-  refine (eLpNorm_indicator_le _).trans ?_
+  refine (eLpNorm_indicator_le _ (measurableSet_petBox (C + 1) N).compl).trans ?_
   rw [show (fun x => -∫ u, Kt u * G (x - u • basisVec j))
       = -fun x => ∫ u, Kt u * G (x - u • basisVec j) from rfl, eLpNorm_neg]
   refine (eLpNorm_integral_smul_translate_le (μ := (volume : Measure E3)) (by norm_num)
     (by simp) hKtm hGm (basisVec j)).trans ?_
   refine mul_le_mul_of_nonneg_right ?_ bot_le
   have hKti : Integrable Kt := (projKernel_integrable hR).indicator hS
-  rw [eLpNorm_one_eq_lintegral_enorm, ← ofReal_integral_norm_eq_lintegral_enorm hKti]
+  rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop), ← ofReal_integral_norm_eq_lintegral_enorm hKti]
   refine ENNReal.ofReal_le_ofReal ?_
   have htail := integral_projKernel_tail_le' hR ha.le 2
   have hRa : 0 < (R * a) ^ 2 := by positivity
@@ -58593,7 +58624,8 @@ open Filter Topology MeasureTheory
 theorem integrable_fourier_integrand {f : E3 → ℂ} (hf : Integrable f) (w : E3) :
     Integrable fun v => (𝐞 (-⟪v, w⟫) : ℂ) * f v :=
   hf.bdd_mul (c := 1) ((continuous_subtype_val.comp
-    (Real.continuous_fourierChar.comp ((continuous_id.inner continuous_const).neg))).aestronglyMeasurable)
+    (Real.continuous_fourierChar.comp ((continuous_id.inner
+      continuous_const).neg))).aestronglyMeasurable)
     (Eventually.of_forall fun v => by rw [Circle.norm_coe])
 
 /-- The Fourier transform is additive on integrable functions. -/
@@ -58657,11 +58689,11 @@ theorem integral_sq_le_box {f : E3 → ℂ} (hf1 : ∀ x, ‖f x‖ ≤ 1) {C N 
         rw [integral_indicator_const _ hbox, smul_eq_mul, mul_one, measureReal_def,
           volume_petBox hC hN, ENNReal.toReal_ofReal (by positivity)]
 
-open scoped Classical in
 set_option maxHeartbeats 4000000 in
 -- The contradiction with the inverse theorem and all constants share one context.
-/-- **Theorem `new:compact-highpass`** (compact bounded-input high-frequency estimate).  Fix
-`C₀ ≥ 1` and `j`.  There are `a ∈ (0, 1)`, `K₀ ≥ 1` and `C₁ ≥ 1` such that for `0 < μ ≤ 1`,
+open scoped Classical in
+/-- **Theorem `new:compact-highpass`** (compact bounded-input high-frequency estimate). Fix
+`C₀ ≥ 1` and `j`. There are `a ∈ (0, 1)`, `K₀ ≥ 1` and `C₁ ≥ 1` such that for `0 < μ ≤ 1`,
 `N ≥ K₀ μ^{-K₀}` and Borel inputs bounded by one and supported in `B_N(C₀)`,
 `‖(I - P_R^{(j)}) A_N^{*j}(g)‖₂ ≤ C₁ μ^a N^3` with `R = N^{-j} μ^{-2}` (in square-integral form).
 Small `μ`: if `‖H‖₂² > M δ N^6` with `δ = μ^{1/(2A)}`, the pairing `⟨h, A_N^{*j}(g)⟩` with
@@ -58769,7 +58801,7 @@ theorem compactHighpass (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
       exact hHb x
     · simp
   have hhs : ∀ x, x ∉ petBox (C₀ + 2) N → h x = 0 := fun x hx => by
-    rw [hhdef]; simp only [if_neg hx]
+    rw [hhdef]; simp only [ite_eq_right hx]
   have hbox01 : petBox C₀ N ⊆ petBox (C₀ + 2) N := petBox_mono (by linarith) hN0.le
   have hbox12 : petBox (C₀ + 1) N ⊆ petBox (C₀ + 2) N := petBox_mono (by linarith) hN0.le
   -- the pairing `⟨h, G⟩ = M⁻¹ E`
@@ -58817,8 +58849,8 @@ theorem compactHighpass (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
         (Eventually.of_forall fun q => ?_)) (fun q hq => ?_)
     · simp only [Function.uncurry, prodShift]
       rw [norm_mul, norm_prod, RCLike.norm_conj]
-      exact mul_le_one₀ (Finset.prod_le_one (fun _ _ => norm_nonneg _) fun i _ => hf1 i _)
-        (norm_nonneg _) (hg01 _)
+      exact ((mul_le_of_le_one_left (norm_nonneg _) (Finset.prod_le_one₀ (fun _ _ => norm_nonneg
+        _) fun i _ => hf1 i _)).trans (hg01 _))
     · simp only [Function.uncurry]
       rw [hg0s q.1 fun h' => hq ⟨h', Set.mem_univ _⟩, map_zero, mul_zero]
   have hΛ : Lambda N g0 f = ((M⁻¹ * E : ℝ) : ℂ) := by
@@ -58872,8 +58904,8 @@ theorem compactHighpass (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
     funext x
     rw [hhdef, hTtdef]; simp only
     by_cases hx : x ∈ petBox (C₀ + 2) N
-    · rw [if_pos hx, Set.indicator_of_notMem (Set.notMem_compl_iff.mpr hx), sub_zero]
-    · rw [if_neg hx, Set.indicator_of_mem (Set.mem_compl hx), sub_self, mul_zero]
+    · rw [ite_eq_left hx, Set.indicator_of_notMem (Set.notMem_compl_iff.mpr hx), sub_zero]
+    · rw [ite_eq_right hx, Set.indicator_of_mem (Set.mem_compl hx), sub_self, mul_zero]
   have hFh : ∀ ξ, 𝓕 h ξ = (M : ℂ)⁻¹ * (𝓕 G ξ - (eta (ξ j / R) : ℂ) * 𝓕 G ξ - 𝓕 Tt ξ) := by
     intro ξ
     rw [hhT, fourier_const_mul, fourier_sub_of_integrable hHi hTti,
@@ -58975,10 +59007,10 @@ theorem Astar_adjIn (N : ℝ) (j : Fin 3) (g : Fin 3 → E3 → ℂ) :
   have h12 : j + 1 ≠ j + 2 := by fin_cases j <;> decide
   have h1 : j + 1 ≠ j + 2 := h12
   rw [adjShift, univ_erase_eq, Finset.prod_pair h12, Fin.prod_univ_three]
-  simp only [adjIn, adjVec, if_neg h1,
-    show (1 : Fin 3) ≠ 0 by decide, show (2 : Fin 3) ≠ 0 by decide, if_false]
+  simp only [adjIn, adjVec, ite_eq_right h1,
+    show (1 : Fin 3) ≠ 0 by decide, show (2 : Fin 3) ≠ 0 by decide, ite_false]
   have h2 : ¬ (j + 2 = j + 1) := fun h => h12 h.symm
-  simp only [if_neg h2, if_true, Complex.conj_conj, sub_eq_add_neg, add_assoc]
+  simp only [ite_eq_right h2, ite_true, Complex.conj_conj, sub_eq_add_neg, add_assoc]
   ring
 
 theorem measurable_adjT {N : ℝ} (hN : 0 ≤ N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
@@ -58996,7 +59028,7 @@ theorem norm_adjT_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → �
     inv_mul_le_iff₀ hN]
   have h := intervalIntegral.norm_integral_le_of_norm_le_const (a := 0) (b := N)
     (C := ∏ k, b k) (f := fun t => ∏ k : Fin 3, g k (y + adjVec j k t)) fun t _ => by
-      rw [norm_prod]; exact Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => hb k _
+      rw [norm_prod]; exact Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _) fun k _ => hb k _
   rw [sub_zero, abs_of_pos hN] at h
   linarith
 
@@ -59025,7 +59057,7 @@ theorem intervalIntegrable_adjT_slot {j : Fin 3} {g : Fin 3 → E3 → ℂ}
   exact intervalIntegrable_of_norm_le hmeas (C := Cu * ∏ k ∈ Finset.univ.erase i, Cg k)
     (fun t => by
       rw [norm_mul, norm_prod]
-      exact mul_le_mul (hCu _) (Finset.prod_le_prod (fun _ _ => norm_nonneg _)
+      exact mul_le_mul (hCu _) (Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _)
         fun k _ => hCg k _) (Finset.prod_nonneg fun _ _ => norm_nonneg _)
         ((norm_nonneg _).trans (hCu (y + adjVec j i 0)))) a b
 
@@ -59051,7 +59083,8 @@ theorem trilin_adjT (N : ℝ) (j : Fin 3) : Trilin (adjT N j) := by
   ring
 
 theorem integrable_projKernel_mul_bdd {R : ℝ} (hR : 0 < R) (j : Fin 3) {f : E3 → ℂ}
-    (hf : BddMeasC f) (x : E3) : Integrable fun u : ℝ => projKernel R u * f (x - u • basisVec j) := by
+    (hf : BddMeasC f) (x : E3) : Integrable fun u : ℝ => projKernel R u * f (x - u • basisVec j)
+      := by
   obtain ⟨hfm, C, hC⟩ := hf
   have h := integrable_projKernel_mul_of_bdd hR j hfm hC x 0
   simpa using h
@@ -59195,7 +59228,7 @@ theorem adjT_eq_zero {N C : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → 
     intro t ht
     rw [Set.uIcc_of_le hN.le] at ht
     rw [Fin.prod_univ_three]
-    simp only [adjVec, if_true]
+    simp only [adjVec, ite_true]
     rw [hgs _ (fun hm => hy fun i => ?_), zero_mul, zero_mul]
     have hi := hm i
     have hNi : 0 ≤ N ^ expo i := pow_nonneg hN.le _
@@ -59204,10 +59237,10 @@ theorem adjT_eq_zero {N C : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → 
       have ht1 : 0 ≤ t ^ expo i := pow_nonneg ht.1 _
       have ht2 : t ^ expo i ≤ N ^ expo i := pow_le_pow_left₀ ht.1 ht.2 _
       simp only [curve, PiLp.add_apply, PiLp.neg_apply, PiLp.smul_apply, smul_eq_mul, basisVec,
-        PiLp.single_apply, if_true, mul_one] at hi
+        PiLp.single_apply, ite_true, mul_one] at hi
       constructor <;> nlinarith [hi.1, hi.2]
     · simp only [curve, PiLp.add_apply, PiLp.neg_apply, PiLp.smul_apply, smul_eq_mul, basisVec,
-        PiLp.single_apply, if_neg hij, mul_zero, neg_zero, add_zero] at hi
+        PiLp.single_apply, ite_eq_right hij, mul_zero, neg_zero, add_zero] at hi
       constructor <;> nlinarith [hi.1, hi.2]
   rw [intervalIntegral.integral_congr h0]
   simp
@@ -59231,7 +59264,7 @@ theorem measurable_adjIn (j : Fin 3) {g : Fin 3 → E3 → ℂ} (hg : ∀ k, Mea
 
 theorem eLpNorm_conj_eq (f : E3 → ℂ) (p : ℝ≥0∞) :
     eLpNorm (fun x => conj (f x)) p volume = eLpNorm f p volume :=
-  eLpNorm_congr_norm_ae (Eventually.of_forall fun _ => RCLike.norm_conj _)
+  MeasureTheory.eLpNorm_conj _ _ _
 
 theorem hpAdj_eLpNorm_le_adjT {N R C₀ : ℝ} (hN : 0 < N) (hR : 0 < R) (hC₀ : 0 ≤ C₀) (j : Fin 3)
     {g : Fin 3 → E3 → ℂ} (hgm : ∀ k, Measurable (g k)) {b : Fin 3 → ℝ}
@@ -59335,7 +59368,7 @@ theorem hpAdj_bounded (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
   have hβ0 : ∀ k, 0 ≤ β k := fun k => ENNReal.toReal_nonneg
   have hae : ∀ k, ∀ᵐ x ∂(volume : Measure E3), ‖g k x‖ ≤ β k := fun k => by
     filter_upwards [ae_le_eLpNormEssSup (f := g k) (μ := volume)] with x hx
-    rw [← eLpNorm_exponent_top] at hx
+    rw [← eLpNorm_exponent_top (hgm k).aestronglyMeasurable] at hx
     rw [hβdef]; simp only
     rw [← ENNReal.ofReal_le_iff_le_toReal (htop k), ofReal_norm]
     exact hx
@@ -59351,7 +59384,7 @@ theorem hpAdj_bounded (j : Fin 3) {C₀ : ℝ} (hC₀ : 1 ≤ C₀) :
     rw [hg'def]; simp only [hgs k x hx]; simp
   have hgg' : ∀ k, g k =ᵐ[volume] g' k := fun k => by
     filter_upwards [hae k] with x hx
-    rw [hg'def]; simp only [if_pos hx]
+    rw [hg'def]; simp only [ite_eq_left hx]
   rw [eLpNorm_congr_ae (hpAdj_ae_congr hN0.le R j hgg')]
   by_cases hz : ∃ k, β k = 0
   · obtain ⟨k, hk⟩ := hz
@@ -59500,7 +59533,7 @@ open Filter Topology MeasureTheory
 noncomputable def boxIdx (N : ℝ) (x : E3) : Fin 3 → ℤ := fun i => ⌊x i / N ^ expo i⌋
 
 theorem measurable_boxIdx (N : ℝ) : Measurable (boxIdx N) := by
-  refine measurable_pi_lambda _ fun i => ?_
+  refine Measurable.of_eval fun i => ?_
   have h : Measurable fun x : E3 => x i / N ^ expo i :=
     ((EuclideanSpace.proj i).continuous.measurable).div_const _
   have hfl : Measurable (Int.floor : ℝ → ℤ) := measurable_to_countable fun n => by
@@ -59605,13 +59638,13 @@ theorem prod_decomp {N : ℝ} (hN : 0 < N) (j : Fin 3) (g : Fin 3 → E3 → ℂ
         * (if boxIdx N z2 = boxIdx N z + c2 then g 2 z2 else 0) := by
     intro c1 c2
     rw [Finset.sum_eq_single (boxIdx N z)]
-    · rw [if_pos rfl]; ring
+    · rw [ite_eq_left rfl]; ring
     · intro ν _ hν'
-      rw [if_neg (Ne.symm hν'), zero_mul, zero_mul]
+      rw [ite_eq_right (Ne.symm hν'), zero_mul, zero_mul]
     · intro h; exact absurd hν h
   rw [hsum, hsum, hsum, hsum]
   rcases hb1 with e1 | e1 <;> rcases hb2 with e2 | e2 <;>
-    simp only [e1, e2, add_zero, hne, hne', if_true, if_false, zero_mul, mul_zero,
+    simp only [e1, e2, add_zero, hne, hne', ite_true, ite_false, zero_mul, mul_zero,
       zero_add] <;> ring
 
 end
@@ -59658,7 +59691,7 @@ theorem intervalIntegrable_prod_adjVec {j : Fin 3} {g : Fin 3 → E3 → ℂ}
     (Finset.measurable_prod _ fun k _ =>
       (hgm k).comp (measurable_const.add (continuous_adjVec j k).measurable)) (fun t => ?_) a b
   rw [norm_prod]
-  exact Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => hC k _
+  exact Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _) fun k _ => hC k _
 
 /-- **The exact input decomposition of the adjoint form.** -/
 theorem adjT_decomp {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → ℂ}
@@ -59681,7 +59714,7 @@ theorem adjT_decomp {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 → ℂ
   have hpb : ∀ ν ε ε' t, ‖∏ k : Fin 3, piece N j ν ε ε' g k (y + adjVec j k t)‖ ≤ B := by
     intro ν ε ε' t
     rw [norm_prod, hBdef]
-    refine Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => ?_
+    refine Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _) fun k _ => ?_
     exact (norm_piece_le N j ν ε ε' g k _).trans ((hC k _).trans (le_max_left _ _))
   have hB0 : 0 ≤ B := Finset.prod_nonneg fun k _ => le_max_right _ _
   have hI3 : ∀ ε ε', IntervalIntegrable (fun t => ∑ ν ∈ S,
@@ -60045,7 +60078,7 @@ theorem weighted_tail {N R C B : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3) (ν 
       · rw [hGu0]; simp
       · obtain ⟨hua, h1⟩ := far_u_bound hN j ν hℓ4 (hsupp _ hGu0)
         rw [← hadef] at hua h1
-        simp only [tailKer, if_pos hua]
+        simp only [tailKer, ite_eq_left hua]
         have := mul_le_mul_of_nonneg_right h1 (mul_nonneg (norm_nonneg (projKernel R u))
           (norm_nonneg (G (y - u • basisVec j))))
         calc ‖projKernel R u‖ * ‖G (y - u • basisVec j)‖
@@ -60078,7 +60111,9 @@ theorem weighted_tail {N R C B : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3) (ν 
     (basisVec j)
   have hK1 : eLpNorm (fun u => ((tailKer R a u : ℝ) : ℂ)) 1 volume
       ≤ ENNReal.ofReal (etaKerMom 2 / (R * a) ^ 2) := by
-    rw [eLpNorm_one_eq_lintegral_enorm]
+    rw [eLpNorm_one_eq_lintegral_enorm
+      (Complex.continuous_ofReal.comp_aestronglyMeasurable (integrable_tailKer hR
+        ha).aestronglyMeasurable)]
     have e : ∫⁻ u, ‖((tailKer R a u : ℝ) : ℂ)‖ₑ = ENNReal.ofReal (∫ u, tailKer R a u) := by
       rw [ofReal_integral_eq_lintegral_ofReal (integrable_tailKer hR ha)
         (Eventually.of_forall fun u => tailKer_nonneg ha u)]
@@ -60087,7 +60122,7 @@ theorem weighted_tail {N R C B : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3) (ν 
     rw [e]
     exact ENNReal.ofReal_le_ofReal (integral_tailKer_le hR ha)
   have hGn2 : eLpNorm (fun x => ((‖G x‖ : ℝ) : ℂ)) 2 volume = eLpNorm G 2 volume :=
-    eLpNorm_congr_norm_ae (Eventually.of_forall fun x => by simp)
+    eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (Eventually.of_forall fun x => by simp)
   rw [hGn2] at hY
   have hY2 : eLpNorm Fc 2 volume
       ≤ ENNReal.ofReal (etaKerMom 2 / (R * a) ^ 2) * eLpNorm G 2 volume :=
@@ -60100,8 +60135,7 @@ theorem weighted_tail {N R C B : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3) (ν 
           (measurable_snd.smul_const _))).norm)
     exact (hj.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable
   have hFc2 : MemLp Fc 2 volume :=
-    ⟨hFcm.aestronglyMeasurable, hY2.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top
-      hG2.eLpNorm_lt_top)⟩
+    hY2.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hG2.eLpNorm_lt_top)
   have hFsq := integral_sq_le_of_eLpNorm_le hFc2 hG2
     (div_nonneg (etaKerMom_nonneg 2) (by positivity)) hY2
   have hFF : ∫ y, ‖Fc y‖ ^ 2 = ∫ y, F y ^ 2 := by
@@ -60151,7 +60185,8 @@ theorem inv_one_add_sq_le (n : ℕ) :
 
 theorem sum_range_inv_one_add_sq_le (L : ℕ) :
     ∑ n ∈ Finset.range L, (1 + (n : ℝ) ^ 2)⁻¹ ≤ 3 := by
-  have htel : ∑ n ∈ Finset.range L, 3 * (1 / ((n : ℝ) + 1) - 1 / (n + 2)) = 3 * (1 - 1 / (L + 1)) := by
+  have htel : ∑ n ∈ Finset.range L, 3 * (1 / ((n : ℝ) + 1) - 1 / (n + 2)) = 3 * (1 - 1 / (L + 1))
+    := by
     induction L with
     | zero => simp
     | succ L ih =>
@@ -60333,8 +60368,8 @@ theorem sum_integral_boxRes_le (N : ℝ) (S : Finset (Fin 3 → ℤ)) (c : Fin 3
     intro ν
     unfold boxRes
     by_cases h : boxIdx N x = ν + c
-    · rw [if_pos h, if_pos (by rw [h]; abel)]
-    · rw [if_neg h, if_neg (fun h' => h (by rw [h']; abel)), norm_zero,
+    · rw [ite_eq_left h, ite_eq_left (by rw [h]; abel)]
+    · rw [ite_eq_right h, ite_eq_right (fun h' => h (by rw [h']; abel)), norm_zero,
         Real.zero_rpow hu.ne']
   simp only [e, Finset.sum_ite_eq']
   split_ifs
@@ -60372,7 +60407,7 @@ theorem adjT_piece_support {N : ℝ} (hN : 0 < N) (j : Fin 3) (ν : Fin 3 → �
   refine ⟨fun i hi => ?_, ?_⟩
   · rcases hb with h | h
     · rw [h]
-    · rw [h]; simp [Pi.single_apply, hi]
+    · rw [h]; simp [hi]
   · rcases hb with h | h
     · left; rw [h]
     · right; rw [h]; simp
@@ -60389,7 +60424,8 @@ theorem P_passive {R N : ℝ} (j : Fin 3) {F : E3 → ℂ} {ν : Fin 3 → ℤ}
     by_cases hFu : F (y - u • basisVec j) = 0
     · rw [hFu, mul_zero]
     · have := hF _ hFu i hi
-      simp [boxIdx, basisVec_apply_ne hi] at this
+      simp only [boxIdx, PiLp.sub_apply, PiLp.smul_apply, basisVec_apply_ne hi, smul_eq_mul,
+        mul_zero, sub_zero] at this
       exact absurd this hne
   simp [h0]
 
@@ -60417,7 +60453,7 @@ theorem sum_inv_weight_le {N : ℝ} (j : Fin 3) (y : E3) (S : Finset (Fin 3 → 
   set T := S.filter (fun ν => ∀ i, i ≠ j → ν i = boxIdx N y i) with hTdef
   have hinj : Set.InjOn (fun ν : Fin 3 → ℤ => ν j) (T : Set (Fin 3 → ℤ)) := by
     intro ν hν ν' hν' h
-    simp only [hTdef, Finset.coe_filter, Set.mem_setOf_eq] at hν hν'
+    simp only [hTdef, Finset.coe_filter, Set.mem_ofPred_eq] at hν hν'
     funext i
     by_cases hi : i = j
     · subst hi; exact h
@@ -60540,7 +60576,7 @@ theorem eLpNorm_adjT_le {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 →
   have hA1 : adjIn j g (j + 1) = fun x => conj (g 1 x) := by simp [adjIn]
   have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h12.symm]
   rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq]
-  simp only [adjExp, if_true, if_neg h1, if_neg h2, if_neg h12.symm]
+  simp only [adjExp, ite_true, ite_eq_right h1, ite_eq_right h2, ite_eq_right h12.symm]
   ring
 
 /-- The cube offsets of the three slots of a piece. -/
@@ -60640,23 +60676,22 @@ theorem boxIdx_mem_coverSet {N C : ℝ} (hN : 0 < N) {x : E3} (hx : x ∈ petBox
   · have : (⌊x i / N ^ expo i⌋ : ℝ) ≤ ((⌈C⌉ + 1 : ℤ) : ℝ) := by push_cast; linarith
     exact_mod_cast this
 
-theorem eLpNorm_add4_le {f₁ f₂ f₃ f₄ : E3 → ℂ} (h₁ : Measurable f₁) (h₂ : Measurable f₂)
-    (h₃ : Measurable f₃) (h₄ : Measurable f₄) :
+theorem eLpNorm_add4_le {f₁ f₂ f₃ f₄ : E3 → ℂ} :
     eLpNorm (fun y => f₁ y + f₂ y + (f₃ y + f₄ y)) 2 volume
       ≤ eLpNorm f₁ 2 volume + eLpNorm f₂ 2 volume + (eLpNorm f₃ 2 volume
         + eLpNorm f₄ 2 volume) := by
   have e : (fun y => f₁ y + f₂ y + (f₃ y + f₄ y)) = (f₁ + f₂) + (f₃ + f₄) := rfl
   rw [e]
-  refine (eLpNorm_add_le (h₁.add h₂).aestronglyMeasurable (h₃.add h₄).aestronglyMeasurable
+  refine (eLpNorm_add_le
     (by norm_num)).trans (add_le_add ?_ ?_)
-  · exact eLpNorm_add_le h₁.aestronglyMeasurable h₂.aestronglyMeasurable (by norm_num)
-  · exact eLpNorm_add_le h₃.aestronglyMeasurable h₄.aestronglyMeasurable (by norm_num)
+  · exact eLpNorm_add_le (by norm_num)
+  · exact eLpNorm_add_le (by norm_num)
 
 set_option maxHeartbeats 4000000 in
 -- The decomposition, the four offsets and all constants share one context.
 /-- **Theorem `new:global-decaying-point`** (global decaying `L²` estimate) on finite-valued inputs
 of bounded support: `‖(I - P_R^{(j)}) A_N^{*j}(g)‖₂ ≤ C₄ μ^{a₁} ∏ ‖g_i‖_{u_i}` with no support
-restriction, `R = N^{-j} μ^{-2}`.  The inputs are decomposed along the cubes `Q_ν`
+restriction, `R = N^{-j} μ^{-2}`. The inputs are decomposed along the cubes `Q_ν`
 (`Auto.hpAdj_decomp`); each piece obeys the compact bound after translation
 (`Auto.piece_bound`) and the weighted tail bound (`Auto.weighted_tail`); the weighted
 Cauchy-Schwarz inequality with the summable weights `(1 + ℓ²)⁻¹` and discrete Hoelder over the
@@ -60787,7 +60822,7 @@ theorem globalDecaying (j : Fin 3) :
     fun ε ε' => Finset.measurable_sum _ fun ν _ =>
       measurable_hpAdj hN0.le j (measurable_piece N j ν ε ε' hgm)
   rw [ENNReal.ofReal_ofNat]
-  refine (eLpNorm_add4_le (hmeas 0 0) (hmeas 0 1) (hmeas 1 0) (hmeas 1 1)).trans ?_
+  refine (eLpNorm_add4_le ).trans ?_
   refine (add_le_add (add_le_add (hoff 0 0) (hoff 0 1)) (add_le_add (hoff 1 0) (hoff 1 1))).trans
     (le_of_eq ?_)
   have hprod : ∏ k, eLpNorm (g k) (ENNReal.ofReal (cdpExp k)) volume
@@ -60849,12 +60884,12 @@ theorem eLpNorm_hpAdj_crude {N R : ℝ} (hN : 0 < N) (hR : 0 < R) (j : Fin 3)
   have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h12.symm]
   rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq,
     ENNReal.ofReal_add zero_le_one etaKerL1_nonneg, ENNReal.ofReal_one]
-  simp only [slotExp, if_true, if_neg h1, if_neg h2, if_neg h12.symm]
+  simp only [slotExp, ite_true, ite_eq_right h1, ite_eq_right h2, ite_eq_right h12.symm]
   ring
 
 set_option maxHeartbeats 2000000 in
 -- The convex completion exponents and the interpolation share one context.
-/-- **Theorem `new:adjoint-all-exponents`** on finite-valued inputs of bounded support.  For slot
+/-- **Theorem `new:adjoint-all-exponents`** on finite-valued inputs of bounded support. For slot
 exponents `a_k ∈ (0, 1)` with `σ = ∑ a_k < 1` there are `c ∈ (0, 1)` and `K, C ≥ 1` such that
 `‖(I - P_R^{(j)}) A_N^{*j}(g)‖_{1/σ} ≤ C μ^c ∏ ‖g_k‖_{1/a_k}` for `0 < μ ≤ 1`, `N ≥ K μ^{-K}`.
 Interpolate the crude bound at `v_k = (a_k - τ ρ_k)/(1 - τ)` with the global decaying point at
@@ -61018,8 +61053,10 @@ theorem measurable_tq (n : ℕ) : Measurable (tq n) := by
     simpa only [Int.preimage_floor_singleton] using measurableSet_Ico
   unfold tq
   refine Measurable.ite (measurableSet_le measurable_const measurable_id) ?_ ?_
-  · exact (((measurable_of_countable (Int.cast : ℤ → ℝ)).comp (hfl.comp (measurable_const.mul measurable_id))).div_const _)
-  · exact (((measurable_of_countable (Int.cast : ℤ → ℝ)).comp (hfl.comp (measurable_const.mul measurable_id.neg))).div_const
+  · exact (((measurable_of_countable (Int.cast : ℤ → ℝ)).comp (hfl.comp (measurable_const.mul
+      measurable_id))).div_const _)
+  · exact (((measurable_of_countable (Int.cast : ℤ → ℝ)).comp (hfl.comp (measurable_const.mul
+      measurable_id.neg))).div_const
       _).neg
 
 theorem measurable_qz (n : ℕ) : Measurable (qz n) := by
@@ -61062,7 +61099,8 @@ theorem finite_range_qz (n : ℕ) {h : E3 → ℂ} {b : ℝ} (hb : ∀ x, ‖h x
     (Set.range fun x => qz n (h x)).Finite := by
   set F := (fun k : ℤ => (k : ℝ) / n) '' Set.Icc (-⌈n * b⌉) ⌈n * b⌉ with hF
   have hFfin : F.Finite := (Set.finite_Icc _ _).image _
-  have hsub : (Set.range fun x => qz n (h x)) ⊆ (fun p : ℝ × ℝ => (⟨p.1, p.2⟩ : ℂ)) '' (F ×ˢ F) := by
+  have hsub : (Set.range fun x => qz n (h x)) ⊆ (fun p : ℝ × ℝ => (⟨p.1, p.2⟩ : ℂ)) '' (F ×ˢ F) :=
+    by
     rintro _ ⟨x, rfl⟩
     refine ⟨(tq n (h x).re, tq n (h x).im), ⟨tq_mem ?_, tq_mem ?_⟩, rfl⟩
     · exact (Complex.abs_re_le_norm _).trans (hb x)
@@ -61171,8 +61209,8 @@ theorem allExponentsBdd (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) (
       ≤ ENNReal.ofReal (C * μ ^ c) * ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume := by
     intro n
     refine (hsimp μ N hμ0 hμ1 hNK Cb (s n) hCb (hsimpOn n)).trans ?_
-    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod' fun k _ => ?_) bot_le
-    exact eLpNorm_mono fun x => norm_qz_le _ _
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod fun k _ => ?_) bot_le
+    exact eLpNorm_mono (by fun_prop) fun x => norm_qz_le _ _
   have hconv : ∀ y, Tendsto (fun n => hpAdj N R j (s n) y) atTop (𝓝 (hpAdj N R j g y)) := by
     intro y
     rw [tendsto_iff_norm_sub_tendsto_zero]
@@ -61191,7 +61229,7 @@ theorem allExponentsBdd (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) (
   have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3))
     (p := ENNReal.ofReal (∑ k, a k)⁻¹)
     (fun n => (measurable_hpAdj hN0.le j (hsm n)).aestronglyMeasurable) (hpAdj N R j g)
-    (Eventually.of_forall hconv)
+    (measurable_hpAdj hN0.le j hgm).aestronglyMeasurable (Eventually.of_forall hconv)
   exact hfatou.trans (Filter.liminf_le_of_frequently_le' (Frequently.of_forall hbound))
 
 end
@@ -61221,7 +61259,7 @@ theorem eLpNorm_adjT_crude {N : ℝ} (hN : 0 < N) (j : Fin 3) {g : Fin 3 → E3 
   have hA1 : adjIn j g (j + 1) = fun x => conj (g 1 x) := by simp [adjIn]
   have hA2 : adjIn j g (j + 2) = fun x => conj (g 2 x) := by simp [adjIn, h12.symm]
   rw [hA1, hA2, eLpNorm_conj_eq, eLpNorm_conj_eq]
-  simp only [slotExp, if_true, if_neg h1, if_neg h2, if_neg h12.symm]
+  simp only [slotExp, ite_true, ite_eq_right h1, ite_eq_right h2, ite_eq_right h12.symm]
   ring
 
 /-- The adjoint of the moduli dominates the adjoint. -/
@@ -61239,14 +61277,15 @@ theorem norm_adjT_le_adjT_norm {N : ℝ} (hN : 0 ≤ N) (j : Fin 3) {g h : Fin 3
   refine mul_le_mul_of_nonneg_left ?_ (inv_nonneg.mpr hN)
   refine intervalIntegral.norm_integral_le_of_norm_le hN (Eventually.of_forall fun t _ => ?_) ?_
   · rw [norm_prod]
-    exact Finset.prod_le_prod (fun _ _ => norm_nonneg _) fun k _ => hgh k _
+    exact Finset.prod_le_prod₀ (fun _ _ => norm_nonneg _) fun k _ => hgh k _
   · exact (continuous_finsetProd _ fun k _ => ((hhc k).comp
       (continuous_const.add (continuous_adjVec j k))).norm).intervalIntegrable _ _
 
 /-- A function with finite `L^q` norm (`0 < q < ∞`) is finite almost everywhere. -/
 theorem ae_lt_top_of_eLpNorm {Φ : E3 → ℝ≥0∞} (hΦ : Measurable Φ) {q : ℝ} (hq : 0 < q)
     (h : eLpNorm Φ (ENNReal.ofReal q) volume < ⊤) : ∀ᵐ y ∂(volume : Measure E3), Φ y < ⊤ := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hq) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hq) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hq.le] at h
   have hI : ∫⁻ y, ‖Φ y‖ₑ ^ q ≠ ⊤ := by
     intro hc
@@ -61306,16 +61345,30 @@ theorem adjT_truncIn_eventually {N : ℝ} (hN : 0 ≤ N) (j : Fin 3) {g : Fin 3 
   rw [Set.uIcc_of_le hN] at ht
   refine Finset.prod_congr rfl fun k _ => ?_
   simp only [truncIn]
-  rw [if_pos ⟨(hM k t ht).1.trans (hMn k), (hM k t ht).2.trans (hMn k)⟩]
+  rw [ite_eq_left ⟨(hM k t ht).1.trans (hMn k), (hM k t ht).2.trans (hMn k)⟩]
 
 theorem norm_truncIn_le_nat (n : ℕ) (f : E3 → ℂ) (x : E3) : ‖truncIn n f x‖ ≤ n := by
   unfold truncIn; split_ifs with h
   · exact h.2
   · simp
 
+/-- Translation invariance of the norm of a scalar multiple, also after taking `enorm`. -/
+theorem eLpNorm_enorm_mul_translate (A : E3 → ℂ) (hA : Measurable A)
+    (c : ℂ) (v : E3) (p : ℝ≥0∞) :
+    eLpNorm (fun y => ‖c * A (y - v)‖ₑ) p volume = ‖c‖ₑ * eLpNorm A p volume := by
+  have hm : AEStronglyMeasurable (fun y => c * A (y - v)) volume :=
+    (measurable_const.mul (hA.comp (measurable_id.sub measurable_const))).aestronglyMeasurable
+  rw [eLpNorm_enorm _ hm]
+  have he : (fun y => c * A (y - v)) = c • (fun y => A (y + -v)) := by
+    funext y
+    simp only [Pi.smul_apply, smul_eq_mul, sub_eq_add_neg]
+  rw [he, eLpNorm_const_smul]
+  exact congrArg (‖c‖ₑ * ·) (eLpNorm_comp_measurePreserving (p := p)
+    hA.aestronglyMeasurable (measurePreserving_add_right volume (-v)))
+
 set_option maxHeartbeats 4000000 in
 -- The truncation, the domination of the smoothing and Fatou's lemma share one context.
-/-- **`new:adjoint-all-exponents`, extension to continuous inputs of finite norm.**  Truncate the
+/-- **`new:adjoint-all-exponents`, extension to continuous inputs of finite norm.** Truncate the
 inputs (`|g_n| ≤ |g|`, bounded support), apply `Auto.allExponentsBdd`, and pass to the limit by
 Fatou's lemma: the adjoint is eventually unchanged at every point, and the smoothing converges
 almost everywhere by dominated convergence, the kernel integral of the adjoint of the moduli being
@@ -61349,7 +61402,7 @@ theorem allExponentsCont (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) 
     intro n
     have hs : ∀ k x, x ∉ petBox n N → gn n k x = 0 := fun k x hx => by
       simp only [hgndef, truncIn]
-      rw [if_neg]
+      rw [ite_eq_right]
       rintro ⟨h1, -⟩
       apply hx
       intro i
@@ -61361,8 +61414,8 @@ theorem allExponentsCont (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) 
     have hbn : ∀ k, ∃ b : ℝ, ∀ x, ‖gn n k x‖ ≤ b := fun k =>
       ⟨(n : ℝ), fun x => norm_truncIn_le_nat n (g k) x⟩
     refine (hbdd μ N hμ0 hμ1 hNK n (gn n) (by positivity) (hgnm n) hbn hs).trans ?_
-    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod' fun k _ => ?_) bot_le
-    exact eLpNorm_mono fun x => norm_truncIn_le n (g k) x
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod fun k _ => ?_) bot_le
+    exact eLpNorm_mono (by fun_prop) fun x => norm_truncIn_le n (g k) x
   -- the adjoint of the moduli
   set A : E3 → ℂ := adjT N j (fun k x => ((‖g k x‖ : ℝ) : ℂ)) with hAdef
   have hAm : Measurable A := measurable_adjT hN0.le j fun k =>
@@ -61372,7 +61425,8 @@ theorem allExponentsCont (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) 
       (fun k => Complex.measurable_ofReal.comp (hgm k).norm) (e := fun k => (a k)⁻¹)
       (fun k => inv_pos.mpr (ha0 k)) hq1 (by simp only [inv_inv, hqdef, hσdef])
     refine h.trans_lt (ENNReal.prod_lt_top fun k _ => ?_)
-    rw [eLpNorm_congr_norm_ae (Eventually.of_forall fun x => by simp) (g := g k)]
+    rw [eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (Eventually.of_forall fun x => by simp)
+      (g := g k)]
     exact (hgp k).eLpNorm_lt_top
   -- the kernel integral of `A` is finite almost everywhere
   set Φ : E3 → ℝ≥0∞ := fun y => ∫⁻ u, ‖projKernel R u * A (y - u • basisVec j)‖ₑ with hΦdef
@@ -61389,16 +61443,11 @@ theorem allExponentsCont (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) 
     have hsec : ∀ u : ℝ, eLpNorm (fun y => ‖projKernel R u * A (y - u • basisVec j)‖ₑ)
         (ENNReal.ofReal q) volume = ‖projKernel R u‖ₑ * eLpNorm A (ENNReal.ofReal q) volume := by
       intro u
-      rw [eLpNorm_enorm]
-      have h1 : (fun y => projKernel R u * A (y - u • basisVec j))
-          = projKernel R u • fun y => A (y + -(u • basisVec j)) := by
-        funext y; simp [sub_eq_add_neg]
-      rw [h1, eLpNorm_const_smul, eLpNorm_comp_add_right_of_aestronglyMeasurable
-        hAm.aestronglyMeasurable]
+      exact eLpNorm_enorm_mul_translate A hAm (projKernel R u) (u • basisVec j) _
     simp_rw [hsec] at h
     rw [lintegral_mul_const _ (projKernel_continuous R).measurable.enorm] at h
     refine h.trans_lt (ENNReal.mul_lt_top ?_ hAq)
-    rw [← eLpNorm_one_eq_lintegral_enorm, eLpNorm_projKernel hR]
+    rw [← eLpNorm_one_eq_lintegral_enorm (by fun_prop), eLpNorm_projKernel hR]
     exact ENNReal.ofReal_lt_top
   have hΦfin := ae_lt_top_of_eLpNorm hΦm (by linarith) hΦq
   -- convergence almost everywhere
@@ -61431,7 +61480,8 @@ theorem allExponentsCont (j : Fin 3) {a : Fin 3 → ℝ} (ha0 : ∀ k, 0 < a k) 
           (y - u • basisVec j)).mono fun n hn => by rw [hn])
   have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3))
     (p := ENNReal.ofReal q)
-    (fun n => (measurable_hpAdj hN0.le j (hgnm n)).aestronglyMeasurable) (hpAdj N R j g) hconv
+    (fun n => (measurable_hpAdj hN0.le j (hgnm n)).aestronglyMeasurable) (hpAdj N R j g)
+      (measurable_hpAdj hN0.le j hgm).aestronglyMeasurable hconv
   exact hfatou.trans (Filter.liminf_le_of_frequently_le' (Frequently.of_forall hbound))
 
 end
@@ -61479,7 +61529,7 @@ theorem prod_erase_eq (j : Fin 3) (F : Fin 3 → ℝ≥0∞) :
 /-- A continuous function of zero `L^p` norm (`p ≠ 0`) vanishes identically. -/
 theorem eq_zero_of_eLpNorm_eq_zero {f : E3 → ℂ} (hf : Continuous f) {p : ℝ≥0∞} (hp : p ≠ 0)
     (h : eLpNorm f p volume = 0) : f = 0 := by
-  have hae : f =ᵐ[volume] 0 := (eLpNorm_eq_zero_iff hf.aestronglyMeasurable hp).mp h
+  have hae : f =ᵐ[volume] 0 := (eLpNorm_eq_zero_iff hp).mp h
   exact (hf.ae_eq_iff_eq volume continuous_const).mp hae
 
 theorem hpAdj_eq_zero_of_slot_zero {N R : ℝ} (j : Fin 3) {g : Fin 3 → E3 → ℂ} {k : Fin 3}
@@ -61488,7 +61538,7 @@ theorem hpAdj_eq_zero_of_slot_zero {N R : ℝ} (j : Fin 3) {g : Fin 3 → E3 →
 
 set_option maxHeartbeats 2000000 in
 -- The case analysis on the norms and the reduction to `Auto.allExponentsCont` share one context.
-/-- **Corollary `new:exact-lean-target`: the proposition `Auto.KoszAdjoint j` holds.**  If a used
+/-- **Corollary `new:exact-lean-target`: the proposition `Auto.KoszAdjoint j` holds.** If a used
 input has zero norm it vanishes (continuity) and so does the left side; if one has infinite norm
 and none vanishes the right side is infinite; otherwise `Auto.allExponentsCont` applies to the slot
 inputs `(f₀, conj f_{j+1}, conj f_{j+2})`, with output exponent `1/(α₀ + α_{j+1} + α_{j+2}) =
@@ -61546,7 +61596,7 @@ theorem koszAdjoint (j : Fin 3) : KoszAdjoint j := by
   push Not at hz
   by_cases hfin : ∀ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume < ⊤
   · exact hcont μ N hμ.1 hμ.2 hNK g hgc fun k =>
-      ⟨(hgc k).aestronglyMeasurable, hfin k⟩
+      hfin k
   push Not at hfin
   obtain ⟨k, hk⟩ := hfin
   have htop : ∏ k, eLpNorm (g k) (ENNReal.ofReal (a k)⁻¹) volume = ⊤ := by
@@ -61558,9 +61608,9 @@ theorem koszAdjoint (j : Fin 3) : KoszAdjoint j := by
   exact le_top
 
 /-- **Blueprint `thm:main`, unconditionally**: the requested smoothing theorem with no imported
-hypotheses.  For `ψ ∈ C¹` supported in `[a, b]` with `‖ψ'‖_{L¹} ≤ M`, the weighted average
+hypotheses. For `ψ ∈ C¹` supported in `[a, b]` with `‖ψ'‖_{L¹} ≤ M`, the weighted average
 `𝒜_ψ(f₁, f₂, f₃)` obeys a `λ^{-δ}` gain as soon as one of the `f`'s has Fourier support in
-`{|ξ_j| ≥ λ}`.  The two former imports are discharged by `Auto.koszAdjoint` and
+`{|ξ_j| ≥ λ}`. The two former imports are discharged by `Auto.koszAdjoint` and
 `Auto.koszSubunitScaleOne`. -/
 theorem mainTheorem {a bb : ℝ} (ha : 0 < a) (hab : a < bb)
     {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : ∀ i, 1 < pv i)

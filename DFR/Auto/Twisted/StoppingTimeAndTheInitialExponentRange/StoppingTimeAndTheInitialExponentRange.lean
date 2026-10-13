@@ -27,7 +27,7 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
@@ -36,8 +36,6 @@ import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
 import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
 import DFR.Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
 
-universe u
-
 /-!
 # Stopping time and the initial exponent range
 
@@ -45,9 +43,11 @@ Section 6 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -55,7 +55,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -731,7 +732,7 @@ theorem cubeSignedInputProduct_modelFirst_cubeActivePassiveSplit_symm
     cubeActiveInputSlice_modelFirst_true]
 
 /-- At the third active coordinate and zero translation, either active
-average of the first-energy cube tuple is the original first fiber.  The
+average of the first-energy cube tuple is the original first fiber. The
 fifth model variable is intentionally absent on both sides. -/
 theorem cubeActiveCSAverage_modelFirst
     (α : Anisotropy) (lam : ℝ) (f : ModelRealInput) (b : Bool)
@@ -1109,7 +1110,7 @@ theorem localCubeIntegrand_modelFirst_activePassiveSplit_symm
 
 /-- Integrating the two active variables in the fixed first-energy cube
 integrand gives the square of the first fiber times the passive four-Gaussian
-weight.  This is the literal fixed-`(p,t,x₁,x₂,y₁,y₂)` identity behind the
+weight. This is the literal fixed-`(p,t,x₁,x₂,y₁,y₂)` identity behind the
 first local-energy cube comparison. -/
 theorem integral_localCubeIntegrand_modelFirst_active
     (α : Anisotropy) (lam : ℝ) (f : ModelRealInput)
@@ -1288,7 +1289,7 @@ theorem isFiniteMeasure_cubeScaleCollection
       cubeScaleMeasure (boxScaleRegion α q) < ∞ := by
     rw [← Measure.restrict_apply_univ,
       cubeScaleMeasure_restrict_boxScaleRegion]
-    letI : IsFiniteMeasure
+    let : IsFiniteMeasure
         ((volume.restrict (boxSet α q)).prod
           ((volume.withDensity cubeScaleDensity).restrict (boxScaleBand q))) :=
       isFiniteMeasure_boxScaleCell α q
@@ -1309,11 +1310,11 @@ theorem integrable_modelEnergyDensity_collection
         (volume : Measure ModelE5)) := by
   let μ : Measure (E3 × ℝ) :=
     cubeScaleMeasure.restrict (collectionRegion α S)
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     exact isFiniteMeasure_cubeScaleCollection α S
-  letI : SigmaFinite μ := IsFiniteMeasure.toSigmaFinite μ
-  letI : SFinite (μ.prod (volume : Measure ModelE5)) := by
+  let : SigmaFinite μ := IsFiniteMeasure.toSigmaFinite μ
+  let : SFinite (μ.prod (volume : Measure ModelE5)) := by
     infer_instance
   have hpos : ∀ᵐ pt ∂μ, 0 < pt.2 := by
     dsimp only [μ]
@@ -1560,7 +1561,7 @@ theorem boxCenterKernel_le_anisotropicBracketKernel
           bracketKernelAt (boxLength q ^ α.weight i) (boxCenter α q i) (y i)) ≤
           ∏ i : Fin 3, (3 / 2 : ℝ) ^ 10 *
             bracketKernelAt (boxLength q ^ α.weight i) (p i) (y i) := by
-        apply Finset.prod_le_prod
+        apply Finset.prod_le_prod₀
         · intro i _
           exact bracketKernelAt_nonneg (pow_pos (boxLength_pos q) _).le
         · intro i _
@@ -1801,7 +1802,7 @@ theorem modelEnergyTwo_collection_eq_sum_singletons_of_integrable
     apply hint.mono_measure
     exact Measure.restrict_mono hsub le_rfl
 
-/-- Exact finite-forest additivity for the expanded local form.  The proof
+/-- Exact finite-forest additivity for the expanded local form. The proof
 uses only the literal disjoint partition of boxes, so it applies directly to
 the stopping trees at a fixed level. -/
 theorem expandedModelLocalForm_biUnion_eq_sum_of_integrable
@@ -2125,7 +2126,7 @@ theorem boxLocalPower_four_le_anisotropicMaximalFourPower
         B hB hfB p (boxLength_pos q)
 
 /-- Maximal stopping roots which are covered by a measurable region have
-total box mass at most the volume of that region.  This is the finite,
+total box mass at most the volume of that region. This is the finite,
 pairwise-disjoint packing step in the stopping-time argument. -/
 theorem sum_boxMass_stoppingRoots_le_measure {d : ℕ}
     (α : Anisotropy) (S : BoxCollection α) (s : Fin d → ℝ)
@@ -2392,7 +2393,7 @@ theorem treeLocalSize_nonneg
     {α : Anisotropy} (T : FiniteConvexTree α) (s : ℝ) (f : E3 → ℝ) :
     0 ≤ treeLocalSize T s f := by
   unfold treeLocalSize collectionLocalSize
-  rw [dif_pos T.nonempty]
+  rw [dite_eq_left T.nonempty]
   rcases T.nonempty with ⟨q, hq⟩
   exact (boxLocalSize_nonneg α s f q).trans
     (Finset.le_sup' (boxLocalSize α s f) hq)
@@ -2407,7 +2408,7 @@ theorem stoppingRoot_treeLocalSize_product_le {d : ℕ}
     (∏ j : Fin d,
       treeLocalSize (stoppingTree α S s f n hconvex Q hQ) (s j) (f j)) ≤
       ∏ j : Fin d, (2 : ℝ) ^ n j := by
-  apply Finset.prod_le_prod
+  apply Finset.prod_le_prod₀
   · intro j _
     exact treeLocalSize_nonneg
       (stoppingTree α S s f n hconvex Q hQ) (s j) (f j)
@@ -2918,7 +2919,7 @@ theorem gaussianDerivAt_reflect
   ring_nf
 
 /-- The one-dimensional source fiber is the negative of convolution with the
-centered derivative kernel.  No convergence hypothesis is needed for this
+centered derivative kernel. No convergence hypothesis is needed for this
 algebraic integral identity. -/
 theorem gaussianDerivAt_fiber_eq_neg_convolution
     (F : ℝ → ℂ) (s q : ℝ) :
@@ -2964,7 +2965,7 @@ theorem continuous_complex_gaussianDerivAt (s a : ℝ) :
   unfold gaussianDerivAt kernelAt kernelDilate gaussianDeriv
   simp only [smul_eq_mul]
   by_cases hs : s = 0
-  · simp [hs]
+  · simp only [hs, inv_zero, neg_mul, div_zero, mul_zero, zero_mul]
     exact continuous_const
   · have harg : Continuous (fun x : ℝ ↦ (x - a) / s) :=
       (continuous_id.sub continuous_const).div continuous_const (fun _ ↦ hs)
@@ -2976,7 +2977,7 @@ theorem continuous_complex_gaussianDerivAt (s a : ℝ) :
     exact continuous_const.mul hprod
 
 /-- A finite subseries of a positive geometric series is bounded by its full
-sum.  This is the scalar summation input for the finite stopping forest. -/
+sum. This is the scalar summation input for the finite stopping forest. -/
 theorem sum_geometric_nat_finset_le
     (r : ℝ) (hr0 : 0 ≤ r) (hr1 : r < 1) (s : Finset ℕ) :
     (∑ n ∈ s, r ^ n) ≤ (1 - r)⁻¹ := by
@@ -2987,7 +2988,7 @@ theorem sum_geometric_nat_finset_le
     _ = (1 - r)⁻¹ := tsum_geometric_of_lt_one hr0 hr1
 
 /-- Reindex a finite set of integer levels by its distance below an upper
-level.  The map is injective because all selected levels lie below that
+level. The map is injective because all selected levels lie below that
 upper level. -/
 theorem int_distanceToNat_injOn
     (N : Finset ℤ) (K : ℤ) (hN : ∀ n ∈ N, n ≤ K) :
@@ -3044,7 +3045,7 @@ theorem sum_zpow_le_geometric_upper
           exact zpow_nonneg ha0.le _
     _ = a ^ K * (1 - a⁻¹)⁻¹ := by rfl
 
-/-- Finite dyadic layer-cake estimate.  Any finite selection of levels whose
+/-- Finite dyadic layer-cake estimate. Any finite selection of levels whose
 weighted geometric size is below `h` has total geometric mass controlled by
 `h / c`; this is the pointwise core of the stopping-time distribution sum. -/
 theorem sum_zpow_filter_le_layerCake
@@ -3086,7 +3087,7 @@ theorem sum_zpow_filter_le_layerCake
     rw [hSempt]
     simp [mul_nonneg hfac hdiv]
 
-/-- Finite real-valued distribution estimate for geometric level sets.  It
+/-- Finite real-valued distribution estimate for geometric level sets. It
 is the Tonelli-free finite version of the scalar layer-cake bound used in
 the stopping forest: all finite rearrangements are explicitly justified by
 the supplied finite-measure hypotheses. -/
@@ -3294,7 +3295,7 @@ theorem modelE5Coordinates_measurePreserving :
   exact finFiveCoordinates_measurePreserving.comp
     (EuclideanSpace.volume_preserving_symm_measurableEquiv_toLp (Fin 5))
 
-/-- Swap the first two entries of a right-associated triple.  Keeping this
+/-- Swap the first two entries of a right-associated triple. Keeping this
 small permutation separate makes the later nine-variable reordering a
 composition of literal product-measure isomorphisms. -/
 noncomputable def swapMiddle
@@ -3484,7 +3485,7 @@ theorem modelEnergyCoordinateGroup_measurePreserving
   rfl
 
 /-- The explicit coordinate reordering for the `E3 × ModelE5` Tonelli
-reduction.  It sends `((p,t),z)` to
+reduction. It sends `((p,t),z)` to
 `(((z₀,z₁),(p₂,t)),((p₀,p₁),(z₂,(z₃,z₄))))`, so all variables with scalar
 kernel mass occur in the final inner factor. -/
 noncomputable def modelEnergyCoordinateReorder :
@@ -3545,7 +3546,7 @@ theorem modelEnergyCoordinateReorder_measurePreserving :
     (hcoords.trans hgroup).trans hcross
 
 /-- The regrouping also works when the scale variable carries an arbitrary
-sigma-finite measure.  This is the form needed for `dt / t`, rather than
+sigma-finite measure. This is the form needed for `dt / t`, rather than
 only for ordinary Lebesgue measure in the scale coordinate. -/
 theorem modelEnergyCoordinateGroup_measurePreserving_scale
     (μ ν : Measure ℝ) [SFinite μ] [SFinite ν] :
@@ -3587,7 +3588,7 @@ theorem modelEnergyCoordinateGroup_measurePreserving_scale
   rfl
 
 /-- The coordinate reordering preserves measure with an arbitrary
-sigma-finite scale measure.  Specializing `ν` to the density measure
+sigma-finite scale measure. Specializing `ν` to the density measure
 `volume.withDensity cubeScaleDensity` is the global-energy change of
 variables. -/
 theorem modelEnergyCoordinateReorder_measurePreserving_scale
@@ -3677,7 +3678,7 @@ theorem integral_modelEnergyCoordinateReorder_fubini
   exact MeasureTheory.integral_prod _ htrans
 
 /-- Assemble the five scalar fiber coordinates in their original model
-order.  This is the inverse-coordinate companion of
+order. This is the inverse-coordinate companion of
 `modelE5Coordinates`. -/
 noncomputable def modelE5Point
     (x₁ x₂ y₁ y₂ r : ℝ) : ModelE5 :=
@@ -3717,7 +3718,7 @@ theorem modelEnergyCoordinateReorder_symm_apply
   simp
 
 /-- The third-coordinate fiber after all harmless scalar variables have been
-made explicit.  It depends only on `(x₁,x₂,p₂,t,r)`. -/
+made explicit. It depends only on `(x₁,x₂,p₂,t,r)`. -/
 noncomputable def modelSecondFiberReduced
     (α : Anisotropy) (f : E3 → ℝ)
     (x₁ x₂ p₂ t r : ℝ) : ℝ :=
@@ -3738,7 +3739,7 @@ theorem modelSecondFiber_eq_reduced
     modelE5Point_zero, modelE5Point_one,
     modelE5Point_four]
 
-/-- The positive density in the reordered variables.  The first two pairs
+/-- The positive density in the reordered variables. The first two pairs
 are the scalar factors integrated out by Tonelli; the final `r` factor stays
 with the third-coordinate square function until the translation in `p₂`. -/
 def modelEnergyDensityReordered
@@ -4038,7 +4039,7 @@ theorem sum_by_sourceStoppingDominantIndex_le_of_fiberBound
       refine Finset.sum_le_sum fun m hm ↦ ?_
       exact mul_le_mul_of_nonneg_right (hB j m) (hv j m)
 
-/-- A finite dyadic geometric sum below a real upper cutoff.  This is the
+/-- A finite dyadic geometric sum below a real upper cutoff. This is the
 passive-coordinate estimate in the dominant-index argument. -/
 theorem sum_zpow_two_le_of_forall_le
     (N : Finset ℤ) (A : ℝ)
@@ -4081,13 +4082,14 @@ theorem sum_zpow_two_le_of_forall_eq
 /-- A finite family of coordinatewise finite sets bounds the sum of a
 nonnegative product by the product of its one-coordinate sums. -/
 theorem sum_prod_le_prod_sum_of_mem_piFinset
-    {ι κ : Type*} [Fintype ι] [DecidableEq ι] [DecidableEq κ]
+    {ι κ : Type*} [Fintype ι]
     (A : Finset (ι → κ)) (C : ι → Finset κ)
     (g : ι → κ → ℝ)
     (hg : ∀ i x, x ∈ C i → 0 ≤ g i x)
     (hA : ∀ n ∈ A, ∀ i, n i ∈ C i) :
     (∑ n ∈ A, ∏ i, g i (n i)) ≤
       ∏ i, ∑ x ∈ C i, g i x := by
+  classical
   have hsub : A ⊆ Fintype.piFinset C := by
     intro n hn
     exact Fintype.mem_piFinset.mpr (hA n hn)
@@ -4135,7 +4137,7 @@ theorem sum_sourceStoppingDominantFiber_le_envelope
         exact Finset.mem_image.mpr ⟨n, hn, rfl⟩
     _ ≤ sourceStoppingDominantFiberEnvelope q σ j m := by
       unfold sourceStoppingDominantFiberEnvelope
-      apply Finset.prod_le_prod
+      apply Finset.prod_le_prod₀
       · intro k hk
         exact Finset.sum_nonneg fun r hr ↦ by positivity
       · intro k hk
@@ -4229,7 +4231,7 @@ theorem sourceStoppingRoot_boxSet_subset_dominantMaximalLevel
     (sourceStoppingDominantIndex q σ n)
 
 /-- The source finite stopping forest is bounded by the finite weighted sum
-of its joint anisotropic-maximal superlevel regions.  Finite volume of each
+of its joint anisotropic-maximal superlevel regions. Finite volume of each
 level region is the precise analytic input supplied by maximal `L^p` bounds. -/
 theorem sourceStoppingForestWeightedSum_le_maximalLevelSum
     (α : Anisotropy) (S : BoxCollection α)
@@ -4257,7 +4259,7 @@ theorem sourceStoppingForestWeightedSum_le_maximalLevelSum
   exact sourceStoppingRoot_boxSet_subset_maximalLevel α S f n Q hQ hcont hbound
 
 /-- The finite stopping forest is controlled by the single maximal level set
-at the dominant coordinate of each level vector.  This is the form consumed
+at the dominant coordinate of each level vector. This is the form consumed
 by the source's dominant-index geometric-series argument. -/
 theorem sourceStoppingForestWeightedSum_le_dominantMaximalLevelSum
     (α : Anisotropy) (S : BoxCollection α)
@@ -4358,7 +4360,7 @@ def modelFirstPassiveIndexEquiv : Fin 5 ≃
       rfl
 
 /-- The literal measure-coordinate equivalence behind the local first- and
-second-energy comparisons.  It sends the five model variables to the two
+second-energy comparisons. It sends the five model variables to the two
 third-active transverse cube variables and the remaining translation. -/
 noncomputable def modelFirstPassiveCoordinates :
     ModelE5 ≃ᵐ (TransverseSpace 2 × TransverseSpace 2) × ℝ := by
@@ -4465,7 +4467,6 @@ theorem modelFirstPassiveCoordinates_measurePreserving :
         (fun _ : I ⊕ Fin 1 => ℝ))) using 1
     · funext q
       rfl
-    · simp only [Measure.volume_eq_prod]
   have h2 : MeasurePreserving e2
       (volume : Measure (I ⊕ (I ⊕ Fin 1) → ℝ))
       ((volume : Measure (I → ℝ)).prod
@@ -4711,7 +4712,7 @@ theorem modelSecondFiber_sq_passiveWeight_eq_activeIntegral
   exact (integral_localCubeIntegrand_modelSecond_active α lam f p t z).symm
 
 /-- Multiply the first density superposition by the nonnegative first-fiber
-square.  This is the pointwise starting point for the first local-energy
+square. This is the pointwise starting point for the first local-energy
 cube comparison. -/
 theorem modelFirstFiber_sq_density_le_superposition :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (α : Anisotropy) (u p : E3) (t : ℝ)
@@ -4772,7 +4773,7 @@ theorem modelSecondFiber_sq_density_le_superposition :
               (z 0) (z 1) (z 2) (z 3) * lam ^ (-47 : ℝ) := by ring
 
 /-- Separate the remaining translated annular variable from a passive
-integral.  The statement is deliberately measure-explicit so it can be used
+integral. The statement is deliberately measure-explicit so it can be used
 inside the center--scale product measure without reassociation. -/
 theorem integral_passive_mul_absConePsi
     (A : TransverseSpace 2 × TransverseSpace 2 → ℝ) (a : ℝ) :
@@ -4798,7 +4799,7 @@ theorem integral_passive_mul_absConePsi
 /-- At one fixed center and positive scale, integrating the first fiber
 square, the four passive Gaussian factors, and the annular factor over the
 five model variables gives the passive cube square times the fixed annular
-mass.  This is the exact analytic core of the first-energy comparison before
+mass. This is the exact analytic core of the first-energy comparison before
 the source-scale superposition is integrated. -/
 theorem integral_modelFirstFiber_sq_psi_passiveWeight
     (α : Anisotropy) (lam : ℝ) (f : ModelRealInput) (b : Bool)
@@ -4841,7 +4842,7 @@ theorem integral_modelFirstFiber_sq_psi_passiveWeight
     _ = _ := integral_passive_mul_absConePsi A a
 
 /-- The fixed-source-scale passive square is the actual third-coordinate
-local cube form for the first-energy tuple.  This uses positivity of the
+local cube form for the first-energy tuple. This uses positivity of the
 collection scales to replace the weighted average square by the passive
 Gaussian factor times the active average square. -/
 theorem localCubeForm_modelFirst_eq_passiveSquare
@@ -4877,7 +4878,7 @@ theorem localCubeForm_modelFirst_eq_passiveSquare
         α 2 lam 0 (modelFirstCubeTuple f) b w hlam hw
 
 /-- The nonnegative three-variable integrand obtained after inserting the
-first-energy Gaussian superposition.  Keeping it as a function on the
+first-energy Gaussian superposition. Keeping it as a function on the
 literal product `ModelE5 × ℝ` makes the Tonelli/Fubini hypothesis in the
 next comparison completely explicit. -/
 noncomputable def modelFirstSuperpositionIntegrand
@@ -4908,7 +4909,7 @@ theorem integral_modelFirstSuperposition_inner
 
 /-- Fubini and the passive-coordinate transport identify the fixed
 center--scale first-energy superposition with the passive square of the
-first cube tuple.  The sole integrability hypothesis is exactly the one
+first cube tuple. The sole integrability hypothesis is exactly the one
 needed to justify the signed-real Fubini exchange. -/
 theorem integral_modelFirstSuperposition_eq_cubePassive
     (α : Anisotropy) (u p : E3) (t : ℝ) (f : ModelRealInput) (b : Bool)
@@ -4968,10 +4969,10 @@ theorem integral_modelFirstSuperposition_eq_cubePassive
                 rw [integral_modelFirstFiber_sq_psi_passiveWeight
                   α lam f b p t (u 2)]
 
-/-- The fixed-center, fixed-scale first-energy comparison.  It is the
+/-- The fixed-center, fixed-scale first-energy comparison. It is the
 literal inequality in the blueprint before the center--scale integration:
 the density superposition is combined with the exact passive-coordinate
-Fubini identity above.  The two stated integrability hypotheses are precisely
+Fubini identity above. The two stated integrability hypotheses are precisely
 what permits use of real-valued monotonicity and Fubini, without treating a
 possibly nonintegrable signed integral as a nonnegative extended integral. -/
 theorem integral_modelFirstFiber_sq_density_le_cubePassive :
@@ -5090,7 +5091,7 @@ theorem integral_modelFirstSuperposition_prod_eq_cubePassive
       α u p t f b hG
 
 /-- On the false third-coordinate active slice, the edge tuple retains only
-its `000` slot.  This is the one-input integrand in the second model fiber. -/
+its `000` slot. This is the one-input integrand in the second model fiber. -/
 theorem cubeActiveInputSlice_edge_false
     (f : E3 → ℝ) (x₁ x₂ y₁ y₂ v : ℝ) :
     cubeActiveInputSlice 2 false (edgeCubeTuple f)
@@ -5218,7 +5219,7 @@ theorem cubeActiveCSAverage_modelSecond
     simp [cubeGaussianDerivKernel]
     ring
 
-/-- Fixed-source-scale passive transport for the second energy.  Unlike the
+/-- Fixed-source-scale passive transport for the second energy. Unlike the
 first energy, the fifth model coordinate is retained as the local cube
 translation parameter and carries the decaying `R(r)^{-50}` weight. -/
 theorem integral_modelSecondFiber_sq_translationWeight_passiveWeight
@@ -5300,7 +5301,7 @@ theorem localCubeForm_edge_eq_passiveSquare
         α 2 lam r (edgeCubeTuple f) b w hlam hw
 
 /-- The nonnegative product integrand for the second-energy Gaussian
-superposition.  Here the fifth model coordinate is not integrated out: it
+superposition. Here the fifth model coordinate is not integrated out: it
 becomes the edge-form translation `r`. -/
 noncomputable def modelSecondSuperpositionIntegrand
     (α : Anisotropy) (p : E3) (t : ℝ) (f : E3 → ℝ)
@@ -5528,9 +5529,9 @@ noncomputable def modelSecondSuperpositionJoint
     (q : (E3 × ℝ) × (ModelE5 × ℝ)) : ℝ :=
   modelSecondSuperpositionIntegrand α q.1.1 q.1.2 f q.2
 
-/-- Outer Fubini wrapper for the first local energy.  Its last hypothesis is
+/-- Outer Fubini wrapper for the first local energy. Its last hypothesis is
 the exact, signed-real center--scale/source-scale exchange after the passive
-square has been identified.  All other Fubini obligations (in the five model
+square has been identified. All other Fubini obligations (in the five model
 variables and in the source scale) are discharged from the two displayed
 joint integrability assumptions. -/
 theorem modelEnergyOne_le_cubeComparison_of_fubini :
@@ -5566,7 +5567,7 @@ theorem modelEnergyOne_le_cubeComparison_of_fubini :
   let μ : Measure (E3 × ℝ) :=
     cubeScaleMeasure.restrict (collectionRegion α S)
   let ν : Measure ℝ := (volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -5656,7 +5657,7 @@ theorem modelEnergyOne_le_cubeComparison_of_fubini :
           simpa only [modelFirstSuperpositionJoint, μ, ν] using houter]
     _ = _ := by ring
 
-/-- Outer Fubini wrapper for the second local energy.  The translation
+/-- Outer Fubini wrapper for the second local energy. The translation
 parameter remains explicit, yielding precisely the edge-cube comparison
 weighted by `R(r)^{-50}`. -/
 theorem modelEnergyTwo_le_cubeComparison_of_fubini :
@@ -5695,7 +5696,7 @@ theorem modelEnergyTwo_le_cubeComparison_of_fubini :
   let μ : Measure (E3 × ℝ) :=
     cubeScaleMeasure.restrict (collectionRegion α S)
   let ν : Measure ℝ := (volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -5801,7 +5802,7 @@ theorem integrableOn_Ici_rpow_neg_ten :
   exact integrableOn_Ioi_rpow_of_lt (by norm_num) zero_lt_one
 
 /-- Reorder a center variable, a source-scale variable, and a passive
-variable from `((x, λ), y)` to `(λ, (x, y))`.  This is the outer Tonelli
+variable from `((x, λ), y)` to `(λ, (x, y))`. This is the outer Tonelli
 permutation used by both local-energy comparisons. -/
 noncomputable def outerLambdaShuffle
     (X Y : Type*) [MeasurableSpace X] [MeasurableSpace Y] :
@@ -6043,7 +6044,7 @@ theorem integral_outerLambdaShuffleRight
     (μ : Measure X) (ν : Measure Y) [SFinite μ] [SFinite ν]
     (G : X × (Y × ℝ) → ℝ)
     (hG : Integrable G
-      (μ.prod (ν.prod ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))))) ) :
+      (μ.prod (ν.prod ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ)))))) :
     ∫ q : X × (Y × ℝ), G q
       ∂(μ.prod (ν.prod ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))))) =
       ∫ lam in Set.Ici (1 : ℝ),
@@ -6155,7 +6156,7 @@ theorem outerFirstSuperposition_eq_cubeComparison
     (hsuper : Integrable (modelFirstSuperpositionJoint α u f)
       ((cubeScaleMeasure.restrict (collectionRegion α S)).prod
         ((volume : Measure ModelE5).prod
-          ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))))) ) :
+          ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ)))))) :
     (∫ pt : E3 × ℝ,
       ∫ q : ModelE5 × ℝ,
         modelFirstSuperpositionJoint α u f (pt, q)
@@ -6171,7 +6172,7 @@ theorem outerFirstSuperposition_eq_cubeComparison
   let ν : Measure ℝ := (volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))
   let η : Measure ModelE5 := volume
   let e := outerLambdaShuffleRight (E3 × ℝ) ModelE5
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -6362,7 +6363,7 @@ theorem integrable_modelSecondSuperposition_passive_at_scale
   let μ : Measure (E3 × ℝ) :=
     cubeScaleMeasure.restrict (collectionRegion α S)
   let e := modelFirstPassiveCoordinatesProd (E3 × ℝ)
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -6403,7 +6404,7 @@ theorem outerSecondSuperposition_eq_cubeComparison
     (hsuper : Integrable (modelSecondSuperpositionJoint α f)
       ((cubeScaleMeasure.restrict (collectionRegion α S)).prod
         ((volume : Measure ModelE5).prod
-          ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))))) ) :
+          ((volume : Measure ℝ).restrict (Set.Ici (1 : ℝ)))))) :
     (∫ pt : E3 × ℝ,
       ∫ q : ModelE5 × ℝ,
         modelSecondSuperpositionJoint α f (pt, q)
@@ -6421,7 +6422,7 @@ theorem outerSecondSuperposition_eq_cubeComparison
   let κ : Measure (TransverseSpace 2 × TransverseSpace 2) :=
     (volume : Measure (TransverseSpace 2)).prod volume
   let e := outerLambdaShuffleRight (E3 × ℝ) ModelE5
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -6680,7 +6681,6 @@ theorem cubeVertex_univ :
 
 /-- The eight first-energy cube slots contribute the square of the three
 nonconstant fourth local sizes; the two constant slots are harmless. -/
-
 theorem modelFirstCubeTuple_treeLocalSize_product_le
     (α : Anisotropy) (T : FiniteConvexTree α) (f : ModelRealInput) :
     (∏ j : CubeVertex, treeLocalSize T 4 (modelFirstCubeTuple f j)) ≤
@@ -6739,7 +6739,9 @@ theorem modelFirstCubeTuple_treeLocalSize_product_le
     Finset.prod_insert h010, Finset.prod_insert h011,
     Finset.prod_insert h100, Finset.prod_insert h101,
     Finset.prod_insert h110, Finset.prod_singleton]
-  simp [modelFirstCubeTuple]
+  simp only [modelFirstCubeTuple, Fin.isValue, cubeVertex_zero, Bool.false_eq_true, ↓reduceIte,
+    cubeVertex_one,
+    ge_iff_le]
   change M0 * (M0 * (M2 * (M2 * (M1 * (M1 * (K * K)))))) ≤
     (M0 * M1 * M2) ^ 2
   calc
@@ -6999,7 +7001,7 @@ theorem edge_integral_majorant
   rw [hrewrite]
   exact houter.trans_eq heval
 
-/-- The first model energy is controlled by the full-cube tree estimate.  The
+/-- The first model energy is controlled by the full-cube tree estimate. The
 only analytic hypothesis left explicit is the exact normalized scale
 integrability used to justify the comparison integral. -/
 theorem modelEnergyOne_tree_bound_of_boundedContinuous
@@ -7222,7 +7224,7 @@ theorem cubeScaleMeasure_restrict_global_eq :
   simp
 
 /-- The finite active stopping forest converts uniform stopping-tree local
-form bounds into the four-coordinate envelope sum.  The exact forest form
+form bounds into the four-coordinate envelope sum. The exact forest form
 decomposition is kept as an explicit hypothesis, since it is the point at
 which the outer model Fubini package is consumed. -/
 theorem activeStoppingForest_form_bound_of_localBounds
@@ -7377,7 +7379,7 @@ theorem activeStoppingForest_form_bound_of_localBounds
               (volume (sourceStoppingMaximalLevelSetAt α f j m)).toReal) := by
       rfl
 
-/-- The literal stopping tree attached to a source active root.  Naming it
+/-- The literal stopping tree attached to a source active root. Naming it
 makes the energy hypotheses in the terminal forest wrapper compact. -/
 noncomputable def sourceStoppingTree
     (α : Anisotropy) (S : BoxCollection α) (hS : IsConvexCollection α S)
@@ -7473,7 +7475,7 @@ theorem sourceStoppingTree_energyBounds_of_boundedContinuous
     exact hE₂ (sourceStoppingTree α S hS f n Q) u (f 3) false
       (hcont 3) (hbound 3) hsecond hjoint
 
-/-- The Section 5 finite active stopping-forest form estimate.  The only
+/-- The Section 5 finite active stopping-forest form estimate. The only
 remaining analytic input is the exact outer form decomposition and the three
 treewise hypotheses; the scalar stopping sum is discharged by the checked
 coordinate-envelope theorem. -/
@@ -7517,7 +7519,7 @@ theorem activeStoppingForest_form_bound_of_energyBounds
   · simpa only [sourceStoppingTree] using hE₂ n Q
 
 /-- The exact active-forest form decomposition obtained from a single outer
-integrability hypothesis.  This discharges the decomposition premise of the
+integrability hypothesis. This discharges the decomposition premise of the
 terminal forest estimate without any rearrangement of conditionally
 integrable terms. -/
 theorem expandedModelLocalForm_activeStoppingForest_eq_sum_of_integrable
@@ -7575,7 +7577,7 @@ theorem expandedModelLocalForm_activeStoppingForest_eq_sum_of_integrable
         (fun Q ↦ expandedModelLocalForm α
           (stoppingTreeBoxes α S sourceStoppingExponent f n Q) u c f)
 
-/-- A ready-to-use finite active stopping-forest bound.  It combines the
+/-- A ready-to-use finite active stopping-forest bound. It combines the
 outer-integrability decomposition, treewise local-model/energy bounds, and
 the source coordinate-envelope stopping estimate. -/
 theorem activeStoppingForest_form_bound_of_energyBounds_of_integrable
@@ -7657,7 +7659,7 @@ theorem activeStoppingForest_form_bound_of_boundedContinuous
 This scratch block follows `lem:model_convergence` in the Task 3 blueprint.
 The root boxes are the eight level-`N` boxes indexed by `{-1,0}^3`; their
 successive literal child generations supply all levels from `N` down to
-`-N`.  The remaining declarations turn any increasing exhaustion by these
+`-N`. The remaining declarations turn any increasing exhaustion by these
 finite regions into convergence of the expanded real model form.
 -/
 
@@ -7827,9 +7829,9 @@ theorem mem_truncationLevel_of_root_subset
         exact ⟨x, boxSet_subset_parent α q hx, hsub hx⟩
       have hparentR : boxSet α (boxParent α q) ⊆ boxSet α R := by
         apply boxSet_nested_of_inter_nonempty α
-        rw [hparentlevel, hRlevel]
-        omega
-        exact hinter
+        · rw [hparentlevel, hRlevel]
+          omega
+        · exact hinter
       have hparentmem : boxParent α q ∈ truncationLevel α N d :=
         ih (boxParent α q) hparentlevel hparentR
       have hchild : q ∈ boxChildren α (boxParent α q) := by
@@ -8417,7 +8419,7 @@ theorem integrableOn_modelScaleEnvelope_withDensity
   exact integrableOn_modelScaleTail ha
 
 /-- A spatial absolute-integral estimate by the source scale envelope turns
-directly into center--scale integrability.  This is the measure-theoretic
+directly into center--scale integrability. This is the measure-theoretic
 consumer of the small- and large-scale estimates in `lem:model_convergence`.
 -/
 theorem integrableOn_centerScale_of_spatial_scale_bound
@@ -8429,7 +8431,7 @@ theorem integrableOn_centerScale_of_spatial_scale_bound
       (∫ p : E3, ‖g (p, t)‖) ≤ C * min (t ^ a) (t ^ (-a))) :
     IntegrableOn g (Set.univ ×ˢ Set.Ioi (0 : ℝ)) cubeScaleMeasure := by
   let ν : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
-  letI : SFinite ν := by
+  let : SFinite ν := by
     dsimp only [ν]
     infer_instance
   unfold IntegrableOn cubeScaleMeasure
@@ -8560,7 +8562,7 @@ theorem tendsto_modelScaleTruncation_of_bound
 
 /-! ### Coefficient cutoffs and finite-forest transfer -/
 
-/-- Restrict a scale coefficient to a measurable scale set.  This is the
+/-- Restrict a scale coefficient to a measurable scale set. This is the
 literal replacement `c ↦ c 1_A` used to transfer finite-forest estimates to
 scale truncations. -/
 noncomputable def RestrictScaleCoefficient
@@ -8706,7 +8708,7 @@ theorem activeStoppingForest_bound_of_realSchwartz
     (initialModelRealInput_bounded F) hfinite hcs henergy hint
 
 /-- The exact distributional interface remaining after the finite stopping
-argument.  A maximal-function proof supplies this inequality with the desired
+argument. A maximal-function proof supplies this inequality with the desired
 product of `L^p` norms as `W`. -/
 theorem initialModel_bound_of_coordinateEnvelope_bound
     (α : Anisotropy) (S : BoxCollection α) (hS : IsConvexCollection α S)
@@ -9015,7 +9017,7 @@ theorem integrable_modelPassiveKernel_collection_at_scale
       ((cubeScaleMeasure.restrict (collectionRegion α S)).prod volume) := by
   let μ : Measure (E3 × ℝ) :=
     cubeScaleMeasure.restrict (collectionRegion α S)
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     exact isFiniteMeasure_cubeScaleCollection α S
   have hpos : ∀ᵐ pt ∂μ, 0 < pt.2 := by
@@ -9089,11 +9091,11 @@ theorem integrable_modelPassiveKernel_collection_sourceScale
     cubeScaleMeasure.restrict (collectionRegion α S)
   let ν : Measure ℝ := (volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))
   let e := outerLambdaShuffleRight (E3 × ℝ) ModelE5
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     exact isFiniteMeasure_cubeScaleCollection α S
-  letI : SigmaFinite μ := IsFiniteMeasure.toSigmaFinite μ
-  letI : SFinite (μ.prod (volume : Measure ModelE5)) := by
+  let : SigmaFinite μ := IsFiniteMeasure.toSigmaFinite μ
+  let : SFinite (μ.prod (volume : Measure ModelE5)) := by
     infer_instance
   have hpos : ∀ᵐ pt ∂μ, 0 < pt.2 := by
     dsimp only [μ]
@@ -9478,7 +9480,7 @@ theorem integrable_modelSecondSuperpositionJoint_of_boundedContinuous
     using hle
 
 /-- The annular physical cutoff is nonzero, hence its absolute `L¹` mass is
-strictly positive.  This permits recovery of the first cube form from the
+strictly positive. This permits recovery of the first cube form from the
 first superposition after its annular variable has been integrated out. -/
 theorem conePsiPhysicalRealL1_pos : 0 < conePsiPhysicalRealL1 := by
   have hnonzero : ∃ x : ℝ, conePsiPhysicalReal x ≠ 0 := by
@@ -9529,7 +9531,7 @@ theorem integrableOn_modelFirstCubeComparison_of_boundedContinuous
   have hFbound : ∀ j, ∃ B : ℝ, 0 ≤ B ∧ ∀ y,
       |modelFirstCubeTuple f j y| ≤ B :=
     bounded_modelFirstCubeTuple f hfbound
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -9703,10 +9705,10 @@ theorem modelSecondSuperpositionShuffle_measurePreserving
   let η : Measure ModelE5 := volume
   let κ : Measure (TransverseSpace 2 × TransverseSpace 2) :=
     (volume : Measure (TransverseSpace 2)).prod volume
-  letI : SFinite ν := by
+  let : SFinite ν := by
     dsimp only [ν]
     infer_instance
-  letI : SFinite (ν.prod (volume : Measure ℝ)) := by
+  let : SFinite (ν.prod (volume : Measure ℝ)) := by
     infer_instance
   have h₁ : MeasurePreserving (outerLambdaShuffleRight (E3 × ℝ) ModelE5)
       (μ.prod (η.prod ν)) (ν.prod (μ.prod η)) := by
@@ -9767,17 +9769,17 @@ theorem integrable_modelSecondCubeComparison_of_boundedContinuous
   let ν : Measure ℝ := (volume : Measure ℝ).restrict (Set.Ici (1 : ℝ))
   let κ : Measure (TransverseSpace 2 × TransverseSpace 2) :=
     (volume : Measure (TransverseSpace 2)).prod volume
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     exact isFiniteMeasure_cubeScaleCollection α S
-  letI : SFinite ν := by
+  let : SFinite ν := by
     dsimp only [ν]
     infer_instance
-  letI : SFinite (ν.prod (volume : Measure ℝ)) := by infer_instance
-  letI : SFinite κ := by
+  let : SFinite (ν.prod (volume : Measure ℝ)) := by infer_instance
+  let : SFinite κ := by
     dsimp only [κ]
     infer_instance
-  letI : SFinite (μ.prod κ) := by infer_instance
+  let : SFinite (μ.prod κ) := by infer_instance
   let e := modelSecondSuperpositionShuffle
   let G : (ℝ × ℝ) × ((E3 × ℝ) ×
       (TransverseSpace 2 × TransverseSpace 2)) → ℝ := fun q ↦
@@ -9979,7 +9981,7 @@ theorem integrable_outerModelSignedFiber_of_boundedContinuous
       (cubeScaleMeasure.restrict (collectionRegion α S)) := by
   let μ : Measure (E3 × ℝ) :=
     cubeScaleMeasure.restrict (collectionRegion α S)
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     exact isFiniteMeasure_cubeScaleCollection α S
   have hjoint := integrable_modelSignedIntegrand_of_boundedContinuous
@@ -10063,7 +10065,7 @@ theorem activeStoppingForest_bound_of_realSchwartz_auto
         α S u c F hcmeas hc)
 
 /-- A positive superlevel set has finite volume whenever the function tends
-to zero at spatial infinity.  This is the topological last step needed for
+to zero at spatial infinity. This is the topological last step needed for
 the stopping maximal-level regions. -/
 theorem volume_ne_top_of_tendsto_cocompact_zero
     (g : E3 → ℝ) (θ : ℝ) (hθ : 0 < θ)
@@ -10420,7 +10422,7 @@ theorem activeStoppingForest_bound_of_realSchwartz_auto_of_ne_zero
 
 /-- The finite real-Schwartz active stopping-forest estimate follows from
 the branchwise finite-exponent maximal estimates of the source maximal-size
-lemma.  Thus only those maximal `L^p` estimates remain analytic input. -/
+lemma. Thus only those maximal `L^p` estimates remain analytic input. -/
 theorem activeStoppingForest_bound_of_realSchwartz_auto_of_ne_zero_of_branch_memLp
     (α : Anisotropy) (S : BoxCollection α) (hS : IsConvexCollection α S)
     (u : E3) (c : ℝ → ℝ) (F : InitialModelSchwartzInput)
@@ -10504,7 +10506,7 @@ theorem expandedModelLocalForm_eq_zero_of_component_eq_zero
     simp
 
 /-- The finite dyadic local form is zero whenever a real input component is
-zero.  This is the zero branch needed before invoking strict stopping-data
+zero. This is the zero branch needed before invoking strict stopping-data
 positivity. -/
 theorem expandedModelLocalForm_truncation_eq_zero_of_component_eq_zero
     (α : Anisotropy) (N : ℕ) (u : E3) (c : ℝ → ℝ)
@@ -10519,7 +10521,7 @@ theorem ModelSpatialIntegrand_eq_zero_of_component_eq_zero
     (α : Anisotropy) (u : E3) (F : ModelSchwartzInput)
     (t : ℝ) (x : E3) (j : Fin 4) (hzero : F j = 0) :
     ModelSpatialIntegrand α u F t x = 0 := by
-  fin_cases j <;> simp at hzero
+  fin_cases j <;> simp only [Fin.zero_eta, Fin.isValue, Fin.mk_one, Fin.reduceFinMk] at hzero
   all_goals unfold ModelSpatialIntegrand
   · rw [hzero]
     simp
@@ -10720,7 +10722,7 @@ theorem stronglyMeasurable_ModelSpatialIntegrand
   exact ((h0.mul h1).mul h2).mul h3
 
 /-- A joint strongly measurable spatial integrand has a strongly measurable
-scale profile.  This is the exact Fubini-measurability step needed by the
+scale profile. This is the exact Fubini-measurability step needed by the
 full-profile convergence bridge. -/
 theorem stronglyMeasurable_modelSpatialProfile_of_joint
     (α : Anisotropy) (u : E3) (F : ModelSchwartzInput)
@@ -10756,7 +10758,7 @@ theorem aestronglyMeasurable_modelScaleProfile_of_joint
     (stronglyMeasurable_modelSpatialProfile_of_joint α u F hjoint).aestronglyMeasurable
 
 /-- This discharges the `hmeas` premise in the profile-to-full-form bridge
-for every measurable bounded coefficient and every Schwartz input tuple.  A
+for every measurable bounded coefficient and every Schwartz input tuple. A
 bound on `c` is not needed for measurability itself. -/
 theorem aestronglyMeasurable_modelScaleProfile_of_measurable
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
@@ -10805,7 +10807,7 @@ theorem aestronglyMeasurable_modelScaleProfile_truncation_restrict
   exact aestronglyMeasurable_modelScaleProfile_restrict
     α u c F (truncationScaleSet N) hcmeas measurableSet_Ioc
 
-/-- The low-frequency physical kernel is integrable.  This is the large-scale
+/-- The low-frequency physical kernel is integrable. This is the large-scale
 input for the model profile, after its fixed translation in `u`. -/
 theorem integrable_ModelLowKernel (u : ℝ) :
     Integrable (ModelLowKernel u) := by
@@ -10890,7 +10892,7 @@ theorem integral_ModelThirdKernel (u : ℝ) :
     _ = 0 := by rw [integral_gaussianDeriv]; simp
 
 /-- Positive normalized dilation preserves absolute `L¹` mass for an arbitrary
-real kernel.  This packages the recurring change of variables needed for the
+real kernel. This packages the recurring change of variables needed for the
 three model coordinate convolutions. -/
 theorem integral_abs_kernelDilate (k : ℝ → ℝ) {s : ℝ} (hs : 0 < s) :
     ∫ x : ℝ, |kernelDilate k s x| = ∫ x : ℝ, |k x| := by
@@ -11186,7 +11188,7 @@ theorem integral_E3_centerTriple_kernel_product
         s₀ s₁ s₂ u₀ u₁ u₂ x₀ x₁ x₂ y₀ y₁ y₂ hs₀ hs₁ hs₂
 
 /-- Fubini lifts the center calculation through any absolutely integrable
-outer parameter.  This is the form used when the remaining six spatial
+outer parameter. This is the form used when the remaining six spatial
 variables carry the four model inputs. -/
 theorem integral_centerTriple_weighted_of_integrable
     {X : Type*} [MeasurableSpace X] (μ : Measure X) [SFinite μ]
@@ -11274,13 +11276,13 @@ theorem integrable_ModelThirdKernel_dilate
 /-! ## Section 6: Schwartz maximal-function bridges
 
 This scratch development keeps the source's literal all-positive-scales
-anisotropic maxima.  The initial block isolates elementary fixed-scale and
+anisotropic maxima. The initial block isolates elementary fixed-scale and
 finite-scale facts which are reusable independently of the remaining
 Hardy--Littlewood iteration.
 -/
 
 /-- The real-valued Schwartz inputs used in the initial model range have an
-explicit polynomial tail in the Euclidean norm.  This is the real analogue of
+explicit polynomial tail in the Euclidean norm. This is the real analogue of
 the earlier complex Schwartz decay extractor, stated here because Section 6
 uses real second and fourth moments. -/
 theorem realSchwartz_decay_norm
@@ -11304,7 +11306,7 @@ theorem realSchwartz_decay_norm
       (m := (r, 0)) le_rfl le_rfl f x)
 
 /-- The Euclidean norm on the literal three-coordinate source space is at
-most the coordinate `ℓ¹` norm.  Keeping this elementary comparison explicit
+most the coordinate `ℓ¹` norm. Keeping this elementary comparison explicit
 lets later kernel estimates reduce spatial escape to one coordinate. -/
 theorem norm_le_sum_abs (v : E3) :
     ‖v‖ ≤ |v 0| + |v 1| + |v 2| := by
@@ -11441,7 +11443,7 @@ theorem anisotropicBracketKernel_le_radial
       exact inv_nonneg.mpr (hs i).le
 
 /-- A fixed anisotropic comparison kernel vanishes when its center escapes to
-spatial infinity.  This is the pointwise tail input for dominated convergence
+spatial infinity. This is the pointwise tail input for dominated convergence
 in the fixed-scale second and fourth moments. -/
 theorem tendsto_anisotropicBracketKernel_center
     (α : Anisotropy) {t : ℝ} (ht : 0 < t) (y : E3) :
@@ -11505,7 +11507,7 @@ theorem anisotropicBracketKernel_le_scaleDensity
       intro i _
       simp only [smul_eq_mul]
     _ ≤ ∏ i : Fin 3, ((t ^ α.weight i)⁻¹ * 1) := by
-      apply Finset.prod_le_prod
+      apply Finset.prod_le_prod₀
       · intro i _
         exact mul_nonneg (inv_nonneg.mpr (hs i).le) (bracketKernel_nonneg _)
       · intro i _
@@ -11514,14 +11516,14 @@ theorem anisotropicBracketKernel_le_scaleDensity
     _ = ∏ i : Fin 3, (t ^ α.weight i)⁻¹ := by simp
 
 /-- Dominated convergence turns the fixed-kernel tail into a tail for a
-fixed-scale second moment.  The hypotheses are deliberately analytic rather
+fixed-scale second moment. The hypotheses are deliberately analytic rather
 than Schwartz-specific, so the later Schwartz corollary has no hidden gap. -/
 theorem tendsto_cubeSecondMoment_fixedScale
     (α : Anisotropy) {t : ℝ} (ht : 0 < t) (f : E3 → ℝ)
     (hfcont : Continuous f) (hfSq : Integrable (fun y : E3 ↦ f y ^ 2)) :
     Tendsto (fun p : E3 ↦ cubeSecondMoment α t p f)
       (cocompact E3) (𝓝 0) := by
-  letI : (cocompact E3).IsCountablyGenerated := by
+  let : (cocompact E3).IsCountablyGenerated := by
     rw [← comap_dist_left_atTop_eq_cocompact (0 : E3)]
     infer_instance
   let C : ℝ := ∏ i : Fin 3, (t ^ α.weight i)⁻¹
@@ -11574,7 +11576,7 @@ theorem bracketKernelAt_le_inv_scale {s : ℝ} (hs : 0 < s)
     (bracketKernel_le_one ((y - p) / s)) (inv_nonneg.mpr hs.le)
 
 /-- Away from the center, a small-scale bracket kernel has a uniform
-polynomial bound.  The deliberately generous constant keeps later
+polynomial bound. The deliberately generous constant keeps later
 annular bookkeeping elementary. -/
 theorem bracketKernelAt_le_remote
     {s p y : ℝ} (hs : 0 < s) (hp : 1 ≤ |p|)
@@ -11718,7 +11720,7 @@ theorem integral_bracketKernel_mul_bracketKernelAt_le_largeScale
       rw [MeasureTheory.integral_const_mul, integral_bracketKernel]
 
 /-- At smaller scales, either the center kernel is remote or the unit
-bracket is remote.  This pointwise dichotomy is the core of the uniform
+bracket is remote. This pointwise dichotomy is the core of the uniform
 one-dimensional tail estimate. -/
 theorem bracketKernel_mul_bracketKernelAt_le_smallScale
     {s p y : ℝ} (hs : 0 < s) (hp : 1 ≤ |p|)
@@ -11777,7 +11779,7 @@ theorem integral_bracketKernel_mul_bracketKernelAt_le_smallScale
     _ = ((2 : ℝ) ^ 10 / |p|) * ((2 / 9) + (2 / 9)) := by
       rw [integral_bracketKernel, integral_bracketKernelAt hs p]
 
-/-- A single, scale-uniform one-dimensional polynomial envelope.  This is
+/-- A single, scale-uniform one-dimensional polynomial envelope. This is
 the precise replacement for the annular-decomposition step in the source:
 the constant is intentionally coarse, while the decay is uniform over every
 positive dilation. -/
@@ -11862,7 +11864,7 @@ theorem radial_bracket_neg_thirty_le_prod_bracketKernel (v : E3) :
       Real.rpow_le_rpow_of_nonpos hprodpos hprod (by norm_num)
 
 /-- Squared real Schwartz data have a separable three-coordinate bracket
-envelope.  Its coefficient is explicit enough for the scale-uniform
+envelope. Its coefficient is explicit enough for the scale-uniform
 convolution calculation, but no choice of a Schwartz seminorm is exposed to
 the eventual maximal-function statement. -/
 theorem realSchwartz_sq_le_prod_bracketKernel
@@ -11909,7 +11911,7 @@ theorem realSchwartz_rpow_four_le_prod_bracketKernel
     exact Finset.prod_nonneg fun i _ ↦ bracketKernel_nonneg _
   have hP1 : P ≤ 1 := by
     dsimp only [P]
-    apply Finset.prod_le_one
+    apply Finset.prod_le_one₀
     · intro i _
       exact bracketKernel_nonneg _
     · intro i _
@@ -11935,7 +11937,7 @@ theorem realSchwartz_rpow_four_le_prod_bracketKernel
     _ = C ^ 2 * ∏ i : Fin 3, bracketKernel (y i) := by rfl
 
 /-- The separable bracket envelope times the literal anisotropic kernel is
-integrable.  This is the exact product-measure statement needed to iterate
+integrable. This is the exact product-measure statement needed to iterate
 the one-dimensional scale-uniform estimate. -/
 theorem integrable_prod_bracketKernel_mul_anisotropicBracketKernel
     (α : Anisotropy) {t : ℝ} (ht : 0 < t) (p : E3) :
@@ -12042,7 +12044,7 @@ theorem cubeSecondMoment_le_uniform_product_envelope
   have hprod : (∏ i : Fin 3, ∫ x : ℝ,
       bracketKernel x * bracketKernelAt (t ^ α.weight i) (p i) x) ≤
       ∏ i : Fin 3, ((2 : ℝ) ^ 13 / (1 + |p i|)) := by
-    apply Finset.prod_le_prod
+    apply Finset.prod_le_prod₀
     · intro i _
       exact hfacnonneg i
     · intro i _
@@ -12168,7 +12170,7 @@ theorem tendsto_uniform_maximalEnvelope
   · exact hradial
 
 /-- The full literal exponent-two anisotropic maximal function of a real
-Schwartz input tends to zero at spatial infinity.  This closes the tail
+Schwartz input tends to zero at spatial infinity. This closes the tail
 branch of the source stopping-time finiteness interface without invoking an
 external maximal theorem. -/
 theorem tendsto_anisotropicMaximalTwo_of_realSchwartz
@@ -12250,7 +12252,7 @@ theorem fourthMoment_le_uniform_product_envelope
   have hprod : (∏ i : Fin 3, ∫ x : ℝ,
       bracketKernel x * bracketKernelAt (t ^ α.weight i) (p i) x) ≤
       ∏ i : Fin 3, ((2 : ℝ) ^ 13 / (1 + |p i|)) := by
-    apply Finset.prod_le_prod
+    apply Finset.prod_le_prod₀
     · intro i _
       exact hfacnonneg i
     · intro i _
@@ -12374,7 +12376,7 @@ theorem tendsto_sourceStoppingMaximal_of_initialModelRealSchwartz
       tendsto_anisotropicMaximalFour_of_realSchwartz α (F j)
 
 /-- Consequently, every source stopping level of an initial real Schwartz
-tuple has finite Lebesgue measure.  This is the direct tail-based discharge
+tuple has finite Lebesgue measure. This is the direct tail-based discharge
 of the formerly external maximal-function hypothesis. -/
 theorem sourceStopping_coordinateLevel_finite_of_initialModelRealSchwartz
     (α : Anisotropy) (F : InitialModelSchwartzInput) :
@@ -12994,7 +12996,7 @@ theorem ModelSpatialProfile_eq_expandedKernelIntegral
   filter_upwards [] with x
   exact ModelSpatialIntegrand_eq_kernelIntegral α u F t x
 
-/-- The literal center-expanded integrand at one positive model scale.  The
+/-- The literal center-expanded integrand at one positive model scale. The
 outer pair contains the base point and the three sampled coordinates; the
 last factor is the three-dimensional center. -/
 noncomputable def ModelCenterExpandedIntegrand
@@ -13365,7 +13367,7 @@ theorem measurable_kernelDilate
   exact measurable_const.mul (hk.comp (hr.div measurable_const))
 
 /-- Two translated `L¹` factors remain jointly integrable with an `L¹` base
-factor.  This is the product-space Fubini majorant used for a fixed center
+factor. This is the product-space Fubini majorant used for a fixed center
 expansion. -/
 theorem integrable_two_difference_factors
     (f P Q : E3 → ℝ)
@@ -13866,7 +13868,7 @@ theorem integrable_abs_mul_convolution
 /-! ### Polynomial-decay inputs -/
 
 /-- Fourth-order reciprocal decay gives a finite first absolute moment on the
-real line.  The exponent is intentionally fixed: it is the common uniform
+real line. The exponent is intentionally fixed: it is the common uniform
 decay degree supplied by the Gaussian and Schwartz kernel interfaces. -/
 theorem integrable_abs_mul_of_decay_four
     (f : ℝ → ℝ) (hf : AEStronglyMeasurable f volume)
@@ -14527,7 +14529,7 @@ theorem tendsto_ModelScaleTruncation_of_realSchwartz
 abbrev FiberDyadicBase := EuclideanSpace ℝ (Fin 2)
 abbrev FiberDyadicLine := EuclideanSpace ℝ (Fin 1)
 
-/-- The literal product Lebesgue measure used by the fiber operator.  Naming
+/-- The literal product Lebesgue measure used by the fiber operator. Naming
 it avoids an ambiguity between the product measurable-space instance and the
 derived product `MeasureSpace` instance. -/
 abbrev fiberDyadicMeasure :
@@ -14859,7 +14861,8 @@ theorem fiberDyadicBallMaximal_memLp
   have hpEN0 : ENNReal.ofReal p ≠ 0 := ENNReal.ofReal_ne_zero_iff.mpr hp0
   have hpENT : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
   have hinput : (∫⁻ q, (ENNReal.ofReal ‖G q‖) ^ p ∂fiberDyadicMeasure) < ∞ := by
-    have h := (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hpEN0 hpENT).mp hGp.2
+    have h := (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hpEN0 hpENT
+      hGp.aestronglyMeasurable).mp hGp
     simpa [ENNReal.toReal_ofReal hp0.le, enorm_eq_nnnorm] using h
   have hinv : (ENNReal.ofReal (p - 1))⁻¹ < ∞ := by
     apply ENNReal.inv_lt_top.mpr
@@ -15040,7 +15043,7 @@ theorem coordinateDyadicBallMaximalComplex_memLp
     (ENNReal.ofReal p) volume
   exact (coordinateDyadicBallMaximal_memLp i f hf A hA hbound hp hfp).ofReal
 
-/-- The three-coordinate iterated dyadic maximal operator.  Each stage acts
+/-- The three-coordinate iterated dyadic maximal operator. Each stage acts
 in one ambient coordinate and is retransported back to `E3` before the next
 stage, so no implicit product-coordinate convention is used. -/
 noncomputable def iteratedCoordinateDyadicBallMaximal
@@ -15261,7 +15264,7 @@ theorem fiberDyadicBall_integral_le_dyadic_average_sup_any_radius
       mul_le_mul_of_nonneg_left hrad hfactor_nonneg
 
 /-- The radial version of the source bracket kernel on the one-dimensional
-fiber Euclidean space.  This formulation is invariant under later coordinate
+fiber Euclidean space. This formulation is invariant under later coordinate
 reorderings. -/
 noncomputable def fiberRadialBracket (z : FiberDyadicLine) : ℝ :=
   (1 + ‖z‖) ^ (-10 : ℝ)
@@ -15860,7 +15863,7 @@ theorem sourceStoppingDominantFiberEnvelope_zero_eq
 /-! ## Coordinatewise dyadic bracket majorants -/
 
 /-- On bounded inputs, pointwise domination of norms is preserved by the
-literal real-valued fiber dyadic maximal operator.  Boundedness excludes the
+literal real-valued fiber dyadic maximal operator. Boundedness excludes the
 otherwise exceptional `ENNReal.toReal ⊤` case. -/
 theorem fiberDyadicBallMaximal_mono_of_norm_le
     (G H : FiberDyadicBase × FiberDyadicLine → ℂ)
@@ -15942,7 +15945,7 @@ noncomputable def coordinateFiberRadialBracketMaximal
     a = coordinateFiberRadialBracketAverage i f r p}
 
 /-- The product-fiber shell bound transports exactly to a literal coordinate
-of `E3`.  Its right side is independent of the continuous scale `r`. -/
+of `E3`. Its right side is independent of the continuous scale `r`. -/
 theorem coordinateFiberRadialBracketAverage_le_dyadic
     (i : Fin 3) (f : E3 → ℂ) (hf : Measurable f)
     (A : ℝ) (hA : 0 ≤ A) (hbound : ∀ x, ‖f x‖ ≤ A)
@@ -15984,7 +15987,7 @@ theorem coordinateFiberRadialBracketMaximal_le_dyadic
     exact coordinateFiberRadialBracketAverage_le_dyadic
       i f hf A hA hbound r hr p
 /-- The three-coordinate dyadic majorant with the positive shell constant
-inserted between stages.  This nesting is designed to consume repeated
+inserted between stages. This nesting is designed to consume repeated
 positive-kernel dominations without requiring an additional homogeneity lemma
 for the real-valued dyadic supremum. -/
 noncomputable def scaledIteratedCoordinateDyadicBallMaximal
@@ -16081,7 +16084,7 @@ theorem scaledIteratedCoordinateDyadicBallMaximal_memLp_of_realSchwartz
 
 /-- Every real Schwartz input has finite `L^p` norm after the three literal
 coordinatewise dyadic maximal iterations, for every finite exponent above
-one.  This is the direct interface consumed once the bracket convolution is
+one. This is the direct interface consumed once the bracket convolution is
 pointwise dominated by the iterated operator. -/
 theorem iteratedCoordinateDyadicBallMaximal_memLp_of_realSchwartz
     (f : SchwartzMap E3 ℝ) {p : ℝ} (hp : 1 < p) :
@@ -16131,7 +16134,7 @@ theorem integral_truncationFiberIntegrand_restrictScale
   rw [hcut, setIntegral_indicator hV, Set.inter_eq_right.mpr hVP]
 
 /-- For a fixed positive scale band, the finite collections exhaust the
-centers while the cutoff coefficient keeps the scale variable fixed.  This
+centers while the cutoff coefficient keeps the scale variable fixed. This
 is the first, source-faithful limit in `lem:model_convergence`. -/
 theorem tendsto_expandedModelLocalForm_centerExhaustion_restrictScale
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelRealInput)
@@ -16179,7 +16182,7 @@ theorem tendsto_expandedModelLocalForm_centerExhaustion_truncationScale
     (truncationScaleSet_subset_positive N) hglobal
 
 /-- Opening the translation variable in the second fiber recovers the
-intermediate third-coordinate kernel.  This is the signed scalar identity
+intermediate third-coordinate kernel. This is the signed scalar identity
 whose orientation is needed before applying the two fiber Fubini steps. -/
 theorem modelThirdKernel_eq_integral_shiftedDerivative
     (u s p y : ℝ) (hs : 0 < s) :
@@ -16333,12 +16336,12 @@ theorem integral_truncationFiberIntegrand_eq_fullyExpanded_of_integrable
         modelFiberFullyExpandedIntegrand α u c f q
         ∂(((cubeScaleMeasure.restrict V).prod (volume : Measure ModelE5)).prod
           ((volume : Measure ℝ).prod volume)) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
   let μ : Measure (E3 × ℝ) := cubeScaleMeasure.restrict V
-  letI : SFinite μ := by
+  let : SFinite μ := by
     dsimp only [μ]
     infer_instance
   let G : ((E3 × ℝ) × ModelE5) × (ℝ × ℝ) → ℝ :=
@@ -16383,7 +16386,7 @@ theorem integral_truncationFiberIntegrand_eq_fullyExpanded_of_integrable
           exact (MeasureTheory.integral_prod _ hG).symm
 
 /-- The center-expanded integrand before the last translation variable has
-been integrated.  It is the exact target of the coordinate reordering of
+been integrated. It is the exact target of the coordinate reordering of
 the fully opened two-fiber expression. -/
 noncomputable def ModelCenterTranslationIntegrand
     (α : Anisotropy) (u : E3) (F : ModelSchwartzInput) (t : ℝ)
@@ -16524,9 +16527,8 @@ theorem integral_centerTranslationScale_eq_centerExpandedScale
               α u F t (hApos ht) htint]
 
 /-- This reduces the fiber-to-profile slab identity to one explicit
-coordinate-transport equality.  The latter only permutes/open variables;
+coordinate-transport equality. The latter only permutes/open variables;
 the signed translation and all fiber Fubini steps are discharged above. -/
-
 theorem truncationFiber_centerFubini_of_fullyExpandedTransport
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
     (A : Set ℝ) (hA : MeasurableSet A) (hApos : A ⊆ Set.Ioi (0 : ℝ))
@@ -16589,12 +16591,12 @@ theorem integrableOn_truncationFiberIntegrand_of_fullyExpanded
       (((cubeScaleMeasure.restrict V).prod (volume : Measure ModelE5)).prod
         ((volume : Measure ℝ).prod volume))) :
     IntegrableOn (truncationFiberIntegrand α u c f) V cubeScaleMeasure := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
   let μ : Measure (E3 × ℝ) := cubeScaleMeasure.restrict V
-  letI : SFinite μ := by
+  let : SFinite μ := by
     dsimp only [μ]
     infer_instance
   let G : ((E3 × ℝ) × ModelE5) × (ℝ × ℝ) → ℝ :=
@@ -16656,7 +16658,7 @@ theorem integrableOn_truncationFiberIntegrand_restrictScale_of_fullyExpanded
 
 /-- The only nonformal Fubini input in the fixed-scale localization is the
 identification of the fully opened fiber slab with the center-expanded
-integral.  Once it is available, the already proved signed center identity
+integral. Once it is available, the already proved signed center identity
 gives the literal finite scale truncation, with the sign fixed. -/
 theorem neg_integral_truncationFiberIntegrand_eq_ModelScaleTruncation_of_centerFubini
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
@@ -16722,7 +16724,7 @@ theorem neg_integral_truncationFiberIntegrand_eq_ModelScaleTruncation
       α u c F (truncationScaleSet N) measurableSet_Ioc
       (truncationScaleSet_subset_positive N) hcenterFubini
 
-/-- The source-faithful two-index localization statement.  The scale band
+/-- The source-faithful two-index localization statement. The scale band
 is held fixed while the finite collections exhaust spatial centers. -/
 theorem tendsto_expandedModelLocalForm_twoIndex_localization
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput) (N : ℕ)
@@ -16880,9 +16882,8 @@ theorem modelFullForm_bound_of_twoIndex_fullyExpanded_and_uniformForest
   · exact hforest
 
 /-- First expose the five passive model coordinates and then move the two
-active fiber variables next to them.  This is the measure-theoretic core of
+active fiber variables next to them. This is the measure-theoretic core of
 the remaining center-translation transport. -/
-
 noncomputable def modelFiberPassiveActiveReorder :
     ((E3 × ℝ) × ModelE5) × (ℝ × ℝ) ≃ᵐ
       (((E3 × ℝ) × (TransverseSpace 2 × TransverseSpace 2)) ×
@@ -17067,6 +17068,7 @@ theorem modelFiberCenterFinalReorder_measurePreserving
       (ν.prod ((((volume : Measure E3).prod volume).prod
         (volume : Measure E3)).prod volume)) := by
   let κ : Measure (E3 × E3) := (volume : Measure E3).prod volume
+  let : SFinite κ := by dsimp [κ]; infer_instance
   let h₁ : MeasurePreserving
       (MeasurableEquiv.prodAssoc :
         ((E3 × ℝ) × (E3 × E3)) × ℝ ≃ᵐ
@@ -17109,7 +17111,7 @@ theorem modelFiberCenterFinalReorder_measurePreserving
   simpa only [modelFiberCenterFinalReorder, κ] using
     (((h₁.trans h₂).trans h₃).trans h₄).trans h₅
 
-/-- The full product-space coordinate transport.  It converts the opened
+/-- The full product-space coordinate transport. It converts the opened
 model-fiber variables into the scale, two sampled points, center, and
 translation variable used by the center-expanded local form. -/
 noncomputable def modelFiberCenterReorder :
@@ -17136,19 +17138,19 @@ theorem modelFiberCenterReorder_measurePreserving
   let μ : Measure (E3 × ℝ) := (volume : Measure E3).prod ν
   let κ : Measure (TransverseSpace 2 × TransverseSpace 2) :=
     (volume : Measure (TransverseSpace 2)).prod volume
-  letI : SFinite μ := by
+  let : SFinite μ := by
     dsimp only [μ]
     infer_instance
-  letI : SFinite κ := by
+  let : SFinite κ := by
     dsimp only [κ]
     infer_instance
-  letI : SFinite ((volume : Measure ℝ).prod (volume : Measure ℝ)) := by
+  let : SFinite ((volume : Measure ℝ).prod (volume : Measure ℝ)) := by
     infer_instance
-  letI : SFinite (μ.prod κ) := by infer_instance
-  letI : SFinite ((μ.prod κ).prod
+  let : SFinite (μ.prod κ) := by infer_instance
+  let : SFinite ((μ.prod κ).prod
       ((volume : Measure ℝ).prod (volume : Measure ℝ))) := by
     infer_instance
-  letI : SFinite (μ.prod (volume : Measure E6)) := by infer_instance
+  let : SFinite (μ.prod (volume : Measure E6)) := by infer_instance
   let h₁ := modelFiberPassiveActiveReorder_measurePreserving μ
   let h₂ : MeasurePreserving
       (MeasurableEquiv.prodCongr (cubeCenterActivePassiveSplit 2).symm
@@ -17288,7 +17290,6 @@ theorem modelFiberFullyExpandedIntegrand_centerReorder_symm
 coordinate transport to the scale--center--translation variables literal.
 In particular, the previously external slab transport hypothesis is only
 Fubini bookkeeping. -/
-
 theorem integral_fullyExpanded_eq_centerTranslationScale
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
     (A : Set ℝ)
@@ -17308,8 +17309,13 @@ theorem integral_fullyExpanded_eq_centerTranslationScale
         ∂((volume : Measure ℝ).withDensity cubeScaleDensity) := by
   let ν : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity
   let νA : Measure ℝ := ν.restrict A
+  let : SFinite (((volume : Measure E3).prod (volume : Measure E3)).prod
+      (volume : Measure E3)) := inferInstance
   let η : Measure (((E3 × E3) × E3) × ℝ) :=
     ((((volume : Measure E3).prod volume).prod volume).prod volume)
+  let : SFinite η := by
+    dsimp [η]
+    infer_instance
   let G : ((E3 × ℝ) × ModelE5) × (ℝ × ℝ) → ℝ :=
     modelFiberFullyExpandedIntegrand α u c (InitialModelRealInput F)
   let e := modelFiberCenterReorder
@@ -17362,7 +17368,7 @@ theorem integral_fullyExpanded_eq_centerTranslationScale
       rfl
 
 /-- The fixed scale-band fiber-to-profile identity with no external
-coordinate-transport assumption.  The only residual analytic premise is
+coordinate-transport assumption. The only residual analytic premise is
 absolute integrability of the raw translation-open center fibers. -/
 theorem truncationFiber_centerFubini_of_fullyExpanded
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
@@ -17412,7 +17418,7 @@ theorem tendsto_expandedModelLocalForm_twoIndex_of_fullyExpanded_raw
       (truncationScaleSet_subset_positive N) hfull hraw
 
 /-- A complete two-index consumer in which the cutoff outer-fiber and
-center-transport hypotheses have both been discharged.  It is ready for an
+center-transport hypotheses have both been discharged. It is ready for an
 analytic proof of the remaining raw center-fiber integrability premise. -/
 theorem modelFullForm_bound_of_twoIndex_fullyExpanded_raw_and_uniformForest
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
@@ -17954,7 +17960,7 @@ theorem modelFullForm_bound_of_twoIndex_fullyExpanded_auto_and_uniformForest
 
 /-- The tree-energy constants can be selected once for a fixed anisotropy,
 before the finite collection, the coefficient, and the Schwartz tuple are
-chosen.  This is the uniformity needed by the two-index exhaustion. -/
+chosen. This is the uniformity needed by the two-index exhaustion. -/
 theorem exists_uniform_activeStoppingForest_constant
     (α : Anisotropy) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (S : BoxCollection α)
@@ -18022,7 +18028,7 @@ theorem exists_uniform_activeStoppingForest_constant
 /-! ## Scalar stopping distributions
 
 The finite forest construction has already reduced its global packing
-estimate to four maximal-function level sums.  The following lemmas make the
+estimate to four maximal-function level sums. The following lemmas make the
 finite layer-cake conversion explicit, so it can consume the measurable
 coordinatewise maximal majorants constructed below. -/
 
@@ -18468,7 +18474,6 @@ theorem expandedModelLocalForm_initial_rescale
     (InitialModelRealInput F)
 
 /-! ## Literal coordinate-fiber bracket identification -/
-
 theorem e3ToFiberDyadicCoordinates_snd
     (i : Fin 3) (p : E3) :
     (e3ToFiberDyadicCoordinates i p).2 = realToFiberDyadicLine (p i) := by
@@ -18772,7 +18777,7 @@ theorem coordinateBracketConvolution_eq_coordinateFiber
     i f r (p i) (coordinateSplit i p).2 hr, hp]
 
 /-- A bounded measurable coordinate bracket convolution is Borel measurable
-in its ambient center.  This is the Fubini measurability input needed to
+in its ambient center. This is the Fubini measurability input needed to
 iterate the one-dimensional estimate. -/
 theorem coordinateBracketConvolution_measurable
     (i : Fin 3) (f : E3 → ℂ) (hf : Measurable f) (r : ℝ) :
@@ -18994,7 +18999,7 @@ theorem integral_norm_mul_anisotropicBracketKernel_eq_iterated
       rw [faceInsert_zero_coordinateSplit_modelPoint, modelPoint_zero]
 
 /-- Three literal positive coordinate bracket convolutions are dominated by
-the shell-scaled three-coordinate dyadic maximal operator.  The proof keeps
+the shell-scaled three-coordinate dyadic maximal operator. The proof keeps
 the shell constant after every stage, matching the operator's definition. -/
 theorem integral_norm_mul_anisotropicBracketKernel_le_scaledDyadic
     (α : Anisotropy) (f : E3 → ℂ) (hf : Measurable f)
@@ -19115,7 +19120,7 @@ theorem integral_norm_mul_anisotropicBracketKernel_le_scaledDyadic
 
 /-- A fixed-scale second moment is dominated by the shell-scaled iterated
 dyadic maximal function of any Schwartz representative whose norm is the
-literal square.  This form leaves the choice of power representative to the
+literal square. This form leaves the choice of power representative to the
 stopping construction. -/
 theorem cubeSecondMoment_le_scaledDyadic_of_norm_eq_square
     (α : Anisotropy) (f : E3 → ℝ) (g : Schwartz3)
@@ -19268,7 +19273,7 @@ noncomputable def dyadicStrongFactor (K p : ℝ) : ℝ≥0∞ :=
         (ENNReal.ofReal (2 : ℝ)) ^ (p - 1)))
 
 /-- Three successive literal-coordinate dyadic maximal operations have an
-explicit strong `L^p` bound.  This is the quantitative upgrade of the
+explicit strong `L^p` bound. This is the quantitative upgrade of the
 earlier `MemLp`-only terminal. -/
 theorem scaledIteratedCoordinateDyadicBallMaximal_lintegral_bound
     (K : ℝ) (hK : 0 ≤ K) (f : E3 → ℂ) (hf : Measurable f)
@@ -19587,7 +19592,7 @@ theorem measurable_norm_rpow
   exact (Real.continuous_rpow_const hs).measurable.comp hG.norm
 
 /-- The `q`-power of an `s`-root majorant is integrable if the unrooted
-majorant belongs to `L^(q/s)`.  This is the exact scalar conversion needed by
+majorant belongs to `L^(q/s)`. This is the exact scalar conversion needed by
 the stopping layer-cake estimate. -/
 theorem integrable_norm_rpow_inv_rpow_of_memLp
     (G : E3 → ℂ) (_hG : Measurable G) (q s : ℝ)
@@ -19736,7 +19741,7 @@ theorem sourceStoppingRootMajorant_memLp
     abs_of_nonneg (sourceStoppingRootMajorant_nonneg K F j x)]
 
 /-- The quantitative three-coordinate dyadic estimate specialized to the
-power representative at one stopping coordinate.  This is still expressed
+power representative at one stopping coordinate. This is still expressed
 in terms of that representative, before the elementary `s`th-power algebra
 returns to the original input. -/
 theorem sourceStoppingPowerMajorant_integral_bound
@@ -19799,7 +19804,6 @@ theorem sourceStoppingPowerRepresentative_norm_rpow_eq_input_rpow
     congr 1
     field_simp
     ring
-
   · rw [complexifyRealSchwartz_apply,
       sourceStoppingPowerRepresentative_apply_of_ne_three F hj,
       Complex.norm_real, Real.norm_eq_abs,
@@ -19966,7 +19970,7 @@ theorem sourceStoppingMaximal_le_rootMajorant_of_fixedScale
         rw [sourceStoppingExponent_eq_four_of_ne_three hj]
 
 /-- The initial finite stopping distribution is bounded by the four literal
-dyadic power-majorant integrals.  The only analytic inputs are the fixed-scale
+dyadic power-majorant integrals. The only analytic inputs are the fixed-scale
 second/fourth bracket bounds; all root, measurability, `L^(q/s)`, and
 layer-cake bookkeeping is discharged here. -/
 theorem initialSourceStoppingCoordinateEnvelope_le_powerDyadic
@@ -20056,7 +20060,7 @@ theorem initialSourceStoppingCoordinateEnvelope_le_powerDyadic_unrooted
       field_simp
 
 /-- A quantitative dyadic `L^(q_j/s_j)` estimate for each powered input can
-be substituted directly into the initial stopping distribution.  This is the
+be substituted directly into the initial stopping distribution. This is the
 normalization-ready interface: later one takes `B_j` to be a fixed constant
 times the `q_j`-power input norm. -/
 theorem initialSourceStoppingCoordinateEnvelope_le_of_powerDyadic_bounds
@@ -20097,7 +20101,7 @@ theorem initialSourceStoppingCoordinateEnvelope_le_of_powerDyadic_bounds
     _ ≤ ∑ j : Fin 4, B j := by
       exact Finset.sum_le_sum fun j _ ↦ hB j
 
-/-- Product-norm-facing specialization of the preceding interface.  A
+/-- Product-norm-facing specialization of the preceding interface. A
 quantitative dyadic strong-type estimate is supplied exactly in the form
 needed to bound each powered-majorant integral by the `q_j`-power integral of
 the original input. -/
@@ -20131,7 +20135,7 @@ theorem initialSourceStoppingCoordinateEnvelope_le_inputPowerIntegrals
 
 /-- Fully quantitative initial stopping distribution for real Schwartz
 input, conditional only on the literal fixed-scale second/fourth bracket
-majorants.  The dyadic strong-type and root conversions have all been
+majorants. The dyadic strong-type and root conversions have all been
 discharged, leaving the explicit coordinate constants below. -/
 theorem initialSourceStoppingCoordinateEnvelope_le_explicitInputPowers
     (α : Anisotropy) (S : BoxCollection α) (F : InitialModelSchwartzInput)
@@ -20160,7 +20164,7 @@ theorem initialSourceStoppingCoordinateEnvelope_le_explicitInputPowers
 
 /-- The initial stopping distribution for real Schwartz data follows from the
 literal bracket-kernel shell majorants, with no remaining fixed-scale
-assumptions.  The explicit coefficient retains the three coordinate dyadic
+assumptions. The explicit coefficient retains the three coordinate dyadic
 strong-type factors and the source layer-cake constants. -/
 theorem initialSourceStoppingCoordinateEnvelope_le_explicitInputPowers_of_realSchwartz
     (α : Anisotropy) (S : BoxCollection α) (F : InitialModelSchwartzInput)
@@ -20813,7 +20817,7 @@ theorem measurable_modelCenterMajorant_joint
   rfl
 
 /-- On every finite positive scale measure, the separated center majorant is
-jointly integrable.  Its spatial mass is independent of the scale. -/
+jointly integrable. Its spatial mass is independent of the scale. -/
 theorem integrable_modelCenterMajorant_joint_of_isFinite
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (A : E3 → ℝ)
     (ν : Measure ℝ) [IsFiniteMeasure ν]
@@ -20825,9 +20829,14 @@ theorem integrable_modelCenterMajorant_joint_of_isFinite
       modelCenterMajorant α u c A z.1 z.2)
       (ν.prod (((volume : Measure E3).prod volume).prod
         ((volume : Measure E3).prod volume))) := by
+  let : SFinite ((volume : Measure E3).prod (volume : Measure E3)) := inferInstance
+  let : SFinite ((volume : Measure E3).prod (volume : Measure ℝ)) := inferInstance
   let μ : Measure ((E3 × E3) × (E3 × ℝ)) :=
     ((volume : Measure E3).prod volume).prod
       ((volume : Measure E3).prod volume)
+  let : SFinite μ := by
+    dsimp [μ]
+    infer_instance
   let Pmass : ℝ :=
     (∫ r : ℝ, |conePhiPhysicalReal r|) ^ 2 *
       ∫ r : ℝ, |gaussianDeriv r|
@@ -21011,11 +21020,21 @@ theorem integrable_modelRawCenterMajorant_of_isFinite
     (hpos : ∀ᵐ t ∂ν, 0 < t) :
     Integrable (modelRawCenterMajorant α u c A)
       (ν.prod ((((volume : Measure E3).prod volume).prod volume).prod volume)) := by
+  let : SFinite (((volume : Measure E3).prod (volume : Measure E3)).prod
+      (volume : Measure E3)) := inferInstance
   let η : Measure (((E3 × E3) × E3) × ℝ) :=
     (((volume : Measure E3).prod volume).prod volume).prod volume
+  let : SFinite η := by
+    dsimp [η]
+    infer_instance
+  let : SFinite ((volume : Measure E3).prod (volume : Measure E3)) := inferInstance
+  let : SFinite ((volume : Measure E3).prod (volume : Measure ℝ)) := inferInstance
   let μ : Measure ((E3 × E3) × (E3 × ℝ)) :=
     ((volume : Measure E3).prod volume).prod
       ((volume : Measure E3).prod volume)
+  let : SFinite μ := by
+    dsimp [μ]
+    infer_instance
   have hbase : Integrable (fun z : ℝ × ((E3 × E3) × (E3 × ℝ)) ↦
       modelCenterMajorant α u c A z.1 z.2) (ν.prod μ) := by
     simpa only [μ] using integrable_modelCenterMajorant_joint_of_isFinite
@@ -21292,7 +21311,7 @@ theorem integrable_coefficient_modelCenterTranslation_truncationScale
         ((((volume : Measure E3).prod volume).prod volume).prod volume)) := by
   let ν : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
     (truncationScaleSet N)
-  letI : IsFiniteMeasure ν := by
+  let : IsFiniteMeasure ν := by
     dsimp only [ν]
     exact isFiniteMeasure_truncationScaleSet N
   apply integrable_coefficient_modelCenterTranslation_of_isFinite
@@ -21311,8 +21330,13 @@ theorem integrable_modelFiberFullyExpanded_truncationScale
         (volume : Measure ModelE5)).prod ((volume : Measure ℝ).prod volume)) := by
   let ν : Measure ℝ := ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
     (truncationScaleSet N)
+  let : SFinite (((volume : Measure E3).prod (volume : Measure E3)).prod
+      (volume : Measure E3)) := inferInstance
   let η : Measure (((E3 × E3) × E3) × ℝ) :=
     (((volume : Measure E3).prod volume).prod volume).prod volume
+  let : SFinite η := by
+    dsimp [η]
+    infer_instance
   let e := modelFiberCenterReorder
   have hraw : Integrable (fun z : ℝ × (((E3 × E3) × E3) × ℝ) ↦
       c z.1 * ModelCenterTranslationIntegrand α u F z.1 z.2) (ν.prod η) := by
@@ -21949,11 +21973,10 @@ namespace FiberTailCutoffInternal
 /-! ### A one-dimensional strong bound for bounded cutoff tests
 
 The product-fiber maximal theorem in `Twisted` already contains the hard
-Marcinkiewicz argument.  For the interval-tail dual test we need its literal
-one-dimensional specialization on a single fiber.  Rather than appeal to the
+Marcinkiewicz argument. For the interval-tail dual test we need its literal
+one-dimensional specialization on a single fiber. Rather than appeal to the
 Schwartz-only theorem upstream, the following small transport exposes that
 specialization for every bounded measurable line function. -/
-
 theorem scratchLp_line_dyadicBallMaximal_measurable
     (g : FiberDyadicLine → ℂ) (hg : Measurable g) :
     Measurable (dyadicBallMaximal 1 g) := by
@@ -22006,7 +22029,7 @@ private theorem scratchLp_line_dyadicBallMaximal_subadditive
   simpa [G, H, fiberDyadicBallMaximal] using hsub
 
 /-- The literal line dyadic maximal function has the full strong bound on
-bounded measurable input.  This is the exact maximal-function API needed by
+bounded measurable input. This is the exact maximal-function API needed by
 the finite interval-tail dual test. -/
 theorem scratchLp_line_dyadicBallMaximal_lintegral_bound
     (g : FiberDyadicLine → ℂ) (hg : Measurable g)
@@ -22064,7 +22087,7 @@ noncomputable def coordinateFiberInput
 /-! ## The line maximal estimate in norm form
 
 Source: `ext:maximal`, in the one-dimensional form the duality step of
-`lem:one_fiber` consumes.  The file proves the lower-integral version; this is
+`lem:one_fiber` consumes. The file proves the lower-integral version; this is
 the same estimate stated as a norm bound.
 -/
 
@@ -22105,19 +22128,21 @@ theorem eLpNorm_line_dyadicBallMaximal_le
     exact hbase
   calc eLpNorm (dyadicBallMaximal 1 g) (ENNReal.ofReal p) volume
       = (∫⁻ x : FiberDyadicLine, ‖dyadicBallMaximal 1 g x‖ₑ ^ p) ^ (1 / p) := by
-        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop, hptoReal]
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop
+          (FiberTailCutoffInternal.scratchLp_line_dyadicBallMaximal_measurable g
+            hg).aestronglyMeasurable, hptoReal]
     _ ≤ (K * ∫⁻ x : FiberDyadicLine, ‖g x‖ₑ ^ p) ^ (1 / p) :=
         ENNReal.rpow_le_rpow hstep (by positivity)
     _ = K ^ (1 / p) * (∫⁻ x : FiberDyadicLine, ‖g x‖ₑ ^ p) ^ (1 / p) :=
         ENNReal.mul_rpow_of_nonneg _ _ (by positivity)
     _ = K ^ (1 / p) * eLpNorm g (ENNReal.ofReal p) volume := by
-        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop, hptoReal]
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop hg.aestronglyMeasurable, hptoReal]
 
 /-! ## `ext:maximal`: the centered maximal function on the line
 
-Source: `ext:maximal`.  The blueprint's maximal operator takes the supremum
+Source: `ext:maximal`. The blueprint's maximal operator takes the supremum
 over all positive radii; the development's `dyadicBallMaximal` takes it over
-dyadic radii.  Every radius is within a factor two of a dyadic one, so the two
+dyadic radii. Every radius is within a factor two of a dyadic one, so the two
 differ by at most a factor two and the strong `L^q` bound transfers.
 -/
 
@@ -22130,6 +22155,30 @@ def lineMaximalRaw (g : FiberDyadicLine → ℂ) (x : FiberDyadicLine) : ℝ≥0
 /-- The real-valued form of the blueprint's maximal function. -/
 def lineMaximal (g : FiberDyadicLine → ℂ) (x : FiberDyadicLine) : ℝ :=
   (lineMaximalRaw g x).toReal
+
+theorem measurable_lineMaximal (g : FiberDyadicLine → ℂ) (hg : Measurable g) :
+    Measurable (lineMaximal g) := by
+  have hball (r : ℝ) : LowerSemicontinuous (fun x : FiberDyadicLine =>
+      (volume (Metric.ball x r))⁻¹ * ∫⁻ y in Metric.ball x r, ENNReal.ofReal ‖g y‖) := by
+    let c := (volume (Metric.ball (0 : FiberDyadicLine) r))⁻¹
+    have heq (x : FiberDyadicLine) :
+        (volume (Metric.ball x r))⁻¹ * ∫⁻ y in Metric.ball x r, ENNReal.ofReal ‖g y‖ =
+          ∫⁻ y, (Metric.ball x r).indicator (fun y => c * ENNReal.ofReal ‖g y‖) y := by
+      rw [lintegral_indicator measurableSet_ball, lintegral_const_mul _ (hg.norm.ennreal_ofReal)]
+      congr 1
+      simp only [c, InnerProductSpace.volume_ball]
+    simp_rw [heq]
+    apply lowerSemicontinuous_iff_le_liminf.mpr
+    intro x
+    refine (lintegral_mono fun y => ?_).trans (lintegral_liminf_le fun z =>
+      (measurable_const.mul hg.norm.ennreal_ofReal).indicator measurableSet_ball)
+    have h : LowerSemicontinuous (fun z : FiberDyadicLine =>
+        (Metric.ball y r).indicator (fun _ => c * ENNReal.ofReal ‖g y‖) z) :=
+      Metric.isOpen_ball.lowerSemicontinuous_indicator zero_le
+    simpa only [Set.indicator, Metric.mem_ball, dist_comm] using h.le_liminf x
+  exact (lowerSemicontinuous_iSup fun r =>
+    lowerSemicontinuous_iSup fun (_ : r ∈ Set.Ioi (0 : ℝ)) => hball r).measurable.ennreal_toReal
+
 
 /-- **Every radius is comparable to a dyadic one.** -/
 theorem lineMaximalRaw_le_two_mul_dyadicBallMaximalRaw
@@ -22251,7 +22300,7 @@ theorem eLpNorm_lineMaximal_le
     exact h3
   have hmono : eLpNorm (lineMaximal g) (ENNReal.ofReal q) volume
       ≤ eLpNorm (fun x ↦ 2 * dyadicBallMaximal 1 g x) (ENNReal.ofReal q) volume :=
-    eLpNorm_mono hptw
+    eLpNorm_mono (measurable_lineMaximal g hg).aestronglyMeasurable hptw
   have hsmul : eLpNorm (fun x ↦ 2 * dyadicBallMaximal 1 g x)
       (ENNReal.ofReal q) volume
       = 2 * eLpNorm (dyadicBallMaximal 1 g) (ENNReal.ofReal q) volume := by
@@ -22395,7 +22444,7 @@ theorem ae_tendsto_dyadic_average_norm_sub
 /-! ## `ext:maximal`: the fiber statements
 
 Source: `ext:maximal`, "The corresponding fiber statements hold for functions on
-`E_3` whose fibers satisfy the respective hypotheses almost everywhere.  The
+`E_3` whose fibers satisfy the respective hypotheses almost everywhere. The
 fiber statements follow by Fubini."  The fibers of a function on `E_3` are
 functions on the line, so each one-dimensional statement applies to each fiber
 that satisfies its hypothesis.

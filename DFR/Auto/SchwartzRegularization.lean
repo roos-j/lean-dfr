@@ -8,6 +8,8 @@ import Mathlib.Analysis.Calculus.ContDiff.Convolution
 import Mathlib.Analysis.Calculus.BumpFunction.Convolution
 import Mathlib.Analysis.Fourier.Convolution
 
+/-! # Schwartz regularization of simple functions for the smoothing inequality -/
+
 namespace Auto
 open MeasureTheory
 open scoped Convolution ContDiff
@@ -68,11 +70,15 @@ theorem smoothing_convolution_L1 {f g : EuclideanSpace ℝ (Fin 2) → ℂ}
       _ ≤ ∫ x, ((fun y => ‖f y‖) ⋆[ContinuousLinearMap.mul ℝ ℝ] (fun y => ‖g y‖)) x := by
         apply integral_mono hc.norm hn
         intro x
-        simpa only [convolution_def,ContinuousLinearMap.mul_apply',norm_mul] using norm_integral_le_integral_norm (fun y => f y*g (x-y))
+        simpa only [convolution_def,ContinuousLinearMap.mul_apply',norm_mul] using
+          norm_integral_le_integral_norm (fun y => f y*g (x-y))
       _ = _ := integral_convolution (ContinuousLinearMap.mul ℝ ℝ) hf.norm hg.norm
-  simp_rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm hc.aestronglyMeasurable,
+    eLpNorm_one_eq_lintegral_enorm hf.aestronglyMeasurable,
+    eLpNorm_one_eq_lintegral_enorm hg.aestronglyMeasurable]
   rw [← ofReal_integral_norm_eq_lintegral_enorm hc,← ofReal_integral_norm_eq_lintegral_enorm hf,
-    ← ofReal_integral_norm_eq_lintegral_enorm hg,← ENNReal.ofReal_mul (integral_nonneg (fun x => norm_nonneg (f x)))]
+    ← ofReal_integral_norm_eq_lintegral_enorm hg,← ENNReal.ofReal_mul (integral_nonneg (fun x =>
+      norm_nonneg (f x)))]
   exact ENNReal.ofReal_le_ofReal hbound
 
 /-- The cutoff regularizer has a uniform L1 bound by the kernel L1 norm. -/
@@ -83,10 +89,11 @@ theorem smoothingSimpleRegularizer_L1
     eLpNorm (smoothingSimpleRegularizer κ χ hκ hχ f) 1 volume ≤
       eLpNorm κ 1 volume*eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 1 volume := by
   have h := smoothing_convolution_L1 (smoothing_simple_cutoff_integrable χ f) κ.integrable
-  have hm : eLpNorm (fun x => χ x*f x) 1 volume ≤ eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 1 volume := by
-    apply eLpNorm_mono_ae
+  have hm : eLpNorm (fun x => χ x*f x) 1 volume ≤ eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 1
+    volume := by
+    apply eLpNorm_mono_ae (χ.continuous.aestronglyMeasurable.mul f.aestronglyMeasurable)
     filter_upwards [] with x
-    rw [norm_mul]
+    rw [Pi.mul_apply, norm_mul]
     exact (mul_le_mul_of_nonneg_right (hχb x) (norm_nonneg _)).trans_eq (one_mul _)
   exact h.trans ((mul_le_mul' hm le_rfl).trans_eq (mul_comm _ _))
 
@@ -106,7 +113,10 @@ theorem smoothingSimpleRegularizer_uniform
     rw [norm_mul,norm_mul]
     apply mul_le_mul_of_nonneg_right _ (norm_nonneg _)
     exact ((mul_le_mul_of_nonneg_right (hχb y) (norm_nonneg _)).trans_eq (one_mul _)).trans hy
-  exact hb.trans_eq (by rw [integral_const_mul]; congr 1; exact integral_sub_left_eq_self (μ := volume) (fun y => ‖κ y‖) x)
+  exact hb.trans_eq (by
+    rw [integral_const_mul];
+    congr 1;
+    exact integral_sub_left_eq_self (μ := volume) (fun y => ‖κ y‖) x)
 
 /-- The regularizer's essential-supremum norm is bounded independently
 of the spatial cutoff by the kernel's L1 norm. -/
@@ -117,20 +127,25 @@ theorem smoothingSimpleRegularizer_Linfty
     eLpNorm (smoothingSimpleRegularizer κ χ hκ hχ f) ⊤ volume ≤
       eLpNorm κ 1 volume*eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume := by
   obtain ⟨D,hD⟩ := f.exists_forall_norm_le
-  have hfp := memLp_top_of_bound (μ := volume) f.measurable.aestronglyMeasurable D (Filter.Eventually.of_forall hD)
+  have hfp := memLp_top_of_bound (μ := volume) f.measurable.aestronglyMeasurable D
+    (Filter.Eventually.of_forall hD)
   let A : ℝ := (eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume).toReal
   have hA : ∀ᵐ y, ‖f y‖ ≤ A := by
-    filter_upwards [ae_le_eLpNormEssSup (f := (f : EuclideanSpace ℝ (Fin 2) → ℂ)) (μ := volume)] with y hy
-    have hh := ENNReal.toReal_mono hfp.2.ne hy
-    simpa only [← ofReal_norm,ENNReal.toReal_ofReal (norm_nonneg _),A,eLpNorm_exponent_top] using hh
+    filter_upwards [ae_le_eLpNormEssSup (f := (f : EuclideanSpace ℝ (Fin 2) → ℂ)) (μ := volume)]
+      with y hy
+    have hh := ENNReal.toReal_mono
+      (by simpa only [eLpNorm_exponent_top f.aestronglyMeasurable] using hfp.ne) hy
+    simpa only [← ofReal_norm, ENNReal.toReal_ofReal (norm_nonneg _), A,
+      eLpNorm_exponent_top f.aestronglyMeasurable] using hh
   have hb := eLpNormEssSup_le_of_ae_bound (μ := volume)
     (Filter.Eventually.of_forall (smoothingSimpleRegularizer_uniform κ χ hκ hχ hχb f hA))
-  change eLpNormEssSup (smoothingSimpleRegularizer κ χ hκ hχ f) volume ≤ _
+  rw [eLpNorm_exponent_top (smoothingSimpleRegularizer κ χ hκ hχ f).continuous.aestronglyMeasurable]
   apply hb.trans_eq
   rw [ENNReal.ofReal_mul ENNReal.toReal_nonneg,ofReal_integral_norm_eq_lintegral_enorm κ.integrable,
-    ← eLpNorm_one_eq_lintegral_enorm]
-  change ENNReal.ofReal (eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume).toReal*eLpNorm κ 1 volume = _
-  rw [ENNReal.ofReal_toReal hfp.2.ne,mul_comm]
+    ← eLpNorm_one_eq_lintegral_enorm κ.integrable.aestronglyMeasurable]
+  change ENNReal.ofReal (eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume).toReal*eLpNorm κ 1
+    volume = _
+  rw [ENNReal.ofReal_toReal hfp.ne,mul_comm]
 
 /-- The regularizer has the same bound on each intermediate Lp space,
 by the pinned Riesz--Thorin theorem and the proved L1/L-infinity edges. -/
@@ -138,8 +153,8 @@ theorem smoothingSimpleRegularizer_Lp
     (κ χ : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (hκ : HasCompactSupport κ) (hχ : HasCompactSupport χ) (hχb : ∀ x, ‖χ x‖ ≤ 1)
     {K θ : ℝ} (hK : 0 < K) (hκK : eLpNorm κ 1 volume ≤ ENNReal.ofReal K)
-    (hθ : θ ∈ Set.Ioo 0 1) {p : ENNReal} (hp : p⁻¹ = ENNReal.ofReal (1-θ))
-    (f : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : Integrable f) :
+    (hθ : θ ∈ Set.Ioo 0 1) {p : ENNReal} (hp : p⁻¹ = ENNReal.ofReal (1 - θ)) (f : SimpleFunc
+      (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : Integrable f) :
     eLpNorm (smoothingSimpleRegularizer κ χ hκ hχ f) p volume ≤
       ENNReal.ofReal K*eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) p volume := by
   let T : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ → EuclideanSpace ℝ (Fin 2) → ℂ :=
@@ -148,12 +163,22 @@ theorem smoothingSimpleRegularizer_Lp
     simpa only [inv_one,ENNReal.inv_top,mul_one,mul_zero,add_zero] using hp
   obtain ⟨_,hb⟩ := SteinInterpolation.riesz_thorin_core
     (μ := volume) (ν := volume) (T := T) (by norm_num) le_top (by norm_num) le_top hθ he he
-    (by intro u v hu hv; exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ (Fin 2) → ℂ)) (map_add (smoothingSimpleRegularizer κ χ hκ hχ) u v))
-    (by intro c u hu; exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ (Fin 2) → ℂ)) (map_smul (smoothingSimpleRegularizer κ χ hκ hχ) c u))
+    (by
+      intro u v hu hv;
+      exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ
+        (Fin 2) → ℂ)) (map_add (smoothingSimpleRegularizer κ χ hκ hχ) u v))
+    (by
+      intro c u hu;
+      exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ
+        (Fin 2) → ℂ)) (map_smul (smoothingSimpleRegularizer κ χ hκ hχ) c u))
     (by intro u hu; exact (smoothingSimpleRegularizer κ χ hκ hχ u).continuous.measurable)
     hK hK
-    (by intro u hu; exact (smoothingSimpleRegularizer_L1 κ χ hκ hχ hχb u hu).trans (mul_le_mul' hκK le_rfl))
-    (by intro u hu; exact (smoothingSimpleRegularizer_Linfty κ χ hκ hχ hχb u).trans (mul_le_mul' hκK le_rfl))
+    (by
+      intro u hu;
+      exact (smoothingSimpleRegularizer_L1 κ χ hκ hχ hχb u hu).trans (mul_le_mul' hκK le_rfl))
+    (by
+      intro u hu;
+      exact (smoothingSimpleRegularizer_Linfty κ χ hκ hχ hχb u).trans (mul_le_mul' hκK le_rfl))
     f hf
   have hpow : Real.rpow K (1-θ)*Real.rpow K θ = K := by
     change K^(1-θ)*K^θ=K
@@ -188,12 +213,18 @@ def smoothingApproximationKernel (n : ℕ) : SchwartzMap (EuclideanSpace ℝ (Fi
 @[simp] theorem smoothingApproximationKernel_apply (n : ℕ) (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingApproximationKernel n x = ((smoothingApproximationBump n).normed volume x : ℂ) := rfl
 
-theorem smoothingApproximationKernel_compact (n : ℕ) : HasCompactSupport (smoothingApproximationKernel n) :=
-  ((smoothingApproximationBump n).hasCompactSupport_normed (μ := volume)).comp_left (g := Complex.ofReal) (by rfl)
+theorem smoothingApproximationKernel_compact (n : ℕ) : HasCompactSupport
+  (smoothingApproximationKernel n) :=
+  ((smoothingApproximationBump n).hasCompactSupport_normed (μ := volume)).comp_left (g :=
+    Complex.ofReal) (by rfl)
 
-theorem smoothingApproximationKernel_L1 (n : ℕ) : eLpNorm (smoothingApproximationKernel n) 1 volume = 1 := by
-  rw [eLpNorm_one_eq_lintegral_enorm,← ofReal_integral_norm_eq_lintegral_enorm (smoothingApproximationKernel n).integrable]
-  have he (x) : ‖smoothingApproximationKernel n x‖ = (smoothingApproximationBump n).normed volume x := by
+theorem smoothingApproximationKernel_L1 (n : ℕ) : eLpNorm (smoothingApproximationKernel n) 1
+  volume = 1 := by
+  rw [eLpNorm_one_eq_lintegral_enorm (smoothingApproximationKernel
+    n).continuous.aestronglyMeasurable,
+    ← ofReal_integral_norm_eq_lintegral_enorm (smoothingApproximationKernel n).integrable]
+  have he (x) : ‖smoothingApproximationKernel n x‖ = (smoothingApproximationBump n).normed volume
+    x := by
     simp only [smoothingApproximationKernel_apply,Complex.norm_real,Real.norm_eq_abs,
       abs_of_nonneg ((smoothingApproximationBump n).nonneg_normed x)]
   simp_rw [he]
@@ -205,16 +236,19 @@ def smoothingApproximationCutoffBump (n : ℕ) : ContDiffBump (0 : EuclideanSpac
   ⟨(n:ℝ)+1,(n:ℝ)+2,by positivity,by linarith⟩
 
 def smoothingApproximationCutoff (n : ℕ) : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ :=
-  ((smoothingApproximationCutoffBump n).hasCompactSupport.comp_left (g := Complex.ofReal) (by rfl)).toSchwartzMap
+  ((smoothingApproximationCutoffBump n).hasCompactSupport.comp_left (g := Complex.ofReal)
+    (by rfl)).toSchwartzMap
     (Complex.ofRealCLM.contDiff.comp (smoothingApproximationCutoffBump n).contDiff)
 
-theorem smoothingApproximationCutoff_compact (n : ℕ) : HasCompactSupport (smoothingApproximationCutoff n) :=
+theorem smoothingApproximationCutoff_compact (n : ℕ) : HasCompactSupport
+  (smoothingApproximationCutoff n) :=
   (smoothingApproximationCutoffBump n).hasCompactSupport.comp_left (g := Complex.ofReal) (by rfl)
 
 theorem smoothingApproximationCutoff_bound (n : ℕ) (x : EuclideanSpace ℝ (Fin 2)) :
     ‖smoothingApproximationCutoff n x‖ ≤ 1 := by
   change ‖((smoothingApproximationCutoffBump n) x:ℂ)‖ ≤ 1
-  simpa only [Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg (smoothingApproximationCutoffBump n).nonneg] using
+  simpa only [Complex.norm_real,Real.norm_eq_abs,abs_of_nonneg (smoothingApproximationCutoffBump
+    n).nonneg] using
     (smoothingApproximationCutoffBump n).le_one
 
 theorem smoothingApproximationCutoff_tendsto (x : EuclideanSpace ℝ (Fin 2)) :
@@ -225,7 +259,8 @@ theorem smoothingApproximationCutoff_tendsto (x : EuclideanSpace ℝ (Fin 2)) :
   refine ⟨N,?_⟩
   intro n hn
   have hnn : (N:ℝ) ≤ n := by exact_mod_cast hn
-  have hh : x ∈ Metric.closedBall (0 : EuclideanSpace ℝ (Fin 2)) (smoothingApproximationCutoffBump n).rIn := by
+  have hh : x ∈ Metric.closedBall (0 : EuclideanSpace ℝ (Fin 2)) (smoothingApproximationCutoffBump
+    n).rIn := by
     rw [Metric.mem_closedBall,dist_zero_right]
     change ‖x‖ ≤ (n:ℝ)+1
     linarith
@@ -276,7 +311,8 @@ theorem smoothingSimpleRegularizer_tendsto
 
 theorem smoothingApproximationKernel_integral_norm (n : ℕ) :
     (∫ x, ‖smoothingApproximationKernel n x‖) = 1 := by
-  have he (x) : ‖smoothingApproximationKernel n x‖ = (smoothingApproximationBump n).normed volume x := by
+  have he (x) : ‖smoothingApproximationKernel n x‖ = (smoothingApproximationBump n).normed volume
+    x := by
     simp only [smoothingApproximationKernel_apply,Complex.norm_real,Real.norm_eq_abs,
       abs_of_nonneg ((smoothingApproximationBump n).nonneg_normed x)]
   simp_rw [he]
@@ -297,7 +333,8 @@ theorem smoothingSchwartzRegularizer_kernel_tendsto
     rw [smoothingSchwartzRegularizer,SchwartzMap.convolution_apply,convolution_eq_swap]
     apply integral_congr_ae
     filter_upwards [] with y
-    simp [smoothingApproximationKernel_apply,SchwartzMap.pairing_apply_apply,Algebra.smul_def,mul_comm]
+    simp [smoothingApproximationKernel_apply,SchwartzMap.pairing_apply_apply,Algebra.smul_def,
+      mul_comm]
   simp only [Pi.mul_def] at hh
   simpa only [← he] using! hh
 
@@ -324,6 +361,7 @@ theorem smoothingSimpleApproximation_Lp
     eLpNorm (smoothingSimpleApproximation f n : EuclideanSpace ℝ (Fin 2) → ℂ) p volume ≤
       ENNReal.ofReal 2*eLpNorm f p volume :=
   eLpNorm_le_mul_eLpNorm_of_ae_le_mul (μ := volume)
+    (smoothingSimpleApproximation f n).aestronglyMeasurable
     (Filter.Eventually.of_forall (smoothingSimpleApproximation_bound f n)) p
 
 theorem smoothingSimpleApproximation_tendsto

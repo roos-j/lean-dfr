@@ -22,9 +22,8 @@ import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 This file develops **van der Corput's lemma**, the basic oscillatory-integral estimate: if a real
 phase `φ` has a derivative of some order bounded below on an interval, then the integral of
 `exp (i φ)` over that interval is small, with a bound that does not see the length of the
-interval.  The precise statement proved here is, for `k ≥ 1`,
-
-  `|φ^(k)| ≥ μ > 0` on `[a, b]`  ⟹  `‖∫ x in a..b, exp (i φ x)‖ ≤ C k * μ ^ (-1 / k)`,
+interval. The precise statement proved here is, for `k ≥ 1`,
+  `|φ^(k)| ≥ μ > 0` on `[a, b]` ⟹ `‖∫ x in a..b, exp (i φ x)‖ ≤ C k * μ ^ (-1 / k)`,
 
 where for `k = 1` the phase is additionally required to have monotone derivative, as it must be
 (without monotonicity the estimate is false: a derivative can be bounded below in absolute value
@@ -32,10 +31,9 @@ while oscillating in sign, and then the integral can be as large as the interval
 
 The classical consequence for polynomial phases is also proved here: for a real polynomial
 `P (t) = ∑_{m = 1}^{d} a m * t ^ m` with no constant term,
-
   `‖∫ t in (0:ℝ)..1, exp (2 π i P t)‖ ≤ C d * (max_{1 ≤ m ≤ d} |a m|) ^ (-1 / d)`,
 
-with `C d` depending only on `d`.  Note that only the *largest* coefficient enters, not the
+with `C d` depending only on `d`. Note that only the *largest* coefficient enters, not the
 leading one; this is what makes the estimate usable when the top coefficients degenerate.
 
 ## Main statements
@@ -50,18 +48,18 @@ The order-one estimate is integration by parts against `u = -i / φ'`: the bound
 most `1 / μ` each, and the remaining integral is `∫ |φ''| / φ' ^ 2`, which telescopes to
 `|1 / φ' a - 1 / φ' b| ≤ 2 / μ` because `φ'` is monotone, so `φ''` does not change sign.
 
-The order-`k` estimate follows by induction.  If `φ^(k) ≥ μ > 0` then `φ^(k-1)` is strictly
+The order-`k` estimate follows by induction. If `φ^(k) ≥ μ > 0` then `φ^(k-1)` is strictly
 increasing, so `|φ^(k-1)| ≥ μ δ` outside a `δ`-neighbourhood of its zero; the interval splits into
 at most three pieces, two of which are handled by the inductive hypothesis with `μ` replaced by
-`μ δ`, and one of which has length `2 δ`.  Taking `δ = μ ^ (-1 / k)` balances the two
+`μ δ`, and one of which has length `2 δ`. Taking `δ = μ ^ (-1 / k)` balances the two
 contributions.
 
 The polynomial corollary does not decompose the interval into the sign components of a
-polynomial.  Instead, if `A` is the largest coefficient of `P`, then some derivative
+polynomial. Instead, if `A` is the largest coefficient of `P`, then some derivative
 `P^(r) (c)` is bounded below by a fixed multiple of `A` at every point `c` of `[0, 1]` — this is
 the statement that the binomial shift matrix taking the coefficients of `P` to those of
 `P (c + ·)` has a bounded inverse — and, the higher derivatives being bounded above by `d! A`,
-that lower bound persists on an interval of a fixed length `ρ d`.  A cover of `[0, 1]` by
+that lower bound persists on an interval of a fixed length `ρ d`. A cover of `[0, 1]` by
 `⌈1 / ρ d⌉` such intervals then reduces the corollary to the order-`k` estimate.
 
 ## References
@@ -106,7 +104,7 @@ theorem expPhase_neg (φ : ℝ → ℝ) (x : ℝ) :
   simp [Complex.conj_I]
 
 /-- Replacing the phase by its negative conjugates the integral, so the two differ only by the
-sign of the second derivative.  This is what lets the order-one estimate be proved for an
+sign of the second derivative. This is what lets the order-one estimate be proved for an
 increasing derivative and then transferred to a decreasing one. -/
 theorem integral_expPhase_neg (φ : ℝ → ℝ) (a b : ℝ) :
     (∫ x in a..b, expPhase (fun y => -φ y) x)
@@ -117,10 +115,9 @@ theorem integral_expPhase_neg (φ : ℝ → ℝ) (a b : ℝ) :
 
 /-! ## The order-one estimate
 
-Integration by parts against `u = -i / φ'`.  The boundary terms are at most `1 / μ` each, and the
+Integration by parts against `u = -i / φ'`. The boundary terms are at most `1 / μ` each, and the
 remaining integral is the total variation of `1 / φ'`, which telescopes because `φ'` is monotone.
 -/
-
 theorem continuous_of_hasDerivAt {φ φ' : ℝ → ℝ} (hφ : ∀ x, HasDerivAt φ (φ' x) x) :
     Continuous φ :=
   continuous_iff_continuousAt.mpr fun x => (hφ x).continuousAt
@@ -132,8 +129,8 @@ theorem deriv_ne_zero_of_abs_le {a b μ : ℝ} (hμ : 0 < μ) {φ' : ℝ → ℝ
   rw [h0, abs_zero] at h
   linarith
 
-/-- **Integration by parts against `u = -i / φ'`.**  The two boundary terms contribute `1 / μ`
-each, and what is left is the integral of `|φ''| / φ' ^ 2`, the total variation of `1 / φ'`.  Both
+/-- **Integration by parts against `u = -i / φ'`.** The two boundary terms contribute `1 / μ`
+each, and what is left is the integral of `|φ''| / φ' ^ 2`, the total variation of `1 / φ'`. Both
 order-one estimates below come from bounding that last integral. -/
 theorem norm_integral_expPhase_ibp {a b μ : ℝ} (hab : a ≤ b) (hμ : 0 < μ)
     {φ φ' φ'' : ℝ → ℝ}
@@ -260,7 +257,7 @@ theorem norm_integral_expPhase_le_of_deriv_pos {a b μ : ℝ} (hab : a ≤ b) (h
   linarith
 
 /-- The order-one van der Corput estimate with a bounded second derivative instead of a
-monotonicity hypothesis.  This is the form used when the first derivative is the one bounded
+monotonicity hypothesis. This is the form used when the first derivative is the one bounded
 below, where no monotonicity is available; the cost is a term proportional to the length of the
 interval. -/
 theorem norm_integral_expPhase_le_of_deriv_bdd {a b μ M : ℝ} (hab : a ≤ b) (hμ : 0 < μ)
@@ -297,7 +294,7 @@ theorem norm_integral_expPhase_le_of_deriv_bdd {a b μ M : ℝ} (hab : a ≤ b) 
   linarith
 
 
-/-- **The order-one van der Corput estimate.**  If `|φ'| ≥ μ > 0` on `[a, b]` and `φ'` is monotone
+/-- **The order-one van der Corput estimate.** If `|φ'| ≥ μ > 0` on `[a, b]` and `φ'` is monotone
 there (equivalently, `φ''` does not change sign), then `‖∫ exp (i φ)‖ ≤ 4 / μ`, with no dependence
 on the length of the interval. -/
 theorem norm_integral_expPhase_le_of_deriv_monotone {a b μ : ℝ} (hab : a ≤ b) (hμ : 0 < μ)
@@ -320,11 +317,11 @@ theorem norm_integral_expPhase_le_of_deriv_monotone {a b μ : ℝ} (hab : a ≤ 
 
 If `φ^(k) ≥ μ > 0` on `[a, b]` then `φ^(k-1)` increases at rate at least `μ`, so it stays away
 from zero except on one interval of length `2 δ`; outside that interval `|φ^(k-1)| ≥ μ δ` and the
-inductive hypothesis applies.  Taking `δ = μ ^ (-1/k)` balances the two contributions. -/
+inductive hypothesis applies. Taking `δ = μ ^ (-1/k)` balances the two contributions. -/
 
 /-- A function whose derivative is at least `μ > 0` on `[a, b]` has a "centre": a point `c` of
 `[a, b]` from which the function grows at rate at least `μ` in each direction, with the correct
-sign.  If the function vanishes on `[a, b]` this is its zero; otherwise it is the endpoint on the
+sign. If the function vanishes on `[a, b]` this is its zero; otherwise it is the endpoint on the
 side where the function is small. -/
 theorem exists_center_of_deriv_ge {a b μ : ℝ} (hab : a ≤ b) {g g' : ℝ → ℝ}
     (hg : ∀ x, HasDerivAt g (g' x) x) (hlow : ∀ x ∈ Set.Icc a b, μ ≤ g' x) :
@@ -424,7 +421,7 @@ theorem norm_integral_expPhase_split {a b c δ K : ℝ} (hab : a ≤ b) (hδ : 0
 
 /-- The centre splits `[a, b]` into a left piece on which the derivative chain is at most
 `-(μ δ)`, a middle piece of length at most `2 δ`, and a right piece on which it is at least
-`μ δ`.  These are the two pointwise bounds on the outer pieces. -/
+`μ δ`. These are the two pointwise bounds on the outer pieces. -/
 theorem center_bounds {a b c δ μ : ℝ} (hδ : 0 < δ) (hμ : 0 < μ) {g : ℝ → ℝ}
     (hcl : ∀ x ∈ Set.Icc a b, x < c → g x ≤ μ * (x - c))
     (hcr : ∀ x ∈ Set.Icc a b, c < x → μ * (x - c) ≤ g x) :
@@ -454,7 +451,7 @@ theorem center_bounds {a b c δ μ : ℝ} (hδ : 0 < δ) (hμ : 0 < μ) {g : ℝ
 
 /-- **The order-`k` van der Corput estimate**, `k ≥ 2`: if the `k`-th derivative of the phase is
 at least `μ > 0` on `[a, b]` then `‖∫ exp (i φ)‖ ≤ C k * μ ^ (-1 / k)`, with `C k` depending only
-on `k`.  The derivative chain is given as a family `D` with `D 0 = φ` and `D (j+1)` the derivative
+on `k`. The derivative chain is given as a family `D` with `D 0 = φ` and `D (j+1)` the derivative
 of `D j`. -/
 theorem exists_vdc_bound : ∀ n : ℕ, ∃ C : ℝ, 1 ≤ C ∧
     ∀ D : ℕ → ℝ → ℝ, (∀ j, j < n + 2 → ∀ x, HasDerivAt (D j) (D (j + 1) x) x) →
@@ -618,13 +615,12 @@ theorem exists_vdc_bound : ∀ n : ℕ, ∃ C : ℝ, 1 ≤ C ∧
 
 /-! ## Polynomial phases: coefficient bookkeeping
 
-The corollary for polynomial phases needs two facts about coefficients.  First, all derivatives of
+The corollary for polynomial phases needs two facts about coefficients. First, all derivatives of
 a polynomial are bounded on `[-1, 1]` by a fixed multiple of the largest coefficient, which lets a
-lower bound on one derivative at a point persist on an interval of a fixed length.  Second, the
+lower bound on one derivative at a point persist on an interval of a fixed length. Second, the
 coefficients of the shifted polynomial `f (c + ·)`, for `|c| ≤ 1`, dominate those of `f` up to a
 fixed factor -- this is the statement that the binomial shift matrix has a bounded inverse, and it
 holds because the inverse is the shift by `-c`. -/
-
 theorem abs_eval_le_sum_abs_coeff {p : Polynomial ℝ} {D : ℕ} (hD : p.natDegree ≤ D) {x : ℝ}
     (hx : |x| ≤ 1) : |p.eval x| ≤ ∑ n ∈ Finset.range (D + 1), |p.coeff n| := by
   rw [Polynomial.eval_eq_sum_range' (by omega : p.natDegree < D + 1)]
@@ -691,9 +687,9 @@ theorem taylor_neg_taylor (c : ℝ) (f : Polynomial ℝ) :
   rw [Polynomial.taylor_eval, Polynomial.taylor_eval]
   ring_nf
 
-/-- **The shift has a bounded inverse.**  For `|c| ≤ 1`, every coefficient of `f` of index at
+/-- **The shift has a bounded inverse.** For `|c| ≤ 1`, every coefficient of `f` of index at
 least one is bounded by a fixed multiple of the largest coefficient of index at least one of the
-shifted polynomial `f (c + ·)`.  The shift by `-c` inverts the shift by `c`, and its matrix
+shifted polynomial `f (c + ·)`. The shift by `-c` inverts the shift by `c`, and its matrix
 entries are binomial coefficients times powers of `c`. -/
 theorem abs_coeff_le_taylor {f : Polynomial ℝ} {d : ℕ} (hd : f.natDegree ≤ d) {c : ℝ}
     (hc : |c| ≤ 1) {B : ℝ} (hB : ∀ r, 1 ≤ r → |(Polynomial.taylor c f).coeff r| ≤ B)
@@ -785,7 +781,7 @@ theorem polyD_eq_factorial_mul_taylor_coeff (f : Polynomial ℝ) (r : ℕ) (c : 
     LinearMap.smul_apply, Polynomial.eval_smul, nsmul_eq_mul]
 
 /-- **At every point of the unit interval some derivative of order at least one is large.**
-The index `r` lies between `1` and `d`.  This is where the bounded inverse of the shift is used:
+The index `r` lies between `1` and `d`. This is where the bounded inverse of the shift is used:
 the coefficients of `f (c + ·)` cannot all be small if one coefficient of `f` is large. -/
 theorem exists_large_deriv {f : Polynomial ℝ} {d : ℕ} (hd : f.natDegree ≤ d) (hd1 : 1 ≤ d)
     {A : ℝ} {m₀ : ℕ} (hm₀ : 1 ≤ m₀) (hm₀A : A ≤ |f.coeff m₀|)
@@ -881,10 +877,9 @@ theorem polyD_signed_lower {f : Polynomial ℝ} {d : ℕ} (hd : f.natDegree ≤ 
 /-! ## The estimate on one subinterval of fixed length
 
 At the left endpoint `c` some derivative of order `r` between `1` and `d` is bounded below by
-`A / K`, and the bound persists, halved and signed, on the whole subinterval.  For `r ≥ 2` the
+`A / K`, and the bound persists, halved and signed, on the whole subinterval. For `r ≥ 2` the
 order-`r` estimate applies directly; for `r = 1` there is no monotonicity, and the form with a
 bounded second derivative is used instead, which is where the length of the subinterval enters. -/
-
 theorem polyD_zero (f : Polynomial ℝ) : polyD f 0 = fun x => f.eval x := rfl
 
 /-- A choice of constant in the order-`k` van der Corput estimate. -/
@@ -1079,7 +1074,6 @@ theorem norm_integral_expPhase_poly_piece {f : Polynomial ℝ} {d : ℕ} (hd : f
 
 A cover of `[0, 1]` by `⌈1 / ρ⌉` intervals of length at most `ρ`, with `ρ` depending only on `d`,
 reduces the estimate to the estimate on one subinterval. -/
-
 theorem norm_integral_expPhase_unit_le (φ : ℝ → ℝ) :
     ‖∫ t in (0 : ℝ)..1, expPhase φ t‖ ≤ 1 := by
   have h := intervalIntegral.norm_integral_le_of_norm_le_const (a := (0 : ℝ)) (b := 1)
@@ -1119,12 +1113,11 @@ theorem one_le_vdcPieces_mul (d : ℕ) : 1 ≤ (vdcPieces d : ℝ) * vdcStep d :
   calc (1 : ℝ) = (vdcStep d)⁻¹ * vdcStep d := by field_simp
     _ ≤ (vdcPieces d : ℝ) * vdcStep d := mul_le_mul_of_nonneg_right h hρ.le
 
-/-- **Blueprint `lem:real-polynomial-oscillation`, the normalized form.**  For a real polynomial
+/-- **Blueprint `lem:real-polynomial-oscillation`, the normalized form.** For a real polynomial
 `f` of degree at most `d` whose largest coefficient of index at least one is `A`,
-
   `‖∫_0^1 exp (i f)‖ ≤ C d * min 1 (A ^ (-1/d))`,
 
-with `C d` depending only on `d`.  Only the size of the largest coefficient enters, not that of
+with `C d` depending only on `d`. Only the size of the largest coefficient enters, not that of
 the leading one. -/
 theorem exists_polynomial_oscillation_bound (d : ℕ) : ∃ C : ℝ, 1 ≤ C ∧
     ∀ f : Polynomial ℝ, f.natDegree ≤ d → ∀ A : ℝ, 0 < A →

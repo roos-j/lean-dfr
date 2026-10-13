@@ -27,15 +27,13 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
 import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
 import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
 import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
-
-universe u
 
 /-!
 # The model form and its localization
@@ -44,9 +42,11 @@ Section 5 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -54,7 +54,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -166,7 +167,7 @@ noncomputable def modelLocalIntegrand
 abbrev ModelRealInput := Fin 4 → E3 → ℝ
 
 /-- The first, three-input fiber transform in the local Cauchy--Schwarz
-factorization.  The five-vector has coordinates `(x₁,x₂,y₁,y₂,r)`. -/
+factorization. The five-vector has coordinates `(x₁,x₂,y₁,y₂,r)`. -/
 noncomputable def modelFirstFiber (α : Anisotropy) (f : ModelRealInput)
     (p : E3) (t : ℝ) (z : ModelE5) : ℝ :=
   ∫ v : ℝ,
@@ -238,7 +239,7 @@ theorem abs_modelSignedDensity (α : Anisotropy) (u p : E3) {t : ℝ}
   repeat' rw [abs_mul]
   rw [abs_of_nonneg hg0, abs_of_nonneg hg1]
 
-/-- The localized real model form after its Fubini expansion.  The equality
+/-- The localized real model form after its Fubini expansion. The equality
 with the convolution presentation is established as part of localization. -/
 noncomputable def expandedModelLocalForm (α : Anisotropy) (S : BoxCollection α)
     (u : E3) (c : ℝ → ℝ) (f : ModelRealInput) : ℝ :=
@@ -312,7 +313,7 @@ theorem modelEnergyTwo_nonneg
 
 
 /-- The nonnegative-energy integrand before integration in the five fiber
-variables.  Naming it isolates all measure-theoretic region arguments from
+variables. Naming it isolates all measure-theoretic region arguments from
 the later Fourier calculation. -/
 noncomputable def modelEnergyTwoIntegrand
     (α : Anisotropy) (u : E3) (f : E3 → ℝ)
@@ -351,7 +352,7 @@ theorem modelEnergyTwoOuter_nonneg
     modelEnergyTwoIntegrand_nonneg α u f pt ht z
 
 /-- On any measurable positive-scale region, the second model energy is
-nonnegative.  This is the order input for restriction and additivity. -/
+nonnegative. This is the order input for restriction and additivity. -/
 theorem modelEnergyTwoOn_nonneg_of_subset_positive
     (α : Anisotropy) (V : Set (E3 × ℝ)) (u : E3) (f : E3 → ℝ)
     (hVmeas : MeasurableSet V)
@@ -363,7 +364,7 @@ theorem modelEnergyTwoOn_nonneg_of_subset_positive
   exact modelEnergyTwoOuter_nonneg α u f pt (hVpos hpt).2.le
 
 /-- Under a joint integrability hypothesis, the nested energy integral is
-literally the product-space integral.  This is the Tonelli/Fubini gateway
+literally the product-space integral. This is the Tonelli/Fubini gateway
 for the global fiber reduction in `lem:global_energy`. -/
 theorem modelEnergyTwoOn_eq_jointIntegral_of_integrable
     (α : Anisotropy) (V : Set (E3 × ℝ)) (u : E3) (f : E3 → ℝ)
@@ -374,7 +375,7 @@ theorem modelEnergyTwoOn_eq_jointIntegral_of_integrable
       ∫ q : (E3 × ℝ) × ModelE5,
         modelEnergyTwoIntegrand α u f q.1 q.2
         ∂((cubeScaleMeasure.restrict V).prod volume) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -383,12 +384,12 @@ theorem modelEnergyTwoOn_eq_jointIntegral_of_integrable
     (MeasureTheory.integral_prod _ hjoint).symm
 
 /-- Restricting a nonnegative, integrable second-energy density can only
-decrease the energy.  This is the region-monotonicity consequence of the
+decrease the energy. This is the region-monotonicity consequence of the
 global-energy computation. -/
 theorem modelEnergyTwoOn_mono_of_integrable
     (α : Anisotropy) (V W : Set (E3 × ℝ)) (u : E3) (f : E3 → ℝ)
     (hVW : V ⊆ W)
-    (hnonneg : 0 ≤ᵐ[ cubeScaleMeasure.restrict W]
+    (hnonneg : 0 ≤ᵐ[cubeScaleMeasure.restrict W]
       modelEnergyTwoOuter α u f)
     (hint : Integrable (modelEnergyTwoOuter α u f)
       (cubeScaleMeasure.restrict W)) :
@@ -626,7 +627,7 @@ theorem measurable_modelPoint
     Measurable (fun x ↦ modelPoint (a x) (b x) (c x)) := by
   unfold modelPoint
   apply (PiLp.continuous_toLp 2 (fun _ : Fin 3 ↦ ℝ)).measurable.comp
-  apply measurable_pi_lambda
+  apply Measurable.of_eval
   intro i
   fin_cases i
   · simpa using ha
@@ -951,7 +952,7 @@ theorem squareRootWeighted_integrable_of_ae_bound
     _ ≤ M ^ 2 * w x := mul_le_mul_of_nonneg_right hsq hw'
 
 /-- Cauchy--Schwarz for a signed density whose absolute value is a positive
-weight.  The square-root weighted factors are kept explicit: this makes the
+weight. The square-root weighted factors are kept explicit: this makes the
 lemma applicable before any particular parameter-integral measurability
 package has been chosen. -/
 theorem signedDensity_weighted_cauchySchwarz
@@ -1311,7 +1312,7 @@ theorem expandedModelLocalForm_eq_neg_jointIntegral_of_integrable
             modelSecondFiber α (f 3) q.1.1 q.1.2 q.2 *
               modelSignedDensity α u q.1.1 q.1.2 q.2)
         ∂((cubeScaleMeasure.restrict (collectionRegion α S)).prod volume)) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -1350,7 +1351,7 @@ theorem modelEnergyOne_eq_jointIntegral_of_integrable
         (modelFirstFiber α f q.1.1 q.1.2 q.2) ^ 2 *
           modelEnergyDensity α u q.1.1 q.1.2 q.2
         ∂((cubeScaleMeasure.restrict (collectionRegion α S)).prod volume) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -1369,14 +1370,14 @@ theorem modelEnergyTwo_eq_jointIntegral_of_integrable
         (modelSecondFiber α f q.1.1 q.1.2 q.2) ^ 2 *
           modelEnergyDensity α u q.1.1 q.1.2 q.2
         ∂((cubeScaleMeasure.restrict (collectionRegion α S)).prod volume) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
   unfold modelEnergyTwo modelEnergyTwoOn
   simpa only using (MeasureTheory.integral_prod _ hjoint).symm
 
-/-- The literal first local Cauchy--Schwarz inequality.  Its hypotheses are
+/-- The literal first local Cauchy--Schwarz inequality. Its hypotheses are
 precisely the joint measurability and square-integrability assertions supplied
 by the bounded-continuous localization package; no Fubini equality is left as
 an assumption. -/
@@ -1406,7 +1407,7 @@ theorem expandedModelLocalForm_cauchySchwarz_of_weightedIntegrable
     (hc : ∀ t : ℝ, |c t| ≤ 1) :
     |expandedModelLocalForm α S u c f| ^ 2 ≤
       modelEnergyOne α S u f * modelEnergyTwo α S u (f 3) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -1670,7 +1671,7 @@ theorem stoppingData_eq_sup'
       (stoppingAncestors α S q).sup'
         (stoppingAncestors_nonempty α S hq) (boxLocalSize α s f) := by
   simp only [stoppingData]
-  rw [dif_pos (stoppingAncestors_nonempty α S hq)]
+  rw [dite_eq_left (stoppingAncestors_nonempty α S hq)]
 
 theorem stoppingAncestors_antitone
     (α : Anisotropy) (S : BoxCollection α) {q r : AnisoBox α}
@@ -1814,7 +1815,7 @@ theorem stoppingTree_root {d : ℕ}
     (stoppingTree α S s f n hconvex Q hQ).root = Q := rfl
 
 /-- The two local-energy bounds with powers `50` and `100` give the source
-local-model estimate with translation power `75`.  All analytic content stays
+local-model estimate with translation power `75`. All analytic content stays
 in the two displayed energy hypotheses; this lemma only records their exact
 positive algebraic synthesis. -/
 theorem localModelEstimate_of_energyBounds
@@ -1898,7 +1899,7 @@ theorem localModelEstimate_of_energyBounds
     _ = _ := by rfl
 
 /-- A raw one-dimensional Plancherel identity on the elementary inversion
-domain.  This is deliberately stated with the exact `L¹` hypotheses needed by
+domain. This is deliberately stated with the exact `L¹` hypotheses needed by
 Mathlib's Fourier inversion theorem, so it can be applied to a Schwartz fiber
 after the physical convolution calculation. -/
 theorem integral_norm_sq_fourier_eq_of_integrable
@@ -2046,13 +2047,13 @@ noncomputable def ModelThirdKernel (u w : ℝ) : ℝ :=
   ∫ z : ℝ, gaussianDeriv z * modelThirdKernel (-u) 1 0 (w - z)
 
 /-- One coordinate convolution in the source convention, written after the
-change from the sampled coordinate to its displacement from `x`. -/
+show from the sampled coordinate to its displacement from `x`. -/
 noncomputable def ModelCoordinateConvolution
     (i : Fin 3) (f : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3) : ℝ :=
   ∫ r : ℝ, f (x - r • Anisotropy.coordinateDirection i) * kernelDilate k s r
 
 /-- The spatial integrand in the source's unexpanded model form at one
-positive scale.  The three coordinate kernels are exactly the kernels in
+positive scale. The three coordinate kernels are exactly the kernels in
 Definition `def:model`; the scale coefficient is deliberately not included. -/
 noncomputable def ModelSpatialIntegrand
     (α : Anisotropy) (u : E3) (F : ModelSchwartzInput)
@@ -2092,7 +2093,7 @@ local instance : Fact (0 < (8 : ℝ)) := ⟨by norm_num⟩
 /-- **`lem:localization`** (Localization sign and integrability).
 
 The local forms and energies are finite on bounded continuous inputs for
-finite collections.  On Schwartz inputs, replacing the region in `L` by
+finite collections. On Schwartz inputs, replacing the region in `L` by
 `E_3 × (a,b)` gives exactly `Λ^{a,b}_{u,c}`.
 
 This is the signed expansion of the local form as a joint integral. -/
@@ -2130,7 +2131,8 @@ theorem lem_local_cs
     (hc : ∀ t : ℝ, |c t| ≤ 1) :
     |expandedModelLocalForm α S u c f| ^ 2 ≤
       modelEnergyOne α S u f * modelEnergyTwo α S u (f 3) :=
-  expandedModelLocalForm_cauchySchwarz_of_boundedContinuous α S u c f hcmeas hfcont hfbound hweightint hc
+  expandedModelLocalForm_cauchySchwarz_of_boundedContinuous α S u c f hcmeas hfcont hfbound
+    hweightint hc
 
 /-- **`lem:global_energy`** (Global second energy).
 

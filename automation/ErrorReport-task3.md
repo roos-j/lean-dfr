@@ -288,3 +288,11 @@ imported together (needed by Task 4). The opening block of `Twisted.lean` (`E3`,
 names become `Auto.Twisted.E3`, `Auto.Twisted.Anisotropy`, with unchanged definitions. The
 section modules imported `Auto.Twisted.*`, which is not a module path in this repository; they now
 import `DFR.Auto.Twisted.*`. No statement changed.
+
+2026-10-12T21:54:24-04:00 - Toolchain maintenance: migrated supporting proofs to Mathlib's
+measurability-sensitive `eLpNorm` API and current theorem names. Added or derived
+measurability where required, removed genuinely unused hypotheses and tactics,
+and corrected linter-reported formatting. This records API compatibility work,
+not a new discrepancy in the mathematical source. Exported target statements
+are unchanged; direct checks, builds, and the allowed-axiom audit pass. External
+LeanSpherical warnings are tracked in `instructions.md`.

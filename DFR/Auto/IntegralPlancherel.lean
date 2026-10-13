@@ -10,18 +10,17 @@ import Mathlib.MeasureTheory.Function.L2Space
 # Plancherel's theorem for the integral Fourier transform on `L¹ ∩ L²`
 
 Let `V` be a finite-dimensional real inner product space with its Lebesgue (Haar) measure, and let
-`f : V → ℂ` be integrable and square integrable.  Its Fourier transform is the ordinary integral
-`𝓕 f ξ = ∫ 𝐞(-⟪x, ξ⟫) f x dx`, a bounded continuous function.  **Plancherel's theorem** states that
+`f : V → ℂ` be integrable and square integrable. Its Fourier transform is the ordinary integral
+`𝓕 f ξ = ∫ 𝐞(-⟪x, ξ⟫) f x dx`, a bounded continuous function. **Plancherel's theorem** states that
 `𝓕 f` is again square integrable and
-
   `∫ ‖𝓕 f ξ‖² dξ = ∫ ‖f x‖² dx`,
 
 and, by polarization, `∫ conj (𝓕 f) (𝓕 g) = ∫ conj f g` for two such functions.
 
 Mathlib defines the Fourier transform on `L²` abstractly, as the extension by continuity of the
 Fourier transform of Schwartz functions (`MeasureTheory.Lp.fourierTransformₗᵢ`), and proves that it
-is a linear isometry.  What is not in Mathlib is the identification of that abstract transform with
-the integral transform on `L¹ ∩ L²`.  It is proved here (`Auto.fourierLp_ae_eq_fourier`) by testing
+is a linear isometry. What is not in Mathlib is the identification of that abstract transform with
+the integral transform on `L¹ ∩ L²`. It is proved here (`Auto.fourierLp_ae_eq_fourier`) by testing
 against smooth compactly supported functions: both sides define the same tempered distribution, by
 the multiplication formula `∫ (𝓕 g) f = ∫ g (𝓕 f)` for Schwartz `g` and integrable `f`, and a
 locally integrable function is determined almost everywhere by its integrals against such tests.

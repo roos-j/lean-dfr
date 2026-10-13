@@ -12,7 +12,7 @@ maxSynthPendingDepth = 3
 [[require]]
 name = "lean_spherical"
 git = "https://github.com/roos-j/lean-spherical.git"
-rev = "d45bcdce0a6b68a3fea0581cba6dd84fdce31186"
+rev = "2b0e2bbf35cdf45ab99d1d77b2dea37b214fe236"
 
 [[lean_lib]]
 name = "DFR"

@@ -94,7 +94,8 @@ theorem smoothing_memLp_modulation
     {f : E → ℂ} (hf : MemLp f 2 volume) (a : E) :
     MemLp (fun x => Real.fourierChar (inner ℝ a x) • f x) 2 volume := by
   apply hf.of_le
-    ((Real.continuous_fourierChar.comp (continuous_const.inner continuous_id)).aestronglyMeasurable.fun_smul hf.1)
+    ((Real.continuous_fourierChar.comp (continuous_const.inner
+      continuous_id)).aestronglyMeasurable.fun_smul hf.aestronglyMeasurable)
   exact Filter.Eventually.of_forall fun x => by simp
 
 /-- The modulation isometry underlying the Fourier computation in Lemma 3.1. -/
@@ -126,7 +127,8 @@ noncomputable def smoothingModulationL2
     change ‖(smoothing_memLp_modulation (Lp.memLp f) a).toLp _‖ = ‖f‖
     rw [Lp.norm_toLp, Lp.norm_def]
     congr 1
-    exact eLpNorm_congr_norm_ae (Filter.Eventually.of_forall fun x => by simp)
+    exact eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (Filter.Eventually.of_forall fun x =>
+      by simp)
 
 /-- Pointwise representative of the modulation isometry. -/
 theorem smoothingModulationL2_coe
@@ -174,7 +176,8 @@ theorem smoothing_fourier_translation
   have ht : smoothingTranslationL2 a (q.toLp 2 volume) = q'.toLp 2 volume := by
     apply Lp.ext
     filter_upwards [smoothingTranslationL2_coe a (q.toLp 2 volume),
-      (measurePreserving_add_right volume a).quasiMeasurePreserving.ae_eq (q.coeFn_toLp 2 volume),
+      (measurePreserving_add_right volume a).quasiMeasurePreserving.ae_eq_comp (q.coeFn_toLp 2
+        volume),
       q'.coeFn_toLp 2 volume] with x hx hq hq'
     simp only [q', SchwartzMap.compSubConstCLM_apply, sub_neg_eq_add] at hq'
     exact hx.trans (hq.trans hq'.symm)
@@ -228,7 +231,7 @@ theorem smoothing_fourier_modulation
   let m : E → ℂ := fun x => Real.fourierChar (inner ℝ a x) • q x
   have hm2 : MemLp m 2 volume := smoothing_memLp_modulation (q.memLp 2 volume) a
   have hm1 : Integrable m volume := by
-    rw [← integrable_norm_iff hm2.1]
+    rw [← integrable_norm_iff hm2.aestronglyMeasurable]
     simpa only [m, Circle.norm_smul] using q.integrable.norm
   have hm : smoothingModulationL2 a (q.toLp 2 volume) = hm2.toLp m := by
     apply Lp.ext
@@ -239,7 +242,7 @@ theorem smoothing_fourier_modulation
   apply Lp.ext
   filter_upwards [smoothing_fourier_toLp_ae_eq hm1 hm2,
     smoothingTranslationL2_coe (-a) ((𝓕 q).toLp 2 volume),
-    (measurePreserving_add_right volume (-a)).quasiMeasurePreserving.ae_eq
+    (measurePreserving_add_right volume (-a)).quasiMeasurePreserving.ae_eq_comp
       ((𝓕 q).coeFn_toLp 2 volume)] with ξ hF ht hq
   simp only [Function.comp_apply] at hq
   rw [hF, ht, hq]
@@ -280,7 +283,8 @@ theorem smoothing_fourier_multiplicativeDifference
       filter_upwards [smoothingModulationL2_coe s (𝓕 f),
         smoothingTranslationL2_coe (-ξ) (𝓕 f)] with η hm ht
       rw [hm, ht]
-      simp only [RCLike.inner_apply, Circle.smul_def, smul_eq_mul, sub_eq_add_neg, starRingEnd_apply]
+      simp only [RCLike.inner_apply, Circle.smul_def, smul_eq_mul, sub_eq_add_neg,
+        starRingEnd_apply]
       ring
     _ = _ := by
       have hshift := integral_add_left_eq_self (μ := volume)
@@ -350,7 +354,7 @@ theorem smoothing_ae_memLp_fourierCorrelation
       (𝓕 f : Lp (α := E) ℂ 2 volume) (ξ + η) *
         star ((𝓕 f : Lp (α := E) ℂ 2 volume) η)) 2 volume := by
   have hw : Integrable (fun η => ‖(𝓕 f : Lp (α := E) ℂ 2 volume) η‖ ^ 2) volume :=
-    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp (Lp.memLp (𝓕 f))
   have hprod := hw.mul_prod hw
   have hshift := (measurePreserving_add_prod volume volume).integrable_comp
     hprod.aestronglyMeasurable
@@ -439,19 +443,22 @@ theorem smoothing_integrable_fourierDifference_energy
   · filter_upwards [smoothing_ae_memLp_fourierCorrelation f] with ξ hξ
     have hF : MemLp (𝓕 (fun η => (𝓕 f : Lp (α := E) ℂ 2 volume) (ξ + η) *
         star ((𝓕 f : Lp (α := E) ℂ 2 volume) η)) : E → ℂ) 2 volume :=
-      (memLp_congr_ae (smoothing_fourier_toLp_ae_eq (smoothing_integrable_fourierCorrelation f ξ) hξ)).mp
+      (memLp_congr_ae (smoothing_fourier_toLp_ae_eq (smoothing_integrable_fourierCorrelation f ξ)
+        hξ)).mp
         (Lp.memLp (𝓕 (hξ.toLp _)))
     have hFn := hF.comp_measurePreserving (Measure.measurePreserving_neg volume)
-    have hsq := (memLp_two_iff_integrable_sq_norm hFn.1).mp hFn
-    simpa only [Function.comp_def, Pi.pow_apply, smoothing_fourier_multiplicativeDifference_norm] using hsq
+    have hsq := (memLp_two_iff_integrable_sq_norm hFn.aestronglyMeasurable).mp hFn
+    simpa only [Function.comp_def, Pi.pow_apply,
+      smoothing_fourier_multiplicativeDifference_norm] using hsq
   · have hw : Integrable (fun η => ‖(𝓕 f : Lp (α := E) ℂ 2 volume) η‖ ^ 2) volume :=
-      (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+      (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp (Lp.memLp (𝓕 f))
     have hprod := hw.mul_prod hw
     have hfull := ((measurePreserving_add_prod volume volume).integrable_comp
       hprod.aestronglyMeasurable).mpr hprod
     apply hfull.integral_prod_left.congr
     filter_upwards [smoothing_integral_fourier_multiplicativeDifference_norm_sq f] with ξ hξ
-    simpa only [Real.norm_eq_abs, Pi.pow_apply, abs_pow, abs_norm, Function.comp_apply] using hξ.symm
+    simpa only [Real.norm_eq_abs, Pi.pow_apply, abs_pow, abs_norm, Function.comp_apply] using
+      hξ.symm
 /-- Translation of the centered frequency ball in Lemma 3.1. -/
 theorem smoothing_integral_ball_translate
     {E : Type*} [NormedAddCommGroup E] [MeasurableSpace E] [BorelSpace E]
@@ -496,12 +503,13 @@ theorem smoothing_fourierDifference_ball_energy
         ‖(𝓕 f : Lp (α := E) ℂ 2 volume) η‖ ^ 2 := by
       apply integral_integral_swap
       have hw : Integrable (fun η => ‖(𝓕 f : Lp (α := E) ℂ 2 volume) η‖ ^ 2) volume :=
-        (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+        (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp (Lp.memLp (𝓕 f))
       have hprod := hw.mul_prod hw
       have hfull := ((measurePreserving_add_prod volume volume).integrable_comp
         hprod.aestronglyMeasurable).mpr hprod
       have hr := hfull.restrict (s := Metric.closedBall (0 : E) R ×ˢ Set.univ)
-      simpa only [← Measure.prod_restrict, Measure.restrict_univ, Function.comp_def, Function.uncurry_def] using! hr
+      simpa only [← Measure.prod_restrict, Measure.restrict_univ, Function.comp_def,
+        Function.uncurry_def] using! hr
     _ = _ := by
       apply integral_congr_ae
       filter_upwards [] with η
@@ -539,11 +547,13 @@ theorem smoothing_frequencyProjection
     ∃ g h : Lp (α := E) ℂ 2 volume,
       f = g + h ∧ inner ℂ g h = 0 ∧
       (⇑(𝓕 g : Lp (α := E) ℂ 2 volume) =ᵐ[volume] s.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume))) ∧
-      (⇑(𝓕 h : Lp (α := E) ℂ 2 volume) =ᵐ[volume] sᶜ.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume))) := by
+      (⇑(𝓕 h : Lp (α := E) ℂ 2 volume) =ᵐ[volume] sᶜ.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume)))
+        := by
   let hf := Lp.memLp (𝓕 f)
   let G := (hf.indicator hs).toLp (s.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume)))
   let H := (hf.indicator hs.compl).toLp (sᶜ.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume)))
-  have hG : ⇑G =ᵐ[volume] s.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume)) := (hf.indicator hs).coeFn_toLp
+  have hG : ⇑G =ᵐ[volume] s.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume)) := (hf.indicator
+    hs).coeFn_toLp
   have hH : ⇑H =ᵐ[volume] sᶜ.indicator (⇑(𝓕 f : Lp (α := E) ℂ 2 volume)) :=
     (hf.indicator hs.compl).coeFn_toLp
   have hsum : G + H = 𝓕 f := by
@@ -639,7 +649,7 @@ theorem smoothing_fourierDifference_energy_le_ball_mass
         ∫ ξ in Metric.closedBall c R, ‖(𝓕 f : Lp (α := E) ℂ 2 volume) ξ‖ ^ 2)) := by
   let w : E → ℝ := fun ξ => ‖(𝓕 f : Lp (α := E) ℂ 2 volume) ξ‖ ^ 2
   have hw : Integrable w volume :=
-    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp (Lp.memLp (𝓕 f))
   have hwpos : ∀ᵐ ξ ∂volume, 0 ≤ w ξ := Filter.Eventually.of_forall fun ξ => sq_nonneg _
   have hb : BddAbove (Set.range (fun c : E => ∫ ξ in Metric.closedBall c R, w ξ)) := by
     refine ⟨∫ ξ, w ξ, ?_⟩
@@ -694,7 +704,7 @@ theorem smoothing_concentration_of_fourier_energy
   let F : Lp (α := E) ℂ 2 volume := 𝓕 f
   let w : E → ℝ := fun ξ => ‖F ξ‖ ^ 2
   have hw : Integrable w volume :=
-    (memLp_two_iff_integrable_sq_norm (Lp.memLp F).1).mp (Lp.memLp F)
+    (memLp_two_iff_integrable_sq_norm (Lp.memLp F).aestronglyMeasurable).mp (Lp.memLp F)
   have hmass_eq : (∫ ξ, w ξ) = ‖f‖ ^ 2 := by
     have h := smoothing_frequencyRestriction_norm_sq (Lp.memLp F) MeasurableSet.univ
     simp only [Set.indicator_univ, Lp.toLp_coeFn, Measure.restrict_univ] at h
@@ -995,8 +1005,9 @@ theorem smoothing_memLp_sharpMultiplier (f : Lp (α := ℝ) ℂ 2 volume)
     MemLp (fun ξ => (smoothingSharpMultiplier R S ξ : ℂ) *
       (𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ) 2 volume := by
   apply (Lp.memLp (𝓕 f)).of_le
-    (((Complex.continuous_ofReal.comp (smoothingSharpMultiplier_continuous R S)).aestronglyMeasurable).mul
-      (Lp.memLp (𝓕 f)).1)
+    (((Complex.continuous_ofReal.comp (smoothingSharpMultiplier_continuous R
+      S)).aestronglyMeasurable).mul
+      (Lp.memLp (𝓕 f)).aestronglyMeasurable)
   filter_upwards [] with ξ
   simp only [Pi.mul_apply, Function.comp_apply]
   rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
@@ -1053,7 +1064,7 @@ theorem smoothing_select_highMass_indices (f : Lp (α := ℝ) ℂ 2 volume)
     positivity
   · let w : ℝ → ℝ := fun ξ => ‖(𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2
     have hw : Integrable w volume :=
-      (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+      (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp (Lp.memLp (𝓕 f))
     have hm : (∫ ξ, w ξ) = ‖f‖ ^ 2 := by
       have h := smoothing_frequencyRestriction_norm_sq (Lp.memLp (𝓕 f)) MeasurableSet.univ
       simpa only [Set.indicator_univ, Lp.toLp_coeFn, Measure.restrict_univ,
@@ -1104,7 +1115,8 @@ theorem smoothingFlatPart_norm_le (f : Lp (α := ℝ) ℂ 2 volume)
   rw [hξ, norm_mul, ← Complex.ofReal_one, ← Complex.ofReal_sub,
     Complex.norm_real, Real.norm_eq_abs,
     abs_of_nonneg (sub_nonneg.mpr (smoothingSharpMultiplier_bounds R S ξ).2)]
-  exact mul_le_of_le_one_left (norm_nonneg _) (by linarith [(smoothingSharpMultiplier_bounds R S ξ).1])
+  exact mul_le_of_le_one_left (norm_nonneg _)
+    (by linarith [(smoothingSharpMultiplier_bounds R S ξ).1])
 
 /-- Lemma 3.2(1), with the uniform implicit constant made explicit as 2. -/
 theorem smoothing_lemma3_2_L2_bounds (f : Lp (α := ℝ) ℂ 2 volume)
@@ -1209,7 +1221,7 @@ theorem smoothingPieceSpectrum_memLp (f : Lp (α := ℝ) ℂ 2 volume)
   simp only [sub_eq_add_neg, ← neg_mul]
   apply hF.of_le
     ((Complex.continuous_ofReal.comp (smoothingPartitionCutoff_contDiff.continuous.comp
-      (continuous_id.div_const R))).aestronglyMeasurable.mul hF.1)
+      (continuous_id.div_const R))).aestronglyMeasurable.mul hF.aestronglyMeasurable)
   filter_upwards [] with ξ
   simp only [Pi.mul_apply, Function.comp_apply, norm_mul, Complex.norm_real, Real.norm_eq_abs,
     abs_of_nonneg (smoothingPartitionCutoff_bounds _).1]
@@ -1219,7 +1231,7 @@ theorem smoothingPieceSpectrum_memLp (f : Lp (α := ℝ) ℂ 2 volume)
 is a representative of the corresponding inverse L² Fourier transform. -/
 theorem smoothingPieceSpectrum_integrable (f : Lp (α := ℝ) ℂ 2 volume)
     {R : ℝ} (hR : 0 < R) (n : ℤ) : Integrable (smoothingPieceSpectrum f R n) volume := by
-  apply (integrable_norm_iff (smoothingPieceSpectrum_memLp f R n).1).mp
+  apply (integrable_norm_iff (smoothingPieceSpectrum_memLp f R n).aestronglyMeasurable).mp
   simpa only [pow_zero, one_mul] using smoothingPieceSpectrum_moments f hR n 0
 
 /-- The L² class of the smooth piece h_n from Lemma 3.2. -/
@@ -1279,7 +1291,8 @@ theorem smoothing_modulatedPiece_fourier (f : Lp (α := ℝ) ℂ 2 volume)
         Lp (α := ℝ) ℂ 2 volume) ξ =
       (smoothingPartitionCutoff (ξ / R + n) : ℂ) * (𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ := by
   rw [smoothing_fourier_modulation]
-  have hspec := (measurePreserving_add_right volume (-(-(n : ℝ) * R))).quasiMeasurePreserving.ae_eq
+  have hspec := (measurePreserving_add_right volume (-(-(n : ℝ) *
+    R))).quasiMeasurePreserving.ae_eq_comp
     (smoothingPieceL2_fourier f R n)
   filter_upwards [smoothingTranslationL2_coe (-(-(n : ℝ) * R))
     (𝓕 (smoothingPieceL2 f R n)), hspec] with ξ ht hs
@@ -1300,7 +1313,8 @@ theorem smoothingSharpPart_eq_sum_modulation (f : Lp (α := ℝ) ℂ 2 volume)
   have hall := ae_all_iff.mpr (fun n : ℤ => smoothing_modulatedPiece_fourier f hR n)
   filter_upwards [smoothingSharpPart_fourier f R S,
     Lp.coeFn_fun_finsetSum S (fun n =>
-      𝓕 (smoothingModulationL2 (-(n : ℝ) * R) (smoothingPieceL2 f R n))), hall] with ξ hsharp hsum hall
+      𝓕 (smoothingModulationL2 (-(n : ℝ) * R) (smoothingPieceL2 f R n))), hall] with ξ hsharp hsum
+        hall
   rw [hsharp, hsum]
   simp_rw [hall]
   simp only [smoothingSharpMultiplier, Complex.ofReal_sum, Finset.sum_mul]
@@ -1428,7 +1442,8 @@ theorem smoothing_scaled_multiplier_bound (φ : SchwartzMap ℝ ℂ)
     simp_rw [hQF, sub_eq_add_neg]
     rw [integral_add_right_eq_self
       (fun y : ℝ => ‖(𝓕 (fun ξ : ℝ => φ (ξ / R)) : ℝ → ℂ) y‖) (-x)]
-    simpa only [SchwartzMap.fourier_coe] using smoothing_integral_norm_fourier_scale (φ : ℝ → ℂ) hR
+    simpa only [SchwartzMap.fourier_coe] using smoothing_integral_norm_fourier_scale (φ : ℝ → ℂ)
+      hR
   rw [hraw, ← hkernel]
   exact smoothing_norm_schwartz_pairing_le Q f hf
 /-- The one-dimensional inverse-Fourier derivative formula needed for the
@@ -1489,7 +1504,8 @@ noncomputable def smoothingDerivativeConstant (N : ℕ) : ℝ :=
 theorem smoothingDerivativeCutoff_scale (N : ℕ) {R : ℝ} (hR : 0 < R) (ξ : ℝ) :
     (R ^ N : ℝ) • smoothingDerivativeCutoff N (ξ / R) =
       (2 * Real.pi * Complex.I * ξ) ^ N * (smoothingPartitionCutoff (ξ / R) : ℂ) := by
-  rw [smoothingDerivativeCutoff_apply, Complex.real_smul, Complex.ofReal_pow, ← mul_assoc, ← mul_pow]
+  rw [smoothingDerivativeCutoff_apply, Complex.real_smul, Complex.ofReal_pow, ← mul_assoc, ←
+    mul_pow]
   congr 2
   push_cast
   field_simp [hR.ne']
@@ -1506,7 +1522,8 @@ theorem smoothingPiece_iteratedDeriv (f : Lp (α := ℝ) ℂ 2 volume)
     rw [smoothing_fourier_modulation]
     simpa only [sub_eq_add_neg] using! smoothingTranslationL2_coe (-((n : ℝ) * R)) (𝓕 f)
   rw [smoothingPiece, smoothing_iteratedDeriv_fourierInv
-    (smoothingPieceSpectrum_memLp f R n).1 (smoothingPieceSpectrum_moments f hR n)]
+    (smoothingPieceSpectrum_memLp f R n).aestronglyMeasurable (smoothingPieceSpectrum_moments f hR
+      n)]
   rw [Real.fourierInv_eq, Real.fourierInv_eq, ← integral_smul]
   apply integral_congr_ae
   filter_upwards [hgf] with ξ hξ
@@ -1583,7 +1600,8 @@ theorem smoothingFlatPart_fourier_norm_le (f : Lp (α := ℝ) ℂ 2 volume)
   filter_upwards [smoothingFlatPart_fourier f R S] with ξ hξ
   rw [hξ, norm_mul, ← Complex.ofReal_one, ← Complex.ofReal_sub, Complex.norm_real,
     Real.norm_eq_abs, abs_of_nonneg (sub_nonneg.mpr (smoothingSharpMultiplier_bounds R S ξ).2)]
-  exact mul_le_of_le_one_left (norm_nonneg _) (by linarith [(smoothingSharpMultiplier_bounds R S ξ).1])
+  exact mul_le_of_le_one_left (norm_nonneg _)
+    (by linarith [(smoothingSharpMultiplier_bounds R S ξ).1])
 
 /-- Every length-R interval has small flat Fourier mass, as used in the final
 contradiction proving Lemma 3.2(3). -/
@@ -1606,8 +1624,10 @@ theorem smoothingFlatPart_interval_mass (f : Lp (α := ℝ) ℂ 2 volume)
     exact mul_nonneg hρ.le (integral_nonneg fun ξ => sq_nonneg _)
   · apply le_trans _ (not_le.mp hm).le
     have hg := (memLp_two_iff_integrable_sq_norm
-      (Lp.memLp (𝓕 (smoothingFlatPart f R S))).1).mp (Lp.memLp (𝓕 (smoothingFlatPart f R S)))
-    have hf := (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+      (Lp.memLp (𝓕 (smoothingFlatPart f R S))).aestronglyMeasurable).mp (Lp.memLp (𝓕
+        (smoothingFlatPart f R S)))
+    have hf := (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp
+      (Lp.memLp (𝓕 f))
     apply integral_mono_ae hg.integrableOn hf.integrableOn
     filter_upwards [ae_restrict_of_ae (smoothingFlatPart_fourier_norm_le f R S)] with ξ hξ
     exact pow_le_pow_left₀ (norm_nonneg _) hξ 2
@@ -1632,12 +1652,12 @@ theorem smoothing_ball_integral_le_two_intervals {w : ℝ → ℝ}
     have hbounds := abs_le.mp hdist
     by_cases hxc : x ≤ c
     · have hl : x ∈ Set.Icc (c - R) c := ⟨by linarith [hbounds.1], hxc⟩
-      simp only [hb, hl, if_true]
+      simp only [hb, hl, ite_true]
       split_ifs <;> linarith
     · have hr : x ∈ Set.Icc c (c + R) := ⟨(not_le.mp hxc).le, by linarith [hbounds.2]⟩
-      simp only [hb, hr, if_true]
+      simp only [hb, hr, ite_true]
       split_ifs <;> linarith
-  · simp only [hb, if_false]
+  · simp only [hb, ite_false]
     split_ifs <;> linarith
 
 /-- The flat Fourier mass in any radius-R ball is at most twice the source
@@ -1650,7 +1670,8 @@ theorem smoothingFlatPart_ball_mass (f : Lp (α := ℝ) ℂ 2 volume)
       ‖(𝓕 (smoothingFlatPart f R S) : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2) ≤
       2 * ρ * (∫ ξ, ‖(𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2) := by
   have hg := (memLp_two_iff_integrable_sq_norm
-    (Lp.memLp (𝓕 (smoothingFlatPart f R S))).1).mp (Lp.memLp (𝓕 (smoothingFlatPart f R S)))
+    (Lp.memLp (𝓕 (smoothingFlatPart f R S))).aestronglyMeasurable).mp (Lp.memLp (𝓕
+      (smoothingFlatPart f R S)))
   have hball := smoothing_ball_integral_le_two_intervals hg
     (Filter.Eventually.of_forall fun ξ => sq_nonneg _) R c
   have hleft := smoothingFlatPart_interval_mass f R (c - R) hρ S hselect
@@ -1660,10 +1681,11 @@ theorem smoothingFlatPart_ball_mass (f : Lp (α := ℝ) ℂ 2 volume)
 /-- Equation (3.25) of Lemma 3.2(3), with uniform constant 2. The source's
 high-mass interval contradiction is applied to the maximal-ball energy bound
 proved in Lemma 3.1, avoiding an unnecessary second orthogonal projection. -/
-theorem smoothingFlatPart_energy_bound (f : Lp (α := ℝ) ℂ 2 volume)
-    (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (S : Finset ℤ)
-    (hselect : f ≠ 0 → ∀ n : ℤ, n ∈ S ↔ n ∈ smoothingHighMassIndices
-      (fun ξ => ‖(𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2) R ρ) :
+theorem smoothingFlatPart_energy_bound (f : Lp (α := ℝ) ℂ 2 volume) (R : ℝ) {ρ : ℝ} (hρ : 0 <
+    ρ) (S : Finset ℤ)
+    (hselect :
+      f ≠ 0 → ∀ n : ℤ, n ∈ S ↔ n ∈ smoothingHighMassIndices (fun ξ => ‖(𝓕 f : Lp (α := ℝ) ℂ 2
+        volume) ξ‖ ^ 2) R ρ) :
     (∫ s : ℝ, ∫ ξ in Metric.closedBall (0 : ℝ) R,
       ‖(𝓕 (smoothingMultiplicativeDifference (⇑(smoothingFlatPart f R S)) s) : ℝ → ℂ) ξ‖ ^ 2) ≤
       2 * ρ * ‖f‖ ^ 4 := by
@@ -1800,7 +1822,8 @@ theorem smoothing_sublevel_shear_measure {α β : ℝ × ℝ → ℝ}
       ((smoothingFiberTranslation (fun t => (-t, 0)) (by fun_prop)) ⁻¹' K) ε) =
       volume (smoothingSublevelSet α β K ε) := by
   rw [← smoothing_sublevel_shear_preimage]
-  exact (smoothingFiberTranslation_measurePreserving (fun t => (-t, 0)) (by fun_prop)).measure_preimage
+  exact (smoothingFiberTranslation_measurePreserving (fun t => (-t, 0))
+    (by fun_prop)).measure_preimage
     (smoothingSublevelSet_measurable hα hβ hK ε).nullMeasurableSet
 
 /-- The shear in (3.41) preserves compactness and the positive time condition. -/
@@ -1827,7 +1850,7 @@ theorem smoothing_sublevel_parabolic_preimage (α β : ℝ × ℝ → ℝ)
         (smoothingParabolicAffine A b ⁻¹' K) ε := by
   ext ⟨⟨x, y⟩, t⟩
   simp only [smoothingShiftedSublevelSet, smoothingParabolicAffine, Set.mem_preimage,
-    Set.mem_setOf_eq, Prod.mk_add_mk]
+    Set.mem_ofPred_eq, Prod.mk_add_mk]
   ring_nf
 
 /-- Every compact positive-time domain fits inside the parabolic affine image
@@ -1871,6 +1894,7 @@ theorem smoothing_affine_map_volume {A : ℝ} (hA : A ≠ 0) (b : ℝ) :
   have heq : (fun x : ℝ => A * x + b) = (fun x => x + b) ∘ (fun x => A * x) := rfl
   rw [heq, ← Measure.map_map (by fun_prop) (by fun_prop), Real.map_volume_mul_left hA,
     Measure.map_smul, map_add_right_eq_self]
+  fun_prop
 
 /-- The Jacobian of the normalization following (3.41) is A⁴. -/
 theorem smoothing_parabolic_map_volume {A : ℝ} (hA : 0 < A) (b : ℝ × ℝ) :
@@ -2015,7 +2039,9 @@ theorem smoothing_eq3_43 {E : Set ((ℝ × ℝ) × ℝ)} (hE : MeasurableSet E)
     volume E / 2 ≤ volume (smoothingFirstRefinement E) := by
   have hupper := smoothing_eq3_43_upper hE hS hSvol hIvol hbox
   have hfin : volume E ≠ ⊤ := by
-    apply ne_top_of_le_ne_top (by rw [Measure.volume_eq_prod, Measure.prod_prod, hSvol, hIvol]; simp :
+    apply ne_top_of_le_ne_top (by
+      rw [Measure.volume_eq_prod, Measure.prod_prod, hSvol, hIvol];
+      simp :
       volume (S ×ˢ I) ≠ ⊤)
     exact measure_mono hbox
   have hhalf : volume E / 2 ≠ ⊤ := ENNReal.div_ne_top hfin (by norm_num)
@@ -2054,9 +2080,9 @@ theorem smoothing_eq3_44_threshold {E : Set ((ℝ × ℝ) × ℝ)} (hE : Measura
       setLIntegral_mono' (smoothingFirstRefinement_measurable hE) (fun _ hz => hz)
 
 /-- Equation (3.44): the first refined set has measure at least |E|²/4. -/
-theorem smoothing_eq3_44 {E : Set ((ℝ × ℝ) × ℝ)} (hE : MeasurableSet E)
-    {S : Set (ℝ × ℝ)} (hS : MeasurableSet S) (hSvol : volume S = 1)
-    {I : Set ℝ} (hIvol : volume I = 1) (hbox : E ⊆ S ×ˢ I) :
+theorem smoothing_eq3_44 {E : Set ((ℝ × ℝ) × ℝ)} (hE : MeasurableSet E) {S : Set (ℝ × ℝ)} (hS :
+    MeasurableSet S)
+    (hSvol : volume S = 1) {I : Set ℝ} (hIvol : volume I = 1) (hbox : E ⊆ S ×ˢ I) :
     volume E ^ 2 / 4 ≤ volume (smoothingFirstRefinedSet E) := by
   calc
     volume E ^ 2 / 4 = (volume E / 2) * (volume E / 2) := by
@@ -2083,14 +2109,14 @@ U_t1={t:(zbar+γ(t1)-γ(t),t)∈E₁}, and
 U_t1t2={t:(zbar+γ(t1)-γ(t2),t)∈E}.
 Their product gives |A|≥m⁷/(2048 M²) and exactly the three inequalities (3.42).
 This changes the source's erroneous definitions, signs, and numerical constants;
-it does not change claim (3.42), Lemma 3.3, or Theorem 5. The declarations below verify this repair; the historical diagnostic remains for provenance.
+it does not change claim (3.42), Lemma 3.3, or Theorem 5. The declarations below verify this
+repair; the historical diagnostic remains for provenance.
 -/
 
 /-- Diagnostic for the false printed second refinement after (3.44): on the
 allowed time interval [2,3], its spatial filtering makes it empty for every
 positive-measure subset of the source unit box. -/
-theorem smoothing_printed_second_refinement_empty
-    {E : Set ((ℝ × ℝ) × ℝ)} (hEpos : 0 < volume E)
+theorem smoothing_printed_second_refinement_empty {E : Set ((ℝ × ℝ) × ℝ)} (hEpos : 0 < volume E)
     (hbox : E ⊆ (Set.Icc (0 : ℝ) 1 ×ˢ Set.Icc (0 : ℝ) 1) ×ˢ Set.Icc (2 : ℝ) 3) :
     {p ∈ E | volume E / 2 ≤ volume
       {t ∈ Set.Icc (2 : ℝ) 3 | (p.1 + (-t, t ^ 2), t) ∈ E}} = ∅ := by
@@ -2164,7 +2190,9 @@ theorem smoothing_refinement_lower {E : Set ((ℝ × ℝ) × ℝ)} (hE : Measura
     volume E / 2 ≤ volume (smoothingFiberRefinement E (volume S)) := by
   have hu := smoothing_refinement_upper hE hS hSzero hStop hIvol hbox
   have hfin : volume E ≠ ⊤ := by
-    apply ne_top_of_le_ne_top (by rw [Measure.volume_eq_prod, Measure.prod_prod, hIvol, mul_one]; exact hStop :
+    apply ne_top_of_le_ne_top (by
+      rw [Measure.volume_eq_prod, Measure.prod_prod, hIvol, mul_one];
+      exact hStop :
       volume (S ×ˢ I) ≠ ⊤)
     exact measure_mono hbox
   have hhalf : volume E / 2 ≠ ⊤ := ENNReal.div_ne_top hfin (by norm_num)
@@ -2194,7 +2222,8 @@ theorem smoothing_refined_measure {E : Set ((ℝ × ℝ) × ℝ)} (hE : Measurab
 /-- The corrected retained set has the threshold times the spatial-refinement
 measure as a lower bound. -/
 theorem smoothing_refined_lower {E : Set ((ℝ × ℝ) × ℝ)} (hE : MeasurableSet E) (M : ENNReal) :
-    volume E / 2 / M * volume (smoothingFiberRefinement E M) ≤ volume (smoothingFiberRefinedSet E M) := by
+    volume E / 2 / M * volume (smoothingFiberRefinement E M) ≤ volume (smoothingFiberRefinedSet E
+      M) := by
   rw [smoothing_refined_measure hE]
   calc
     volume E / 2 / M * volume (smoothingFiberRefinement E M) =
@@ -2224,7 +2253,9 @@ theorem smoothingBetaBox_measurable (a : ℝ) : MeasurableSet (smoothingBetaBox 
 
 /-- The first refined set, written in beta coordinates for the second refinement. -/
 def smoothingBetaSet (E : Set ((ℝ × ℝ) × ℝ)) : Set ((ℝ × ℝ) × ℝ) :=
-  (smoothingFiberTranslation (fun t => -smoothingParabola t) (by unfold smoothingParabola; fun_prop)) ⁻¹' E
+  (smoothingFiberTranslation (fun t => -smoothingParabola t) (by
+    unfold smoothingParabola;
+    fun_prop)) ⁻¹' E
 
 /-- Measurability after passing to beta coordinates. -/
 theorem smoothingBetaSet_measurable {E : Set ((ℝ × ℝ) × ℝ)} (hE : MeasurableSet E) :
@@ -2257,13 +2288,15 @@ theorem smoothingBetaSet_subset {E : Set ((ℝ × ℝ) × ℝ)} {a : ℝ} (ha : 
 /-- The corrected E₂ after (3.44), pulled back from high beta fibers. -/
 def smoothingSecondRefinedSet (E : Set ((ℝ × ℝ) × ℝ)) (a : ℝ) : Set ((ℝ × ℝ) × ℝ) :=
   (smoothingFiberTranslation smoothingParabola (by unfold smoothingParabola; fun_prop)) ⁻¹'
-    smoothingFiberRefinedSet (smoothingBetaSet (smoothingFirstRefinedSet E)) (volume (smoothingBetaBox a))
+    smoothingFiberRefinedSet (smoothingBetaSet (smoothingFirstRefinedSet E)) (volume
+      (smoothingBetaBox a))
 
 /-- Measurability of the corrected second refined set. -/
 theorem smoothingSecondRefinedSet_measurable {E : Set ((ℝ × ℝ) × ℝ)}
     (hE : MeasurableSet E) (a : ℝ) : MeasurableSet (smoothingSecondRefinedSet E a) :=
   (smoothingFiberRefinedSet_measurable
-    (smoothingBetaSet_measurable (smoothingFirstRefinedSet_measurable hE)) _).preimage (Homeomorph.measurable _)
+    (smoothingBetaSet_measurable (smoothingFirstRefinedSet_measurable hE)) _).preimage
+      (Homeomorph.measurable _)
 
 /-- Membership in the corrected second refinement is expressed in the source
 alpha coordinates, with the high-fiber test at the corresponding beta coordinate. -/
@@ -2289,14 +2322,18 @@ theorem smoothing_second_refinement_lower {E : Set ((ℝ × ℝ) × ℝ)}
         (volume (smoothingFirstRefinedSet E) / 2) ≤ volume (smoothingSecondRefinedSet E a) := by
   have hE1 := smoothingFirstRefinedSet_measurable hE
   have hQ := smoothingBetaSet_measurable hE1
-  have hQbox := smoothingBetaSet_subset ha (fun p (hp : p ∈ smoothingFirstRefinedSet E) => hbox hp.1)
+  have hQbox := smoothingBetaSet_subset ha (fun p (hp : p ∈ smoothingFirstRefinedSet E) => hbox
+    hp.1)
   have hM0 : volume (smoothingBetaBox a) ≠ 0 := by rw [smoothingBetaBox_volume ha]; positivity
-  have hMt : volume (smoothingBetaBox a) ≠ ⊤ := by rw [smoothingBetaBox_volume ha]; exact ENNReal.ofReal_ne_top
+  have hMt : volume (smoothingBetaBox a) ≠ ⊤ := by
+    rw [smoothingBetaBox_volume ha];
+    exact ENNReal.ofReal_ne_top
   have hI : volume (Set.Icc a (a + 1)) = 1 := by simp
   have hl := smoothing_refinement_lower hQ (smoothingBetaBox_measurable a) hM0 hMt hI hQbox
   have hr := smoothing_refined_lower hQ (volume (smoothingBetaBox a))
   have hm : volume (smoothingSecondRefinedSet E a) = volume
-      (smoothingFiberRefinedSet (smoothingBetaSet (smoothingFirstRefinedSet E)) (volume (smoothingBetaBox a))) :=
+      (smoothingFiberRefinedSet (smoothingBetaSet (smoothingFirstRefinedSet E)) (volume
+        (smoothingBetaBox a))) :=
     (smoothingFiberTranslation_measurePreserving _ _).measure_preimage
       (smoothingFiberRefinedSet_measurable hQ _).nullMeasurableSet
   rw [hm]
@@ -2316,7 +2353,9 @@ theorem smoothing_third_refinement_nonempty {E : Set ((ℝ × ℝ) × ℝ)}
   have hE1 : 0 < volume (smoothingFirstRefinedSet E) :=
     lt_of_lt_of_le (ENNReal.div_pos (pow_ne_zero 2 hEpos.ne') (by norm_num))
       (smoothing_eq3_44 hE (measurableSet_Icc.prod measurableSet_Icc) hS hI hbox)
-  have hM : volume (smoothingBetaBox a) ≠ ⊤ := by rw [smoothingBetaBox_volume ha]; exact ENNReal.ofReal_ne_top
+  have hM : volume (smoothingBetaBox a) ≠ ⊤ := by
+    rw [smoothingBetaBox_volume ha];
+    exact ENNReal.ofReal_ne_top
   have hh : 0 < volume (smoothingFirstRefinedSet E) / 2 := ENNReal.div_pos hE1.ne' (by norm_num)
   have hE2 : 0 < volume (smoothingSecondRefinedSet E a) :=
     lt_of_lt_of_le (ENNReal.mul_pos (ENNReal.div_pos hh.ne' hM).ne' hh.ne')
@@ -2372,7 +2411,8 @@ theorem smoothing_time_fibers_lower {E : Set ((ℝ × ℝ) × ℝ)} (hE : Measur
   refine ⟨hz, ?_, ?_⟩
   · intro t₁ ht₁
     have hh := ((smoothingSecondRefinedSet_mem E a (z, t₁)).mp ht₁).2
-    change volume (smoothingBetaSet (smoothingFirstRefinedSet E)) / 2 / volume (smoothingBetaBox a) ≤ _ at hh
+    change volume (smoothingBetaSet (smoothingFirstRefinedSet E)) / 2 / volume (smoothingBetaBox
+      a) ≤ _ at hh
     rw [smoothingBetaSet_volume (smoothingFirstRefinedSet_measurable hE)] at hh
     simpa only [smoothingTimeFiberTwo_eq] using hh
   · intro t₁ _ t₂ ht₂
@@ -2438,10 +2478,12 @@ theorem smoothingParameterSet_threshold_lower {E : Set ((ℝ × ℝ) × ℝ)} (h
   rw [smoothingParameterSet_volume hE]
   calc
     _ ≤ volume (smoothingTimeFiberOne E a z) *
-        (volume (smoothingFirstRefinedSet E) / 2 / volume (smoothingBetaBox a)) * (volume E / 2) := by
+        (volume (smoothingFirstRefinedSet E) / 2 / volume (smoothingBetaBox a)) * (volume E / 2)
+          := by
       gcongr
     _ = ∫⁻ _t₁ in smoothingTimeFiberOne E a z,
-        (volume (smoothingFirstRefinedSet E) / 2 / volume (smoothingBetaBox a)) * (volume E / 2) := by
+        (volume (smoothingFirstRefinedSet E) / 2 / volume (smoothingBetaBox a)) * (volume E / 2)
+          := by
       simp [mul_comm, mul_left_comm]
     _ ≤ _ := by
       apply setLIntegral_mono' (smoothing_time_fibers_measurable hE a z 0 0).1
@@ -2509,7 +2551,8 @@ theorem smoothing_eq3_42 (α β : ℝ × ℝ → ℝ) (K : Set ((ℝ × ℝ) × 
     |α (z + smoothingParabola t.1 - smoothingParabola t.2.1) -
       2 * t.2.1 * β (z + smoothingParabola t.1)| ≤ ε ∧
     |α (z + smoothingParabola t.1 - smoothingParabola t.2.1) -
-      2 * t.2.2 * β (z + smoothingParabola t.1 - smoothingParabola t.2.1 + smoothingParabola t.2.2)| ≤ ε := by
+      2 * t.2.2 * β (z + smoothingParabola t.1 - smoothingParabola t.2.1 + smoothingParabola
+        t.2.2)| ≤ ε := by
   have h1 := (smoothingSecondRefinedSet_subset _ a ht.1).1.2
   have h2 := ht.2.1.1.2
   have h3 := ht.2.2.2
@@ -2525,10 +2568,9 @@ noncomputable def smoothingSublevelScalar (c : ℝ) (β : ℝ × ℝ → ℝ) (z
 
 /-- Eliminating the repeated coefficients in (3.42) gives the scalar sublevel
 bound, with the exact error contributed by each of the three relations. -/
-theorem smoothing_scalar_elimination {A B C D ε t₁ t₂ t₃ : ℝ}
-    (h1pos : 0 < t₁) (h2pos : 0 ≤ t₂) (h3pos : 0 < t₃)
-    (h1 : |A - 2 * t₁ * B| ≤ ε) (h2 : |C - 2 * t₂ * B| ≤ ε)
-    (h3 : |C - 2 * t₃ * D| ≤ ε) :
+theorem smoothing_scalar_elimination {A B C D ε t₁ t₂ t₃ : ℝ} (h1pos : 0 < t₁) (h2pos : 0 ≤ t₂)
+    (h3pos : 0 < t₃)
+    (h1 : |A - 2 * t₁ * B| ≤ ε) (h2 : |C - 2 * t₂ * B| ≤ ε) (h3 : |C - 2 * t₃ * D| ≤ ε) :
     |(A / 2) * t₃⁻¹ * t₂ * t₁⁻¹ - D| ≤ (t₂ / t₁ + 2) * ε / (2 * t₃) := by
   have hid : (A / 2) * t₃⁻¹ * t₂ * t₁⁻¹ - D =
       ((t₂ / t₁) * (A - 2 * t₁ * B) - (C - 2 * t₂ * B) + (C - 2 * t₃ * D)) / (2 * t₃) := by
@@ -2717,7 +2759,8 @@ theorem smoothingJ_matrix : smoothingJ.toLinearMap =
   intro t
   change (t.2.1 - t.1, (t.2.1 - t.2.2, t.1 - t.2.1 + t.2.2)) =
     ((Matrix.mulVec smoothingJMatrix ![t.1, t.2.1, t.2.2]) 0,
-      ((Matrix.mulVec smoothingJMatrix ![t.1, t.2.1, t.2.2]) 1, (Matrix.mulVec smoothingJMatrix ![t.1, t.2.1, t.2.2]) 2))
+      ((Matrix.mulVec smoothingJMatrix ![t.1, t.2.1, t.2.2]) 1, (Matrix.mulVec smoothingJMatrix
+        ![t.1, t.2.1, t.2.2]) 2))
   simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_succ]
   change (t.2.1 - t.1, (t.2.1 - t.2.2, t.1 - t.2.1 + t.2.2)) =
     ((-1) * t.1 + (1 * t.2.1 + (0 * t.2.2 + 0)),
@@ -2736,18 +2779,19 @@ theorem smoothingJ_det : LinearMap.det smoothingJ.toLinearMap = -1 := by
 /-- The Jacobian calculation following (3.48) gives preservation of volume. -/
 theorem smoothingJ_measurePreserving : MeasurePreserving smoothingJ
     (volume : Measure (ℝ × (ℝ × ℝ))) volume := by
-  letI : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
+  let : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
     change Measure.IsAddHaarMeasure ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))
     exact Measure.prod.instIsAddHaarMeasure _ _
   refine ⟨smoothingJ.continuous.measurable, ?_⟩
   have hdet : LinearMap.det smoothingJ.toLinearMap ≠ 0 := by rw [smoothingJ_det]; norm_num
   have hm := Measure.map_linearMap_addHaar_eq_smul_addHaar volume hdet
-  simpa only [smoothingJ_det, inv_neg, inv_one, abs_neg, abs_one, ENNReal.ofReal_one, one_smul] using! hm
+  simpa only [smoothingJ_det, inv_neg, inv_one, abs_neg, abs_one, ENNReal.ofReal_one, one_smul]
+    using! hm
 
 /-- The J-coordinate change preserves the measure of every parameter set. -/
 theorem smoothingJ_image_volume (A : Set (ℝ × (ℝ × ℝ))) :
     volume (smoothingJ '' A) = volume A := by
-  letI : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
+  let : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
     change Measure.IsAddHaarMeasure ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))
     exact Measure.prod.instIsAddHaarMeasure _ _
   have hm := Measure.addHaar_image_linearMap volume smoothingJ.toLinearMap A
@@ -2774,7 +2818,8 @@ def smoothingOmegaPiece (a : ℝ) (k : ℕ) (d : ℤ) : Set (ℝ × (ℝ × ℝ)
     max |u.1| |u.2.1| ≤ (1 / 2 : ℝ) ^ k ∧ |u.2.2 - (1 / 2 : ℝ) ^ k * d| ≤ (1 / 2 : ℝ) ^ k}
 
 /-- Each dyadic Ω-piece is measurable. -/
-theorem smoothingOmegaPiece_measurable (a : ℝ) (k : ℕ) (d : ℤ) : MeasurableSet (smoothingOmegaPiece a k d) := by
+theorem smoothingOmegaPiece_measurable (a : ℝ) (k : ℕ) (d : ℤ) : MeasurableSet
+  (smoothingOmegaPiece a k d) := by
   have hΩ : MeasurableSet (smoothingOmega a) :=
     smoothingJ.toHomeomorph.measurableEmbedding.measurableSet_image.mpr
       (measurableSet_Icc.prod (measurableSet_Icc.prod measurableSet_Icc))
@@ -2887,7 +2932,8 @@ theorem smoothingOmegaPiece_mem_indices {a : ℝ} (ha : 0 < a) {k : ℕ} {d : �
 theorem smoothingOmegaIndices_card {a : ℝ} (ha : 0 < a) (k : ℕ) :
     ((smoothingOmegaIndices a k).card : ℝ) ≤ (2 * a + 9) * (2 : ℝ) ^ k := by
   let N : ℤ := ⌈(a + 3) * (2 : ℝ) ^ k⌉
-  have hN : 0 ≤ N := Int.ceil_nonneg_of_neg_one_lt (lt_trans (by norm_num : (-1 : ℝ) < 0) (by positivity))
+  have hN : 0 ≤ N := Int.ceil_nonneg_of_neg_one_lt (lt_trans (by norm_num : (-1 : ℝ) < 0)
+    (by positivity))
   have hcard : ((smoothingOmegaIndices a k).card : ℤ) = N + 1 - -N :=
     Int.card_Icc_of_le (-N) N (by omega)
   have hc : ((smoothingOmegaIndices a k).card : ℝ) = 2 * (N : ℝ) + 1 := by
@@ -2910,8 +2956,10 @@ theorem smoothingOmega_ae_finite_cover {a : ℝ} (ha : 0 < a) :
 null degenerate line handled explicitly and a finite O(2^k) sum at each scale. -/
 theorem smoothingOmega_measure_decomposition {a : ℝ} (ha : 0 < a)
     {B : Set (ℝ × (ℝ × ℝ))} (hB : B ⊆ smoothingOmega a) :
-    volume B ≤ ∑' k : ℕ, ∑ d ∈ smoothingOmegaIndices a k, volume (B ∩ smoothingOmegaPiece a k d) := by
-  have hc : B ≤ᵐ[volume] ⋃ k : ℕ, ⋃ d ∈ smoothingOmegaIndices a k, B ∩ smoothingOmegaPiece a k d := by
+    volume B ≤ ∑' k : ℕ, ∑ d ∈ smoothingOmegaIndices a k, volume (B ∩ smoothingOmegaPiece a k d)
+      := by
+  have hc : B ≤ᵐ[volume] ⋃ k : ℕ, ⋃ d ∈ smoothingOmegaIndices a k, B ∩ smoothingOmegaPiece a k d
+    := by
     filter_upwards [smoothingOmega_ae_finite_cover ha] with u hu hBu
     obtain ⟨k, d, hd, hp⟩ := hu (hB hBu)
     exact Set.mem_iUnion.mpr ⟨k, Set.mem_iUnion.mpr ⟨d, Set.mem_iUnion.mpr ⟨hd, hBu, hp⟩⟩⟩
@@ -3060,7 +3108,10 @@ theorem smoothingFlowChartOne_left_inv {s : ℝ} (hs : s ≠ 0) (w : ℝ × (ℝ
   have he : Real.exp (2 * w.1) * Real.exp (-2 * w.1) = 1 := by
     rw [← Real.exp_add]
     convert Real.exp_zero using 1 ; ring_nf
-  ext <;> simp [smoothingFlowChartOneInv, smoothingFlowChartOne, smoothingDiagonalFlow, hs]
+  ext <;>
+     simp only [smoothingFlowChartOneInv, smoothingFlowChartOne, smoothingDiagonalFlow,
+       neg_mul, ne_eq, hs,
+    not_false_eq_true, mul_div_cancel_left₀, Real.log_exp, OfNat.ofNat_ne_zero]
   calc
     _ = w.2.1 * (Real.exp (2 * w.1) * Real.exp (-2 * w.1)) * (s * s⁻¹) := by ring_nf
     _ = w.2.1 := by rw [he, mul_inv_cancel₀ hs]; ring
@@ -3071,7 +3122,10 @@ theorem smoothingFlowChartTwo_left_inv {s : ℝ} (hs : s ≠ 0) (w : ℝ × (ℝ
   have he : Real.exp (2 * w.1) * Real.exp (-2 * w.1) = 1 := by
     rw [← Real.exp_add]
     convert Real.exp_zero using 1 ; ring_nf
-  ext <;> simp [smoothingFlowChartTwoInv, smoothingFlowChartTwo, smoothingDiagonalFlow, hs]
+  ext <;>
+     simp only [smoothingFlowChartTwoInv, smoothingFlowChartTwo, smoothingDiagonalFlow,
+       neg_mul, ne_eq, hs,
+    not_false_eq_true, mul_div_cancel_left₀, Real.log_exp, neg_neg, OfNat.ofNat_ne_zero]
   calc
     _ = w.2.1 * (Real.exp (2 * w.1) * Real.exp (-2 * w.1)) * (s * s⁻¹) := by ring_nf
     _ = w.2.1 := by rw [he, mul_inv_cancel₀ hs]; ring
@@ -3081,16 +3135,20 @@ theorem smoothingFlowChartOneInv_contDiffOn (s : ℝ) :
     ContDiffOn ℝ ∞ (smoothingFlowChartOneInv s) {v : ℝ × (ℝ × ℝ) | 0 < v.1 / s} := by
   have hl : ContDiffOn ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => Real.log (v.1 / s))
       {v : ℝ × (ℝ × ℝ) | 0 < v.1 / s} :=
-    (by fun_prop : ContDiff ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => v.1 / s)).contDiffOn.log (fun v hv => hv.ne')
-  exact (hl.div_const 2).prodMk (by fun_prop : ContDiffOn ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => (v.1 * v.2.1 / s, v.2.2)) _)
+    (by fun_prop : ContDiff ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => v.1 / s)).contDiffOn.log (fun v hv =>
+      hv.ne')
+  exact (hl.div_const 2).prodMk
+    (by fun_prop : ContDiffOn ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => (v.1 * v.2.1 / s, v.2.2)) _)
 
 /-- The second chart's inverse is smooth on the signed half-space. -/
 theorem smoothingFlowChartTwoInv_contDiffOn (s : ℝ) :
     ContDiffOn ℝ ∞ (smoothingFlowChartTwoInv s) {v : ℝ × (ℝ × ℝ) | 0 < v.2.1 / s} := by
   have hl : ContDiffOn ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => Real.log (v.2.1 / s))
       {v : ℝ × (ℝ × ℝ) | 0 < v.2.1 / s} :=
-    (by fun_prop : ContDiff ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => v.2.1 / s)).contDiffOn.log (fun v hv => hv.ne')
-  exact (hl.neg.div_const 2).prodMk (by fun_prop : ContDiffOn ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => (v.1 * v.2.1 / s, v.2.2)) _)
+    (by fun_prop : ContDiff ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => v.2.1 / s)).contDiffOn.log (fun v hv =>
+      hv.ne')
+  exact (hl.neg.div_const 2).prodMk
+    (by fun_prop : ContDiffOn ℝ ∞ (fun v : ℝ × (ℝ × ℝ) => (v.1 * v.2.1 / s, v.2.2)) _)
 
 /-- The first chart recovers every point in its signed half-space. -/
 theorem smoothingFlowChartOne_right_inv {s : ℝ} (hs : s ≠ 0)
@@ -3178,7 +3236,10 @@ theorem smoothingFlowChartOne_det (s : ℝ) (w : ℝ × (ℝ × ℝ)) :
     LinearMap.det (fderiv ℝ (smoothingFlowChartOne s) w).toLinearMap = 2 * s := by
   rw [smoothingFlowChart_block_det _ (2 * s * Real.exp (2 * w.1)) 0
     (-2 * w.2.1 * Real.exp (-2 * w.1)) (Real.exp (-2 * w.1))
-    (by intro h; simp only [ContinuousLinearMap.coe_coe, smoothingFlowChartOne_fderiv]; ext <;> dsimp <;> ring)]
+    (by
+      intro h;
+      simp only [ContinuousLinearMap.coe_coe, smoothingFlowChartOne_fderiv];
+      ext <;> dsimp <;> ring)]
   have he : Real.exp (2 * w.1) * Real.exp (-2 * w.1) = 1 := by
     rw [← Real.exp_add, show 2 * w.1 + -2 * w.1 = 0 by ring, Real.exp_zero]
   calc
@@ -3190,7 +3251,10 @@ theorem smoothingFlowChartTwo_det (s : ℝ) (w : ℝ × (ℝ × ℝ)) :
     LinearMap.det (fderiv ℝ (smoothingFlowChartTwo s) w).toLinearMap = 2 * s := by
   rw [smoothingFlowChart_block_det _ (2 * w.2.1 * Real.exp (2 * w.1)) (Real.exp (2 * w.1))
     (-2 * s * Real.exp (-2 * w.1)) 0
-    (by intro h; simp only [ContinuousLinearMap.coe_coe, smoothingFlowChartTwo_fderiv]; ext <;> dsimp <;> ring)]
+    (by
+      intro h;
+      simp only [ContinuousLinearMap.coe_coe, smoothingFlowChartTwo_fderiv];
+      ext <;> dsimp <;> ring)]
   have he : Real.exp (2 * w.1) * Real.exp (-2 * w.1) = 1 := by
     rw [← Real.exp_add, show 2 * w.1 + -2 * w.1 = 0 by ring, Real.exp_zero]
   calc
@@ -3215,14 +3279,16 @@ theorem smoothingFlowBox_four_cover : smoothingFlowBox =
     rcases le_max_iff.mp hm with h | h
     · rcases le_total 0 v.1 with hs | hs
       · have hh : 1 / 2 ≤ v.1 := by simpa [abs_of_nonneg hs] using h
-        exact Or.inl (Or.inl (Or.inl ⟨hv, by simpa only [Set.mem_setOf_eq, div_neg, div_one] using hh⟩))
+        exact Or.inl (Or.inl (Or.inl ⟨hv,
+          by simpa only [Set.mem_ofPred_eq, div_neg, div_one] using hh⟩))
       · have hh : 1 / 2 ≤ -v.1 := by simpa [abs_of_nonpos hs] using h
-        exact Or.inl (Or.inl (Or.inr ⟨hv, by simpa only [Set.mem_setOf_eq, div_neg, div_one] using hh⟩))
+        exact Or.inl (Or.inl (Or.inr ⟨hv,
+          by simpa only [Set.mem_ofPred_eq, div_neg, div_one] using hh⟩))
     · rcases le_total 0 v.2.1 with hs | hs
       · have hh : 1 / 2 ≤ v.2.1 := by simpa [abs_of_nonneg hs] using h
-        exact Or.inl (Or.inr ⟨hv, by simpa only [Set.mem_setOf_eq, div_neg, div_one] using hh⟩)
+        exact Or.inl (Or.inr ⟨hv, by simpa only [Set.mem_ofPred_eq, div_neg, div_one] using hh⟩)
       · have hh : 1 / 2 ≤ -v.2.1 := by simpa [abs_of_nonpos hs] using h
-        exact Or.inr ⟨hv, by simpa only [Set.mem_setOf_eq, div_neg, div_one] using hh⟩
+        exact Or.inr ⟨hv, by simpa only [Set.mem_ofPred_eq, div_neg, div_one] using hh⟩
   · rintro (((h | h) | h) | h) <;> exact h.1
 
 /-- The logarithmic coordinate bound used in the source chart inverse. -/
@@ -3286,7 +3352,9 @@ theorem smoothingFlowBoxes_isClosed (s : ℝ) :
 theorem smoothingFlowBoxOne_preimage_compact {s : ℝ} (hs : |s| = 1) :
     IsCompact (smoothingFlowChartOne s ⁻¹' smoothingFlowBoxOne s) := by
   have hs0 : s ≠ 0 := by intro h; simp [h] at hs
-  apply (isCompact_Icc.prod (isCompact_Icc.prod isCompact_Icc)).of_isClosed_subset
+  apply ((isCompact_Icc (a := (-Real.log 2 / 2)) (b := 0)).prod
+    ((isCompact_Icc (a := (-1 : ℝ)) (b := 1)).prod
+      (isCompact_Icc (a := (-1 : ℝ)) (b := 1)))).of_isClosed_subset
     (((smoothingFlowBoxes_isClosed s).1).preimage (smoothingFlowCharts_contDiff s).1.continuous)
   intro w hw
   have h := smoothingFlowBoxOne_inverse_bound hs hw
@@ -3296,7 +3364,9 @@ theorem smoothingFlowBoxOne_preimage_compact {s : ℝ} (hs : |s| = 1) :
 theorem smoothingFlowBoxTwo_preimage_compact {s : ℝ} (hs : |s| = 1) :
     IsCompact (smoothingFlowChartTwo s ⁻¹' smoothingFlowBoxTwo s) := by
   have hs0 : s ≠ 0 := by intro h; simp [h] at hs
-  apply (isCompact_Icc.prod (isCompact_Icc.prod isCompact_Icc)).of_isClosed_subset
+  apply ((isCompact_Icc (a := 0) (b := (Real.log 2 / 2))).prod
+    ((isCompact_Icc (a := (-1 : ℝ)) (b := 1)).prod
+      (isCompact_Icc (a := (-1 : ℝ)) (b := 1)))).of_isClosed_subset
     (((smoothingFlowBoxes_isClosed s).2).preimage (smoothingFlowCharts_contDiff s).2.continuous)
   intro w hw
   have h := smoothingFlowBoxTwo_inverse_bound hs hw
@@ -3307,7 +3377,7 @@ constant Jacobian on any measurable coordinate set. -/
 theorem smoothingFlowChartOne_image_volume {s : ℝ} (hs : |s| = 1)
     {A : Set (ℝ × (ℝ × ℝ))} (hA : MeasurableSet A) :
     volume (smoothingFlowChartOne s '' A) = 2 * volume A := by
-  letI : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
+  let : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
     change Measure.IsAddHaarMeasure ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))
     exact Measure.prod.instIsAddHaarMeasure _ _
   have hs0 : s ≠ 0 := by intro h; simp [h] at hs
@@ -3323,7 +3393,7 @@ theorem smoothingFlowChartOne_image_volume {s : ℝ} (hs : |s| = 1)
 theorem smoothingFlowChartTwo_image_volume {s : ℝ} (hs : |s| = 1)
     {A : Set (ℝ × (ℝ × ℝ))} (hA : MeasurableSet A) :
     volume (smoothingFlowChartTwo s '' A) = 2 * volume A := by
-  letI : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
+  let : Measure.IsAddHaarMeasure (volume : Measure (ℝ × (ℝ × ℝ))) := by
     change Measure.IsAddHaarMeasure ((volume : Measure ℝ).prod ((volume : Measure ℝ).prod volume))
     exact Measure.prod.instIsAddHaarMeasure _ _
   have hs0 : s ≠ 0 := by intro h; simp [h] at hs
@@ -3379,7 +3449,8 @@ theorem smoothingFlowBoxOne_volume {s : ℝ} (hs : |s| = 1)
     change smoothingFlowChartOne s (smoothingFlowChartOneInv s v) ∈ A
     rwa [smoothingFlowChartOne_right_inv hs0 v hpos]
   calc
-    volume A = volume (smoothingFlowChartOne s '' (smoothingFlowChartOne s ⁻¹' A)) := congrArg volume heq.symm
+    volume A = volume (smoothingFlowChartOne s '' (smoothingFlowChartOne s ⁻¹' A)) := congrArg
+      volume heq.symm
     _ = _ := smoothingFlowChartOne_image_volume hs
       ((smoothingFlowCharts_contDiff s).1.continuous.measurable hA)
 
@@ -3396,7 +3467,8 @@ theorem smoothingFlowBoxTwo_volume {s : ℝ} (hs : |s| = 1)
     change smoothingFlowChartTwo s (smoothingFlowChartTwoInv s v) ∈ A
     rwa [smoothingFlowChartTwo_right_inv hs0 v hpos]
   calc
-    volume A = volume (smoothingFlowChartTwo s '' (smoothingFlowChartTwo s ⁻¹' A)) := congrArg volume heq.symm
+    volume A = volume (smoothingFlowChartTwo s '' (smoothingFlowChartTwo s ⁻¹' A)) := congrArg
+      volume heq.symm
     _ = _ := smoothingFlowChartTwo_image_volume hs
       ((smoothingFlowCharts_contDiff s).2.continuous.measurable hA)
 
@@ -3424,10 +3496,14 @@ theorem smoothingFlowBox_volume_le {A : Set (ℝ × (ℝ × ℝ))}
     apply (measure_mono hcov).trans
     exact (measure_union_le _ _).trans (add_le_add
       ((measure_union_le _ _).trans (add_le_add (measure_union_le _ _) le_rfl)) le_rfl)
-  rw [smoothingFlowBoxOne_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed 1).1.measurableSet) Set.inter_subset_right,
-    smoothingFlowBoxOne_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed (-1)).1.measurableSet) Set.inter_subset_right,
-    smoothingFlowBoxTwo_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed 1).2.measurableSet) Set.inter_subset_right,
-    smoothingFlowBoxTwo_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed (-1)).2.measurableSet) Set.inter_subset_right] at hsum
+  rw [smoothingFlowBoxOne_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed
+    1).1.measurableSet) Set.inter_subset_right,
+    smoothingFlowBoxOne_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed
+      (-1)).1.measurableSet) Set.inter_subset_right,
+    smoothingFlowBoxTwo_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed
+      1).2.measurableSet) Set.inter_subset_right,
+    smoothingFlowBoxTwo_volume (by norm_num) (hA.inter (smoothingFlowBoxes_isClosed
+      (-1)).2.measurableSet) Set.inter_subset_right] at hsum
   simpa only [mul_add] using hsum
 
 /-- The full dyadic change-of-variables estimate before G, with explicit
@@ -3436,10 +3512,13 @@ theorem smoothingOmegaPiece_flow_volume_le (a : ℝ) (k : ℕ) (d : ℤ)
     {A : Set (ℝ × (ℝ × ℝ))} (hA : MeasurableSet A)
     (hsub : A ⊆ smoothingOmegaPiece a k d) :
     volume A ≤ ENNReal.ofReal ((1 / 2 : ℝ) ^ k) ^ 3 * 2 *
-      (volume (smoothingFlowChartOne 1 ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxOne 1)) +
-      volume (smoothingFlowChartOne (-1) ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxOne (-1))) +
+      (volume (smoothingFlowChartOne 1 ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxOne
+        1)) +
+      volume (smoothingFlowChartOne (-1) ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxOne
+        (-1))) +
       volume (smoothingFlowChartTwo 1 ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxTwo 1)) +
-      volume (smoothingFlowChartTwo (-1) ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxTwo (-1)))) := by
+      volume (smoothingFlowChartTwo (-1) ⁻¹' ((smoothingNormalize k d '' A) ∩ smoothingFlowBoxTwo
+        (-1)))) := by
   have hm := (smoothingNormalize k d).measurableEmbedding.measurableSet_image.mpr hA
   have hb : smoothingNormalize k d '' A ⊆ smoothingFlowBox := by
     rintro v ⟨u, hu, rfl⟩
@@ -3734,7 +3813,8 @@ theorem smoothing_transverse_strip_volume {I : Set ℝ} (hI : MeasurableSet I)
           {w : ℝ × (ℝ × ℝ) | w.1 ∈ I ∧ |w.2.1 - g w.1| ≤ r ∧ |w.2.2| ≤ 1} =
           Set.Icc (g x - r) (g x + r) ×ˢ Set.Icc (-1) 1 := by
         ext y
-        simp only [Set.mem_preimage, Set.mem_setOf_eq, hx, true_and, Set.mem_prod, Set.mem_Icc, abs_le]
+        simp only [Set.mem_preimage, Set.mem_ofPred_eq, hx, true_and, Set.mem_prod, Set.mem_Icc,
+          abs_le]
         constructor <;> rintro ⟨⟨h1, h2⟩, h3⟩ <;> exact ⟨⟨by linarith, by linarith⟩, h3⟩
       rw [he, Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Icc, Real.volume_Icc,
         Set.indicator_of_mem hx]
@@ -3870,7 +3950,8 @@ theorem smoothing_quadratic_local_zero_bound {I : Set ℝ} {g : ℝ → ℝ}
     · exact ⟨hw.1, ⟨by norm_num, by norm_num⟩, hw.2.2⟩
     · simpa using hρ
   have hd0 : Metric.infDist w Z ≤ |w.2.1| := by
-    simpa only [smoothing_transverse_dist, sub_zero] using Metric.infDist_le_dist_of_mem (x := w) hz0
+    simpa only [smoothing_transverse_dist, sub_zero] using Metric.infDist_le_dist_of_mem (x :=
+      w) hz0
   have hdnonneg : 0 ≤ Metric.infDist w Z := Metric.infDist_nonneg
   have hy : |w.2.1| ≤ 1 := abs_le.mpr hw.2.1
   by_cases hr : |w.2.1 - g w.1| < ρ
@@ -3961,12 +4042,11 @@ theorem smoothing_neighborhood_subset_ball {K : Set (ℝ × (ℝ × ℝ))}
 /-- The mean-value estimate used for source near cubes: any set of diameter
 at most rho, with a point at distance at most rho from the local zero set,
 has polynomial size at most 3 L rho everywhere. -/
-theorem smoothing_near_cube_small {f : ℝ × (ℝ × ℝ) → ℝ}
-    {B Z Q : Set (ℝ × (ℝ × ℝ))} {L : NNReal} {ρ : ℝ} (hρ : 0 < ρ)
-    (hf : LipschitzOnWith L f B) (hZ : Z.Nonempty) (hZB : Z ⊆ B)
-    (hfZ : ∀ z ∈ Z, f z = 0) (hQB : Q ⊆ B)
-    (hdiam : ∀ x ∈ Q, ∀ y ∈ Q, dist x y ≤ ρ)
-    (hnear : ∃ q ∈ Q, Metric.infDist q Z ≤ ρ) :
+theorem smoothing_near_cube_small {f : ℝ × (ℝ × ℝ) → ℝ} {B Z Q : Set (ℝ × (ℝ × ℝ))} {L :
+    NNReal} {ρ : ℝ} (hρ : 0 < ρ)
+    (hf : LipschitzOnWith L f B) (hZ : Z.Nonempty) (hZB : Z ⊆ B) (hfZ : ∀ z ∈ Z, f z = 0) (hQB
+      : Q ⊆ B)
+    (hdiam : ∀ x ∈ Q, ∀ y ∈ Q, dist x y ≤ ρ) (hnear : ∃ q ∈ Q, Metric.infDist q Z ≤ ρ) :
     ∀ w ∈ Q, |f w| ≤ 3 * (L : ℝ) * ρ := by
   obtain ⟨q, hq, hqZ⟩ := hnear
   obtain ⟨z, hz, hqz⟩ := (Metric.infDist_lt_iff hZ).mp
@@ -3986,12 +4066,12 @@ theorem smoothing_near_cube_small {f : ℝ × (ℝ × ℝ) → ℝ}
 
 /-- The source near-cube volume argument, combining the mean-value bound
 with the already established square-root sublevel estimate. -/
-theorem smoothing_near_cube_union_bound {f : ℝ × (ℝ × ℝ) → ℝ}
-    {K : Set (ℝ × (ℝ × ℝ))} (hf : ContDiff ℝ ∞ f)
-    (hK : K ⊆ Metric.closedBall 0 1) (hK0 : (0 : ℝ × (ℝ × ℝ)) ∈ K) (hf0 : f 0 = 0)
-    {C : ℝ} (hC : 0 ≤ C)
-    (hsublevel : ∀ ε : ℝ, 0 ≤ ε → volume {w | w ∈ K ∧ |f w| ≤ ε} ≤
-      ENNReal.ofReal C * ENNReal.ofReal (Real.sqrt ε)) :
+theorem smoothing_near_cube_union_bound {f : ℝ × (ℝ × ℝ) → ℝ} {K : Set (ℝ × (ℝ × ℝ))} (hf :
+    ContDiff ℝ ∞ f)
+    (hK : K ⊆ Metric.closedBall 0 1) (hK0 : (0 : ℝ × (ℝ × ℝ)) ∈ K) (hf0 : f 0 = 0) {C : ℝ} (hC
+      : 0 ≤ C)
+    (hsublevel : ∀ ε : ℝ, 0 ≤ ε → volume {w | w ∈ K ∧ |f w| ≤ ε} ≤ ENNReal.ofReal C *
+      ENNReal.ofReal (Real.sqrt ε)) :
     ∃ D : ℝ, 0 < D ∧ ∀ ρ : ℝ, 0 < ρ → ∀ 𝒬 : Set (Set (ℝ × (ℝ × ℝ))),
       (∀ Q ∈ 𝒬, Q ⊆ K) →
       (∀ Q ∈ 𝒬, ∀ x ∈ Q, ∀ y ∈ Q, dist x y ≤ ρ) →
@@ -4014,7 +4094,8 @@ theorem smoothing_near_cube_union_bound {f : ℝ × (ℝ × ℝ) → ℝ}
       (fun z hz => hz.2) ((hQ Q hQmem).trans hKB) (hdiam Q hQmem) (hnear Q hQmem) w hw⟩
   calc
     volume (⋃₀ 𝒬) ≤ volume {w | w ∈ K ∧ |f w| ≤ 3 * (L : ℝ) * ρ} := measure_mono hinc
-    _ ≤ ENNReal.ofReal C * ENNReal.ofReal (Real.sqrt (3 * (L : ℝ) * ρ)) := hsublevel _ (by positivity)
+    _ ≤ ENNReal.ofReal C * ENNReal.ofReal (Real.sqrt (3 * (L : ℝ) * ρ)) := hsublevel _
+      (by positivity)
     _ = ENNReal.ofReal (C * Real.sqrt (3 * (L : ℝ))) * ENNReal.ofReal (Real.sqrt ρ) := by
       rw [Real.sqrt_mul (by positivity), ENNReal.ofReal_mul (Real.sqrt_nonneg _),
         ENNReal.ofReal_mul hC, mul_assoc]
@@ -4118,17 +4199,20 @@ theorem smoothing_far_rectangle_volume {I : Set ℝ} (hI : Convex ℝ I) (hIm : 
 
 /-- The source compact parameter region in the first pair of flow charts. -/
 def smoothingChartDomainOne (a : ℝ) (k : ℕ) (d : ℤ) (s : ℝ) : Set (ℝ × (ℝ × ℝ)) :=
-  smoothingFlowChartOne s ⁻¹' ((smoothingNormalize k d '' smoothingOmegaPiece a k d) ∩ smoothingFlowBoxOne s)
+  smoothingFlowChartOne s ⁻¹' ((smoothingNormalize k d '' smoothingOmegaPiece a k d) ∩
+    smoothingFlowBoxOne s)
 
 /-- The source compact parameter region in the second pair of flow charts. -/
 def smoothingChartDomainTwo (a : ℝ) (k : ℕ) (d : ℤ) (s : ℝ) : Set (ℝ × (ℝ × ℝ)) :=
-  smoothingFlowChartTwo s ⁻¹' ((smoothingNormalize k d '' smoothingOmegaPiece a k d) ∩ smoothingFlowBoxTwo s)
+  smoothingFlowChartTwo s ⁻¹' ((smoothingNormalize k d '' smoothingOmegaPiece a k d) ∩
+    smoothingFlowBoxTwo s)
 
 /-- Points in a normalized dyadic region recover original time parameters
 in the source interval cube. -/
 theorem smoothingFlowParameters_mem_timeCube {a : ℝ} {k : ℕ} {d : ℤ} {v : ℝ × (ℝ × ℝ)}
     (hv : v ∈ smoothingNormalize k d '' smoothingOmegaPiece a k d) :
-    smoothingFlowParameters k d v ∈ Set.Icc a (a + 1) ×ˢ (Set.Icc a (a + 1) ×ˢ Set.Icc a (a + 1)) := by
+    smoothingFlowParameters k d v ∈ Set.Icc a (a + 1) ×ˢ (Set.Icc a (a + 1) ×ˢ Set.Icc a (a + 1))
+      := by
   obtain ⟨u, hu, rfl⟩ := hv
   obtain ⟨t, ht, htu⟩ := hu.1
   unfold smoothingFlowParameters
@@ -4272,13 +4356,16 @@ theorem smoothing_far_cube_one (c : ℝ) {β : ℝ × ℝ → ℝ} (hβ : Measur
         |smoothingGOne c β z k d s w| ≤ ε} ≤
       ENNReal.ofReal ((2048 * (a + 1) ^ 4 / |c|) * ((2 : ℝ) ^ k) ^ 3 * ε) := by
   have hm := smoothingFarDerivativeScale_pos ha hc hρ k
-  have hb := smoothing_far_rectangle_volume (J := Set.Icc p.2.1 (p.2.1 + ρ) ×ˢ Set.Icc p.2.2 (p.2.2 + ρ))
+  have hb := smoothing_far_rectangle_volume (J := Set.Icc p.2.1 (p.2.1 + ρ) ×ˢ Set.Icc p.2.2
+    (p.2.2 + ρ))
     (D := fun w => deriv (fun x => smoothingGOne c β z k d s (x, w.2)) w.1)
     (m := smoothingFarDerivativeScale a c k ρ) (ε := ε)
     (convex_Icc p.1 (p.1 + ρ)) measurableSet_Icc
     (measurableSet_Icc.prod measurableSet_Icc) (smoothingGOne_measurable c hβ z k d s)
-    (fun y hy x hx => smoothingGOne_hasDerivAt c β z (a := a) (s := s) (k := k) (d := d) ha (w := (x, y)) (hQ ⟨hx, hy⟩)) hm hε
-    (fun w hw => smoothing_far_derivative_one c β z (a := a) (s := s) (k := k) (d := d) ha hs hρ.le (w := w) (hQ hw) (hfar w hw))
+    (fun y hy x hx => smoothingGOne_hasDerivAt c β z (a := a) (s := s) (k := k) (d := d) ha (w :=
+      (x, y)) (hQ ⟨hx, hy⟩)) hm hε
+    (fun w hw => smoothing_far_derivative_one c β z (a := a) (s := s) (k := k) (d := d) ha hs
+      hρ.le (w := w) (hQ hw) (hfar w hw))
   have hv : volume (Set.Icc p.2.1 (p.2.1 + ρ) ×ˢ Set.Icc p.2.2 (p.2.2 + ρ)) =
       ENNReal.ofReal (ρ ^ 2) := by
     rw [Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Icc, Real.volume_Icc]
@@ -4303,13 +4390,16 @@ theorem smoothing_far_cube_two (c : ℝ) {β : ℝ × ℝ → ℝ} (hβ : Measur
         |smoothingGTwo c β z k d s w| ≤ ε} ≤
       ENNReal.ofReal ((2048 * (a + 1) ^ 4 / |c|) * ((2 : ℝ) ^ k) ^ 3 * ε) := by
   have hm := smoothingFarDerivativeScale_pos ha hc hρ k
-  have hb := smoothing_far_rectangle_volume (J := Set.Icc p.2.1 (p.2.1 + ρ) ×ˢ Set.Icc p.2.2 (p.2.2 + ρ))
+  have hb := smoothing_far_rectangle_volume (J := Set.Icc p.2.1 (p.2.1 + ρ) ×ˢ Set.Icc p.2.2
+    (p.2.2 + ρ))
     (D := fun w => deriv (fun x => smoothingGTwo c β z k d s (x, w.2)) w.1)
     (m := smoothingFarDerivativeScale a c k ρ) (ε := ε)
     (convex_Icc p.1 (p.1 + ρ)) measurableSet_Icc
     (measurableSet_Icc.prod measurableSet_Icc) (smoothingGTwo_measurable c hβ z k d s)
-    (fun y hy x hx => smoothingGTwo_hasDerivAt c β z (a := a) (s := s) (k := k) (d := d) ha (w := (x, y)) (hQ ⟨hx, hy⟩)) hm hε
-    (fun w hw => smoothing_far_derivative_two c β z (a := a) (s := s) (k := k) (d := d) ha hs hρ.le (w := w) (hQ hw) (hfar w hw))
+    (fun y hy x hx => smoothingGTwo_hasDerivAt c β z (a := a) (s := s) (k := k) (d := d) ha (w :=
+      (x, y)) (hQ ⟨hx, hy⟩)) hm hε
+    (fun w hw => smoothing_far_derivative_two c β z (a := a) (s := s) (k := k) (d := d) ha hs
+      hρ.le (w := w) (hQ hw) (hfar w hw))
   have hv : volume (Set.Icc p.2.1 (p.2.1 + ρ) ×ˢ Set.Icc p.2.2 (p.2.2 + ρ)) =
       ENNReal.ofReal (ρ ^ 2) := by
     rw [Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Icc, Real.volume_Icc]
@@ -4328,7 +4418,8 @@ def smoothingOpenCube (p : ℝ × (ℝ × ℝ)) (ρ : ℝ) : Set (ℝ × (ℝ ×
 
 theorem smoothingOpenCube_subset (p : ℝ × (ℝ × ℝ)) (ρ : ℝ) :
     smoothingOpenCube p ρ ⊆ smoothingCube p ρ :=
-  Set.prod_mono Set.Ioo_subset_Icc_self (Set.prod_mono Set.Ioo_subset_Icc_self Set.Ioo_subset_Icc_self)
+  Set.prod_mono Set.Ioo_subset_Icc_self (Set.prod_mono Set.Ioo_subset_Icc_self
+    Set.Ioo_subset_Icc_self)
 
 theorem smoothingOpenCube_volume (p : ℝ × (ℝ × ℝ)) {ρ : ℝ} (hρ : 0 ≤ ρ) :
     volume (smoothingOpenCube p ρ) = ENNReal.ofReal (ρ ^ 3) := by
@@ -4357,7 +4448,8 @@ theorem smoothing_cube_count {ι : Type*} (S : Finset ι) (p : ι → ℝ × (�
     (S.card : ℝ) ≤ 8 / ρ ^ 3 := by
   have hsum : (S.card : ENNReal) * ENNReal.ofReal (ρ ^ 3) ≤ 8 := by
     calc
-      _ = ∑ i ∈ S, volume (smoothingOpenCube (p i) ρ) := by simp [smoothingOpenCube_volume _ hρ.le]
+      _ = ∑ i ∈ S, volume (smoothingOpenCube (p i) ρ) :=
+        by simp [smoothingOpenCube_volume _ hρ.le]
       _ = volume (⋃ i ∈ S, smoothingOpenCube (p i) ρ) :=
         (measure_biUnion_finset hdisj (fun i hi => measurableSet_Ioo.prod
           (measurableSet_Ioo.prod measurableSet_Ioo))).symm
@@ -4369,16 +4461,18 @@ theorem smoothing_cube_count {ι : Type*} (S : Finset ι) (p : ι → ℝ × (�
         exact hsub i hi (smoothingOpenCube_subset (p i) ρ hw)
       _ = 8 := smoothing_unitBall_volume
   have hh := ENNReal.toReal_mono (by norm_num : (8 : ENNReal) ≠ ⊤) hsum
-  simp only [ENNReal.toReal_mul, ENNReal.toReal_natCast, ENNReal.toReal_ofReal (by positivity : 0 ≤ ρ ^ 3),
+  simp only [ENNReal.toReal_mul, ENNReal.toReal_natCast, ENNReal.toReal_ofReal
+    (by positivity : 0 ≤ ρ ^ 3),
     ENNReal.toReal_ofNat] at hh
   exact (le_div_iff₀ (pow_pos hρ 3)).mpr hh
 
 /-- Summing a uniform cube estimate with the source O(rho^(-3)) count. -/
-theorem smoothing_cube_union_volume_bound {ι : Type*} (S : Finset ι) (p : ι → ℝ × (ℝ × ℝ))
-    {ρ : ℝ} (hρ : 0 < ρ)
+theorem smoothing_cube_union_volume_bound {ι : Type*} (S : Finset ι) (p : ι → ℝ × (ℝ × ℝ)) {ρ :
+    ℝ} (hρ : 0 < ρ)
     (hdisj : Set.PairwiseDisjoint (S : Set ι) (fun i => smoothingOpenCube (p i) ρ))
-    (hsub : ∀ i ∈ S, smoothingCube (p i) ρ ⊆ Metric.closedBall 0 1)
-    (A : ι → Set (ℝ × (ℝ × ℝ))) {B : ℝ} (hA : ∀ i ∈ S, volume (A i) ≤ ENNReal.ofReal B) :
+    (hsub : ∀ i ∈ S, smoothingCube (p i) ρ ⊆ Metric.closedBall 0 1) (A : ι → Set (ℝ × (ℝ × ℝ)))
+      {B : ℝ}
+    (hA : ∀ i ∈ S, volume (A i) ≤ ENNReal.ofReal B) :
     volume (⋃ i ∈ S, A i) ≤ ENNReal.ofReal (8 * B / ρ ^ 3) := by
   have hc := smoothing_cube_count S p hρ hdisj hsub
   have hce : (S.card : ENNReal) ≤ ENNReal.ofReal (8 / ρ ^ 3) := by
@@ -4433,7 +4527,8 @@ theorem smoothing_far_cubes_two {ι : Type*} (S : Finset ι) (p : ι → ℝ × 
 boundary constraints for the last cube estimate in (3.53). -/
 theorem smoothingNormalize_piece_iff {a : ℝ} {k : ℕ} {d : ℤ} (v : ℝ × (ℝ × ℝ)) :
     v ∈ smoothingNormalize k d '' smoothingOmegaPiece a k d ↔
-      smoothingFlowParameters k d v ∈ Set.Icc a (a + 1) ×ˢ (Set.Icc a (a + 1) ×ˢ Set.Icc a (a + 1)) ∧
+      smoothingFlowParameters k d v ∈ Set.Icc a (a + 1) ×ˢ (Set.Icc a (a + 1) ×ˢ Set.Icc a (a +
+        1)) ∧
         v ∈ smoothingFlowBox := by
   constructor
   · intro hv
@@ -4574,11 +4669,16 @@ theorem smoothingFlowParameters_cube_iff (a : ℝ) (k : ℕ) (d : ℤ) (v : ℝ 
 theorem smoothingChartDomainOne_constraints {a s : ℝ} {k : ℕ} {d : ℤ}
     (hs : |s| = 1) (w : ℝ × (ℝ × ℝ)) :
     w ∈ smoothingChartDomainOne a k d s ↔ ∀ i : Fin 6,
-      smoothingChartConstraintsOne s i w ∈ Set.Icc (smoothingChartLower a k d i) (smoothingChartUpper a k d i) := by
+      smoothingChartConstraintsOne s i w ∈ Set.Icc (smoothingChartLower a k d i)
+        (smoothingChartUpper a k d i) := by
   have hs0 : s ≠ 0 := by intro h; simp [h] at hs
   rw [smoothingChartDomainOne_iff, smoothingFlowParameters_cube_iff, smoothingFlowBoxOne_iff hs]
-  simp [smoothingChartConstraintsOne, smoothingChartLower, smoothingChartUpper,
-    Fin.forall_fin_succ, smoothingFlowChartOne, smoothingDiagonalFlow, hs0, Set.mem_Icc, abs_le]
+  simp only [smoothingFlowChartOne, smoothingDiagonalFlow, neg_mul, Set.mem_Icc,
+        tsub_le_iff_right, one_div, ne_eq, hs0, not_false_eq_true,
+        mul_div_cancel_left₀, Real.exp_le_one_iff, abs_mul, Real.abs_exp, abs_le,
+        smoothingChartLower, smoothingChartUpper, smoothingChartConstraintsOne,
+        Matrix.cons_val', Matrix.cons_val_fin_one, Fin.forall_fin_succ, Fin.isValue,
+        Matrix.cons_val_zero, Matrix.cons_val_succ, forall_const]
   have hb : |w.2.1| * Real.exp (-(2 * w.1)) ≤ 1 ↔
       -1 ≤ w.2.1 * Real.exp (-(2 * w.1)) ∧ w.2.1 * Real.exp (-(2 * w.1)) ≤ 1 := by
     simpa only [abs_mul, Real.abs_exp] using (abs_le : |w.2.1 * Real.exp (-(2 * w.1))| ≤ 1 ↔ _)
@@ -4588,11 +4688,17 @@ theorem smoothingChartDomainOne_constraints {a s : ℝ} {k : ℕ} {d : ℤ}
 theorem smoothingChartDomainTwo_constraints {a s : ℝ} {k : ℕ} {d : ℤ}
     (hs : |s| = 1) (w : ℝ × (ℝ × ℝ)) :
     w ∈ smoothingChartDomainTwo a k d s ↔ ∀ i : Fin 6,
-      smoothingChartConstraintsTwo s i w ∈ Set.Icc (smoothingChartLower a k d i) (smoothingChartUpper a k d i) := by
+      smoothingChartConstraintsTwo s i w ∈ Set.Icc (smoothingChartLower a k d i)
+        (smoothingChartUpper a k d i) := by
   have hs0 : s ≠ 0 := by intro h; simp [h] at hs
   rw [smoothingChartDomainTwo_iff, smoothingFlowParameters_cube_iff, smoothingFlowBoxTwo_iff hs]
-  simp [smoothingChartConstraintsTwo, smoothingChartLower, smoothingChartUpper,
-    Fin.forall_fin_succ, smoothingFlowChartTwo, smoothingDiagonalFlow, hs0, Set.mem_Icc, abs_le]
+  simp only [smoothingFlowChartTwo, smoothingDiagonalFlow, neg_mul, Set.mem_Icc,
+        tsub_le_iff_right, one_div, ne_eq, hs0, not_false_eq_true,
+        mul_div_cancel_left₀, Real.exp_le_one_iff, Left.neg_nonpos_iff,
+        Nat.ofNat_pos, mul_nonneg_iff_of_pos_left, abs_mul, Real.abs_exp, abs_le,
+        smoothingChartLower, smoothingChartUpper, smoothingChartConstraintsTwo,
+        Matrix.cons_val', Matrix.cons_val_fin_one, Fin.forall_fin_succ, Fin.isValue,
+        Matrix.cons_val_zero, Matrix.cons_val_succ, forall_const]
   have hb : |w.2.1| * Real.exp (2 * w.1) ≤ 1 ↔
       -1 ≤ w.2.1 * Real.exp (2 * w.1) ∧ w.2.1 * Real.exp (2 * w.1) ≤ 1 := by
     simpa only [abs_mul, Real.abs_exp] using (abs_le : |w.2.1 * Real.exp (2 * w.1)| ≤ 1 ↔ _)
@@ -4610,7 +4716,8 @@ def smoothingCycle (w : ℝ × (ℝ × ℝ)) : ℝ × (ℝ × ℝ) := (w.2.1, (w
 
 theorem smoothingCycle_measurePreserving : MeasurePreserving smoothingCycle
     (volume : Measure (ℝ × (ℝ × ℝ))) volume := by
-  have hm := (measurePreserving_prodAssoc (volume : Measure ℝ) (volume : Measure ℝ) (volume : Measure ℝ)).comp
+  have hm := (measurePreserving_prodAssoc (volume : Measure ℝ) (volume : Measure ℝ) (volume :
+    Measure ℝ)).comp
     (Measure.measurePreserving_swap (μ := (volume : Measure ℝ)) (ν := (volume : Measure (ℝ × ℝ))))
   simpa only [Function.comp_def] using! hm
 
@@ -4633,7 +4740,10 @@ theorem smoothing_boundary_strip_first {f D : ℝ × (ℝ × ℝ) → ℝ} (hf :
     (J := Set.Icc (-2 : ℝ) 2 ×ˢ Set.Icc (-2 : ℝ) 2)
     (f := fun w => f w - b) (D := D) (m := Real.exp (-4)) (ε := r)
     (convex_Icc _ _) measurableSet_Icc (measurableSet_Icc.prod measurableSet_Icc)
-    (by fun_prop) (fun y hy x hx => (hd (x, y) (by rw [smoothing_closedBall_eq_box]; exact ⟨hx, hy⟩)).sub_const b)
+    (by
+      fun_prop) (fun y hy x hx => (hd (x, y) (by
+        rw [smoothing_closedBall_eq_box];
+        exact ⟨hx, hy⟩)).sub_const b)
     (Real.exp_pos _) hr (fun w hw => hD w (by rwa [smoothing_closedBall_eq_box]))
   rw [← smoothing_closedBall_eq_box] at hb
   have hvol : volume (Set.Icc (-2 : ℝ) 2 ×ˢ Set.Icc (-2 : ℝ) 2) = 16 := by
@@ -4650,10 +4760,11 @@ theorem smoothing_boundary_strip_cycle {f : ℝ × (ℝ × ℝ) → ℝ} (hf : M
     volume {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧ |f w - b| ≤ r} =
       volume {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧ |f (smoothingCycle w) - b| ≤ r} := by
   have hs : MeasurableSet {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧ |f w - b| ≤ r} :=
-    measurableSet_closedBall.inter ((by fun_prop : Measurable (fun w => |f w - b|)) measurableSet_Iic)
+    measurableSet_closedBall.inter ((by fun_prop : Measurable (fun w => |f w - b|))
+      measurableSet_Iic)
   have he : smoothingCycle ⁻¹' {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧ |f w - b| ≤ r} =
       {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧ |f (smoothingCycle w) - b| ≤ r} := by
-    ext w; simp only [Set.mem_preimage, Set.mem_setOf_eq, smoothingCycle_ball]
+    ext w; simp only [Set.mem_preimage, Set.mem_ofPred_eq, smoothingCycle_ball]
   rw [← he]
   exact (smoothingCycle_measurePreserving.measure_preimage hs.nullMeasurableSet).symm
 
@@ -4664,7 +4775,9 @@ theorem smoothing_boundary_strip_height {g : ℝ × ℝ → ℝ} (hg : Measurabl
       |g (w.1, w.2.1) + w.2.2 - b| ≤ r} ≤ ENNReal.ofReal (32 * Real.exp 4 * r) := by
   rw [smoothing_boundary_strip_cycle (by fun_prop : Measurable
     (fun w : ℝ × (ℝ × ℝ) => g (w.1, w.2.1) + w.2.2)) b r]
-  apply smoothing_boundary_strip_first (D := fun _ => 1) (by unfold smoothingCycle; fun_prop) _ _ b hr
+  apply smoothing_boundary_strip_first (D := fun _ => 1) (by
+    unfold smoothingCycle;
+    fun_prop) _ _ b hr
   · intro w hw
     exact (hasDerivAt_id w.1).const_add (g (w.2.1, w.2.2))
   · intro w hw
@@ -4717,7 +4830,10 @@ theorem smoothingChartConstraintsOne_contDiff (s : ℝ) (i : Fin 6) :
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.1 * Real.exp (-2 * w.1)))
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.2))
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.1 * Real.exp (-2 * w.1) + w.2.2))
-  · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => s * Real.exp (2 * w.1) + w.2.1 * Real.exp (-2 * w.1) + w.2.2))
+  · exact
+      (by
+        fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => s * Real.exp (2 * w.1) + w.2.1 * Real.exp
+          (-2 * w.1) + w.2.2))
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => s * Real.exp (2 * w.1) + w.2.2))
 
 /-- Smoothness of all six second-chart boundary coordinates. -/
@@ -4728,7 +4844,10 @@ theorem smoothingChartConstraintsTwo_contDiff (s : ℝ) (i : Fin 6) :
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.1 * Real.exp (2 * w.1)))
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.2))
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => s * Real.exp (-2 * w.1) + w.2.2))
-  · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.1 * Real.exp (2 * w.1) + s * Real.exp (-2 * w.1) + w.2.2))
+  · exact
+      (by
+        fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.1 * Real.exp (2 * w.1) + s * Real.exp
+          (-2 * w.1) + w.2.2))
   · exact (by fun_prop : ContDiff ℝ ∞ (fun w : ℝ × (ℝ × ℝ) => w.2.1 * Real.exp (2 * w.1) + w.2.2))
 
 /-- Uniform strip-volume bounds for all first-chart boundary coordinates. -/
@@ -4738,9 +4857,12 @@ theorem smoothingChartConstraintsOne_strip (s b : ℝ) (i : Fin 6) {r : ℝ} (hr
   fin_cases i
   · exact smoothing_boundary_strip_exp (by norm_num) b hr
   · exact smoothing_boundary_strip_transverse (by norm_num) b hr
-  · simpa only [zero_add] using! smoothing_boundary_strip_height (g := fun _ => 0) measurable_const b hr
-  · exact smoothing_boundary_strip_height (g := fun x => x.2 * Real.exp (-2 * x.1)) (by fun_prop) b hr
-  · exact smoothing_boundary_strip_height (g := fun x => s * Real.exp (2 * x.1) + x.2 * Real.exp (-2 * x.1)) (by fun_prop) b hr
+  · simpa only [zero_add] using! smoothing_boundary_strip_height (g := fun _ => 0)
+      measurable_const b hr
+  · exact smoothing_boundary_strip_height (g := fun x => x.2 * Real.exp (-2 * x.1)) (by fun_prop)
+      b hr
+  · exact smoothing_boundary_strip_height (g := fun x => s * Real.exp (2 * x.1) + x.2 * Real.exp
+      (-2 * x.1)) (by fun_prop) b hr
   · exact smoothing_boundary_strip_height (g := fun x => s * Real.exp (2 * x.1)) (by fun_prop) b hr
 
 /-- Uniform strip-volume bounds for all second-chart boundary coordinates. -/
@@ -4750,10 +4872,13 @@ theorem smoothingChartConstraintsTwo_strip (s b : ℝ) (i : Fin 6) {r : ℝ} (hr
   fin_cases i
   · exact smoothing_boundary_strip_exp (by norm_num) b hr
   · exact smoothing_boundary_strip_transverse (by norm_num) b hr
-  · simpa only [zero_add] using! smoothing_boundary_strip_height (g := fun _ => 0) measurable_const b hr
+  · simpa only [zero_add] using! smoothing_boundary_strip_height (g := fun _ => 0)
+      measurable_const b hr
   · exact smoothing_boundary_strip_height (g := fun x => s * Real.exp (-2 * x.1)) (by fun_prop) b hr
-  · exact smoothing_boundary_strip_height (g := fun x => x.2 * Real.exp (2 * x.1) + s * Real.exp (-2 * x.1)) (by fun_prop) b hr
-  · exact smoothing_boundary_strip_height (g := fun x => x.2 * Real.exp (2 * x.1)) (by fun_prop) b hr
+  · exact smoothing_boundary_strip_height (g := fun x => x.2 * Real.exp (2 * x.1) + s * Real.exp
+      (-2 * x.1)) (by fun_prop) b hr
+  · exact smoothing_boundary_strip_height (g := fun x => x.2 * Real.exp (2 * x.1)) (by fun_prop) b
+      hr
 
 /-- A cube crossing an interval constraint is contained in a strip about
 one of its endpoints, by its oscillation bound. -/
@@ -4769,10 +4894,13 @@ theorem smoothing_interval_crossing {l u x y w r : ℝ} (hx : x ∈ Set.Icc l u)
 
 /-- Boundary-cube volume bound for the six smooth interval constraints.
 The constant is chosen before the endpoints, ensuring uniformity in k,d. -/
-theorem smoothing_constraint_boundary_volume (H : Fin 6 → (ℝ × (ℝ × ℝ)) → ℝ)
-    (hH : ∀ i, ContDiff ℝ ∞ (H i)) {C : ℝ} (hC : 0 ≤ C)
-    (hstrip : ∀ i b r, 0 ≤ r → volume {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧
-      |H i w - b| ≤ r} ≤ ENNReal.ofReal (C * r)) :
+theorem smoothing_constraint_boundary_volume (H : Fin 6 → (ℝ × (ℝ × ℝ)) → ℝ) (hH : ∀ i,
+    ContDiff ℝ ∞ (H i)) {C : ℝ}
+    (hC : 0 ≤ C)
+    (hstrip :
+      ∀ i b r,
+        0 ≤ r → volume {w | w ∈ Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2 ∧ |H i w - b| ≤ r} ≤
+          ENNReal.ofReal (C * r)) :
     ∃ D : ℝ, 0 < D ∧ ∀ l u : Fin 6 → ℝ, ∀ ρ : ℝ, 0 < ρ →
       ∀ 𝒬 : Set (Set (ℝ × (ℝ × ℝ))),
       (∀ Q ∈ 𝒬, Q ⊆ Metric.closedBall 0 2) →
@@ -4782,7 +4910,8 @@ theorem smoothing_constraint_boundary_volume (H : Fin 6 → (ℝ × (ℝ × ℝ)
       volume (⋃₀ 𝒬) ≤ ENNReal.ofReal (D * ρ) := by
   classical
   have hh : ∀ i, ∃ L : NNReal, LipschitzOnWith L (H i) (Metric.closedBall (0 : ℝ × (ℝ × ℝ)) 2) :=
-    fun i => (hH i).contDiffOn.exists_lipschitzOnWith (by simp) (convex_closedBall _ _) (isCompact_closedBall _ _)
+    fun i => (hH i).contDiffOn.exists_lipschitzOnWith (by simp) (convex_closedBall _ _)
+      (isCompact_closedBall _ _)
   choose L hL using hh
   let M : NNReal := ∑ i, L i
   have hLM : ∀ i, (L i : ℝ) ≤ (M : ℝ) := by
@@ -4879,7 +5008,8 @@ theorem smoothing_boundary_cube_count {ι : Type*} (S : Finset ι) (p : ι → �
     (S.card : ℝ) ≤ D / ρ ^ 2 := by
   have hsum : (S.card : ENNReal) * ENNReal.ofReal (ρ ^ 3) ≤ ENNReal.ofReal (D * ρ) := by
     calc
-      _ = ∑ i ∈ S, volume (smoothingOpenCube (p i) ρ) := by simp [smoothingOpenCube_volume _ hρ.le]
+      _ = ∑ i ∈ S, volume (smoothingOpenCube (p i) ρ) :=
+        by simp [smoothingOpenCube_volume _ hρ.le]
       _ = volume (⋃ i ∈ S, smoothingOpenCube (p i) ρ) :=
         (measure_biUnion_finset hdisj (fun i hi => measurableSet_Ioo.prod
           (measurableSet_Ioo.prod measurableSet_Ioo))).symm
@@ -4892,7 +5022,8 @@ theorem smoothing_boundary_cube_count {ι : Type*} (S : Finset ι) (p : ι → �
       _ ≤ _ := hvol
   have hh := ENNReal.toReal_mono ENNReal.ofReal_ne_top hsum
   simp only [ENNReal.toReal_mul, ENNReal.toReal_natCast,
-    ENNReal.toReal_ofReal (by positivity : 0 ≤ ρ ^ 3), ENNReal.toReal_ofReal (mul_nonneg hD hρ.le)] at hh
+    ENNReal.toReal_ofReal (by positivity : 0 ≤ ρ ^ 3), ENNReal.toReal_ofReal (mul_nonneg hD
+      hρ.le)] at hh
   apply (le_div_iff₀ (pow_pos hρ 2)).mpr
   by_contra h
   have hn : D < (S.card : ℝ) * ρ ^ 2 := lt_of_not_ge h
@@ -4931,7 +5062,8 @@ theorem smoothing_chart_grid_cover {ρ : ℝ} (hρ : 0 < ρ) :
   obtain ⟨j2, hj2, hy⟩ := smoothing_grid_interval_cover hρ hw.2.1
   obtain ⟨j3, hj3, hz⟩ := smoothing_grid_interval_cover hρ hw.2.2
   simp only [Set.mem_iUnion]
-  exact ⟨(j1, (j2, j3)), Finset.mem_product.mpr ⟨hj1, Finset.mem_product.mpr ⟨hj2, hj3⟩⟩, hx, hy, hz⟩
+  exact ⟨(j1, (j2, j3)), Finset.mem_product.mpr ⟨hj1, Finset.mem_product.mpr ⟨hj2, hj3⟩⟩, hx, hy,
+    hz⟩
 
 /-- The chosen finite grid stays in a fixed ambient box for rho<=1/2. -/
 theorem smoothing_grid_interval_bound {ρ x : ℝ} (hρ : 0 < ρ) (hρ1 : ρ ≤ 1 / 2)
@@ -4955,7 +5087,8 @@ theorem smoothing_grid_cube_subset_ball {ρ : ℝ} (hρ : 0 < ρ) (hρ1 : ρ ≤
   intro w hw
   rw [smoothing_closedBall_eq_box]
   exact ⟨smoothing_grid_interval_bound hρ hρ1 hj1 hw.1,
-    smoothing_grid_interval_bound hρ hρ1 hj2 hw.2.1, smoothing_grid_interval_bound hρ hρ1 hj3 hw.2.2⟩
+    smoothing_grid_interval_bound hρ hρ1 hj2 hw.2.1, smoothing_grid_interval_bound hρ hρ1 hj3
+      hw.2.2⟩
 
 /-- Every closed grid cube has diameter at most its side length in the
 product norm. -/
@@ -4983,7 +5116,8 @@ theorem smoothing_grid_interval_unique {ρ x : ℝ} (hρ : 0 < ρ) {i j : ℕ}
 /-- All grid cubes have pairwise disjoint open interiors. -/
 theorem smoothing_grid_open_disjoint {ρ : ℝ} (hρ : 0 < ρ) :
     Pairwise (fun i j : ℕ × (ℕ × ℕ) => Disjoint
-      (smoothingOpenCube (smoothingGridCorner ρ i) ρ) (smoothingOpenCube (smoothingGridCorner ρ j) ρ)) := by
+      (smoothingOpenCube (smoothingGridCorner ρ i) ρ) (smoothingOpenCube (smoothingGridCorner ρ j)
+        ρ)) := by
   intro i j hij
   apply Set.disjoint_left.mpr
   intro w hwi hwj
@@ -5076,9 +5210,12 @@ theorem smoothing_three_cube_bounds_one {s : ℝ} (hs : |s| = 1) :
     (smoothingChartRectangle (Set.Icc (-Real.log 2 / 2) 0)) (1 / 1024)
   let Q := fun j => smoothingCube (smoothingGridCorner ρ j) ρ
   obtain ⟨N, F, B, hN, hF, hB, hBB, hcover⟩ := smoothing_grid_decomposition K Z
-    ((smoothingChartDomainOne_subset_rectangle hs).trans smoothingChartRectangles_subset_ball.1) hρ hρ1
+    ((smoothingChartDomainOne_subset_rectangle hs).trans smoothingChartRectangles_subset_ball.1)
+      hρ hρ1
   have hnear := hn ρ hρ (Q '' (N : Set (ℕ × (ℕ × ℕ))))
-    (by rintro q ⟨j, hj, rfl⟩; exact ((hN j hj).1).trans (smoothingChartDomainOne_subset_rectangle hs))
+    (by
+      rintro q ⟨j, hj, rfl⟩;
+      exact ((hN j hj).1).trans (smoothingChartDomainOne_subset_rectangle hs))
     (by rintro q ⟨j, hj, rfl⟩ x hx y hy; exact smoothing_cube_dist_le _ hx hy)
     (by rintro q ⟨j, hj, rfl⟩; exact (hN j hj).2)
   rw [Set.sUnion_image] at hnear
@@ -5114,9 +5251,12 @@ theorem smoothing_three_cube_bounds_two {s : ℝ} (hs : |s| = 1) :
     (smoothingChartRectangle (Set.Icc 0 (Real.log 2 / 2))) (1 / 1024)
   let Q := fun j => smoothingCube (smoothingGridCorner ρ j) ρ
   obtain ⟨N, F, B, hN, hF, hB, hBB, hcover⟩ := smoothing_grid_decomposition K Z
-    ((smoothingChartDomainTwo_subset_rectangle hs).trans smoothingChartRectangles_subset_ball.2) hρ hρ1
+    ((smoothingChartDomainTwo_subset_rectangle hs).trans smoothingChartRectangles_subset_ball.2)
+      hρ hρ1
   have hnear := hn ρ hρ (Q '' (N : Set (ℕ × (ℕ × ℕ))))
-    (by rintro q ⟨j, hj, rfl⟩; exact ((hN j hj).1).trans (smoothingChartDomainTwo_subset_rectangle hs))
+    (by
+      rintro q ⟨j, hj, rfl⟩;
+      exact ((hN j hj).1).trans (smoothingChartDomainTwo_subset_rectangle hs))
     (by rintro q ⟨j, hj, rfl⟩ x hx y hy; exact smoothing_cube_dist_le _ hx hy)
     (by rintro q ⟨j, hj, rfl⟩; exact (hN j hj).2)
   rw [Set.sUnion_image] at hnear
@@ -5222,11 +5362,13 @@ theorem smoothing_eq3_53_one {a s : ℝ} (ha : 0 < a) (hs : |s| = 1) :
     apply ENNReal.ofReal_le_ofReal
     exact mul_le_mul_of_nonneg_right (smoothing_cube_constant_bound ha hc hn.le hb.le k)
       (Real.rpow_nonneg hε.le _)
-  · have hvol : volume {w | w ∈ smoothingChartDomainOne a k d s ∧ |smoothingGOne c β z k d s w| ≤ ε} ≤ 8 := by
+  · have hvol : volume {w | w ∈ smoothingChartDomainOne a k d s ∧ |smoothingGOne c β z k d s w| ≤
+      ε} ≤ 8 := by
       rw [← smoothing_unitBall_volume]
       apply measure_mono
       intro w hw
-      exact smoothingChartRectangles_subset_ball.1 (smoothingChartDomainOne_subset_rectangle hs hw.1)
+      exact smoothingChartRectangles_subset_ball.1 (smoothingChartDomainOne_subset_rectangle hs
+        hw.1)
     have hr : 1 ≤ ε ^ (1 / 16 : ℝ) := Real.one_le_rpow (le_of_not_ge hε1) (by norm_num)
     apply hvol.trans
     rw [← ENNReal.ofReal_ofNat (n := 8)]
@@ -5259,11 +5401,13 @@ theorem smoothing_eq3_53_two {a s : ℝ} (ha : 0 < a) (hs : |s| = 1) :
     apply ENNReal.ofReal_le_ofReal
     exact mul_le_mul_of_nonneg_right (smoothing_cube_constant_bound ha hc hn.le hb.le k)
       (Real.rpow_nonneg hε.le _)
-  · have hvol : volume {w | w ∈ smoothingChartDomainTwo a k d s ∧ |smoothingGTwo c β z k d s w| ≤ ε} ≤ 8 := by
+  · have hvol : volume {w | w ∈ smoothingChartDomainTwo a k d s ∧ |smoothingGTwo c β z k d s w| ≤
+      ε} ≤ 8 := by
       rw [← smoothing_unitBall_volume]
       apply measure_mono
       intro w hw
-      exact smoothingChartRectangles_subset_ball.2 (smoothingChartDomainTwo_subset_rectangle hs hw.1)
+      exact smoothingChartRectangles_subset_ball.2 (smoothingChartDomainTwo_subset_rectangle hs
+        hw.1)
     have hr : 1 ≤ ε ^ (1 / 16 : ℝ) := Real.one_le_rpow (le_of_not_ge hε1) (by norm_num)
     apply hvol.trans
     rw [← ENNReal.ofReal_ofNat (n := 8)]
@@ -5283,13 +5427,17 @@ the G-sublevel set appearing in (3.53). -/
 theorem smoothing_piece_chartOne_sublevel {a c s η : ℝ} {k : ℕ} {d : ℤ}
     {β : ℝ × ℝ → ℝ} {z : ℝ × ℝ} {A : Set (ℝ × (ℝ × ℝ))}
     (hF : ∀ t ∈ A, |smoothingSublevelScalar c β z t| ≤ η) :
-    smoothingFlowChartOne s ⁻¹' ((smoothingNormalize k d '' (smoothingOmegaPiece a k d ∩ smoothingJ '' A)) ∩
+    smoothingFlowChartOne s ⁻¹' ((smoothingNormalize k d '' (smoothingOmegaPiece a k d ∩
+      smoothingJ '' A)) ∩
       smoothingFlowBoxOne s) ⊆
       {w | w ∈ smoothingChartDomainOne a k d s ∧ |smoothingGOne c β z k d s w| ≤ η} := by
   rintro w ⟨⟨u, ⟨hu, t, ht, htu⟩, huw⟩, hb⟩
-  have he : smoothingFlowChartOne s w = smoothingNormalize k d (smoothingJ t) := by rw [htu]; exact huw.symm
+  have he : smoothingFlowChartOne s w = smoothingNormalize k d (smoothingJ t) := by
+    rw [htu];
+    exact huw.symm
   refine ⟨⟨⟨u, hu, huw⟩, hb⟩, ?_⟩
-  change |smoothingSublevelScalar c β z (smoothingFlowParameters k d (smoothingFlowChartOne s w))| ≤ η
+  change |smoothingSublevelScalar c β z (smoothingFlowParameters k d (smoothingFlowChartOne s w))|
+    ≤ η
   rw [he, smoothingFlowParameters_normalize_J]
   exact hF t ht
 
@@ -5297,13 +5445,17 @@ theorem smoothing_piece_chartOne_sublevel {a c s η : ℝ} {k : ℕ} {d : ℤ}
 theorem smoothing_piece_chartTwo_sublevel {a c s η : ℝ} {k : ℕ} {d : ℤ}
     {β : ℝ × ℝ → ℝ} {z : ℝ × ℝ} {A : Set (ℝ × (ℝ × ℝ))}
     (hF : ∀ t ∈ A, |smoothingSublevelScalar c β z t| ≤ η) :
-    smoothingFlowChartTwo s ⁻¹' ((smoothingNormalize k d '' (smoothingOmegaPiece a k d ∩ smoothingJ '' A)) ∩
+    smoothingFlowChartTwo s ⁻¹' ((smoothingNormalize k d '' (smoothingOmegaPiece a k d ∩
+      smoothingJ '' A)) ∩
       smoothingFlowBoxTwo s) ⊆
       {w | w ∈ smoothingChartDomainTwo a k d s ∧ |smoothingGTwo c β z k d s w| ≤ η} := by
   rintro w ⟨⟨u, ⟨hu, t, ht, htu⟩, huw⟩, hb⟩
-  have he : smoothingFlowChartTwo s w = smoothingNormalize k d (smoothingJ t) := by rw [htu]; exact huw.symm
+  have he : smoothingFlowChartTwo s w = smoothingNormalize k d (smoothingJ t) := by
+    rw [htu];
+    exact huw.symm
   refine ⟨⟨⟨u, hu, huw⟩, hb⟩, ?_⟩
-  change |smoothingSublevelScalar c β z (smoothingFlowParameters k d (smoothingFlowChartTwo s w))| ≤ η
+  change |smoothingSublevelScalar c β z (smoothingFlowParameters k d (smoothingFlowChartTwo s w))|
+    ≤ η
   rw [he, smoothingFlowParameters_normalize_J]
   exact hF t ht
 
@@ -5313,7 +5465,8 @@ theorem smoothing_dyadic_piece_sublevel {a : ℝ} (ha : 0 < a) :
     ∃ C : ℝ, 0 < C ∧ ∀ c : ℝ, 1 / 2 ≤ |c| → ∀ β : ℝ × ℝ → ℝ, Measurable β →
       ∀ z : ℝ × ℝ, ∀ η : ℝ, 0 < η → ∀ A : Set (ℝ × (ℝ × ℝ)), MeasurableSet A →
       (∀ t ∈ A, |smoothingSublevelScalar c β z t| ≤ η) → ∀ k : ℕ, ∀ d : ℤ,
-      volume (smoothingOmegaPiece a k d ∩ smoothingJ '' A) ≤ ENNReal.ofReal (C * η ^ (1 / 16 : ℝ)) := by
+      volume (smoothingOmegaPiece a k d ∩ smoothingJ '' A) ≤ ENNReal.ofReal (C * η ^ (1 / 16 : ℝ))
+        := by
   obtain ⟨C1, hC1, h1⟩ := smoothing_eq3_53_one ha (by norm_num : |(1 : ℝ)| = 1)
   obtain ⟨C2, hC2, h2⟩ := smoothing_eq3_53_one ha (by norm_num : |(-1 : ℝ)| = 1)
   obtain ⟨C3, hC3, h3⟩ := smoothing_eq3_53_two ha (by norm_num : |(1 : ℝ)| = 1)
@@ -5321,16 +5474,23 @@ theorem smoothing_dyadic_piece_sublevel {a : ℝ} (ha : 0 < a) :
   refine ⟨2 * (C1 + C2 + C3 + C4), by positivity, ?_⟩
   intro c hc β hβ z η hη A hA hF k d
   have hm : MeasurableSet (smoothingOmegaPiece a k d ∩ smoothingJ '' A) :=
-    (smoothingOmegaPiece_measurable a k d).inter (smoothingJ.toHomeomorph.measurableEmbedding.measurableSet_image.mpr hA)
+    (smoothingOmegaPiece_measurable a k d).inter
+      (smoothingJ.toHomeomorph.measurableEmbedding.measurableSet_image.mpr hA)
   have hv := smoothingOmegaPiece_flow_volume_le a k d hm Set.inter_subset_left
-  have hb1 := (measure_mono (smoothing_piece_chartOne_sublevel (a := a) (s := 1) (k := k) (d := d) hF)).trans (h1 c hc β hβ z k d η hη)
-  have hb2 := (measure_mono (smoothing_piece_chartOne_sublevel (a := a) (s := -1) (k := k) (d := d) hF)).trans (h2 c hc β hβ z k d η hη)
-  have hb3 := (measure_mono (smoothing_piece_chartTwo_sublevel (a := a) (s := 1) (k := k) (d := d) hF)).trans (h3 c hc β hβ z k d η hη)
-  have hb4 := (measure_mono (smoothing_piece_chartTwo_sublevel (a := a) (s := -1) (k := k) (d := d) hF)).trans (h4 c hc β hβ z k d η hη)
+  have hb1 := (measure_mono (smoothing_piece_chartOne_sublevel (a := a) (s := 1) (k := k) (d := d)
+    hF)).trans (h1 c hc β hβ z k d η hη)
+  have hb2 := (measure_mono (smoothing_piece_chartOne_sublevel (a := a) (s := -1) (k := k) (d :=
+    d) hF)).trans (h2 c hc β hβ z k d η hη)
+  have hb3 := (measure_mono (smoothing_piece_chartTwo_sublevel (a := a) (s := 1) (k := k) (d := d)
+    hF)).trans (h3 c hc β hβ z k d η hη)
+  have hb4 := (measure_mono (smoothing_piece_chartTwo_sublevel (a := a) (s := -1) (k := k) (d :=
+    d) hF)).trans (h4 c hc β hβ z k d η hη)
   apply hv.trans
-  apply le_trans (mul_le_mul_of_nonneg_left (add_le_add (add_le_add (add_le_add hb1 hb2) hb3) hb4) zero_le)
+  apply le_trans (mul_le_mul_of_nonneg_left (add_le_add (add_le_add (add_le_add hb1 hb2) hb3) hb4)
+    zero_le)
   rw [← ENNReal.ofReal_add (by positivity) (by positivity),
-    ← ENNReal.ofReal_add (by positivity) (by positivity), ← ENNReal.ofReal_add (by positivity) (by positivity),
+    ← ENNReal.ofReal_add (by positivity) (by positivity), ← ENNReal.ofReal_add (by positivity)
+      (by positivity),
     ← ENNReal.ofReal_pow (by positivity), ← ENNReal.ofReal_ofNat (n := 2),
     ← ENNReal.ofReal_mul (by positivity), ← ENNReal.ofReal_mul (by positivity)]
   apply le_of_eq
@@ -5391,7 +5551,8 @@ theorem smoothing_parameter_sublevel_bound {a : ℝ} (ha : 0 < a) :
     intro k
     have hd : 0 ≤ (1 / 2 : ℝ) ^ k := by positivity
     have hd1 : (1 / 2 : ℝ) ^ k ≤ 1 := pow_le_one₀ (by norm_num) (by norm_num)
-    have hp : ∀ d ∈ smoothingOmegaIndices a k, volume (smoothingJ '' A ∩ smoothingOmegaPiece a k d) ≤
+    have hp : ∀ d ∈ smoothingOmegaIndices a k, volume (smoothingJ '' A ∩ smoothingOmegaPiece a k
+      d) ≤
         ENNReal.ofReal (D * η ^ (1 / 64 : ℝ) * ((1 / 2 : ℝ) ^ k) ^ 2) := by
       intro d hdmem
       apply smoothing_dyadic_balance hB.le hη hd hd1
@@ -5399,16 +5560,21 @@ theorem smoothing_parameter_sublevel_bound {a : ℝ} (ha : 0 < a) :
       · exact (measure_mono Set.inter_subset_right).trans (smoothingOmegaPiece_volume_le a k d)
     have hcard : ((smoothingOmegaIndices a k).card : ENNReal) ≤
         ENNReal.ofReal ((2 * a + 9) * (2 : ℝ) ^ k) := by
-      simpa only [ENNReal.ofReal_natCast] using ENNReal.ofReal_le_ofReal (smoothingOmegaIndices_card ha k)
+      simpa only [ENNReal.ofReal_natCast] using ENNReal.ofReal_le_ofReal
+        (smoothingOmegaIndices_card ha k)
     calc
-      _ ≤ ∑ d ∈ smoothingOmegaIndices a k, ENNReal.ofReal (D * η ^ (1 / 64 : ℝ) * ((1 / 2 : ℝ) ^ k) ^ 2) :=
+      _ ≤ ∑ d ∈ smoothingOmegaIndices a k, ENNReal.ofReal (D * η ^ (1 / 64 : ℝ) * ((1 / 2 : ℝ) ^
+        k) ^ 2) :=
         Finset.sum_le_sum hp
       _ = ((smoothingOmegaIndices a k).card : ENNReal) *
           ENNReal.ofReal (D * η ^ (1 / 64 : ℝ) * ((1 / 2 : ℝ) ^ k) ^ 2) := by simp
       _ ≤ ENNReal.ofReal ((2 * a + 9) * (2 : ℝ) ^ k) *
-          ENNReal.ofReal (D * η ^ (1 / 64 : ℝ) * ((1 / 2 : ℝ) ^ k) ^ 2) := mul_le_mul_of_nonneg_right hcard zero_le
+          ENNReal.ofReal (D * η ^ (1 / 64 : ℝ) * ((1 / 2 : ℝ) ^ k) ^ 2) :=
+            mul_le_mul_of_nonneg_right hcard zero_le
       _ = _ := by
-        have hhalf : (1 / 2 : ENNReal) = ENNReal.ofReal (1 / 2 : ℝ) := by rw [ENNReal.ofReal_div_of_pos (by norm_num)]; simp
+        have hhalf : (1 / 2 : ENNReal) = ENNReal.ofReal (1 / 2 : ℝ) := by
+          rw [ENNReal.ofReal_div_of_pos (by norm_num)];
+          simp
         rw [hhalf, ← ENNReal.ofReal_mul (by positivity),
           ← ENNReal.ofReal_pow (by norm_num), ← ENNReal.ofReal_mul (by dsimp [D]; positivity)]
         congr 1
@@ -5450,7 +5616,9 @@ theorem smoothing_shifted_normalized_alpha {a : ℝ} (ha : 0 < a) :
   by_cases hz : volume E = 0
   · rw [hz]; exact zero_le
   obtain ⟨z, hA, hAsub, hlow⟩ := smoothing_exists_parameterSet hE (pos_iff_ne_zero.mpr hz) ha hbox
-  have hc : 1 / 2 ≤ |α z / 2| := by rw [abs_div, abs_of_pos (by norm_num : (0 : ℝ) < 2)]; linarith [hα1 z]
+  have hc : 1 / 2 ≤ |α z / 2| := by
+    rw [abs_div, abs_of_pos (by norm_num : (0 : ℝ) < 2)];
+    linarith [hα1 z]
   have hup := hparam (α z / 2) hc β hβ z (L * ε) (mul_pos hL hε)
     (smoothingParameterSet E a z) hA hAsub
     (fun t ht => smoothing_scalar_sublevel_bound α β K hε.le ha hKbox z ht)
@@ -5463,7 +5631,8 @@ theorem smoothing_shifted_normalized_alpha {a : ℝ} (ha : 0 < a) :
   have hp : (volume E).toReal ^ 7 ≤ (C * ε ^ (1 / 448 : ℝ)) ^ 7 := by
     have hCp : C ^ 7 = B * L ^ (1 / 64 : ℝ) / b := by
       dsimp [C]
-      simpa using Real.rpow_inv_natCast_pow (by positivity : 0 ≤ B * L ^ (1 / 64 : ℝ) / b) (by norm_num : (7 : ℕ) ≠ 0)
+      simpa using Real.rpow_inv_natCast_pow (by positivity : 0 ≤ B * L ^ (1 / 64 : ℝ) / b)
+        (by norm_num : (7 : ℕ) ≠ 0)
     have hεp : (ε ^ (1 / 448 : ℝ)) ^ 7 = ε ^ (1 / 64 : ℝ) := by
       rw [← Real.rpow_mul_natCast hε.le]; congr 1; norm_num
     rw [mul_pow, hCp, hεp]
@@ -5566,7 +5735,7 @@ theorem smoothing_lemma3_3_beta {K : Set ((ℝ × ℝ) × ℝ)}
         linarith [hp.2]
       refine ⟨hp.1, ?_⟩
       change |α' (p.1.1 + p.2, p.1.2) - 2 * p.2 * β (p.1.1, p.1.2 + p.2 ^ 2)| ≤ ε
-      simpa only [α', if_pos hval] using hp.2
+      simpa only [α', ite_eq_left hval] using hp.2
     exact (measure_mono hs).trans ((hbound α' β hα' hβ hα'1 ε hε).trans
       (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_right hCD (by positivity))))
   · apply (measure_mono (show smoothingSublevelSet α β K ε ⊆ K from fun p hp => hp.1)).trans
@@ -5575,7 +5744,8 @@ theorem smoothing_lemma3_3_beta {K : Set ((ℝ × ℝ) × ℝ)}
       Real.rpow_le_rpow hm.le (le_of_not_ge hsmall) (by norm_num)
     have hmp : 0 < m ^ (1 / 448 : ℝ) := by positivity
     calc
-      (volume K).toReal = ((volume K).toReal / m ^ (1 / 448 : ℝ)) * m ^ (1 / 448 : ℝ) := by field_simp
+      (volume K).toReal = ((volume K).toReal / m ^ (1 / 448 : ℝ)) * m ^ (1 / 448 : ℝ) :=
+        by field_simp
       _ ≤ ((volume K).toReal / m ^ (1 / 448 : ℝ)) * ε ^ (1 / 448 : ℝ) := by gcongr
       _ ≤ D * ε ^ (1 / 448 : ℝ) := by dsimp [D]; gcongr; linarith
 
@@ -5610,10 +5780,12 @@ theorem smoothing_lemma3_3 {K : Set ((ℝ × ℝ) × ℝ)}
     rcases hnd with hnd | hnd
     · apply (h1 _ _ (by fun_prop) (by fun_prop) (hscale hnd) _ (div_pos hε.1 hm)).trans
       apply ENNReal.ofReal_le_ofReal
-      exact mul_le_mul_of_nonneg_right (le_add_of_nonneg_right hC2.le) (Real.rpow_nonneg (div_nonneg hε.1.le hm.le) _)
+      exact mul_le_mul_of_nonneg_right (le_add_of_nonneg_right hC2.le) (Real.rpow_nonneg
+        (div_nonneg hε.1.le hm.le) _)
     · apply (h2 _ _ (by fun_prop) (by fun_prop) (hscale hnd) _ (div_pos hε.1 hm)).trans
       apply ENNReal.ofReal_le_ofReal
-      exact mul_le_mul_of_nonneg_right (le_add_of_nonneg_left hC1.le) (Real.rpow_nonneg (div_nonneg hε.1.le hm.le) _)
+      exact mul_le_mul_of_nonneg_right (le_add_of_nonneg_left hC1.le) (Real.rpow_nonneg
+        (div_nonneg hε.1.le hm.le) _)
   apply ((measure_mono hs).trans hb).trans
   rw [Real.div_rpow hε.1.le hm.le]
   exact le_of_eq (by congr 1; ring)
@@ -5682,12 +5854,14 @@ theorem smoothingPositiveCutoff_contDiff {ζ : (ℝ × ℝ) × ℝ → ℂ}
   rw [contDiff_iff_contDiffAt]
   intro p
   rcases lt_trichotomy p.2 0 with hn | hz | hp
-  · apply (contDiffAt_const : ContDiffAt ℝ ∞ (fun _ : (ℝ × ℝ) × ℝ => (0 : ℂ)) p).congr_of_eventuallyEq
+  · apply (contDiffAt_const : ContDiffAt ℝ ∞ (fun _ : (ℝ × ℝ) × ℝ => (0 : ℂ))
+      p).congr_of_eventuallyEq
     filter_upwards [((continuous_snd.tendsto p).eventually (gt_mem_nhds hn))] with q hq
     simp [smoothingPositiveCutoff, not_lt.mpr hq.le]
   · have hn : p ∉ tsupport ζ := fun h => hoff p h hz
     have he := notMem_tsupport_iff_eventuallyEq.mp hn
-    apply (contDiffAt_const : ContDiffAt ℝ ∞ (fun _ : (ℝ × ℝ) × ℝ => (0 : ℂ)) p).congr_of_eventuallyEq
+    apply (contDiffAt_const : ContDiffAt ℝ ∞ (fun _ : (ℝ × ℝ) × ℝ => (0 : ℂ))
+      p).congr_of_eventuallyEq
     filter_upwards [he] with q hq
     simp [smoothingPositiveCutoff, hq]
   · apply hζ.contDiffAt.congr_of_eventuallyEq
@@ -5728,7 +5902,8 @@ theorem smoothingLocalized_positiveCutoff (f₁ f₂ : ℝ × ℝ → ℂ)
   rw [← integral_indicator measurableSet_Ioi]
   apply integral_congr_ae
   filter_upwards [] with t
-  by_cases ht : 0 < t <;> simp [smoothingPositiveCutoff, ht, Set.indicator_of_mem, Set.indicator_of_notMem]
+  by_cases ht : 0 < t <;>
+     simp [smoothingPositiveCutoff, ht, Set.indicator_of_mem, Set.indicator_of_notMem]
 
 /-- Reflection preserves every Lebesgue Lp norm of the inputs in the
 positive-time reduction. -/
@@ -5737,7 +5912,8 @@ theorem smoothingReflectX_eLpNorm (f : ℝ × ℝ → ℂ)
     eLpNorm (smoothingReflectX f) p volume = eLpNorm f p volume := by
   have hm : MeasurePreserving (fun z : ℝ × ℝ => (-z.1, z.2)) volume volume := by
     simpa only [Measure.volume_eq_prod] using!
-      (Measure.measurePreserving_neg (volume : Measure ℝ)).prod (MeasurePreserving.id (volume : Measure ℝ))
+      (Measure.measurePreserving_neg (volume : Measure ℝ)).prod (MeasurePreserving.id (volume :
+        Measure ℝ))
   exact eLpNorm_comp_measurePreserving hf hm
 
 /-- The cutoff reflection is a homeomorphism, preserving compact support. -/
@@ -5778,7 +5954,8 @@ theorem smoothingLocalized_positive_reduction {f₁ f₂ : ℝ × ℝ → ℂ}
     smoothingPositiveCutoff_contDiff hr hroff, hnc, hnp, ?_⟩
   intro z
   rw [smoothingLocalized_positiveCutoff, smoothingLocalized_positiveCutoff]
-  exact smoothingLocalized_time_split f₁ f₂ ζ z (smoothingLocalized_integrable h₁ h₂ hζ.continuous hc z)
+  exact smoothingLocalized_time_split f₁ f₂ ζ z (smoothingLocalized_integrable h₁ h₂ hζ.continuous
+    hc z)
 
 /-- Bilinear homogeneity used in the amplitude normalization after (3.4). -/
 theorem smoothingLocalized_smul (f₁ f₂ : ℝ × ℝ → ℂ)
@@ -5853,7 +6030,8 @@ theorem smoothingCoordinateBand_temperate (C : LittlewoodPaley.lpCutoffs 1) (j :
 /-- Coordinate Littlewood-Paley projection used for (3.3)-(3.4), defined
 as a Fourier multiplier on Schwartz functions. -/
 noncomputable def smoothingCoordinateProjection (C : LittlewoodPaley.lpCutoffs 1)
-    (j : Fin 2) (k : ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ :=
+    (j : Fin 2) (k : ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : SchwartzMap
+      (EuclideanSpace ℝ (Fin 2)) ℂ :=
   SchwartzMap.fourierMultiplierCLM ℂ (smoothingCoordinateBand C j k) f
 
 /-- The band-pass multiplier has support in its stated coordinate annulus. -/
@@ -5878,7 +6056,8 @@ theorem smoothingCoordinateBand_resolution (C : LittlewoodPaley.lpCutoffs 1)
 /-- Euclidean frequency coordinates and the literal pair coordinates in (3.1)
 are related by this continuous linear equivalence. -/
 noncomputable def smoothingPlaneEquiv : EuclideanSpace ℝ (Fin 2) ≃L[ℝ] (ℝ × ℝ) :=
-  (PiLp.continuousLinearEquiv 2 ℝ (fun _ : Fin 2 => ℝ)).trans (ContinuousLinearEquiv.finTwoArrow ℝ ℝ)
+  (PiLp.continuousLinearEquiv 2 ℝ (fun _ : Fin 2 => ℝ)).trans (ContinuousLinearEquiv.finTwoArrow ℝ
+    ℝ)
 
 /-- The coordinate projection is an actual Fourier multiplier, not merely a
 formal decomposition of frequencies. -/
@@ -5955,13 +6134,23 @@ theorem smoothingCoordinateLow_difference_support (C : LittlewoodPaley.lpCutoffs
   constructor
   · by_contra hn
     have hξ : |ξ j| ≤ a := le_of_not_gt hn
-    have h1 : smoothingCoordinateLow C j a ξ = 1 := C.cutoff_one _ (by rw [hnorm a ha]; exact (div_le_one ha).mpr hξ)
-    have h2 : smoothingCoordinateLow C j b ξ = 1 := C.cutoff_one _ (by rw [hnorm b hb]; exact (div_le_one hb).mpr (hξ.trans hab))
+    have h1 : smoothingCoordinateLow C j a ξ = 1 := C.cutoff_one _ (by
+      rw [hnorm a ha];
+      exact (div_le_one ha).mpr hξ)
+    have h2 : smoothingCoordinateLow C j b ξ = 1 := C.cutoff_one _ (by
+      rw [hnorm b hb];
+      exact (div_le_one hb).mpr (hξ.trans hab))
     exact h (by rw [h1, h2, sub_self])
   · by_contra hn
     have hξ : 2 * a ≤ |ξ j| := le_of_not_gt hn
-    have h1 : smoothingCoordinateLow C j a ξ = 0 := hC _ (by rw [hnorm a ha]; apply (le_div_iff₀ ha).mpr; linarith)
-    have h2 : smoothingCoordinateLow C j b ξ = 0 := hC _ (by rw [hnorm b hb]; apply (le_div_iff₀ hb).mpr; linarith)
+    have h1 : smoothingCoordinateLow C j a ξ = 0 := hC _ (by
+      rw [hnorm a ha];
+      apply (le_div_iff₀ ha).mpr;
+      linarith)
+    have h2 : smoothingCoordinateLow C j b ξ = 0 := hC _ (by
+      rw [hnorm b hb];
+      apply (le_div_iff₀ hb).mpr;
+      linarith)
     exact h (by rw [h1, h2, sub_self])
 
 /-- The two annular scales splitting a pinned dyadic band for (3.3). -/
@@ -5992,7 +6181,10 @@ theorem smoothingAnnularBand_support (C : LittlewoodPaley.lpCutoffs 1)
     (h : smoothingAnnularBand C j k b ξ ≠ 0) :
     smoothingAnnularScale k b < |ξ j| ∧ |ξ j| < 2 * smoothingAnnularScale k b := by
   have hk : 0 < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
-  have hnext : (2 : ℝ) ^ (k + 1) = 2 * (2 : ℝ) ^ k := by rw [zpow_add₀ (by norm_num)]; norm_num; ring
+  have hnext : (2 : ℝ) ^ (k + 1) = 2 * (2 : ℝ) ^ k := by
+    rw [zpow_add₀ (by norm_num)];
+    norm_num;
+    ring
   cases b
   · exact smoothingCoordinateLow_difference_support C hC j hk (by linarith) (by rfl) h
   · apply smoothingCoordinateLow_difference_support C hC j (by positivity) ?_ ?_ h
@@ -6009,7 +6201,8 @@ theorem smoothingAnnularBand_resolution (C : LittlewoodPaley.lpCutoffs 1)
 
 /-- All refined multipliers act continuously on Schwartz functions. -/
 theorem smoothingAnnularBand_temperate (C : LittlewoodPaley.lpCutoffs 1)
-    (j : Fin 2) (k : ℤ) (b : Bool) : Function.HasTemperateGrowth (smoothingAnnularBand C j k b) := by
+    (j : Fin 2) (k : ℤ) (b : Bool) : Function.HasTemperateGrowth (smoothingAnnularBand C j k b) :=
+      by
   have hl (r : ℝ) : Function.HasTemperateGrowth (smoothingCoordinateLow C j r) :=
     C.cutoff.hasTemperateGrowth.comp ((r⁻¹ • smoothingFrequencyLine j).hasTemperateGrowth)
   cases b
@@ -6053,7 +6246,8 @@ theorem smoothing_coordinate_convolution (κ : SchwartzMap ℝ ℂ)
   let g : EuclideanSpace ℝ (Fin 2) → ℂ := fun ξ => Real.fourierChar (inner ℝ ξ x) • (𝓕 f) ξ
   have hg : Integrable g := by
     apply ((𝓕 f).integrable (μ := volume)).norm.mono'
-      ((Real.continuous_fourierChar.comp (continuous_id.inner continuous_const)).aestronglyMeasurable.fun_smul
+      ((Real.continuous_fourierChar.comp (continuous_id.inner
+        continuous_const)).aestronglyMeasurable.fun_smul
         (𝓕 f).continuous.aestronglyMeasurable)
     exact Filter.Eventually.of_forall (fun ξ => by simp)
   have hflip := VectorFourier.integral_fourierIntegral_smul_eq_flip
@@ -6070,7 +6264,8 @@ theorem smoothing_coordinate_convolution (κ : SchwartzMap ℝ ℂ)
   have hright (u : ℝ) : VectorFourier.fourierIntegral Real.fourierChar volume L.flip g u =
       f (x - EuclideanSpace.single j u) := by
     have hinv := congrArg (fun h : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ =>
-      h (x - EuclideanSpace.single j u)) (fourierInv_fourier_eq (F := SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) f)
+      h (x - EuclideanSpace.single j u)) (fourierInv_fourier_eq (F := SchwartzMap (EuclideanSpace
+        ℝ (Fin 2)) ℂ) f)
     rw [SchwartzMap.fourierInv_coe, Real.fourierInv_eq] at hinv
     rw [← hinv]
     unfold VectorFourier.fourierIntegral
@@ -6101,7 +6296,9 @@ theorem smoothing_coordinate_multiplier_bound (φ : SchwartzMap ℝ ℂ)
   have hbound : ‖∫ u : ℝ, (𝓕⁻ φ) u * f (x - EuclideanSpace.single j u)‖ ≤
       ∫ u : ℝ, ‖(𝓕⁻ φ) u‖ * M := by
     apply norm_integral_le_of_norm_le (((𝓕⁻ φ).integrable (μ := volume)).norm.mul_const M)
-    exact Filter.Eventually.of_forall (fun u => by rw [norm_mul]; exact mul_le_mul_of_nonneg_left (hf _) (norm_nonneg _))
+    exact Filter.Eventually.of_forall (fun u => by
+      rw [norm_mul];
+      exact mul_le_mul_of_nonneg_left (hf _) (norm_nonneg _))
   apply hbound.trans
   rw [integral_mul_const, mul_comm]
   apply le_of_eq
@@ -6314,7 +6511,8 @@ theorem smoothingLowProjection_difference_support (C : LittlewoodPaley.lpCutoffs
     rw [hs, sub_apply, smoothingLowProjection_fourier, smoothingLowProjection_fourier]
     ring
   rw [he] at h
-  exact (smoothingCoordinateLow_difference_support C hC j ha hab hba (left_ne_zero_of_mul h)).imp le_of_lt le_of_lt
+  exact (smoothingCoordinateLow_difference_support C hC j ha hab hba (left_ne_zero_of_mul h)).imp
+    le_of_lt le_of_lt
 
 /-- Each constructed high-frequency term obeys (3.3), at its own source scale. -/
 theorem smoothingBandProjection_support (C : LittlewoodPaley.lpCutoffs 1)
@@ -6333,10 +6531,12 @@ theorem smoothingBandProjection_support (C : LittlewoodPaley.lpCutoffs 1)
 truncation, whose error was proved to converge uniformly to zero. -/
 theorem smoothingBandProjection_finite_reconstruction (C : LittlewoodPaley.lpCutoffs 1)
     (j : Fin 2) (r : ℝ) (N : ℕ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
-    smoothingLowProjection C j r f + ∑ n ∈ Finset.range N, ∑ b : Bool, smoothingBandProjection C j r n b f =
+    smoothingLowProjection C j r f + ∑ n ∈ Finset.range N, ∑ b : Bool, smoothingBandProjection C j
+      r n b f =
       smoothingLowProjection C j (r * (2 : ℝ) ^ N) f := by
   have hs (n : ℕ) : (∑ b : Bool, smoothingBandProjection C j r n b f) =
-      smoothingLowProjection C j (r * (2 : ℝ) ^ (n + 1)) f - smoothingLowProjection C j (r * (2 : ℝ) ^ n) f := by
+      smoothingLowProjection C j (r * (2 : ℝ) ^ (n + 1)) f - smoothingLowProjection C j (r * (2 :
+        ℝ) ^ n) f := by
     simp only [Fintype.sum_bool, smoothingBandProjection, Bool.false_eq_true, ↓reduceIte]
     abel
   simp_rw [hs]
@@ -6349,7 +6549,8 @@ theorem smoothingBandProjection_bound (C : LittlewoodPaley.lpCutoffs 1)
     (j : Fin 2) {r : ℝ} (hr : 0 < r) (n : ℕ) (b : Bool)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {M : ℝ} (hf : ∀ x, ‖f x‖ ≤ M)
     (x : EuclideanSpace ℝ (Fin 2)) :
-    ‖smoothingBandProjection C j r n b f x‖ ≤ 2 * M * ∫ u : ℝ, ‖(𝓕 (smoothingScalarCutoff C)) u‖ := by
+    ‖smoothingBandProjection C j r n b f x‖ ≤ 2 * M * ∫ u : ℝ, ‖(𝓕 (smoothingScalarCutoff C)) u‖
+      := by
   have hdiff {a b : ℝ} (ha : 0 < a) (hb : 0 < b) :
       ‖(smoothingLowProjection C j b f - smoothingLowProjection C j a f) x‖ ≤
         2 * M * ∫ u : ℝ, ‖(𝓕 (smoothingScalarCutoff C)) u‖ := by
@@ -6371,7 +6572,8 @@ theorem smoothingLocalized_full_integrable {f₁ f₂ : ℝ × ℝ → ℂ}
       f₁ (p.1.1 + p.2, p.1.2) * f₂ (p.1.1, p.1.2 + p.2 ^ 2) * ζ p) volume := by
   exact (by fun_prop : Continuous (fun p : (ℝ × ℝ) × ℝ =>
     f₁ (p.1.1 + p.2, p.1.2) * f₂ (p.1.1, p.1.2 + p.2 ^ 2) * ζ p)).integrable_of_hasCompactSupport
-      (hc.mul_left (f := fun p : (ℝ × ℝ) × ℝ => f₁ (p.1.1 + p.2, p.1.2) * f₂ (p.1.1, p.1.2 + p.2 ^ 2)))
+      (hc.mul_left (f := fun p : (ℝ × ℝ) × ℝ => f₁ (p.1.1 + p.2, p.1.2) * f₂ (p.1.1, p.1.2 + p.2 ^
+        2)))
 
 /-- The localized operator takes continuous inputs to L-one when the cutoff
 is continuous and compactly supported. -/
@@ -6440,7 +6642,8 @@ theorem smoothingLowProjection_support (C : LittlewoodPaley.lpCutoffs 1)
 
 /-- A Schwartz function in Euclidean coordinates, evaluated in the literal
 (x,y) coordinates of the localized source operator. -/
-noncomputable def smoothingPlaneFunction (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : ℝ × ℝ → ℂ :=
+noncomputable def smoothingPlaneFunction (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : ℝ × ℝ →
+  ℂ :=
   fun z => f (smoothingPlaneEquiv.symm z)
 
 /-- Continuity of the coordinate realization of each Schwartz input. -/
@@ -6458,7 +6661,8 @@ theorem smoothingLocalizedL1_add_right {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : Continuous ζ) (hc : HasCompactSupport ζ)
     (f g h : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
     smoothingLocalizedL1 ζ f (g + h) ≤ smoothingLocalizedL1 ζ f g + smoothingLocalizedL1 ζ f h := by
-  have he : smoothingPlaneFunction (g + h) = smoothingPlaneFunction g + smoothingPlaneFunction h := rfl
+  have he : smoothingPlaneFunction (g + h) = smoothingPlaneFunction g + smoothingPlaneFunction h
+    := rfl
   unfold smoothingLocalizedL1
   rw [he, smoothingLocalized_add_right (smoothingPlaneFunction_continuous f)
     (smoothingPlaneFunction_continuous g) (smoothingPlaneFunction_continuous h) hζ hc]
@@ -6488,17 +6692,20 @@ theorem smoothingLocalizedL1_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {M₁ M₂ : ℝ}
     (hM₁ : 0 ≤ M₁) (hM₂ : 0 ≤ M₂) (hf : ∀ x, ‖f x‖ ≤ M₁) (hg : ∀ x, ‖g x‖ ≤ M₂) :
     smoothingLocalizedL1 ζ f g ≤ (M₁ * M₂) * ∫ p : (ℝ × ℝ) × ℝ, ‖ζ p‖ :=
-  smoothingLocalized_l1_bound (smoothingPlaneFunction_continuous f) (smoothingPlaneFunction_continuous g)
+  smoothingLocalized_l1_bound (smoothingPlaneFunction_continuous f)
+    (smoothingPlaneFunction_continuous g)
     hζ hc hM₁ hM₂ (fun _ => hf _) (fun _ => hg _)
 
 /-- Uniform frequency truncation errors give vanishing L-one errors after
 applying the localized operator. -/
-theorem smoothingLocalizedL1_truncation_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
-    (hζ : Continuous ζ) (hc : HasCompactSupport ζ) (C : LittlewoodPaley.lpCutoffs 1)
-    (j : Fin 2) {r : ℝ} (hr : 0 < r) (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
+theorem smoothingLocalizedL1_truncation_bound {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : Continuous ζ) (hc :
+    HasCompactSupport ζ)
+    (C : LittlewoodPaley.lpCutoffs 1) (j : Fin 2) {r : ℝ} (hr : 0 < r) (f g : SchwartzMap
+      (EuclideanSpace ℝ (Fin 2)) ℂ)
     {M : ℝ} (hM : 0 ≤ M) (hf : ∀ x, ‖f x‖ ≤ M) :
     ∃ e : ℕ → ℝ, Filter.Tendsto e Filter.atTop (nhds 0) ∧ (∀ n, 0 ≤ e n) ∧ ∀ n,
-      smoothingLocalizedL1 ζ f g ≤ smoothingLocalizedL1 ζ f (smoothingLowProjection C j (r * (2 : ℝ) ^ n) g) +
+      smoothingLocalizedL1 ζ f g ≤ smoothingLocalizedL1 ζ f (smoothingLowProjection C j (r * (2 :
+        ℝ) ^ n) g) +
         (M * e n) * ∫ p : (ℝ × ℝ) × ℝ, ‖ζ p‖ := by
   obtain ⟨e, he, hen, heb⟩ := smoothingLowProjection_uniform_reconstruction C j hr g
   refine ⟨e, he, hen, ?_⟩
@@ -6507,7 +6714,8 @@ theorem smoothingLocalizedL1_truncation_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
   have hid : g = q + (g - q) := by abel
   calc
     _ = smoothingLocalizedL1 ζ f (q + (g - q)) := by rw [← hid]
-    _ ≤ smoothingLocalizedL1 ζ f q + smoothingLocalizedL1 ζ f (g - q) := smoothingLocalizedL1_add_right hζ hc f q (g - q)
+    _ ≤ smoothingLocalizedL1 ζ f q + smoothingLocalizedL1 ζ f (g - q) :=
+      smoothingLocalizedL1_add_right hζ hc f q (g - q)
     _ ≤ _ := by
       apply add_le_add le_rfl
       apply smoothingLocalizedL1_bound hζ hc f (g - q) hM (hen n) hf
@@ -6757,7 +6965,8 @@ theorem smoothingSpatialBumpOne_bounds (t : ℝ) :
   smoothingPartitionCutoff_bounds t
 
 /-- The narrow partition element vanishes outside [-3/4,3/4]. -/
-theorem smoothingSpatialBumpOne_zero {t : ℝ} (ht : (3 / 4 : ℝ) ≤ |t|) : smoothingSpatialBumpOne t = 0 :=
+theorem smoothingSpatialBumpOne_zero {t : ℝ} (ht : (3 / 4 : ℝ) ≤ |t|) : smoothingSpatialBumpOne t
+  = 0 :=
   smoothingPartitionCutoff_eq_zero ht
 /-- The narrow translates still telescope to one; this reuses the pinned
 integer-interval telescoping theorem rather than assuming a partition identity. -/
@@ -6815,7 +7024,7 @@ theorem smoothingSpatialBump_properties :
   · intro x
     exact Finset.prod_nonneg (fun i hi => (smoothingSpatialBumpOne_bounds (x i)).1)
   · intro x
-    apply (Finset.prod_le_prod (fun i hi => (smoothingSpatialBumpOne_bounds (x i)).1)
+    apply (Finset.prod_le_prod₀ (fun i hi => (smoothingSpatialBumpOne_bounds (x i)).1)
       (fun i hi => (smoothingSpatialBumpOne_bounds (x i)).2)).trans
     simp
 
@@ -6844,8 +7053,10 @@ theorem smoothingSpatialBump_lattice_support (M : ℕ) (x : EuclideanSpace ℝ (
 /-- The narrow two-dimensional lattice partition on every bounded region. -/
 theorem smoothingSpatialBump_finite_sum (M : ℕ) (x : EuclideanSpace ℝ (Fin 2))
     (hx : ‖x‖ ≤ (M : ℝ)) :
-    ∑ m ∈ CalderonVaillancourt.latticeBox 2 M, smoothingSpatialBump (x - CalderonVaillancourt.latt 2 m) = 1 := by
-  have hsum (i : Fin 2) : ∑ n ∈ Finset.Icc (-(M : ℤ)) (M : ℤ), smoothingSpatialBumpOne (x i - (n : ℝ)) = 1 :=
+    ∑ m ∈ CalderonVaillancourt.latticeBox 2 M, smoothingSpatialBump (x - CalderonVaillancourt.latt
+      2 m) = 1 := by
+  have hsum (i : Fin 2) : ∑ n ∈ Finset.Icc (-(M : ℤ)) (M : ℤ), smoothingSpatialBumpOne (x i - (n :
+    ℝ)) = 1 :=
     smoothingSpatialBumpOne_sum (x i) M ((CalderonVaillancourt.abs_apply_le_norm x i).trans hx)
   change (∑ m ∈ Fintype.piFinset (fun _ : Fin 2 => Finset.Icc (-(M : ℤ)) (M : ℤ)),
     ∏ i : Fin 2, smoothingSpatialBumpOne (x i - (m i : ℝ))) = 1
@@ -6884,7 +7095,8 @@ noncomputable def smoothingSpatialPiece (a : ℝ) (m : Fin 2 → ℤ)
 theorem smoothingSpatialPiece_apply (a : ℝ) (m : Fin 2 → ℤ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingSpatialPiece a m f x = f x * smoothingSpatialCutoff a m x := by
-  rw [smoothingSpatialPiece, SchwartzMap.smulLeftCLM_apply_apply (smoothingSpatialCutoff_temperate a m)]
+  rw [smoothingSpatialPiece, SchwartzMap.smulLeftCLM_apply_apply (smoothingSpatialCutoff_temperate
+    a m)]
   exact mul_comm _ _
 
 /-- The finite partition formula at every point of a bounded spatial region. -/
@@ -6971,7 +7183,7 @@ theorem smoothingSpatialPiece_tsupport_sharp {a : ℝ} (ha : 0 < a) (m : Fin 2 �
   apply closure_minimal
   · intro x hx i
     exact (smoothingSpatialPiece_support_sharp ha m f hx i).le
-  · simp only [Set.setOf_forall]
+  · simp only [Set.ofPred_forall]
     exact isClosed_iInter (fun i => isClosed_le (by fun_prop) continuous_const)
 /-- The topological support has the exact Q_m enclosure used after (3.5). -/
 theorem smoothingSpatialPiece_tsupport {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
@@ -6979,7 +7191,7 @@ theorem smoothingSpatialPiece_tsupport {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ
     tsupport (smoothingSpatialPiece a m f) ⊆ smoothingSpatialCube a m := by
   have hc : IsClosed (smoothingSpatialCube a m) := by
     change IsClosed {x : EuclideanSpace ℝ (Fin 2) | ∀ i : Fin 2, |x i - a⁻¹ * (m i : ℝ)| ≤ a⁻¹}
-    simp only [Set.setOf_forall]
+    simp only [Set.ofPred_forall]
     exact isClosed_iInter (fun i => isClosed_le (by fun_prop) continuous_const)
   apply closure_minimal _ hc
   intro x hx i
@@ -7011,7 +7223,8 @@ theorem smoothingInteractionIndices_witness (ζ : (ℝ × ℝ) × ℝ → ℂ) (
       (i : Fin 2) : |a * (smoothingPlaneEquiv.symm w) i - (n i : ℝ)| ≤ 1 := by
     change smoothingSpatialPiece a n v (smoothingPlaneEquiv.symm w) ≠ 0 at hw
     rw [smoothingSpatialPiece_apply] at hw
-    have hb : smoothingSpatialBump (a • smoothingPlaneEquiv.symm w - CalderonVaillancourt.latt 2 n) ≠ 0 := by
+    have hb : smoothingSpatialBump (a • smoothingPlaneEquiv.symm w - CalderonVaillancourt.latt 2
+      n) ≠ 0 := by
       simpa only [smoothingSpatialCutoff, ne_eq, Complex.ofReal_eq_zero] using
         (right_ne_zero_of_mul hw : smoothingSpatialCutoff a n (smoothingPlaneEquiv.symm w) ≠ 0)
     exact (smoothingSpatialBump_support hb i).le
@@ -7028,9 +7241,11 @@ theorem smoothing_cutoff_coordinate_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
   intro x y t hp
   have hn := hb ((x, y), t) (subset_tsupport _ hp)
   have hxy : ‖(x, y)‖ ≤ B := (norm_fst_le ((x, y), t)).trans hn
-  exact ⟨(by simpa only [Real.norm_eq_abs] using (norm_fst_le (x, y)).trans (hxy.trans (by linarith))),
+  exact
+    ⟨(by simpa only [Real.norm_eq_abs] using (norm_fst_le (x, y)).trans (hxy.trans (by linarith))),
     (by simpa only [Real.norm_eq_abs] using (norm_snd_le (x, y)).trans (hxy.trans (by linarith))),
-    (by simpa only [Real.norm_eq_abs] using (norm_snd_le ((x, y), t)).trans (hn.trans (by linarith)))⟩
+    (by
+      simpa only [Real.norm_eq_abs] using (norm_snd_le ((x, y), t)).trans (hn.trans (by linarith)))⟩
 
 /-- The bounded lattice set containing either marginal of the interaction set. -/
 noncomputable def smoothingSpatialIndices (a R : ℝ) : Finset (Fin 2 → ℤ) :=
@@ -7098,7 +7313,8 @@ theorem smoothingSpatialIndices_card {a R : ℝ} (ha : 1 ≤ a) (hR : 1 ≤ R) :
     omega
   have hi' : ((Finset.Icc (-N) N).card : ℝ) = 2 * (N : ℝ) + 1 := by exact_mod_cast hi
   have he : ((smoothingSpatialIndices a R).card : ℝ) = (2 * (N : ℝ) + 1) ^ 2 := by
-    simp only [smoothingSpatialIndices, Fintype.card_piFinset, Finset.prod_const, Finset.card_univ,
+    simp only [smoothingSpatialIndices, Fintype.card_piFinset, Finset.prod_const,
+      Finset.card_univ,
       Fintype.card_fin, Nat.cast_pow]
     rw [hi']
   have hb : 2 * (N : ℝ) + 1 ≤ (2 * R + 2 * R ^ 2 + 5) * a := by
@@ -7137,11 +7353,11 @@ theorem smoothing_interaction_marginals {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc :
 
 /-- The quadratic lattice relation used in (3.6) allows a fixed spatial
 incidence tolerance; this includes the actual enlarged supports. -/
-theorem smoothing_quadratic_lattice_relation_tolerance {a R e x y t u v w z : ℝ}
-    (ha : 1 ≤ a) (_ : 0 ≤ R) (he : 0 ≤ e) (ht : |t| ≤ R)
-    (hu : |a*(x+t)-u| ≤ e) (hv : |a*y-v| ≤ e)
-    (hw : |a*x-w| ≤ e) (hz : |a*(y+t^2)-z| ≤ e) :
-    |z-(v+(u-w)^2/a)| ≤ 4*e*R+4*e^2+2*e := by
+theorem smoothing_quadratic_lattice_relation_tolerance {a R e x y t u v w z : ℝ} (ha : 1 ≤ a)
+    (_ : 0 ≤ R) (he : 0 ≤ e)
+    (ht : |t| ≤ R) (hu : |a * (x + t) - u| ≤ e) (hv : |a * y - v| ≤ e) (hw : |a * x - w| ≤ e)
+    (hz : |a * (y + t ^ 2) - z| ≤ e) :
+    |z-(v+(u-w)^2 / a)| ≤ 4*e*R+4*e^2+2*e := by
   have ha₀ : 0 < a := by linarith
   let d := u-w
   have hd : |d-a*t| ≤ 2*e := by
@@ -7203,7 +7419,8 @@ noncomputable def smoothingInteractionCode (a : ℝ) (m : (Fin 2 → ℤ) × (Fi
     m.2 1 - ⌊(m.1 1 : ℝ) + ((m.1 0 : ℝ) - (m.2 0 : ℝ)) ^ 2 / a⌋)
 
 /-- The source's three indices and residual determine the entire pair. -/
-theorem smoothingInteractionCode_injective (a : ℝ) : Function.Injective (smoothingInteractionCode a) := by
+theorem smoothingInteractionCode_injective (a : ℝ) : Function.Injective (smoothingInteractionCode
+  a) := by
   intro m n h
   have h0 : m.1 0 = n.1 0 := congrFun (congrArg Prod.fst h) 0
   have h1 : m.1 1 = n.1 1 := congrFun (congrArg Prod.fst h) 1
@@ -7234,7 +7451,7 @@ the existing source interaction box. -/
 theorem smoothingInteractionCode_mem_of_bounds (a R : ℝ)
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ))
     (hfirst : m.1 ∈ smoothingSpatialIndices a R) (hsecond : m.2 ∈ smoothingSpatialIndices a R)
-    (hquad : |(m.2 1 : ℝ)-((m.1 1 : ℝ)+((m.1 0 : ℝ)-(m.2 0 : ℝ))^2/a)| ≤ 4*R+6) :
+    (hquad : |(m.2 1 : ℝ) - ((m.1 1 : ℝ) + ((m.1 0 : ℝ) - (m.2 0 : ℝ)) ^ 2 / a)| ≤ 4 * R + 6) :
     smoothingInteractionCode a m ∈ smoothingInteractionBox a R := by
   have h₁ := Fintype.mem_piFinset.mp hfirst
   have h₂ := Fintype.mem_piFinset.mp hsecond
@@ -7246,7 +7463,7 @@ theorem smoothingInteractionCode_mem_of_bounds (a R : ℝ)
     · exact h₁ 0
     · exact h₁ 1
     · exact h₂ 0
-  · let c : ℝ := (m.1 1 : ℝ)+((m.1 0 : ℝ)-(m.2 0 : ℝ))^2/a
+  · let c : ℝ := (m.1 1 : ℝ) + ((m.1 0 : ℝ) - (m.2 0 : ℝ))^2/a
     have hf : |c-(⌊c⌋ : ℝ)| ≤ 1 := by
       rw [abs_of_nonneg (sub_nonneg.mpr (Int.floor_le c))]
       linarith [Int.lt_floor_add_one c]
@@ -7333,7 +7550,8 @@ theorem smoothing_spatial_common_box {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc : Ha
   have h1 : IsCompact ((fun p : (ℝ × ℝ) × ℝ =>
       a • smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2)) '' tsupport ζ) := hc.image (by fun_prop)
   have h2 : IsCompact ((fun p : (ℝ × ℝ) × ℝ =>
-      a • smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2)) '' tsupport ζ) := hc.image (by fun_prop)
+      a • smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2)) '' tsupport ζ) := hc.image
+        (by fun_prop)
   obtain ⟨B1, hB1, hb1⟩ := h1.isBounded.exists_pos_norm_le
   obtain ⟨B2, hB2, hb2⟩ := h2.isBounded.exists_pos_norm_le
   obtain ⟨M, hM⟩ := exists_nat_ge (max B1 B2)
@@ -7365,8 +7583,10 @@ theorem smoothingLocalized_spatial_sum {ζ : (ℝ × ℝ) × ℝ → ℂ}
   by_cases hz : ζ (z, t) = 0
   · simp [hz]
   have hbounds := hM z t hz
-  have hf := smoothingSpatialPiece_finite_sum a M f (smoothingPlaneEquiv.symm (z.1 + t, z.2)) hbounds.1
-  have hg := smoothingSpatialPiece_finite_sum a M g (smoothingPlaneEquiv.symm (z.1, z.2 + t ^ 2)) hbounds.2
+  have hf := smoothingSpatialPiece_finite_sum a M f (smoothingPlaneEquiv.symm (z.1 + t, z.2))
+    hbounds.1
+  have hg := smoothingSpatialPiece_finite_sum a M g (smoothingPlaneEquiv.symm (z.1, z.2 + t ^ 2))
+    hbounds.2
   change f (smoothingPlaneEquiv.symm (z.1 + t, z.2)) *
     g (smoothingPlaneEquiv.symm (z.1, z.2 + t ^ 2)) * ζ (z, t) = _
   rw [← hf, ← hg, Finset.product_eq_sprod, Finset.sum_product]
@@ -7383,12 +7603,14 @@ theorem smoothingLocalizedL1_spatial_finite_triangle {ζ : (ℝ × ℝ) × ℝ �
   obtain ⟨S, hS⟩ := smoothingLocalized_spatial_sum hζ hc a f g
   refine ⟨S, ?_⟩
   have hi (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) :=
-    smoothingLocalized_output_integrable (smoothingPlaneFunction_continuous (smoothingSpatialPiece a m.1 f))
+    smoothingLocalized_output_integrable (smoothingPlaneFunction_continuous (smoothingSpatialPiece
+      a m.1 f))
       (smoothingPlaneFunction_continuous (smoothingSpatialPiece a m.2 g)) hζ hc
   unfold smoothingLocalizedL1
   rw [← integral_finsetSum S (fun m hm => (hi m).norm)]
   apply integral_mono (smoothingLocalized_output_integrable (smoothingPlaneFunction_continuous f)
-    (smoothingPlaneFunction_continuous g) hζ hc).norm (integrable_finsetSum S (fun m hm => (hi m).norm))
+    (smoothingPlaneFunction_continuous g) hζ hc).norm (integrable_finsetSum S (fun m hm => (hi
+      m).norm))
   intro z
   dsimp only
   rw [hS z]
@@ -7408,7 +7630,8 @@ theorem smoothing_spatial_triangle {ζ : (ℝ × ℝ) × ℝ → ℂ}
   have hfin := (hcount a ha f g).1
   obtain ⟨T, hT⟩ := smoothingLocalizedL1_spatial_finite_triangle hζ hc a f g
   refine ⟨hfin.toFinset, hfin.coe_toFinset, hT.trans ?_⟩
-  have he : (∑ m ∈ T, smoothingLocalizedL1 ζ (smoothingSpatialPiece a m.1 f) (smoothingSpatialPiece a m.2 g)) =
+  have he : (∑ m ∈ T, smoothingLocalizedL1 ζ (smoothingSpatialPiece a m.1 f)
+    (smoothingSpatialPiece a m.2 g)) =
       ∑ m ∈ T.filter (fun m => m ∈ smoothingInteractionIndices ζ a f g),
         smoothingLocalizedL1 ζ (smoothingSpatialPiece a m.1 f) (smoothingSpatialPiece a m.2 g) := by
     symm
@@ -7473,7 +7696,8 @@ theorem smoothingLocalized_rectangle_support {a : ℝ} (ha : 0 < a)
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (ζ : (ℝ × ℝ) × ℝ → ℂ) :
     Function.support (smoothingLocalized (smoothingPlaneFunction (smoothingSpatialPiece a m.1 f))
-      (smoothingPlaneFunction (smoothingSpatialPiece a m.2 g)) ζ) ⊆ smoothingOutputRectangle a m := by
+      (smoothingPlaneFunction (smoothingSpatialPiece a m.2 g)) ζ) ⊆ smoothingOutputRectangle a m
+        := by
   intro z hz
   by_contra hn
   apply hz
@@ -7503,10 +7727,11 @@ theorem smoothingOutputRectangle_volume {a : ℝ} (ha : 0 < a)
   ring
 
 /-- The support Cauchy--Schwarz step (3.7) for actual L² inputs. -/
-theorem smoothing_cauchy_schwarz_support_L2 {u : ℝ × ℝ → ℂ} (hu : MemLp u 2) {S : Set (ℝ × ℝ)} (_ : MeasurableSet S)
+theorem smoothing_cauchy_schwarz_support_L2 {u : ℝ × ℝ → ℂ} (hu : MemLp u 2) {S : Set (ℝ × ℝ)} (_
+  : MeasurableSet S)
     (hfin : volume S ≠ ⊤) (hs : Function.support u ⊆ S) :
     (∫ z, ‖u z‖) ^ 2 ≤ (volume S).toReal * ∫ z, ‖u z‖ ^ 2 := by
-  letI : IsFiniteMeasure (volume.restrict S) := ⟨by simpa using hfin.lt_top⟩
+  let : IsFiniteMeasure (volume.restrict S) := ⟨by simpa using hfin.lt_top⟩
   have hm : MemLp (fun z => ‖u z‖) (ENNReal.ofReal 2) (volume.restrict S) :=
     by simpa only [ENNReal.ofReal_ofNat] using hu.norm.restrict S
   have hh := integral_mul_le_Lp_mul_Lq_of_nonneg Real.HolderConjugate.two_two
@@ -7633,7 +7858,8 @@ theorem smoothing_eq3_8 (ζ : (ℝ × ℝ) × ℝ → ℂ) {a : ℝ} (ha : 0 < a
       smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2) ∈ smoothingSpatialCube a m.1 ∧
       smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2) ∈ smoothingSpatialCube a m.2 := by
   obtain ⟨x, y, t, hζ, hfirst, hsecond⟩ := smoothingInteractionIndices_witness ζ a f g hm
-  exact ⟨((x, y), t), hζ, smoothingSpatialCube_of_scaled ha hfirst, smoothingSpatialCube_of_scaled ha hsecond⟩
+  exact ⟨((x, y), t), hζ, smoothingSpatialCube_of_scaled ha hfirst, smoothingSpatialCube_of_scaled
+    ha hsecond⟩
 
 /-- The chosen reference point from (3.8), used to center the small
 space-time cutoff for each actual interacting pair. -/
@@ -7725,7 +7951,8 @@ theorem smoothing_scaled_derivative_bound {E F : Type*} [NormedAddCommGroup E]
   rw [iteratedFDeriv_comp_sub]
   have he : iteratedFDeriv ℝ n (φ ∘ L) (x - c) =
       (iteratedFDeriv ℝ n φ (L (x - c))).compContinuousLinearMap (fun _ : Fin n => L) := by
-    simpa only using! (L.iteratedFDeriv_comp_right (x := x - c) (i := n) hφ (by exact_mod_cast le_top))
+    simpa only using! (L.iteratedFDeriv_comp_right (x := x - c) (i := n) hφ
+      (by exact_mod_cast le_top))
   rw [he]
   have hh := (iteratedFDeriv ℝ n φ (L (x - c))).norm_compContinuousLinearMap_le (fun _ : Fin n => L)
   simpa [L, norm_smul, Real.norm_eq_abs] using hh
@@ -7751,7 +7978,8 @@ while retaining its radius-eight outer support. -/
 theorem smoothingCorrelationGate_one_enlarged (a : ℝ) (p : (ℝ × ℝ) × ℝ)
     {q : (ℝ × ℝ) × (ℝ × ℝ)} (hq : ‖a • (q - smoothingCorrelationCenter p)‖ ≤ 7) :
     smoothingCorrelationGate a p q = 1 :=
-  smoothingCorrelationBump.one_of_mem_closedBall (by simpa only [Metric.mem_closedBall, dist_zero_right, smoothingCorrelationBump] using hq)
+  smoothingCorrelationBump.one_of_mem_closedBall
+    (by simpa only [Metric.mem_closedBall, dist_zero_right, smoothingCorrelationBump] using hq)
 
 /-- The auxiliary gate equals one throughout the original correlation-support region. -/
 theorem smoothingCorrelationGate_one (a : ℝ) (p : (ℝ × ℝ) × ℝ)
@@ -7787,13 +8015,15 @@ theorem smoothingCorrelationGate_support {a : ℝ} (ha : 0 < a) (p : (ℝ × ℝ
 
 /-- Topological support and compactness of the small correlation gate. -/
 theorem smoothingCorrelationGate_tsupport {a : ℝ} (ha : 0 < a) (p : (ℝ × ℝ) × ℝ) :
-    tsupport (smoothingCorrelationGate a p) ⊆ Metric.closedBall (smoothingCorrelationCenter p) (8 / a) ∧
+    tsupport (smoothingCorrelationGate a p) ⊆ Metric.closedBall (smoothingCorrelationCenter p) (8
+      / a) ∧
       HasCompactSupport (smoothingCorrelationGate a p) := by
   have hs : tsupport (smoothingCorrelationGate a p) ⊆
       Metric.closedBall (smoothingCorrelationCenter p) (8 / a) := by
     apply closure_minimal _ Metric.isClosed_closedBall
     intro q hq
-    exact Metric.mem_closedBall.mpr (by simpa only [dist_eq_norm] using (smoothingCorrelationGate_support ha p hq).le)
+    exact Metric.mem_closedBall.mpr
+      (by simpa only [dist_eq_norm] using (smoothingCorrelationGate_support ha p hq).le)
   exact ⟨hs, (isCompact_closedBall _ _).of_isClosed_subset (isClosed_tsupport _) hs⟩
 
 /-- Smoothness of the exact correlation cutoff, including conjugation. -/
@@ -7819,7 +8049,8 @@ theorem smoothingCorrelationCutoff_hasCompactSupport {ζ : (ℝ × ℝ) × ℝ �
   have hb2 := hb _ (subset_tsupport ζ h2)
   have hz : ‖q.1‖ ≤ B := (norm_fst_le (q.1, q.2.1)).trans hb2
   have ht : |q.2.1| ≤ B := by simpa only [Real.norm_eq_abs] using (norm_snd_le _).trans hb2
-  have hts : |q.2.1 + q.2.2| ≤ B := by simpa only [Real.norm_eq_abs] using (norm_snd_le _).trans hb1
+  have hts : |q.2.1 + q.2.2| ≤ B :=
+    by simpa only [Real.norm_eq_abs] using (norm_snd_le _).trans hb1
   have hs : |q.2.2| ≤ 2 * B := by
     have hh := abs_sub (q.2.1 + q.2.2) q.2.1
     rw [add_sub_cancel_left] at hh
@@ -7846,7 +8077,8 @@ theorem smoothingLocalizedCorrelationCutoff_properties {ζ : (ℝ × ℝ) × ℝ
   have hg := smoothingCorrelationGate_tsupport ha p
   have hs : tsupport (smoothingLocalizedCorrelationCutoff a p ζ) ⊆
       tsupport (smoothingCorrelationGate a p) := tsupport_smul_subset_left _ _
-  refine ⟨(smoothingCorrelationGate_properties a p).1.smul (smoothingCorrelationCutoff_contDiff hζ), ?_, hs.trans hg.1⟩
+  refine ⟨(smoothingCorrelationGate_properties a p).1.smul (smoothingCorrelationCutoff_contDiff
+    hζ), ?_, hs.trans hg.1⟩
   exact hg.2.of_isClosed_subset (isClosed_tsupport _) hs
 
 /-- Inserting the small gate leaves the integrand of (3.7) unchanged. -/
@@ -7860,7 +8092,8 @@ theorem smoothingCorrelationGate_insert {a : ℝ} (ha : 0 < a)
       star (smoothingPlaneFunction (smoothingSpatialPiece a m.1 f) (z.1 + t, z.2)) *
       smoothingPlaneFunction (smoothingSpatialPiece a m.2 g) (z.1, z.2 + (t + s) ^ 2) *
       star (smoothingPlaneFunction (smoothingSpatialPiece a m.2 g) (z.1, z.2 + t ^ 2))
-    v * smoothingCorrelationCutoff ζ (z, (t, s)) = v * smoothingLocalizedCorrelationCutoff a p ζ (z, (t, s)) := by
+    v * smoothingCorrelationCutoff ζ (z, (t, s)) = v * smoothingLocalizedCorrelationCutoff a p ζ
+      (z, (t, s)) := by
   dsimp only
   by_cases hzero : smoothingPlaneFunction (smoothingSpatialPiece a m.1 f) (z.1 + t + s, z.2) *
       star (smoothingPlaneFunction (smoothingSpatialPiece a m.1 f) (z.1 + t, z.2)) *
@@ -7869,7 +8102,8 @@ theorem smoothingCorrelationGate_insert {a : ℝ} (ha : 0 < a)
   · simp only [hzero, zero_mul]
   have h1s := left_ne_zero_of_mul (left_ne_zero_of_mul (left_ne_zero_of_mul hzero))
   have h1 : smoothingPlaneFunction (smoothingSpatialPiece a m.1 f) (z.1 + t, z.2) ≠ 0 := by
-    simpa only [star_ne_zero] using right_ne_zero_of_mul (left_ne_zero_of_mul (left_ne_zero_of_mul hzero))
+    simpa only [star_ne_zero] using right_ne_zero_of_mul (left_ne_zero_of_mul
+      (left_ne_zero_of_mul hzero))
   have h2 : smoothingPlaneFunction (smoothingSpatialPiece a m.2 g) (z.1, z.2 + t ^ 2) ≠ 0 := by
     simpa only [star_ne_zero] using right_ne_zero_of_mul hzero
   have hgate := smoothingCorrelationGate_one a p (smoothing_correlation_gate_region ha m hp1 hp2
@@ -7883,9 +8117,11 @@ uniformly in the spatial scale and reference point. -/
 theorem smoothingLocalizedCorrelationCutoff_derivative_bounds {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (a : ℝ), 1 ≤ a → ∀ p : (ℝ × ℝ) × ℝ,
-      ∀ n ≤ N, ∀ q, ‖iteratedFDeriv ℝ n (smoothingLocalizedCorrelationCutoff a p ζ) q‖ ≤ C * a ^ n := by
+      ∀ n ≤ N, ∀ q, ‖iteratedFDeriv ℝ n (smoothingLocalizedCorrelationCutoff a p ζ) q‖ ≤ C * a ^ n
+        := by
   obtain ⟨G, hG, hgate⟩ := smoothingCorrelationGate_derivative_bounds N
-  obtain ⟨D, hD, hcut⟩ := smoothing_compact_derivative_bounds (smoothingCorrelationCutoff_contDiff hζ)
+  obtain ⟨D, hD, hcut⟩ := smoothing_compact_derivative_bounds (smoothingCorrelationCutoff_contDiff
+    hζ)
     (smoothingCorrelationCutoff_hasCompactSupport hc) N
   refine ⟨(2 : ℝ) ^ N * (G * D), by positivity, ?_⟩
   intro a ha p n hn q
@@ -7909,7 +8145,8 @@ theorem smoothingLocalizedCorrelationCutoff_derivative_bounds {ζ : (ℝ × ℝ)
       push_cast
       ring
     _ ≤ _ := mul_le_mul_of_nonneg_right
-      (mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn) (by positivity)) (by positivity)
+      (mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn)
+        (by positivity)) (by positivity)
 
 /-- The full correlation-integral inequality (3.7), now with the verified
 small-support cutoff and the reference point conditions (3.8). -/
@@ -7937,7 +8174,8 @@ theorem smoothingCorrelationCutoff_tsupport (ζ : (ℝ × ℝ) × ℝ → ℂ) :
       {q : (ℝ × ℝ) × (ℝ × ℝ) | (q.1, q.2.1) ∈ tsupport ζ ∧ (q.1, q.2.1 + q.2.2) ∈ tsupport ζ} := by
   have hc : IsClosed {q : (ℝ × ℝ) × (ℝ × ℝ) | (q.1, q.2.1) ∈ tsupport ζ ∧
       (q.1, q.2.1 + q.2.2) ∈ tsupport ζ} :=
-    ((isClosed_tsupport ζ).preimage (by fun_prop)).inter ((isClosed_tsupport ζ).preimage (by fun_prop))
+    ((isClosed_tsupport ζ).preimage (by fun_prop)).inter ((isClosed_tsupport ζ).preimage
+      (by fun_prop))
   apply closure_minimal _ hc
   intro q hq
   have h1 : ζ (q.1, q.2.1 + q.2.2) ≠ 0 := left_ne_zero_of_mul hq
@@ -7950,7 +8188,8 @@ theorem smoothingLocalizedCorrelationCutoff_positive_times {ζ : (ℝ × ℝ) ×
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) (a : ℝ) (p : (ℝ × ℝ) × ℝ) :
     ∀ q ∈ tsupport (smoothingLocalizedCorrelationCutoff a p ζ), 0 < q.2.1 ∧ 0 < q.2.1 + q.2.2 := by
   intro q hq
-  have hs : tsupport (smoothingLocalizedCorrelationCutoff a p ζ) ⊆ tsupport (smoothingCorrelationCutoff ζ) :=
+  have hs : tsupport (smoothingLocalizedCorrelationCutoff a p ζ) ⊆ tsupport
+    (smoothingCorrelationCutoff ζ) :=
     tsupport_smul_subset_right _ _
   have hh := smoothingCorrelationCutoff_tsupport ζ (hs hq)
   exact ⟨hpos _ hh.1, hpos _ hh.2⟩
@@ -7990,9 +8229,11 @@ theorem smoothingCoordinateDerivative_fourier (j : Fin 2)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (ξ : EuclideanSpace ℝ (Fin 2)) :
     𝓕 (smoothingCoordinateDerivative j f) ξ = (2 * Real.pi * Complex.I) * (ξ j : ℂ) * 𝓕 f ξ := by
   have hh := SchwartzMap.fourier_lineDerivOp_eq f (EuclideanSpace.single j (1 : ℝ))
-  change (𝓕 (LineDeriv.lineDerivOp (EuclideanSpace.single j (1 : ℝ)) f) : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) ξ = _
+  change (𝓕 (LineDeriv.lineDerivOp (EuclideanSpace.single j (1 : ℝ)) f) : SchwartzMap
+    (EuclideanSpace ℝ (Fin 2)) ℂ) ξ = _
   rw [hh]
-  have htemp : (fun x : EuclideanSpace ℝ (Fin 2) => inner ℝ x (EuclideanSpace.single j (1 : ℝ))).HasTemperateGrowth :=
+  have htemp : (fun x : EuclideanSpace ℝ (Fin 2) => inner ℝ x (EuclideanSpace.single j (1 :
+    ℝ))).HasTemperateGrowth :=
     ((innerSL ℝ).flip (EuclideanSpace.single j (1 : ℝ))).hasTemperateGrowth
   have hm : (SchwartzMap.smulLeftCLM ℂ (fun x : EuclideanSpace ℝ (Fin 2) =>
       inner ℝ x (EuclideanSpace.single j (1 : ℝ))) (𝓕 f)) ξ =
@@ -8007,7 +8248,8 @@ theorem smoothingCoordinateDerivative_fourier (j : Fin 2)
 
 /-- Multiplying the scalar low-pass cutoff by its frequency variable gives
 the integrable convolution kernel needed for the coordinate Bernstein bound. -/
-noncomputable def smoothingCoordinateDerivativeCutoff (C : LittlewoodPaley.lpCutoffs 1) : SchwartzMap ℝ ℂ :=
+noncomputable def smoothingCoordinateDerivativeCutoff (C : LittlewoodPaley.lpCutoffs 1) :
+  SchwartzMap ℝ ℂ :=
   SchwartzMap.smulLeftCLM ℂ (fun u : ℝ => (u : ℂ)) (smoothingScalarCutoff C)
 
 /-- The scalar derivative multiplier has the expected pointwise formula. -/
@@ -8022,7 +8264,8 @@ assumed Fourier support; no extra support hypothesis is introduced. -/
 theorem smoothingCoordinateDerivativeCutoff_multiplier (C : LittlewoodPaley.lpCutoffs 1) (j : Fin 2)
     {r : ℝ} (hr : 0 < r) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (hs : ∀ ξ, 𝓕 f ξ ≠ 0 → |ξ j| ≤ r) (ξ : EuclideanSpace ℝ (Fin 2)) :
-    (2 * Real.pi * Complex.I) * (r : ℂ) * (smoothingCoordinateDerivativeCutoff C (ξ j / r) * 𝓕 f ξ) =
+    (2 * Real.pi * Complex.I) * (r : ℂ) * (smoothingCoordinateDerivativeCutoff C (ξ j / r) * 𝓕 f
+      ξ) =
       𝓕 (smoothingCoordinateDerivative j f) ξ := by
   rw [smoothingCoordinateDerivative_fourier, smoothingCoordinateDerivativeCutoff_apply]
   by_cases hz : 𝓕 f ξ = 0
@@ -8041,16 +8284,19 @@ theorem smoothingCoordinateDerivative_inverse (C : LittlewoodPaley.lpCutoffs 1) 
     {r : ℝ} (hr : 0 < r) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (hs : ∀ ξ, 𝓕 f ξ ≠ 0 → |ξ j| ≤ r) (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingCoordinateDerivative j f x = (2 * Real.pi * Complex.I) * (r : ℂ) *
-      (𝓕⁻ (fun ξ : EuclideanSpace ℝ (Fin 2) => smoothingCoordinateDerivativeCutoff C (ξ j / r) * 𝓕 f ξ)) x := by
+      (𝓕⁻ (fun ξ : EuclideanSpace ℝ (Fin 2) => smoothingCoordinateDerivativeCutoff C (ξ j / r) * 𝓕
+        f ξ)) x := by
   have hinv : smoothingCoordinateDerivative j f x =
       (𝓕⁻ (fun ξ : EuclideanSpace ℝ (Fin 2) => 𝓕 (smoothingCoordinateDerivative j f) ξ)) x := by
     have hh := congrArg (fun h : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => h x)
-      (fourierInv_fourier_eq (F := SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (smoothingCoordinateDerivative j f))
+      (fourierInv_fourier_eq (F := SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
+        (smoothingCoordinateDerivative j f))
     simpa only [SchwartzMap.fourierInv_coe] using! hh.symm
   rw [hinv]
   have he : (fun ξ : EuclideanSpace ℝ (Fin 2) => 𝓕 (smoothingCoordinateDerivative j f) ξ) =
       ((2 * Real.pi * Complex.I) * (r : ℂ)) •
-        (fun ξ : EuclideanSpace ℝ (Fin 2) => smoothingCoordinateDerivativeCutoff C (ξ j / r) * 𝓕 f ξ) := by
+        (fun ξ : EuclideanSpace ℝ (Fin 2) => smoothingCoordinateDerivativeCutoff C (ξ j / r) * 𝓕 f
+          ξ) := by
     funext ξ
     exact (smoothingCoordinateDerivativeCutoff_multiplier C j hr f hs ξ).symm
   rw [he]
@@ -8072,9 +8318,11 @@ theorem smoothing_coordinate_bernstein : ∃ K : ℝ, 0 ≤ K ∧ ∀ (j : Fin 2
   intro j r hr f M hf hs x
   rw [smoothingCoordinateDerivative_inverse C j hr f hs, norm_mul, norm_mul,
     Complex.norm_real, Real.norm_eq_abs, abs_of_pos hr]
-  have hb := smoothing_scaled_coordinate_multiplier_bound (smoothingCoordinateDerivativeCutoff C) f j hr hf x
+  have hb := smoothing_scaled_coordinate_multiplier_bound (smoothingCoordinateDerivativeCutoff C)
+    f j hr hf x
   calc
-    _ ≤ (‖(2 * Real.pi * Complex.I)‖ * r) * (M * ∫ u : ℝ, ‖(𝓕 (smoothingCoordinateDerivativeCutoff C)) u‖) :=
+    _ ≤ (‖(2 * Real.pi * Complex.I)‖ * r) * (M * ∫ u : ℝ, ‖(𝓕 (smoothingCoordinateDerivativeCutoff
+      C)) u‖) :=
       mul_le_mul_of_nonneg_left hb (by positivity)
     _ = _ := by dsimp [K]; ring
 
@@ -8091,7 +8339,8 @@ theorem smoothingRestrictedSupport_second_upper {r : ℝ}
 /-- Spatial cutoff derivatives grow linearly with a, uniformly in the
 lattice translate, as needed in the product rule before (3.9). -/
 theorem smoothingSpatialCutoff_fderiv_bound : ∃ K : ℝ, 0 ≤ K ∧ ∀ (a : ℝ), 0 < a →
-    ∀ (m : Fin 2 → ℤ) (x : EuclideanSpace ℝ (Fin 2)), ‖fderiv ℝ (smoothingSpatialCutoff a m) x‖ ≤ K * a := by
+    ∀ (m : Fin 2 → ℤ) (x : EuclideanSpace ℝ (Fin 2)), ‖fderiv ℝ (smoothingSpatialCutoff a m) x‖ ≤
+      K * a := by
   let φ : EuclideanSpace ℝ (Fin 2) → ℂ := fun x => (smoothingSpatialBump x : ℂ)
   have hφ : ContDiff ℝ ∞ φ := by
     simpa only [φ] using! Complex.ofRealCLM.contDiff.comp smoothingSpatialBump_properties.1
@@ -8115,7 +8364,8 @@ theorem smoothingSpatialCutoff_fderiv_bound : ∃ K : ℝ, 0 ≤ K ∧ ∀ (a : 
 
 /-- The coordinate product-rule estimate for the spatially localized input. -/
 theorem smoothingSpatialPiece_derivative_bound : ∃ K : ℝ, 0 ≤ K ∧ ∀ (a : ℝ), 0 < a →
-    ∀ (j : Fin 2) (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)),
+    ∀ (j : Fin 2) (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x :
+      EuclideanSpace ℝ (Fin 2)),
       ‖smoothingCoordinateDerivative j (smoothingSpatialPiece a m f) x‖ ≤
         ‖smoothingCoordinateDerivative j f x‖ + K * a * ‖f x‖ := by
   obtain ⟨K, hK, hbound⟩ := smoothingSpatialCutoff_fderiv_bound
@@ -8135,7 +8385,8 @@ theorem smoothingSpatialPiece_derivative_bound : ∃ K : ℝ, 0 ≤ K ∧ ∀ (a
     rw [smoothingSpatialCutoff, Complex.norm_real, Real.norm_eq_abs,
       abs_of_nonneg (smoothingSpatialBump_properties.2.2.1 _)]
     exact smoothingSpatialBump_properties.2.2.2 _
-  have hv : ‖fderiv ℝ (smoothingSpatialCutoff a m) x (EuclideanSpace.single j (1 : ℝ))‖ ≤ K * a := by
+  have hv : ‖fderiv ℝ (smoothingSpatialCutoff a m) x (EuclideanSpace.single j (1 : ℝ))‖ ≤ K * a :=
+    by
     apply ((fderiv ℝ (smoothingSpatialCutoff a m) x).le_opNorm _).trans
     simpa only [PiLp.norm_single, norm_one, mul_one] using hbound a ha m x
   rw [hd]
@@ -8168,7 +8419,8 @@ theorem smoothingPlaneFunction_hasDerivAt_second
     HasDerivAt (fun v : ℝ => smoothingPlaneFunction f (x, v))
       (smoothingCoordinateDerivative 1 f (smoothingPlaneEquiv.symm (x, y))) y := by
   have he : (fun v : ℝ => smoothingPlaneEquiv.symm (x, v)) =
-      fun v : ℝ => EuclideanSpace.single (0 : Fin 2) x + v • EuclideanSpace.single (1 : Fin 2) (1 : ℝ) := by
+      fun v : ℝ => EuclideanSpace.single (0 : Fin 2) x + v • EuclideanSpace.single (1 : Fin 2) (1
+        : ℝ) := by
     funext v
     ext i
     fin_cases i
@@ -8237,7 +8489,8 @@ theorem smoothing_linearization_error : ∃ K : ℝ, 0 ≤ K ∧ ∀ (r a : ℝ)
   intro r a hr ha har f g M hM hg hs m x y t s t₀ ht hshift
   have hm := smoothing_vertical_mean_value (smoothingSpatialPiece a m g)
     (hb r a hr ha har f g M hM hg hs m) x (y + t ^ 2 + 2 * s * t₀) (y + (t + s) ^ 2)
-  have he : (y + (t + s) ^ 2) - (y + t ^ 2 + 2 * s * t₀) = (t + s) ^ 2 - (t ^ 2 + 2 * s * t₀) := by ring
+  have he : (y + (t + s) ^ 2) - (y + t ^ 2 + 2 * s * t₀) = (t + s) ^ 2 - (t ^ 2 + 2 * s * t₀) :=
+    by ring
   rw [he] at hm
   have hq := smoothing_quadratic_shift_error ha ht hshift
   apply hm.trans
@@ -8264,7 +8517,8 @@ theorem smoothing_linearization_power {r : ℝ} (hr : 0 < r) (γ : ℝ) :
 
 /-- The first multiplicative difference identity before (3.9). -/
 theorem smoothing_first_difference_identity (f : ℝ × ℝ → ℂ) (x y t s : ℝ) :
-    f (x + t + s, y) * star (f (x + t, y)) = smoothingMultiplicativeDifference f (s, 0) (x + t, y) := by
+    f (x + t + s, y) * star (f (x + t, y)) = smoothingMultiplicativeDifference f (s, 0) (x + t, y)
+      := by
   simp only [smoothingMultiplicativeDifference, Prod.mk_add_mk, add_zero]
 
 /-- The second multiplicative difference approximation before (3.9), with
@@ -8275,7 +8529,8 @@ theorem smoothing_second_difference_linearization : ∃ K : ℝ, 0 ≤ K ∧ ∀
       ∀ (m : Fin 2 → ℤ) (x y t s t₀ : ℝ), |t - t₀| ≤ 8 / r ^ γ → |s| ≤ 8 / r ^ γ →
       ‖smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m g) (x, y + (t + s) ^ 2) *
           star (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m g) (x, y + t ^ 2)) -
-        smoothingMultiplicativeDifference (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m g))
+        smoothingMultiplicativeDifference (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m
+          g))
           (0, 2 * s * t₀) (x, y + t ^ 2)‖ ≤ K * r ^ (-2 * (γ - 1 / 2)) := by
   obtain ⟨K, hK, hlin⟩ := smoothing_linearization_error
   refine ⟨K, hK, ?_⟩
@@ -8345,7 +8600,8 @@ theorem smoothingLocalizedCorrelationCutoff_L1 {ζ : (ℝ × ℝ) × ℝ → ℂ
   have hbound : ∀ q, ‖smoothingLocalizedCorrelationCutoff a p ζ q‖ ≤ B := by
     intro q
     simpa only [norm_iteratedFDeriv_zero, pow_zero, mul_one] using! hb a ha p 0 le_rfl q
-  have hh := smoothing_integral_norm_support_bound (hp.1.continuous.integrable_of_hasCompactSupport hp.2.1)
+  have hh := smoothing_integral_norm_support_bound
+    (hp.1.continuous.integrable_of_hasCompactSupport hp.2.1)
     Metric.isClosed_closedBall.measurableSet (by rw [hv]; finiteness) hbound
     ((subset_tsupport _).trans hp.2.2)
   rw [hv, ENNReal.toReal_ofReal (by positivity)] at hh
@@ -8400,7 +8656,8 @@ theorem smoothing_correlation_linearization_bound {ζ : (ℝ × ℝ) × ℝ → 
       star (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m.1 f)
         (q.1.1 + q.2.1, q.1.2))‖ ≤ 1 := by
     rw [norm_mul, norm_star]
-    simpa only [one_mul] using mul_le_mul (hb _) (hb _) (norm_nonneg _) (by norm_num : (0 : ℝ) ≤ 1)
+    simpa only [one_mul] using mul_le_mul (hb _) (hb _) (norm_nonneg _)
+      (by norm_num : (0 : ℝ) ≤ 1)
   unfold smoothingCorrelationIntegrand smoothingLinearizedCorrelationIntegrand
   rw [← smoothing_first_difference_identity]
   rw [← sub_mul]
@@ -8411,8 +8668,8 @@ theorem smoothing_correlation_linearization_bound {ζ : (ℝ × ℝ) × ℝ → 
     (norm_nonneg _)
 
 /-- The integrated error in (3.10), before taking its square root. -/
-theorem smoothing_correlation_integrated_error {ζ : (ℝ × ℝ) × ℝ → ℂ}
-    (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) : ∃ C : ℝ, 0 ≤ C ∧ ∀ (r γ : ℝ),
+theorem smoothing_correlation_integrated_error {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc
+    : HasCompactSupport ζ) : ∃ C : ℝ, 0 ≤ C ∧ ∀ (r γ : ℝ),
       1 ≤ r → (1 / 2 < γ ∧ γ ≤ 1) → ∀ (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → smoothingRestrictedSupport r f g →
       ∀ (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (p : (ℝ × ℝ) × ℝ),
@@ -8430,13 +8687,16 @@ theorem smoothing_correlation_integrated_error {ζ : (ℝ × ℝ) × ℝ → ℂ
   have ha : 0 < r ^ γ := Real.rpow_pos_of_pos (by linarith) _
   have har := (smoothing_spatial_scale_bounds hr hγ).1
   have hi := smoothingCorrelationIntegrand_integrable hζ ha p
-    (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.1 f)) (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.2 g))
+    (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.1 f))
+      (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.2 g))
   have hj := smoothingLinearizedCorrelationIntegrand_integrable hζ ha p
-    (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.1 f)) (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.2 g))
+    (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.1 f))
+      (smoothingPlaneFunction_continuous (smoothingSpatialPiece (r ^ γ) m.2 g))
   rw [← integral_sub hi hj]
   apply (norm_integral_le_integral_norm _).trans
   have hp := smoothingLocalizedCorrelationCutoff_properties hζ ha p
-  have hcut : Integrable (smoothingLocalizedCorrelationCutoff (r ^ γ) p ζ) volume := hp.1.continuous.integrable_of_hasCompactSupport hp.2.1
+  have hcut : Integrable (smoothingLocalizedCorrelationCutoff (r ^ γ) p ζ) volume :=
+    hp.1.continuous.integrable_of_hasCompactSupport hp.2.1
   calc
     _ ≤ ∫ q, (K * r ^ (-2 * (γ - 1 / 2))) *
         ‖smoothingLocalizedCorrelationCutoff (r ^ γ) p ζ q‖ := by
@@ -8460,8 +8720,8 @@ theorem smoothing_correlation_integral_coordinates {u : (ℝ × ℝ) × (ℝ × 
 
 /-- Taking the square root after separating a complex main term and error
 in (3.9)-(3.10). -/
-theorem smoothing_correlation_sqrt_separation {L b E : ℝ} {I J : ℂ}
-    (hb : 0 ≤ b) (hE : 0 ≤ E) (hL : L ^ 2 ≤ b ^ 2 * I.re) (hIJ : ‖I - J‖ ≤ E) :
+theorem smoothing_correlation_sqrt_separation {L b E : ℝ} {I J : ℂ} (hb : 0 ≤ b) (hE : 0 ≤ E)
+    (hL : L ^ 2 ≤ b ^ 2 * I.re) (hIJ : ‖I - J‖ ≤ E) :
     L ≤ b * Real.sqrt ‖J‖ + b * Real.sqrt E := by
   have hI : I.re ≤ ‖J‖ + E := by
     have h1 := Complex.re_le_norm (I - J)
@@ -8505,7 +8765,8 @@ theorem smoothing_correlation_pair_separation {ζ : (ℝ × ℝ) × ℝ → ℂ}
       ∀ (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (p : (ℝ × ℝ) × ℝ),
       smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2) ∈ smoothingSpatialCube (r ^ γ) m.1 →
       smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2) ∈ smoothingSpatialCube (r ^ γ) m.2 →
-      smoothingLocalizedL1 ζ (smoothingSpatialPiece (r ^ γ) m.1 f) (smoothingSpatialPiece (r ^ γ) m.2 g) ≤
+      smoothingLocalizedL1 ζ (smoothingSpatialPiece (r ^ γ) m.1 f) (smoothingSpatialPiece (r ^ γ)
+        m.2 g) ≤
         (2 * (r ^ γ)⁻¹) * Real.sqrt ‖∫ q, smoothingLinearizedCorrelationIntegrand (r ^ γ) p
           (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m.1 f))
           (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m.2 g)) ζ q‖ +
@@ -8545,8 +8806,10 @@ theorem smoothing_eq3_9_3_10 {ζ : (ℝ × ℝ) × ℝ → ℂ}
         (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
       (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingInteractionIndices ζ (r ^ γ) f g ∧
       (∀ m ∈ S, ζ (P m) ≠ 0 ∧
-        smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r ^ γ) m.1 ∧
-        smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2 ^ 2) ∈ smoothingSpatialCube (r ^ γ) m.2) ∧
+        smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r ^ γ)
+          m.1 ∧
+        smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2 ^ 2) ∈ smoothingSpatialCube (r ^
+          γ) m.2) ∧
       smoothingLocalizedL1 ζ f g ≤ (2 * (r ^ γ)⁻¹) *
         (∑ m ∈ S, Real.sqrt ‖∫ q, smoothingLinearizedCorrelationIntegrand (r ^ γ) (P m)
           (smoothingPlaneFunction (smoothingSpatialPiece (r ^ γ) m.1 f))
@@ -8561,13 +8824,15 @@ theorem smoothing_eq3_9_3_10 {ζ : (ℝ × ℝ) × ℝ → ℂ}
   have ha1 := (smoothing_spatial_scale_bounds hr hγ).1
   obtain ⟨S, hS, htri⟩ := smoothing_spatial_triangle hζ.continuous hc ha1 f g
   let P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ := fun m =>
-    if hm : m ∈ smoothingInteractionIndices ζ (r ^ γ) f g then smoothingReferencePoint ζ ha f g hm else 0
+    if hm : m ∈ smoothingInteractionIndices ζ (r ^ γ) f g then smoothingReferencePoint ζ ha f g hm
+      else 0
   have hP : ∀ m ∈ S, ζ (P m) ≠ 0 ∧
       smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r ^ γ) m.1 ∧
-      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2 ^ 2) ∈ smoothingSpatialCube (r ^ γ) m.2 := by
+      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2 ^ 2) ∈ smoothingSpatialCube (r ^ γ)
+        m.2 := by
     intro m hm
     have hi : m ∈ smoothingInteractionIndices ζ (r ^ γ) f g := by rw [← hS]; exact hm
-    simpa only [P, dif_pos hi] using smoothingReferencePoint_spec ζ ha f g hi
+    simpa only [P, dite_eq_left hi] using smoothingReferencePoint_spec ζ ha f g hi
   refine ⟨S, P, hS, hP, htri.trans ?_⟩
   have hcard : (S.card : ℝ) ≤ D * (r ^ γ) ^ 3 := by
     have hh := (hcount _ ha1 f g).2
@@ -8686,8 +8951,10 @@ theorem smoothing_eq3_11 {ζ : (ℝ × ℝ) × ℝ → ℂ}
         (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
       (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingInteractionIndices ζ (r ^ γ) f g ∧
       (∀ m ∈ S, ζ (P m) ≠ 0 ∧
-        smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r ^ γ) m.1 ∧
-        smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2 ^ 2) ∈ smoothingSpatialCube (r ^ γ) m.2) ∧
+        smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r ^ γ)
+          m.1 ∧
+        smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2 ^ 2) ∈ smoothingSpatialCube (r ^
+          γ) m.2) ∧
       smoothingLocalizedL1 ζ f g ≤ C₀ * r ^ (-(γ - 1 / 2)) +
         C₁ * r ^ (γ / 2) * Real.sqrt (∫ s, ∑ m ∈ S,
           ‖smoothingMainCorrelation (r ^ γ) (P m)
@@ -8749,7 +9016,8 @@ theorem smoothingTorusLift_memLp (b : Fin 2 → ℝ) {F : (Fin 2 → ℝ) → �
     (hF : Continuous F) {M : ℝ} (hM : ∀ x, ‖F x‖ ≤ M) :
     MemLp (smoothingTorusLift b F) 2 volume := by
   have hm : Measurable (smoothingTorusLift b F) :=
-    hF.measurable.comp (measurable_subtype_coe.comp (UnitAddTorus.measurableEquivPiIoc b).measurable)
+    hF.measurable.comp (measurable_subtype_coe.comp (UnitAddTorus.measurableEquivPiIoc
+      b).measurable)
   exact MemLp.of_bound hm.aestronglyMeasurable M (Filter.Eventually.of_forall (fun x => hM _))
 
 /-- Torus coefficients are exactly the integrals over the chosen cube,
@@ -8773,7 +9041,8 @@ theorem smoothingTorusLift_parseval (b : Fin 2 → ℝ) {F : (Fin 2 → ℝ) →
   have hL := smoothingTorusLift_memLp b hF hM
   let v := hL.toLp (smoothingTorusLift b F)
   have hae : (v : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F := hL.coeFn_toLp
-  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k := by
+  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b
+    F) k := by
     intro k
     apply integral_congr_ae
     filter_upwards [hae] with x hx
@@ -8857,7 +9126,8 @@ theorem smoothingLocalFourierCoefficient_energy (a : ℝ) (m : Fin 2 → ℤ)
     (h : ℝ × ℝ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (hf : ∀ x, ‖f x‖ ≤ 1) :
     HasSum (fun k : Fin 2 → ℤ => ‖smoothingLocalFourierCoefficient a m h f k‖ ^ 2)
-      (∫ x in smoothingFourierCube (smoothingLocalFourierCorner m), ‖smoothingLocalFourierInput a m h f x‖ ^ 2) ∧
+      (∫ x in smoothingFourierCube (smoothingLocalFourierCorner m), ‖smoothingLocalFourierInput a
+        m h f x‖ ^ 2) ∧
       (∑' k : Fin 2 → ℤ, ‖smoothingLocalFourierCoefficient a m h f k‖ ^ 2) ≤ 1 := by
   exact ⟨smoothingTorusLift_parseval _ (smoothingLocalFourierInput_continuous a m h f)
       (smoothingLocalFourierInput_bound a m h f hf),
@@ -8926,12 +9196,14 @@ noncomputable def smoothingLocalFourierSchwartz {a : ℝ} (ha : 0 < a) (m : Fin 
 /-- The Schwartz representation is the actual rescaled physical input. -/
 theorem smoothingLocalFourierSchwartz_apply {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (h : ℝ × ℝ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : Fin 2 → ℝ) :
-    smoothingLocalFourierSchwartz ha m h f (WithLp.toLp 2 x) = smoothingLocalFourierInput a m h f x := by
+    smoothingLocalFourierSchwartz ha m h f (WithLp.toLp 2 x) = smoothingLocalFourierInput a m h f
+      x := by
   change smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h)
     ((2 / a) • WithLp.toLp 2 x) = _
   rw [smoothingSchwartzDifference_apply]
   unfold smoothingLocalFourierInput smoothingMultiplicativeDifference smoothingPlaneFunction
-  have he : (2 / a) • WithLp.toLp 2 x = smoothingPlaneEquiv.symm ((2 / a) * x 0, (2 / a) * x 1) := by
+  have he : (2 / a) • WithLp.toLp 2 x = smoothingPlaneEquiv.symm ((2 / a) * x 0, (2 / a) * x 1) :=
+    by
     ext i; fin_cases i <;> rfl
   rw [he, smoothingPlaneEquiv.symm.map_add]
 
@@ -9002,9 +9274,11 @@ theorem smoothingLocalFourierCoefficient_normalized {a : ℝ} (ha : 0 < a) (m : 
     (h : ℝ × ℝ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (k : Fin 2 → ℤ) :
     smoothingLocalFourierCoefficient a m h f k =
       𝓕 (smoothingLocalFourierSchwartz ha m h f) (WithLp.toLp 2 (fun i => (k i : ℝ))) := by
-  have hs : Function.support (fun x : Fin 2 → ℝ => smoothingLocalFourierSchwartz ha m h f (WithLp.toLp 2 x)) ⊆
+  have hs : Function.support (fun x : Fin 2 → ℝ => smoothingLocalFourierSchwartz ha m h f
+    (WithLp.toLp 2 x)) ⊆
       smoothingFourierCube (smoothingLocalFourierCorner m) := by
-    simpa only [smoothingLocalFourierSchwartz_apply] using smoothingLocalFourierInput_support_cube ha m h f
+    simpa only [smoothingLocalFourierSchwartz_apply] using
+      smoothingLocalFourierInput_support_cube ha m h f
   have hh := smoothing_torus_coefficient_fourier (smoothingLocalFourierCorner m)
     (smoothingLocalFourierSchwartz ha m h f) hs k
   simpa only [smoothingLocalFourierSchwartz_apply, smoothingLocalFourierCoefficient] using hh
@@ -9023,16 +9297,20 @@ theorem smoothingTorusLift_continuous_series (b : Fin 2 → ℝ) {F : (Fin 2 →
     (hF : Continuous F) {M : ℝ} (hM : ∀ x, ‖F x‖ ≤ M)
     (hs : Summable (UnitAddTorus.mFourierCoeff (smoothingTorusLift b F))) :
     ∃ G : C(UnitAddTorus (Fin 2), ℂ),
-      HasSum (fun k => UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k • UnitAddTorus.mFourier k) G ∧
+      HasSum (fun k => UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k •
+        UnitAddTorus.mFourier k) G ∧
       (G : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F := by
-  have hsum : Summable (fun k => UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k • UnitAddTorus.mFourier k) := by
+  have hsum : Summable (fun k => UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k •
+    UnitAddTorus.mFourier k) := by
     apply Summable.of_norm
     simpa only [norm_smul, UnitAddTorus.mFourier_norm, mul_one] using hs.norm
-  let G : C(UnitAddTorus (Fin 2), ℂ) := ∑' k, UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k • UnitAddTorus.mFourier k
+  let G : C(UnitAddTorus (Fin 2), ℂ) := ∑' k, UnitAddTorus.mFourierCoeff (smoothingTorusLift b F)
+    k • UnitAddTorus.mFourier k
   have hL := smoothingTorusLift_memLp b hF hM
   let v := hL.toLp (smoothingTorusLift b F)
   have hae : (v : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F := hL.coeFn_toLp
-  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k := by
+  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b
+    F) k := by
     intro k
     apply integral_congr_ae
     filter_upwards [hae] with x hx
@@ -9063,20 +9341,23 @@ in the interior of its fundamental cube. -/
 theorem smoothingTorusLift_series_interior (b : Fin 2 → ℝ) {F : (Fin 2 → ℝ) → ℂ}
     (hF : Continuous F) {G : C(UnitAddTorus (Fin 2), ℂ)}
     (hG : (G : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F) :
-    ∀ x : Fin 2 → ℝ, (∀ i, b i < x i ∧ x i < b i + 1) → G (fun i => (x i : UnitAddCircle)) = F x := by
-  have hae := (smoothingFourierCube_measurePreserving b).quasiMeasurePreserving.ae_eq hG
-  have he : (fun x : Fin 2 → ℝ => G (fun i => (x i : UnitAddCircle))) =ᵐ[volume.restrict (smoothingFourierCube b)] F := by
+    ∀ x : Fin 2 → ℝ, (∀ i, b i < x i ∧ x i < b i + 1) → G (fun i => (x i : UnitAddCircle)) = F x
+      := by
+  have hae := (smoothingFourierCube_measurePreserving b).quasiMeasurePreserving.ae_eq_comp hG
+  have he : (fun x : Fin 2 → ℝ => G (fun i => (x i : UnitAddCircle))) =ᵐ[volume.restrict
+    (smoothingFourierCube b)] F := by
     filter_upwards [hae, ae_restrict_mem (show MeasurableSet (smoothingFourierCube b) from
       MeasurableSet.univ_pi' (fun _ => measurableSet_Ioc))] with x hx hm
     exact hx.trans (smoothingTorusLift_coe b F hm)
   let U : Set (Fin 2 → ℝ) := {x | ∀ i, b i < x i ∧ x i < b i + 1}
   have hU : IsOpen U := by
-    simp only [U, Set.setOf_forall]
+    simp only [U, Set.ofPred_forall]
     exact isOpen_iInter_of_finite (fun i => (isOpen_lt continuous_const (continuous_apply i)).inter
       (isOpen_lt (continuous_apply i) continuous_const))
   have hsub : U ⊆ smoothingFourierCube b := fun x hx i => ⟨(hx i).1, (hx i).2.le⟩
   have hcont : Continuous (fun x : Fin 2 → ℝ => G (fun i => (x i : UnitAddCircle))) := by fun_prop
-  exact Measure.eqOn_open_of_ae_eq (ae_restrict_of_ae_restrict_of_subset hsub he) hU hcont.continuousOn hF.continuousOn
+  exact Measure.eqOn_open_of_ae_eq (ae_restrict_of_ae_restrict_of_subset hsub he) hU
+    hcont.continuousOn hF.continuousOn
 
 /-- Dilation of the two-dimensional Fourier integral, including its Jacobian. -/
 theorem smoothing_fourier_dilate {c : ℝ} (hc : 0 < c)
@@ -9093,7 +9374,8 @@ theorem smoothing_fourier_dilate {c : ℝ} (hc : 0 < c)
     field_simp
   simp_rw [he]
   have hh := Measure.integral_comp_smul volume H c
-  simpa only [finrank_euclideanSpace, Fintype.card_fin, abs_of_nonneg (by positivity : 0 ≤ (c ^ 2)⁻¹)] using hh
+  simpa only [finrank_euclideanSpace, Fintype.card_fin, abs_of_nonneg
+    (by positivity : 0 ≤ (c ^ 2)⁻¹)] using hh
 
 /-- The coefficient formula following (3.13): a²/4 times the Fourier transform
 of the localized multiplicative difference at frequency (a/2)k. -/
@@ -9115,7 +9397,8 @@ theorem smoothingLocalFourierCoefficient_formula {a : ℝ} (ha : 0 < a) (m : Fin
 theorem smoothingTorusLift_series_closed (b : Fin 2 → ℝ) {F : (Fin 2 → ℝ) → ℂ}
     (hF : Continuous F) {G : C(UnitAddTorus (Fin 2), ℂ)}
     (hG : (G : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F) :
-    ∀ x : Fin 2 → ℝ, (∀ i, b i ≤ x i ∧ x i ≤ b i + 1) → G (fun i => (x i : UnitAddCircle)) = F x := by
+    ∀ x : Fin 2 → ℝ, (∀ i, b i ≤ x i ∧ x i ≤ b i + 1) → G (fun i => (x i : UnitAddCircle)) = F x
+      := by
   have he : Set.EqOn (fun x : Fin 2 → ℝ => G (fun i => (x i : UnitAddCircle))) F
       (Set.univ.pi (fun i => Set.Ioo (b i) (b i + 1))) := by
     intro x hx
@@ -9221,7 +9504,8 @@ theorem smoothingFourierGate_support (c : Fin 2 → ℝ) {x : Fin 2 → ℝ}
 /-- Smoothness and compact support of the normalized auxiliary cutoff. -/
 theorem smoothingFourierGate_properties (c : Fin 2 → ℝ) :
     ContDiff ℝ ∞ (smoothingFourierGate c) ∧ HasCompactSupport (smoothingFourierGate c) := by
-  have hcont : ContDiff ℝ ∞ (smoothingFourierGate c) := smoothingFourierBump.contDiff.comp (by fun_prop)
+  have hcont : ContDiff ℝ ∞ (smoothingFourierGate c) := smoothingFourierBump.contDiff.comp
+    (by fun_prop)
   refine ⟨hcont, ?_⟩
   apply (isCompact_closedBall c (5 / 8)).of_isClosed_subset (isClosed_tsupport _)
   apply closure_minimal _ Metric.isClosed_closedBall
@@ -9244,8 +9528,10 @@ theorem smoothing_local_fourier_reconstruction (c : Fin 2 → ℝ) {F : (Fin 2 �
   intro x
   have heval := (ContinuousMap.evalCLM ℂ (fun i => (x i : UnitAddCircle))).hasSum hsum
   simp only [map_smul, smul_eq_mul] at heval
-  change HasSum (fun k : Fin 2 → ℤ => UnitAddTorus.mFourierCoeff (smoothingTorusLift (fun i => c i - 1 / 2) F) k *
-    UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))) (G (fun i => (x i : UnitAddCircle))) at heval
+  change HasSum (fun k : Fin 2 → ℤ => UnitAddTorus.mFourierCoeff (smoothingTorusLift (fun i => c i
+    - 1 / 2) F) k *
+    UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))) (G (fun i => (x i : UnitAddCircle)))
+      at heval
   rw [heval.tsum_eq]
   by_cases hz : smoothingFourierGate c x = 0
   · rw [hz, zero_smul]
@@ -9268,7 +9554,8 @@ noncomputable def smoothingLocalFourierGate (a : ℝ) (m : Fin 2 → ℤ) (x : F
 
 /-- Smoothness and compact support survive spatial rescaling. -/
 theorem smoothingLocalFourierGate_properties {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ) :
-    ContDiff ℝ ∞ (smoothingLocalFourierGate a m) ∧ HasCompactSupport (smoothingLocalFourierGate a m) := by
+    ContDiff ℝ ∞ (smoothingLocalFourierGate a m) ∧ HasCompactSupport (smoothingLocalFourierGate a
+      m) := by
   have hp := smoothingFourierGate_properties (fun i => (m i : ℝ) / 2)
   let A : (Fin 2 → ℝ) ≃L[ℝ] (Fin 2 → ℝ) :=
     (LinearEquiv.smulOfNeZero ℝ (Fin 2 → ℝ) (a / 2) (by positivity)).toContinuousLinearEquiv
@@ -9291,7 +9578,8 @@ theorem smoothingLocalFourierGate_one {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
 as required by the passage following (3.13). -/
 theorem smoothingLocalFourierGate_derivative_bounds (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (a : ℝ), 0 < a → ∀ (m : Fin 2 → ℤ),
-      ∀ n ≤ N, ∀ x : Fin 2 → ℝ, ‖iteratedFDeriv ℝ n (smoothingLocalFourierGate a m) x‖ ≤ C * a ^ n := by
+      ∀ n ≤ N, ∀ x : Fin 2 → ℝ, ‖iteratedFDeriv ℝ n (smoothingLocalFourierGate a m) x‖ ≤ C * a ^ n
+        := by
   obtain ⟨C, hC, hb⟩ := smoothing_compact_derivative_bounds smoothingFourierBump.contDiff
     smoothingFourierBump.hasCompactSupport N
   refine ⟨C, hC, ?_⟩
@@ -9327,20 +9615,25 @@ theorem smoothing_mFourier_scaled (a : ℝ) (k : Fin 2 → ℤ) (x : Fin 2 → �
 with absolute coefficient summability and the source's smooth auxiliary cutoff. -/
 theorem smoothing_eq3_13 {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ) (h : ℝ × ℝ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) (x : Fin 2 → ℝ) :
-    smoothingMultiplicativeDifference (smoothingPlaneFunction (smoothingSpatialPiece a m f)) h (x 0, x 1) =
-      smoothingLocalFourierGate a m x • ∑' k : Fin 2 → ℤ, smoothingLocalFourierCoefficient a m h f k *
-        Complex.exp (Real.pi * Complex.I * (a : ℂ) * ((k 0 : ℂ) * (x 0 : ℂ) + (k 1 : ℂ) * (x 1 : ℂ))) := by
+    smoothingMultiplicativeDifference (smoothingPlaneFunction (smoothingSpatialPiece a m f)) h (x
+      0, x 1) =
+      smoothingLocalFourierGate a m x • ∑' k : Fin 2 → ℤ, smoothingLocalFourierCoefficient a m h f
+        k *
+        Complex.exp (Real.pi * Complex.I * (a : ℂ) * ((k 0 : ℂ) * (x 0 : ℂ) + (k 1 : ℂ) * (x 1 :
+          ℂ))) := by
   have hh := smoothing_local_fourier_reconstruction (fun i => (m i : ℝ) / 2)
     (smoothingLocalFourierInput_continuous a m h f) (smoothingLocalFourierInput_bound a m h f hf)
     (fun y hy => smoothingLocalFourierInput_support ha m h f hy)
     (smoothingLocalFourierCoefficient_summable ha m h f) ((a / 2) • x)
   have he : smoothingLocalFourierInput a m h f ((a / 2) • x) =
-      smoothingMultiplicativeDifference (smoothingPlaneFunction (smoothingSpatialPiece a m f)) h (x 0, x 1) := by
+      smoothingMultiplicativeDifference (smoothingPlaneFunction (smoothingSpatialPiece a m f)) h
+        (x 0, x 1) := by
     unfold smoothingLocalFourierInput
     congr 1
     ext <;> change (2 / a) * ((a / 2) * _) = _ <;> field_simp
   rw [he] at hh
-  simpa only [smoothingLocalFourierGate, smoothingLocalFourierCoefficient, smoothingLocalFourierCorner,
+  simpa only [smoothingLocalFourierGate, smoothingLocalFourierCoefficient,
+    smoothingLocalFourierCorner,
     Pi.smul_apply, smul_eq_mul, smoothing_mFourier_scaled] using! hh
 
 /-- The auxiliary cutoff is confined to a cube of side (5/2)/a, a fixed
@@ -9357,17 +9650,20 @@ theorem smoothingLocalFourierGate_tsupport {a : ℝ} (ha : 0 < a) (m : Fin 2 →
     calc
       _ ≤ (2 / a) * (5 / 8) := mul_le_mul_of_nonneg_left hh.le (by positivity)
       _ = _ := by ring
-  · simp only [Set.setOf_forall]
+  · simp only [Set.ofPred_forall]
     exact isClosed_iInter (fun i => isClosed_le (by fun_prop) continuous_const)
 
 /-- The Jacobian in Parseval (3.14), returning from the normalized cube
 to the original physical multiplicative difference. -/
 theorem smoothingLocalFourierInput_energy_scale {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (h : ℝ × ℝ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
-    (∫ x in smoothingFourierCube (smoothingLocalFourierCorner m), ‖smoothingLocalFourierInput a m h f x‖ ^ 2) =
+    (∫ x in smoothingFourierCube (smoothingLocalFourierCorner m), ‖smoothingLocalFourierInput a m
+      h f x‖ ^ 2) =
       (a ^ 2 / 4) * ∫ x : EuclideanSpace ℝ (Fin 2),
-        ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖ ^ 2 := by
-  have he : (∫ x in smoothingFourierCube (smoothingLocalFourierCorner m), ‖smoothingLocalFourierInput a m h f x‖ ^ 2) =
+        ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖
+          ^ 2 := by
+  have he : (∫ x in smoothingFourierCube (smoothingLocalFourierCorner m),
+    ‖smoothingLocalFourierInput a m h f x‖ ^ 2) =
       ∫ x, ‖smoothingLocalFourierInput a m h f x‖ ^ 2 := by
     apply setIntegral_eq_integral_of_forall_compl_eq_zero
     intro x hx
@@ -9384,9 +9680,11 @@ theorem smoothingLocalFourierInput_energy_scale {a : ℝ} (ha : 0 < a) (m : Fin 
         hm.integral_comp' (fun x => ‖smoothingLocalFourierSchwartz ha m h f x‖ ^ 2)
       simpa only [smoothingLocalFourierSchwartz_apply] using hh
     _ = ((2 / a) ^ 2)⁻¹ * ∫ x : EuclideanSpace ℝ (Fin 2),
-        ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖ ^ 2 := by
+        ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖
+          ^ 2 := by
       have hh := Measure.integral_comp_smul_of_nonneg volume
-        (fun x => ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖ ^ 2)
+        (fun x => ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f)
+          (smoothingPlaneEquiv.symm h) x‖ ^ 2)
         (2 / a) (hR := by positivity)
       simpa only [finrank_euclideanSpace, Fintype.card_fin, smul_eq_mul] using! hh
     _ = _ := by congr 1; field_simp; norm_num
@@ -9397,7 +9695,8 @@ theorem smoothing_eq3_14 {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ) (h : ℝ × 
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : ∀ x, ‖f x‖ ≤ 1) :
     HasSum (fun k : Fin 2 → ℤ => ‖smoothingLocalFourierCoefficient a m h f k‖ ^ 2)
       ((a ^ 2 / 4) * ∫ x : EuclideanSpace ℝ (Fin 2),
-        ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖ ^ 2) ∧
+        ‖smoothingSchwartzDifference (smoothingSpatialPiece a m f) (smoothingPlaneEquiv.symm h) x‖
+          ^ 2) ∧
       (∑' k : Fin 2 → ℤ, ‖smoothingLocalFourierCoefficient a m h f k‖ ^ 2) ≤ 1 := by
   have hh := smoothingLocalFourierCoefficient_energy a m h f hf
   rw [smoothingLocalFourierInput_energy_scale ha m h f] at hh
@@ -9411,7 +9710,8 @@ noncomputable def smoothingCoordinateDerivativeOrder (j : Fin 2) (n : ℕ)
 
 /-- Zero coordinate derivatives leave the input unchanged. -/
 theorem smoothingCoordinateDerivativeOrder_zero (j : Fin 2)
-    (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : smoothingCoordinateDerivativeOrder j 0 f = f := rfl
+    (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : smoothingCoordinateDerivativeOrder j 0 f = f
+      := rfl
 
 /-- The successor derivative is the coordinate derivative of the preceding one. -/
 theorem smoothingCoordinateDerivativeOrder_succ (j : Fin 2) (n : ℕ)
@@ -9436,7 +9736,8 @@ theorem smoothingCoordinateDerivativeOrder_fourier (j : Fin 2) (n : ℕ)
   induction n with
   | zero => simp only [smoothingCoordinateDerivativeOrder_zero, pow_zero, one_mul]
   | succ n ih =>
-    rw [smoothingCoordinateDerivativeOrder_succ, smoothingCoordinateDerivative_fourier, ih, pow_succ]
+    rw [smoothingCoordinateDerivativeOrder_succ, smoothingCoordinateDerivative_fourier, ih,
+      pow_succ]
     ring
 
 /-- Higher coordinate Bernstein estimates follow from the verified first
@@ -9444,7 +9745,8 @@ coordinate estimate, preserving the exact spectral support at every step. -/
 theorem smoothing_coordinate_bernstein_all_orders : ∃ K : ℝ, 0 ≤ K ∧
     ∀ (j : Fin 2) (r : ℝ), 0 < r → ∀ (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (M : ℝ),
       (∀ x, ‖f x‖ ≤ M) → (∀ ξ, 𝓕 f ξ ≠ 0 → |ξ j| ≤ r) →
-      ∀ (n : ℕ) (x : EuclideanSpace ℝ (Fin 2)), ‖smoothingCoordinateDerivativeOrder j n f x‖ ≤ (K * r) ^ n * M := by
+      ∀ (n : ℕ) (x : EuclideanSpace ℝ (Fin 2)), ‖smoothingCoordinateDerivativeOrder j n f x‖ ≤ (K
+        * r) ^ n * M := by
   obtain ⟨K, hK, hb⟩ := smoothing_coordinate_bernstein
   refine ⟨K, hK, ?_⟩
   intro j r hr f M hf hs n
@@ -9458,7 +9760,8 @@ theorem smoothing_coordinate_bernstein_all_orders : ∃ K : ℝ, 0 ≤ K ∧
     intro x
     rw [smoothingCoordinateDerivativeOrder_succ]
     calc
-      _ ≤ K * r * ((K * r) ^ n * M) := hb j r hr (smoothingCoordinateDerivativeOrder j n f) _ ih hspec x
+      _ ≤ K * r * ((K * r) ^ n * M) := hb j r hr (smoothingCoordinateDerivativeOrder j n f) _ ih
+        hspec x
       _ = _ := by rw [pow_succ]; ring
 
 /-- Differentiation along a coordinate line agrees with the Schwartz
@@ -9483,11 +9786,13 @@ theorem smoothing_coordinate_line_iteratedDeriv (j : Fin 2) (n : ℕ)
   | succ n ih =>
     rw [iteratedDeriv_succ, smoothingCoordinateDerivativeOrder_succ]
     have he : iteratedDeriv n (fun u : ℝ => f (x + u • EuclideanSpace.single j (1 : ℝ))) =
-        fun u => smoothingCoordinateDerivativeOrder j n f (x + u • EuclideanSpace.single j (1 : ℝ)) := by
+        fun u => smoothingCoordinateDerivativeOrder j n f (x + u • EuclideanSpace.single j (1 :
+          ℝ)) := by
       funext u
       exact ih u
     rw [he]
-    exact (smoothing_coordinate_line_hasDerivAt j (smoothingCoordinateDerivativeOrder j n f) x t).deriv
+    exact (smoothing_coordinate_line_hasDerivAt j (smoothingCoordinateDerivativeOrder j n f) x
+      t).deriv
 
 /-- The Schwartz product used to apply Leibniz' rule in (3.15). -/
 noncomputable def smoothingSchwartzProduct
@@ -9504,7 +9809,8 @@ theorem smoothingCoordinateDerivativeOrder_product (j : Fin 2) (n : ℕ)
     (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingCoordinateDerivativeOrder j n (smoothingSchwartzProduct f g) x =
       ∑ i ∈ Finset.range (n + 1), (n.choose i : ℂ) *
-        smoothingCoordinateDerivativeOrder j i f x * smoothingCoordinateDerivativeOrder j (n - i) g x := by
+        smoothingCoordinateDerivativeOrder j i f x * smoothingCoordinateDerivativeOrder j (n - i)
+          g x := by
   have hf : ContDiff ℝ ∞ (fun t : ℝ => f (x + t • EuclideanSpace.single j (1 : ℝ))) := by fun_prop
   have hg : ContDiff ℝ ∞ (fun t : ℝ => g (x + t • EuclideanSpace.single j (1 : ℝ))) := by fun_prop
   have he := smoothing_coordinate_line_iteratedDeriv j n (smoothingSchwartzProduct f g) x 0
@@ -9549,19 +9855,22 @@ theorem smoothingSpatialCutoff_properties {a : ℝ} (ha : 0 < a) (m : Fin 2 → 
 /-- The partition cutoff as a Schwartz function. -/
 noncomputable def smoothingSpatialCutoffSchwartz {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ) :
     SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ :=
-  (smoothingSpatialCutoff_properties ha m).2.toSchwartzMap (smoothingSpatialCutoff_properties ha m).1
+  (smoothingSpatialCutoff_properties ha m).2.toSchwartzMap (smoothingSpatialCutoff_properties ha
+    m).1
 
 /-- Localization is multiplication by the actual Schwartz cutoff. -/
 theorem smoothingSpatialPiece_eq_product {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
-    smoothingSpatialPiece a m f = smoothingSchwartzProduct f (smoothingSpatialCutoffSchwartz ha m) := by
+    smoothingSpatialPiece a m f = smoothingSchwartzProduct f (smoothingSpatialCutoffSchwartz ha m)
+      := by
   ext x
   exact smoothingSpatialPiece_apply a m f x
 
 /-- All derivatives of the partition cutoff have the source scale a^n. -/
 theorem smoothingSpatialCutoff_derivative_bounds (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (a : ℝ), 0 < a → ∀ (m : Fin 2 → ℤ),
-      ∀ n ≤ N, ∀ x : EuclideanSpace ℝ (Fin 2), ‖iteratedFDeriv ℝ n (smoothingSpatialCutoff a m) x‖ ≤ C * a ^ n := by
+      ∀ n ≤ N, ∀ x : EuclideanSpace ℝ (Fin 2), ‖iteratedFDeriv ℝ n (smoothingSpatialCutoff a m) x‖
+        ≤ C * a ^ n := by
   let φ : EuclideanSpace ℝ (Fin 2) → ℂ := fun x => (smoothingSpatialBump x : ℂ)
   have hφ : ContDiff ℝ ∞ φ := by
     simpa only [φ] using! Complex.ofRealCLM.contDiff.comp smoothingSpatialBump_properties.1
@@ -9670,17 +9979,22 @@ theorem smoothingSpatialPiece_coordinate_bounds (N : ℕ) :
     calc
       _ = (2 * K) ^ i * r ^ i := by rw [← mul_pow]; congr 1; ring
       _ ≤ (max 1 (2 * K)) ^ i * r ^ i :=
-        mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by positivity) (le_max_right _ _) i) (by positivity)
-      _ ≤ _ := mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (le_max_left _ _) (by omega)) (by positivity)
-  have hsecond : ∀ i ≤ n, ∀ y, ‖smoothingCoordinateDerivativeOrder j i (smoothingSpatialCutoffSchwartz ha m) y‖ ≤ A * r ^ i := by
+        mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (by positivity) (le_max_right _ _) i)
+          (by positivity)
+      _ ≤ _ := mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (le_max_left _ _) (by omega))
+        (by positivity)
+  have hsecond : ∀ i ≤ n, ∀ y, ‖smoothingCoordinateDerivativeOrder j i
+    (smoothingSpatialCutoffSchwartz ha m) y‖ ≤ A * r ^ i := by
     intro i hi y
     apply (smoothingCoordinateDerivativeOrder_norm_le j i _ y).trans
     have hh := hcut a ha m i (by omega) y
     exact hh.trans (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ ha.le har i) hA)
   rw [smoothingSpatialPiece_eq_product ha m f]
-  apply (smoothingCoordinateDerivativeOrder_product_bound hB hA hr0.le j n f _ hfirst hsecond x).trans
+  apply (smoothingCoordinateDerivativeOrder_product_bound hB hA hr0.le j n f _ hfirst hsecond
+    x).trans
   exact mul_le_mul_of_nonneg_right
-    (mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn) (by positivity)) (by positivity)
+    (mul_le_mul_of_nonneg_right (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn)
+      (by positivity)) (by positivity)
 
 /-- Higher coordinate bounds for the multiplicative difference, uniform
 in its translation, are the Leibniz estimate preceding (3.15). -/
@@ -9691,7 +10005,8 @@ theorem smoothingSchwartzDifference_coordinate_bound {A r : ℝ} (hA : 0 ≤ A) 
     ‖smoothingCoordinateDerivativeOrder j n (smoothingSchwartzDifference f h) x‖ ≤
       2 ^ n * (A * A) * r ^ n := by
   apply smoothingCoordinateDerivativeOrder_product_bound hA hA hr j n
-    (f.compSubConstCLM ℂ (-h)) (f.postcompCLM Complex.conjLIE.toLinearIsometry.toContinuousLinearMap)
+    (f.compSubConstCLM ℂ (-h)) (f.postcompCLM
+      Complex.conjLIE.toLinearIsometry.toContinuousLinearMap)
   · intro i hi y
     rw [smoothingCoordinateDerivativeOrder_translate]
     exact hf i hi _
@@ -9706,12 +10021,14 @@ theorem smoothingLocalFourierSchwartz_coordinate_bounds (N : ℕ) :
       ∀ (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
       (∀ x, ‖g x‖ ≤ 1) → smoothingRestrictedSupport r f g →
       ∀ (m : Fin 2 → ℤ) (h : ℝ × ℝ), ∀ n ≤ N, ∀ x,
-        ‖smoothingCoordinateDerivativeOrder 1 n (smoothingLocalFourierSchwartz ha m h g) x‖ ≤ C * (r / a) ^ n := by
+        ‖smoothingCoordinateDerivativeOrder 1 n (smoothingLocalFourierSchwartz ha m h g) x‖ ≤ C *
+          (r / a) ^ n := by
   obtain ⟨A, hA, hb⟩ := smoothingSpatialPiece_coordinate_bounds N
   refine ⟨(2 : ℝ) ^ N * 2 ^ N * (A * A), by positivity, ?_⟩
   intro r a hr ha har f g hg hs m h n hn x
   have hr0 : 0 ≤ r := by linarith
-  have hloc : ∀ i ≤ n, ∀ y, ‖smoothingCoordinateDerivativeOrder 1 i (smoothingSpatialPiece a m g) y‖ ≤ A * r ^ i := by
+  have hloc : ∀ i ≤ n, ∀ y, ‖smoothingCoordinateDerivativeOrder 1 i (smoothingSpatialPiece a m g)
+    y‖ ≤ A * r ^ i := by
     intro i hi y
     exact hb 1 r a hr ha har g hg (smoothingRestrictedSupport_second_upper hs) m i (by omega) y
   have hdiff := smoothingSchwartzDifference_coordinate_bound hA hr0 1 n _ hloc
@@ -9725,7 +10042,8 @@ theorem smoothingLocalFourierSchwartz_coordinate_bounds (N : ℕ) :
     _ ≤ _ := mul_le_mul_of_nonneg_right
       (mul_le_mul_of_nonneg_right
         (mul_le_mul (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn)
-          (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn) (by positivity) (by positivity)) (by positivity)) (by positivity)
+          (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hn) (by positivity) (by positivity))
+            (by positivity)) (by positivity)
 
 /-- Parseval bounds coefficient energy by M² for a function bounded by M
 on a unit fundamental cube. -/
@@ -9755,14 +10073,15 @@ theorem smoothingLocalFourierSchwartz_tsupport {a : ℝ} (ha : 0 < a) (m : Fin 2
       rw [← smoothingLocalFourierSchwartz_apply ha m h f]
       exact hx
     exact (smoothingLocalFourierInput_support ha m h f hh i).le
-  · simp only [Set.setOf_forall]
+  · simp only [Set.ofPred_forall]
     exact isClosed_iInter (fun i => isClosed_le (by fun_prop) continuous_const)
 
 /-- The normalized coordinate derivatives have no support at the cube boundary. -/
 theorem smoothingLocalFourierSchwartz_derivative_support {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (h : ℝ × ℝ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (n : ℕ) :
     Function.support (fun x : Fin 2 → ℝ =>
-      smoothingCoordinateDerivativeOrder j n (smoothingLocalFourierSchwartz ha m h f) (WithLp.toLp 2 x)) ⊆
+      smoothingCoordinateDerivativeOrder j n (smoothingLocalFourierSchwartz ha m h f) (WithLp.toLp
+        2 x)) ⊆
       smoothingFourierCube (smoothingLocalFourierCorner m) := by
   intro x hx i
   have hh := SchwartzMap.tsupport_iteratedLineDerivOp_subset
@@ -9778,7 +10097,8 @@ the actual normalized input n times in the chosen coordinate. -/
 theorem smoothingLocalFourierCoefficient_weighted_energy {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (h : ℝ × ℝ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (n : ℕ)
     {M : ℝ} (hM : 0 ≤ M)
-    (hbound : ∀ x, ‖smoothingCoordinateDerivativeOrder j n (smoothingLocalFourierSchwartz ha m h f) x‖ ≤ M) :
+    (hbound : ∀ x, ‖smoothingCoordinateDerivativeOrder j n (smoothingLocalFourierSchwartz ha m h
+      f) x‖ ≤ M) :
     Summable (fun k : Fin 2 → ℤ => ‖((2 * Real.pi * Complex.I) * (k j : ℂ)) ^ n *
       smoothingLocalFourierCoefficient a m h f k‖ ^ 2) ∧
     (∑' k : Fin 2 → ℤ, ‖((2 * Real.pi * Complex.I) * (k j : ℂ)) ^ n *
@@ -9787,13 +10107,15 @@ theorem smoothingLocalFourierCoefficient_weighted_energy {a : ℝ} (ha : 0 < a) 
   let F : (Fin 2 → ℝ) → ℂ := fun x => D (WithLp.toLp 2 x)
   have hF : Continuous F := by fun_prop
   have hFM : ∀ x, ‖F x‖ ≤ M := fun x => hbound _
-  have hcoef : ∀ k, UnitAddTorus.mFourierCoeff (smoothingTorusLift (smoothingLocalFourierCorner m) F) k =
+  have hcoef : ∀ k, UnitAddTorus.mFourierCoeff (smoothingTorusLift (smoothingLocalFourierCorner m)
+    F) k =
       ((2 * Real.pi * Complex.I) * (k j : ℂ)) ^ n * smoothingLocalFourierCoefficient a m h f k := by
     intro k
     have hh := smoothing_torus_coefficient_fourier (smoothingLocalFourierCorner m) D
       (smoothingLocalFourierSchwartz_derivative_support ha m h f j n) k
     change _ = _ at hh
-    rw [smoothingCoordinateDerivativeOrder_fourier, ← smoothingLocalFourierCoefficient_normalized ha m h f k] at hh
+    rw [smoothingCoordinateDerivativeOrder_fourier, ← smoothingLocalFourierCoefficient_normalized
+      ha m h f k] at hh
     exact hh
   have hs := (smoothingTorusLift_parseval (smoothingLocalFourierCorner m) hF hFM).summable
   have hb := smoothingTorusLift_energy_bound_general (smoothingLocalFourierCorner m) hF hM hFM
@@ -9801,8 +10123,8 @@ theorem smoothingLocalFourierCoefficient_weighted_energy {a : ℝ} (ha : 0 < a) 
 
 /-- Weighted coefficient energy controls the full high-coordinate-frequency
 tail, the summation step in (3.15). -/
-theorem smoothing_weighted_fourier_tail (c : (Fin 2 → ℤ) → ℂ) (j : Fin 2) (n : ℕ)
-    {M B : ℝ} (hB : 0 < B)
+theorem smoothing_weighted_fourier_tail (c : (Fin 2 → ℤ) → ℂ) (j : Fin 2) (n : ℕ) {M B : ℝ} (hB
+    : 0 < B)
     (hs : Summable (fun k => ‖((2 * Real.pi * Complex.I) * (k j : ℂ)) ^ n * c k‖ ^ 2))
     (he : (∑' k, ‖((2 * Real.pi * Complex.I) * (k j : ℂ)) ^ n * c k‖ ^ 2) ≤ M ^ 2) :
     (∑' k : {k : Fin 2 → ℤ // B ≤ |(k j : ℝ)|}, ‖c k.val‖ ^ 2) ≤ M ^ 2 / B ^ (2 * n) := by
@@ -9811,7 +10133,8 @@ theorem smoothing_weighted_fourier_tail (c : (Fin 2 → ℤ) → ℂ) (j : Fin 2
   intro S
   apply (le_div_iff₀' (pow_pos hB _)).mpr
   have hterm : ∀ k : {k : Fin 2 → ℤ // B ≤ |(k j : ℝ)|},
-      B ^ (2 * n) * ‖c k.val‖ ^ 2 ≤ ‖((2 * Real.pi * Complex.I) * (k.val j : ℂ)) ^ n * c k.val‖ ^ 2 := by
+      B ^ (2 * n) * ‖c k.val‖ ^ 2 ≤ ‖((2 * Real.pi * Complex.I) * (k.val j : ℂ)) ^ n * c k.val‖ ^
+        2 := by
     intro k
     have hfactor : B ≤ ‖(2 * Real.pi * Complex.I) * (k.val j : ℂ)‖ := by
       have hh : ‖(2 * Real.pi * Complex.I) * (k.val j : ℂ)‖ = 2 * Real.pi * |(k.val j : ℝ)| := by
@@ -9895,15 +10218,19 @@ noncomputable def smoothingResonanceVector (k : (Fin 2 → ℤ) × (Fin 2 → �
 theorem smoothingOscillatoryPhase_hasGradientAt (a : ℝ)
     (k : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (z : EuclideanSpace ℝ (Fin 3)) :
     HasGradientAt (smoothingOscillatoryPhase a k) (a • smoothingResonanceVector k (z 2)) z := by
-  have h0 := (EuclideanSpace.proj (0 : Fin 3) : EuclideanSpace ℝ (Fin 3) →L[ℝ] ℝ).hasFDerivAt (x := z)
-  have h1 := (EuclideanSpace.proj (1 : Fin 3) : EuclideanSpace ℝ (Fin 3) →L[ℝ] ℝ).hasFDerivAt (x := z)
-  have h2 := (EuclideanSpace.proj (2 : Fin 3) : EuclideanSpace ℝ (Fin 3) →L[ℝ] ℝ).hasFDerivAt (x := z)
+  have h0 := (EuclideanSpace.proj (0 : Fin 3) : EuclideanSpace ℝ (Fin 3) →L[ℝ] ℝ).hasFDerivAt (x
+    := z)
+  have h1 := (EuclideanSpace.proj (1 : Fin 3) : EuclideanSpace ℝ (Fin 3) →L[ℝ] ℝ).hasFDerivAt (x
+    := z)
+  have h2 := (EuclideanSpace.proj (2 : Fin 3) : EuclideanSpace ℝ (Fin 3) →L[ℝ] ℝ).hasFDerivAt (x
+    := z)
   have hp := (((((h0.add h2).const_mul (k.1 0 : ℝ)).add (h1.const_mul (k.1 1 : ℝ))).add
     (h0.const_mul (k.2 0 : ℝ))).add ((h1.add (h2.pow 2)).const_mul (k.2 1 : ℝ))).const_mul a
   rw [hasGradientAt_iff_hasFDerivAt]
   convert! hp using 1
   ext v
-  simp [smoothingResonanceVector, InnerProductSpace.toDual_apply_apply, PiLp.inner_apply, Fin.sum_univ_three,
+  simp [smoothingResonanceVector, InnerProductSpace.toDual_apply_apply, PiLp.inner_apply,
+    Fin.sum_univ_three,
     RCLike.inner_apply, EuclideanSpace.proj]
   ring
 
@@ -9920,11 +10247,13 @@ theorem smoothing_eq3_16 {a L : ℝ} (ha : 0 < a) (_ : 0 ≤ L)
     (k : (Fin 2 → ℤ) × (Fin 2 → ℤ)) {t t₀ : ℝ}
     (ht : |t - t₀| ≤ 8 / a) (hk : |(k.2 1 : ℝ)| ≤ L) :
     ‖a • smoothingResonanceVector k t - a • smoothingResonanceVector k t₀‖ ≤ 16 * L := by
-  rw [← smul_sub, smoothingResonanceVector_sub, norm_smul, Real.norm_eq_abs, abs_of_pos ha, PiLp.norm_single]
+  rw [← smul_sub, smoothingResonanceVector_sub, norm_smul, Real.norm_eq_abs, abs_of_pos ha,
+    PiLp.norm_single]
   simp only [Real.norm_eq_abs, abs_mul, abs_of_nonneg (by norm_num : (0 : ℝ) ≤ 2)]
   calc
     _ ≤ a * (2 * (8 / a) * L) := mul_le_mul_of_nonneg_left
-      (mul_le_mul (mul_le_mul_of_nonneg_left ht (by norm_num)) hk (abs_nonneg _) (by positivity)) ha.le
+      (mul_le_mul (mul_le_mul_of_nonneg_left ht (by norm_num)) hk (abs_nonneg _) (by positivity))
+        ha.le
     _ = _ := by field_simp; ring
 
 /-- Translation and spatial rescaling isolate the reference linear phase
@@ -10011,7 +10340,8 @@ theorem smoothingNormalizedAmplitude_contDiff {ζ : (ℝ × ℝ) × ℝ → ℂ}
     apply contDiff_pi.mpr
     intro i
     fin_cases i <;> dsimp <;> fun_prop
-  have hstar : ContDiff ℝ ∞ (star : ℂ → ℂ) := Complex.conjLIE.toContinuousLinearEquiv.toContinuousLinearMap.contDiff
+  have hstar : ContDiff ℝ ∞ (star : ℂ → ℂ) :=
+    Complex.conjLIE.toContinuousLinearEquiv.toContinuousLinearMap.contDiff
   unfold smoothingNormalizedAmplitude
   fun_prop
 
@@ -10082,7 +10412,7 @@ noncomputable def smoothingNormalizedParameters (a s : ℝ)
     EuclideanSpace ℝ (Fin 10) :=
   WithLp.toLp 2 ![p 0, p 1, p 2, a⁻¹,
     a * (p 0 + p 2) - (m.1 0 : ℝ), a * p 1 - (m.1 1 : ℝ),
-    a * p 0 - (m.2 0 : ℝ), a * (p 1 + (p 2)^2) - (m.2 1 : ℝ),
+    a * p 0 - (m.2 0 : ℝ), a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ),
     a * s, a⁻¹ * (k.2 1 : ℝ)]
 
 /-- Exact identification of the normalized amplitude with the two local
@@ -10109,7 +10439,7 @@ theorem smoothingNormalizedAmplitude_rescale {a : ℝ} (ha : a ≠ 0)
     fin_cases i <;> simp [hz] <;> field_simp <;> ring
   have h₂ : (a / 2) • ![z 0, z 1 + (z 2)^2] - (fun i => (m.2 i : ℝ) / 2) =
       ![(a * p 0 - (m.2 0 : ℝ) + u 0) / 2,
-        (a * (p 1 + (p 2)^2) - (m.2 1 : ℝ) + u 1 +
+        (a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ) + u 1 +
           2 * p 2 * u 2 + a⁻¹ * (u 2)^2) / 2] := by
     ext i
     fin_cases i <;> simp [hz] <;> field_simp <;> ring
@@ -10137,7 +10467,7 @@ theorem smoothingNormalizedParameters_bound {a R s : ℝ} (ha : 1 ≤ a) (hR : 0
     (h₀ : |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 1)
     (h₁ : |a * p 1 - (m.1 1 : ℝ)| ≤ 1)
     (h₂ : |a * p 0 - (m.2 0 : ℝ)| ≤ 1)
-    (h₃ : |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 1)
+    (h₃ : |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 1)
     (hs : |a * s| ≤ 8) (hk : |(k.2 1 : ℝ)| ≤ a) :
     smoothingNormalizedParameters a s p m k ∈
       Metric.closedBall (0 : EuclideanSpace ℝ (Fin 10)) (10 * (R + 9)) := by
@@ -10191,7 +10521,8 @@ theorem smoothingOscillatoryIntegrand_normalize {a : ℝ} (ha : a ≠ 0)
     Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k (p + a⁻¹ • u))) *
       smoothingOscillatoryAmplitude a s p m ζ (p + a⁻¹ • u) =
     Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k p)) *
-      (Complex.exp (↑(-2 * Real.pi * inner ℝ u ((-1 / 2 : ℝ) • smoothingResonanceVector k (p 2))) * Complex.I) *
+      (Complex.exp (↑(-2 * Real.pi * inner ℝ u ((-1 / 2 : ℝ) • smoothingResonanceVector k (p 2)))
+        * Complex.I) *
         smoothingNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m k) u) := by
   have he : ↑Real.pi * Complex.I * (↑(smoothingOscillatoryPhase a k (p + a⁻¹ • u)) : ℂ) =
       ↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k p) +
@@ -10240,7 +10571,7 @@ theorem smoothingOscillatoryIntegral_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
     ∀ m k : (Fin 2 → ℤ) × (Fin 2 → ℤ), ‖p‖ ≤ R →
     |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 1 →
     |a * p 1 - (m.1 1 : ℝ)| ≤ 1 → |a * p 0 - (m.2 0 : ℝ)| ≤ 1 →
-    |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 1 →
+    |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 1 →
     |a * s| ≤ 8 → |(k.2 1 : ℝ)| ≤ a →
     (1 + ‖smoothingResonanceVector k (p 2)‖)^N *
       ‖∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k z)) *
@@ -10279,7 +10610,7 @@ theorem smoothingOscillatoryIntegral_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
 /-- The source restriction on epsilon-one makes the retained quadratic
 curvature uniformly bounded after normalization in (3.17). -/
 theorem smoothing_nonstationary_curvature {r γ ε : ℝ} (hr : 1 ≤ r)
-    (hε : ε ≤ 2 * γ - 1) {k : ℝ} (hk : |k| ≤ r^(1 - γ + ε)) :
+    (hε : ε ≤ 2 * γ - 1) {k : ℝ} (hk : |k| ≤ r ^ (1 - γ + ε)) :
     |k| ≤ r^γ :=
   hk.trans (Real.rpow_le_rpow_of_exponent_le hr (by linarith))
 
@@ -10290,7 +10621,7 @@ theorem smoothing_finite_frequency_schur {α β : Type*} (S : Finset α) (T : Fi
     (hW : ∀ i j, 0 ≤ W i j)
     (hrow : ∀ i ∈ S, ∑ j ∈ T, W i j ≤ C)
     (hcol : ∀ j ∈ T, ∑ i ∈ S, W i j ≤ C)
-    (hA : ∑ i ∈ S, (A i)^2 ≤ 1) (hB : ∑ j ∈ T, (B j)^2 ≤ 1) :
+    (hA : ∑ i ∈ S, (A i) ^ 2 ≤ 1) (hB : ∑ j ∈ T, (B j) ^ 2 ≤ 1) :
     ∑ i ∈ S, ∑ j ∈ T, W i j * A i * B j ≤ C := by
   have hleft : ∑ ij ∈ S ×ˢ T, (Real.sqrt (W ij.1 ij.2) * A ij.1)^2 ≤ C := by
     simp only [mul_pow, Real.sq_sqrt (hW _ _), Finset.sum_product]
@@ -10379,8 +10710,10 @@ theorem smoothingResonanceVector_projections (k : (Fin 2 → ℤ) × (Fin 2 → 
     |(k.1 0 : ℝ) + 2 * t * (k.2 1 : ℝ)| ≤ ‖smoothingResonanceVector k t‖ := by
   constructor
   · have hh : ‖CalderonVaillancourt.latt 2 (k.1 + k.2)‖^2 ≤ ‖smoothingResonanceVector k t‖^2 := by
-      simp [EuclideanSpace.real_norm_sq_eq, CalderonVaillancourt.latt,
-        smoothingResonanceVector, Fin.sum_univ_two, Fin.sum_univ_three]
+      simp only [CalderonVaillancourt.latt, Pi.add_apply, Int.cast_add,
+        EuclideanSpace.real_norm_sq_eq, Fin.sum_univ_two, Fin.isValue,
+        smoothingResonanceVector, Fin.sum_univ_three, Matrix.cons_val_zero,
+        Matrix.cons_val_one, Matrix.cons_val, le_add_iff_nonneg_right]
       positivity
     nlinarith [norm_nonneg (CalderonVaillancourt.latt 2 (k.1 + k.2)),
       norm_nonneg (smoothingResonanceVector k t)]
@@ -10392,13 +10725,13 @@ theorem smoothing_nonstationary_weighted_bound {L H D : ℝ} (hL : 0 < L)
     (hH : 0 ≤ H) (N : ℕ) (k : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (t : ℝ)
     (hnon : L ≤ ‖CalderonVaillancourt.latt 2 (k.1 + k.2)‖ ∨
       L ≤ |(k.1 0 : ℝ) + 2 * t * (k.2 1 : ℝ)|)
-    (hdec : (1 + ‖smoothingResonanceVector k t‖)^(N + 4) * H ≤ D) :
+    (hdec : (1 + ‖smoothingResonanceVector k t‖) ^ (N + 4) * H ≤ D) :
     H ≤ D * (L^N)⁻¹ * smoothingFrequencyWeight (k.1 + k.2) := by
   obtain ⟨hsp, ht⟩ := smoothingResonanceVector_projections k t
   have hbig : L ≤ 1 + ‖smoothingResonanceVector k t‖ := by
     rcases hnon with h | h <;> linarith
   have hp : L^N * (1 + ‖CalderonVaillancourt.latt 2 (k.1 + k.2)‖)^4 ≤
-      (1 + ‖smoothingResonanceVector k t‖)^(N + 4) := by
+      (1 + ‖smoothingResonanceVector k t‖) ^ (N + 4) := by
     rw [pow_add]
     exact mul_le_mul (pow_le_pow_left₀ hL.le hbig N)
       (pow_le_pow_left₀ (by positivity) (by linarith) 4) (by positivity) (by positivity)
@@ -10452,7 +10785,7 @@ theorem smoothing_eq3_17_discarded {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → ‖p‖ ≤ R →
     |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 1 →
     |a * p 1 - (m.1 1 : ℝ)| ≤ 1 → |a * p 0 - (m.2 0 : ℝ)| ≤ 1 →
-    |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 1 → |a * s| ≤ 8 →
+    |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 1 → |a * s| ≤ 8 →
     (∑' k : smoothingNonresonantFrequencies a L (p 2),
       ‖smoothingLocalFourierCoefficient a m.1 (s, 0) f k.val.1 *
         smoothingLocalFourierCoefficient a m.2 (0, 2 * s * p 2) g k.val.2 *
@@ -10488,10 +10821,12 @@ noncomputable def smoothingSpaceTimeEquiv : EuclideanSpace ℝ (Fin 3) ≃ᵐ (�
   invFun z := WithLp.toLp 2 ![z.1.1, z.1.2, z.2]
   left_inv z := by ext i; fin_cases i <;> rfl
   right_inv z := by rcases z with ⟨⟨x, y⟩, t⟩; rfl
-  measurable_toFun := by change Measurable (fun z : EuclideanSpace ℝ (Fin 3) => ((z 0, z 1), z 2)); fun_prop
+  measurable_toFun := by
+    change Measurable (fun z : EuclideanSpace ℝ (Fin 3) => ((z 0, z 1), z 2));
+    fun_prop
   measurable_invFun := by
     have hh : Measurable (fun z : (ℝ × ℝ) × ℝ => ![z.1.1, z.1.2, z.2]) := by
-      apply measurable_pi_lambda
+      apply Measurable.of_eval
       intro i
       fin_cases i <;> dsimp <;> fun_prop
     exact (PiLp.volume_preserving_toLp (Fin 3)).measurable.comp hh
@@ -10501,7 +10836,8 @@ Lebesgue measures already used for (3.12). -/
 theorem smoothingSpaceTimeEquiv_measurePreserving : MeasurePreserving smoothingSpaceTimeEquiv := by
   have h₁ := (volume_preserving_piFinSuccAbove (fun _ : Fin 3 => ℝ) (2 : Fin 3)).comp
     (PiLp.volume_preserving_ofLp (Fin 3))
-  have h₂ := ((MeasurePreserving.id (volume : Measure ℝ)).prod (volume_preserving_finTwoArrow ℝ)).comp h₁
+  have h₂ := ((MeasurePreserving.id (volume : Measure ℝ)).prod (volume_preserving_finTwoArrow
+    ℝ)).comp h₁
   have h₃ := Measure.measurePreserving_swap.comp h₂
   convert! h₃ using 1
 
@@ -10591,7 +10927,7 @@ theorem smoothing_eq3_17 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ 
   have hh := hdiscard (r^γ) ha1 (r^ε) (Real.rpow_pos_of_pos hr0 _) s p m f g hf hg
     (hrad p hp) (h₁ 0) (h₁ 1) (h₂ 0) (h₂ 1) hss
   apply hh.trans
-  calc C * ((r^γ)^3)⁻¹ * ((r^ε)^n)⁻¹ = C * (((r^γ)^3)⁻¹ * ((r^ε)^n)⁻¹) := by ring
+  calc C * ((r ^ γ)^3)⁻¹ * ((r^ε)^n)⁻¹ = C * (((r ^ γ)^3)⁻¹ * ((r^ε)^n)⁻¹) := by ring
        _ ≤ _ := mul_le_mul_of_nonneg_left (hn r hr (r^γ) ha1) hC
 
 /-- Removing the quadratic oscillation identifies the physical amplitude
@@ -10600,7 +10936,8 @@ theorem smoothingOscillatoryAmplitude_normalize {a : ℝ} (ha : 0 < a)
     (s : ℝ) (p z : EuclideanSpace ℝ (Fin 3))
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (ζ : (ℝ × ℝ) × ℝ → ℂ) :
     smoothingOscillatoryAmplitude a s p m ζ z =
-      smoothingNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m (0, 0)) (a • (z - p)) := by
+      smoothingNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m (0, 0)) (a • (z - p))
+        := by
   have he : p + a⁻¹ • (a • (z - p)) = z := by simp [smul_smul, ha.ne']
   have hh := smoothingNormalizedAmplitude_rescale ha.ne' s p (a • (z - p)) m (0, 0) ζ
   simpa [he, smoothingOscillatoryAmplitude] using hh.symm
@@ -10645,7 +10982,8 @@ theorem smoothingOscillatoryIntegrand_integrable {a : ℝ} (ha : 0 < a)
     Integrable (fun z => Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k z)) *
       smoothingOscillatoryAmplitude a s p m ζ z) := by
   obtain ⟨hsm, hc⟩ := smoothingOscillatoryAmplitude_properties ha s p m hζ
-  have hphase : Continuous (fun z => Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k z))) := by
+  have hphase : Continuous (fun z => Complex.exp (↑Real.pi * Complex.I *
+    ↑(smoothingOscillatoryPhase a k z))) := by
     unfold smoothingOscillatoryPhase
     fun_prop
   exact (hphase.mul hsm.continuous).integrable_of_hasCompactSupport hc.mul_left
@@ -10808,7 +11146,8 @@ theorem smoothingSlicePoint_norm (x : EuclideanSpace ℝ (Fin 2)) (t : ℝ) :
     ‖x‖ ≤ ‖smoothingSlicePoint x t‖ ∧ |t| ≤ ‖smoothingSlicePoint x t‖ := by
   constructor
   · have hh : ‖smoothingSlicePoint x t‖^2 = ‖x‖^2 + t^2 := by
-      simp [EuclideanSpace.real_norm_sq_eq, smoothingSlicePoint, Fin.sum_univ_three, Fin.sum_univ_two]
+      simp [EuclideanSpace.real_norm_sq_eq, smoothingSlicePoint, Fin.sum_univ_three,
+        Fin.sum_univ_two]
     nlinarith [norm_nonneg x, norm_nonneg (smoothingSlicePoint x t), sq_nonneg t]
   · exact PiLp.norm_apply_le (smoothingSlicePoint x t) 2
 
@@ -10826,7 +11165,10 @@ theorem smoothingNormalizedSlice_contDiff {ζ : (ℝ × ℝ) × ℝ → ℂ} (h�
     (PiLp.continuousLinearEquiv 2 ℝ (fun _ : Fin 3 => ℝ)).symm.contDiff
   have hm : ContDiff ℝ ∞ (fun z : (EuclideanSpace ℝ (Fin 10) × ℝ) × EuclideanSpace ℝ (Fin 2) =>
       (z.1.1, smoothingSlicePoint z.2 z.1.2)) := by
-    exact (by fun_prop : ContDiff ℝ ∞ (fun z : (EuclideanSpace ℝ (Fin 10) × ℝ) × EuclideanSpace ℝ (Fin 2) => z.1.1)).prodMk
+    exact
+      (by
+        fun_prop : ContDiff ℝ ∞ (fun z : (EuclideanSpace ℝ (Fin 10) × ℝ) × EuclideanSpace ℝ (Fin
+          2) => z.1.1)).prodMk
       (hto.comp hv)
   simpa only using! (smoothingNormalizedAmplitude_contDiff hζ).comp hm
 
@@ -10839,8 +11181,10 @@ theorem smoothingNormalizedSlice_tsupport (ζ : (ℝ × ℝ) × ℝ → ℂ)
   apply closure_minimal _ Metric.isClosed_closedBall
   intro x hx
   have hh := smoothingNormalizedAmplitude_tsupport ζ q (subset_tsupport _ hx)
-  have hn : ‖smoothingSlicePoint x t‖ ≤ 24 := by simpa only [Metric.mem_closedBall, dist_zero_right] using hh
-  simpa only [Metric.mem_closedBall, dist_zero_right] using (smoothingSlicePoint_norm x t).1.trans hn
+  have hn : ‖smoothingSlicePoint x t‖ ≤ 24 :=
+    by simpa only [Metric.mem_closedBall, dist_zero_right] using hh
+  simpa only [Metric.mem_closedBall, dist_zero_right] using (smoothingSlicePoint_norm x
+    t).1.trans hn
 
 /-- Spatial slices vanish outside the fixed normalized time interval. -/
 theorem smoothingNormalizedSlice_zero (ζ : (ℝ × ℝ) × ℝ → ℂ)
@@ -10858,8 +11202,10 @@ quadratic-frequency parameter differentiated. -/
 theorem smoothingNormalizedSlice_fourier_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : ContDiff ℝ ∞ ζ) {K : Set (EuclideanSpace ℝ (Fin 10))} (hK : IsCompact K) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ q ∈ K, ∀ t : ℝ, ∀ w : EuclideanSpace ℝ (Fin 2),
-      (1 + ‖w‖)^N * ‖𝓕 (fun x => smoothingNormalizedAmplitude ζ q (smoothingSlicePoint x t)) w‖ ≤ C := by
-  obtain ⟨C, hC, hb⟩ := smoothing_compact_family_fourier_decay (smoothingNormalizedSlice_contDiff hζ)
+      (1 + ‖w‖)^N * ‖𝓕 (fun x => smoothingNormalizedAmplitude ζ q (smoothingSlicePoint x t)) w‖ ≤
+        C := by
+  obtain ⟨C, hC, hb⟩ := smoothing_compact_family_fourier_decay (smoothingNormalizedSlice_contDiff
+    hζ)
     (hK.prod (isCompact_Icc : IsCompact (Set.Icc (-24 : ℝ) 24)))
     (isCompact_closedBall (0 : EuclideanSpace ℝ (Fin 2)) 24)
     (fun qt _ => smoothingNormalizedSlice_tsupport ζ qt.1 qt.2) N
@@ -10871,7 +11217,8 @@ theorem smoothingNormalizedSlice_fourier_decay {ζ : (ℝ × ℝ) × ℝ → ℂ
     simpa [Real.fourier_eq'] using hC
 
 /-- Product coordinates for taking spatial Fourier transforms at fixed time. -/
-noncomputable def smoothingSliceEquiv : (EuclideanSpace ℝ (Fin 2)) × ℝ ≃ᵐ EuclideanSpace ℝ (Fin 3) :=
+noncomputable def smoothingSliceEquiv : (EuclideanSpace ℝ (Fin 2)) × ℝ ≃ᵐ EuclideanSpace ℝ (Fin 3)
+  :=
   ((((MeasurableEquiv.toLp 2 (Fin 2 → ℝ)).symm.trans MeasurableEquiv.finTwoArrow).prodCongr
     (MeasurableEquiv.refl ℝ)).trans smoothingSpaceTimeEquiv.symm)
 
@@ -10889,7 +11236,8 @@ theorem smoothing_slice_integral {F : EuclideanSpace ℝ (Fin 3) → ℂ} (hF : 
     (∫ z, F z) = ∫ t : ℝ, ∫ x : EuclideanSpace ℝ (Fin 2), F (smoothingSlicePoint x t) := by
   have hh := smoothingSliceEquiv_measurePreserving.integral_comp' F
   rw [← hh]
-  exact integral_prod_symm _ (smoothingSliceEquiv_measurePreserving.integrable_comp_of_integrable hF)
+  exact integral_prod_symm _ (smoothingSliceEquiv_measurePreserving.integrable_comp_of_integrable
+    hF)
 
 /-- Spatial integration by parts gives decay independently of an arbitrary
 bounded continuous time oscillation. This is the uniform kernel bound needed
@@ -10899,7 +11247,8 @@ theorem smoothing_spatial_oscillatory_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
     ∃ C : ℝ, 0 ≤ C ∧ ∀ q ∈ K, ∀ b : ℝ → ℂ, Continuous b → (∀ t, ‖b t‖ ≤ 1) →
     ∀ w : EuclideanSpace ℝ (Fin 2),
       (1 + ‖w‖)^N * ‖∫ z : EuclideanSpace ℝ (Fin 3),
-        Complex.exp (↑(-2 * Real.pi * inner ℝ (smoothingPlaneEquiv.symm (z 0, z 1)) w) * Complex.I) *
+        Complex.exp (↑(-2 * Real.pi * inner ℝ (smoothingPlaneEquiv.symm (z 0, z 1)) w) *
+          Complex.I) *
           b (z 2) * smoothingNormalizedAmplitude ζ q z‖ ≤ C := by
   obtain ⟨C, hC, hdec⟩ := smoothingNormalizedSlice_fourier_decay hζ hK N
   refine ⟨48 * C, by positivity, ?_⟩
@@ -10923,7 +11272,8 @@ theorem smoothing_spatial_oscillatory_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
   have he (t : ℝ) : U t = b t *
       𝓕 (fun x => smoothingNormalizedAmplitude ζ q (smoothingSlicePoint x t)) w := by
     have hp (x : EuclideanSpace ℝ (Fin 2)) :
-        smoothingPlaneEquiv.symm ((smoothingSlicePoint x t) 0, (smoothingSlicePoint x t) 1) = x := by
+        smoothingPlaneEquiv.symm ((smoothingSlicePoint x t) 0, (smoothingSlicePoint x t) 1) = x :=
+          by
       ext i
       fin_cases i <;> rfl
     dsimp only [U, F]
@@ -10996,12 +11346,12 @@ theorem smoothingOscillatoryIntegrand_spatial_normalize {a : ℝ} (ha : 0 < a)
       ↑(-2 * Real.pi * inner ℝ (smoothingPlaneEquiv.symm (u 0, u 1))
         ((-1 / 2 : ℝ) • CalderonVaillancourt.latt 2 (k.1 + k.2))) * Complex.I +
       ↑Real.pi * Complex.I *
-        Complex.ofReal (((k.1 0 : ℝ) + 2 * p 2 * (k.2 1 : ℝ)) * u 2 + a⁻¹ * (k.2 1 : ℝ) * (u 2)^2) := by
+        Complex.ofReal (((k.1 0 : ℝ) + 2 * p 2 * (k.2 1 : ℝ)) * u 2 + a⁻¹ * (k.2 1 : ℝ) * (u 2)^2)
+          := by
     rw [smoothingOscillatoryPhase_normalize ha.ne']
     simp [PiLp.inner_apply, smoothingResonanceVector,
       CalderonVaillancourt.latt, smoothingPlaneEquiv, Fin.sum_univ_two, Fin.sum_univ_three,
       RCLike.inner_apply]
-
     ring
   have hA : smoothingOscillatoryAmplitude a s p m ζ (p + a⁻¹ • u) =
       smoothingNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m (0, 0)) u := by
@@ -11037,7 +11387,7 @@ theorem smoothingOscillatoryIntegral_spatial_decay {ζ : (ℝ × ℝ) × ℝ →
     ∀ m k : (Fin 2 → ℤ) × (Fin 2 → ℤ), ‖p‖ ≤ R →
     |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 1 →
     |a * p 1 - (m.1 1 : ℝ)| ≤ 1 → |a * p 0 - (m.2 0 : ℝ)| ≤ 1 →
-    |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 1 → |a * s| ≤ 8 →
+    |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 1 → |a * s| ≤ 8 →
     ‖∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k z)) *
       smoothingOscillatoryAmplitude a s p m ζ z‖ ≤
       C * (a^3)⁻¹ * smoothingFrequencyWeight (k.1 + k.2) := by
@@ -11046,7 +11396,9 @@ theorem smoothingOscillatoryIntegral_spatial_decay {ζ : (ℝ × ℝ) × ℝ →
   refine ⟨16 * C, by positivity, ?_⟩
   intro a ha s p m k hp h₀ h₁ h₂ h₃ hs
   have ha0 : 0 < a := by linarith
-  have hq := smoothingNormalizedParameters_bound ha hR p m (0, 0) hp h₀ h₁ h₂ h₃ hs (by simp; linarith)
+  have hq := smoothingNormalizedParameters_bound ha hR p m (0, 0) hp h₀ h₁ h₂ h₃ hs (by
+    simp;
+    linarith)
   let q := smoothingNormalizedParameters a s p m (0, 0)
   let v := CalderonVaillancourt.latt 2 (k.1 + k.2)
   let w := (-1 / 2 : ℝ) • v
@@ -11122,7 +11474,7 @@ theorem smoothing_indicator_energy {ι : Type*} (T : Set ι) (c : ι → ℂ)
     funext k
     by_cases hk : k ∈ T <;> simp [hk]
   rw [he]
-  have hsum : Summable (T.indicator (fun k => ‖c k‖^2)) := summable_subtype_iff_indicator.mp hs
+  have hsum : Summable (T.indicator (fun k => ‖c k‖ ^ 2)) := summable_subtype_iff_indicator.mp hs
   apply (hsum.sum_le_tsum S (fun k _ => ?_)).trans
   · rw [← tsum_subtype]
     exact hb
@@ -11140,7 +11492,7 @@ theorem smoothingMainCorrelation_high_frequency {ζ : (ℝ × ℝ) × ℝ → �
     smoothingPlaneEquiv.symm (p 0 + p 2, p 1) ∈ smoothingSpatialCube (r^γ) m.1 →
     smoothingPlaneEquiv.symm (p 0, p 1 + (p 2)^2) ∈ smoothingSpatialCube (r^γ) m.2 →
     |s| ≤ 8 / r^γ →
-    (∑' k : {k : (Fin 2 → ℤ) × (Fin 2 → ℤ) // r^(1 - γ + ε) ≤ |(k.2 1 : ℝ)|},
+    (∑' k : {k : (Fin 2 → ℤ) × (Fin 2 → ℤ) // r ^ (1 - γ + ε) ≤ |(k.2 1 : ℝ)|},
       ‖smoothingLocalFourierCoefficient (r^γ) m.1 (s, 0) f k.val.1 *
         smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g k.val.2 *
         (∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (r^γ) k.val z)) *
@@ -11157,7 +11509,7 @@ theorem smoothingMainCorrelation_high_frequency {ζ : (ℝ × ℝ) × ℝ → �
   let a := r^γ
   let c₁ := smoothingLocalFourierCoefficient a m.1 (s, 0) f
   let c₂ := smoothingLocalFourierCoefficient a m.2 (0, 2 * s * p 2) g
-  let T : Set (Fin 2 → ℤ) := {k | r^(1 - γ + ε) ≤ |(k 1 : ℝ)|}
+  let T : Set (Fin 2 → ℤ) := {k | r ^ (1 - γ + ε) ≤ |(k 1 : ℝ)|}
   let E : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ)) := {k | k.2 ∈ T}
   let H := fun k : (Fin 2 → ℤ) × (Fin 2 → ℤ) =>
     ∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase a k z)) *
@@ -11191,7 +11543,8 @@ theorem smoothingMainCorrelation_high_frequency {ζ : (ℝ × ℝ) × ℝ → �
   have hD : 0 ≤ K * (a^3)⁻¹ := by positivity
   have hh := smoothing_discarded_frequency_sum_scaled c₁ (T.indicator c₂) hM hfirst hsecond E H hD
     (fun k _ => hkernel a ha1 s p m k (hrad p hp) (hoff₁ 0) (hoff₁ 1) (hoff₂ 0) (hoff₂ 1) hss)
-  have he (k : E) : T.indicator c₂ k.val.2 = c₂ k.val.2 := Set.indicator_of_mem (show k.val.2 ∈ T from k.property) c₂
+  have he (k : E) : T.indicator c₂ k.val.2 = c₂ k.val.2 := Set.indicator_of_mem (show k.val.2 ∈ T
+    from k.property) c₂
   simp_rw [he] at hh
   apply hh.2.trans
   have hainv : (a^3)⁻¹ ≤ 1 := inv_le_one_of_one_le₀ (one_le_pow₀ ha1)
@@ -11226,7 +11579,7 @@ theorem smoothingMainCorrelation_frequency_truncation {ζ : (ℝ × ℝ) × ℝ 
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.1 f))
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.2 g)) ζ s‖ ≤
     C * r^(-(N : ℝ)) +
-    ∑' k : {k : (Fin 2 → ℤ) × (Fin 2 → ℤ) // |(k.2 1 : ℝ)| < r^(1 - γ + ε)},
+    ∑' k : {k : (Fin 2 → ℤ) × (Fin 2 → ℤ) // |(k.2 1 : ℝ)| < r ^ (1 - γ + ε)},
       ‖smoothingLocalFourierCoefficient (r^γ) m.1 (s, 0) f k.val.1‖ *
         ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g k.val.2‖ *
         ‖∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (r^γ) k.val z)) *
@@ -11235,10 +11588,10 @@ theorem smoothingMainCorrelation_frequency_truncation {ζ : (ℝ × ℝ) × ℝ 
   refine ⟨C, hC, ?_⟩
   intro r γ hr hγ s p m f g hf hg hspec hp hp₁ hp₂ hs
   have ha : 0 < r^γ := Real.rpow_pos_of_pos (by linarith) _
-  let E : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ)) := {k | r^(1 - γ + ε) ≤ |(k.2 1 : ℝ)|}
+  let E : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ)) := {k | r ^ (1 - γ + ε) ≤ |(k.2 1 : ℝ)|}
   have hsum := smoothingMainCorrelation_fourier_hasSum ha s p m f g hf hg hζ
   have hsplit := smoothing_norm_sum_split hsum E
-  have he : Eᶜ = {k : (Fin 2 → ℤ) × (Fin 2 → ℤ) | |(k.2 1 : ℝ)| < r^(1 - γ + ε)} := by
+  have he : Eᶜ = {k : (Fin 2 → ℤ) × (Fin 2 → ℤ) | |(k.2 1 : ℝ)| < r ^ (1 - γ + ε)} := by
     ext k
     simp [E, not_le]
   rw [he] at hsplit
@@ -11313,8 +11666,9 @@ theorem smoothing_resonance_strips {L t : ℝ}
 
 /-- Covering the Fourier modes by high, nonstationary, and resonant sets
 in the passage following (3.17). Overlaps only enlarge this majorization. -/
-theorem smoothing_norm_sum_cover_three {ι : Type*} {F : ι → ℂ} {H : ℂ}
-    (hF : HasSum F H) (E₁ E₂ E₃ : Set ι) (hcover : ∀ k, k ∈ E₁ ∨ k ∈ E₂ ∨ k ∈ E₃) :
+theorem smoothing_norm_sum_cover_three {ι : Type*} {F : ι → ℂ} {H : ℂ} (hF : HasSum F H) (E₁ E₂
+    E₃ : Set ι)
+    (hcover : ∀ k, k ∈ E₁ ∨ k ∈ E₂ ∨ k ∈ E₃) :
     ‖H‖ ≤ (∑' k : E₁, ‖F k.val‖) + (∑' k : E₂, ‖F k.val‖) + ∑' k : E₃, ‖F k.val‖ := by
   classical
   let f := fun k => ‖F k‖
@@ -11337,7 +11691,8 @@ theorem smoothing_norm_sum_cover_three {ι : Type*} {F : ι → ℂ} {H : ℂ}
 /-- The spatial frequency weight never exceeds one, so its kernel estimate
 also gives the trivial localization-volume bound used after (3.17). -/
 theorem smoothingFrequencyWeight_le_one (k : Fin 2 → ℤ) : smoothingFrequencyWeight k ≤ 1 := by
-  exact inv_le_one_of_one_le₀ (one_le_pow₀ (by linarith [norm_nonneg (CalderonVaillancourt.latt 2 k)]))
+  exact inv_le_one_of_one_le₀ (one_le_pow₀
+    (by linarith [norm_nonneg (CalderonVaillancourt.latt 2 k)]))
 
 /-- The localization-volume kernel bound leaves the resonant coefficient
 sum in the unnumbered display immediately before (3.18). -/
@@ -11353,7 +11708,8 @@ theorem smoothing_resonant_kernel_sum (c₁ c₂ : (Fin 2 → ℤ) → ℂ)
     rw [norm_mul]
     have hh : ‖H k.val‖ ≤ D := (hH k.val).trans
       (by simpa using mul_le_mul_of_nonneg_left (smoothingFrequencyWeight_le_one _) hD)
-    simpa only [mul_comm] using mul_le_mul_of_nonneg_left hh (norm_nonneg (c₁ k.val.1 * c₂ k.val.2))
+    simpa only [mul_comm] using mul_le_mul_of_nonneg_left hh (norm_nonneg (c₁ k.val.1 * c₂
+      k.val.2))
   have hnorm := Summable.of_nonneg_of_le (fun _ => norm_nonneg _) hb hs
   simpa only [tsum_mul_left] using hnorm.tsum_le_tsum hb hs
 
@@ -11373,7 +11729,7 @@ theorem smoothingMainCorrelation_resonant_majorization {ζ : (ℝ × ℝ) × ℝ
     ‖smoothingMainCorrelation (r^γ) ((p 0, p 1), p 2)
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.1 f))
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.2 g)) ζ s‖ ≤
-    C * r^(-(N : ℝ)) + D * ((r^γ)^3)⁻¹ *
+    C * r^(-(N : ℝ)) + D * ((r ^ γ)^3)⁻¹ *
       ∑' k : smoothingResonantFrequencies (r^ε₂) (p 2),
         ‖smoothingLocalFourierCoefficient (r^γ) m.1 (s, 0) f k.val.1 *
           smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g k.val.2‖ := by
@@ -11385,11 +11741,11 @@ theorem smoothingMainCorrelation_resonant_majorization {ζ : (ℝ × ℝ) × ℝ
   intro r γ hr hγ hsmall s p m f g hf hg hspec hp hp₁ hp₂ hs
   have ha1 := (smoothing_spatial_scale_bounds hr hγ).1
   have ha : 0 < r^γ := by linarith
-  let E₁ : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ)) := {k | r^(1 - γ + ε₁) ≤ |(k.2 1 : ℝ)|}
+  let E₁ : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ)) := {k | r ^ (1 - γ + ε₁) ≤ |(k.2 1 : ℝ)|}
   let E₂ := smoothingNonresonantFrequencies (r^γ) (r^ε₂) (p 2)
   let E₃ := smoothingResonantFrequencies (r^ε₂) (p 2)
   have hcover (k : (Fin 2 → ℤ) × (Fin 2 → ℤ)) : k ∈ E₁ ∨ k ∈ E₂ ∨ k ∈ E₃ := by
-    by_cases hh : r^(1 - γ + ε₁) ≤ |(k.2 1 : ℝ)|
+    by_cases hh : r ^ (1 - γ + ε₁) ≤ |(k.2 1 : ℝ)|
     · exact Or.inl hh
     · have hk := smoothing_nonstationary_curvature hr hsmall (lt_of_not_ge hh).le
       by_cases hn : r^ε₂ ≤ ‖CalderonVaillancourt.latt 2 (k.1 + k.2)‖ ∨
@@ -11415,7 +11771,7 @@ theorem smoothingMainCorrelation_resonant_majorization {ζ : (ℝ × ℝ) × ℝ
     (smoothingLocalFourierCoefficient_summable ha m.2 (0, 2 * s * p 2) g) E₃
     (fun k => ∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (r^γ) k z)) *
       smoothingOscillatoryAmplitude (r^γ) s p m ζ z)
-    (by positivity : 0 ≤ D * ((r^γ)^3)⁻¹)
+    (by positivity : 0 ≤ D * ((r ^ γ)^3)⁻¹)
     (fun k => hkernel (r^γ) ha1 s p m k (hrad p hp) (hoff₁ 0) (hoff₁ 1) (hoff₂ 0) (hoff₂ 1) hss)
   apply hbound.trans
   apply (add_le_add (add_le_add hhi hnr) hres).trans_eq
@@ -11428,7 +11784,8 @@ theorem smoothing_frequency_mem_box {L : ℝ} (hL : 1 ≤ L) (k : Fin 2 → ℤ)
   simp only [smoothingSpatialIndices, Fintype.mem_piFinset, Finset.mem_Icc]
   intro i
   have hi : |(k i : ℝ)| ≤ L := by
-    simpa [CalderonVaillancourt.latt] using (PiLp.norm_apply_le (CalderonVaillancourt.latt 2 k) i).trans hk
+    simpa [CalderonVaillancourt.latt] using (PiLp.norm_apply_le (CalderonVaillancourt.latt 2 k)
+      i).trans hk
   have hceil : L ≤ (⌈L * (1 + 1^2 + 1)⌉ : ℝ) :=
     (by linarith : L ≤ L * (1 + 1^2 + 1)).trans (Int.le_ceil _)
   have hb := (abs_le.mp (hi.trans hceil))
@@ -11489,7 +11846,7 @@ theorem smoothing_finite_frequency_schur_energy {α β : Type*} (S : Finset α) 
     (A : α → ℝ) (B : β → ℝ) (W : α → β → ℝ) {C A₀ B₀ : ℝ}
     (hC : 0 ≤ C) (_ : 0 ≤ A₀) (_ : 0 ≤ B₀) (hW : ∀ i j, 0 ≤ W i j)
     (hrow : ∀ i ∈ S, ∑ j ∈ T, W i j ≤ C) (hcol : ∀ j ∈ T, ∑ i ∈ S, W i j ≤ C)
-    (hA : ∑ i ∈ S, (A i)^2 ≤ A₀) (hB : ∑ j ∈ T, (B j)^2 ≤ B₀) :
+    (hA : ∑ i ∈ S, (A i) ^ 2 ≤ A₀) (hB : ∑ j ∈ T, (B j) ^ 2 ≤ B₀) :
     ∑ i ∈ S, ∑ j ∈ T, W i j * A i * B j ≤ C * Real.sqrt A₀ * Real.sqrt B₀ := by
   have hleft : ∑ ij ∈ S ×ˢ T, (Real.sqrt (W ij.1 ij.2) * A ij.1)^2 ≤ C * A₀ := by
     simp only [mul_pow, Real.sq_sqrt (hW _ _), Finset.sum_product]
@@ -11531,8 +11888,8 @@ theorem smoothing_frequency_schur_energy {α β : Type*} (A : α → ℝ) (B : �
     (hApos : ∀ i, 0 ≤ A i) (hBpos : ∀ j, 0 ≤ B j) (hW : ∀ i j, 0 ≤ W i j)
     (hrow : ∀ i, ∀ T : Finset β, ∑ j ∈ T, W i j ≤ C)
     (hcol : ∀ j, ∀ S : Finset α, ∑ i ∈ S, W i j ≤ C)
-    (hA : ∀ S : Finset α, ∑ i ∈ S, (A i)^2 ≤ A₀)
-    (hB : ∀ T : Finset β, ∑ j ∈ T, (B j)^2 ≤ B₀) :
+    (hA : ∀ S : Finset α, ∑ i ∈ S, (A i) ^ 2 ≤ A₀)
+    (hB : ∀ T : Finset β, ∑ j ∈ T, (B j) ^ 2 ≤ B₀) :
     Summable (fun k : α × β => W k.1 k.2 * A k.1 * B k.2) ∧
     (∑' k : α × β, W k.1 k.2 * A k.1 * B k.2) ≤ C * Real.sqrt A₀ * Real.sqrt B₀ := by
   classical
@@ -11557,8 +11914,8 @@ def smoothingResonantStrip (B t : ℝ) : Set (Fin 2 → ℤ) :=
 /-- Cauchy-Schwarz and the bounded frequency fibers give the first
 resonant coefficient-energy estimate in (3.18). -/
 theorem smoothing_resonance_energy_first {L R t : ℝ} (hL : 1 ≤ L) (ht : |t| ≤ R)
-    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (hs₁ : Summable (fun k => ‖c₁ k‖^2))
-    (h₂ : ∀ S : Finset (Fin 2 → ℤ), ∑ k ∈ S, ‖c₂ k‖^2 ≤ 1) :
+    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (hs₁ : Summable (fun k => ‖c₁ k‖ ^ 2)) (h₂ : ∀ S : Finset (Fin 2
+      → ℤ), ∑ k ∈ S, ‖c₂ k‖^2 ≤ 1) :
     (∑' k : smoothingResonantFrequencies L t, ‖c₁ k.val.1 * c₂ k.val.2‖) ≤
       81 * L^2 * Real.sqrt (∑' k : smoothingResonantStrip ((1 + 2 * R) * L) t, ‖c₁ k.val‖^2) := by
   classical
@@ -11568,7 +11925,8 @@ theorem smoothing_resonance_energy_first {L R t : ℝ} (hL : 1 ≤ L) (ht : |t| 
   let W := fun i j => if (i, j) ∈ smoothingResonantFrequencies L t then (1 : ℝ) else 0
   let E := ∑' k : T, ‖c₁ k.val‖^2
   have hE : 0 ≤ E := tsum_nonneg (fun _ => sq_nonneg _)
-  have hstrip {k : (Fin 2 → ℤ) × (Fin 2 → ℤ)} (hk : k ∈ smoothingResonantFrequencies L t) : k.1 ∈ T := by
+  have hstrip {k : (Fin 2 → ℤ) × (Fin 2 → ℤ)} (hk : k ∈ smoothingResonantFrequencies L t) : k.1 ∈
+    T := by
     apply (smoothing_resonance_strips hk).1.trans
     exact mul_le_mul_of_nonneg_right (by linarith) (by linarith)
   have hA := smoothing_indicator_energy T c₁ (hs₁.subtype T) (le_refl E)
@@ -11589,7 +11947,7 @@ theorem smoothing_resonance_energy_first {L R t : ℝ} (hL : 1 ≤ L) (ht : |t| 
 /-- The spatial-volume and frequency-fiber factors combine into the
 lambda exponent appearing in (3.18)-(3.19). -/
 theorem smoothing_resonant_scale {r : ℝ} (hr : 0 < r) (γ ε : ℝ) :
-    ((r^γ)^3)⁻¹ * (r^ε)^2 = r^(-3 * γ + 2 * ε) := by
+    ((r ^ γ)^3)⁻¹ * (r^ε)^2 = r ^ (-3 * γ + 2 * ε) := by
   rw [← Real.rpow_mul_natCast hr.le γ 3, ← Real.rpow_mul_natCast hr.le ε 2,
     ← Real.rpow_neg hr.le, ← Real.rpow_add hr]
   congr 1
@@ -11612,7 +11970,7 @@ theorem smoothing_eq3_18 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ 
     ‖smoothingMainCorrelation (r^γ) ((p 0, p 1), p 2)
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.1 f))
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.2 g)) ζ s‖ ≤
-    C * r^(-(N : ℝ)) + D * r^(-3 * γ + 2 * ε₂) *
+    C * r^(-(N : ℝ)) + D * r ^ (-3 * γ + 2 * ε₂) *
       Real.sqrt (∑' k : smoothingResonantStrip (B * r^ε₂) (p 2),
         ‖smoothingLocalFourierCoefficient (r^γ) m.1 (s, 0) f k.val‖^2) := by
   obtain ⟨R, hR, hrad⟩ := smoothing_cutoff_euclidean_bound hc
@@ -11633,8 +11991,9 @@ theorem smoothing_eq3_18 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ 
     (smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g) he₁.summable hsecond
   have hh := hmain r γ hr hγ hsmall s p m f g hf hg hspec hp hp₁ hp₂ hs
   apply hh.trans
-  apply (add_le_add le_rfl (mul_le_mul_of_nonneg_left hcoef (by positivity : 0 ≤ D * ((r^γ)^3)⁻¹))).trans_eq
-  calc _ = C * r^(-(N : ℝ)) + (81 * D) * (((r^γ)^3)⁻¹ * (r^ε₂)^2) *
+  apply (add_le_add le_rfl (mul_le_mul_of_nonneg_left hcoef
+    (by positivity : 0 ≤ D * ((r ^ γ)^3)⁻¹))).trans_eq
+  calc _ = C * r^(-(N : ℝ)) + (81 * D) * (((r ^ γ)^3)⁻¹ * (r^ε₂)^2) *
       Real.sqrt (∑' k : smoothingResonantStrip ((1 + 2 * R) * r^ε₂) (p 2),
         ‖smoothingLocalFourierCoefficient (r^γ) m.1 (s, 0) f k.val‖^2) := by ring
        _ = _ := by rw [smoothing_resonant_scale hr0]
@@ -11644,7 +12003,7 @@ the coefficient bound used in (3.19). -/
 theorem smoothing_resonance_energy_second {L t : ℝ} (hL : 1 ≤ L)
     (c₁ c₂ : (Fin 2 → ℤ) → ℂ)
     (h₁ : ∀ S : Finset (Fin 2 → ℤ), ∑ k ∈ S, ‖c₁ k‖^2 ≤ 1)
-    (hs₂ : Summable (fun k => ‖c₂ k‖^2)) :
+    (hs₂ : Summable (fun k => ‖c₂ k‖ ^ 2)) :
     (∑' k : smoothingResonantFrequencies L t, ‖c₁ k.val.1 * c₂ k.val.2‖) ≤
       81 * L^2 * Real.sqrt (∑' k : smoothingResonantStrip (2 * L) t, ‖c₂ k.val‖^2) := by
   classical
@@ -11687,7 +12046,7 @@ theorem smoothing_eq3_19 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ 
     ‖smoothingMainCorrelation (r^γ) ((p 0, p 1), p 2)
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.1 f))
       (smoothingPlaneFunction (smoothingSpatialPiece (r^γ) m.2 g)) ζ s‖ ≤
-    C * r^(-(N : ℝ)) + D * r^(-3 * γ + 2 * ε₂) *
+    C * r^(-(N : ℝ)) + D * r ^ (-3 * γ + 2 * ε₂) *
       Real.sqrt (∑' k : smoothingResonantStrip (2 * r^ε₂) (p 2),
         ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g k.val‖^2) := by
   obtain ⟨C, D, hC, hD, hmain⟩ := smoothingMainCorrelation_resonant_majorization hζ hc hε₁ hε₂ N
@@ -11705,8 +12064,9 @@ theorem smoothing_eq3_19 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ 
     (smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g) hfirst he₂.summable
   have hh := hmain r γ hr hγ hsmall s p m f g hf hg hspec hp hp₁ hp₂ hs
   apply hh.trans
-  apply (add_le_add le_rfl (mul_le_mul_of_nonneg_left hcoef (by positivity : 0 ≤ D * ((r^γ)^3)⁻¹))).trans_eq
-  calc _ = C * r^(-(N : ℝ)) + (81 * D) * (((r^γ)^3)⁻¹ * (r^ε₂)^2) *
+  apply (add_le_add le_rfl (mul_le_mul_of_nonneg_left hcoef
+    (by positivity : 0 ≤ D * ((r ^ γ)^3)⁻¹))).trans_eq
+  calc _ = C * r^(-(N : ℝ)) + (81 * D) * (((r ^ γ)^3)⁻¹ * (r^ε₂)^2) *
       Real.sqrt (∑' k : smoothingResonantStrip (2 * r^ε₂) (p 2),
         ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * p 2) g k.val‖^2) := by ring
        _ = _ := by rw [smoothing_resonant_scale hr0]
@@ -11745,12 +12105,14 @@ theorem smoothingLocalFourierCoefficient_restricted_energy (a : ℝ) (m : Fin 2 
     (∀ s, 0 ≤ (∑' k : T, ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) ∧
       (∑' k : T, ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) ≤ 1) ∧
     (∀ l u : ℝ, IntegrableOn
-      (fun s => ∑' k : T, ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) (Set.Icc l u)) := by
+      (fun s => ∑' k : T, ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) (Set.Icc l u))
+        := by
   have hm : Measurable (fun s => ∑' k : T,
       ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) := by
     apply Measurable.tsum
     intro k
-    exact (((smoothingLocalFourierCoefficient_continuous_increment a m f hf k.val).comp hv).norm.pow 2).measurable
+    exact (((smoothingLocalFourierCoefficient_continuous_increment a m f hf k.val).comp
+      hv).norm.pow 2).measurable
   have hb : ∀ s, 0 ≤ (∑' k : T, ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) ∧
       (∑' k : T, ‖smoothingLocalFourierCoefficient a m (v s) f k.val‖^2) ≤ 1 := by
     intro s
@@ -11766,14 +12128,13 @@ theorem smoothingLocalFourierCoefficient_restricted_energy (a : ℝ) (m : Fin 2 
 
 /-- The two Cauchy--Schwarz applications in (3.20), over a finite set of
 interaction indices and a bounded increment interval. -/
-theorem smoothing_increment_energy_cauchy_schwarz {ι : Type*} (S : Finset ι)
-    (E : ι → ℝ → ℝ) (hE : ∀ i, Measurable (E i))
-    (hE0 : ∀ i s, 0 ≤ E i s) (hE1 : ∀ i s, E i s ≤ 1) (l u : ℝ) :
+theorem smoothing_increment_energy_cauchy_schwarz {ι : Type*} (S : Finset ι) (E : ι → ℝ → ℝ)
+    (hE : ∀ i, Measurable (E i)) (hE0 : ∀ i s, 0 ≤ E i s) (hE1 : ∀ i s, E i s ≤ 1) (l u : ℝ) :
     (∫ s in Set.Icc l u, ∑ i ∈ S, Real.sqrt (E i s)) ≤
       Real.sqrt (S.card : ℝ) * Real.sqrt ((volume (Set.Icc l u)).toReal) *
         Real.sqrt (∫ s in Set.Icc l u, ∑ i ∈ S, E i s) := by
   let μ : Measure ℝ := volume.restrict (Set.Icc l u)
-  letI : IsFiniteMeasure μ := ⟨by simp [μ]⟩
+  let : IsFiniteMeasure μ := ⟨by simp [μ]⟩
   have hsum : Measurable (fun s => ∑ i ∈ S, E i s) := by fun_prop
   have hsum0 : ∀ s, 0 ≤ ∑ i ∈ S, E i s := fun s => Finset.sum_nonneg (fun i _ => hE0 i s)
   have hsum1 : ∀ s, (∑ i ∈ S, E i s) ≤ (S.card : ℝ) := by
@@ -11798,7 +12159,8 @@ theorem smoothing_increment_energy_cauchy_schwarz {ι : Type*} (S : Finset ι)
   calc
     _ ≤ ∫ s, Real.sqrt (S.card : ℝ) * Real.sqrt (∑ i ∈ S, E i s) ∂μ := by
       apply integral_mono_of_nonneg
-        (Filter.Eventually.of_forall (fun s => Finset.sum_nonneg (fun i _ => Real.sqrt_nonneg _))) hint
+        (Filter.Eventually.of_forall (fun s => Finset.sum_nonneg (fun i _ => Real.sqrt_nonneg _)))
+          hint
       filter_upwards [] with s
       simpa only [Real.sqrt_one, one_mul, Finset.sum_const, nsmul_eq_mul, mul_one] using
         Real.sum_sqrt_mul_sqrt_le S (fun _ => (by norm_num : (0 : ℝ) ≤ 1)) (fun i => hE0 i s)
@@ -11840,7 +12202,8 @@ theorem smoothing_increment_correlation_bound {ι : Type*} (S : Finset ι)
         (hconst.add (hsumroot.const_mul D)) measurableSet_Icc
       intro s hs
       simpa only [Finset.sum_add_distrib, Finset.sum_const, nsmul_eq_mul,
-        ← Finset.mul_sum, mul_comm C, Pi.add_apply] using! Finset.sum_le_sum (fun i hi => hb i hi s hs)
+        ← Finset.mul_sum, mul_comm C, Pi.add_apply] using! Finset.sum_le_sum (fun i hi => hb i hi
+          s hs)
     _ = C * (S.card : ℝ) * (volume (Set.Icc l u)).toReal +
         D * ∫ s in Set.Icc l u, ∑ i ∈ S, Real.sqrt (E i s) := by
       rw [integral_add hconst (hsumroot.const_mul D)]
@@ -11855,12 +12218,15 @@ theorem smoothing_increment_correlation_bound {ι : Type*} (S : Finset ι)
 /-- The increment interval in (3.20) has length sixteen times the inverse
 spatial scale. Combined with (3.6), its counting factor is O(a). -/
 theorem smoothing_increment_count_scale {a K n : ℝ} (ha : 0 < a)
-    (_ : 0 ≤ K) (hn0 : 0 ≤ n) (hn : n ≤ K * a^3) :
+    (_ : 0 ≤ K) (hn0 : 0 ≤ n) (hn : n ≤ K * a ^ 3) :
     (volume (Set.Icc (-(8 / a)) (8 / a))).toReal = 16 / a ∧
     n * (16 / a) ≤ 16 * K * a^2 ∧
     Real.sqrt n * Real.sqrt (16 / a) ≤ 4 * Real.sqrt K * a := by
   have hvol : (volume (Set.Icc (-(8 / a)) (8 / a))).toReal = 16 / a := by
-    rw [Real.volume_Icc, ENNReal.toReal_ofReal (by simpa only [sub_neg_eq_add] using add_nonneg (div_nonneg (by norm_num) ha.le) (div_nonneg (by norm_num) ha.le))]
+    rw [Real.volume_Icc, ENNReal.toReal_ofReal
+      (by
+        simpa only [sub_neg_eq_add] using add_nonneg (div_nonneg (by norm_num) ha.le) (div_nonneg
+          (by norm_num) ha.le))]
     ring
   have hprod : n * (16 / a) ≤ 16 * K * a^2 := by
     rw [← mul_div_assoc, div_le_iff₀ ha]
@@ -11876,42 +12242,42 @@ theorem smoothing_increment_count_scale {a K n : ℝ} (ha : 0 < a)
 increment-length bounds into the integrated correlation estimate. -/
 theorem smoothing_increment_integral_scale {r γ ε C D K n J E : ℝ}
     (hr : 1 ≤ r) (hC : 0 ≤ C) (hD : 0 ≤ D) (hK : 0 ≤ K)
-    (hn0 : 0 ≤ n) (hn : n ≤ K * (r^γ)^3)
-    (hJ : J ≤ (C * r^(-4 : ℝ)) * n * (16 / r^γ) +
-      (D * r^(-3 * γ + 2 * ε)) * Real.sqrt n * Real.sqrt (16 / r^γ) * Real.sqrt E) :
-    J ≤ (16 * C * K) * r^(2 * γ - 4) +
-      (4 * D * Real.sqrt K) * r^(-2 * γ + 2 * ε) * Real.sqrt E := by
+    (hn0 : 0 ≤ n) (hn : n ≤ K * (r ^ γ) ^ 3)
+    (hJ : J ≤ (C * r ^ (-4 : ℝ)) * n * (16 / r ^ γ) +
+      (D * r ^ (-3 * γ + 2 * ε)) * Real.sqrt n * Real.sqrt (16 / r ^ γ) * Real.sqrt E) :
+    J ≤ (16 * C * K) * r ^ (2 * γ - 4) +
+      (4 * D * Real.sqrt K) * r ^ (-2 * γ + 2 * ε) * Real.sqrt E := by
   have hr0 : 0 < r := by linarith
   have ha : 0 < r^γ := Real.rpow_pos_of_pos hr0 _
   obtain ⟨_, hprod, hroot⟩ := smoothing_increment_count_scale ha hK hn0 hn
-  have hp₁ : r^(-4 : ℝ) * (r^γ)^2 = r^(2 * γ - 4) := by
+  have hp₁ : r ^ (-4 : ℝ) * (r^γ)^2 = r ^ (2 * γ - 4) := by
     rw [← Real.rpow_mul_natCast hr0.le γ 2, ← Real.rpow_add hr0]
     congr 1
     ring
-  have hp₂ : r^(-3 * γ + 2 * ε) * r^γ = r^(-2 * γ + 2 * ε) := by
+  have hp₂ : r ^ (-3 * γ + 2 * ε) * r^γ = r ^ (-2 * γ + 2 * ε) := by
     rw [← Real.rpow_add hr0]
     congr 1
     ring
-  have hfirst := mul_le_mul_of_nonneg_left hprod (by positivity : 0 ≤ C * r^(-4 : ℝ))
+  have hfirst := mul_le_mul_of_nonneg_left hprod (by positivity : 0 ≤ C * r ^ (-4 : ℝ))
   have hsecond := mul_le_mul_of_nonneg_right
-    (mul_le_mul_of_nonneg_left hroot (by positivity : 0 ≤ D * r^(-3 * γ + 2 * ε)))
+    (mul_le_mul_of_nonneg_left hroot (by positivity : 0 ≤ D * r ^ (-3 * γ + 2 * ε)))
     (Real.sqrt_nonneg E)
   calc
     J ≤ _ := hJ
-    _ ≤ (C * r^(-4 : ℝ)) * (16 * K * (r^γ)^2) +
-        (D * r^(-3 * γ + 2 * ε)) * (4 * Real.sqrt K * r^γ) * Real.sqrt E := by
+    _ ≤ (C * r ^ (-4 : ℝ)) * (16 * K * (r ^ γ)^2) +
+        (D * r ^ (-3 * γ + 2 * ε)) * (4 * Real.sqrt K * r ^ γ) * Real.sqrt E := by
       simpa only [mul_assoc] using add_le_add hfirst hsecond
     _ = _ := by
       calc
-        _ = (16 * C * K) * (r^(-4 : ℝ) * (r^γ)^2) +
-          (4 * D * Real.sqrt K) * (r^(-3 * γ + 2 * ε) * r^γ) * Real.sqrt E := by ring
+        _ = (16 * C * K) * (r ^ (-4 : ℝ) * (r ^ γ)^2) +
+          (4 * D * Real.sqrt K) * (r ^ (-3 * γ + 2 * ε) * r ^ γ) * Real.sqrt E := by ring
         _ = _ := by rw [hp₁, hp₂]
 
 /-- Taking the outer square root in (3.11) gives exactly the quarter-power
 energy and the scale lambda^(-gamma/2+epsilon-two) displayed in (3.20). -/
 theorem smoothing_increment_quarter_power {r γ ε A B J E : ℝ}
     (hr : 1 ≤ r) (hγ : γ ≤ 1) (hA : 0 ≤ A) (hB : 0 ≤ B) (hE : 0 ≤ E)
-    (hJ : J ≤ A * r^(2 * γ - 4) + B * r^(-2 * γ + 2 * ε) * Real.sqrt E) :
+    (hJ : J ≤ A * r ^ (2 * γ - 4) + B * r ^ (-2 * γ + 2 * ε) * Real.sqrt E) :
     r^(γ / 2) * Real.sqrt J ≤ Real.sqrt A * r^(-(γ - 1 / 2)) +
       Real.sqrt B * r^(-γ / 2 + ε) * E^(1 / 4 : ℝ) := by
   have hr0 : 0 < r := by linarith
@@ -11919,12 +12285,12 @@ theorem smoothing_increment_quarter_power {r γ ε A B J E : ℝ}
     rw [← Real.rpow_mul_natCast hr0.le x 2]
     congr 1
     ring
-  have hx : (Real.sqrt A * r^(γ - 2))^2 = A * r^(2 * γ - 4) := by
+  have hx : (Real.sqrt A * r^(γ - 2))^2 = A * r ^ (2 * γ - 4) := by
     rw [mul_pow, Real.sq_sqrt hA, hpow]
     congr 2
     ring
   have hy : (Real.sqrt B * r^(-γ + ε) * Real.sqrt (Real.sqrt E))^2 =
-      B * r^(-2 * γ + 2 * ε) * Real.sqrt E := by
+      B * r ^ (-2 * γ + 2 * ε) * Real.sqrt E := by
     simp only [mul_pow, Real.sq_sqrt hB, Real.sq_sqrt (Real.sqrt_nonneg E), hpow]
     congr 2
     congr 1
@@ -11938,7 +12304,7 @@ theorem smoothing_increment_quarter_power {r γ ε A B J E : ℝ}
   have hquarter : Real.sqrt (Real.sqrt E) = E^(1 / 4 : ℝ) := by
     rw [Real.sqrt_eq_rpow, Real.sqrt_eq_rpow, ← Real.rpow_mul hE]
     norm_num
-  have hp₁ : r^(γ / 2) * r^(γ - 2) = r^(3 * γ / 2 - 2) := by
+  have hp₁ : r^(γ / 2) * r^(γ - 2) = r ^ (3 * γ / 2 - 2) := by
     rw [← Real.rpow_add hr0]
     congr 1
     ring
@@ -11946,13 +12312,13 @@ theorem smoothing_increment_quarter_power {r γ ε A B J E : ℝ}
     rw [← Real.rpow_add hr0]
     congr 1
     ring
-  have herr : r^(3 * γ / 2 - 2) ≤ r^(-(γ - 1 / 2)) :=
+  have herr : r ^ (3 * γ / 2 - 2) ≤ r^(-(γ - 1 / 2)) :=
     Real.rpow_le_rpow_of_exponent_le hr (by linarith)
   calc
     _ ≤ r^(γ / 2) * (Real.sqrt A * r^(γ - 2) +
         Real.sqrt B * r^(-γ + ε) * Real.sqrt (Real.sqrt E)) :=
       mul_le_mul_of_nonneg_left hroot (by positivity)
-    _ = Real.sqrt A * r^(3 * γ / 2 - 2) +
+    _ = Real.sqrt A * r ^ (3 * γ / 2 - 2) +
         Real.sqrt B * r^(-γ / 2 + ε) * E^(1 / 4 : ℝ) := by
       rw [hquarter]
       calc
@@ -11975,7 +12341,8 @@ theorem smoothing_eq3_20_first {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDif
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingInteractionIndices ζ (r^γ) f g ∧
     (∀ m ∈ S, ζ (P m) ≠ 0 ∧
       smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r^γ) m.1 ∧
-      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2^2) ∈ smoothingSpatialCube (r^γ) m.2) ∧
+      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2^2) ∈ smoothingSpatialCube (r^γ)
+        m.2) ∧
     smoothingLocalizedL1 ζ f g ≤ C * r^(-(γ - 1 / 2)) + D * r^(-γ / 2 + ε₂) *
       (∫ s in Set.Icc (-(8 / r^γ)) (8 / r^γ), ∑ m ∈ S,
         ∑' k : smoothingResonantStrip (B * r^ε₂) (P m).2,
@@ -12009,7 +12376,7 @@ theorem smoothing_eq3_20_first {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDif
     apply smoothingMainCorrelation_zero hζ ha
     exact lt_of_not_ge (fun h => hs (abs_le.mp h))
   have hb : ∀ m ∈ S, ∀ s ∈ Set.Icc (-(8 / r^γ)) (8 / r^γ),
-      ‖H m s‖ ≤ C * r^(-4 : ℝ) + (D * r^(-3 * γ + 2 * ε₂)) * Real.sqrt (E m s) := by
+      ‖H m s‖ ≤ C * r ^ (-4 : ℝ) + (D * r ^ (-3 * γ + 2 * ε₂)) * Real.sqrt (E m s) := by
     intro m hm s hs
     let p : EuclideanSpace ℝ (Fin 3) := WithLp.toLp 2 ![(P m).1.1, (P m).1.2, (P m).2]
     have hh := hpoint r γ hr hγ hsmall s p m f g hf hg hspec
@@ -12018,7 +12385,7 @@ theorem smoothing_eq3_20_first {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDif
       Matrix.cons_val_one, Matrix.cons_val, Matrix.head_cons] using hh
   have hi := smoothing_increment_correlation_bound S H E hH (fun m => (he m).1)
     (fun m s => ((he m).2.1 s).1) (fun m s => ((he m).2.1 s).2)
-    (-(8 / r^γ)) (8 / r^γ) (C * r^(-4 : ℝ)) (D * r^(-3 * γ + 2 * ε₂))
+    (-(8 / r^γ)) (8 / r^γ) (C * r ^ (-4 : ℝ)) (D * r ^ (-3 * γ + 2 * ε₂))
     (by positivity) hzero hb
   have hcard : (S.card : ℝ) ≤ K * (r^γ)^3 := by
     have hh := (hcount (r^γ) (smoothing_spatial_scale_bounds hr hγ).1 f g).2
@@ -12145,11 +12512,13 @@ theorem smoothing_eq3_20_second_before_change {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingInteractionIndices ζ (r^γ) f g ∧
     (∀ m ∈ S, ζ (P m) ≠ 0 ∧
       smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r^γ) m.1 ∧
-      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2^2) ∈ smoothingSpatialCube (r^γ) m.2) ∧
+      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2^2) ∈ smoothingSpatialCube (r^γ)
+        m.2) ∧
     smoothingLocalizedL1 ζ f g ≤ C * r^(-(γ - 1 / 2)) + D * r^(-γ / 2 + ε₂) *
       (∫ s in Set.Icc (-(8 / r^γ)) (8 / r^γ), ∑ m ∈ S,
         ∑' k : smoothingResonantStrip (B * r^ε₂) (P m).2,
-          ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * (P m).2) g k.val‖^2)^(1 / 4 : ℝ) := by
+          ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * (P m).2) g k.val‖^2)^(1 / 4 : ℝ)
+            := by
   obtain ⟨C₀, C₁, hC₀, hC₁, hform⟩ := smoothing_eq3_11 hζ hc
   obtain ⟨C, D, hC, hD, hpoint⟩ := smoothing_eq3_19 hζ hc hε₁ hε₂ 4
   let B : ℝ := 2
@@ -12181,7 +12550,7 @@ theorem smoothing_eq3_20_second_before_change {ζ : (ℝ × ℝ) × ℝ → ℂ}
     apply smoothingMainCorrelation_zero hζ ha
     exact lt_of_not_ge (fun h => hs (abs_le.mp h))
   have hb : ∀ m ∈ S, ∀ s ∈ Set.Icc (-(8 / r^γ)) (8 / r^γ),
-      ‖H m s‖ ≤ C * r^(-4 : ℝ) + (D * r^(-3 * γ + 2 * ε₂)) * Real.sqrt (E m s) := by
+      ‖H m s‖ ≤ C * r ^ (-4 : ℝ) + (D * r ^ (-3 * γ + 2 * ε₂)) * Real.sqrt (E m s) := by
     intro m hm s hs
     let p : EuclideanSpace ℝ (Fin 3) := WithLp.toLp 2 ![(P m).1.1, (P m).1.2, (P m).2]
     have hh := hpoint r γ hr hγ hsmall s p m f g hf hg hspec
@@ -12190,7 +12559,7 @@ theorem smoothing_eq3_20_second_before_change {ζ : (ℝ × ℝ) × ℝ → ℂ}
       Matrix.cons_val_one, Matrix.cons_val, Matrix.head_cons] using hh
   have hi := smoothing_increment_correlation_bound S H E hH (fun m => (he m).1)
     (fun m s => ((he m).2.1 s).1) (fun m s => ((he m).2.1 s).2)
-    (-(8 / r^γ)) (8 / r^γ) (C * r^(-4 : ℝ)) (D * r^(-3 * γ + 2 * ε₂))
+    (-(8 / r^γ)) (8 / r^γ) (C * r ^ (-4 : ℝ)) (D * r ^ (-3 * γ + 2 * ε₂))
     (by positivity) hzero hb
   have hcard : (S.card : ℝ) ≤ K * (r^γ)^3 := by
     have hh := (hcount (r^γ) (smoothing_spatial_scale_bounds hr hγ).1 f g).2
@@ -12226,9 +12595,10 @@ theorem smoothing_eq3_20_second {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDi
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingInteractionIndices ζ (r^γ) f g ∧
     (∀ m ∈ S, ζ (P m) ≠ 0 ∧
       smoothingPlaneEquiv.symm ((P m).1.1 + (P m).2, (P m).1.2) ∈ smoothingSpatialCube (r^γ) m.1 ∧
-      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2^2) ∈ smoothingSpatialCube (r^γ) m.2) ∧
+      smoothingPlaneEquiv.symm ((P m).1.1, (P m).1.2 + (P m).2^2) ∈ smoothingSpatialCube (r^γ)
+        m.2) ∧
     smoothingLocalizedL1 ζ f g ≤ C * r^(-(γ - 1 / 2)) + D * r^(-γ / 2 + ε₂) *
-      (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), ∑ m ∈ S,
+      (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), ∑ m ∈ S,
         ∑' k : smoothingResonantStrip (B * r^ε₂) (P m).2,
           ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, s) g k.val‖^2)^(1 / 4 : ℝ) := by
   obtain ⟨C, D, B, hC, hD, hB, hraw⟩ := smoothing_eq3_20_second_before_change hζ hc hε₁ hε₂
@@ -12242,11 +12612,13 @@ theorem smoothing_eq3_20_second {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDi
   have hin : 0 ≤ (∫ s in Set.Icc (-(8 / r^γ)) (8 / r^γ), ∑ m ∈ S,
       ∑' k : smoothingResonantStrip (B * r^ε₂) (P m).2,
         ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, 2 * s * (P m).2) g k.val‖^2) := by
-    exact integral_nonneg (fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _)))
-  have hout : 0 ≤ (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), ∑ m ∈ S,
+    exact integral_nonneg (fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg
+      _)))
+  have hout : 0 ≤ (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), ∑ m ∈ S,
       ∑' k : smoothingResonantStrip (B * r^ε₂) (P m).2,
         ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, s) g k.val‖^2) := by
-    exact integral_nonneg (fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _)))
+    exact integral_nonneg (fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg
+      _)))
   have hp := Real.rpow_le_rpow hin henergy (by norm_num : 0 ≤ (1 / 4 : ℝ))
   rw [Real.mul_rpow hJ.le hout] at hp
   have hfinal := mul_le_mul_of_nonneg_left hp (by positivity : 0 ≤ D * r^(-γ / 2 + ε₂))
@@ -12297,7 +12669,8 @@ theorem smoothing_interaction_first_fiber_count {ζ : (ℝ × ℝ) × ℝ → �
   have hcard' : (S.card : ℝ) ≤ (2 * (N : ℝ) + 1) * (2 * (L : ℝ) + 1) := by
     have hh : (S.card : ℝ) ≤ (((Finset.Icc (-N) N).product (Finset.Icc (-L) L)).card : ℝ) := by
       exact_mod_cast hcard
-    simpa only [Finset.product_eq_sprod, Finset.card_product, Nat.cast_mul, hi N hN, hi L hL] using hh
+    simpa only [Finset.product_eq_sprod, Finset.card_product, Nat.cast_mul, hi N hN, hi L hL]
+      using hh
   have hscale : 2 * (N : ℝ) + 1 ≤ (2 * R + 2 * R^2 + 5) * a := by
     have hh : (N : ℝ) < a * (R + R^2 + 1) + 1 := Int.ceil_lt_add_one _
     nlinarith
@@ -12382,7 +12755,7 @@ lattice relation used to convert time diameter into the count (3.21). -/
 theorem smoothing_reference_time_first_coordinate {a : ℝ} (ha : 0 < a)
     (m₁ m₂ : Fin 2 → ℤ) (p : (ℝ × ℝ) × ℝ)
     (h₁ : smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2) ∈ smoothingSpatialCube a m₁)
-    (h₂ : smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2^2) ∈ smoothingSpatialCube a m₂) :
+    (h₂ : smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2) ∈ smoothingSpatialCube a m₂) :
     |(m₁ 0 : ℝ) - (m₂ 0 : ℝ) - a * p.2| ≤ 2 := by
   have hu := smoothingSpatialCube_scaled ha h₁ 0
   have hw := smoothingSpatialCube_scaled ha h₂ 0
@@ -12391,16 +12764,17 @@ theorem smoothing_reference_time_first_coordinate {a : ℝ} (ha : 0 < a)
   have he : (m₁ 0 : ℝ) - (m₂ 0 : ℝ) - a * p.2 =
       -(a * (p.1.1 + p.2) - (m₁ 0 : ℝ)) + (a * p.1.1 - (m₂ 0 : ℝ)) := by ring
   rw [he]
-  exact (abs_add_le _ _).trans (by simpa only [abs_neg, one_add_one_eq_two] using add_le_add hu hw)
+  exact (abs_add_le _ _).trans
+    (by simpa only [abs_neg, one_add_one_eq_two] using add_le_add hu hw)
 
 /-- At fixed first localization index, reference-time diameter controls
 the diameter of the free integer coordinate, including cube overlap errors. -/
 theorem smoothing_reference_first_fiber_diameter {a W : ℝ} (ha : 0 < a)
     (m₁ m n : Fin 2 → ℤ) (p q : (ℝ × ℝ) × ℝ)
     (hp₁ : smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2) ∈ smoothingSpatialCube a m₁)
-    (hp₂ : smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2^2) ∈ smoothingSpatialCube a m)
+    (hp₂ : smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2) ∈ smoothingSpatialCube a m)
     (hq₁ : smoothingPlaneEquiv.symm (q.1.1 + q.2, q.1.2) ∈ smoothingSpatialCube a m₁)
-    (hq₂ : smoothingPlaneEquiv.symm (q.1.1, q.1.2 + q.2^2) ∈ smoothingSpatialCube a n)
+    (hq₂ : smoothingPlaneEquiv.symm (q.1.1, q.1.2 + q.2 ^ 2) ∈ smoothingSpatialCube a n)
     (hW : |p.2 - q.2| ≤ W) : |(m 0 : ℝ) - (n 0 : ℝ)| ≤ 4 + a * W := by
   have hp := smoothing_reference_time_first_coordinate ha m₁ m p hp₁ hp₂
   have hq := smoothing_reference_time_first_coordinate ha m₁ n q hq₁ hq₂
@@ -12421,7 +12795,7 @@ theorem smoothing_quadratic_fiber_diameter_count (a : ℝ) (m₁ : Fin 2 → ℤ
     (S : Finset (Fin 2 → ℤ)) {D M : ℝ} (hD : 0 ≤ D) (hM : 0 ≤ M)
     (hdiam : ∀ m ∈ S, ∀ n ∈ S, |(m 0 : ℝ) - (n 0 : ℝ)| ≤ D)
     (hres : ∀ m ∈ S,
-      |(m 1 : ℝ) - ((m₁ 1 : ℝ) + ((m₁ 0 : ℝ) - (m 0 : ℝ))^2 / a)| ≤ M) :
+      |(m 1 : ℝ) - ((m₁ 1 : ℝ) + ((m₁ 0 : ℝ) - (m 0 : ℝ)) ^ 2 / a)| ≤ M) :
     (S.card : ℝ) ≤ (2 * D + 3) * (2 * (⌈M + 1⌉ : ℝ) + 1) := by
   classical
   by_cases hS : S.Nonempty
@@ -12475,7 +12849,8 @@ theorem smoothing_quadratic_fiber_diameter_count (a : ℝ) (m₁ : Fin 2 → ℤ
     have hc' : (S.card : ℝ) ≤ (2 * (N : ℝ) + 1) * (2 * (L : ℝ) + 1) := by
       have hh : (S.card : ℝ) ≤ (((Finset.Icc (-N) N).product (Finset.Icc (-L) L)).card : ℝ) := by
         exact_mod_cast hc
-      simpa only [Finset.product_eq_sprod, Finset.card_product, Nat.cast_mul, hi N hN, hi L hL] using hh
+      simpa only [Finset.product_eq_sprod, Finset.card_product, Nat.cast_mul, hi N hN, hi L hL]
+        using hh
     have hN' : 2 * (N : ℝ) + 1 ≤ 2 * D + 3 := by linarith [Int.ceil_lt_add_one D]
     exact hc'.trans (mul_le_mul_of_nonneg_right hN' (by positivity))
   · simp only [Finset.not_nonempty_iff_eq_empty.mp hS, Finset.card_empty, Nat.cast_zero]
@@ -12500,7 +12875,8 @@ theorem smoothing_eq3_21 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc : HasCompactSupp
   obtain ⟨c, _, hc0, _, htime⟩ := smoothing_cutoff_positive_time_bounds hc hpos
   let V : ℝ := 2 * (⌈4 * R + 7⌉ : ℝ) + 1
   have hV : 0 ≤ V := by
-    have hh : 0 ≤ (⌈4 * R + 7⌉ : ℝ) := by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 4 * R + 7 by linarith)
+    have hh : 0 ≤ (⌈4 * R + 7⌉ : ℝ) :=
+      by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 4 * R + 7 by linarith)
     dsimp [V]
     linarith
   refine ⟨(11 + 4 * R^2 / c) * V, by positivity, ?_⟩
@@ -12555,9 +12931,9 @@ localization index, used in (3.23). -/
 theorem smoothing_reference_second_fiber_diameter {a W : ℝ} (ha : 0 < a)
     (m₂ m n : Fin 2 → ℤ) (p q : (ℝ × ℝ) × ℝ)
     (hp₁ : smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2) ∈ smoothingSpatialCube a m)
-    (hp₂ : smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2^2) ∈ smoothingSpatialCube a m₂)
+    (hp₂ : smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2) ∈ smoothingSpatialCube a m₂)
     (hq₁ : smoothingPlaneEquiv.symm (q.1.1 + q.2, q.1.2) ∈ smoothingSpatialCube a n)
-    (hq₂ : smoothingPlaneEquiv.symm (q.1.1, q.1.2 + q.2^2) ∈ smoothingSpatialCube a m₂)
+    (hq₂ : smoothingPlaneEquiv.symm (q.1.1, q.1.2 + q.2 ^ 2) ∈ smoothingSpatialCube a m₂)
     (hW : |p.2 - q.2| ≤ W) : |(m 0 : ℝ) - (n 0 : ℝ)| ≤ 4 + a * W := by
   have hp := smoothing_reference_time_first_coordinate ha m m₂ p hp₁ hp₂
   have hq := smoothing_reference_time_first_coordinate ha n m₂ q hq₁ hq₂
@@ -12578,7 +12954,7 @@ theorem smoothing_quadratic_second_fiber_diameter_count (a : ℝ) (m₂ : Fin 2 
     (S : Finset (Fin 2 → ℤ)) {D M : ℝ} (hD : 0 ≤ D) (hM : 0 ≤ M)
     (hdiam : ∀ m ∈ S, ∀ n ∈ S, |(m 0 : ℝ) - (n 0 : ℝ)| ≤ D)
     (hres : ∀ m ∈ S,
-      |(m₂ 1 : ℝ) - ((m 1 : ℝ) + ((m 0 : ℝ) - (m₂ 0 : ℝ))^2 / a)| ≤ M) :
+      |(m₂ 1 : ℝ) - ((m 1 : ℝ) + ((m 0 : ℝ) - (m₂ 0 : ℝ)) ^ 2 / a)| ≤ M) :
     (S.card : ℝ) ≤ (2 * D + 3) * (2 * (⌈M + 1⌉ : ℝ) + 1) := by
   classical
   let flip := fun m : Fin 2 → ℤ => ![m 0, -(m 1)]
@@ -12596,7 +12972,7 @@ theorem smoothing_quadratic_second_fiber_diameter_count (a : ℝ) (m₂ : Fin 2 
     obtain ⟨n, hnS, rfl⟩ := Finset.mem_image.mp hn
     exact hdiam m hmS n hnS
   have hr : ∀ m ∈ S.image flip,
-      |(m 1 : ℝ) - (((flip m₂) 1 : ℝ) + (((flip m₂) 0 : ℝ) - (m 0 : ℝ))^2 / a)| ≤ M := by
+      |(m 1 : ℝ) - (((flip m₂) 1 : ℝ) + (((flip m₂) 0 : ℝ) - (m 0 : ℝ)) ^ 2 / a)| ≤ M := by
     intro m hm
     obtain ⟨m, hmS, rfl⟩ := Finset.mem_image.mp hm
     have he : ((flip m) 1 : ℝ) - (((flip m₂) 1 : ℝ) +
@@ -12626,7 +13002,8 @@ theorem smoothing_eq3_23 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc : HasCompactSupp
   obtain ⟨R, hR, hbound⟩ := smoothing_cutoff_coordinate_bound hc
   let V : ℝ := 2 * (⌈4 * R + 7⌉ : ℝ) + 1
   have hV : 0 ≤ V := by
-    have hh : 0 ≤ (⌈4 * R + 7⌉ : ℝ) := by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 4 * R + 7 by linarith)
+    have hh : 0 ≤ (⌈4 * R + 7⌉ : ℝ) :=
+      by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 4 * R + 7 by linarith)
     dsimp [V]
     linarith
   refine ⟨13 * V, by positivity, ?_⟩
@@ -12665,7 +13042,8 @@ theorem smoothing_interaction_second_fiber_count {ζ : (ℝ × ℝ) × ℝ → �
   obtain ⟨R, hR, hbound⟩ := smoothing_cutoff_coordinate_bound hc
   let V : ℝ := 2 * (⌈4 * R + 7⌉ : ℝ) + 1
   have hV : 0 ≤ V := by
-    have hh : 0 ≤ (⌈4 * R + 7⌉ : ℝ) := by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 4 * R + 7 by linarith)
+    have hh : 0 ≤ (⌈4 * R + 7⌉ : ℝ) :=
+      by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 4 * R + 7 by linarith)
     dsimp [V]
     linarith
   refine ⟨(4 * R + 4 * R^2 + 11) * V, by positivity, ?_⟩
@@ -12674,7 +13052,8 @@ theorem smoothing_interaction_second_fiber_count {ζ : (ℝ × ℝ) × ℝ → �
   have hN : 0 ≤ N := Int.ceil_nonneg (by positivity)
   have hcoord : ∀ m ∈ S, |(m 0 : ℝ)| ≤ (N : ℝ) := by
     intro m hm
-    have hh := Fintype.mem_piFinset.mp (smoothingInteractionIndices_mem ζ ha hR hbound f g (hS m hm)).1 0
+    have hh := Fintype.mem_piFinset.mp (smoothingInteractionIndices_mem ζ ha hR hbound f g (hS m
+      hm)).1 0
     have hi : -N ≤ m 0 ∧ m 0 ≤ N := Finset.mem_Icc.mp hh
     apply abs_le.mpr
     exact ⟨by exact_mod_cast hi.1, by exact_mod_cast hi.2⟩
@@ -12829,7 +13208,8 @@ theorem smoothing_low_high_energy_first {ζ : (ℝ × ℝ) × ℝ → ℂ}
   let U := {k : Fin 2 → ℤ | |(k 0 : ℝ)| ≤ q}
   let w := fun n k => ‖smoothingLocalFourierCoefficient a n (s, 0) f k‖^2
   have hw : ∀ n k, 0 ≤ w n k := fun _ _ => sq_nonneg _
-  have hs : ∀ n, Summable (w n) := fun n => (smoothingLocalFourierCoefficient_energy a n (s, 0) f hf).1.summable
+  have hs : ∀ n, Summable (w n) := fun n => (smoothingLocalFourierCoefficient_energy a n (s, 0) f
+    hf).1.summable
   apply smoothing_localization_energy_separation S (S.image Prod.fst) Prod.fst w R U
     (by positivity : 0 ≤ D * (1 + a * L / q))
     (fun m hm => Finset.mem_image_of_mem _ hm) hw hs
@@ -12887,7 +13267,8 @@ theorem smoothing_low_high_energy_second {ζ : (ℝ × ℝ) × ℝ → ℂ}
   let U := {k : Fin 2 → ℤ | |(k 1 : ℝ)| ≤ q}
   let w := fun n k => ‖smoothingLocalFourierCoefficient a n (0, s) g k‖^2
   have hw : ∀ n k, 0 ≤ w n k := fun _ _ => sq_nonneg _
-  have hs : ∀ n, Summable (w n) := fun n => (smoothingLocalFourierCoefficient_energy a n (0, s) g hg).1.summable
+  have hs : ∀ n, Summable (w n) := fun n => (smoothingLocalFourierCoefficient_energy a n (0, s) g
+    hg).1.summable
   apply smoothing_localization_energy_separation S (S.image Prod.snd) Prod.snd w R U
     (by positivity : 0 ≤ D * (1 + a * L / q))
     (fun m hm => Finset.mem_image_of_mem _ hm) hw hs
@@ -12964,25 +13345,25 @@ theorem smoothing_marginal_coefficient_energy {ζ : (ℝ × ℝ) × ℝ → ℂ}
 the marginal Parseval bound and the resonant multiplicity. -/
 theorem smoothing_remainder_frequency_scale {r γ ε κ B K E : ℝ}
     (hr : 1 ≤ r) (hη : 0 ≤ γ + ε - κ) (hB : 0 ≤ B) (hK : 0 ≤ K)
-    (hE : E ≤ K * (r^γ)^2) :
+    (hE : E ≤ K * (r ^ γ) ^ 2) :
     (1 + r^γ * (B * r^ε) / r^κ) * E ≤
-      ((1 + B) * K) * r^(3 * γ + ε - κ) := by
+      ((1 + B) * K) * r ^ (3 * γ + ε - κ) := by
   have hr0 : 0 < r := by linarith
   rw [smoothing_low_high_frequency_scale hr0]
   have hpow : 1 ≤ r^(γ + ε - κ) := Real.one_le_rpow hr hη
   have hfac : 1 + B * r^(γ + ε - κ) ≤ (1 + B) * r^(γ + ε - κ) := by nlinarith
-  have he : r^(γ + ε - κ) * (r^γ)^2 = r^(3 * γ + ε - κ) := by
+  have he : r^(γ + ε - κ) * (r^γ)^2 = r ^ (3 * γ + ε - κ) := by
     rw [← Real.rpow_mul_natCast hr0.le γ 2, ← Real.rpow_add hr0]
     congr 1
     ring
   calc
-    _ ≤ (1 + B * r^(γ + ε - κ)) * (K * (r^γ)^2) :=
+    _ ≤ (1 + B * r^(γ + ε - κ)) * (K * (r ^ γ) ^ 2) :=
       mul_le_mul_of_nonneg_left hE (by positivity)
-    _ ≤ ((1 + B) * r^(γ + ε - κ)) * (K * (r^γ)^2) :=
+    _ ≤ ((1 + B) * r^(γ + ε - κ)) * (K * (r ^ γ) ^ 2) :=
       mul_le_mul_of_nonneg_right hfac (by positivity)
     _ = _ := by
       calc
-        _ = ((1 + B) * K) * (r^(γ + ε - κ) * (r^γ)^2) := by ring
+        _ = ((1 + B) * K) * (r^(γ + ε - κ) * (r ^ γ) ^ 2) := by ring
         _ = _ := by rw [he]
 
 /-- The second display after (3.23), for each actual input's full marginal
@@ -12999,10 +13380,10 @@ theorem smoothing_remainder_energy {ζ : (ℝ × ℝ) × ℝ → ℂ}
     ∀ s : ℝ,
     (1 + r^γ * (B * r^ε) / r^κ) *
       (∑ n ∈ S.image Prod.fst, ∑' k : Fin 2 → ℤ,
-        ‖smoothingLocalFourierCoefficient (r^γ) n (s, 0) f k‖^2) ≤ C * r^(3 * γ + ε - κ) ∧
+        ‖smoothingLocalFourierCoefficient (r^γ) n (s, 0) f k‖^2) ≤ C * r ^ (3 * γ + ε - κ) ∧
     (1 + r^γ * (B * r^ε) / r^κ) *
       (∑ n ∈ S.image Prod.snd, ∑' k : Fin 2 → ℤ,
-        ‖smoothingLocalFourierCoefficient (r^γ) n (0, s) g k‖^2) ≤ C * r^(3 * γ + ε - κ) := by
+        ‖smoothingLocalFourierCoefficient (r^γ) n (0, s) g k‖^2) ≤ C * r ^ (3 * γ + ε - κ) := by
   obtain ⟨K, hK, henergy⟩ := smoothing_marginal_coefficient_energy hc
   refine ⟨(1 + B) * K, by positivity, ?_⟩
   intro r γ ε κ hr hγ hε hκ f g hf hg S hS s
@@ -13018,54 +13399,55 @@ theorem smoothing_remainder_energy {ζ : (ℝ × ℝ) × ℝ → ℂ}
 theorem smoothing_basic_energy_integral {r γ ε κ C D L : ℝ} (hr : 0 < r)
     (_ : 0 ≤ C) (_ : 0 ≤ D) (hL : 0 < L) (E V : ℝ → ℝ)
     (hE : ∀ s, 0 ≤ E s)
-    (hV : IntegrableOn V (Set.Icc (-(L / r^γ)) (L / r^γ)))
-    (hb : ∀ s, E s ≤ C * r^γ * V s + D * r^(3 * γ + ε - κ)) :
-    (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), E s) ≤
-      C * r^γ * (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), V s) +
-        (2 * L * D) * r^(2 * γ + ε - κ) := by
+    (hV : IntegrableOn V (Set.Icc (-(L / r ^ γ)) (L / r ^ γ)))
+    (hb : ∀ s, E s ≤ C * r ^ γ * V s + D * r ^ (3 * γ + ε - κ)) :
+    (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), E s) ≤
+      C * r^γ * (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), V s) +
+        (2 * L * D) * r ^ (2 * γ + ε - κ) := by
   have ha : 0 < r^γ := Real.rpow_pos_of_pos hr _
-  have hconst : IntegrableOn (fun _ : ℝ => D * r^(3 * γ + ε - κ))
-      (Set.Icc (-(L / r^γ)) (L / r^γ)) :=
+  have hconst : IntegrableOn (fun _ : ℝ => D * r ^ (3 * γ + ε - κ))
+      (Set.Icc (-(L / r ^ γ)) (L / r^γ)) :=
     integrableOn_const measure_Icc_lt_top.ne (by finiteness)
-  have hvol : (volume (Set.Icc (-(L / r^γ)) (L / r^γ))).toReal = 2 * L / r^γ := by
+  have hvol : (volume (Set.Icc (-(L / r ^ γ)) (L / r ^ γ))).toReal = 2 * L / r^γ := by
     rw [Real.volume_Icc, ENNReal.toReal_ofReal (by
-      simpa only [sub_neg_eq_add] using add_nonneg (div_nonneg hL.le ha.le) (div_nonneg hL.le ha.le))]
+      simpa only [sub_neg_eq_add] using add_nonneg (div_nonneg hL.le ha.le) (div_nonneg hL.le
+        ha.le))]
     ring
-  have hp : r^(3 * γ + ε - κ) / r^γ = r^(2 * γ + ε - κ) := by
+  have hp : r ^ (3 * γ + ε - κ) / r^γ = r ^ (2 * γ + ε - κ) := by
     rw [← Real.rpow_sub hr]
     congr 1
     ring
   calc
-    _ ≤ ∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), C * r^γ * V s + D * r^(3 * γ + ε - κ) :=
+    _ ≤ ∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), C * r ^ γ * V s + D * r ^ (3 * γ + ε - κ) :=
       integral_mono_of_nonneg (Filter.Eventually.of_forall hE)
         ((hV.const_mul _).add hconst) (Filter.Eventually.of_forall hb)
-    _ = C * r^γ * (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), V s) +
-        (2 * L / r^γ) * (D * r^(3 * γ + ε - κ)) := by
+    _ = C * r^γ * (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), V s) +
+        (2 * L / r ^ γ) * (D * r ^ (3 * γ + ε - κ)) := by
       rw [integral_add (hV.const_mul _) hconst, integral_const_mul, integral_const]
       simp only [smul_eq_mul, Measure.real, Measure.restrict_apply_univ, hvol]
     _ = _ := by
       calc
-        _ = C * r^γ * (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), V s) +
-          (2 * L * D) * (r^(3 * γ + ε - κ) / r^γ) := by ring
+        _ = C * r^γ * (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), V s) +
+          (2 * L * D) * (r ^ (3 * γ + ε - κ) / r^γ) := by ring
         _ = _ := by rw [hp]
 
 /-- The exact two powers in (3.24), obtained by taking the quarter power
 of the integrated low-frequency term and remainder in (3.20). -/
 theorem smoothing_basic_quarter_power {r γ ε κ C D J X : ℝ} (hr : 0 < r)
     (hC : 0 ≤ C) (hD : 0 ≤ D) (hJ : 0 ≤ J) (hX : 0 ≤ X)
-    (hb : J ≤ C * r^γ * X + D * r^(2 * γ + ε - κ)) :
+    (hb : J ≤ C * r ^ γ * X + D * r ^ (2 * γ + ε - κ)) :
     r^(-γ / 2 + ε) * J^(1 / 4 : ℝ) ≤
       C^(1 / 4 : ℝ) * r^(-γ / 4 + ε) * X^(1 / 4 : ℝ) +
         D^(1 / 4 : ℝ) * r^(-κ / 4 + 5 * ε / 4) := by
   have hp := (Real.rpow_le_rpow hJ hb (by norm_num : 0 ≤ (1 / 4 : ℝ))).trans
     (Real.rpow_add_le_add_rpow (by positivity) (by positivity) (by norm_num) (by norm_num))
-  have he₁ : r^(-γ / 2 + ε) * (C * r^γ * X)^(1 / 4 : ℝ) =
+  have he₁ : r^(-γ / 2 + ε) * (C * r ^ γ * X)^(1 / 4 : ℝ) =
       C^(1 / 4 : ℝ) * r^(-γ / 4 + ε) * X^(1 / 4 : ℝ) := by
     rw [Real.mul_rpow (by positivity) hX, Real.mul_rpow hC (by positivity), ← Real.rpow_mul hr.le]
     calc
       _ = C^(1 / 4 : ℝ) * (r^(-γ / 2 + ε) * r^(γ * (1 / 4))) * X^(1 / 4 : ℝ) := by ring
       _ = _ := by rw [← Real.rpow_add hr]; congr 3 ; ring
-  have he₂ : r^(-γ / 2 + ε) * (D * r^(2 * γ + ε - κ))^(1 / 4 : ℝ) =
+  have he₂ : r^(-γ / 2 + ε) * (D * r ^ (2 * γ + ε - κ))^(1 / 4 : ℝ) =
       D^(1 / 4 : ℝ) * r^(-κ / 4 + 5 * ε / 4) := by
     rw [Real.mul_rpow hD (by positivity), ← Real.rpow_mul hr.le]
     calc
@@ -13107,14 +13489,16 @@ theorem smoothing_eq3_24_first {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDif
     ‖smoothingLocalFourierCoefficient (r^γ) m.1 (s, 0) f k.val‖^2
   let V := fun s => ∑ n ∈ S.image Prod.fst, ∑' k : {k : Fin 2 → ℤ | |(k 0 : ℝ)| ≤ r^κ},
     ‖smoothingLocalFourierCoefficient (r^γ) n (s, 0) f k.val‖^2
-  have hE : ∀ s, 0 ≤ E s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _))
-  have hV0 : ∀ s, 0 ≤ V s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _))
+  have hE : ∀ s, 0 ≤ E s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg
+    _))
+  have hV0 : ∀ s, 0 ≤ V s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ =>
+    sq_nonneg _))
   have hV : IntegrableOn V (Set.Icc (-(8 / r^γ)) (8 / r^γ)) := by
     apply integrable_finsetSum
     intro n _
     exact (smoothingLocalFourierCoefficient_restricted_energy (r^γ) n f hf
       {k : Fin 2 → ℤ | |(k 0 : ℝ)| ≤ r^κ} (fun s : ℝ => (s, 0)) (by fun_prop)).2.2 _ _
-  have hpoint : ∀ s, E s ≤ C * r^γ * V s + (D * K) * r^(3 * γ + ε₂ - κ) := by
+  have hpoint : ∀ s, E s ≤ C * r ^ γ * V s + (D * K) * r ^ (3 * γ + ε₂ - κ) := by
     intro s
     have hs := hseparate (r^γ) ha f g hf S P (fun m hm => by rw [← hS]; exact hm) hP
       s (B * r^ε₂) (r^κ) (by positivity) (by positivity)
@@ -13153,7 +13537,7 @@ theorem smoothing_eq3_24_second {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDi
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingInteractionIndices ζ (r^γ) f g ∧
     smoothingLocalizedL1 ζ f g ≤ C₀ * r^(-(γ - 1 / 2)) + C₁ * r^(-κ / 4 + 5 * ε₂ / 4) +
       C₂ * r^(-γ / 4 + ε₂) *
-      (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), ∑ n ∈ S.image Prod.snd,
+      (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), ∑ n ∈ S.image Prod.snd,
         ∑' k : {k : Fin 2 → ℤ | |(k 1 : ℝ)| ≤ r^κ},
           ‖smoothingLocalFourierCoefficient (r^γ) n (0, s) g k.val‖^2)^(1 / 4 : ℝ) := by
   classical
@@ -13171,14 +13555,16 @@ theorem smoothing_eq3_24_second {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDi
     ‖smoothingLocalFourierCoefficient (r^γ) m.2 (0, s) g k.val‖^2
   let V := fun s => ∑ n ∈ S.image Prod.snd, ∑' k : {k : Fin 2 → ℤ | |(k 1 : ℝ)| ≤ r^κ},
     ‖smoothingLocalFourierCoefficient (r^γ) n (0, s) g k.val‖^2
-  have hE : ∀ s, 0 ≤ E s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _))
-  have hV0 : ∀ s, 0 ≤ V s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _))
-  have hV : IntegrableOn V (Set.Icc (-(L / r^γ)) (L / r^γ)) := by
+  have hE : ∀ s, 0 ≤ E s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ => sq_nonneg
+    _))
+  have hV0 : ∀ s, 0 ≤ V s := fun _ => Finset.sum_nonneg (fun _ _ => tsum_nonneg (fun _ =>
+    sq_nonneg _))
+  have hV : IntegrableOn V (Set.Icc (-(L / r ^ γ)) (L / r^γ)) := by
     apply integrable_finsetSum
     intro n _
     exact (smoothingLocalFourierCoefficient_restricted_energy (r^γ) n g hg
       {k : Fin 2 → ℤ | |(k 1 : ℝ)| ≤ r^κ} (fun s : ℝ => (0, s)) (by fun_prop)).2.2 _ _
-  have hpoint : ∀ s, E s ≤ C * r^γ * V s + (D * K) * r^(3 * γ + ε₂ - κ) := by
+  have hpoint : ∀ s, E s ≤ C * r ^ γ * V s + (D * K) * r ^ (3 * γ + ε₂ - κ) := by
     intro s
     have hs := hseparate (r^γ) ha f g hg S P (fun m hm => by rw [← hS]; exact hm) hP
       s (B * r^ε₂) (r^κ) (by positivity) (by positivity)
@@ -13194,11 +13580,11 @@ theorem smoothing_eq3_24_second {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDi
   have hfinal := mul_le_mul_of_nonneg_left hquarter hA₁
   calc
     _ ≤ A₀ * r^(-(γ - 1 / 2)) + A₁ *
-        (r^(-γ / 2 + ε₂) * (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), E s)^(1 / 4 : ℝ)) := by
+        (r^(-γ / 2 + ε₂) * (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), E s)^(1 / 4 : ℝ)) := by
       simpa only [E, mul_assoc] using hmain
     _ ≤ A₀ * r^(-(γ - 1 / 2)) + A₁ *
         (C^(1 / 4 : ℝ) * r^(-γ / 4 + ε₂) *
-          (∫ s in Set.Icc (-(L / r^γ)) (L / r^γ), V s)^(1 / 4 : ℝ) +
+          (∫ s in Set.Icc (-(L / r ^ γ)) (L / r^γ), V s)^(1 / 4 : ℝ) +
         (2 * L * (D * K))^(1 / 4 : ℝ) * r^(-κ / 4 + 5 * ε₂ / 4)) :=
       add_le_add le_rfl hfinal
     _ = _ := by dsimp only [V]; norm_num ; ring
@@ -13234,7 +13620,8 @@ theorem smoothing_scaled_coordinate_convolution (φ : SchwartzMap ℝ ℂ)
     (𝓕⁻ (fun ξ : EuclideanSpace ℝ (Fin 2) => φ (ξ j / r) * 𝓕 f ξ)) x =
       ∫ u : ℝ, (r • (𝓕⁻ φ) (r * u)) * f (x - EuclideanSpace.single j u) := by
   have hh := smoothing_coordinate_convolution (𝓕⁻ (smoothingScalarRescale φ hr)) f j x
-  simpa only [fourier_fourierInv_eq, smoothingScalarRescale_apply, smoothingScalarRescale_kernel] using hh
+  simpa only [fourier_fourierInv_eq, smoothingScalarRescale_apply,
+    smoothingScalarRescale_kernel] using hh
 
 /-- A cutoff equal to one on the input spectrum gives the reproducing
 coordinate convolution asserted in Section 3.3. -/
@@ -13255,12 +13642,14 @@ theorem smoothing_coordinate_reproducing (φ : SchwartzMap ℝ ℂ)
 
 /-- The fixed low-pass symbol reproducing frequencies |xi_j|<=2*lambda
 at the start of Section 3.3. -/
-noncomputable def smoothingReproducingLowSymbol (C : LittlewoodPaley.lpCutoffs 1) : SchwartzMap ℝ ℂ :=
+noncomputable def smoothingReproducingLowSymbol (C : LittlewoodPaley.lpCutoffs 1) : SchwartzMap ℝ
+  ℂ :=
   smoothingScalarRescale (smoothingScalarCutoff C) (by norm_num : (0 : ℝ) < 2)
 
 /-- The fixed annular symbol reproducing lambda<=|xi_j|<=2*lambda while
 retaining a strict lower frequency bound after spatial localization. -/
-noncomputable def smoothingReproducingAnnularSymbol (C : LittlewoodPaley.lpCutoffs 1) : SchwartzMap ℝ ℂ :=
+noncomputable def smoothingReproducingAnnularSymbol (C : LittlewoodPaley.lpCutoffs 1) :
+  SchwartzMap ℝ ℂ :=
   smoothingReproducingLowSymbol C -
     smoothingScalarRescale (smoothingScalarCutoff C) (by norm_num : (0 : ℝ) < 1 / 2)
 
@@ -13344,14 +13733,16 @@ theorem smoothing_coordinate_symbol_temperate (ψ : SchwartzMap ℝ ℂ) (j : Fi
     Function.HasTemperateGrowth (fun ξ : EuclideanSpace ℝ (Fin 2) => ψ (ξ j / r)) := by
   have hh := ψ.hasTemperateGrowth.comp (r⁻¹ • smoothingFrequencyCoordinate j).hasTemperateGrowth
   simpa only [Function.comp_def, smul_apply, smul_eq_mul, smoothingFrequencyCoordinate,
-    ContinuousLinearMap.coe_mk', LinearMap.coe_mk, AddHom.coe_mk, div_eq_mul_inv, mul_comm] using! hh
+    ContinuousLinearMap.coe_mk', LinearMap.coe_mk, AddHom.coe_mk, div_eq_mul_inv, mul_comm] using!
+      hh
 
 /-- Literal Fourier multiplier formula for the Section 3.3 regularization. -/
 theorem smoothingCoordinateRegularization_fourier (ψ : SchwartzMap ℝ ℂ) (j : Fin 2) (r : ℝ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (ξ : EuclideanSpace ℝ (Fin 2)) :
     𝓕 (smoothingCoordinateRegularization (some ψ) j r f) ξ = ψ (ξ j / r) * 𝓕 f ξ := by
   rw [smoothingCoordinateRegularization, SchwartzMap.fourierMultiplierCLM_apply,
-    fourier_fourierInv_eq, SchwartzMap.smulLeftCLM_apply_apply (smoothing_coordinate_symbol_temperate ψ j r),
+    fourier_fourierInv_eq, SchwartzMap.smulLeftCLM_apply_apply
+      (smoothing_coordinate_symbol_temperate ψ j r),
     smul_eq_mul]
 
 /-- Physical representation of the actual regularization as the source
@@ -13361,7 +13752,8 @@ theorem smoothingCoordinateRegularization_convolution (ψ : SchwartzMap ℝ ℂ)
     smoothingCoordinateRegularization (some ψ) j r f x =
       ∫ u : ℝ, (r • (𝓕⁻ ψ) (r * u)) * f (x - EuclideanSpace.single j u) := by
   rw [smoothingCoordinateRegularization, SchwartzMap.fourierMultiplierCLM_apply,
-    SchwartzMap.fourierInv_coe, SchwartzMap.smulLeftCLM_apply (smoothing_coordinate_symbol_temperate ψ j r)]
+    SchwartzMap.fourierInv_coe, SchwartzMap.smulLeftCLM_apply
+      (smoothing_coordinate_symbol_temperate ψ j r)]
   simpa only [smul_eq_mul] using smoothing_scaled_coordinate_convolution ψ f j hr x
 
 /-- Reproduction holds as equality of Schwartz inputs, not merely as an
@@ -13421,11 +13813,13 @@ bound required for the Section 3.3 structural pieces. -/
 theorem smoothingCoordinateRegularization_low_support (C : LittlewoodPaley.lpCutoffs 1)
     (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (j : Fin 2) {r : ℝ} (hr : 0 < r)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {ξ : EuclideanSpace ℝ (Fin 2)}
-    (hξ : 𝓕 (smoothingCoordinateRegularization (some (smoothingReproducingLowSymbol C)) j r f) ξ ≠ 0) :
+    (hξ : 𝓕 (smoothingCoordinateRegularization (some (smoothingReproducingLowSymbol C)) j r f) ξ ≠
+      0) :
     |ξ j| < (8 / 3) * r := by
   rw [smoothingCoordinateRegularization_fourier] at hξ
   have hφ := left_ne_zero_of_mul hξ
-  have hh : |ξ j / r| < 8 / 3 := lt_of_not_ge (fun h => hφ (smoothingReproducingLowSymbol_zero C hC h))
+  have hh : |ξ j / r| < 8 / 3 := lt_of_not_ge (fun h => hφ (smoothingReproducingLowSymbol_zero C
+    hC h))
   rw [abs_div, abs_of_pos hr] at hh
   exact (div_lt_iff₀ hr).mp hh
 
@@ -13434,7 +13828,8 @@ even when applied to a spatially localized input. -/
 theorem smoothingCoordinateRegularization_annular_support (C : LittlewoodPaley.lpCutoffs 1)
     (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (j : Fin 2) {r : ℝ} (hr : 0 < r)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {ξ : EuclideanSpace ℝ (Fin 2)}
-    (hξ : 𝓕 (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) ξ ≠ 0) :
+    (hξ : 𝓕 (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f)
+      ξ ≠ 0) :
     r / 2 < |ξ j| ∧ |ξ j| < (8 / 3) * r := by
   rw [smoothingCoordinateRegularization_fourier] at hξ
   have hφ := left_ne_zero_of_mul hξ
@@ -13460,8 +13855,10 @@ theorem smoothingSpatialPiece_hasSum (a : ℝ)
     have hh : smoothingSpatialBump (a • x - CalderonVaillancourt.latt 2 m) = 0 :=
       not_ne_iff.mp (fun hn => hm (smoothingSpatialBump_lattice_support M (a • x) hM m hn))
     simp only [smoothingSpatialCutoff, hh, Complex.ofReal_zero, mul_zero]
-  have hsum : HasSum (fun m => smoothingSpatialPiece a m f x) (∑ m ∈ S, smoothingSpatialPiece a m f x) := hasSum_sum_of_ne_finset_zero hz
-  have hnorm : HasSum (fun m => ‖smoothingSpatialPiece a m f x‖) (∑ m ∈ S, ‖smoothingSpatialPiece a m f x‖) := hasSum_sum_of_ne_finset_zero (fun m hm => by rw [hz m hm, norm_zero])
+  have hsum : HasSum (fun m => smoothingSpatialPiece a m f x) (∑ m ∈ S, smoothingSpatialPiece a m
+    f x) := hasSum_sum_of_ne_finset_zero hz
+  have hnorm : HasSum (fun m => ‖smoothingSpatialPiece a m f x‖) (∑ m ∈ S, ‖smoothingSpatialPiece
+    a m f x‖) := hasSum_sum_of_ne_finset_zero (fun m hm => by rw [hz m hm, norm_zero])
   have he : (∑ m ∈ S, ‖smoothingSpatialPiece a m f x‖) = ‖f x‖ := by
     simp only [smoothingSpatialPiece_apply, norm_mul, smoothingSpatialCutoff,
       Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (smoothingSpatialBump_properties.2.2.1 _)]
@@ -13487,7 +13884,8 @@ theorem smoothing_coordinate_convolution_spatial_hasSum (ψ : SchwartzMap ℝ �
       split_ifs <;> simp
     rw [he]
     fun_prop
-  let F := fun (m : Fin 2 → ℤ) (u : ℝ) => ψ u * smoothingSpatialPiece a m f (x - EuclideanSpace.single j u)
+  let F := fun (m : Fin 2 → ℤ) (u : ℝ) => ψ u * smoothingSpatialPiece a m f (x -
+    EuclideanSpace.single j u)
   have hm : ∀ m, AEStronglyMeasurable (F m) := by
     intro m
     have hh : Continuous (F m) := by
@@ -13503,7 +13901,10 @@ theorem smoothing_coordinate_convolution_spatial_hasSum (ψ : SchwartzMap ℝ �
     apply (ψ.integrable.norm.mul_const M).mono'
     · have hp := f.continuous
       have hk := ψ.continuous
-      exact (by fun_prop : Continuous (fun u : ℝ => ‖ψ u‖ * ‖f (x - EuclideanSpace.single j u)‖)).aestronglyMeasurable
+      exact
+        (by
+          fun_prop : Continuous (fun u : ℝ => ‖ψ u‖ * ‖f (x - EuclideanSpace.single j
+            u)‖)).aestronglyMeasurable
     · filter_upwards [] with u
       rw [Real.norm_eq_abs, abs_of_nonneg (by positivity)]
       exact mul_le_mul_of_nonneg_left (hf _) (norm_nonneg _)
@@ -13520,13 +13921,16 @@ theorem smoothingCoordinateRegularization_spatial_hasSum (ψ : Option (SchwartzM
     (j : Fin 2) {r : ℝ} (hr : 0 < r) (a : ℝ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {M : ℝ}
     (hf : ∀ x, ‖f x‖ ≤ M) (x : EuclideanSpace ℝ (Fin 2)) :
-    HasSum (fun m : Fin 2 → ℤ => smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x)
+    HasSum (fun m : Fin 2 → ℤ => smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a
+      m f) x)
       (smoothingCoordinateRegularization ψ j r f x) := by
   cases ψ with
   | none => exact (smoothingSpatialPiece_hasSum a f x).1
   | some ψ =>
-    have hh := smoothing_coordinate_convolution_spatial_hasSum (𝓕⁻ (smoothingScalarRescale ψ hr)) j a f hf x
-    simpa only [smoothingScalarRescale_kernel, ← smoothingCoordinateRegularization_convolution ψ j hr] using hh
+    have hh := smoothing_coordinate_convolution_spatial_hasSum (𝓕⁻ (smoothingScalarRescale ψ hr))
+      j a f hf x
+    simpa only [smoothingScalarRescale_kernel, ← smoothingCoordinateRegularization_convolution ψ
+      j hr] using hh
 
 /-- The exact localization/convolution commutator in the first display of
 Section 3.3, retained as an actual Schwartz function. -/
@@ -13554,9 +13958,11 @@ theorem smoothing_section3_3_spatial_decomposition (ψ : Option (SchwartzMap ℝ
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {M : ℝ}
     (hf : ∀ x, ‖f x‖ ≤ M) (hreproduce : smoothingCoordinateRegularization ψ j r f = f)
     (x : EuclideanSpace ℝ (Fin 2)) :
-    Summable (fun m : Fin 2 → ℤ => smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x) ∧
+    Summable (fun m : Fin 2 → ℤ => smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece
+      a m f) x) ∧
     Summable (fun m : Fin 2 → ℤ => smoothingLocalizationCommutator ψ j r a m f x) ∧
-    f x = (∑' m : Fin 2 → ℤ, smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x) +
+    f x = (∑' m : Fin 2 → ℤ, smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
+      x) +
       ∑' m : Fin 2 → ℤ, smoothingLocalizationCommutator ψ j r a m f x := by
   have hreg := smoothingCoordinateRegularization_spatial_hasSum ψ j hr a f hf x
   have hcomm := smoothingLocalizationCommutator_hasSum ψ j hr a f hf x
@@ -13589,7 +13995,8 @@ theorem smoothingSpatialCutoff_difference_bound : ∃ K : ℝ, 0 ≤ K ∧ ∀ a
   intro a ha m j x u
   have hd : Differentiable ℝ (smoothingSpatialCutoff a m) :=
     (smoothingSpatialCutoff_temperate a m).1.differentiable (by norm_num)
-  have hh := (convex_univ : Convex ℝ (Set.univ : Set (EuclideanSpace ℝ (Fin 2)))).norm_image_sub_le_of_norm_fderiv_le
+  have hh := (convex_univ : Convex ℝ (Set.univ : Set (EuclideanSpace ℝ (Fin
+    2)))).norm_image_sub_le_of_norm_fderiv_le
     (fun y _ => hd y) (fun y _ => hb a ha m y)
     (x := x - EuclideanSpace.single j u) (y := x) (Set.mem_univ _) (Set.mem_univ _)
   simpa only [sub_sub_cancel, PiLp.norm_single, Real.norm_eq_abs] using hh
@@ -13601,7 +14008,8 @@ theorem smoothing_coordinate_convolution_integrable (κ : SchwartzMap ℝ ℂ) (
     (hf : ∀ x, ‖f x‖ ≤ M) (x : EuclideanSpace ℝ (Fin 2)) :
     Integrable (fun u : ℝ => κ u * f (x - EuclideanSpace.single j u)) := by
   apply (κ.integrable.norm.mul_const M).mono'
-  · exact (κ.continuous.mul (f.continuous.comp (smoothing_coordinate_shift_continuous j x))).aestronglyMeasurable
+  · exact (κ.continuous.mul (f.continuous.comp (smoothing_coordinate_shift_continuous j
+      x))).aestronglyMeasurable
   · filter_upwards [] with u
     rw [norm_mul]
     exact mul_le_mul_of_nonneg_left (hf _) (norm_nonneg _)
@@ -13614,7 +14022,8 @@ theorem smoothing_coordinate_convolution_commutator (κ : SchwartzMap ℝ ℂ) (
     (∫ u : ℝ, κ u * f (x - EuclideanSpace.single j u)) * smoothingSpatialCutoff a m x -
       (∫ u : ℝ, κ u * smoothingSpatialPiece a m f (x - EuclideanSpace.single j u)) =
     ∫ u : ℝ, κ u * f (x - EuclideanSpace.single j u) *
-      (smoothingSpatialCutoff a m x - smoothingSpatialCutoff a m (x - EuclideanSpace.single j u)) := by
+      (smoothingSpatialCutoff a m x - smoothingSpatialCutoff a m (x - EuclideanSpace.single j u))
+        := by
   have hi := smoothing_coordinate_convolution_integrable κ j f hf x
   have hp := smoothing_coordinate_convolution_integrable κ j (smoothingSpatialPiece a m f)
     (fun y => (smoothingSpatialPiece_bound a m f y).trans (hf y)) x
@@ -13674,11 +14083,13 @@ theorem smoothingLocalizationCommutator_integral (ψ : SchwartzMap ℝ ℂ) (j :
     (hf : ∀ x, ‖f x‖ ≤ M) (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingLocalizationCommutator (some ψ) j r a m f x =
     ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u * f (x - EuclideanSpace.single j u) *
-      (smoothingSpatialCutoff a m x - smoothingSpatialCutoff a m (x - EuclideanSpace.single j u)) := by
+      (smoothingSpatialCutoff a m x - smoothingSpatialCutoff a m (x - EuclideanSpace.single j u))
+        := by
   have hreg (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
       smoothingCoordinateRegularization (some ψ) j r g x =
         ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u * g (x - EuclideanSpace.single j u) := by
-    simpa only [smoothingScalarRescale_kernel] using smoothingCoordinateRegularization_convolution ψ j hr g x
+    simpa only [smoothingScalarRescale_kernel] using
+      smoothingCoordinateRegularization_convolution ψ j hr g x
   rw [smoothingLocalizationCommutator, sub_apply, smoothingSpatialPiece_apply, hreg, hreg]
   exact smoothing_coordinate_convolution_commutator _ j a m f hf x
 
@@ -13769,7 +14180,8 @@ theorem smoothing_section3_3_fiber_decomposition
       (smoothingFiberFlat f j z R S =ᵐ[volume]
         ⇑(smoothingFlatPart ((smoothingCoordinateFiber f j z).toLp 2 volume) R S)) := by
   let g := (smoothingCoordinateFiber f j z).toLp 2 volume
-  obtain ⟨S, hcard, hsum, hnorm, hpieces, hsharp, hder, hsupport, henergy⟩ := smoothing_lemma3_2 g hR hρ
+  obtain ⟨S, hcard, hsum, hnorm, hpieces, hsharp, hder, hsupport, henergy⟩ := smoothing_lemma3_2 g
+    hR hρ
   have hs : smoothingFiberSharp f j z R S =ᵐ[volume] ⇑(smoothingSharpPart g R S) := by
     filter_upwards [hsharp] with u hu
     exact hu.symm
@@ -13786,7 +14198,8 @@ theorem smoothing_section3_3_fiber_decomposition
 for measurable choices in the first Section 3.3 structured sum. -/
 theorem smoothingCoordinateFiber_fourier_measurable
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) :
-    Measurable (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => (𝓕 (smoothingCoordinateFiber f j p.1)) p.2) := by
+    Measurable (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => (𝓕 (smoothingCoordinateFiber f j p.1))
+      p.2) := by
   have hc : Continuous (fun p : (EuclideanSpace ℝ (Fin 2) × ℝ) × ℝ =>
       Real.fourierChar (-inner ℝ p.2 p.1.2) • f (p.1.1 + smoothingCoordinateLine j p.2)) := by
     have hf := f.continuous
@@ -13854,11 +14267,13 @@ theorem smoothingWindowSelection_measurable {α : Type*} [MeasurableSpace α]
   have hm : Measurable (fun z => ∫ ξ, w z ξ) := hw.stronglyMeasurable.integral_prod_right.measurable
   have hn : Measurable (fun z => ∫ ξ in smoothingFrequencyWindow R n, w z ξ) :=
     hw.stronglyMeasurable.integral_prod_right.measurable
-  apply measurableSet_setOf.mp
+  apply measurableSet_setOfPred.mp
   have he : {z | n ∈ (smoothingWindowSelection_finite (hi z) (h0 z) R hρ).toFinset} =
-      {z | 0 < ∫ ξ, w z ξ} ∩ {z | ρ * (∫ ξ, w z ξ) ≤ ∫ ξ in smoothingFrequencyWindow R n, w z ξ} := by
+      {z | 0 < ∫ ξ, w z ξ} ∩ {z | ρ * (∫ ξ, w z ξ) ≤ ∫ ξ in smoothingFrequencyWindow R n, w z ξ}
+        := by
     ext z
-    simp only [Set.Finite.mem_toFinset, smoothingWindowSelection, Set.mem_setOf_eq, Set.mem_inter_iff]
+    simp only [Set.Finite.mem_toFinset, smoothingWindowSelection, Set.mem_ofPred_eq,
+      Set.mem_inter_iff]
   rw [he]
   exact (measurableSet_lt measurable_const hm).inter (measurableSet_le (hm.const_mul ρ) hn)
 
@@ -13873,7 +14288,7 @@ theorem smoothingFiberSpectralDensity_integrable
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (z : EuclideanSpace ℝ (Fin 2)) :
     Integrable (smoothingFiberSpectralDensity f j z) := by
   have hm := (𝓕 (smoothingCoordinateFiber f j z)).memLp 2 volume
-  exact (memLp_two_iff_integrable_sq_norm hm.1).mp hm
+  exact (memLp_two_iff_integrable_sq_norm hm.aestronglyMeasurable).mp hm
 
 /-- A deterministic finite set of active frequencies for each actual fiber. -/
 def smoothingFiberSelectedIndices (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
@@ -13901,10 +14316,12 @@ Fourier transform, avoiding noncanonical L² representatives in measurable famil
 theorem smoothingPiece_schwartz_formula (g : SchwartzMap ℝ ℂ) (R : ℝ) (n : ℤ) (u : ℝ) :
     smoothingPiece (g.toLp 2 volume) R n u =
       (𝓕⁻ (fun ξ : ℝ => (smoothingPartitionCutoff (ξ / R) : ℂ) * (𝓕 g) (ξ - n * R))) u := by
-  have hft : (⇑(𝓕 (g.toLp 2 volume) : Lp (α := ℝ) ℂ 2 volume)) =ᵐ[volume] ⇑(𝓕 g : SchwartzMap ℝ ℂ) := by
+  have hft : (⇑(𝓕 (g.toLp 2 volume) : Lp (α := ℝ) ℂ 2 volume)) =ᵐ[volume] ⇑(𝓕 g : SchwartzMap ℝ ℂ)
+    := by
     rw [SchwartzMap.toLp_fourier_eq]
     exact (𝓕 g).coeFn_toLp 2 volume
-  have ht := (measurePreserving_add_right volume (-(n : ℝ) * R)).quasiMeasurePreserving.ae_eq hft
+  have ht := (measurePreserving_add_right volume (-(n : ℝ) * R)).quasiMeasurePreserving.ae_eq_comp
+    hft
   rw [smoothingPiece, Real.fourierInv_eq, Real.fourierInv_eq]
   apply integral_congr_ae
   filter_upwards [ht] with ξ hξ
@@ -13929,7 +14346,8 @@ theorem smoothingPiece_fiber_measurable (f : SchwartzMap (EuclideanSpace ℝ (Fi
     have hk : Continuous (fun p : (EuclideanSpace ℝ (Fin 2) × ℝ) × ℝ =>
         (Real.fourierChar (inner ℝ p.2 p.1.2) : ℂ) * (smoothingPartitionCutoff (p.2 / R) : ℂ)) := by
       fun_prop
-    simpa only [Function.comp_def, Circle.smul_def, smul_eq_mul, Pi.mul_def, mul_assoc] using! hk.measurable.mul hcomp
+    simpa only [Function.comp_def, Circle.smul_def, smul_eq_mul, Pi.mul_def, mul_assoc] using!
+      hk.measurable.mul hcomp
   have hi := (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable
   simpa only [smoothingPiece_schwartz_formula, Real.fourierInv_eq] using! hi
 
@@ -13978,13 +14396,15 @@ theorem smoothingIndexed_measurable (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)
     (j : Fin 2) (S : EuclideanSpace ℝ (Fin 2) → Finset ℤ) (hS : Measurable S)
     (R : ℝ) (k : ℕ) : Measurable (smoothingIndexedFrequency S R k) ∧
       Measurable (Function.uncurry (smoothingIndexedAmplitude f j S R k)) := by
-  letI : MeasurableSpace (Option ℤ) := ⊤
+  let : MeasurableSpace (Option ℤ) := ⊤
   have hindex : Measurable (fun z => smoothingSelectedIndex (S z) k) :=
     (measurable_of_countable (fun T : Finset ℤ => smoothingSelectedIndex T k)).comp hS
   constructor
-  · exact (measurable_of_countable (fun n : Option ℤ => n.elim 0 (fun n => -2 * Real.pi * (n : ℝ) * R))).comp hindex
+  · exact (measurable_of_countable (fun n : Option ℤ => n.elim 0 (fun n => -2 * Real.pi * (n : ℝ)
+      * R))).comp hindex
   · have hm : Measurable (fun p : (EuclideanSpace ℝ (Fin 2) × ℝ) × Option ℤ =>
-        p.2.elim 0 (fun n => smoothingPiece ((smoothingCoordinateFiber f j p.1.1).toLp 2 volume) R n p.1.2)) := by
+        p.2.elim 0 (fun n => smoothingPiece ((smoothingCoordinateFiber f j p.1.1).toLp 2 volume) R
+          n p.1.2)) := by
       apply measurable_from_prod_countable_left
       intro n
       cases n with
@@ -14014,7 +14434,8 @@ and term-count clauses: one common N ≤ 7 r^delta indexes every fiber. -/
 theorem smoothing_section3_3_measurable_structured_sum
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (R : ℝ)
     {r δ : ℝ} (hr : 1 ≤ r) (hδ : 0 ≤ δ) :
-    let S := smoothingFiberSelectedIndices f j R (Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hr) (-δ))
+    let S := smoothingFiberSelectedIndices f j R (Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one
+      hr) (-δ))
     ∃ N : ℕ, (N : ℝ) ≤ 7 * r ^ δ ∧
       (∀ k : Fin N, Measurable (smoothingIndexedFrequency S R k) ∧
         Measurable (Function.uncurry (smoothingIndexedAmplitude f j S R k))) ∧
@@ -14070,11 +14491,13 @@ theorem smoothingCoordinateRegularization_bound (ψ : Option (SchwartzMap ℝ �
     intro j r hr f M hf x
     have he : smoothingCoordinateRegularization (some ψ) j r f x =
         ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u * f (x - EuclideanSpace.single j u) := by
-      simpa only [smoothingScalarRescale_kernel] using smoothingCoordinateRegularization_convolution ψ j hr f x
+      simpa only [smoothingScalarRescale_kernel] using
+        smoothingCoordinateRegularization_convolution ψ j hr f x
     rw [he]
     calc
       _ ≤ ∫ u : ℝ, ‖(𝓕⁻ (smoothingScalarRescale ψ hr)) u‖ * M := by
-        apply norm_integral_le_of_norm_le ((𝓕⁻ (smoothingScalarRescale ψ hr)).integrable.norm.mul_const M)
+        apply norm_integral_le_of_norm_le ((𝓕⁻ (smoothingScalarRescale ψ
+          hr)).integrable.norm.mul_const M)
         filter_upwards [] with u
         rw [norm_mul]
         exact mul_le_mul_of_nonneg_left (hf _) (norm_nonneg _)
@@ -14106,17 +14529,20 @@ theorem smoothingIndexedAmplitude_derivatives
     positivity
   | some n =>
     simp only [Option.elim_some]
-    exact ⟨smoothingPiece_contDiff _ hR n, fun N u => smoothingPiece_derivative_bound _ hR n N hbound u⟩
+    exact ⟨smoothingPiece_contDiff _ hR n, fun N u => smoothingPiece_derivative_bound _ hR n N
+      hbound u⟩
 
 /-- The uniform smooth-fiber derivative clause following the first Section
 3.3 structured sum, for the actual regularized spatial pieces and R=r^tau. -/
 theorem smoothing_section3_3_amplitude_derivatives (ψ : Option (SchwartzMap ℝ ℂ)) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (j : Fin 2) (r τ a : ℝ), 0 < r →
     ∀ (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
-    (∀ x, ‖f x‖ ≤ 1) → ∀ (S : EuclideanSpace ℝ (Fin 2) → Finset ℤ) (k : ℕ) (z : EuclideanSpace ℝ (Fin 2)),
+    (∀ x, ‖f x‖ ≤ 1) → ∀ (S : EuclideanSpace ℝ (Fin 2) → Finset ℤ) (k : ℕ) (z : EuclideanSpace ℝ
+      (Fin 2)),
     let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
     ContDiff ℝ ∞ (smoothingIndexedAmplitude g j S (r ^ τ) k z) ∧
-      ∀ u : ℝ, ‖iteratedDeriv N (smoothingIndexedAmplitude g j S (r ^ τ) k z) u‖ ≤ C * r ^ (τ * N) := by
+      ∀ u : ℝ, ‖iteratedDeriv N (smoothingIndexedAmplitude g j S (r ^ τ) k z) u‖ ≤ C * r ^ (τ * N)
+        := by
   obtain ⟨B, hB, hb⟩ := smoothingCoordinateRegularization_bound ψ
   have hC : 0 ≤ smoothingDerivativeConstant N := integral_nonneg (fun _ => norm_nonneg _)
   refine ⟨smoothingDerivativeConstant N * B, mul_nonneg hC hB, ?_⟩
@@ -14153,7 +14579,8 @@ theorem smoothingCoordinateFiber_regularization (ψ : SchwartzMap ℝ ℂ) (j : 
     SchwartzMap.convolution_apply, convolution_def]
   apply integral_congr_ae
   filter_upwards [] with v
-  simp only [smoothingScalarRescale_kernel, ContinuousLinearMap.mul_apply', smoothingCoordinateFiber_apply]
+  simp only [smoothingScalarRescale_kernel, ContinuousLinearMap.mul_apply',
+    smoothingCoordinateFiber_apply]
   congr 2
   rw [map_sub, smoothingCoordinateLine_apply j v]
   abel
@@ -14175,7 +14602,8 @@ theorem smoothingCoordinateFiber_annular_support (C : LittlewoodPaley.lpCutoffs 
     (hC : ∀ ξ, 4 / 3 ≤ ‖ξ‖ → C.cutoff ξ = 0) (j : Fin 2) {r : ℝ} (hr : 0 < r)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (z : EuclideanSpace ℝ (Fin 2)) {ξ : ℝ}
     (hξ : (𝓕 (smoothingCoordinateFiber
-      (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) j z)) ξ ≠ 0) :
+      (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) j z))
+        ξ ≠ 0) :
     r / 2 < |ξ| ∧ |ξ| < (8 / 3) * r := by
   rw [smoothingCoordinateFiber_regularization_fourier _ j hr] at hξ
   have hs := left_ne_zero_of_mul hξ
@@ -14200,7 +14628,8 @@ theorem smoothingFiberSelectedIndices_witness
     apply integral_eq_zero_of_ae
     filter_upwards [ae_restrict_mem (smoothingFrequencyWindow_measurable R n)] with ξ hξ
     have he := hh ξ hξ
-    simp only [smoothingFiberSpectralDensity, he, norm_zero, zero_pow (by decide : (2 : ℕ) ≠ 0), Pi.zero_apply]
+    simp only [smoothingFiberSpectralDensity, he, norm_zero, zero_pow (by decide : (2 : ℕ) ≠ 0),
+      Pi.zero_apply]
   have hp := mul_pos hρ hm.1
   have hmass := hm.2
   rw [hz] at hmass
@@ -14232,7 +14661,8 @@ theorem smoothingFiberSelectedIndices_annular_frequency (C : LittlewoodPaley.lpC
     {r R ρ : ℝ} (hr : 0 < r) (hR : 0 < R) (hRr : R ≤ r / 8) (hρ : 0 < ρ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (z : EuclideanSpace ℝ (Fin 2))
     {n : ℤ} (hn : n ∈ smoothingFiberSelectedIndices
-      (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) j R hρ z) :
+      (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) j R
+        hρ z) :
     r ≤ |-2 * Real.pi * (n : ℝ) * R| ∧ |-2 * Real.pi * (n : ℝ) * R| ≤ (6 * Real.pi) * r := by
   obtain ⟨ξ, hw, hξ⟩ := smoothingFiberSelectedIndices_witness _ j R hρ z hn
   obtain ⟨hlo, hhi⟩ := smoothingCoordinateFiber_annular_support C hC j hr f z hξ
@@ -14257,17 +14687,21 @@ def smoothingIndexedFrequencyFilled (S : EuclideanSpace ℝ (Fin 2) → Finset �
 
 /-- The filled frequencies remain measurable. -/
 theorem smoothingIndexedFrequencyFilled_measurable (S : EuclideanSpace ℝ (Fin 2) → Finset ℤ)
-    (hS : Measurable S) (R d : ℝ) (k : ℕ) : Measurable (smoothingIndexedFrequencyFilled S R d k) := by
-  letI : MeasurableSpace (Option ℤ) := ⊤
-  exact (measurable_of_countable (fun n : Option ℤ => n.elim d (fun n => -2 * Real.pi * (n : ℝ) * R))).comp
+    (hS : Measurable S) (R d : ℝ) (k : ℕ) : Measurable (smoothingIndexedFrequencyFilled S R d k)
+      := by
+  let : MeasurableSpace (Option ℤ) := ⊤
+  exact (measurable_of_countable (fun n : Option ℤ => n.elim d (fun n => -2 * Real.pi * (n : ℝ) *
+    R))).comp
     ((measurable_of_countable (fun T : Finset ℤ => smoothingSelectedIndex T k)).comp hS)
 
 /-- Filling a padded term's frequency leaves the represented function unchanged. -/
 theorem smoothingIndexedFrequencyFilled_term (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (S : EuclideanSpace ℝ (Fin 2) → Finset ℤ) (R d : ℝ) (k : ℕ)
     (z : EuclideanSpace ℝ (Fin 2)) (u : ℝ) :
-    smoothingIndexedAmplitude f j S R k z u * Complex.exp (Complex.I * ((smoothingIndexedFrequency S R k z * u : ℝ) : ℂ)) =
-    smoothingIndexedAmplitude f j S R k z u * Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R d k z * u : ℝ) : ℂ)) := by
+    smoothingIndexedAmplitude f j S R k z u * Complex.exp (Complex.I * ((smoothingIndexedFrequency
+      S R k z * u : ℝ) : ℂ)) =
+    smoothingIndexedAmplitude f j S R k z u * Complex.exp (Complex.I *
+      ((smoothingIndexedFrequencyFilled S R d k z * u : ℝ) : ℂ)) := by
   unfold smoothingIndexedAmplitude smoothingIndexedFrequency smoothingIndexedFrequencyFilled
   cases smoothingSelectedIndex (S z) k <;> simp
 
@@ -14298,11 +14732,13 @@ theorem smoothingIndexedFrequencyFilled_annular (C : LittlewoodPaley.lpCutoffs 1
   cases he : smoothingSelectedIndex (S z) k with
   | none =>
     simp only [Option.elim_none, abs_of_pos hr]
-    have hp := mul_le_mul_of_nonneg_right (by linarith [Real.pi_gt_three] : (1 : ℝ) ≤ 6 * Real.pi) hr.le
+    have hp := mul_le_mul_of_nonneg_right (by linarith [Real.pi_gt_three] : (1 : ℝ) ≤ 6 * Real.pi)
+      hr.le
     exact ⟨le_rfl, by simpa only [one_mul] using hp⟩
   | some n =>
     simp only [Option.elim_some]
-    exact smoothingFiberSelectedIndices_annular_frequency C hC j hr hR hRr hρ f z (smoothingSelectedIndex_mem he)
+    exact smoothingFiberSelectedIndices_annular_frequency C hC j hr hR hRr hρ f z
+      (smoothingSelectedIndex_mem he)
 
 /-- The source parameter tau<1 guarantees the structural width r^tau is
 at most r/8 for all sufficiently large r. Smaller scales remain part of the
@@ -14330,7 +14766,8 @@ theorem smoothing_section3_3_annular_phases (C : LittlewoodPaley.lpCutoffs 1)
     ∃ r₀ : ℝ, 1 ≤ r₀ ∧ ∀ (r : ℝ), r₀ ≤ r → ∀ (j : Fin 2) (ρ : ℝ) (hρ : 0 < ρ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (k : ℕ),
     let S := smoothingFiberSelectedIndices
-      (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) j (r ^ τ) hρ
+      (smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r f) j (r
+        ^ τ) hρ
     Measurable (smoothingIndexedFrequencyFilled S (r ^ τ) r k) ∧
       ∀ z, r ≤ |smoothingIndexedFrequencyFilled S (r ^ τ) r k z| ∧
         |smoothingIndexedFrequencyFilled S (r ^ τ) r k z| ≤ (6 * Real.pi) * r := by
@@ -14341,7 +14778,8 @@ theorem smoothing_section3_3_annular_phases (C : LittlewoodPaley.lpCutoffs 1)
   refine ⟨smoothingIndexedFrequencyFilled_measurable _
     (smoothingFiberSelectedIndices_measurable_card _ j (r ^ τ) hρ).1 _ _ _, ?_⟩
   intro z
-  exact smoothingIndexedFrequencyFilled_annular C hC j hr0 (Real.rpow_pos_of_pos hr0 τ) (hw r hr) hρ f k z
+  exact smoothingIndexedFrequencyFilled_annular C hC j hr0 (Real.rpow_pos_of_pos hr0 τ) (hw r hr)
+    hρ f k z
 
 /-- Enlarging the selected frequency set only decreases the flat spectrum
 in absolute value, used to preserve Lemma 3.2 for the measurable selection. -/
@@ -14361,10 +14799,11 @@ theorem smoothingFlatPart_fourier_norm_antitone (f : Lp (α := ℝ) ℂ 2 volume
 /-- Lemma 3.2's flat-energy estimate remains valid for any finite selection
 containing the source high-mass indices. This is the compatibility required
 for the measurable window selection in Section 3.3. -/
-theorem smoothingFlatPart_energy_bound_of_cover (f : Lp (α := ℝ) ℂ 2 volume)
-    {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ) (S : Finset ℤ)
-    (hcover : f ≠ 0 → smoothingHighMassIndices
-      (fun ξ => ‖(𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2) R ρ ⊆ (S : Set ℤ)) :
+theorem smoothingFlatPart_energy_bound_of_cover (f : Lp (α := ℝ) ℂ 2 volume) {R ρ : ℝ} (hR : 0
+    < R) (hρ : 0 < ρ)
+    (S : Finset ℤ)
+    (hcover : f ≠ 0 → smoothingHighMassIndices (fun ξ => ‖(𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^
+      2) R ρ ⊆ (S : Set ℤ)) :
     (∫ s : ℝ, ∫ ξ in Metric.closedBall (0 : ℝ) R,
       ‖(𝓕 (smoothingMultiplicativeDifference (⇑(smoothingFlatPart f R S)) s) : ℝ → ℂ) ξ‖ ^ 2) ≤
       2 * ρ * ‖f‖ ^ 4 := by
@@ -14383,8 +14822,10 @@ theorem smoothingFlatPart_energy_bound_of_cover (f : Lp (α := ℝ) ℂ 2 volume
     have h := smoothing_frequencyRestriction_norm_sq (Lp.memLp (𝓕 f)) MeasurableSet.univ
     simpa only [Set.indicator_univ, Lp.toLp_coeFn, Measure.restrict_univ,
       Lp.norm_fourier_eq] using h.symm
-  have hi (U : Finset ℤ) : Integrable (fun ξ => ‖(𝓕 (smoothingFlatPart f R U) : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2) :=
-    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 (smoothingFlatPart f R U))).1).mp
+  have hi (U : Finset ℤ) : Integrable (fun ξ => ‖(𝓕 (smoothingFlatPart f R U) : Lp (α := ℝ) ℂ 2
+    volume) ξ‖ ^ 2) :=
+    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 (smoothingFlatPart f R
+      U))).aestronglyMeasurable).mp
       (Lp.memLp (𝓕 (smoothingFlatPart f R U)))
   have hball (c : ℝ) : (∫ ξ in Metric.closedBall c R,
       ‖(𝓕 (smoothingFlatPart f R S) : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2) ≤ 2 * ρ * ‖f‖ ^ 2 := by
@@ -14429,13 +14870,16 @@ theorem smoothingFiberSelectedIndices_cover
     filter_upwards [(𝓕 (smoothingCoordinateFiber f j z)).coeFn_toLp 2 volume] with ξ hξ
     dsimp only [w, smoothingFiberSpectralDensity]
     rw [ht, hξ]
-  have hi : Integrable w := (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 g)).1).mp (Lp.memLp (𝓕 g))
+  have hi : Integrable w := (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕
+    g)).aestronglyMeasurable).mp (Lp.memLp (𝓕 g))
   have hm : (∫ ξ, w ξ) = ‖g‖ ^ 2 := by
     have hh := smoothing_frequencyRestriction_norm_sq (Lp.memLp (𝓕 g)) MeasurableSet.univ
-    simpa only [w, Set.indicator_univ, Lp.toLp_coeFn, Measure.restrict_univ, Lp.norm_fourier_eq] using hh.symm
+    simpa only [w, Set.indicator_univ, Lp.toLp_coeFn, Measure.restrict_univ, Lp.norm_fourier_eq]
+      using hh.symm
   intro hg n hn
   have hp : 0 < ∫ ξ, w ξ := by rw [hm]; exact sq_pos_of_pos (norm_pos_iff.mpr hg)
-  have hb := smoothing_highMass_window_mass hi (Filter.Eventually.of_forall (fun ξ => sq_nonneg _)) hR hn
+  have hb := smoothing_highMass_window_mass hi (Filter.Eventually.of_forall (fun ξ => sq_nonneg
+    _)) hR hn
   have htot := integral_congr_ae hw
   have hwin := integral_congr_ae (ae_restrict_of_ae (s := smoothingFrequencyWindow R n) hw)
   change n ∈ (smoothingWindowSelection_finite (smoothingFiberSpectralDensity_integrable f j z)
@@ -14464,8 +14908,9 @@ theorem smoothingFiberFlat_ae (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
 /-- Multiplicative-difference Fourier integrals are independent of the
 chosen almost-everywhere representative, needed for the actual flat fibers. -/
 theorem smoothingDifference_fourier_congr_ae {f g : ℝ → ℂ} (hfg : f =ᵐ[volume] g) (s ξ : ℝ) :
-    (𝓕 (smoothingMultiplicativeDifference f s)) ξ = (𝓕 (smoothingMultiplicativeDifference g s)) ξ := by
-  have ht := (measurePreserving_add_right volume s).quasiMeasurePreserving.ae_eq hfg
+    (𝓕 (smoothingMultiplicativeDifference f s)) ξ = (𝓕 (smoothingMultiplicativeDifference g s)) ξ
+      := by
+  have ht := (measurePreserving_add_right volume s).quasiMeasurePreserving.ae_eq_comp hfg
   rw [Real.fourier_eq, Real.fourier_eq]
   apply integral_congr_ae
   filter_upwards [hfg, ht] with x hx hxs
@@ -14482,8 +14927,10 @@ theorem smoothingFiberFlat_selected_energy
       ‖(𝓕 (smoothingMultiplicativeDifference
         (smoothingFiberFlat f j z R (smoothingFiberSelectedIndices f j R hρ z)) s)) ξ‖ ^ 2) ≤
       2 * ρ * ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ ^ 4 := by
-  have hh := smoothingFlatPart_energy_bound_of_cover ((smoothingCoordinateFiber f j z).toLp 2 volume)
-    hR hρ (smoothingFiberSelectedIndices f j R hρ z) (smoothingFiberSelectedIndices_cover f j hR hρ z)
+  have hh := smoothingFlatPart_energy_bound_of_cover ((smoothingCoordinateFiber f j z).toLp 2
+    volume)
+    hR hρ (smoothingFiberSelectedIndices f j R hρ z) (smoothingFiberSelectedIndices_cover f j hR
+      hρ z)
   have he (s ξ : ℝ) := smoothingDifference_fourier_congr_ae
     (smoothingFiberFlat_ae f j z hR (smoothingFiberSelectedIndices f j R hρ z)) s ξ
   simpa only [he] using hh
@@ -14524,7 +14971,7 @@ theorem smoothingSpatialPiece_fiber_norm_sq {a : ℝ} (ha : 0 < a) (m : Fin 2 �
     exact le_trans (pow_le_pow_left₀ (norm_nonneg _) hh 2) (by norm_num)
   rw [smoothingSchwartz_norm_sq]
   have hi : Integrable (fun u : ℝ => ‖g u‖ ^ 2) :=
-    (memLp_two_iff_integrable_sq_norm (g.memLp 2 volume).1).mp (g.memLp 2 volume)
+    (memLp_two_iff_integrable_sq_norm (g.memLp 2 volume).aestronglyMeasurable).mp (g.memLp 2 volume)
   have he : (∫ u : ℝ, ‖g u‖ ^ 2) = ∫ u in I, ‖g u‖ ^ 2 := by
     symm
     apply setIntegral_eq_integral_of_forall_compl_eq_zero
@@ -14533,10 +14980,12 @@ theorem smoothingSpatialPiece_fiber_norm_sq {a : ℝ} (ha : 0 < a) (m : Fin 2 �
   change (∫ u : ℝ, ‖g u‖ ^ 2) ≤ _
   rw [he]
   calc
-    _ ≤ ∫ u in I, (1 : ℝ) := integral_mono_ae hi.integrableOn (integrableOn_const measure_Icc_lt_top.ne (by finiteness))
+    _ ≤ ∫ u in I, (1 : ℝ) := integral_mono_ae hi.integrableOn (integrableOn_const
+      measure_Icc_lt_top.ne (by finiteness))
       (Filter.Eventually.of_forall hb)
     _ = 2 / a := by
-      simp only [integral_const, smul_eq_mul, mul_one, Measure.real, Measure.restrict_apply_univ, I, Real.volume_Icc]
+      simp only [integral_const, smul_eq_mul, mul_one, Measure.real,
+        Measure.restrict_apply_univ, I, Real.volume_Icc]
       rw [ENNReal.toReal_ofReal (by linarith [inv_pos.mpr ha] : 0 ≤ c + a⁻¹ - (c - a⁻¹))]
       ring
 
@@ -14545,13 +14994,16 @@ all actual fibers, as required for the first Section 3.3 flat-energy display. -/
 theorem smoothingCoordinateFiber_regularization_norm (ψ : SchwartzMap ℝ ℂ) (j : Fin 2)
     {r : ℝ} (hr : 0 < r) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (z : EuclideanSpace ℝ (Fin 2)) {B : ℝ} (hψ : ∀ ξ, ‖ψ ξ‖ ≤ B) :
-    ‖(smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z).toLp 2 volume‖ ≤
+    ‖(smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z).toLp 2
+      volume‖ ≤
       B * ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ := by
-  rw [← Lp.norm_fourier_eq ((smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z).toLp 2 volume),
+  rw [← Lp.norm_fourier_eq ((smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ)
+    j r f) j z).toLp 2 volume),
     ← Lp.norm_fourier_eq ((smoothingCoordinateFiber f j z).toLp 2 volume),
     SchwartzMap.toLp_fourier_eq, SchwartzMap.toLp_fourier_eq]
   apply Lp.norm_le_mul_norm_of_ae_le_mul
-  filter_upwards [(𝓕 (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)).coeFn_toLp 2 volume,
+  filter_upwards [(𝓕 (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f)
+    j z)).coeFn_toLp 2 volume,
     (𝓕 (smoothingCoordinateFiber f j z)).coeFn_toLp 2 volume] with ξ h1 h2
   rw [h1, h2, smoothingCoordinateFiber_regularization_fourier ψ j hr, norm_mul]
   exact mul_le_mul_of_nonneg_right (hψ _) (norm_nonneg _)
@@ -14578,19 +15030,23 @@ theorem smoothingRegularizedPiece_fiber_norm_fourth (ψ : Option (SchwartzMap �
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (j : Fin 2) (r a : ℝ), 0 < r → 0 < a →
     ∀ (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
     (∀ x, ‖f x‖ ≤ 1) → ∀ z : EuclideanSpace ℝ (Fin 2),
-    ‖(smoothingCoordinateFiber (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j z).toLp 2 volume‖ ^ 4 ≤
+    ‖(smoothingCoordinateFiber (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+      f)) j z).toLp 2 volume‖ ^ 4 ≤
       C / a ^ 2 := by
   obtain ⟨B, hB, hb⟩ := smoothingCoordinateFiber_regularization_norm_bound ψ
   refine ⟨4 * B ^ 4, by positivity, ?_⟩
   intro j r a hr ha m f hf z
   have hp := smoothingSpatialPiece_fiber_norm_sq ha m f hf j z
-  have hp4 : ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 4 ≤ 4 / a ^ 2 := by
+  have hp4 : ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 4 ≤ 4
+    / a ^ 2 := by
     have hh := pow_le_pow_left₀ (sq_nonneg _) hp 2
-    simpa only [← pow_mul, div_pow, show (2 : ℕ) * 2 = 4 by decide, show (2 : ℝ) ^ 2 = 4 by norm_num] using hh
+    simpa only [← pow_mul, div_pow, show (2 : ℕ) * 2 = 4
+      by decide, show (2 : ℝ) ^ 2 = 4 by norm_num] using hh
   calc
     _ ≤ (B * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖) ^ 4 :=
       pow_le_pow_left₀ (norm_nonneg _) (hb j r hr (smoothingSpatialPiece a m f) z) 4
-    _ = B ^ 4 * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 4 := mul_pow _ _ _
+    _ = B ^ 4 * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 4
+      := mul_pow _ _ _
     _ ≤ B ^ 4 * (4 / a ^ 2) := mul_le_mul_of_nonneg_left hp4 (by positivity)
     _ = _ := by ring
 
@@ -14617,8 +15073,9 @@ theorem smoothingRegularizedPiece_transverse_zero (ψ : Option (SchwartzMap ℝ 
     apply integral_eq_zero_of_ae
     filter_upwards [] with u
     have he : (x - EuclideanSpace.single j u) i = x i := by
-      simp only [PiLp.sub_apply, PiLp.single_apply, hij, if_false, sub_zero]
-    have hz := smoothingSpatialPiece_coordinate_zero ha m f i (x - EuclideanSpace.single j u) (by rwa [he])
+      simp only [PiLp.sub_apply, PiLp.single_apply, hij, ite_false, sub_zero]
+    have hz := smoothingSpatialPiece_coordinate_zero ha m f i (x - EuclideanSpace.single j u)
+      (by rwa [he])
     simp only [hz, mul_zero, Pi.zero_apply]
 
 /-- Every entire coordinate fiber vanishes outside the transverse
@@ -14627,24 +15084,28 @@ theorem smoothingRegularizedPiece_fiber_zero (ψ : Option (SchwartzMap ℝ ℂ))
     (j i : Fin 2) (hij : i ≠ j) {r a : ℝ} (hr : 0 < r) (ha : 0 < a) (m : Fin 2 → ℤ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (z : EuclideanSpace ℝ (Fin 2))
     (hz : a⁻¹ ≤ |z i - a⁻¹ * (m i : ℝ)|) :
-    smoothingCoordinateFiber (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j z = 0 := by
+    smoothingCoordinateFiber (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+      f)) j z = 0 := by
   ext u
   rw [smoothingCoordinateFiber_apply]
   have he : (z + smoothingCoordinateLine j u) i = z i := by
     rw [smoothingCoordinateLine_apply]
-    simp only [PiLp.add_apply, PiLp.single_apply, hij, if_false, add_zero]
+    simp only [PiLp.add_apply, PiLp.single_apply, hij, ite_false, add_zero]
   exact smoothingRegularizedPiece_transverse_zero ψ j i hij hr ha m f _ (by rwa [he])
 
 /-- Fourth powers of the actual slice L² norms are measurable in the
 transverse parameter, permitting the Section 3.3 energy integration. -/
 theorem smoothingCoordinateFiber_norm_fourth_measurable
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) :
-    Measurable (fun z : EuclideanSpace ℝ (Fin 2) => ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ ^ 4) := by
-  have hc : Continuous (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => ‖f (p.1 + smoothingCoordinateLine j p.2)‖ ^ 2) := by
+    Measurable (fun z : EuclideanSpace ℝ (Fin 2) => ‖(smoothingCoordinateFiber f j z).toLp 2
+      volume‖ ^ 4) := by
+  have hc : Continuous (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => ‖f (p.1 + smoothingCoordinateLine
+    j p.2)‖ ^ 2) := by
     have hf := f.continuous
     fun_prop
   have hm := (hc.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable
-  have he : (fun z : EuclideanSpace ℝ (Fin 2) => ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ ^ 4) =
+  have he : (fun z : EuclideanSpace ℝ (Fin 2) => ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖
+    ^ 4) =
       (fun z => (∫ u : ℝ, ‖f (z + smoothingCoordinateLine j u)‖ ^ 2) ^ 2) := by
     funext z
     have hh := smoothingSchwartz_norm_sq (smoothingCoordinateFiber f j z)
@@ -14662,7 +15123,8 @@ theorem smoothing_supported_interval_integral {h : ℝ → ℝ} (hm : Measurable
     Integrable h ∧ (∫ y : ℝ, h y) ≤ (2 * b) * M := by
   classical
   let I := Set.Icc (c - b) (c + b)
-  have hc : IntegrableOn (fun _ : ℝ => M) I := integrableOn_const measure_Icc_lt_top.ne (by finiteness)
+  have hc : IntegrableOn (fun _ : ℝ => M) I := integrableOn_const measure_Icc_lt_top.ne
+    (by finiteness)
   have hi := hc.integrable_indicator (measurableSet_Icc : MeasurableSet I)
   have hnorm : ∀ y, ‖h y‖ ≤ I.indicator (fun _ => M) y := by
     intro y
@@ -14677,7 +15139,8 @@ theorem smoothing_supported_interval_integral {h : ℝ → ℝ} (hm : Measurable
       (Filter.Eventually.of_forall (fun y => (le_abs_self (h y)).trans (hnorm y)))
     _ = _ := by
       rw [integral_indicator (measurableSet_Icc : MeasurableSet I)]
-      simp only [integral_const, smul_eq_mul, Measure.real, Measure.restrict_apply_univ, Real.volume_Icc]
+      simp only [integral_const, smul_eq_mul, Measure.real, Measure.restrict_apply_univ,
+        Real.volume_Icc]
       rw [ENNReal.toReal_ofReal (by linarith : 0 ≤ c + b - (c - b))]
       ring
 
@@ -14688,14 +15151,17 @@ theorem smoothingRegularizedPiece_integral_fiber_norm_fourth (ψ : Option (Schwa
     ∀ (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
     (∀ x, ‖f x‖ ≤ 1) →
     let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
-    Integrable (fun y : ℝ => ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4) ∧
-    (∫ y : ℝ, ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4) ≤ C / a ^ 3 := by
+    Integrable (fun y : ℝ => ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2
+      volume‖ ^ 4) ∧
+    (∫ y : ℝ, ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4) ≤
+      C / a ^ 3 := by
   obtain ⟨B, hB, hb⟩ := smoothingRegularizedPiece_fiber_norm_fourth ψ
   refine ⟨2 * B, by positivity, ?_⟩
   intro j i hij r a hr ha m f hf
   let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
   let c := a⁻¹ * (m i : ℝ)
-  have hm := (smoothingCoordinateFiber_norm_fourth_measurable g j).comp (smoothingCoordinateLine i).measurable
+  have hm := (smoothingCoordinateFiber_norm_fourth_measurable g j).comp (smoothingCoordinateLine
+    i).measurable
   have hz : ∀ y ∉ Set.Icc (c - a⁻¹) (c + a⁻¹),
       ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4 = 0 := by
     intro y hy
@@ -14706,10 +15172,12 @@ theorem smoothingRegularizedPiece_integral_fiber_norm_fourth (ψ : Option (Schwa
     have he : (smoothingCoordinateLine i y) i = y := by
       rw [smoothingCoordinateLine_apply]
       simp only [PiLp.single_eq_same]
-    have hzero := smoothingRegularizedPiece_fiber_zero ψ j i hij hr ha m f (smoothingCoordinateLine i y) (by rwa [he])
+    have hzero := smoothingRegularizedPiece_fiber_zero ψ j i hij hr ha m f
+      (smoothingCoordinateLine i y) (by rwa [he])
     change ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4 = 0
     rw [hzero]
-    simp only [← SchwartzMap.toLpCLM_apply (𝕜 := ℂ), map_zero, norm_zero, zero_pow (by decide : (4 : ℕ) ≠ 0)]
+    simp only [← SchwartzMap.toLpCLM_apply (𝕜 := ℂ), map_zero, norm_zero, zero_pow
+      (by decide : (4 : ℕ) ≠ 0)]
   obtain ⟨hi, hbound⟩ := smoothing_supported_interval_integral hm (inv_nonneg.mpr ha.le)
     (fun y => pow_nonneg (norm_nonneg _) 4) (fun y => hb j r a hr ha m f hf _) hz
   refine ⟨hi, hbound.trans_eq ?_⟩
@@ -14734,7 +15202,8 @@ theorem smoothingFiberFlat_selected_measurable
         Complex.exp (Complex.I * ((-2 * Real.pi * (n : ℝ) * R * p.2 : ℝ) : ℂ))) := by fun_prop
     exact hp.mul he.measurable
   have hsharp := hs.comp (measurable_id.prodMk (hS.comp measurable_fst))
-  have hc : Continuous (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => f (p.1 + smoothingCoordinateLine j p.2)) := by
+  have hc : Continuous (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => f (p.1 + smoothingCoordinateLine j
+    p.2)) := by
     have hf := f.continuous
     fun_prop
   exact hc.measurable.sub hsharp
@@ -14743,7 +15212,8 @@ theorem smoothingFiberFlat_selected_measurable
 are measurable whenever the underlying family is jointly measurable. -/
 theorem smoothing_parameter_difference_fourier_measurable {α : Type*} [MeasurableSpace α]
     (F : α → ℝ → ℂ) (hF : Measurable (Function.uncurry F)) :
-    Measurable (fun p : (α × ℝ) × ℝ => (𝓕 (smoothingMultiplicativeDifference (F p.1.1) p.1.2)) p.2) := by
+    Measurable (fun p : (α × ℝ) × ℝ => (𝓕 (smoothingMultiplicativeDifference (F p.1.1) p.1.2))
+      p.2) := by
   have hshift := hF.comp (show Measurable (fun p : ((α × ℝ) × ℝ) × ℝ =>
     (p.1.1.1, p.2 + p.1.1.2)) by fun_prop)
   have hbase := hF.comp (show Measurable (fun p : ((α × ℝ) × ℝ) × ℝ => (p.1.1.1, p.2)) by fun_prop)
@@ -14751,8 +15221,10 @@ theorem smoothing_parameter_difference_fourier_measurable {α : Type*} [Measurab
   have hkernel : Measurable (fun p : ((α × ℝ) × ℝ) × ℝ =>
       (Real.fourierChar (-inner ℝ p.2 p.1.2) : ℂ)) := by fun_prop
   have hm : Measurable (fun p : ((α × ℝ) × ℝ) × ℝ =>
-      Real.fourierChar (-inner ℝ p.2 p.1.2) • (F p.1.1.1 (p.2 + p.1.1.2) * star (F p.1.1.1 p.2))) := by
-    simpa only [Function.uncurry_def, Function.comp_def, Circle.smul_def, smul_eq_mul, Pi.mul_def] using!
+      Real.fourierChar (-inner ℝ p.2 p.1.2) • (F p.1.1.1 (p.2 + p.1.1.2) * star (F p.1.1.1 p.2)))
+        := by
+    simpa only [Function.uncurry_def, Function.comp_def, Circle.smul_def, smul_eq_mul,
+      Pi.mul_def] using!
       hkernel.mul (hshift.mul (continuous_star.measurable.comp hbase))
   have hi := (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable
   simpa only [Real.fourier_eq, smoothingMultiplicativeDifference] using! hi
@@ -14789,18 +15261,21 @@ theorem smoothingRegularizedPiece_integrated_flat_fiber_energy (ψ : Option (Sch
   refine ⟨2 * B, by positivity, ?_⟩
   intro j i hij r a R ρ hr ha hR hρ m f hf
   let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
-  let J := fun y : ℝ => ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4
+  let J := fun y : ℝ => ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2
+    volume‖ ^ 4
   let E := fun y : ℝ => ∫ s : ℝ, ∫ ξ in Metric.closedBall (0 : ℝ) R,
     ‖(𝓕 (smoothingMultiplicativeDifference
       (smoothingFiberFlat g j (smoothingCoordinateLine i y) R
         (smoothingFiberSelectedIndices g j R hρ (smoothingCoordinateLine i y))) s)) ξ‖ ^ 2
   have hm : Measurable E := (smoothingFiberFlat_selected_energy_measurable g j R hρ).comp
     (smoothingCoordinateLine i).measurable
-  have h0 : ∀ y, 0 ≤ E y := fun y => integral_nonneg (fun s => integral_nonneg (fun ξ => sq_nonneg _))
+  have h0 : ∀ y, 0 ≤ E y := fun y => integral_nonneg (fun s => integral_nonneg (fun ξ => sq_nonneg
+    _))
   have hp : ∀ y, E y ≤ (2 * ρ) * J y := fun y => smoothingFiberFlat_selected_energy g j hR hρ _
   obtain ⟨hJi, hJb⟩ := hb j i hij r a hr ha m f hf
   have hEi : Integrable E := (hJi.const_mul (2 * ρ)).mono' hm.aestronglyMeasurable
-    (Filter.Eventually.of_forall (fun y => by simpa only [Real.norm_eq_abs, abs_of_nonneg (h0 y)] using hp y))
+    (Filter.Eventually.of_forall (fun y =>
+      by simpa only [Real.norm_eq_abs, abs_of_nonneg (h0 y)] using hp y))
   refine ⟨hEi, ?_⟩
   calc
     (∫ y : ℝ, E y) ≤ ∫ y : ℝ, (2 * ρ) * J y := integral_mono_ae hEi (hJi.const_mul _)
@@ -14826,7 +15301,8 @@ theorem smoothingPartialFourierFirst_measurable {F : (ℝ × ℝ) → ℂ} (hF :
     Measurable (Function.uncurry (smoothingPartialFourierFirst F)) := by
   have hcomp := hF.comp (show Measurable (fun p : (ℝ × ℝ) × ℝ => (p.2, p.1.2)) by fun_prop)
   have hχ := Real.continuous_fourierChar
-  have hk : Measurable (fun p : (ℝ × ℝ) × ℝ => (Real.fourierChar (-inner ℝ p.2 p.1.1) : ℂ)) := by fun_prop
+  have hk : Measurable (fun p : (ℝ × ℝ) × ℝ => (Real.fourierChar (-inner ℝ p.2 p.1.1) : ℂ)) :=
+    by fun_prop
   have hm := hk.mul hcomp
   have hi := (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable
   simpa only [smoothingPartialFourierFirst, Function.uncurry_def, Real.fourier_eq,
@@ -14837,12 +15313,14 @@ coordinate Fourier transforms, in precisely the order used for Section 3.3
 partial Plancherel. -/
 theorem smoothing_fourier_partial_first {F : (ℝ × ℝ) → ℂ} (hFm : Measurable F) (hF : Integrable F)
     (ξ η : ℝ) :
-    (𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm (ξ, η)) =
+    (𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm
+      (ξ, η)) =
       (𝓕 (fun y : ℝ => smoothingPartialFourierFirst F ξ y)) η := by
   let K := fun p : ℝ × ℝ => Real.fourierChar (-(p.1 * ξ + p.2 * η)) • F p
   have hχ := Real.continuous_fourierChar
   have hKm : Measurable K := by
-    have hk : Measurable (fun p : ℝ × ℝ => (Real.fourierChar (-(p.1 * ξ + p.2 * η)) : ℂ)) := by fun_prop
+    have hk : Measurable (fun p : ℝ × ℝ => (Real.fourierChar (-(p.1 * ξ + p.2 * η)) : ℂ)) :=
+      by fun_prop
     simpa only [K, Circle.smul_def, smul_eq_mul, Pi.mul_def] using! hk.mul hFm
   have hKi : Integrable K := hF.norm.mono' hKm.aestronglyMeasurable
     (Filter.Eventually.of_forall (fun p => by simp only [K, Circle.norm_smul, le_refl]))
@@ -14851,7 +15329,8 @@ theorem smoothing_fourier_partial_first {F : (ℝ × ℝ) → ℂ} (hFm : Measur
     rw [Real.fourier_eq, ← smoothingPlaneEquiv_measurePreserving.integral_comp' K]
     apply integral_congr_ae
     filter_upwards [] with x
-    change Real.fourierChar (-inner ℝ x (smoothingPlaneEquiv.symm (ξ, η))) • F (smoothingPlaneEquiv x) = _
+    change Real.fourierChar (-inner ℝ x (smoothingPlaneEquiv.symm (ξ, η))) • F
+      (smoothingPlaneEquiv x) = _
     congr 2
     simp only [PiLp.inner_apply, Fin.sum_univ_two, RCLike.inner_apply, conj_trivial]
     change -(ξ * x 0 + η * x 1) = -(x 0 * ξ + x 1 * η)
@@ -14879,7 +15358,8 @@ function, in the unbundled norm-square form used by partial Plancherel. -/
 theorem smoothing_fourier_L2_energy {h : ℝ → ℂ} (h1 : Integrable h) (h2 : MemLp h 2 volume) :
     MemLp (𝓕 h) 2 volume ∧ (∫ ξ : ℝ, ‖(𝓕 h) ξ‖ ^ 2) = ∫ y : ℝ, ‖h y‖ ^ 2 := by
   have ha := smoothing_fourier_toLp_ae_eq h1 h2
-  exact ⟨(memLp_congr_ae ha).mp (Lp.memLp (𝓕 (h2.toLp h))), smoothing_integral_norm_sq_fourier h1 h2⟩
+  exact ⟨(memLp_congr_ae ha).mp (Lp.memLp (𝓕 (h2.toLp h))), smoothing_integral_norm_sq_fourier h1
+    h2⟩
 /-- For an integrable plane function, every partial Fourier transform is
 integrable in the transverse coordinate, by domination by the fiber L¹ norm. -/
 theorem smoothingPartialFourierFirst_integrable {F : (ℝ × ℝ) → ℂ}
@@ -14896,6 +15376,7 @@ theorem smoothingPartialFourierFirst_integrable {F : (ℝ × ℝ) → ℂ}
     (norm_integral_le_integral_norm (fun x : ℝ => Real.fourierChar (-inner ℝ x ξ) • F (x, y)))
 
 set_option maxHeartbeats 800000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- Partial Plancherel on a measurable horizontal frequency region. The
 square-integrability hypothesis is stated for the partial transform and
 will be supplied by the verified flat-fiber energy before using this in
@@ -14905,14 +15386,17 @@ theorem smoothing_partial_plancherel_first {F : (ℝ × ℝ) → ℂ}
     (hP : Integrable (fun p : ℝ × ℝ => ‖smoothingPartialFourierFirst F p.1 p.2‖ ^ 2)
       ((volume.restrict A).prod volume)) :
     Integrable (fun p : ℝ × ℝ =>
-      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm p)‖ ^ 2)
+      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x)))
+        (smoothingPlaneEquiv.symm p)‖ ^ 2)
       ((volume.restrict A).prod volume) ∧
     (∫ ξ in A, ∫ η : ℝ,
-      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm (ξ, η))‖ ^ 2) =
+      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x)))
+        (smoothingPlaneEquiv.symm (ξ, η))‖ ^ 2) =
       ∫ y : ℝ, ∫ ξ in A, ‖smoothingPartialFourierFirst F ξ y‖ ^ 2 := by
   let P := fun p : ℝ × ℝ => ‖smoothingPartialFourierFirst F p.1 p.2‖ ^ 2
   let Q := fun p : ℝ × ℝ =>
-    ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm p)‖ ^ 2
+    ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm
+      p)‖ ^ 2
   have hQm : Measurable Q := by
     let G := fun x : EuclideanSpace ℝ (Fin 2) => F (smoothingPlaneEquiv x)
     have hG : Integrable G := smoothingPlaneEquiv_measurePreserving.integrable_comp_of_integrable hF
@@ -14927,8 +15411,9 @@ theorem smoothing_partial_plancherel_first {F : (ℝ × ℝ) → ℂ}
       (smoothingPartialFourierFirst_integrable hFm hF ξ).aestronglyMeasurable
     have h2 : MemLp (smoothingPartialFourierFirst F ξ) 2 volume :=
       (memLp_two_iff_integrable_sq_norm hm).mpr hξ
-    obtain ⟨hFT, he⟩ := smoothing_fourier_L2_energy (smoothingPartialFourierFirst_integrable hFm hF ξ) h2
-    have hi := (memLp_two_iff_integrable_sq_norm hFT.1).mp hFT
+    obtain ⟨hFT, he⟩ := smoothing_fourier_L2_energy (smoothingPartialFourierFirst_integrable hFm
+      hF ξ) h2
+    have hi := (memLp_two_iff_integrable_sq_norm hFT.aestronglyMeasurable).mp hFT
     refine ⟨?_, ?_⟩
     · simpa only [Q, smoothing_fourier_partial_first hFm hF] using! hi
     · simpa only [Q, P, smoothing_fourier_partial_first hFm hF] using! he
@@ -14948,7 +15433,8 @@ theorem smoothing_partial_plancherel_first {F : (ℝ × ℝ) → ℂ}
 /-- The two coordinate lines give the pair-to-Euclidean map used for the
 first flat plane function in Section 3.3. -/
 theorem smoothing_first_plane_point (x y : ℝ) :
-    smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 x = smoothingPlaneEquiv.symm (x, y) := by
+    smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 x = smoothingPlaneEquiv.symm (x, y) :=
+      by
   change smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 x = WithLp.toLp 2 ![x, y]
   ext i
   fin_cases i <;> simp [smoothingCoordinateLine_apply, PiLp.add_apply]
@@ -14971,7 +15457,8 @@ that of the corresponding original Schwartz fiber. -/
 theorem smoothingFiberFlat_memLp_integral (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (z : EuclideanSpace ℝ (Fin 2)) {R : ℝ} (hR : 0 < R) (S : Finset ℤ) :
     MemLp (smoothingFiberFlat f j z R S) 2 volume ∧
-      (∫ u : ℝ, ‖smoothingFiberFlat f j z R S u‖ ^ 2) ≤ ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ ^ 2 := by
+      (∫ u : ℝ, ‖smoothingFiberFlat f j z R S u‖ ^ 2) ≤ ‖(smoothingCoordinateFiber f j z).toLp 2
+        volume‖ ^ 2 := by
   let g := (smoothingCoordinateFiber f j z).toLp 2 volume
   let q := smoothingFlatPart g R S
   have ha := smoothingFiberFlat_ae f j z hR S
@@ -14990,10 +15477,12 @@ theorem smoothingFiberFlat_memLp_integral (f : SchwartzMap (EuclideanSpace ℝ (
 /-- The squared norms of Schwartz coordinate slices are integrable in the
 transverse coordinate, by the existing full-plane L² bound and Fubini. -/
 theorem smoothingFirstFiber_norm_sq_integrable (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
-    Integrable (fun y : ℝ => ‖(smoothingCoordinateFiber g 0 (smoothingCoordinateLine 1 y)).toLp 2 volume‖ ^ 2) := by
+    Integrable (fun y : ℝ => ‖(smoothingCoordinateFiber g 0 (smoothingCoordinateLine 1 y)).toLp 2
+      volume‖ ^ 2) := by
   have hgi : Integrable (fun x : EuclideanSpace ℝ (Fin 2) => ‖g x‖ ^ 2) :=
-    (memLp_two_iff_integrable_sq_norm (g.memLp 2 volume).1).mp (g.memLp 2 volume)
-  have hp : Integrable (fun p : ℝ × ℝ => ‖g (smoothingPlaneEquiv.symm p)‖ ^ 2) (volume.prod volume) := by
+    (memLp_two_iff_integrable_sq_norm (g.memLp 2 volume).aestronglyMeasurable).mp (g.memLp 2 volume)
+  have hp : Integrable (fun p : ℝ × ℝ => ‖g (smoothingPlaneEquiv.symm p)‖ ^ 2) (volume.prod
+    volume) := by
     simpa only [Measure.volume_eq_prod] using!
       smoothingPlaneEquiv_measurePreserving.symm.integrable_comp_of_integrable hgi
   apply hp.integral_norm_prod_right.congr
@@ -15010,7 +15499,8 @@ theorem smoothing_plane_memLp_of_slices {F : (ℝ × ℝ) → ℂ} (hm : Measura
     (h2 : ∀ y, MemLp (fun x : ℝ => F (x, y)) 2 volume)
     (hb : ∀ y, (∫ x : ℝ, ‖F (x, y)‖ ^ 2) ≤ B y) : MemLp F 2 volume := by
   have hE : Measurable (fun y : ℝ => ∫ x : ℝ, ‖F (x, y)‖ ^ 2) :=
-    ((hm.norm.pow_const 2).stronglyMeasurable.integral_prod_left' (μ := (volume : Measure ℝ))).measurable
+    ((hm.norm.pow_const 2).stronglyMeasurable.integral_prod_left' (μ := (volume : Measure
+      ℝ))).measurable
   have hi : Integrable (fun y : ℝ => ∫ x : ℝ, ‖F (x, y)‖ ^ 2) :=
     hB.mono' hE.aestronglyMeasurable
       (Filter.Eventually.of_forall (fun y => by
@@ -15020,7 +15510,8 @@ theorem smoothing_plane_memLp_of_slices {F : (ℝ × ℝ) → ℂ} (hm : Measura
   rw [Measure.volume_eq_prod]
   apply (integrable_prod_iff' (hm.norm.pow_const 2).aestronglyMeasurable).mpr
   constructor
-  · exact Filter.Eventually.of_forall (fun y => (memLp_two_iff_integrable_sq_norm (h2 y).1).mp (h2 y))
+  · exact Filter.Eventually.of_forall (fun y => (memLp_two_iff_integrable_sq_norm (h2
+      y).aestronglyMeasurable).mp (h2 y))
   · simpa only [Real.norm_eq_abs, abs_pow, abs_norm] using hi
 
 /-- The first flat plane is an actual L² function, as required by Section 3.3. -/
@@ -15082,7 +15573,8 @@ theorem smoothing_energy_integrable_reorder {A : Set ℝ}
     filter_upwards [] with ξ
     exact (Real.norm_of_nonneg (h0 (y, (s, ξ)))).symm
   have ht := hi.swap
-  have ha := (measurePreserving_prodAssoc volume (volume.restrict A) volume).symm.integrable_comp_of_integrable ht
+  have ha := (measurePreserving_prodAssoc volume (volume.restrict A)
+    volume).symm.integrable_comp_of_integrable ht
   exact ha
 
 /-- The partial transform of a horizontal plane difference is exactly the
@@ -15100,6 +15592,7 @@ theorem smoothingFirstFlatPlane_partial_difference
   rfl
 
 set_option maxHeartbeats 800000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- Jointly measurable fiber Fourier energies can be put in the order
 needed for partial Plancherel without unfolding the fiber construction. -/
 theorem smoothing_family_difference_energy_integrable
@@ -15130,7 +15623,8 @@ theorem smoothingFirstFlatPlane_partial_energy_integrable
           (smoothingFiberSelectedIndices g 0 R hρ (smoothingCoordinateLine 1 y))) s)) ξ‖ ^ 2)) :
     Integrable (fun p : ℝ × (ℝ × ℝ) =>
       ‖smoothingPartialFourierFirst
-        (smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (p.1, 0)) p.2.1 p.2.2‖ ^ 2)
+        (smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (p.1, 0)) p.2.1 p.2.2‖
+          ^ 2)
       (volume.prod ((volume.restrict (Metric.closedBall (0 : ℝ) R)).prod volume)) := by
   simp only [smoothingFirstFlatPlane_partial_difference]
   apply smoothing_family_difference_energy_integrable _ _ _ _ he
@@ -15139,14 +15633,14 @@ theorem smoothingFirstFlatPlane_partial_energy_integrable
   · intro y
     exact smoothingFiberFlat_difference_energy_integrable g 0 _ hR _ _
 /-- Reassociation and Fubini identify the three iterated energy integrals. -/
-theorem smoothing_energy_integral_reorder {A : Set ℝ}
-    {H : ℝ × (ℝ × ℝ) → ℝ}
+theorem smoothing_energy_integral_reorder {A : Set ℝ} {H : ℝ × (ℝ × ℝ) → ℝ}
     (hi : Integrable H (volume.prod (volume.prod (volume.restrict A)))) :
     (∫ s : ℝ, ∫ ξ in A, ∫ y : ℝ, H (y, (s, ξ))) =
       ∫ y : ℝ, ∫ s : ℝ, ∫ ξ in A, H (y, (s, ξ)) := by
   let K := fun p : ℝ × (ℝ × ℝ) => H (p.2.2, (p.1, p.2.1))
   have hk : Integrable K (volume.prod ((volume.restrict A).prod volume)) :=
-    (measurePreserving_prodAssoc volume (volume.restrict A) volume).symm.integrable_comp_of_integrable hi.swap
+    (measurePreserving_prodAssoc volume (volume.restrict A)
+      volume).symm.integrable_comp_of_integrable hi.swap
   calc
     _ = ∫ s : ℝ, ∫ p : ℝ × ℝ, K (s, p) ∂(volume.restrict A).prod volume := by
       apply integral_congr_ae
@@ -15169,7 +15663,8 @@ theorem smoothingFirstFlatPlane_partial_plancherel_ae
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ)
     (hi : Integrable (fun p : ℝ × (ℝ × ℝ) =>
       ‖smoothingPartialFourierFirst
-        (smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (p.1, 0)) p.2.1 p.2.2‖ ^ 2)
+        (smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (p.1, 0)) p.2.1 p.2.2‖
+          ^ 2)
       (volume.prod ((volume.restrict (Metric.closedBall (0 : ℝ) R)).prod volume))) :
     ∀ᵐ s : ℝ, Integrable (fun p : ℝ × ℝ =>
       ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) =>
@@ -15184,7 +15679,8 @@ theorem smoothingFirstFlatPlane_partial_plancherel_ae
         ‖smoothingPartialFourierFirst
           (smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (s, 0)) ξ y‖ ^ 2 := by
   filter_upwards [hi.prod_right_ae] with s hs
-  apply smoothing_partial_plancherel_first _ (smoothingFirstFlatPlane_difference_integrable g hR hρ s)
+  apply smoothing_partial_plancherel_first _ (smoothingFirstFlatPlane_difference_integrable g hR
+    hρ s)
     _ measurableSet_closedBall hs
   have hm := smoothingFirstFlatPlane_measurable g R hρ
   simpa only [smoothingMultiplicativeDifference, Function.comp_def, Pi.mul_def] using!
@@ -15204,16 +15700,18 @@ theorem smoothing_plane_frequency_strip_integral (q : EuclideanSpace ℝ (Fin 2)
       (A ×ˢ Set.univ).indicator (fun p => q (smoothingPlaneEquiv.symm p)) := by
     funext p
     by_cases hp : p.1 ∈ A
-    · simp only [S, Set.indicator_of_mem, Set.mem_setOf_eq,
+    · simp only [S, Set.indicator_of_mem, Set.mem_ofPred_eq,
         ContinuousLinearEquiv.apply_symm_apply, hp, Set.mem_prod, Set.mem_univ, and_self]
     · simp [S, hp]
   calc
     _ = ∫ ξ, S.indicator q ξ := (integral_indicator hS).symm
     _ = ∫ p : ℝ × ℝ, S.indicator q (smoothingPlaneEquiv.symm p) :=
       (smoothingPlaneEquiv_measurePreserving.symm.integral_comp' (S.indicator q)).symm
-    _ = ∫ p : ℝ × ℝ, (A ×ˢ Set.univ).indicator (fun p => q (smoothingPlaneEquiv.symm p)) p := by rw [he]
+    _ = ∫ p : ℝ × ℝ, (A ×ˢ Set.univ).indicator (fun p => q (smoothingPlaneEquiv.symm p)) p :=
+      by rw [he]
     _ = ∫ p : ℝ × ℝ, q (smoothingPlaneEquiv.symm p) ∂(volume.restrict A).prod volume := by
-      rw [Measure.volume_eq_prod, integral_indicator (hA.prod MeasurableSet.univ), ← Measure.restrict_prod_eq_prod_univ]
+      rw [Measure.volume_eq_prod, integral_indicator (hA.prod MeasurableSet.univ), ←
+        Measure.restrict_prod_eq_prod_univ]
     _ = _ := integral_prod _ hi
 
 /-- The first flat plane's full Fourier-strip energy equals its integrated
@@ -15242,20 +15740,23 @@ theorem smoothingFirstFlatPlane_energy_identity
       (smoothingFiberFlat g 0 (smoothingCoordinateLine 1 p.1) R
         (smoothingFiberSelectedIndices g 0 R hρ (smoothingCoordinateLine 1 p.1))) p.2.1)) p.2.2‖ ^ 2
   let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ A},
-    ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s, 0) (smoothingPlaneEquiv x))) ξ‖ ^ 2
+    ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s, 0)
+      (smoothingPlaneEquiv x))) ξ‖ ^ 2
   have hP : Integrable P (volume.prod ((volume.restrict A).prod volume)) :=
     smoothingFirstFlatPlane_partial_energy_integrable g hR hρ he
   have hP' : Integrable (fun p : ℝ × (ℝ × ℝ) => H (p.2.2, (p.1, p.2.1)))
       (volume.prod ((volume.restrict A).prod volume)) := by
     simpa only [P, F, smoothingFirstFlatPlane_partial_difference, H] using hP
   have hH : Integrable H (volume.prod (volume.prod (volume.restrict A))) :=
-    ((measurePreserving_prodAssoc volume (volume.restrict A) volume).integrable_comp_of_integrable hP').swap
+    ((measurePreserving_prodAssoc volume (volume.restrict A) volume).integrable_comp_of_integrable
+      hP').swap
   have hrows := smoothingFirstFlatPlane_partial_plancherel_ae g hR hρ hP
   have hEq : ∀ᵐ s : ℝ, E s = ∫ ξ in A, ∫ y : ℝ, P (s, (ξ, y)) := by
     filter_upwards [hrows, hP.prod_right_ae] with s hs hps
     calc
       E s = ∫ ξ in A, ∫ η : ℝ,
-          ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s, 0) (smoothingPlaneEquiv x)))
+          ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s, 0)
+            (smoothingPlaneEquiv x)))
             (smoothingPlaneEquiv.symm (ξ, η))‖ ^ 2 :=
         smoothing_plane_frequency_strip_integral _ A measurableSet_closedBall hs.1
       _ = ∫ y : ℝ, ∫ ξ in A, P (s, (ξ, y)) := hs.2
@@ -15279,8 +15780,10 @@ def smoothingFirstFlat (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
 theorem smoothingFirstFlat_difference (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (s : ℝ) :
     (fun x : EuclideanSpace ℝ (Fin 2) =>
-      smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (s, 0) (smoothingPlaneEquiv x)) =
-      smoothingMultiplicativeDifference (smoothingFirstFlat g R hρ) (EuclideanSpace.single 0 s) := by
+      smoothingMultiplicativeDifference (smoothingFirstFlatPlane g R hρ) (s, 0)
+        (smoothingPlaneEquiv x)) =
+      smoothingMultiplicativeDifference (smoothingFirstFlat g R hρ) (EuclideanSpace.single 0 s) :=
+        by
   funext x
   simp only [smoothingMultiplicativeDifference, smoothingFirstFlat, map_add]
   rfl
@@ -15294,7 +15797,8 @@ theorem smoothingRegularizedPiece_first_flat_energy (ψ : Option (SchwartzMap �
     (∀ x, ‖f x‖ ≤ 1) →
     let g := smoothingCoordinateRegularization ψ 0 r (smoothingSpatialPiece a m f)
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 0| ≤ R},
-      ‖(𝓕 (smoothingMultiplicativeDifference (smoothingFirstFlat g R hρ) (EuclideanSpace.single 0 s))) ξ‖ ^ 2
+      ‖(𝓕 (smoothingMultiplicativeDifference (smoothingFirstFlat g R hρ) (EuclideanSpace.single 0
+        s))) ξ‖ ^ 2
     Integrable E ∧ (∫ s : ℝ, E s) ≤ C * ρ / a ^ 3 := by
   obtain ⟨C, hC, hb⟩ := smoothingRegularizedPiece_integrated_flat_fiber_energy ψ
   refine ⟨C, hC, ?_⟩
@@ -15302,10 +15806,11 @@ theorem smoothingRegularizedPiece_first_flat_energy (ψ : Option (SchwartzMap �
   let g := smoothingCoordinateRegularization ψ 0 r (smoothingSpatialPiece a m f)
   obtain ⟨he, hb⟩ := hb 0 1 (by decide) r a R ρ hr ha hR hρ m f hf
   obtain ⟨hi, hid⟩ := smoothingFirstFlatPlane_energy_identity g hR hρ he
-  have hset : {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ Metric.closedBall (0 : ℝ) R} =
+  have hset : {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ Metric.closedBall (0 :
+    ℝ) R} =
       {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 0| ≤ R} := by
     ext ξ
-    simp only [Set.mem_setOf_eq, Metric.mem_closedBall, dist_zero_right, Real.norm_eq_abs]
+    simp only [Set.mem_ofPred_eq, Metric.mem_closedBall, dist_zero_right, Real.norm_eq_abs]
     rfl
   simp only [hset, smoothingFirstFlat_difference] at hi hid
   exact ⟨hi, hid.trans_le hb⟩
@@ -15320,7 +15825,8 @@ theorem smoothing_section3_3_first_flat_energy (ψ : Option (SchwartzMap ℝ ℂ
     let g := smoothingCoordinateRegularization ψ 0 r (smoothingSpatialPiece (r ^ γ) m f)
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 0| ≤ r ^ τ},
       ‖(𝓕 (smoothingMultiplicativeDifference
-        (smoothingFirstFlat g (r ^ τ) (Real.rpow_pos_of_pos hr (-δ))) (EuclideanSpace.single 0 s))) ξ‖ ^ 2
+        (smoothingFirstFlat g (r ^ τ) (Real.rpow_pos_of_pos hr (-δ))) (EuclideanSpace.single 0
+          s))) ξ‖ ^ 2
     Integrable E ∧ (∫ s : ℝ, E s) ≤ C * r ^ (-δ - 3 * γ) := by
   obtain ⟨C, hC, hb⟩ := smoothingRegularizedPiece_first_flat_energy ψ
   refine ⟨C, hC, ?_⟩
@@ -15334,7 +15840,8 @@ theorem smoothing_section3_3_first_flat_energy (ψ : Option (SchwartzMap ℝ ℂ
 
 /-- The coordinate-line parametrization of a second-coordinate fiber. -/
 theorem smoothing_second_plane_point (x y : ℝ) :
-    smoothingCoordinateLine 0 x + smoothingCoordinateLine 1 y = smoothingPlaneEquiv.symm (x, y) := by
+    smoothingCoordinateLine 0 x + smoothingCoordinateLine 1 y = smoothingPlaneEquiv.symm (x, y) :=
+      by
   rw [add_comm, smoothing_first_plane_point]
 
 /-- Section 3.3, the second sharp/flat equality: the deterministic measurable
@@ -15366,7 +15873,8 @@ theorem smoothingCoordinateFiber_upper_support (ψ : SchwartzMap ℝ ℂ)
     (hψ : ∀ ξ : ℝ, (8 / 3 : ℝ) ≤ |ξ| → ψ ξ = 0) (j : Fin 2)
     {r : ℝ} (hr : 0 < r) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (z : EuclideanSpace ℝ (Fin 2)) {ξ : ℝ}
-    (hξ : (𝓕 (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)) ξ ≠ 0) :
+    (hξ : (𝓕 (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)) ξ
+      ≠ 0) :
     |ξ| < (8 / 3) * r := by
   rw [smoothingCoordinateFiber_regularization_fourier _ j hr] at hξ
   have hs := left_ne_zero_of_mul hξ
@@ -15406,25 +15914,32 @@ theorem smoothingIndexedFrequencyFilled_upper (ψ : SchwartzMap ℝ ℂ)
   cases he : smoothingSelectedIndex (S z) k with
   | none =>
     simp only [Option.elim_none, abs_of_pos hr]
-    have hp := mul_le_mul_of_nonneg_right (by linarith [Real.pi_gt_three] : (1 : ℝ) ≤ 6 * Real.pi) hr.le
+    have hp := mul_le_mul_of_nonneg_right (by linarith [Real.pi_gt_three] : (1 : ℝ) ≤ 6 * Real.pi)
+      hr.le
     simpa only [one_mul] using hp
   | some n =>
     simp only [Option.elim_some]
-    exact smoothingFiberSelectedIndices_upper_frequency ψ hψ j hr hR hRr hρ f z (smoothingSelectedIndex_mem he)
+    exact smoothingFiberSelectedIndices_upper_frequency ψ hψ j hr hR hRr hρ f z
+      (smoothingSelectedIndex_mem he)
 
 /-- Section 3.3, the second structured-sum display: one common finite
 index set gives jointly measurable amplitudes and measurable filled phases. -/
 theorem smoothing_section3_3_second_structured_sum
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (R : ℝ)
     {r δ : ℝ} (hr : 1 ≤ r) (hδ : 0 ≤ δ) :
-    let S := smoothingFiberSelectedIndices g 1 R (Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hr) (-δ))
+    let S := smoothingFiberSelectedIndices g 1 R (Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one
+      hr) (-δ))
     ∃ N : ℕ, (N : ℝ) ≤ 7 * r ^ δ ∧
       (∀ k : Fin N,
-        Measurable (fun x : ℝ => smoothingIndexedFrequencyFilled S R r k (smoothingCoordinateLine 0 x)) ∧
-        Measurable (fun p : ℝ × ℝ => smoothingIndexedAmplitude g 1 S R k (smoothingCoordinateLine 0 p.1) p.2)) ∧
-      ∀ x y : ℝ, smoothingFiberSharp g 1 (smoothingCoordinateLine 0 x) R (S (smoothingCoordinateLine 0 x)) y =
+        Measurable (fun x : ℝ => smoothingIndexedFrequencyFilled S R r k (smoothingCoordinateLine
+          0 x)) ∧
+        Measurable (fun p : ℝ × ℝ => smoothingIndexedAmplitude g 1 S R k (smoothingCoordinateLine
+          0 p.1) p.2)) ∧
+      ∀ x y : ℝ, smoothingFiberSharp g 1 (smoothingCoordinateLine 0 x) R (S
+        (smoothingCoordinateLine 0 x)) y =
         ∑ k : Fin N, smoothingIndexedAmplitude g 1 S R k (smoothingCoordinateLine 0 x) y *
-          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R r k (smoothingCoordinateLine 0 x) * y : ℝ) : ℂ)) := by
+          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R r k
+            (smoothingCoordinateLine 0 x) * y : ℝ) : ℂ)) := by
   dsimp only
   let hρ := Real.rpow_pos_of_pos (lt_of_lt_of_le zero_lt_one hr) (-δ)
   let S := smoothingFiberSelectedIndices g 1 R hρ
@@ -15432,9 +15947,11 @@ theorem smoothing_section3_3_second_structured_sum
   refine ⟨N, hN, ?_, ?_⟩
   · intro k
     refine ⟨(smoothingIndexedFrequencyFilled_measurable S
-      (smoothingFiberSelectedIndices_measurable_card g 1 R hρ).1 R r k).comp (smoothingCoordinateLine 0).measurable, ?_⟩
+      (smoothingFiberSelectedIndices_measurable_card g 1 R hρ).1 R r k).comp
+        (smoothingCoordinateLine 0).measurable, ?_⟩
     simpa only [Function.comp_def, Function.uncurry_def] using!
-      (hm k).2.comp (show Measurable (fun p : ℝ × ℝ => (smoothingCoordinateLine 0 p.1, p.2)) by fun_prop)
+      (hm k).2.comp (show Measurable (fun p : ℝ × ℝ => (smoothingCoordinateLine 0 p.1, p.2))
+        by fun_prop)
   · intro x y
     rw [hs]
     apply Finset.sum_congr rfl
@@ -15450,9 +15967,12 @@ theorem smoothing_section3_3_second_phases (C : LittlewoodPaley.lpCutoffs 1)
     (ψ : SchwartzMap ℝ ℂ),
     (ψ = smoothingReproducingLowSymbol C ∨ ψ = smoothingReproducingAnnularSymbol C) →
     ∀ (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (k : ℕ),
-    let S := smoothingFiberSelectedIndices (smoothingCoordinateRegularization (some ψ) 1 r f) 1 (r ^ τ) hρ
-    Measurable (fun x : ℝ => smoothingIndexedFrequencyFilled S (r ^ τ) r k (smoothingCoordinateLine 0 x)) ∧
-    (∀ x : ℝ, |smoothingIndexedFrequencyFilled S (r ^ τ) r k (smoothingCoordinateLine 0 x)| ≤ (6 * Real.pi) * r) ∧
+    let S := smoothingFiberSelectedIndices (smoothingCoordinateRegularization (some ψ) 1 r f) 1 (r
+      ^ τ) hρ
+    Measurable (fun x : ℝ => smoothingIndexedFrequencyFilled S (r ^ τ) r k
+      (smoothingCoordinateLine 0 x)) ∧
+    (∀ x : ℝ, |smoothingIndexedFrequencyFilled S (r ^ τ) r k (smoothingCoordinateLine 0 x)| ≤ (6 *
+      Real.pi) * r) ∧
     (ψ = smoothingReproducingAnnularSymbol C → ∀ x : ℝ,
       r ≤ |smoothingIndexedFrequencyFilled S (r ^ τ) r k (smoothingCoordinateLine 0 x)|) := by
   obtain ⟨r₀, hr₀, hw⟩ := smoothing_structural_width_eventually hτ
@@ -15482,7 +16002,8 @@ theorem smoothing_section3_3_second_amplitude_derivatives (ψ : SchwartzMap ℝ 
     let g := smoothingCoordinateRegularization (some ψ) 1 r (smoothingSpatialPiece a m f)
     let S := smoothingFiberSelectedIndices g 1 (r ^ τ) hρ
     ContDiff ℝ ∞ (smoothingIndexedAmplitude g 1 S (r ^ τ) k (smoothingCoordinateLine 0 x)) ∧
-      ∀ y : ℝ, ‖iteratedDeriv N (smoothingIndexedAmplitude g 1 S (r ^ τ) k (smoothingCoordinateLine 0 x)) y‖ ≤
+      ∀ y : ℝ, ‖iteratedDeriv N (smoothingIndexedAmplitude g 1 S (r ^ τ) k
+        (smoothingCoordinateLine 0 x)) y‖ ≤
         C * r ^ (τ * N) := by
   obtain ⟨C, hC, hb⟩ := smoothing_section3_3_amplitude_derivatives (some ψ) N
   refine ⟨C, hC, ?_⟩
@@ -15504,8 +16025,10 @@ theorem smoothingCoordinateSwap_involutive (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingCoordinateSwap (smoothingCoordinateSwap x) = x := by
   ext i
   fin_cases i
-  · exact (smoothingCoordinateSwap_apply (smoothingCoordinateSwap x)).1.trans (smoothingCoordinateSwap_apply x).2
-  · exact (smoothingCoordinateSwap_apply (smoothingCoordinateSwap x)).2.trans (smoothingCoordinateSwap_apply x).1
+  · exact (smoothingCoordinateSwap_apply (smoothingCoordinateSwap x)).1.trans
+      (smoothingCoordinateSwap_apply x).2
+  · exact (smoothingCoordinateSwap_apply (smoothingCoordinateSwap x)).2.trans
+      (smoothingCoordinateSwap_apply x).1
 
 /-- Transposition preserves the Schwartz class. -/
 def smoothingTranspose (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
@@ -15527,7 +16050,8 @@ theorem smoothingTranspose_fiber (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) �
 /-- Equal Schwartz fibers yield the identical deterministic selected index set. -/
 theorem smoothingFiberSelectedIndices_congr
     (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j k : Fin 2)
-    (z w : EuclideanSpace ℝ (Fin 2)) (hf : smoothingCoordinateFiber f j z = smoothingCoordinateFiber g k w)
+    (z w : EuclideanSpace ℝ (Fin 2)) (hf : smoothingCoordinateFiber f j z =
+      smoothingCoordinateFiber g k w)
     (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) :
     smoothingFiberSelectedIndices f j R hρ z = smoothingFiberSelectedIndices g k R hρ w := by
   have he : smoothingFiberSpectralDensity f j z = smoothingFiberSpectralDensity g k w := by
@@ -15539,7 +16063,8 @@ theorem smoothingFiberSelectedIndices_congr
 /-- Equal Schwartz fibers yield equal actual flat representatives. -/
 theorem smoothingFiberFlat_congr
     (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j k : Fin 2)
-    (z w : EuclideanSpace ℝ (Fin 2)) (hf : smoothingCoordinateFiber f j z = smoothingCoordinateFiber g k w)
+    (z w : EuclideanSpace ℝ (Fin 2)) (hf : smoothingCoordinateFiber f j z =
+      smoothingCoordinateFiber g k w)
     (R : ℝ) (S : Finset ℤ) : smoothingFiberFlat f j z R S = smoothingFiberFlat g k w R S := by
   funext u
   simp only [smoothingFiberFlat, smoothingFiberSharp, ← smoothingCoordinateFiber_apply, hf]
@@ -15564,10 +16089,12 @@ def smoothingSecondFlat (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
 of its actual second flat component. -/
 theorem smoothingTranspose_flat (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) :
-    smoothingFirstFlat (smoothingTranspose g) R hρ = smoothingSecondFlat g R hρ ∘ smoothingCoordinateSwap := by
+    smoothingFirstFlat (smoothingTranspose g) R hρ = smoothingSecondFlat g R hρ ∘
+      smoothingCoordinateSwap := by
   funext x
   change smoothingFiberFlat (smoothingTranspose g) 0 (smoothingCoordinateLine 1 (x 1)) R
-      (smoothingFiberSelectedIndices (smoothingTranspose g) 0 R hρ (smoothingCoordinateLine 1 (x 1))) (x 0) = _
+      (smoothingFiberSelectedIndices (smoothingTranspose g) 0 R hρ (smoothingCoordinateLine 1 (x
+        1))) (x 0) = _
   rw [smoothingTranspose_flat_fiber]
   simp only [Function.comp_def, smoothingSecondFlat, (smoothingCoordinateSwap_apply x).1,
     (smoothingCoordinateSwap_apply x).2]
@@ -15588,7 +16115,8 @@ theorem smoothingTranspose_flat_difference_fourier
       (EuclideanSpace.single 1 s))) (smoothingCoordinateSwap ξ) := by
   have he : smoothingMultiplicativeDifference (smoothingFirstFlat (smoothingTranspose g) R hρ)
       (EuclideanSpace.single 0 s) =
-      smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1 s) ∘ smoothingCoordinateSwap := by
+      smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1 s) ∘
+        smoothingCoordinateSwap := by
     funext x
     simp only [smoothingTranspose_flat, smoothingMultiplicativeDifference, Function.comp_def,
       map_add, smoothingCoordinateSwap_single]
@@ -15621,7 +16149,8 @@ theorem smoothingRegularizedPiece_second_flat_energy (ψ : Option (SchwartzMap �
     (∀ x, ‖f x‖ ≤ 1) →
     let g := smoothingCoordinateRegularization ψ 1 r (smoothingSpatialPiece a m f)
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 1| ≤ R},
-      ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1 s))) ξ‖ ^ 2
+      ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1
+        s))) ξ‖ ^ 2
     Integrable E ∧ (∫ s : ℝ, E s) ≤ C * ρ / a ^ 3 := by
   obtain ⟨C, hC, hb⟩ := smoothingRegularizedPiece_integrated_flat_fiber_energy ψ
   refine ⟨C, hC, ?_⟩
@@ -15631,23 +16160,28 @@ theorem smoothingRegularizedPiece_second_flat_energy (ψ : Option (SchwartzMap �
   have het : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in Metric.closedBall (0 : ℝ) R,
       ‖(𝓕 (smoothingMultiplicativeDifference
         (smoothingFiberFlat (smoothingTranspose g) 0 (smoothingCoordinateLine 1 y) R
-          (smoothingFiberSelectedIndices (smoothingTranspose g) 0 R hρ (smoothingCoordinateLine 1 y))) s)) ξ‖ ^ 2) := by
+          (smoothingFiberSelectedIndices (smoothingTranspose g) 0 R hρ (smoothingCoordinateLine 1
+            y))) s)) ξ‖ ^ 2) := by
     simpa only [smoothingTranspose_flat_fiber] using he
   obtain ⟨hi, hid⟩ := smoothingFirstFlatPlane_energy_identity (smoothingTranspose g) hR hρ het
-  have hset : {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ Metric.closedBall (0 : ℝ) R} =
+  have hset : {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ Metric.closedBall (0 :
+    ℝ) R} =
       {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 0| ≤ R} := by
     ext ξ
-    simp only [Set.mem_setOf_eq, Metric.mem_closedBall, dist_zero_right, Real.norm_eq_abs]
+    simp only [Set.mem_ofPred_eq, Metric.mem_closedBall, dist_zero_right, Real.norm_eq_abs]
     rfl
   simp only [hset, smoothingFirstFlat_difference, smoothingTranspose_flat_fiber] at hi hid
   have hswap (s : ℝ) :
       (∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 0| ≤ R},
-        ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1 s)))
+        ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single
+          1 s)))
           (smoothingCoordinateSwap ξ)‖ ^ 2) =
       ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 1| ≤ R},
-        ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1 s))) ξ‖ ^ 2 :=
+        ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single
+          1 s))) ξ‖ ^ 2 :=
     (smoothing_swap_frequency_strip_integral
-      (fun ξ => ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ) (EuclideanSpace.single 1 s))) ξ‖ ^ 2) R).symm
+      (fun ξ => ‖(𝓕 (smoothingMultiplicativeDifference (smoothingSecondFlat g R hρ)
+        (EuclideanSpace.single 1 s))) ξ‖ ^ 2) R).symm
   simp_rw [smoothingTranspose_flat_difference_fourier, hswap] at hi hid
   exact ⟨hi, hid.trans_le hb⟩
 
@@ -15661,7 +16195,8 @@ theorem smoothing_section3_3_second_flat_energy (ψ : Option (SchwartzMap ℝ �
     let g := smoothingCoordinateRegularization ψ 1 r (smoothingSpatialPiece (r ^ γ) m f)
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ 1| ≤ r ^ τ},
       ‖(𝓕 (smoothingMultiplicativeDifference
-        (smoothingSecondFlat g (r ^ τ) (Real.rpow_pos_of_pos hr (-δ))) (EuclideanSpace.single 1 s))) ξ‖ ^ 2
+        (smoothingSecondFlat g (r ^ τ) (Real.rpow_pos_of_pos hr (-δ))) (EuclideanSpace.single 1
+          s))) ξ‖ ^ 2
     Integrable E ∧ (∫ s : ℝ, E s) ≤ C * r ^ (-δ - 3 * γ) := by
   obtain ⟨C, hC, hb⟩ := smoothingRegularizedPiece_second_flat_energy ψ
   refine ⟨C, hC, ?_⟩
@@ -15680,7 +16215,8 @@ def smoothingEnlargedCutoff (a : ℝ) (m : Fin 2 → ℤ) (x : EuclideanSpace �
 
 /-- Smoothness and compact support of the actual enlarged cutoff. -/
 theorem smoothingEnlargedCutoff_properties {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ) :
-    ContDiff ℝ ∞ (smoothingEnlargedCutoff a m) ∧ HasCompactSupport (smoothingEnlargedCutoff a m) := by
+    ContDiff ℝ ∞ (smoothingEnlargedCutoff a m) ∧ HasCompactSupport (smoothingEnlargedCutoff a m)
+      := by
   let A := PiLp.continuousLinearEquiv 2 ℝ (fun _ : Fin 2 => ℝ)
   have hp := smoothingLocalFourierGate_properties ha m
   refine ⟨Complex.ofRealCLM.contDiff.comp (hp.1.comp A.contDiff), ?_⟩
@@ -15692,7 +16228,8 @@ theorem smoothingEnlargedCutoff_bounds (a : ℝ) (m : Fin 2 → ℤ) (x : Euclid
   have hlo : 0 ≤ smoothingLocalFourierGate a m x.ofLp := smoothingFourierBump.nonneg
   have hhi : smoothingLocalFourierGate a m x.ofLp ≤ 1 := smoothingFourierBump.le_one
   constructor
-  · simpa only [smoothingEnlargedCutoff, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hlo] using hhi
+  · simpa only [smoothingEnlargedCutoff, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg hlo]
+      using hhi
   · rw [smoothingEnlargedCutoff, ← Complex.ofReal_one, ← Complex.ofReal_sub]
     rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (sub_nonneg.mpr hhi)]
     linarith
@@ -15708,7 +16245,8 @@ theorem smoothingEnlargedCutoff_one {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
 theorem smoothingEnlargedCutoff_support {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     {x : EuclideanSpace ℝ (Fin 2)} (hx : smoothingEnlargedCutoff a m x ≠ 0) :
     ∀ i, |x i - a⁻¹ * (m i : ℝ)| < (5 / 4) * a⁻¹ := by
-  have hn : smoothingLocalFourierGate a m x.ofLp ≠ 0 := fun hh => hx (by simp [smoothingEnlargedCutoff, hh])
+  have hn : smoothingLocalFourierGate a m x.ofLp ≠ 0 := fun hh => hx
+    (by simp [smoothingEnlargedCutoff, hh])
   have hh := smoothingFourierGate_support (fun i => (m i : ℝ) / 2) hn
   intro i
   have he : (a / 2) * x i - (m i : ℝ) / 2 = (a / 2) * (x i - a⁻¹ * (m i : ℝ)) := by field_simp
@@ -15763,20 +16301,24 @@ theorem smoothing_section3_3_relocalization
 /-- The enlarged cutoff acts as the identity on every original spatial piece. -/
 theorem smoothingEnlargedCutoff_spatialPiece {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)) :
-    smoothingEnlargedCutoff a m x * smoothingSpatialPiece a m f x = smoothingSpatialPiece a m f x := by
+    smoothingEnlargedCutoff a m x * smoothingSpatialPiece a m f x = smoothingSpatialPiece a m f x
+      := by
   by_cases hx : smoothingSpatialPiece a m f x = 0
   · rw [hx, mul_zero]
-  · rw [smoothingEnlargedCutoff_one ha m (fun i => (smoothingSpatialPiece_support ha m f hx i).le), one_mul]
+  · rw [smoothingEnlargedCutoff_one ha m (fun i => (smoothingSpatialPiece_support ha m f hx
+      i).le), one_mul]
 
 /-- The discarded convolution tail is the complementary cutoff times
 minus the commutator; this is the mean-value argument in Section 3.3. -/
 theorem smoothing_relocalization_tail_commutator (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
     (r : ℝ) {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)) :
-    (1 - smoothingEnlargedCutoff a m x) * smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x =
+    (1 - smoothingEnlargedCutoff a m x) * smoothingCoordinateRegularization ψ j r
+      (smoothingSpatialPiece a m f) x =
       -(1 - smoothingEnlargedCutoff a m x) * smoothingLocalizationCommutator ψ j r a m f x := by
   have he := smoothingEnlargedCutoff_spatialPiece ha m (smoothingCoordinateRegularization ψ j r f) x
-  change (1 - smoothingEnlargedCutoff a m x) * smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x =
+  change (1 - smoothingEnlargedCutoff a m x) * smoothingCoordinateRegularization ψ j r
+    (smoothingSpatialPiece a m f) x =
     -(1 - smoothingEnlargedCutoff a m x) *
       (smoothingSpatialPiece a m (smoothingCoordinateRegularization ψ j r f) x -
         smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x)
@@ -15789,11 +16331,13 @@ theorem smoothing_section3_3_relocalization_tail_bound (ψ : Option (SchwartzMap
     ∀ (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
     (∀ x, ‖f x‖ ≤ 1) → ∀ x : EuclideanSpace ℝ (Fin 2),
     ‖(1 - smoothingEnlargedCutoff (r ^ γ) m x) *
-      smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece (r ^ γ) m f) x‖ ≤ C * r ^ (γ - 1) := by
+      smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece (r ^ γ) m f) x‖ ≤ C * r ^ (γ
+        - 1) := by
   obtain ⟨C, hC, hb⟩ := smoothing_section3_3_commutator_bound ψ
   refine ⟨C, hC, ?_⟩
   intro j r γ hr m f hf x
-  rw [smoothing_relocalization_tail_commutator ψ j r (Real.rpow_pos_of_pos hr γ), norm_mul, norm_neg]
+  rw [smoothing_relocalization_tail_commutator ψ j r (Real.rpow_pos_of_pos hr γ), norm_mul,
+    norm_neg]
   calc
     _ ≤ 1 * ‖smoothingLocalizationCommutator ψ j r (r ^ γ) m f x‖ :=
       mul_le_mul_of_nonneg_right (smoothingEnlargedCutoff_bounds _ m x).2 (norm_nonneg _)
@@ -15857,7 +16401,8 @@ theorem smoothingFlatComponent_measurable
   split_ifs
   · exact (smoothingFirstFlatPlane_measurable g R hρ).comp smoothingPlaneEquiv.continuous.measurable
   · exact (smoothingFiberFlat_selected_measurable g 1 R hρ).comp
-      (show Measurable (fun x : EuclideanSpace ℝ (Fin 2) => (smoothingCoordinateLine 0 (x 0), x 1)) by fun_prop)
+      (show Measurable (fun x : EuclideanSpace ℝ (Fin 2) => (smoothingCoordinateLine 0 (x 0), x
+        1)) by fun_prop)
 
 /-- Equation (3.26): the actual global flat component. Convergence and
 measurability are proved by smoothing_eq3_26. -/
@@ -15865,7 +16410,8 @@ def smoothingGlobalFlat (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
     (r a R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (x : EuclideanSpace ℝ (Fin 2)) : ℂ :=
   ∑' m : Fin 2 → ℤ, smoothingEnlargedCutoff a m x *
-    smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x
+    smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f))
+      j R hρ x
 
 /-- Equation (3.26): the spatially localized flat series converges absolutely
 at every point and defines a measurable function for both input coordinates. -/
@@ -15875,12 +16421,15 @@ theorem smoothing_eq3_26 (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
     Measurable (smoothingGlobalFlat ψ j r a R hρ f) ∧
     ∀ x : EuclideanSpace ℝ (Fin 2),
       HasSum (fun m : Fin 2 → ℤ => smoothingEnlargedCutoff a m x *
-        smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x)
+        smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+          f)) j R hρ x)
         (smoothingGlobalFlat ψ j r a R hρ f x) ∧
       Summable (fun m : Fin 2 → ℤ => ‖smoothingEnlargedCutoff a m x *
-        smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x‖) := by
+        smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+          f)) j R hρ x‖) := by
   have hs := smoothingEnlargedCutoff_summable ha
-    (fun m => smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ)
+    (fun m => smoothingFlatComponent (smoothingCoordinateRegularization ψ j r
+      (smoothingSpatialPiece a m f)) j R hρ)
   refine ⟨?_, fun x => ⟨(hs x).1.hasSum, (hs x).2⟩⟩
   apply Measurable.tsum
   intro m
@@ -15895,7 +16444,8 @@ theorem smoothingSelectedIndices_card_le_termCount
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ)
     (z : EuclideanSpace ℝ (Fin 2)) :
     (smoothingFiberSelectedIndices g j R hρ z).card ≤ smoothingStructuralTermCount ρ := by
-  have hh := ((smoothingFiberSelectedIndices_measurable_card g j R hρ).2 z).trans (Nat.le_ceil (6 / ρ))
+  have hh := ((smoothingFiberSelectedIndices_measurable_card g j R hρ).2 z).trans (Nat.le_ceil (6
+    / ρ))
   exact_mod_cast hh
 
 /-- The common term count has the O(lambda^delta) size in (3.27)-(3.28). -/
@@ -15909,7 +16459,8 @@ theorem smoothingStructuralTermCount_bound {r δ : ℝ} (hr : 1 ≤ r) (hδ : 0 
     apply (le_div_iff₀ hρ).mpr
     rw [add_mul, div_mul_cancel₀ _ hρ.ne', one_mul]
     linarith
-  simpa only [ρ, Real.rpow_neg (le_trans zero_le_one hr), div_eq_mul_inv, inv_inv] using hc.le.trans hb
+  simpa only [ρ, Real.rpow_neg (le_trans zero_le_one hr), div_eq_mul_inv, inv_inv] using
+    hc.le.trans hb
 
 /-- A sharp fiber uses the common term count and the same filled frequencies
 as the verified source phase bounds. -/
@@ -15932,7 +16483,8 @@ def smoothingGlobalSharp (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
     (r a R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (x : EuclideanSpace ℝ (Fin 2)) : ℂ :=
   ∑' m : Fin 2 → ℤ, smoothingEnlargedCutoff a m x *
-    smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x
+    smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+      f)) j R hρ x
 
 /-- The actual global sharp sum is measurable and absolutely convergent,
 before identifying it with the displayed finite phase expansions. -/
@@ -15942,14 +16494,17 @@ theorem smoothingGlobalSharp_measurable_summable (ψ : Option (SchwartzMap ℝ �
     Measurable (smoothingGlobalSharp ψ j r a R hρ f) ∧
     ∀ x : EuclideanSpace ℝ (Fin 2),
       Summable (fun m : Fin 2 → ℤ => smoothingEnlargedCutoff a m x *
-        smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x) ∧
+        smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a
+          m f)) j R hρ x) ∧
       Summable (fun m : Fin 2 → ℤ => ‖smoothingEnlargedCutoff a m x *
-        smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x‖) := by
+        smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a
+          m f)) j R hρ x‖) := by
   refine ⟨?_, smoothingEnlargedCutoff_summable ha _⟩
   apply Measurable.tsum
   intro m
   apply (smoothingEnlargedCutoff_properties ha m).1.continuous.measurable.mul
-  exact (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)).continuous.measurable.sub
+  exact (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+    f)).continuous.measurable.sub
     (smoothingFlatComponent_measurable _ j R hρ)
 
 /-- Equation (3.27): the first global sharp component equals the actual
@@ -15962,7 +16517,8 @@ theorem smoothing_eq3_27 (ψ : Option (SchwartzMap ℝ ℂ)) (r a R : ℝ) {ρ :
         let S := smoothingFiberSelectedIndices g 0 R hρ
         smoothingEnlargedCutoff a m (smoothingPlaneEquiv.symm (x, y)) *
           smoothingIndexedAmplitude g 0 S R k (smoothingCoordinateLine 1 y) x *
-          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R r k (smoothingCoordinateLine 1 y) * x : ℝ) : ℂ)) := by
+          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R r k
+            (smoothingCoordinateLine 1 y) * x : ℝ) : ℂ)) := by
   unfold smoothingGlobalSharp
   apply tsum_congr
   intro m
@@ -15982,7 +16538,8 @@ theorem smoothing_eq3_28 (ψ : Option (SchwartzMap ℝ ℂ)) (r a R : ℝ) {ρ :
         let S := smoothingFiberSelectedIndices g 1 R hρ
         smoothingEnlargedCutoff a m (smoothingPlaneEquiv.symm (x, y)) *
           smoothingIndexedAmplitude g 1 S R k (smoothingCoordinateLine 0 x) y *
-          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R r k (smoothingCoordinateLine 0 x) * y : ℝ) : ℂ)) := by
+          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R r k
+            (smoothingCoordinateLine 0 x) * y : ℝ) : ℂ)) := by
   unfold smoothingGlobalSharp
   apply tsum_congr
   intro m
@@ -15997,7 +16554,8 @@ def smoothingErrorPiece (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
     (r a : ℝ) (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (x : EuclideanSpace ℝ (Fin 2)) : ℂ :=
   smoothingLocalizationCommutator ψ j r a m f x +
-    (1 - smoothingEnlargedCutoff a m x) * smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x
+    (1 - smoothingEnlargedCutoff a m x) * smoothingCoordinateRegularization ψ j r
+      (smoothingSpatialPiece a m f) x
 
 /-- The source error is exactly the localized commutator, so it has the
 enlarged cutoff's finite overlap and spatial support. -/
@@ -16035,7 +16593,8 @@ theorem smoothing_eq3_29 (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
     (r : ℝ) {a : ℝ} (ha : 0 < a) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
     Measurable (smoothingGlobalError ψ j r a f) ∧
     ∀ x : EuclideanSpace ℝ (Fin 2), HasSum (fun m : Fin 2 → ℤ => smoothingErrorPiece ψ j r a m f x)
-      (smoothingGlobalError ψ j r a f x) ∧ Summable (fun m : Fin 2 → ℤ => ‖smoothingErrorPiece ψ j r a m f x‖) := by
+      (smoothingGlobalError ψ j r a f x) ∧ Summable (fun m : Fin 2 → ℤ => ‖smoothingErrorPiece ψ j
+        r a m f x‖) := by
   have hs : ∀ x : EuclideanSpace ℝ (Fin 2),
       Summable (fun m : Fin 2 → ℤ => smoothingErrorPiece ψ j r a m f x) ∧
       Summable (fun m : Fin 2 → ℤ => ‖smoothingErrorPiece ψ j r a m f x‖) := by
@@ -16045,8 +16604,8 @@ theorem smoothing_eq3_29 (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
   refine ⟨?_, fun x => ⟨(hs x).1.hasSum, (hs x).2⟩⟩
   apply Measurable.tsum
   intro m
-
-  have hfun : smoothingErrorPiece ψ j r a m f = fun x => smoothingEnlargedCutoff a m x * smoothingLocalizationCommutator ψ j r a m f x := by
+  have hfun : smoothingErrorPiece ψ j r a m f = fun x => smoothingEnlargedCutoff a m x *
+    smoothingLocalizationCommutator ψ j r a m f x := by
     funext x
     exact smoothingErrorPiece_eq ψ j r ha m f x
   rw [hfun]
@@ -16064,7 +16623,8 @@ theorem smoothing_relocalized_piece_sum (ψ : Option (SchwartzMap ℝ ℂ)) (j :
       smoothingErrorPiece ψ j r a m f x =
       smoothingSpatialPiece a m (smoothingCoordinateRegularization ψ j r f) x := by
   dsimp only
-  simp only [smoothingSharpComponent, smoothingErrorPiece, smoothingLocalizationCommutator, sub_apply]
+  simp only [smoothingSharpComponent, smoothingErrorPiece, smoothingLocalizationCommutator,
+    sub_apply]
   ring
 
 /-- Section 3.3, the global decomposition summarized by (3.26)-(3.29):
@@ -16080,9 +16640,11 @@ theorem smoothing_section3_3_global_decomposition (ψ : Option (SchwartzMap ℝ 
   have hf := ((smoothing_eq3_26 ψ j r R ha hρ f).2 x).1.summable
   have hs := ((smoothingGlobalSharp_measurable_summable ψ j r R ha hρ f).2 x).1
   have he := ((smoothing_eq3_29 ψ j r ha f).2 x).1.summable
-  rw [smoothingGlobalFlat, smoothingGlobalSharp, smoothingGlobalError, ← hf.tsum_add hs, ← (hf.add hs).tsum_add he]
+  rw [smoothingGlobalFlat, smoothingGlobalSharp, smoothingGlobalError, ← hf.tsum_add hs, ← (hf.add
+    hs).tsum_add he]
   calc
-    f x = ∑' m : Fin 2 → ℤ, smoothingSpatialPiece a m (smoothingCoordinateRegularization ψ j r f) x := by
+    f x = ∑' m : Fin 2 → ℤ, smoothingSpatialPiece a m (smoothingCoordinateRegularization ψ j r f)
+      x := by
       rw [smoothing_eq3_5, hrep]
     _ = _ := tsum_congr (fun m => (smoothing_relocalized_piece_sum ψ j r a R hρ m f x).symm)
 
@@ -16095,8 +16657,8 @@ theorem smoothingEnlargedIndices_card (a : ℝ) (x : EuclideanSpace ℝ (Fin 2))
 
 /-- Any uniformly bounded family remains bounded after summing against the
 enlarged spatial cutoffs, with the fixed overlap constant 25. -/
-theorem smoothingEnlargedCutoff_tsum_bound {a : ℝ} (ha : 0 < a)
-    (F : (Fin 2 → ℤ) → EuclideanSpace ℝ (Fin 2) → ℂ) {M : ℝ}
+theorem smoothingEnlargedCutoff_tsum_bound {a : ℝ} (ha : 0 < a) (F : (Fin 2 → ℤ) →
+    EuclideanSpace ℝ (Fin 2) → ℂ) {M : ℝ}
     (hF : ∀ m x, ‖F m x‖ ≤ M) (x : EuclideanSpace ℝ (Fin 2)) :
     ‖∑' m : Fin 2 → ℤ, smoothingEnlargedCutoff a m x * F m x‖ ≤ 25 * M := by
   rw [tsum_eq_sum (s := smoothingEnlargedIndices a x) (fun m hm => by
@@ -16105,10 +16667,12 @@ theorem smoothingEnlargedCutoff_tsum_bound {a : ℝ} (ha : 0 < a)
       exact hm (smoothingEnlargedCutoff_index ha x m hn)
     rw [hz, zero_mul])]
   calc
-    _ ≤ ∑ m ∈ smoothingEnlargedIndices a x, ‖smoothingEnlargedCutoff a m x * F m x‖ := norm_sum_le _ _
+    _ ≤ ∑ m ∈ smoothingEnlargedIndices a x, ‖smoothingEnlargedCutoff a m x * F m x‖ := norm_sum_le
+      _ _
     _ ≤ ∑ m ∈ smoothingEnlargedIndices a x, M := Finset.sum_le_sum (fun m hm => by
       rw [norm_mul]
-      exact (mul_le_mul_of_nonneg_right (smoothingEnlargedCutoff_bounds a m x).1 (norm_nonneg _)).trans
+      exact (mul_le_mul_of_nonneg_right (smoothingEnlargedCutoff_bounds a m x).1 (norm_nonneg
+        _)).trans
         (by simpa only [one_mul] using hF m x))
     _ = _ := by simp [smoothingEnlargedIndices_card]
 
@@ -16125,7 +16689,8 @@ theorem smoothingFiberSharp_bound
   calc
     _ ≤ ∑ k : Fin (smoothingStructuralTermCount ρ),
         ‖smoothingIndexedAmplitude g j S R k z u *
-          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R 0 k z * u : ℝ) : ℂ))‖ := norm_sum_le _ _
+          Complex.exp (Complex.I * ((smoothingIndexedFrequencyFilled S R 0 k z * u : ℝ) : ℂ))‖ :=
+            norm_sum_le _ _
     _ ≤ ∑ k : Fin (smoothingStructuralTermCount ρ), smoothingDerivativeConstant 0 * M := by
       apply Finset.sum_le_sum
       intro k hk
@@ -16164,19 +16729,24 @@ theorem smoothingGlobalFlatSharp_bounded (ψ : Option (SchwartzMap ℝ ℂ)) (j 
       ‖smoothingGlobalFlat ψ j r a R hρ f x‖ ≤ M ∧ ‖smoothingGlobalSharp ψ j r a R hρ f x‖ ≤ M := by
   obtain ⟨B, hB, hb⟩ := smoothingCoordinateRegularization_bound ψ
   let D := (smoothingStructuralTermCount ρ : ℝ) * (smoothingDerivativeConstant 0 * B)
-  have hD : 0 ≤ D := mul_nonneg (Nat.cast_nonneg _) (mul_nonneg (integral_nonneg (fun _ => norm_nonneg _)) hB)
+  have hD : 0 ≤ D := mul_nonneg (Nat.cast_nonneg _) (mul_nonneg (integral_nonneg (fun _ =>
+    norm_nonneg _)) hB)
   have hg (m : Fin 2 → ℤ) (x : EuclideanSpace ℝ (Fin 2)) :
       ‖smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x‖ ≤ B := by
     simpa only [mul_one] using hb j r hr (smoothingSpatialPiece a m f)
       (fun y => (smoothingSpatialPiece_bound a m f y).trans (hf y)) x
   have hs (m : Fin 2 → ℤ) (x : EuclideanSpace ℝ (Fin 2)) :
-      ‖smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x‖ ≤ D :=
+      ‖smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+        f)) j R hρ x‖ ≤ D :=
     smoothingSharpComponent_bound _ j hR hρ (hg m) x
   have hflat (m : Fin 2 → ℤ) (x : EuclideanSpace ℝ (Fin 2)) :
-      ‖smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x‖ ≤ B + D := by
-    have he : smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x =
+      ‖smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+        f)) j R hρ x‖ ≤ B + D := by
+    have he : smoothingFlatComponent (smoothingCoordinateRegularization ψ j r
+      (smoothingSpatialPiece a m f)) j R hρ x =
         smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f) x -
-          smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ x := by
+          smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece
+            a m f)) j R hρ x := by
       simp only [smoothingSharpComponent, sub_sub_cancel]
     rw [he]
     exact (norm_sub_le _ _).trans (add_le_add (hg m x) (hs m x))
@@ -16188,9 +16758,10 @@ theorem smoothingGlobalFlatSharp_bounded (ψ : Option (SchwartzMap ℝ ℂ)) (j 
 /-- All three actual global components are bounded, using the exact
 reconstruction to bound the error. This supplies integrability for the
 operator decomposition, without claiming uniform decay of the flat term. -/
-theorem smoothingGlobalComponents_bounded (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2)
-    {r a R ρ : ℝ} (hr : 0 < r) (ha : 0 < a) (hR : 0 < R) (hρ : 0 < ρ)
-    (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : ∀ x, ‖f x‖ ≤ 1)
+theorem smoothingGlobalComponents_bounded (ψ : Option (SchwartzMap ℝ ℂ)) (j : Fin 2) {r a R ρ :
+    ℝ} (hr : 0 < r)
+    (ha : 0 < a) (hR : 0 < R) (hρ : 0 < ρ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (hf :
+      ∀ x, ‖f x‖ ≤ 1)
     (hrep : smoothingCoordinateRegularization ψ j r f = f) :
     ∃ M : ℝ, 0 ≤ M ∧ ∀ x : EuclideanSpace ℝ (Fin 2),
       ‖smoothingGlobalFlat ψ j r a R hρ f x‖ ≤ M ∧
@@ -16206,8 +16777,10 @@ theorem smoothingGlobalComponents_bounded (ψ : Option (SchwartzMap ℝ ℂ)) (j
     linear_combination -hh
   rw [he]
   calc
-    _ ≤ ‖f x - smoothingGlobalFlat ψ j r a R hρ f x‖ + ‖smoothingGlobalSharp ψ j r a R hρ f x‖ := norm_sub_le _ _
-    _ ≤ (‖f x‖ + ‖smoothingGlobalFlat ψ j r a R hρ f x‖) + ‖smoothingGlobalSharp ψ j r a R hρ f x‖ :=
+    _ ≤ ‖f x - smoothingGlobalFlat ψ j r a R hρ f x‖ + ‖smoothingGlobalSharp ψ j r a R hρ f x‖ :=
+      norm_sub_le _ _
+    _ ≤ (‖f x‖ + ‖smoothingGlobalFlat ψ j r a R hρ f x‖) + ‖smoothingGlobalSharp ψ j r a R hρ f x‖
+      :=
       add_le_add (norm_sub_le _ _) le_rfl
     _ ≤ _ := by linarith [(hb x).1, (hb x).2, hf x]
 
@@ -16238,10 +16811,13 @@ theorem smoothingLocalized_measurable_bounded_integrable {f g : ℝ × ℝ → �
     (hζ : Continuous ζ) (hc : HasCompactSupport ζ) :
     Integrable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + p.2 ^ 2) * ζ p) ∧
       Integrable (smoothingLocalized f g ζ) := by
-  have hm : Measurable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + p.2 ^ 2) * ζ p) :=
+  have hm : Measurable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + p.2 ^ 2)
+    * ζ p) :=
     ((hf.comp (by fun_prop)).mul (hg.comp (by fun_prop))).mul hζ.measurable
-  have hi : Integrable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + p.2 ^ 2) * ζ p) := by
-    apply ((hζ.integrable_of_hasCompactSupport hc).norm.const_mul (M * N)).mono' hm.aestronglyMeasurable
+  have hi : Integrable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + p.2 ^ 2)
+    * ζ p) := by
+    apply ((hζ.integrable_of_hasCompactSupport hc).norm.const_mul (M * N)).mono'
+      hm.aestronglyMeasurable
     filter_upwards [] with p
     simp only [norm_mul]
     exact mul_le_mul_of_nonneg_right
@@ -16267,7 +16843,8 @@ theorem smoothingGlobalComponent_properties (ψ : Option (SchwartzMap ℝ ℂ)) 
     (∀ k : Fin 3, Measurable (smoothingGlobalComponent ψ j r a R hρ f k)) ∧
     (∃ M : ℝ, 0 ≤ M ∧ ∀ (k : Fin 3) x, ‖smoothingGlobalComponent ψ j r a R hρ f k x‖ ≤ M) ∧
     ∀ x, f x = smoothingGlobalComponent ψ j r a R hρ f 0 x +
-      smoothingGlobalComponent ψ j r a R hρ f 1 x + smoothingGlobalComponent ψ j r a R hρ f 2 x := by
+      smoothingGlobalComponent ψ j r a R hρ f 1 x + smoothingGlobalComponent ψ j r a R hρ f 2 x :=
+        by
   refine ⟨?_, ?_, smoothing_section3_3_global_decomposition ψ j r R ha hρ f hrep⟩
   · intro k
     fin_cases k
@@ -16310,7 +16887,8 @@ theorem smoothingLocalized_three_part_split
 exactly the same integral as smoothingLocalized, in the established coordinates. -/
 def smoothingLocalizedRaw (f g : EuclideanSpace ℝ (Fin 2) → ℂ)
     (ζ : (ℝ × ℝ) × ℝ → ℂ) : ℝ × ℝ → ℂ :=
-  smoothingLocalized (fun z => f (smoothingPlaneEquiv.symm z)) (fun z => g (smoothingPlaneEquiv.symm z)) ζ
+  smoothingLocalized (fun z => f (smoothingPlaneEquiv.symm z)) (fun z => g
+    (smoothingPlaneEquiv.symm z)) ζ
 
 /-- Section 3.3, the operator decomposition before (3.30): the actual flat,
 sharp, and error contributions are in L1 and sum to the original localized
@@ -16336,9 +16914,12 @@ theorem smoothing_section3_3_operator_decomposition
   let P := fun (h : EuclideanSpace ℝ (Fin 2) → ℂ) (z : ℝ × ℝ) => h (smoothingPlaneEquiv.symm z)
   obtain ⟨hmF, ⟨M, hM, hbF⟩, heF⟩ := smoothingGlobalComponent_properties ψ₁ 0 hr ha hR hρ f hf hrep₁
   obtain ⟨hmG, ⟨N, hN, hbG⟩, heG⟩ := smoothingGlobalComponent_properties ψ₂ 1 hr ha hR hρ g hg hrep₂
-  have hFp (i : Fin 3) : Measurable (P (F i)) := (hmF i).comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hGp (i : Fin 3) : Measurable (P (G i)) := (hmG i).comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hgp : Measurable (P g) := g.continuous.measurable.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hFp (i : Fin 3) : Measurable (P (F i)) := (hmF i).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hGp (i : Fin 3) : Measurable (P (G i)) := (hmG i).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hgp : Measurable (P g) := g.continuous.measurable.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hpair (i k : Fin 3) := smoothingLocalized_measurable_bounded_integrable
     (hFp i) (hGp k) hM hN (fun z => hbF i _) (fun z => hbG k _) hζ hc
   have horig (i : Fin 3) := smoothingLocalized_measurable_bounded_integrable
@@ -16363,7 +16944,8 @@ fiber, needed when applying the basic estimate to the components in (3.30). -/
 theorem smoothingFiberSharp_memLp_integral (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (z : EuclideanSpace ℝ (Fin 2)) {R : ℝ} (hR : 0 < R) (S : Finset ℤ) :
     MemLp (smoothingFiberSharp f j z R S) 2 volume ∧
-      (∫ u : ℝ, ‖smoothingFiberSharp f j z R S u‖ ^ 2) ≤ ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ ^ 2 := by
+      (∫ u : ℝ, ‖smoothingFiberSharp f j z R S u‖ ^ 2) ≤ ‖(smoothingCoordinateFiber f j z).toLp 2
+        volume‖ ^ 2 := by
   let g := (smoothingCoordinateFiber f j z).toLp 2 volume
   let q := smoothingSharpPart g R S
   have ha : smoothingFiberSharp f j z R S =ᵐ[volume] ⇑q := by
@@ -16387,7 +16969,8 @@ theorem smoothingRegularizedPiece_fiber_norm_sq (ψ : Option (SchwartzMap ℝ �
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (j : Fin 2) (r a : ℝ), 0 < r → 0 < a →
     ∀ (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
     (∀ x, ‖f x‖ ≤ 1) → ∀ z : EuclideanSpace ℝ (Fin 2),
-    ‖(smoothingCoordinateFiber (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j z).toLp 2 volume‖ ^ 2 ≤
+    ‖(smoothingCoordinateFiber (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m
+      f)) j z).toLp 2 volume‖ ^ 2 ≤
       C / a := by
   obtain ⟨B, hB, hb⟩ := smoothingCoordinateFiber_regularization_norm_bound ψ
   refine ⟨2 * B ^ 2, by positivity, ?_⟩
@@ -16396,7 +16979,8 @@ theorem smoothingRegularizedPiece_fiber_norm_sq (ψ : Option (SchwartzMap ℝ �
   calc
     _ ≤ (B * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖) ^ 2 :=
       pow_le_pow_left₀ (norm_nonneg _) (hb j r hr (smoothingSpatialPiece a m f) z) 2
-    _ = B ^ 2 * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 2 := mul_pow _ _ _
+    _ = B ^ 2 * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 2
+      := mul_pow _ _ _
     _ ≤ B ^ 2 * (2 / a) := mul_le_mul_of_nonneg_left hp (by positivity)
     _ = _ := by ring
 
@@ -16418,11 +17002,14 @@ theorem smoothingRegularizedPiece_flat_sharp_fiber_L2 (ψ : Option (SchwartzMap 
   intro j r a R ρ hr ha hR hρ m f hf z
   have hflat := smoothingFiberFlat_memLp_integral
     (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j z hR
-    (smoothingFiberSelectedIndices (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ z)
+    (smoothingFiberSelectedIndices (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece
+      a m f)) j R hρ z)
   have hsharp := smoothingFiberSharp_memLp_integral
     (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j z hR
-    (smoothingFiberSelectedIndices (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ z)
-  exact ⟨hflat.1, hsharp.1, hflat.2.trans (hb j r a hr ha m f hf z), hsharp.2.trans (hb j r a hr ha m f hf z)⟩
+    (smoothingFiberSelectedIndices (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece
+      a m f)) j R hρ z)
+  exact ⟨hflat.1, hsharp.1, hflat.2.trans (hb j r a hr ha m f hf z), hsharp.2.trans (hb j r a hr
+    ha m f hf z)⟩
 
 /-- Multiplication by a measurable cutoff of absolute value at most one
 preserves L2 membership and decreases the squared integral. -/
@@ -16430,14 +17017,14 @@ theorem smoothing_cutoff_L2_contraction {f χ : ℝ → ℂ}
     (hf : MemLp f 2 volume) (hχ : Measurable χ) (hb : ∀ u, ‖χ u‖ ≤ 1) :
     MemLp (fun u => χ u * f u) 2 volume ∧
       (∫ u : ℝ, ‖χ u * f u‖ ^ 2) ≤ ∫ u : ℝ, ‖f u‖ ^ 2 := by
-  have hm := hχ.aestronglyMeasurable.mul hf.1
+  have hm := hχ.aestronglyMeasurable.mul hf.aestronglyMeasurable
   have hn (u : ℝ) : ‖χ u * f u‖ ≤ ‖f u‖ := by
     rw [norm_mul]
     simpa only [one_mul] using mul_le_mul_of_nonneg_right (hb u) (norm_nonneg (f u))
   have hi := hf.of_le hm (Filter.Eventually.of_forall hn)
   refine ⟨hi, ?_⟩
-  apply integral_mono_ae ((memLp_two_iff_integrable_sq_norm hi.1).mp hi)
-    ((memLp_two_iff_integrable_sq_norm hf.1).mp hf)
+  apply integral_mono_ae ((memLp_two_iff_integrable_sq_norm hi.aestronglyMeasurable).mp hi)
+    ((memLp_two_iff_integrable_sq_norm hf.aestronglyMeasurable).mp hf)
   exact Filter.Eventually.of_forall (fun u => pow_le_pow_left₀ (norm_nonneg _) (hn u) 2)
 
 /-- The uniform slice L2 controls survive the actual enlarged cutoff,
@@ -16458,7 +17045,8 @@ theorem smoothingRelocalized_flat_sharp_fiber_L2 (ψ : Option (SchwartzMap ℝ �
   refine ⟨C, hC, ?_⟩
   intro j r a R ρ hr ha hR hρ m f hf z
   obtain ⟨hflat, hsharp, hfbound, hsbound⟩ := hb j r a R ρ hr ha hR hρ m f hf z
-  have hm : Measurable (fun u : ℝ => smoothingEnlargedCutoff a m (z + smoothingCoordinateLine j u)) :=
+  have hm : Measurable (fun u : ℝ => smoothingEnlargedCutoff a m (z + smoothingCoordinateLine j
+    u)) :=
     (smoothingEnlargedCutoff_properties ha m).1.continuous.measurable.comp (by fun_prop)
   have hχ (u : ℝ) : ‖smoothingEnlargedCutoff a m (z + smoothingCoordinateLine j u)‖ ≤ 1 :=
     (smoothingEnlargedCutoff_bounds a m _).1
@@ -16476,7 +17064,7 @@ theorem smoothingEnlargedCutoff_transverse_zero {a : ℝ} (ha : 0 < a)
   by_contra hn
   have he : (z + smoothingCoordinateLine j u) i = z i := by
     rw [smoothingCoordinateLine_apply]
-    simp only [PiLp.add_apply, PiLp.single_apply, hij, if_false, add_zero]
+    simp only [PiLp.add_apply, PiLp.single_apply, hij, ite_false, add_zero]
   have hh := smoothingEnlargedCutoff_support ha m hn i
   rw [he] at hh
   exact (not_lt_of_ge hz) hh
@@ -16485,13 +17073,16 @@ theorem smoothingEnlargedCutoff_transverse_zero {a : ℝ} (ha : 0 < a)
 L2 norm after integrating the translation. This gives uniform integrated
 normalization for the measurable components in the (3.30) application. -/
 theorem smoothing_fiber_difference_physical_energy {f : ℝ → ℂ} (hf : MemLp f 2 volume) :
-    Integrable (fun p : ℝ × ℝ => ‖smoothingMultiplicativeDifference f p.1 p.2‖ ^ 2) (volume.prod volume) ∧
+    Integrable (fun p : ℝ × ℝ => ‖smoothingMultiplicativeDifference f p.1 p.2‖ ^ 2) (volume.prod
+      volume) ∧
       (∫ s : ℝ, ∫ u : ℝ, ‖smoothingMultiplicativeDifference f s u‖ ^ 2) =
         (∫ u : ℝ, ‖f u‖ ^ 2) ^ 2 := by
-  have hw : Integrable (fun u : ℝ => ‖f u‖ ^ 2) := (memLp_two_iff_integrable_sq_norm hf.1).mp hf
+  have hw : Integrable (fun u : ℝ => ‖f u‖ ^ 2) := (memLp_two_iff_integrable_sq_norm
+    hf.aestronglyMeasurable).mp hf
   have hp := hw.mul_prod hw
   have hi := (measurePreserving_add_prod volume volume).integrable_comp_of_integrable hp
-  have htwo : Integrable (fun p : ℝ × ℝ => ‖f (p.2 + p.1)‖ ^ 2 * ‖f p.2‖ ^ 2) (volume.prod volume) := by
+  have htwo : Integrable (fun p : ℝ × ℝ => ‖f (p.2 + p.1)‖ ^ 2 * ‖f p.2‖ ^ 2) (volume.prod volume)
+    := by
     simpa only [Function.comp_def, add_comm] using hi
   refine ⟨?_, ?_⟩
   · simpa only [smoothingMultiplicativeDifference, norm_mul, norm_star, mul_pow] using htwo
@@ -16513,7 +17104,8 @@ theorem smoothingFiberSharp_selected_measurable
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) :
     Measurable (fun p : EuclideanSpace ℝ (Fin 2) × ℝ =>
       smoothingFiberSharp g j p.1 R (smoothingFiberSelectedIndices g j R hρ p.1) p.2) := by
-  have hm : Measurable (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => g (p.1 + smoothingCoordinateLine j p.2)) := by
+  have hm : Measurable (fun p : EuclideanSpace ℝ (Fin 2) × ℝ => g (p.1 + smoothingCoordinateLine j
+    p.2)) := by
     have hc := g.continuous
     fun_prop
   have he : (fun p : EuclideanSpace ℝ (Fin 2) × ℝ =>
@@ -16534,7 +17126,8 @@ theorem smoothing_supported_slice_fourth_energy
     Integrable (fun y : ℝ => (∫ u : ℝ, ‖F (y, u)‖ ^ 2) ^ 2) ∧
       (∫ y : ℝ, (∫ u : ℝ, ‖F (y, u)‖ ^ 2) ^ 2) ≤ ((5 / 2) * C ^ 2) / a ^ 3 := by
   have hmE : Measurable (fun y : ℝ => (∫ u : ℝ, ‖F (y, u)‖ ^ 2) ^ 2) :=
-    ((hm.norm.pow_const 2).stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable.pow_const 2
+    ((hm.norm.pow_const 2).stronglyMeasurable.integral_prod_right' (ν := (volume : Measure
+      ℝ))).measurable.pow_const 2
   have hbound (y : ℝ) : (∫ u : ℝ, ‖F (y, u)‖ ^ 2) ^ 2 ≤ C ^ 2 / a ^ 2 := by
     simpa only [div_pow] using pow_le_pow_left₀ (integral_nonneg (fun _ => sq_nonneg _)) (hB y) 2
   have hzero : ∀ y ∉ Set.Icc (c - (5 / 4) * a⁻¹) (c + (5 / 4) * a⁻¹),
@@ -16567,11 +17160,13 @@ theorem smoothingRelocalizedFiberFamily_measurable
     (R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (m : Fin 2 → ℤ) (flat : Bool) :
     Measurable (smoothingRelocalizedFiberFamily g j i a R hρ m flat) := by
   have hmχ : Measurable (fun p : ℝ × ℝ =>
-      smoothingEnlargedCutoff a m (smoothingCoordinateLine i p.1 + smoothingCoordinateLine j p.2)) :=
+      smoothingEnlargedCutoff a m (smoothingCoordinateLine i p.1 + smoothingCoordinateLine j p.2))
+        :=
     (smoothingEnlargedCutoff_properties ha m).1.continuous.measurable.comp (by fun_prop)
   have hp : Measurable (fun p : ℝ × ℝ => (smoothingCoordinateLine i p.1, p.2)) := by fun_prop
   cases flat
-  · simpa only [smoothingRelocalizedFiberFamily, Bool.false_eq_true, ↓reduceIte, Function.comp_def, Pi.mul_def] using!
+  · simpa only [smoothingRelocalizedFiberFamily, Bool.false_eq_true, ↓reduceIte,
+      Function.comp_def, Pi.mul_def] using!
       hmχ.mul ((smoothingFiberSharp_selected_measurable g j R hρ).comp hp)
   · simpa only [smoothingRelocalizedFiberFamily, ↓reduceIte, Function.comp_def, Pi.mul_def] using!
       hmχ.mul ((smoothingFiberFlat_selected_measurable g j R hρ).comp hp)
@@ -16602,7 +17197,8 @@ theorem smoothingRelocalized_integrated_slice_fourth (ψ : Option (SchwartzMap �
     have he : (smoothingCoordinateLine i y) i = y := by
       rw [smoothingCoordinateLine_apply]
       simp only [PiLp.single_eq_same]
-    have hz := smoothingEnlargedCutoff_transverse_zero ha m j i hij (smoothingCoordinateLine i y) (by rwa [he]) u
+    have hz := smoothingEnlargedCutoff_transverse_zero ha m j i hij (smoothingCoordinateLine i y)
+      (by rwa [he]) u
     simp only [smoothingRelocalizedFiberFamily, hz, zero_mul]
 
 /-- Fubini gives the integrated physical difference energy for a jointly
@@ -16682,7 +17278,8 @@ theorem smoothingTorusLift_parseval_measurable (b : Fin 2 → ℝ) {F : (Fin 2 �
   have hL := smoothingTorusLift_memLp_measurable b hF hM
   let v := hL.toLp (smoothingTorusLift b F)
   have hae : (v : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F := hL.coeFn_toLp
-  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k := by
+  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b
+    F) k := by
     intro k
     apply integral_congr_ae
     filter_upwards [hae] with x hx
@@ -16721,14 +17318,20 @@ def smoothingRawLocalFourierCoefficient (a : ℝ) (m : Fin 2 → ℤ)
 /-- The normalized difference of a measurable bounded input is measurable
 and bounded, supplying the precise hypotheses for local Parseval. -/
 theorem smoothingRawLocalFourierInput_measurable_bound (a : ℝ) (h : EuclideanSpace ℝ (Fin 2))
-    {F : EuclideanSpace ℝ (Fin 2) → ℂ} (hF : Measurable F) {M : ℝ} (hM : 0 ≤ M) (hb : ∀ x, ‖F x‖ ≤ M) :
-    Measurable (smoothingRawLocalFourierInput a h F) ∧ ∀ x, ‖smoothingRawLocalFourierInput a h F x‖ ≤ M ^ 2 := by
-  have hc : Continuous (fun x : Fin 2 → ℝ => (4 / a) • (WithLp.toLp 2 x : EuclideanSpace ℝ (Fin 2))) := by fun_prop
+    {F : EuclideanSpace ℝ (Fin 2) → ℂ} (hF : Measurable F) {M : ℝ} (hM : 0 ≤ M) (hb : ∀ x, ‖F x‖ ≤
+      M) :
+    Measurable (smoothingRawLocalFourierInput a h F) ∧ ∀ x, ‖smoothingRawLocalFourierInput a h F
+      x‖ ≤ M ^ 2 := by
+  have hc : Continuous (fun x : Fin 2 → ℝ => (4 / a) • (WithLp.toLp 2 x : EuclideanSpace ℝ (Fin
+    2))) := by fun_prop
   refine ⟨?_, ?_⟩
-  · simpa only [smoothingRawLocalFourierInput, smoothingMultiplicativeDifference, Function.comp_def, Pi.mul_def] using!
-      (hF.comp (hc.add_const h).measurable).mul (continuous_star.measurable.comp (hF.comp hc.measurable))
+  · simpa only [smoothingRawLocalFourierInput, smoothingMultiplicativeDifference,
+      Function.comp_def, Pi.mul_def] using!
+      (hF.comp (hc.add_const h).measurable).mul (continuous_star.measurable.comp (hF.comp
+        hc.measurable))
   · intro x
-    simp only [smoothingRawLocalFourierInput, smoothingMultiplicativeDifference, norm_mul, norm_star]
+    simp only [smoothingRawLocalFourierInput, smoothingMultiplicativeDifference, norm_mul,
+      norm_star]
     simpa only [pow_two] using mul_le_mul (hb _) (hb _) (norm_nonneg _) hM
 
 /-- Parseval for the actual local coefficients of bounded measurable
@@ -16787,7 +17390,8 @@ theorem smoothingRawLocalFourierInput_energy_scale {a : ℝ} (ha : 0 < a)
   rw [he]
   have hm := (EuclideanSpace.volume_preserving_symm_measurableEquiv_toLp (Fin 2)).symm
   calc
-    _ = ∫ x : EuclideanSpace ℝ (Fin 2), ‖smoothingMultiplicativeDifference F h ((4 / a) • x)‖ ^ 2 := by
+    _ = ∫ x : EuclideanSpace ℝ (Fin 2), ‖smoothingMultiplicativeDifference F h ((4 / a) • x)‖ ^ 2
+      := by
       exact hm.integral_comp' (fun x => ‖smoothingMultiplicativeDifference F h ((4 / a) • x)‖ ^ 2)
     _ = ((4 / a) ^ 2)⁻¹ * ∫ x, ‖smoothingMultiplicativeDifference F h x‖ ^ 2 := by
       have hh := Measure.integral_comp_smul_of_nonneg volume
@@ -16862,7 +17466,8 @@ theorem smoothingTorusLift_measurable_series_L2 (b : Fin 2 → ℝ)
   let v := (smoothingTorusLift_memLp_measurable b hF hM).toLp (smoothingTorusLift b F)
   have hae : (v : UnitAddTorus (Fin 2) → ℂ) =ᵐ[volume] smoothingTorusLift b F :=
     (smoothingTorusLift_memLp_measurable b hF hM).coeFn_toLp
-  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b F) k := by
+  have hc : ∀ k, UnitAddTorus.mFourierCoeff v k = UnitAddTorus.mFourierCoeff (smoothingTorusLift b
+    F) k := by
     intro k
     apply integral_congr_ae
     filter_upwards [hae] with x hx
@@ -16916,7 +17521,8 @@ theorem smoothingRelocalizedComponent_bound
       simp only [smoothingSharpComponent, sub_sub_cancel]
     rw [he]
     exact (norm_sub_le _ _).trans (add_le_add (hg x) hs)
-  have hb : ‖if flat then smoothingFlatComponent g j R hρ x else smoothingSharpComponent g j R hρ x‖ ≤ M + D := by
+  have hb : ‖if flat then smoothingFlatComponent g j R hρ x else smoothingSharpComponent g j R hρ
+    x‖ ≤ M + D := by
     cases flat
     · exact hs.trans (le_add_of_nonneg_left hM)
     · exact hf
@@ -16956,21 +17562,27 @@ theorem smoothingRelocalizedComponent_fiber
   fin_cases j <;> fin_cases i
   · exact (hij rfl).elim
   · change smoothingRelocalizedComponent g 0 a R hρ m flat
-      (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u) = smoothingRelocalizedFiberFamily g 0 1 a R hρ m flat (y, u)
+      (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u) =
+        smoothingRelocalizedFiberFamily g 0 1 a R hρ m flat (y, u)
     have hs := (smoothingSharpComponent_fiber g R hρ u y).1
     rw [← smoothing_first_plane_point u y] at hs
     cases flat
-    · simpa only [smoothingRelocalizedComponent, smoothingRelocalizedFiberFamily, Bool.false_eq_true, ↓reduceIte] using
-        congrArg (fun z => smoothingEnlargedCutoff a m (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u) * z) hs
+    · simpa only [smoothingRelocalizedComponent, smoothingRelocalizedFiberFamily,
+        Bool.false_eq_true, ↓reduceIte] using
+        congrArg (fun z => smoothingEnlargedCutoff a m (smoothingCoordinateLine 1 y +
+          smoothingCoordinateLine 0 u) * z) hs
     · simp only [smoothingRelocalizedComponent, smoothingRelocalizedFiberFamily, ↓reduceIte,
         hflat, hs, smoothingFiberFlat]
   · change smoothingRelocalizedComponent g 1 a R hρ m flat
-      (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u) = smoothingRelocalizedFiberFamily g 1 0 a R hρ m flat (y, u)
+      (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u) =
+        smoothingRelocalizedFiberFamily g 1 0 a R hρ m flat (y, u)
     have hs := (smoothingSharpComponent_fiber g R hρ y u).2
     rw [← smoothing_second_plane_point y u] at hs
     cases flat
-    · simpa only [smoothingRelocalizedComponent, smoothingRelocalizedFiberFamily, Bool.false_eq_true, ↓reduceIte] using
-        congrArg (fun z => smoothingEnlargedCutoff a m (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u) * z) hs
+    · simpa only [smoothingRelocalizedComponent, smoothingRelocalizedFiberFamily,
+        Bool.false_eq_true, ↓reduceIte] using
+        congrArg (fun z => smoothingEnlargedCutoff a m (smoothingCoordinateLine 0 y +
+          smoothingCoordinateLine 1 u) * z) hs
     · simp only [smoothingRelocalizedComponent, smoothingRelocalizedFiberFamily, ↓reduceIte,
         hflat, hs, smoothingFiberFlat]
   · exact (hij rfl).elim
@@ -16982,7 +17594,8 @@ theorem smoothingRelocalizedComponent_difference_fiber
     (a R : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (m : Fin 2 → ℤ) (flat : Bool) (y s u : ℝ) :
     smoothingMultiplicativeDifference (smoothingRelocalizedComponent g j a R hρ m flat)
       (smoothingCoordinateLine j s) (smoothingCoordinateLine i y + smoothingCoordinateLine j u) =
-      smoothingMultiplicativeDifference (fun v => smoothingRelocalizedFiberFamily g j i a R hρ m flat (y, v)) s u := by
+      smoothingMultiplicativeDifference (fun v => smoothingRelocalizedFiberFamily g j i a R hρ m
+        flat (y, v)) s u := by
   simp only [smoothingMultiplicativeDifference]
   rw [add_assoc, ← map_add]
   rw [smoothingRelocalizedComponent_fiber g j i hij, smoothingRelocalizedComponent_fiber g j i hij]
@@ -17030,9 +17643,12 @@ theorem smoothingRelocalizedComponent_energy_identity
   have hi' : Integrable H (volume.prod (volume.prod volume)) := hi
   have hs : Integrable (fun p : ℝ × (ℝ × ℝ) => H (p.2.1, (p.1, p.2.2)))
       (volume.prod (volume.prod volume)) := by
-    have h1 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).integrable_comp_of_integrable hi'
-    have h2 := (Measure.measurePreserving_swap.prod (MeasurePreserving.id (volume : Measure ℝ))).integrable_comp_of_integrable h1
-    have h3 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).symm.integrable_comp_of_integrable h2
+    have h1 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume
+      volume).integrable_comp_of_integrable hi'
+    have h2 := (Measure.measurePreserving_swap.prod (MeasurePreserving.id (volume : Measure
+      ℝ))).integrable_comp_of_integrable h1
+    have h3 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume
+      volume).symm.integrable_comp_of_integrable h2
     simpa only [Function.comp_def, Prod.map_apply, Prod.swap_prod_mk] using! h3
   refine ⟨?_, ?_⟩
   · apply hs.integral_prod_left.congr
@@ -17054,7 +17670,8 @@ theorem smoothingRelocalizedComponent_energy_identity
       filter_upwards [hs.prod_right_ae] with s hs
       exact integral_prod _ hs
     _ = _ := by
-      have hh := (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).integrable_comp_of_integrable hs
+      have hh := (measurePreserving_prodAssoc (volume : Measure ℝ) volume
+        volume).integrable_comp_of_integrable hs
       exact integral_integral_swap hh.integral_prod_left
 
 /-- The actual component's full coefficient energy, integrated in the
@@ -17151,7 +17768,7 @@ theorem smoothing_fourier_product_raw
     rw [hx]
   rw [← he, smoothing_fourier_product_L2]
   apply integral_congr_ae
-  have hfF := (measurePreserving_add_left volume ξ).quasiMeasurePreserving.ae_eq
+  have hfF := (measurePreserving_add_left volume ξ).quasiMeasurePreserving.ae_eq_comp
     (smoothing_fourier_toLp_ae_eq hf1 hf2)
   have hgF := smoothing_fourier_toLp_ae_eq hg1 hg2
   filter_upwards [hfF, hgF] with η hf hg
@@ -17217,7 +17834,8 @@ theorem smoothing_kernel_energy_split
   let Q : X → ℝ := fun x => ‖∫ y, f y * K (x, y) ∂ν‖ ^ 2
   let W : X × Y → ℝ := fun p => ‖f p.2‖ ^ 2 * ‖K p‖
   have hmQ : Measurable Q :=
-    (((hf.comp measurable_snd).mul hK).stronglyMeasurable.integral_prod_right').measurable.norm.pow_const 2
+    (((hf.comp measurable_snd).mul
+      hK).stronglyMeasurable.integral_prod_right').measurable.norm.pow_const 2
   have hpoint : ∀ᵐ x ∂μ, Q x ≤ A * ∫ y, W (x, y) ∂ν := by
     filter_upwards [hW.prod_right_ae] with x hx
     have hh := smoothing_integral_weighted_cauchy_schwarz hf
@@ -17246,14 +17864,16 @@ theorem smoothing_kernel_energy_split
     calc
       _ ≤ ∫ y, B * S.indicator (fun y => ‖f y‖ ^ 2) y + D * ‖f y‖ ^ 2 ∂ν := by
         apply integral_mono_of_nonneg
-          (Filter.Eventually.of_forall (fun y => mul_nonneg (sq_nonneg _) (integral_nonneg (fun x => norm_nonneg _)))) hmajor
+          (Filter.Eventually.of_forall (fun y => mul_nonneg (sq_nonneg _) (integral_nonneg (fun x
+            => norm_nonneg _)))) hmajor
         filter_upwards [] with y
         have hh := mul_le_mul_of_nonneg_left (hcols y) (sq_nonneg ‖f y‖)
         by_cases hy : y ∈ S
         · simpa only [Set.indicator_of_mem hy, mul_one, mul_add, add_mul, mul_comm] using hh
         · simpa only [Set.indicator_of_notMem hy, mul_zero, zero_add, mul_comm] using hh
       _ = _ := by
-        rw [integral_add (hiS.const_mul B) (hf2.const_mul D), integral_const_mul, integral_const_mul,
+        rw [integral_add (hiS.const_mul B) (hf2.const_mul D), integral_const_mul,
+          integral_const_mul,
           integral_indicator hS]
   exact hcompare.trans (by rw [hswap]; exact mul_le_mul_of_nonneg_left hcolbound hA)
 
@@ -17266,7 +17886,8 @@ theorem smoothing_correlation_weight_integrable
     Integrable (fun p : E × E => ‖f p.2‖ ^ 2 * ‖K (p.2 - p.1)‖) (volume.prod volume) := by
   have hKn := (Measure.measurePreserving_neg volume).integrable_comp_of_integrable hK1.norm
   have hp := hf2.mul_prod hKn
-  have hh := (measurePreserving_prod_sub_swap (volume : Measure E) volume).integrable_comp_of_integrable hp
+  have hh := (measurePreserving_prod_sub_swap (volume : Measure E)
+    volume).integrable_comp_of_integrable hp
   simpa only [Function.comp_def, neg_sub] using! hh
 
 /-- A localized convolution bound with separate column estimates inside
@@ -17308,11 +17929,14 @@ theorem smoothing_correlation_strip_column_bound
   let U : Set (EuclideanSpace ℝ (Fin 2)) := {z | R / 2 ≤ |z j|}
   have hT : MeasurableSet T := measurableSet_le (by fun_prop) measurable_const
   have hU : MeasurableSet U := measurableSet_le measurable_const (by fun_prop)
-  have hp : Integrable (fun x => ‖K (y - x)‖) := (volume.measurePreserving_sub_left y).integrable_comp_of_integrable hK1.norm
-  have hfull : (∫ x, ‖K (y - x)‖) = ∫ z, ‖K z‖ := integral_sub_left_eq_self (fun z => ‖K z‖) volume y
+  have hp : Integrable (fun x => ‖K (y - x)‖) := (volume.measurePreserving_sub_left
+    y).integrable_comp_of_integrable hK1.norm
+  have hfull : (∫ x, ‖K (y - x)‖) = ∫ z, ‖K z‖ := integral_sub_left_eq_self (fun z => ‖K z‖)
+    volume y
   change (∫ x in T, ‖K (y - x)‖) ≤ (∫ z, ‖K z‖) * S.indicator (fun _ => (1 : ℝ)) y + ∫ z in U, ‖K z‖
   by_cases hy : y ∈ S
-  · have hh := setIntegral_le_integral (s := T) hp (Filter.Eventually.of_forall (fun x => norm_nonneg _))
+  · have hh := setIntegral_le_integral (s := T) hp (Filter.Eventually.of_forall (fun x =>
+      norm_nonneg _))
     rw [hfull] at hh
     simp only [Set.indicator_of_mem hy, mul_one]
     exact hh.trans (le_add_of_nonneg_right (integral_nonneg (fun z => norm_nonneg _)))
@@ -17326,7 +17950,8 @@ theorem smoothing_correlation_strip_column_bound
       rw [← he] at hh
       change R / 2 ≤ |y j - x j|
       linarith
-    have hiU : Integrable (fun x => U.indicator (fun z => ‖K z‖) (y - x)) := (volume.measurePreserving_sub_left y).integrable_comp_of_integrable (hK1.norm.indicator hU)
+    have hiU : Integrable (fun x => U.indicator (fun z => ‖K z‖) (y - x)) :=
+      (volume.measurePreserving_sub_left y).integrable_comp_of_integrable (hK1.norm.indicator hU)
     have hh : (∫ x in T, ‖K (y - x)‖) ≤ ∫ x, U.indicator (fun z => ‖K z‖) (y - x) := by
       rw [← integral_indicator hT]
       apply integral_mono_ae (hp.indicator hT) hiU
@@ -17349,7 +17974,8 @@ theorem smoothing_correlation_strip_energy
     IntegrableOn (fun x => ‖∫ y, f y * K (y - x)‖ ^ 2)
       {x : EuclideanSpace ℝ (Fin 2) | |x j| ≤ R / 2} ∧
     (∫ x in {x : EuclideanSpace ℝ (Fin 2) | |x j| ≤ R / 2}, ‖∫ y, f y * K (y - x)‖ ^ 2) ≤
-      (∫ y, ‖K y‖) * ((∫ y, ‖K y‖) * (∫ y in {y : EuclideanSpace ℝ (Fin 2) | |y j| ≤ R}, ‖f y‖ ^ 2) +
+      (∫ y, ‖K y‖) * ((∫ y, ‖K y‖) * (∫ y in {y : EuclideanSpace ℝ (Fin 2) | |y j| ≤ R}, ‖f y‖ ^
+        2) +
         (∫ y in {y : EuclideanSpace ℝ (Fin 2) | R / 2 ≤ |y j|}, ‖K y‖) * (∫ y, ‖f y‖ ^ 2)) := by
   exact smoothing_correlation_energy_split hf hK hf2 hK1
     (measurableSet_le (by fun_prop) measurable_const)
@@ -17369,8 +17995,10 @@ theorem smoothing_fourier_product_strip_energy
       ‖(𝓕 (fun x => f x * star (g x)) : EuclideanSpace ℝ (Fin 2) → ℂ) ξ‖ ^ 2) ≤
       (∫ η, ‖(𝓕 g : EuclideanSpace ℝ (Fin 2) → ℂ) η‖) *
         ((∫ η, ‖(𝓕 g : EuclideanSpace ℝ (Fin 2) → ℂ) η‖) *
-          (∫ η in {η : EuclideanSpace ℝ (Fin 2) | |η j| ≤ R}, ‖(𝓕 f : EuclideanSpace ℝ (Fin 2) → ℂ) η‖ ^ 2) +
-          (∫ η in {η : EuclideanSpace ℝ (Fin 2) | R / 2 ≤ |η j|}, ‖(𝓕 g : EuclideanSpace ℝ (Fin 2) → ℂ) η‖) *
+          (∫ η in {η : EuclideanSpace ℝ (Fin 2) | |η j| ≤ R}, ‖(𝓕 f : EuclideanSpace ℝ (Fin 2) →
+            ℂ) η‖ ^ 2) +
+          (∫ η in {η : EuclideanSpace ℝ (Fin 2) | R / 2 ≤ |η j|}, ‖(𝓕 g : EuclideanSpace ℝ (Fin 2)
+            → ℂ) η‖) *
             (∫ x, ‖f x‖ ^ 2)) := by
   have hfc : Continuous (𝓕 f : EuclideanSpace ℝ (Fin 2) → ℂ) :=
     VectorFourier.fourierIntegral_continuous Real.continuous_fourierChar continuous_inner hf1
@@ -17378,16 +18006,18 @@ theorem smoothing_fourier_product_strip_energy
     VectorFourier.fourierIntegral_continuous Real.continuous_fourierChar continuous_inner hg1
   have hfF2 : MemLp (𝓕 f : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume :=
     (memLp_congr_ae (smoothing_fourier_toLp_ae_eq hf1 hf2)).mp (Lp.memLp (𝓕 (hf2.toLp f)))
-  have hiF := (memLp_two_iff_integrable_sq_norm hfF2.1).mp hfF2
+  have hiF := (memLp_two_iff_integrable_sq_norm hfF2.aestronglyMeasurable).mp hfF2
   have hK : Integrable (fun η => star ((𝓕 g : EuclideanSpace ℝ (Fin 2) → ℂ) η)) := by
     apply hgF.norm.mono' (continuous_star.measurable.comp hgc.measurable).aestronglyMeasurable
-    exact Filter.Eventually.of_forall (fun η => by simp only [Function.comp_def, norm_star, le_refl])
+    exact Filter.Eventually.of_forall (fun η =>
+      by simp only [Function.comp_def, norm_star, le_refl])
   have he (ξ : EuclideanSpace ℝ (Fin 2)) :
       (𝓕 (fun x => f x * star (g x)) : EuclideanSpace ℝ (Fin 2) → ℂ) ξ =
         ∫ η, (𝓕 f : EuclideanSpace ℝ (Fin 2) → ℂ) η *
           star ((𝓕 g : EuclideanSpace ℝ (Fin 2) → ℂ) (η - ξ)) := by
     rw [smoothing_fourier_product_raw hf1 hg1 hf2 hg2]
-    have hh := integral_add_left_eq_self (μ := volume) (fun η => (𝓕 f : EuclideanSpace ℝ (Fin 2) → ℂ) η *
+    have hh := integral_add_left_eq_self (μ := volume) (fun η => (𝓕 f : EuclideanSpace ℝ (Fin 2) →
+      ℂ) η *
       star ((𝓕 g : EuclideanSpace ℝ (Fin 2) → ℂ) (η - ξ))) ξ
     simpa only [add_sub_cancel_left] using hh
   have hh := smoothing_correlation_strip_energy hfc.measurable
@@ -17399,7 +18029,8 @@ theorem smoothing_fourier_product_strip_energy
 Fourier decay and the cutoff-product estimate used in (3.30). -/
 def smoothingEnlargedCutoffSchwartz {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ) :
     SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ :=
-  (smoothingEnlargedCutoff_properties ha m).2.toSchwartzMap (smoothingEnlargedCutoff_properties ha m).1
+  (smoothingEnlargedCutoff_properties ha m).2.toSchwartzMap (smoothingEnlargedCutoff_properties ha
+    m).1
 
 /-- Evaluation of the Schwartz representative is the original cutoff. -/
 theorem smoothingEnlargedCutoffSchwartz_apply {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
@@ -17423,7 +18054,8 @@ theorem smoothingEnlargedCutoff_difference_contDiff :
     ContDiff ℝ ∞ (fun p : EuclideanSpace ℝ (Fin 2) × EuclideanSpace ℝ (Fin 2) =>
       smoothingMultiplicativeDifference (smoothingEnlargedCutoff 1 0) p.1 p.2) := by
   have hc := (smoothingEnlargedCutoff_properties (by norm_num : (0 : ℝ) < 1) (0 : Fin 2 → ℤ)).1
-  have hs : ContDiff ℝ ∞ (star : ℂ → ℂ) := Complex.conjLIE.toContinuousLinearEquiv.toContinuousLinearMap.contDiff
+  have hs : ContDiff ℝ ∞ (star : ℂ → ℂ) :=
+    Complex.conjLIE.toContinuousLinearEquiv.toContinuousLinearMap.contDiff
   exact (hc.comp (contDiff_snd.add contDiff_fst)).mul (hs.comp (hc.comp contDiff_snd))
 
 /-- A fixed compact ball contains every normalized cutoff difference,
@@ -17453,12 +18085,15 @@ theorem smoothingEnlargedCutoff_difference_tsupport (h : EuclideanSpace ℝ (Fin
 decay when its translation ranges over a fixed compact ball. -/
 theorem smoothingEnlargedCutoff_difference_fourier_decay (L : ℝ) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ h : EuclideanSpace ℝ (Fin 2), ‖h‖ ≤ L → ∀ ξ : EuclideanSpace ℝ (Fin 2),
-      (1 + ‖ξ‖) ^ N * ‖(𝓕 (smoothingMultiplicativeDifference (smoothingEnlargedCutoff 1 0) h)) ξ‖ ≤ C := by
-  obtain ⟨C, hC, hb⟩ := smoothing_compact_family_fourier_decay smoothingEnlargedCutoff_difference_contDiff
+      (1 + ‖ξ‖) ^ N * ‖(𝓕 (smoothingMultiplicativeDifference (smoothingEnlargedCutoff 1 0) h)) ξ‖
+        ≤ C := by
+  obtain ⟨C, hC, hb⟩ := smoothing_compact_family_fourier_decay
+    smoothingEnlargedCutoff_difference_contDiff
     (isCompact_closedBall (0 : EuclideanSpace ℝ (Fin 2)) L)
     (isCompact_closedBall (0 : EuclideanSpace ℝ (Fin 2)) 3)
     (fun h _ => smoothingEnlargedCutoff_difference_tsupport h) N
-  exact ⟨C, hC, fun h hh ξ => hb h (by simpa only [Metric.mem_closedBall, dist_zero_right] using hh) ξ⟩
+  exact ⟨C, hC, fun h hh ξ => hb h
+    (by simpa only [Metric.mem_closedBall, dist_zero_right] using hh) ξ⟩
 
 /-- Multiplicative differences respect the common affine normalization
 of the enlarged cutoffs. -/
@@ -17478,7 +18113,8 @@ theorem smoothing_fourier_affine_norm {a : ℝ} (ha : 0 < a)
     ‖(𝓕 (fun x => F (a • x - b)) : EuclideanSpace ℝ (Fin 2) → ℂ) ξ‖ =
       (a ^ 2)⁻¹ * ‖(𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (a⁻¹ • ξ)‖ := by
   have ht (w : EuclideanSpace ℝ (Fin 2)) :
-      ‖(𝓕 (fun x => F (x - b)) : EuclideanSpace ℝ (Fin 2) → ℂ) w‖ = ‖(𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) w‖ := by
+      ‖(𝓕 (fun x => F (x - b)) : EuclideanSpace ℝ (Fin 2) → ℂ) w‖ = ‖(𝓕 F : EuclideanSpace ℝ (Fin
+        2) → ℂ) w‖ := by
     have hh := congrFun (VectorFourier.fourierIntegral_comp_add_right
       Real.fourierChar volume (innerₗ (EuclideanSpace ℝ (Fin 2))) F (-b)) w
     simpa only [Function.comp_def, sub_eq_add_neg, Circle.norm_smul] using! congrArg norm hh
@@ -17491,7 +18127,8 @@ theorem smoothingEnlargedCutoff_scaled_difference_fourier_decay (L : ℝ) (N : �
     ∃ C : ℝ, 0 ≤ C ∧ ∀ a : ℝ, 0 < a → ∀ (m : Fin 2 → ℤ) (h : EuclideanSpace ℝ (Fin 2)),
       ‖a • h‖ ≤ L → ∀ ξ : EuclideanSpace ℝ (Fin 2),
         (1 + ‖a⁻¹ • ξ‖) ^ N *
-          ‖(𝓕 (smoothingMultiplicativeDifference (smoothingEnlargedCutoff a m) h)) ξ‖ ≤ C / a ^ 2 := by
+          ‖(𝓕 (smoothingMultiplicativeDifference (smoothingEnlargedCutoff a m) h)) ξ‖ ≤ C / a ^ 2
+            := by
   obtain ⟨C, hC, hb⟩ := smoothingEnlargedCutoff_difference_fourier_decay L N
   refine ⟨C, hC, ?_⟩
   intro a ha m h hh ξ
@@ -17609,7 +18246,8 @@ theorem smoothingEnlargedCutoff_difference_fourier_L1_tail (L : ℝ) (N : ℕ) :
   refine ⟨?_, ?_⟩
   · have hbound := smoothing_fourier_decay_strip_tail hFi ha hC (le_refl (0 : ℝ)) 0 0
       (by simpa only [zero_add] using hbC a ha m h hh)
-    simpa only [zero_div, pow_zero, div_one, abs_nonneg, Set.setOf_true, Measure.restrict_univ, J] using hbound
+    simpa only [zero_div, pow_zero, div_one, abs_nonneg, Set.ofPred_true, Measure.restrict_univ,
+      J] using hbound
   · intro j R hR
     have hbound := smoothing_fourier_decay_strip_tail hFi ha hD hR N j (hbD a ha m h hh)
     simpa only [J, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc] using hbound
@@ -17659,7 +18297,8 @@ theorem smoothingEnlargedCutoff_relocalized_difference_energy (L : ℝ) (N : ℕ
         (fun x => smoothingEnlargedCutoff a m x * F x) h)) ξ‖ ^ 2)
         {ξ : EuclideanSpace ℝ (Fin 2) | |ξ j| ≤ R / 2} ∧
       (∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ j| ≤ R / 2},
-        ‖(𝓕 (smoothingMultiplicativeDifference (fun x => smoothingEnlargedCutoff a m x * F x) h)) ξ‖ ^ 2) ≤
+        ‖(𝓕 (smoothingMultiplicativeDifference (fun x => smoothingEnlargedCutoff a m x * F x) h))
+          ξ‖ ^ 2) ≤
         C * (C * (∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ j| ≤ R},
           ‖(𝓕 (smoothingMultiplicativeDifference F h)) ξ‖ ^ 2) +
           (D / (1 + R / (2 * a)) ^ N) * (∫ x, ‖smoothingMultiplicativeDifference F h x‖ ^ 2)) := by
@@ -17675,7 +18314,8 @@ theorem smoothingEnlargedCutoff_relocalized_difference_energy (L : ℝ) (N : ℕ
   have hiG : Integrable (smoothingMultiplicativeDifference (smoothingEnlargedCutoff a m) h) := by
     rw [← heG]
     exact G.integrable
-  have hG2 : MemLp (smoothingMultiplicativeDifference (smoothingEnlargedCutoff a m) h) 2 volume := by
+  have hG2 : MemLp (smoothingMultiplicativeDifference (smoothingEnlargedCutoff a m) h) 2 volume :=
+    by
     rw [← heG]
     exact G.memLp 2 volume
   have hDF := integrable_smoothingMultiplicativeDifference hF2 h
@@ -17694,20 +18334,26 @@ theorem smoothingEnlargedCutoff_relocalized_difference_energy (L : ℝ) (N : ℕ
   · apply add_le_add
     · exact mul_le_mul_of_nonneg_right hfull (integral_nonneg (fun ξ => sq_nonneg _))
     · exact mul_le_mul_of_nonneg_right (htailbound j R hR) (integral_nonneg (fun x => sq_nonneg _))
-  · exact add_nonneg (mul_nonneg (integral_nonneg (fun ξ => norm_nonneg _)) (integral_nonneg (fun ξ => sq_nonneg _)))
-      (mul_nonneg (integral_nonneg (fun ξ => norm_nonneg _)) (integral_nonneg (fun x => sq_nonneg _)))
+  · exact add_nonneg (mul_nonneg (integral_nonneg (fun ξ => norm_nonneg _)) (integral_nonneg (fun
+      ξ => sq_nonneg _)))
+      (mul_nonneg (integral_nonneg (fun ξ => norm_nonneg _)) (integral_nonneg (fun x => sq_nonneg
+        _)))
   · exact hC
 
 /-- Both actual unlocalized flat components are L2 functions on the plane. -/
 theorem smoothingFlatComponent_memLp
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2)
     {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ) : MemLp (smoothingFlatComponent g j R hρ) 2 volume := by
-  have hfirst (q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : MemLp (smoothingFirstFlat q R hρ) 2 volume :=
-    (smoothingFirstFlatPlane_memLp q hR hρ).comp_measurePreserving smoothingPlaneEquiv_measurePreserving
+  have hfirst (q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) : MemLp (smoothingFirstFlat q R hρ) 2
+    volume :=
+    (smoothingFirstFlatPlane_memLp q hR hρ).comp_measurePreserving
+      smoothingPlaneEquiv_measurePreserving
   fin_cases j
   · exact hfirst g
-  · have hh := (hfirst (smoothingTranspose g)).comp_measurePreserving smoothingCoordinateSwap.measurePreserving
-    have he : (fun x => smoothingFirstFlat (smoothingTranspose g) R hρ (smoothingCoordinateSwap x)) =
+  · have hh := (hfirst (smoothingTranspose g)).comp_measurePreserving
+      smoothingCoordinateSwap.measurePreserving
+    have he : (fun x => smoothingFirstFlat (smoothingTranspose g) R hρ (smoothingCoordinateSwap
+      x)) =
         smoothingSecondFlat g R hρ := by
       funext x
       rw [smoothingTranspose_flat]
@@ -17743,7 +18389,8 @@ theorem smoothing_coordinate_difference_fiber (F : EuclideanSpace ℝ (Fin 2) �
     (j i : Fin 2) (y s u : ℝ) :
     smoothingMultiplicativeDifference F (smoothingCoordinateLine j s)
       (smoothingCoordinateLine i y + smoothingCoordinateLine j u) =
-      smoothingMultiplicativeDifference (fun v => F (smoothingCoordinateLine i y + smoothingCoordinateLine j v)) s u := by
+      smoothingMultiplicativeDifference (fun v => F (smoothingCoordinateLine i y +
+        smoothingCoordinateLine j v)) s u := by
   simp only [smoothingMultiplicativeDifference, map_add, add_assoc]
 
 /-- For any actual plane input, the integrated physical difference
@@ -17767,9 +18414,12 @@ theorem smoothing_coordinate_difference_energy_identity
   have hi' : Integrable H (volume.prod (volume.prod volume)) := hi
   have hs : Integrable (fun p : ℝ × (ℝ × ℝ) => H (p.2.1, (p.1, p.2.2)))
       (volume.prod (volume.prod volume)) := by
-    have h1 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).integrable_comp_of_integrable hi'
-    have h2 := (Measure.measurePreserving_swap.prod (MeasurePreserving.id (volume : Measure ℝ))).integrable_comp_of_integrable h1
-    have h3 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).symm.integrable_comp_of_integrable h2
+    have h1 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume
+      volume).integrable_comp_of_integrable hi'
+    have h2 := (Measure.measurePreserving_swap.prod (MeasurePreserving.id (volume : Measure
+      ℝ))).integrable_comp_of_integrable h1
+    have h3 := (measurePreserving_prodAssoc (volume : Measure ℝ) volume
+      volume).symm.integrable_comp_of_integrable h2
     simpa only [Function.comp_def, Prod.map_apply, Prod.swap_prod_mk] using! h3
   refine ⟨?_, ?_⟩
   · apply hs.integral_prod_left.congr
@@ -17791,7 +18441,8 @@ theorem smoothing_coordinate_difference_energy_identity
       filter_upwards [hs.prod_right_ae] with s hs
       exact integral_prod _ hs
     _ = _ := by
-      have hh := (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).integrable_comp_of_integrable hs
+      have hh := (measurePreserving_prodAssoc (volume : Measure ℝ) volume
+        volume).integrable_comp_of_integrable hs
       exact integral_integral_swap hh.integral_prod_left
 
 /-- Before relocalization, the actual flat component has full physical
@@ -17804,8 +18455,10 @@ theorem smoothingRegularizedPiece_flat_physical_energy (ψ : Option (SchwartzMap
     (∀ x, ‖f x‖ ≤ 1) →
     let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
     let F := smoothingFlatComponent g j R hρ
-    Integrable (fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2) ∧
-      (∫ s : ℝ, ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2) ≤ C / a ^ 3 := by
+    Integrable (fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j
+      s) x‖ ^ 2) ∧
+      (∫ s : ℝ, ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2) ≤
+        C / a ^ 3 := by
   obtain ⟨C, hC, hb⟩ := smoothingRegularizedPiece_integral_fiber_norm_fourth ψ
   refine ⟨C, hC, ?_⟩
   intro j i hij r a R ρ hr ha hR hρ m f hf
@@ -17813,19 +18466,24 @@ theorem smoothingRegularizedPiece_flat_physical_energy (ψ : Option (SchwartzMap
   let F := smoothingFlatComponent g j R hρ
   let H : ℝ × ℝ → ℂ := fun p => F (smoothingCoordinateLine i p.1 + smoothingCoordinateLine j p.2)
   have hm : Measurable H := (smoothingFlatComponent_measurable g j R hρ).comp
-    (show Measurable (fun p : ℝ × ℝ => smoothingCoordinateLine i p.1 + smoothingCoordinateLine j p.2) by fun_prop)
+    (show Measurable (fun p : ℝ × ℝ => smoothingCoordinateLine i p.1 + smoothingCoordinateLine j
+      p.2) by fun_prop)
   have hslice (y : ℝ) : MemLp (fun u => H (y, u)) 2 volume ∧
-      (∫ u : ℝ, ‖H (y, u)‖ ^ 2) ≤ ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 2 := by
+      (∫ u : ℝ, ‖H (y, u)‖ ^ 2) ≤ ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i
+        y)).toLp 2 volume‖ ^ 2 := by
     have he : (fun u => H (y, u)) = smoothingFiberFlat g j (smoothingCoordinateLine i y) R
         (smoothingFiberSelectedIndices g j R hρ (smoothingCoordinateLine i y)) := by
       funext u
       exact smoothingFlatComponent_fiber g j i hij R hρ y u
-    simpa only [← he] using! smoothingFiberFlat_memLp_integral g j (smoothingCoordinateLine i y) hR
+    simpa only [← he] using! smoothingFiberFlat_memLp_integral g j (smoothingCoordinateLine i y)
+      hR
       (smoothingFiberSelectedIndices g j R hρ (smoothingCoordinateLine i y))
   let Q : ℝ → ℝ := fun y => (∫ u : ℝ, ‖H (y, u)‖ ^ 2) ^ 2
   have hmQ : Measurable Q :=
-    ((hm.norm.pow_const 2).stronglyMeasurable.integral_prod_right' (ν := (volume : Measure ℝ))).measurable.pow_const 2
-  have hQ (y : ℝ) : Q y ≤ ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4 := by
+    ((hm.norm.pow_const 2).stronglyMeasurable.integral_prod_right' (ν := (volume : Measure
+      ℝ))).measurable.pow_const 2
+  have hQ (y : ℝ) : Q y ≤ ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2
+    volume‖ ^ 4 := by
     have hh := pow_le_pow_left₀ (integral_nonneg (fun u => sq_nonneg ‖H (y, u)‖)) (hslice y).2 2
     simpa only [← pow_mul] using hh
   obtain ⟨hOrig, hOrigBound⟩ := hb j i hij r a hr ha m f hf
@@ -17838,7 +18496,8 @@ theorem smoothingRegularizedPiece_flat_physical_energy (ψ : Option (SchwartzMap
   have he := smoothing_coordinate_difference_energy_identity F j i hij hphys.1
   refine ⟨he.1, ?_⟩
   calc
-    _ = ∫ y : ℝ, ∫ s : ℝ, ∫ u : ℝ, ‖smoothingMultiplicativeDifference (fun v => H (y, v)) s u‖ ^ 2 := he.2
+    _ = ∫ y : ℝ, ∫ s : ℝ, ∫ u : ℝ, ‖smoothingMultiplicativeDifference (fun v => H (y, v)) s u‖ ^ 2
+      := he.2
     _ = ∫ y : ℝ, Q y := hphys.2
     _ ≤ ∫ y : ℝ, ‖(smoothingCoordinateFiber g j (smoothingCoordinateLine i y)).toLp 2 volume‖ ^ 4 :=
       integral_mono_ae hiQ hOrig (Filter.Eventually.of_forall hQ)
@@ -17866,7 +18525,8 @@ theorem smoothingRegularizedPiece_flat_fourier_energy (ψ : Option (SchwartzMap 
     (∀ x, ‖f x‖ ≤ 1) →
     let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ j| ≤ R},
-      ‖(𝓕 (smoothingMultiplicativeDifference (smoothingFlatComponent g j R hρ) (smoothingCoordinateLine j s))) ξ‖ ^ 2
+      ‖(𝓕 (smoothingMultiplicativeDifference (smoothingFlatComponent g j R hρ)
+        (smoothingCoordinateLine j s))) ξ‖ ^ 2
     Integrable E ∧ (∫ s : ℝ, E s) ≤ C * ρ / a ^ 3 := by
   obtain ⟨C₀, hC₀, hb₀⟩ := smoothingRegularizedPiece_first_flat_energy ψ
   obtain ⟨C₁, hC₁, hb₁⟩ := smoothingRegularizedPiece_second_flat_energy ψ
@@ -17877,12 +18537,14 @@ theorem smoothingRegularizedPiece_flat_fourier_energy (ψ : Option (SchwartzMap 
     have hlarge : C₀ * ρ / a ^ 3 ≤ (C₀ + C₁) * ρ / a ^ 3 := by
       gcongr
       exact le_add_of_nonneg_right hC₁
-    simpa [smoothingFlatComponent, smoothingCoordinateLine_apply] using! And.intro hi (hb.trans hlarge)
+    simpa [smoothingFlatComponent, smoothingCoordinateLine_apply] using! And.intro hi (hb.trans
+      hlarge)
   · obtain ⟨hi, hb⟩ := hb₁ r a R ρ hr ha hR hρ m f hf
     have hlarge : C₁ * ρ / a ^ 3 ≤ (C₀ + C₁) * ρ / a ^ 3 := by
       gcongr
       exact le_add_of_nonneg_left hC₀
-    simpa [smoothingFlatComponent, smoothingCoordinateLine_apply] using! And.intro hi (hb.trans hlarge)
+    simpa [smoothingFlatComponent, smoothingCoordinateLine_apply] using! And.intro hi (hb.trans
+      hlarge)
 
 /-- Coordinate differences of a measurable plane function have jointly
 measurable Fourier integrals in translation and frequency. -/
@@ -17890,24 +18552,28 @@ theorem smoothing_coordinate_difference_fourier_measurable
     {F : EuclideanSpace ℝ (Fin 2) → ℂ} (hF : Measurable F) (j : Fin 2) :
     Measurable (fun p : ℝ × EuclideanSpace ℝ (Fin 2) =>
       (𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine j p.1))) p.2) := by
-  have hshift := hF.comp (show Measurable (fun p : (ℝ × EuclideanSpace ℝ (Fin 2)) × EuclideanSpace ℝ (Fin 2) =>
+  have hshift := hF.comp (show Measurable (fun p : (ℝ × EuclideanSpace ℝ (Fin 2)) × EuclideanSpace
+    ℝ (Fin 2) =>
     p.2 + smoothingCoordinateLine j p.1.1) by fun_prop)
-  have hbase := hF.comp (measurable_snd : Measurable (fun p : (ℝ × EuclideanSpace ℝ (Fin 2)) × EuclideanSpace ℝ (Fin 2) => p.2))
+  have hbase := hF.comp (measurable_snd : Measurable (fun p : (ℝ × EuclideanSpace ℝ (Fin 2)) ×
+    EuclideanSpace ℝ (Fin 2) => p.2))
   have hc := Real.continuous_fourierChar
   have hkernel : Measurable (fun p : (ℝ × EuclideanSpace ℝ (Fin 2)) × EuclideanSpace ℝ (Fin 2) =>
       (Real.fourierChar (-inner ℝ p.2 p.1.2) : ℂ)) := by fun_prop
   have hm : Measurable (fun p : (ℝ × EuclideanSpace ℝ (Fin 2)) × EuclideanSpace ℝ (Fin 2) =>
-      Real.fourierChar (-inner ℝ p.2 p.1.2) • (F (p.2 + smoothingCoordinateLine j p.1.1) * star (F p.2))) := by
+      Real.fourierChar (-inner ℝ p.2 p.1.2) • (F (p.2 + smoothingCoordinateLine j p.1.1) * star (F
+        p.2))) := by
     simpa only [Function.comp_def, Circle.smul_def, smul_eq_mul, Pi.mul_def] using!
       hkernel.mul (hshift.mul (continuous_star.measurable.comp hbase))
-  have hi := (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure (EuclideanSpace ℝ (Fin 2))))).measurable
+  have hi := (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure (EuclideanSpace ℝ
+    (Fin 2))))).measurable
   simpa only [Real.fourier_eq, smoothingMultiplicativeDifference] using! hi
 
 /-- The actual relocalized flat pieces retain their small integrated
 low-frequency energy, with an explicit rapidly decaying cutoff tail.
 This supplies the continuous-frequency relocalization bridge in (3.30). -/
-theorem smoothingRegularizedPiece_relocalized_flat_energy
-    (ψ : Option (SchwartzMap ℝ ℂ)) (L : ℝ) (N : ℕ) :
+theorem smoothingRegularizedPiece_relocalized_flat_energy (ψ : Option (SchwartzMap ℝ ℂ)) (L :
+    ℝ) (N : ℕ) :
     ∃ A B : ℝ, 0 ≤ A ∧ 0 ≤ B ∧ ∀ (j i : Fin 2), i ≠ j →
     ∀ (r a R ρ : ℝ), 0 < r → 0 < a → (hR : 0 < R) → (hρ : 0 < ρ) →
     ∀ (m : Fin 2 → ℤ) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
@@ -17932,14 +18598,16 @@ theorem smoothingRegularizedPiece_relocalized_flat_energy
     ‖(𝓕 (smoothingMultiplicativeDifference H (smoothingCoordinateLine j s))) ξ‖ ^ 2
   let E₀ := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ j| ≤ R},
     ‖(𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine j s))) ξ‖ ^ 2
-  let V := fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2
+  let V := fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖
+    ^ 2
   let b := D / (1 + R / (2 * a)) ^ N
   let Q := fun s : ℝ => C * (C * E₀ s + b * V s)
   have hb : 0 ≤ b := by dsimp [b]; positivity
   have hE₀ : ∀ s, 0 ≤ E₀ s := fun s => integral_nonneg (fun ξ => sq_nonneg _)
   have hV : ∀ s, 0 ≤ V s := fun s => integral_nonneg (fun x => sq_nonneg _)
   have hE : ∀ s, 0 ≤ E s := fun s => integral_nonneg (fun ξ => sq_nonneg _)
-  have hQ : ∀ s, 0 ≤ Q s := fun s => mul_nonneg hC (add_nonneg (mul_nonneg hC (hE₀ s)) (mul_nonneg hb (hV s)))
+  have hQ : ∀ s, 0 ≤ Q s := fun s => mul_nonneg hC (add_nonneg (mul_nonneg hC (hE₀ s)) (mul_nonneg
+    hb (hV s)))
   have hi₀ : Integrable E₀ := (hlow j r a R ρ hr ha hR hρ m f hf).1
   have hiV : Integrable V := (hphysical j i hij r a R ρ hr ha hR hρ m f hf).1
   have hb₀ : (∫ s, E₀ s) ≤ A₀ * ρ / a ^ 3 := (hlow j r a R ρ hr ha hR hρ m f hf).2
@@ -17947,18 +18615,21 @@ theorem smoothingRegularizedPiece_relocalized_flat_energy
   have hiQ : Integrable Q := ((hi₀.const_mul C).add (hiV.const_mul b)).const_mul C
   have hmH : Measurable H := (smoothingRelocalizedComponent_measurable_support g j ha R hρ m true).1
   have hmE : Measurable E :=
-    ((smoothing_coordinate_difference_fourier_measurable hmH j).norm.pow_const 2).stronglyMeasurable.integral_prod_right'.measurable
+    ((smoothing_coordinate_difference_fourier_measurable hmH j).norm.pow_const
+      2).stronglyMeasurable.integral_prod_right'.measurable
   have hg (x : EuclideanSpace ℝ (Fin 2)) : ‖g x‖ ≤ M₀ := by
     simpa only [mul_one] using hreg j r hr (smoothingSpatialPiece a m f)
       (fun y => (smoothingSpatialPiece_bound a m f y).trans (hf y)) x
   let M := M₀ + (smoothingStructuralTermCount ρ : ℝ) * (smoothingDerivativeConstant 0 * M₀)
   have hM : 0 ≤ M := add_nonneg hM₀ (mul_nonneg (Nat.cast_nonneg _)
     (mul_nonneg (integral_nonneg (fun _ => norm_nonneg _)) hM₀))
-  have hbound (x : EuclideanSpace ℝ (Fin 2)) : ‖F x‖ ≤ M := smoothingFlatComponent_bound g j hR hρ hg x
+  have hbound (x : EuclideanSpace ℝ (Fin 2)) : ‖F x‖ ≤ M := smoothingFlatComponent_bound g j hR hρ
+    hg x
   have hpoint : ∀ s ∈ Set.Icc (-(L / a)) (L / a), E s ≤ Q s := by
     intro s hs
     have hnorm : ‖a • smoothingCoordinateLine j s‖ ≤ L := by
-      rw [norm_smul, Real.norm_eq_abs, abs_of_pos ha, smoothingCoordinateLine_norm, Real.norm_eq_abs]
+      rw [norm_smul, Real.norm_eq_abs, abs_of_pos ha, smoothingCoordinateLine_norm,
+        Real.norm_eq_abs]
       have habs : |s| ≤ L / a := abs_le.mpr hs
       exact (mul_le_mul_of_nonneg_left habs ha.le).trans_eq (by field_simp)
     exact (hcut a ha m (smoothingCoordinateLine j s) hnorm F
@@ -17974,7 +18645,8 @@ theorem smoothingRegularizedPiece_relocalized_flat_energy
       setIntegral_mono_on hiE hiQ.integrableOn measurableSet_Icc hpoint
     _ ≤ ∫ s, Q s := setIntegral_le_integral hiQ (Filter.Eventually.of_forall hQ)
     _ = C * (C * (∫ s, E₀ s) + b * (∫ s, V s)) := by
-      rw [integral_const_mul, integral_add (hi₀.const_mul C) (hiV.const_mul b), integral_const_mul, integral_const_mul]
+      rw [integral_const_mul, integral_add (hi₀.const_mul C) (hiV.const_mul b),
+        integral_const_mul, integral_const_mul]
     _ ≤ C * (C * (A₀ * ρ / a ^ 3) + b * (A₁ / a ^ 3)) := by
       apply mul_le_mul_of_nonneg_left _ hC
       exact add_le_add (mul_le_mul_of_nonneg_left hb₀ hC) (mul_le_mul_of_nonneg_left hbV hb)
@@ -17996,8 +18668,8 @@ theorem smoothing_lattice_floor_distance (x : EuclideanSpace ℝ (Fin 2)) :
 
 /-- The dependency's integer-shift lattice sum extends uniformly to
 arbitrary real frequency shifts. This bounds the sampling kernel columns. -/
-theorem smoothing_shifted_lattice_decay_sum (x : EuclideanSpace ℝ (Fin 2))
-    (S : Finset (Fin 2 → ℤ)) :
+theorem smoothing_shifted_lattice_decay_sum (x : EuclideanSpace ℝ (Fin 2)) (S : Finset (Fin 2 →
+    ℤ)) :
     (∑ k ∈ S, ((1 + ‖x - CalderonVaillancourt.latt 2 k‖) ^ 4)⁻¹) ≤ 729 := by
   let m : Fin 2 → ℤ := fun i => ⌊x i⌋
   have hpoint (k : Fin 2 → ℤ) :
@@ -18006,7 +18678,8 @@ theorem smoothing_shifted_lattice_decay_sum (x : EuclideanSpace ℝ (Fin 2))
     have he : CalderonVaillancourt.latt 2 (m - k) =
         (CalderonVaillancourt.latt 2 m - x) + (x - CalderonVaillancourt.latt 2 k) := by
       ext i
-      simp only [CalderonVaillancourt.latt, PiLp.add_apply, PiLp.sub_apply, Pi.sub_apply, Int.cast_sub]
+      simp only [CalderonVaillancourt.latt, PiLp.add_apply, PiLp.sub_apply, Pi.sub_apply,
+        Int.cast_sub]
       ring
     have hn : ‖CalderonVaillancourt.latt 2 (m - k)‖ ≤ 2 + ‖x - CalderonVaillancourt.latt 2 k‖ := by
       rw [he]
@@ -18017,16 +18690,19 @@ theorem smoothing_shifted_lattice_decay_sum (x : EuclideanSpace ℝ (Fin 2))
     have hbase : 1 + ‖CalderonVaillancourt.latt 2 (m - k)‖ ≤
         3 * (1 + ‖x - CalderonVaillancourt.latt 2 k‖) := by
       nlinarith [norm_nonneg (x - CalderonVaillancourt.latt 2 k)]
-    have hp := pow_le_pow_left₀ (by positivity : 0 ≤ 1 + ‖CalderonVaillancourt.latt 2 (m - k)‖) hbase 4
+    have hp := pow_le_pow_left₀ (by positivity : 0 ≤ 1 + ‖CalderonVaillancourt.latt 2 (m - k)‖)
+      hbase 4
     rw [mul_pow] at hp
     norm_num at hp
     rw [CalderonVaillancourt.cvInvPow, inv_eq_one_div, inv_eq_one_div, mul_one_div,
       div_le_div_iff₀ (by positivity) (by positivity), one_mul]
     exact hp
   calc
-    _ ≤ ∑ k ∈ S, 81 * CalderonVaillancourt.cvInvPow 2 4 (m - k) := Finset.sum_le_sum (fun k _ => hpoint k)
+    _ ≤ ∑ k ∈ S, 81 * CalderonVaillancourt.cvInvPow 2 4 (m - k) := Finset.sum_le_sum (fun k _ =>
+      hpoint k)
     _ = 81 * ∑ k ∈ S, CalderonVaillancourt.cvInvPow 2 4 (m - k) := (Finset.mul_sum _ _ _).symm
-    _ ≤ 81 * 3 ^ 2 := mul_le_mul_of_nonneg_left (CalderonVaillancourt.sum_shift_cvInvPow_le 2 m S) (by norm_num)
+    _ ≤ 81 * 3 ^ 2 := mul_le_mul_of_nonneg_left (CalderonVaillancourt.sum_shift_cvInvPow_le 2 m S)
+      (by norm_num)
     _ = _ := by norm_num
 
 /-- The real-shifted decay kernel is summable, uniformly over its center. -/
@@ -18063,12 +18739,15 @@ theorem smoothing_finite_sampling_kernel_energy {ι : Type*} (S : Finset ι)
     calc
       _ ≤ ∫ η, B * U.indicator (fun η => ‖f η‖ ^ 2) η + D * ‖f η‖ ^ 2 := by
         apply integral_mono_of_nonneg
-          (Filter.Eventually.of_forall (fun η => Finset.sum_nonneg (fun k _ => mul_nonneg (sq_nonneg _) (norm_nonneg _)))) hmajor
+          (Filter.Eventually.of_forall (fun η => Finset.sum_nonneg (fun k _ => mul_nonneg
+            (sq_nonneg _) (norm_nonneg _)))) hmajor
         filter_upwards [] with η
         have hh := mul_le_mul_of_nonneg_left (hcol η) (sq_nonneg ‖f η‖)
         by_cases hη : η ∈ U
-        · simpa only [Finset.mul_sum, Set.indicator_of_mem hη, mul_one, mul_add, add_mul, mul_comm] using hh
-        · simpa only [Finset.mul_sum, Set.indicator_of_notMem hη, mul_zero, zero_add, mul_comm] using hh
+        · simpa only [Finset.mul_sum, Set.indicator_of_mem hη, mul_one, mul_add, add_mul,
+            mul_comm] using hh
+        · simpa only [Finset.mul_sum, Set.indicator_of_notMem hη, mul_zero, zero_add, mul_comm]
+            using hh
       _ = _ := by
         rw [integral_add ((hf2.indicator hU).const_mul B) (hf2.const_mul D),
           integral_const_mul, integral_const_mul, integral_indicator hU]
@@ -18084,14 +18763,16 @@ def smoothingSamplingCutoff {q : ℝ} (hq : 0 < q) (b : EuclideanSpace ℝ (Fin 
     SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ :=
   SchwartzMap.compCLMOfContinuousLinearEquiv ℂ
     (LinearEquiv.smulOfNeZero ℝ (EuclideanSpace ℝ (Fin 2)) q hq.ne').toContinuousLinearEquiv
-    ((smoothingSchwartzDifference (smoothingEnlargedCutoffSchwartz (by norm_num : (0 : ℝ) < 1) 0) 0).compSubConstCLM ℂ b)
+    ((smoothingSchwartzDifference (smoothingEnlargedCutoffSchwartz (by norm_num : (0 : ℝ) < 1) 0)
+      0).compSubConstCLM ℂ b)
 
 /-- The sampling cutoff is the fixed normalized cutoff square at its
 affinely scaled physical point. -/
 theorem smoothingSamplingCutoff_apply {q : ℝ} (hq : 0 < q) (b x : EuclideanSpace ℝ (Fin 2)) :
     smoothingSamplingCutoff hq b x =
       smoothingMultiplicativeDifference (smoothingEnlargedCutoff 1 0) 0 (q • x - b) := by
-  change smoothingSchwartzDifference (smoothingEnlargedCutoffSchwartz (by norm_num : (0 : ℝ) < 1) 0) 0 (q • x - b) = _
+  change smoothingSchwartzDifference (smoothingEnlargedCutoffSchwartz (by norm_num : (0 : ℝ) < 1)
+    0) 0 (q • x - b) = _
   rw [smoothingSchwartzDifference_apply]
   rfl
 
@@ -18102,7 +18783,8 @@ theorem smoothingSamplingCutoff_one {q : ℝ} (hq : 0 < q) (b x : EuclideanSpace
     intro i
     simpa [smoothingSpatialCube] using hx i
   have hh := smoothingEnlargedCutoff_one (by norm_num : (0 : ℝ) < 1) (0 : Fin 2 → ℤ) hcube
-  rw [smoothingSamplingCutoff_apply, smoothingMultiplicativeDifference, add_zero, hh, star_one, mul_one]
+  rw [smoothingSamplingCutoff_apply, smoothingMultiplicativeDifference, add_zero, hh, star_one,
+    mul_one]
 
 /-- The wider cutoff is identically one on the support of every actual
 relocalized component and its multiplicative differences. -/
@@ -18146,9 +18828,11 @@ theorem smoothingSamplingCutoff_fourier_L1 :
   let J := ∫ ξ : EuclideanSpace ℝ (Fin 2), ((1 + ‖ξ‖) ^ 4)⁻¹
   refine ⟨C * J, mul_nonneg hC (integral_nonneg (fun ξ => by positivity)), ?_⟩
   intro q hq b
-  have hh := smoothing_fourier_decay_strip_tail ((𝓕 (smoothingSamplingCutoff hq b)).integrable (μ := volume))
+  have hh := smoothing_fourier_decay_strip_tail ((𝓕 (smoothingSamplingCutoff hq b)).integrable (μ
+    := volume))
     hq hC (le_refl (0 : ℝ)) 0 0 (by simpa only [zero_add] using hb q hq b)
-  simpa only [zero_div, pow_zero, div_one, abs_nonneg, Set.setOf_true, Measure.restrict_univ, J] using hh
+  simpa only [zero_div, pow_zero, div_one, abs_nonneg, Set.ofPred_true, Measure.restrict_univ,
+    J] using hh
 
 /-- Split a rapid-decay power into an integrable fourth-power weight
 and a tail factor, as required by the sampling columns. -/
@@ -18189,11 +18873,15 @@ theorem smoothingSamplingCutoff_kernel_region_columns (N : ℕ) :
         (C/q^2) * ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ := by
     simpa only [add_zero, one_pow, div_one] using
       smoothing_decay_weight_factor (le_refl (0 : ℝ)) (norm_nonneg _) (norm_nonneg _) N (hdec k)
-  have hsum : (∑ k ∈ S, ‖𝓕 (smoothingSamplingCutoff hq b) (η - q • CalderonVaillancourt.latt 2 k)‖) ≤ 729*C/q^2 := by
+  have hsum : (∑ k ∈ S, ‖𝓕 (smoothingSamplingCutoff hq b) (η - q • CalderonVaillancourt.latt 2
+    k)‖) ≤ 729*C/q^2 := by
     calc
-      _ ≤ ∑ k ∈ S, (C/q^2) * ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ := Finset.sum_le_sum (fun k _ => hnear k)
-      _ = (C/q^2) * ∑ k ∈ S, ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ := (Finset.mul_sum _ _ _).symm
-      _ ≤ (C/q^2)*729 := mul_le_mul_of_nonneg_left (smoothing_shifted_lattice_decay_sum _ S) (by positivity)
+      _ ≤ ∑ k ∈ S, (C/q^2) * ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ :=
+        Finset.sum_le_sum (fun k _ => hnear k)
+      _ = (C/q^2) * ∑ k ∈ S, ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ :=
+        (Finset.mul_sum _ _ _).symm
+      _ ≤ (C/q^2)*729 := mul_le_mul_of_nonneg_left (smoothing_shifted_lattice_decay_sum _ S)
+        (by positivity)
       _ = _ := by ring
   by_cases hη : η ∈ U
   · simp only [Set.indicator_of_mem hη, mul_one]
@@ -18204,12 +18892,16 @@ theorem smoothingSamplingCutoff_kernel_region_columns (N : ℕ) :
       smoothing_decay_weight_factor (by positivity) (hsep η hη k hk) (norm_nonneg _) N (hdec k)
     simp only [Set.indicator_of_notMem hη, mul_zero, zero_add]
     calc
-      _ ≤ ∑ k ∈ S, ((C/q^2)/(1+T/q)^N) * ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ := Finset.sum_le_sum hterm
-      _ = ((C/q^2)/(1+T/q)^N) * ∑ k ∈ S, ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ := (Finset.mul_sum _ _ _).symm
-      _ ≤ ((C/q^2)/(1+T/q)^N)*729 := mul_le_mul_of_nonneg_left (smoothing_shifted_lattice_decay_sum _ S) (by positivity)
+      _ ≤ ∑ k ∈ S, ((C/q^2)/(1+T/q)^N) * ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ :=
+        Finset.sum_le_sum hterm
+      _ = ((C/q^2)/(1+T/q)^N) * ∑ k ∈ S, ((1 + ‖q⁻¹ • η - CalderonVaillancourt.latt 2 k‖)^4)⁻¹ :=
+        (Finset.mul_sum _ _ _).symm
+      _ ≤ ((C/q^2)/(1+T/q)^N)*729 := mul_le_mul_of_nonneg_left
+        (smoothing_shifted_lattice_decay_sum _ S) (by positivity)
       _ = _ := by ring
 
 set_option maxHeartbeats 800000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- A frequency sampling estimate for any input region separated from
 the selected output samples. Both low and high strips are instances. -/
 theorem smoothing_fourier_finite_region_sampling (N : ℕ) :
@@ -18227,34 +18919,40 @@ theorem smoothing_fourier_finite_region_sampling (N : ℕ) :
   refine ⟨A * B, mul_nonneg hA hB, ?_⟩
   intro q hq b F hF1 hF2 hsupport T hT S U hU hS
   let ψ := smoothingSamplingCutoff hq b
-  let K := fun (k : Fin 2 → ℤ) (η : EuclideanSpace ℝ (Fin 2)) => star (𝓕 ψ (η - q • CalderonVaillancourt.latt 2 k))
+  let K := fun (k : Fin 2 → ℤ) (η : EuclideanSpace ℝ (Fin 2)) => star (𝓕 ψ (η - q •
+    CalderonVaillancourt.latt 2 k))
   have hfc : Continuous (𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) :=
     VectorFourier.fourierIntegral_continuous Real.continuous_fourierChar continuous_inner hF1
   have hFF2 : MemLp (𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume :=
     (memLp_congr_ae (smoothing_fourier_toLp_ae_eq hF1 hF2)).mp (Lp.memLp (𝓕 (hF2.toLp F)))
-  have hiF := (memLp_two_iff_integrable_sq_norm hFF2.1).mp hFF2
+  have hiF := (memLp_two_iff_integrable_sq_norm hFF2.aestronglyMeasurable).mp hFF2
   have hmK (k : Fin 2 → ℤ) : Measurable (K k) :=
     continuous_star.measurable.comp ((𝓕 ψ).continuous.measurable.comp (measurable_id.sub_const _))
   have hKbound (k : Fin 2 → ℤ) (η : EuclideanSpace ℝ (Fin 2)) : ‖K k η‖ ≤ D / q ^ 2 := by
-    simpa only [K, ψ, norm_star, pow_zero, one_mul] using hsup q hq b (η - q • CalderonVaillancourt.latt 2 k)
+    simpa only [K, ψ, norm_star, pow_zero, one_mul] using hsup q hq b (η - q •
+      CalderonVaillancourt.latt 2 k)
   have hKi (k : Fin 2 → ℤ) : Integrable (K k) := by
-    have hh := (measurePreserving_add_right volume (-(q • CalderonVaillancourt.latt 2 k))).integrable_comp_of_integrable (𝓕 ψ).integrable.norm
+    have hh := (measurePreserving_add_right volume (-(q • CalderonVaillancourt.latt 2
+      k))).integrable_comp_of_integrable (𝓕 ψ).integrable.norm
     apply hh.mono' (hmK k).aestronglyMeasurable
     filter_upwards [] with η
     simp only [K, norm_star, Function.comp_def, sub_eq_add_neg, le_refl]
   have hWi (k : Fin 2 → ℤ) : Integrable (fun η => ‖(𝓕 F) η‖ ^ 2 * ‖K k η‖) := by
-    apply (hiF.const_mul (D / q ^ 2)).mono' ((hfc.measurable.norm.pow_const 2).mul (hmK k).norm).aestronglyMeasurable
+    apply (hiF.const_mul (D / q ^ 2)).mono' ((hfc.measurable.norm.pow_const 2).mul (hmK
+      k).norm).aestronglyMeasurable
     filter_upwards [] with η
     simp only [Pi.mul_apply, Real.norm_eq_abs, abs_mul, abs_pow, abs_norm]
     calc
-      _ ≤ ‖(𝓕 F) η‖ ^ 2 * (D / q ^ 2) := mul_le_mul_of_nonneg_left (hKbound k η) (sq_nonneg ‖(𝓕 F) η‖)
+      _ ≤ ‖(𝓕 F) η‖ ^ 2 * (D / q ^ 2) := mul_le_mul_of_nonneg_left (hKbound k η) (sq_nonneg ‖(𝓕 F)
+        η‖)
       _ = _ := mul_comm _ _
   have hrow (k : Fin 2 → ℤ) : (∫ η, ‖K k η‖) ≤ A := by
     simp only [K, norm_star]
     calc
       _ = ∫ η, ‖𝓕 ψ η‖ := integral_sub_right_eq_self (fun η => ‖𝓕 ψ η‖) _
       _ ≤ _ := hL1 q hq b
-  have he (k : Fin 2 → ℤ) : (𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (q • CalderonVaillancourt.latt 2 k) =
+  have he (k : Fin 2 → ℤ) : (𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (q • CalderonVaillancourt.latt 2
+    k) =
       ∫ η, (𝓕 F) η * K k η := by
     have hproduct : (fun x => F x * star (ψ x)) = F := by
       funext x
@@ -18266,7 +18964,8 @@ theorem smoothing_fourier_finite_region_sampling (N : ℕ) :
     rw [hproduct] at hh
     rw [hh]
     have hs := integral_add_left_eq_self (μ := volume)
-      (fun η => (𝓕 F) η * star (𝓕 ψ (η - q • CalderonVaillancourt.latt 2 k))) (q • CalderonVaillancourt.latt 2 k)
+      (fun η => (𝓕 F) η * star (𝓕 ψ (η - q • CalderonVaillancourt.latt 2 k))) (q •
+        CalderonVaillancourt.latt 2 k)
     simpa only [K, add_sub_cancel_left, SchwartzMap.fourier_coe] using hs
   have hcolumn (η : EuclideanSpace ℝ (Fin 2)) : (∑ k ∈ S, ‖K k η‖) ≤
       (B / q ^ 2) * Set.indicator U (fun _ => (1 : ℝ)) η +
@@ -18275,7 +18974,8 @@ theorem smoothing_fourier_finite_region_sampling (N : ℕ) :
   have hbound := smoothing_finite_sampling_kernel_energy S hfc.measurable hmK hiF
     (fun k _ => hKi k) (fun k _ => hWi k) hA hU
     (fun k _ => hrow k) hcolumn
-  have hsum : (∑ k ∈ S, ‖(𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (q • CalderonVaillancourt.latt 2 k)‖ ^ 2) =
+  have hsum : (∑ k ∈ S, ‖(𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (q • CalderonVaillancourt.latt 2 k)‖
+    ^ 2) =
       ∑ k ∈ S, ‖∫ η, (𝓕 F) η * K k η‖ ^ 2 := by
     apply Finset.sum_congr rfl
     intro k hk
@@ -18293,9 +18993,11 @@ theorem smoothing_sampling_coordinate_separation {q T : ℝ} (hq : 0 < q)
   have hcoord : |q⁻¹ * (η j - q * (k j : ℝ))| ≤
       ‖q⁻¹ • (η - q • CalderonVaillancourt.latt 2 k)‖ :=
     PiLp.norm_apply_le (q⁻¹ • (η - q • CalderonVaillancourt.latt 2 k)) j
-  rw [abs_mul, abs_of_pos (inv_pos.mpr hq), smul_sub, smul_smul, inv_mul_cancel₀ hq.ne', one_smul] at hcoord
+  rw [abs_mul, abs_of_pos (inv_pos.mpr hq), smul_sub, smul_smul, inv_mul_cancel₀ hq.ne', one_smul]
+    at hcoord
   have hh := mul_le_mul_of_nonneg_left hsep (inv_nonneg.mpr hq.le)
-  have hh' : T/q ≤ q⁻¹ * |η j - q * (k j : ℝ)| := by simpa only [div_eq_mul_inv, mul_comm] using hh
+  have hh' : T/q ≤ q⁻¹ * |η j - q * (k j : ℝ)| :=
+    by simpa only [div_eq_mul_inv, mul_comm] using hh
   exact hh'.trans hcoord
 
 /-- High output samples are controlled by the half-threshold input tail
@@ -18312,7 +19014,8 @@ theorem smoothing_fourier_finite_tail_sampling (N : ℕ) :
   obtain ⟨C, hC, hb⟩ := smoothing_fourier_finite_region_sampling N
   refine ⟨C, hC, ?_⟩
   intro q hq b F hF1 hF2 hs j T hT S hS
-  apply hb q hq b F hF1 hF2 hs (T/2) (by positivity) S _ (measurableSet_le measurable_const (by fun_prop))
+  apply hb q hq b F hF1 hF2 hs (T/2) (by positivity) S _ (measurableSet_le measurable_const
+    (by fun_prop))
   intro η hη k hk
   apply smoothing_sampling_coordinate_separation hq j η k
   have hη' : |η j| < T/2 := lt_of_not_ge hη
@@ -18384,7 +19087,7 @@ theorem smoothingRawLocalFourierCoefficient_tail_energy (N : ℕ) :
   have hset : {k : Fin 2 → ℤ | R/4 ≤ |(a/4) * (k j : ℝ)|} =
       {k : Fin 2 → ℤ | R/a ≤ |(k j : ℝ)|} := by
     ext k
-    simp only [Set.mem_setOf_eq, abs_mul, abs_of_pos hq]
+    simp only [Set.mem_ofPred_eq, abs_mul, abs_of_pos hq]
     constructor
     · intro hk
       apply (div_le_iff₀ ha).mpr
@@ -18397,7 +19100,8 @@ theorem smoothingRawLocalFourierCoefficient_tail_energy (N : ℕ) :
   have heq' : (R/8)/(a/4) = R/(2*a) := by field_simp; ring
   rw [heq'] at hh
   have hcoeff (k : Fin 2 → ℤ) : ‖smoothingRawLocalFourierCoefficient a m h F k‖ ^ 2 =
-      (a ^ 2 / 16) ^ 2 * ‖(𝓕 (smoothingMultiplicativeDifference F h)) ((a / 4) • CalderonVaillancourt.latt 2 k)‖ ^ 2 := by
+      (a ^ 2 / 16) ^ 2 * ‖(𝓕 (smoothingMultiplicativeDifference F h)) ((a / 4) •
+        CalderonVaillancourt.latt 2 k)‖ ^ 2 := by
     rw [smoothingRawLocalFourierCoefficient_formula ha m h hs k, norm_smul, Real.norm_eq_abs,
       abs_of_nonneg (by positivity : 0 ≤ a ^ 2 / 16), mul_pow]
     rfl
@@ -18415,7 +19119,8 @@ theorem smoothingSamplingCutoff_kernel_columns (N : ℕ) :
       (j : Fin 2) (T : ℝ), 0 ≤ T → ∀ S : Finset (Fin 2 → ℤ),
       (∀ k ∈ S, |q * (k j : ℝ)| ≤ T) → ∀ η : EuclideanSpace ℝ (Fin 2),
       (∑ k ∈ S, ‖𝓕 (smoothingSamplingCutoff hq b) (η - q • CalderonVaillancourt.latt 2 k)‖) ≤
-        (C / q ^ 2) * Set.indicator {η : EuclideanSpace ℝ (Fin 2) | |η j| ≤ 2 * T} (fun _ => (1 : ℝ)) η +
+        (C / q ^ 2) * Set.indicator {η : EuclideanSpace ℝ (Fin 2) | |η j| ≤ 2 * T} (fun _ => (1 :
+          ℝ)) η +
           (C / q ^ 2) / (1 + T / q) ^ N := by
   obtain ⟨C, hC, hb⟩ := smoothingSamplingCutoff_kernel_region_columns N
   refine ⟨C, hC, ?_⟩
@@ -18429,6 +19134,7 @@ theorem smoothingSamplingCutoff_kernel_columns (N : ℕ) :
   linarith [hk k hks]
 
 set_option maxHeartbeats 800000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- Sampling on a frequency lattice is controlled by wider-strip Fourier
 energy and a rapid tail whenever the sampling cutoff equals one on the
 physical support. All constants are independent of the spatial center. -/
@@ -18472,7 +19178,8 @@ theorem smoothing_fourier_strip_sampling (N : ℕ) :
   intro q hq b F hF1 hF2 hs j T hT
   let U := {k : Fin 2 → ℤ | |q * (k j : ℝ)| ≤ T}
   have hfinite (S : Finset U) :
-      (∑ k ∈ S, ‖(𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (q • CalderonVaillancourt.latt 2 k.val)‖ ^ 2) ≤
+      (∑ k ∈ S, ‖(𝓕 F : EuclideanSpace ℝ (Fin 2) → ℂ) (q • CalderonVaillancourt.latt 2 k.val)‖ ^
+        2) ≤
         (C / q ^ 2) * ((∫ η in {η : EuclideanSpace ℝ (Fin 2) | |η j| ≤ 2 * T}, ‖(𝓕 F) η‖ ^ 2) +
           (∫ x, ‖F x‖ ^ 2) / (1 + T / q) ^ N) := by
     have hh := hb q hq b F hF1 hF2 hs j T hT (S.image Subtype.val) (by
@@ -18518,7 +19225,7 @@ theorem smoothingRawLocalFourierCoefficient_strip_energy (N : ℕ) :
   have hset : {k : Fin 2 → ℤ | |(a / 4) * (k j : ℝ)| ≤ R / 4} =
       {k : Fin 2 → ℤ | |(k j : ℝ)| ≤ R / a} := by
     ext k
-    simp only [Set.mem_setOf_eq, abs_mul, abs_of_pos hq]
+    simp only [Set.mem_ofPred_eq, abs_mul, abs_of_pos hq]
     constructor
     · intro hk
       apply (le_div_iff₀ ha).mpr
@@ -18530,7 +19237,8 @@ theorem smoothingRawLocalFourierCoefficient_strip_energy (N : ℕ) :
   have heq : (R / 4) / (a / 4) = R / a := by field_simp
   rw [hset, heR, heq] at hh
   have hcoeff (k : Fin 2 → ℤ) : ‖smoothingRawLocalFourierCoefficient a m h F k‖ ^ 2 =
-      (a ^ 2 / 16) ^ 2 * ‖(𝓕 (smoothingMultiplicativeDifference F h)) ((a / 4) • CalderonVaillancourt.latt 2 k)‖ ^ 2 := by
+      (a ^ 2 / 16) ^ 2 * ‖(𝓕 (smoothingMultiplicativeDifference F h)) ((a / 4) •
+        CalderonVaillancourt.latt 2 k)‖ ^ 2 := by
     rw [smoothingRawLocalFourierCoefficient_formula ha m h hs k, norm_smul, Real.norm_eq_abs,
       abs_of_nonneg (by positivity : 0 ≤ a ^ 2 / 16), mul_pow]
     rfl
@@ -18546,7 +19254,8 @@ theorem smoothingRelocalizedComponent_memLp
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2)
     {a R ρ : ℝ} (ha : 0 < a) (hR : 0 < R) (hρ : 0 < ρ) (m : Fin 2 → ℤ) (flat : Bool) :
     MemLp (smoothingRelocalizedComponent g j a R hρ m flat) 2 volume := by
-  let B := fun x => if flat then smoothingFlatComponent g j R hρ x else smoothingSharpComponent g j R hρ x
+  let B := fun x => if flat then smoothingFlatComponent g j R hρ x else smoothingSharpComponent g
+    j R hρ x
   have hiB : MemLp B 2 volume := by
     have hf := smoothingFlatComponent_memLp g j hR hρ
     cases flat
@@ -18557,7 +19266,8 @@ theorem smoothingRelocalizedComponent_memLp
   filter_upwards [] with x
   change ‖smoothingEnlargedCutoff a m x * B x‖ ≤ ‖B x‖
   rw [norm_mul]
-  simpa only [one_mul] using mul_le_mul_of_nonneg_right (smoothingEnlargedCutoff_bounds a m x).1 (norm_nonneg (B x))
+  simpa only [one_mul] using mul_le_mul_of_nonneg_right (smoothingEnlargedCutoff_bounds a m x).1
+    (norm_nonneg (B x))
 
 /-- The actual relocalized plane components have uniform integrated
 physical difference energy, in the form needed for the sampling tail. -/
@@ -18568,8 +19278,10 @@ theorem smoothingRegularizedPiece_relocalized_physical_energy (ψ : Option (Schw
     (∀ x, ‖f x‖ ≤ 1) → ∀ flat : Bool,
     let g := smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)
     let F := smoothingRelocalizedComponent g j a R hρ m flat
-    Integrable (fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2) ∧
-      (∫ s : ℝ, ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2) ≤ C / a ^ 3 := by
+    Integrable (fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j
+      s) x‖ ^ 2) ∧
+      (∫ s : ℝ, ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2) ≤
+        C / a ^ 3 := by
   obtain ⟨C, hC, hb⟩ := smoothingRelocalized_integrated_difference_energy ψ
   refine ⟨C, hC, ?_⟩
   intro j i hij r a R ρ hr ha hR hρ m f hf flat
@@ -18583,15 +19295,20 @@ measurable in its coordinate translation, via its actual Fourier-sample formula.
 theorem smoothingRawLocalFourierCoefficient_measurable {a : ℝ} (ha : 0 < a)
     (m : Fin 2 → ℤ) (j : Fin 2) {F : EuclideanSpace ℝ (Fin 2) → ℂ} (hF : Measurable F)
     (hs : ∀ x, F x ≠ 0 → ∀ i, |x i - (m i : ℝ) / a| < 5 / (4 * a)) (k : Fin 2 → ℤ) :
-    Measurable (fun s : ℝ => smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F k) := by
-  have he : (fun s : ℝ => smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F k) =
-      fun s => (a ^ 2 / 16 : ℝ) • (𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine j s)))
+    Measurable (fun s : ℝ => smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s)
+      F k) := by
+  have he : (fun s : ℝ => smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F
+    k) =
+      fun s => (a ^ 2 / 16 : ℝ) • (𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine
+        j s)))
         ((a / 4) • CalderonVaillancourt.latt 2 k) := by
     funext s
     exact smoothingRawLocalFourierCoefficient_formula ha m _ hs k
   rw [he]
-  simpa only [Function.comp_def] using! ((smoothing_coordinate_difference_fourier_measurable hF j).comp
-    (measurable_id.prodMk (measurable_const : Measurable (fun _ : ℝ => (a / 4) • CalderonVaillancourt.latt 2 k)))).const_smul (a ^ 2 / 16 : ℝ)
+  simpa only [Function.comp_def] using! ((smoothing_coordinate_difference_fourier_measurable hF
+    j).comp
+    (measurable_id.prodMk (measurable_const : Measurable (fun _ : ℝ => (a / 4) •
+      CalderonVaillancourt.latt 2 k)))).const_smul (a ^ 2 / 16 : ℝ)
 
 /-- Summing squared coefficients over any lattice strip preserves
 measurability in the coordinate translation. -/
@@ -18632,7 +19349,8 @@ theorem smoothingRegularizedPiece_relocalized_flat_coefficient_energy
     ‖smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F k.val‖ ^ 2
   let E₀ := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | |ξ j| ≤ R / 2},
     ‖(𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine j s))) ξ‖ ^ 2
-  let V := fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖ ^ 2
+  let V := fun s : ℝ => ∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine j s) x‖
+    ^ 2
   let U := (1 + R / (2 * a)) ^ N
   let I := Set.Icc (-(L / a)) (L / a)
   let Q := fun s : ℝ => C * a ^ 2 * (E₀ s + V s / U)
@@ -18695,7 +19413,8 @@ theorem smoothing_relocalization_tail_scale {r κ δ : ℝ} (hr : 1 ≤ r)
     _ = (2 : ℝ) ^ N * r ^ (-(κ * N)) := by
       rw [div_pow, Real.rpow_neg hr0.le, Real.rpow_mul_natCast hr0.le]
       field_simp
-    _ ≤ _ := mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hr (by linarith)) (by positivity)
+    _ ≤ _ := mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hr (by linarith))
+      (by positivity)
 
 /-- The small coefficient energy needed in (3.30), at exactly the source
 scales a = lambda^gamma, R = lambda^(gamma+kappa), and rho = lambda^-delta. -/
@@ -18741,9 +19460,11 @@ theorem smoothing_section3_3_flat_coefficient_energy
       (fun s : ℝ => ∑' k : {k : Fin 2 → ℤ | |(k j : ℝ)| ≤ r ^ (γ + κ) / r ^ γ},
         ‖smoothingRawLocalFourierCoefficient (r ^ γ) m (smoothingCoordinateLine j s) F k.val‖ ^ 2) =
       (fun s : ℝ => ∑' k : {k : Fin 2 → ℤ | |(k j : ℝ)| ≤ r ^ κ},
-        ‖smoothingRawLocalFourierCoefficient (r ^ γ) m (smoothingCoordinateLine j s) F k.val‖ ^ 2) := by
+        ‖smoothingRawLocalFourierCoefficient (r ^ γ) m (smoothingCoordinateLine j s) F k.val‖ ^ 2)
+          := by
     funext s
-    exact he (fun k => ‖smoothingRawLocalFourierCoefficient (r ^ γ) m (smoothingCoordinateLine j s) F k‖ ^ 2)
+    exact he (fun k => ‖smoothingRawLocalFourierCoefficient (r ^ γ) m (smoothingCoordinateLine j
+      s) F k‖ ^ 2)
   rw [hefun, hratio2] at hh
   refine ⟨hh.1, hh.2.trans ?_⟩
   calc
@@ -18766,7 +19487,8 @@ theorem smoothing_increment_energy_L2_cauchy_schwarz {ι : Type*} (S : Finset ι
         Real.sqrt (∫ s, ∑ i ∈ S, F i s ∂μ) := by
   have hroot {G : ℝ → ℝ} (hi : Integrable G μ) (h0 : ∀ s, 0 ≤ G s) :
       MemLp (fun s => Real.sqrt (G s)) 2 μ := by
-    apply (memLp_two_iff_integrable_sq hi.aestronglyMeasurable.aemeasurable.sqrt.aestronglyMeasurable).mpr
+    apply (memLp_two_iff_integrable_sq
+      hi.aestronglyMeasurable.aemeasurable.sqrt.aestronglyMeasurable).mpr
     simpa only [Real.sq_sqrt (h0 _)] using hi
   have hiE := integrable_finsetSum S hE
   have hiF := integrable_finsetSum S hF
@@ -18787,7 +19509,8 @@ theorem smoothing_increment_energy_L2_cauchy_schwarz {ι : Type*} (S : Finset ι
     _ ≤ _ := by
       have hh := integral_mul_le_Lp_mul_Lq_of_nonneg Real.HolderConjugate.two_two
         (Filter.Eventually.of_forall (fun s => Real.sqrt_nonneg (∑ i ∈ S, E i s)))
-        (Filter.Eventually.of_forall (fun s => Real.sqrt_nonneg (∑ i ∈ S, F i s))) (by simpa using hRE) (by simpa using hRF)
+        (Filter.Eventually.of_forall (fun s => Real.sqrt_nonneg (∑ i ∈ S, F i s)))
+          (by simpa using hRE) (by simpa using hRF)
       simpa only [Real.rpow_two, Real.sq_sqrt (hsumE _), Real.sq_sqrt (hsumF _),
         ← Real.sqrt_eq_rpow] using hh
 
@@ -18853,7 +19576,8 @@ theorem smoothing_time_translation_L2
   have hout : Integrable (fun t : ℝ => ∫ x, ‖‖F (x + v t)‖ ^ 2‖) μ := by
     simpa only [Real.norm_eq_abs, abs_pow, abs_norm, he] using
       (integrable_const (∫ x, ‖F x‖ ^ 2) : Integrable (fun _ : ℝ => ∫ x, ‖F x‖ ^ 2) μ)
-  have hip : Integrable (fun q : ℝ × EuclideanSpace ℝ (Fin 2) => ‖F (q.2 + v q.1)‖ ^ 2) (μ.prod volume) :=
+  have hip : Integrable (fun q : ℝ × EuclideanSpace ℝ (Fin 2) => ‖F (q.2 + v q.1)‖ ^ 2) (μ.prod
+    volume) :=
     (integrable_prod_iff hm.aestronglyMeasurable).mpr ⟨Filter.Eventually.of_forall hslice, hout⟩
   refine ⟨(memLp_two_iff_integrable_sq_norm
     (hF.comp (measurable_snd.add (hv.comp measurable_fst))).aestronglyMeasurable).mpr hip, ?_⟩
@@ -18862,13 +19586,13 @@ theorem smoothing_time_translation_L2
 
 /-- A bounded correlation amplitude defines a bounded bilinear form on
 spatial L2 functions along arbitrary measurable translation paths. -/
-theorem smoothing_translated_correlation_L2_bound
-    (μ : Measure ℝ) [IsFiniteMeasure μ]
-    {F G : EuclideanSpace ℝ (Fin 2) → ℂ} (hF : Measurable F) (hG : Measurable G)
-    (hF2 : MemLp F 2 volume) (hG2 : MemLp G 2 volume)
-    {v w : ℝ → EuclideanSpace ℝ (Fin 2)} (hv : Measurable v) (hw : Measurable w)
-    {ζ : ℝ × EuclideanSpace ℝ (Fin 2) → ℂ} (hζ : Measurable ζ)
-    {M : ℝ} (hM : 0 ≤ M) (hb : ∀ q, ‖ζ q‖ ≤ M) :
+theorem smoothing_translated_correlation_L2_bound (μ : Measure ℝ) [IsFiniteMeasure μ]
+    {F G : EuclideanSpace ℝ (Fin 2) → ℂ} (hF : Measurable F) (hG : Measurable G) (hF2 : MemLp F
+      2 volume)
+    (hG2 : MemLp G 2 volume) {v w : ℝ → EuclideanSpace ℝ (Fin 2)} (hv : Measurable v) (hw :
+      Measurable w)
+    {ζ : ℝ × EuclideanSpace ℝ (Fin 2) → ℂ} (hζ : Measurable ζ) {M : ℝ} (hM : 0 ≤ M) (hb : ∀ q,
+      ‖ζ q‖ ≤ M) :
     Integrable (fun q => F (q.2 + v q.1) * G (q.2 + w q.1) * ζ q) (μ.prod volume) ∧
       ‖∫ q, F (q.2 + v q.1) * G (q.2 + w q.1) * ζ q ∂μ.prod volume‖ ≤
         M * μ.real Set.univ * Real.sqrt (∫ x, ‖F x‖ ^ 2) * Real.sqrt (∫ x, ‖G x‖ ^ 2) := by
@@ -18883,7 +19607,8 @@ theorem smoothing_translated_correlation_L2_bound
     filter_upwards [] with q
     change ‖P q * Q q * ζ q‖ ≤ M * (‖P q‖ * ‖Q q‖)
     simp only [norm_mul]
-    nlinarith [mul_le_mul_of_nonneg_left (hb q) (mul_nonneg (norm_nonneg (P q)) (norm_nonneg (Q q)))]
+    nlinarith [mul_le_mul_of_nonneg_left (hb q) (mul_nonneg (norm_nonneg (P q)) (norm_nonneg (Q
+      q)))]
   have hcs : (∫ q, ‖P q‖ * ‖Q q‖ ∂μ.prod volume) ≤
       Real.sqrt (μ.real Set.univ * ∫ x, ‖F x‖ ^ 2) *
         Real.sqrt (μ.real Set.univ * ∫ x, ‖G x‖ ^ 2) := by
@@ -18899,7 +19624,8 @@ theorem smoothing_translated_correlation_L2_bound
       apply integral_mono hi.norm (himul.const_mul M)
       intro q
       simp only [norm_mul]
-      nlinarith [mul_le_mul_of_nonneg_left (hb q) (mul_nonneg (norm_nonneg (P q)) (norm_nonneg (Q q)))]
+      nlinarith [mul_le_mul_of_nonneg_left (hb q) (mul_nonneg (norm_nonneg (P q)) (norm_nonneg (Q
+        q)))]
     _ = M * ∫ q, ‖P q‖ * ‖Q q‖ ∂μ.prod volume := integral_const_mul _ _
     _ ≤ M * (Real.sqrt (μ.real Set.univ * ∫ x, ‖F x‖ ^ 2) *
         Real.sqrt (μ.real Set.univ * ∫ x, ‖G x‖ ^ 2)) := mul_le_mul_of_nonneg_left hcs hM
@@ -18929,8 +19655,10 @@ theorem smoothing_translated_correlation_L2_difference
           Real.sqrt (∫ x, ‖F' x‖ ^ 2) * Real.sqrt (∫ x, ‖G x - G' x‖ ^ 2)) := by
   have h₀ := smoothing_translated_correlation_L2_bound μ hF hG hF2 hG2 hv hw hζ hM hb
   have h₁ := smoothing_translated_correlation_L2_bound μ hF' hG' hF2' hG2' hv hw hζ hM hb
-  have h₂ := smoothing_translated_correlation_L2_bound μ (hF.sub hF') hG (hF2.sub hF2') hG2 hv hw hζ hM hb
-  have h₃ := smoothing_translated_correlation_L2_bound μ hF' (hG.sub hG') hF2' (hG2.sub hG2') hv hw hζ hM hb
+  have h₂ := smoothing_translated_correlation_L2_bound μ (hF.sub hF') hG (hF2.sub hF2') hG2 hv hw
+    hζ hM hb
+  have h₃ := smoothing_translated_correlation_L2_bound μ hF' (hG.sub hG') hF2' (hG2.sub hG2') hv
+    hw hζ hM hb
   simp only [Pi.sub_apply] at h₂ h₃
   have he : (∫ q, F (q.2 + v q.1) * G (q.2 + w q.1) * ζ q ∂μ.prod volume) -
       (∫ q, F' (q.2 + v q.1) * G' (q.2 + w q.1) * ζ q ∂μ.prod volume) =
@@ -18960,17 +19688,19 @@ theorem smoothing_time_supported_correlation_L2_bound
         M * (volume (Set.Icc l u)).toReal *
           Real.sqrt (∫ x, ‖F x‖ ^ 2) * Real.sqrt (∫ x, ‖G x‖ ^ 2) := by
   let μ : Measure ℝ := volume.restrict (Set.Icc l u)
-  letI : IsFiniteMeasure μ := ⟨by simp [μ]⟩
+  let : IsFiniteMeasure μ := ⟨by simp [μ]⟩
   let H := fun q : ℝ × EuclideanSpace ℝ (Fin 2) => F (q.2 + v q.1) * G (q.2 + w q.1) * ζ q
   obtain ⟨hi, hbound⟩ := smoothing_translated_correlation_L2_bound μ hF hG hF2 hG2 hv hw hζ hM hb
   have hzero (q : ℝ × EuclideanSpace ℝ (Fin 2))
       (hq : q ∉ (Set.Icc l u).prod Set.univ) : H q = 0 := by
     have ht : q.1 ∉ Set.Icc l u := fun ht => hq ⟨ht, Set.mem_univ _⟩
     simp only [H, hz q ht, mul_zero]
-  have hm : μ.prod volume = volume.restrict ((Set.Icc l u).prod (Set.univ : Set (EuclideanSpace ℝ (Fin 2)))) := by
+  have hm : μ.prod volume = volume.restrict ((Set.Icc l u).prod (Set.univ : Set (EuclideanSpace ℝ
+    (Fin 2)))) := by
     exact Measure.restrict_prod_eq_prod_univ (Set.Icc l u)
   rw [hm] at hi hbound
-  have he : (∫ q in (Set.Icc l u).prod (Set.univ : Set (EuclideanSpace ℝ (Fin 2))), H q) = ∫ q, H q :=
+  have he : (∫ q in (Set.Icc l u).prod (Set.univ : Set (EuclideanSpace ℝ (Fin 2))), H q) = ∫ q, H
+    q :=
     setIntegral_eq_integral_of_forall_compl_eq_zero hzero
   change IntegrableOn H ((Set.Icc l u).prod Set.univ) at hi
   change ‖∫ q in (Set.Icc l u).prod Set.univ, H q‖ ≤ _ at hbound
@@ -18997,9 +19727,11 @@ theorem smoothingMainCorrelation_pairing_L2_bound
   have ha0 : 0 < a := by linarith
   let Z := fun q : ℝ × EuclideanSpace ℝ (Fin 2) =>
     smoothingLocalizedCorrelationCutoff a p ζ (smoothingPlaneEquiv q.2, (q.1, s))
-  have hZm : Measurable Z := (smoothingLocalizedCorrelationCutoff_properties hζ ha0 p).1.continuous.measurable.comp (by fun_prop)
+  have hZm : Measurable Z := (smoothingLocalizedCorrelationCutoff_properties hζ ha0
+    p).1.continuous.measurable.comp (by fun_prop)
   have hZb (q : ℝ × EuclideanSpace ℝ (Fin 2)) : ‖Z q‖ ≤ M := by
-    simpa only [Z, norm_iteratedFDeriv_zero, pow_zero, mul_one] using! hb a ha p 0 le_rfl (smoothingPlaneEquiv q.2, (q.1, s))
+    simpa only [Z, norm_iteratedFDeriv_zero, pow_zero, mul_one] using! hb a ha p 0 le_rfl
+      (smoothingPlaneEquiv q.2, (q.1, s))
   have hZz (q : ℝ × EuclideanSpace ℝ (Fin 2))
       (hq : q.1 ∉ Set.Icc (p.2 - 8 / a) (p.2 + 8 / a)) : Z q = 0 := by
     by_contra hn
@@ -19009,12 +19741,14 @@ theorem smoothingMainCorrelation_pairing_L2_bound
     exact ⟨by linarith, by linarith⟩
   have hv : Measurable (fun t : ℝ => smoothingCoordinateLine 0 t) := by fun_prop
   have hw : Measurable (fun t : ℝ => smoothingCoordinateLine 1 (t ^ 2)) := by fun_prop
-  obtain ⟨hi, hbound⟩ := smoothing_time_supported_correlation_L2_bound hU hV hU2 hV2 hv hw hZm hM hZb hZz
+  obtain ⟨hi, hbound⟩ := smoothing_time_supported_correlation_L2_bound hU hV hU2 hV2 hv hw hZm hM
+    hZb hZz
   let e : (ℝ × EuclideanSpace ℝ (Fin 2)) ≃ᵐ ((ℝ × ℝ) × ℝ) :=
     MeasurableEquiv.prodComm.trans
       (smoothingPlaneEquiv.toHomeomorph.toMeasurableEquiv.prodCongr (MeasurableEquiv.refl ℝ))
   have he : MeasurePreserving e volume volume := by
-    exact (smoothingPlaneEquiv_measurePreserving.prod (MeasurePreserving.id volume)).comp Measure.measurePreserving_swap
+    exact (smoothingPlaneEquiv_measurePreserving.prod (MeasurePreserving.id volume)).comp
+      Measure.measurePreserving_swap
   let H := fun q : (ℝ × ℝ) × ℝ =>
     U (smoothingPlaneEquiv.symm (q.1.1 + q.2, q.1.2)) *
     V (smoothingPlaneEquiv.symm (q.1.1, q.1.2 + q.2 ^ 2)) *
@@ -19024,7 +19758,16 @@ theorem smoothingMainCorrelation_pairing_L2_bound
       V (q.2 + smoothingCoordinateLine 1 (q.1 ^ 2)) * Z q := by
     dsimp only [H, e, Z]
     congr 2 <;> congr 1 <;> apply smoothingPlaneEquiv.injective <;>
-      simp [map_add, smoothingPlaneEquiv, smoothingCoordinateLine_apply] <;> exact ⟨rfl, rfl⟩
+      simp only [smoothingPlaneEquiv, MeasurableEquiv.trans_apply,
+        ContinuousLinearEquiv.symm_trans_apply,
+        ContinuousLinearEquiv.finTwoArrow_symm_apply,
+        PiLp.continuousLinearEquiv_symm_apply, ContinuousLinearEquiv.trans_apply,
+        ContinuousLinearEquiv.finTwoArrow_apply, Fin.isValue,
+        PiLp.continuousLinearEquiv_apply, Matrix.cons_val_zero, Matrix.cons_val_one,
+        Matrix.cons_val_fin_one, smoothingCoordinateLine_apply, map_add,
+        PiLp.single_eq_same, ne_eq, one_ne_zero, not_false_eq_true,
+        PiLp.single_eq_of_ne, Prod.mk_add_mk, add_zero, Prod.mk.injEq, zero_ne_one] <;>
+        exact ⟨rfl, rfl⟩
   have hiH : Integrable H := by
     apply (he.integrable_comp_emb e.measurableEmbedding).mp
     simpa only [Function.comp_def, hcoord] using! hi
@@ -19033,7 +19776,8 @@ theorem smoothingMainCorrelation_pairing_L2_bound
     rw [← he.integral_comp' H]
     exact integral_congr_ae (Filter.Eventually.of_forall hcoord)
   have hlen : (volume (Set.Icc (p.2 - 8 / a) (p.2 + 8 / a))).toReal = 16 / a := by
-    rw [Real.volume_Icc, ENNReal.toReal_ofReal (by linarith [div_pos (by norm_num : (0 : ℝ) < 8) ha0])]
+    rw [Real.volume_Icc, ENNReal.toReal_ofReal
+      (by linarith [div_pos (by norm_num : (0 : ℝ) < 8) ha0])]
     ring
   refine ⟨hiH, ?_⟩
   rw [hint]
@@ -19051,29 +19795,35 @@ theorem smoothingMainCorrelation_measurable_L2_bound
     (∀ x, ‖F x‖ ≤ M) → (∀ x, ‖G x‖ ≤ N) →
     let f := fun z => F (smoothingPlaneEquiv.symm z)
     let g := fun z => G (smoothingPlaneEquiv.symm z)
-    Integrable (fun q : (ℝ × ℝ) × ℝ => smoothingLinearizedCorrelationIntegrand a p f g ζ (q.1, (q.2, s))) ∧
+    Integrable (fun q : (ℝ × ℝ) × ℝ => smoothingLinearizedCorrelationIntegrand a p f g ζ (q.1,
+      (q.2, s))) ∧
     ‖smoothingMainCorrelation a p f g ζ s‖ ≤ C / a *
       Real.sqrt (∫ x, ‖smoothingMultiplicativeDifference F (smoothingCoordinateLine 0 s) x‖ ^ 2) *
-      Real.sqrt (∫ x, ‖smoothingMultiplicativeDifference G (smoothingCoordinateLine 1 (2 * s * p.2)) x‖ ^ 2) := by
+      Real.sqrt (∫ x, ‖smoothingMultiplicativeDifference G (smoothingCoordinateLine 1 (2 * s *
+        p.2)) x‖ ^ 2) := by
   obtain ⟨C, hC, hb⟩ := smoothingMainCorrelation_pairing_L2_bound hζ hc
   refine ⟨C, hC, ?_⟩
   intro a ha p s F G hF hG hF2 hG2 M N hM hN hFb hGb
   let U := smoothingMultiplicativeDifference F (smoothingCoordinateLine 0 s)
   let V := smoothingMultiplicativeDifference G (smoothingCoordinateLine 1 (2 * s * p.2))
-  have hUm : Measurable U := (hF.comp (measurable_id.add measurable_const)).mul (continuous_star.measurable.comp hF)
-  have hVm : Measurable V := (hG.comp (measurable_id.add measurable_const)).mul (continuous_star.measurable.comp hG)
+  have hUm : Measurable U := (hF.comp (measurable_id.add measurable_const)).mul
+    (continuous_star.measurable.comp hF)
+  have hVm : Measurable V := (hG.comp (measurable_id.add measurable_const)).mul
+    (continuous_star.measurable.comp hG)
   have hU2 : MemLp U 2 volume := smoothing_difference_memLp_of_bound hF hF2 hM hFb _
   have hV2 : MemLp V 2 volume := smoothing_difference_memLp_of_bound hG hG2 hN hGb _
   have hh := hb a ha p s U V hUm hVm hU2 hV2
   have h0 : smoothingPlaneEquiv.symm (s, 0) = smoothingCoordinateLine 0 s := by
     apply smoothingPlaneEquiv.injective
     simp [smoothingPlaneEquiv, smoothingCoordinateLine_apply]
-  have h1 : smoothingPlaneEquiv.symm (0, 2 * s * p.2) = smoothingCoordinateLine 1 (2 * s * p.2) := by
+  have h1 : smoothingPlaneEquiv.symm (0, 2 * s * p.2) = smoothingCoordinateLine 1 (2 * s * p.2) :=
+    by
     apply smoothingPlaneEquiv.injective
     simp [smoothingPlaneEquiv, smoothingCoordinateLine_apply]
   have he (q : (ℝ × ℝ) × ℝ) :
       smoothingLinearizedCorrelationIntegrand a p
-        (fun z => F (smoothingPlaneEquiv.symm z)) (fun z => G (smoothingPlaneEquiv.symm z)) ζ (q.1, (q.2, s)) =
+        (fun z => F (smoothingPlaneEquiv.symm z)) (fun z => G (smoothingPlaneEquiv.symm z)) ζ
+          (q.1, (q.2, s)) =
       U (smoothingPlaneEquiv.symm (q.1.1 + q.2, q.1.2)) *
         V (smoothingPlaneEquiv.symm (q.1.1, q.1.2 + q.2 ^ 2)) *
         smoothingLocalizedCorrelationCutoff a p ζ (q.1, (q.2, s)) := by
@@ -19132,7 +19882,8 @@ theorem smoothingTorusLift_cube_series_L2 (b : Fin 2 → ℝ)
   have ht : Filter.Tendsto (fun S : Finset (Fin 2 → ℤ) =>
       ‖v - ∑ k ∈ S, c k • ContinuousMap.toLp 2 volume ℂ (UnitAddTorus.mFourier k)‖ ^ 2)
       Filter.atTop (nhds 0) := by
-    have hh := ((tendsto_const_nhds : Filter.Tendsto (fun _ : Finset (Fin 2 → ℤ) => v) Filter.atTop (nhds v)).sub hs).norm.pow 2
+    have hh := ((tendsto_const_nhds : Filter.Tendsto (fun _ : Finset (Fin 2 → ℤ) => v)
+      Filter.atTop (nhds v)).sub hs).norm.pow 2
     simpa only [v, c, sub_self, norm_zero, zero_pow (by decide : (2 : ℕ) ≠ 0)] using hh
   have he (S : Finset (Fin 2 → ℤ)) :
       (∫ x in smoothingFourierCube b,
@@ -19211,7 +19962,8 @@ theorem smoothingTorusLift_cutoff_error (b : Fin 2 → ℝ)
     Integrable (fun x => ‖F x - χ x * P (fun i => (x i : UnitAddCircle))‖ ^ 2) ∧
       (∫ x, ‖F x - χ x * P (fun i => (x i : UnitAddCircle))‖ ^ 2) ≤
         ∫ x in smoothingFourierCube b, ‖F x - P (fun i => (x i : UnitAddCircle))‖ ^ 2 := by
-  have hcube : MeasurableSet (smoothingFourierCube b) := MeasurableSet.univ_pi' (fun _ => measurableSet_Ioc)
+  have hcube : MeasurableSet (smoothingFourierCube b) := MeasurableSet.univ_pi' (fun _ =>
+    measurableSet_Ioc)
   have hPm : Measurable (fun x : Fin 2 → ℝ => P (fun i => (x i : UnitAddCircle))) :=
     P.continuous.measurable.comp (by fun_prop)
   let Q := fun x : Fin 2 → ℝ => ‖F x - P (fun i => (x i : UnitAddCircle))‖ ^ 2
@@ -19237,7 +19989,8 @@ theorem smoothingTorusLift_cutoff_error (b : Fin 2 → ℝ)
         · simp [hf]
         · rw [hone x hf, one_mul, one_mul]
       rw [he, norm_mul, mul_pow]
-      exact (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (norm_nonneg _) (hχb x) 2) (sq_nonneg _)).trans_eq (by simp [Q])
+      exact (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (norm_nonneg _) (hχb x) 2) (sq_nonneg
+        _)).trans_eq (by simp [Q])
     · have hc : χ x = 0 := by by_contra hn; exact hx (hs x hn)
       have hf : F x = 0 := by
         by_contra hn
@@ -19272,8 +20025,10 @@ theorem smoothingTorusLift_cutoff_series_L2 (b : Fin 2 → ℝ)
   have hp (S : Finset (Fin 2 → ℤ)) (x : Fin 2 → ℝ) :
       P S (fun i => (x i : UnitAddCircle)) =
         ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle)) := by
-    simp only [P, ContinuousMap.coe_sum, Finset.sum_apply, ContinuousMap.coe_smul, Pi.smul_apply, smul_eq_mul]
-  have hb (S : Finset (Fin 2 → ℤ)) := smoothingTorusLift_cutoff_error b hF hχ hM hFb hχb hone hs (P S)
+    simp only [P, ContinuousMap.coe_sum, Finset.sum_apply, ContinuousMap.coe_smul,
+      Pi.smul_apply, smul_eq_mul]
+  have hb (S : Finset (Fin 2 → ℤ)) := smoothingTorusLift_cutoff_error b hF hχ hM hFb hχb hone hs
+    (P S)
   simp only [hp] at hb
   refine ⟨fun S => (hb S).1, ?_⟩
   exact squeeze_zero (fun S => integral_nonneg (fun x => sq_nonneg _))
@@ -19315,7 +20070,8 @@ theorem smoothingRawLocalFourierApprox_L2 {a : ℝ} (ha : 0 < a)
   let f := smoothingRawLocalFourierInput a h F
   let χ := fun x : Fin 2 → ℝ => smoothingLocalSeriesCutoff ha m ((4 / a) • WithLp.toLp 2 x)
   have hf := smoothingRawLocalFourierInput_measurable_bound a h hF hM hb
-  have hχm : Measurable χ := (smoothingLocalSeriesCutoff ha m).continuous.measurable.comp (by fun_prop)
+  have hχm : Measurable χ := (smoothingLocalSeriesCutoff ha m).continuous.measurable.comp
+    (by fun_prop)
   have hχb (x : Fin 2 → ℝ) : ‖χ x‖ ≤ 1 := smoothingLocalSeriesCutoff_bound ha m _
   have hone (x : Fin 2 → ℝ) (hx : f x ≠ 0) : χ x = 1 := by
     have hn : F ((4 / a) • WithLp.toLp 2 x) ≠ 0 := by
@@ -19325,7 +20081,8 @@ theorem smoothingRawLocalFourierApprox_L2 {a : ℝ} (ha : 0 < a)
     exact smoothingLocalSeriesCutoff_one ha m _ (hs _ hn)
   have hcancel (x : EuclideanSpace ℝ (Fin 2)) : (a / 4) • ((4 / a) • x) = x := by
     rw [smul_smul, show (a / 4) * (4 / a) = 1 by field_simp, one_smul]
-  have hχs (x : Fin 2 → ℝ) (hx : χ x ≠ 0) : x ∈ smoothingFourierCube (smoothingRawLocalFourierCorner m) := by
+  have hχs (x : Fin 2 → ℝ) (hx : χ x ≠ 0) : x ∈ smoothingFourierCube
+    (smoothingRawLocalFourierCorner m) := by
     have hh := smoothingLocalSeriesCutoff_support ha m hx
     simpa only [hcancel] using! hh
   have hh := smoothingTorusLift_cutoff_series_L2 (smoothingRawLocalFourierCorner m)
@@ -19334,7 +20091,8 @@ theorem smoothingRawLocalFourierApprox_L2 {a : ℝ} (ha : 0 < a)
     ‖smoothingMultiplicativeDifference F h x - smoothingRawLocalFourierApprox ha m h F S x‖ ^ 2
   have he (S : Finset (Fin 2 → ℤ)) (x : Fin 2 → ℝ) :
       E S ((4 / a) • WithLp.toLp 2 x) =
-      ‖f x - χ x * ∑ k ∈ S, UnitAddTorus.mFourierCoeff (smoothingTorusLift (smoothingRawLocalFourierCorner m) f) k *
+      ‖f x - χ x * ∑ k ∈ S, UnitAddTorus.mFourierCoeff (smoothingTorusLift
+        (smoothingRawLocalFourierCorner m) f) k *
         UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))‖ ^ 2 := by
     simp only [E, smoothingRawLocalFourierApprox, hcancel]
     rfl
@@ -19378,7 +20136,8 @@ theorem smoothingRawLocalFourierApprox_memLp {a : ℝ} (ha : 0 < a)
     apply Finset.sum_le_sum
     intro k hk
     rw [norm_mul]
-    have hh := (UnitAddTorus.mFourier k).norm_coe_le_norm (fun i => (((a / 4) • x) i : UnitAddCircle))
+    have hh := (UnitAddTorus.mFourier k).norm_coe_le_norm (fun i => (((a / 4) • x) i :
+      UnitAddCircle))
     rw [UnitAddTorus.mFourier_norm] at hh
     simpa only [mul_one] using mul_le_mul_of_nonneg_left hh (norm_nonneg (c k))
   have hm : Continuous (smoothingRawLocalFourierApprox ha m h F S) :=
@@ -19415,11 +20174,13 @@ theorem smoothingMainCorrelation_pairing_tendsto_left
   obtain ⟨C, hC, hb⟩ := smoothingMainCorrelation_pairing_L2_bound hζ hc
   have hbase := hb a ha p s U V hU hV hU2 hV2
   have hbound (i : ι) :
-      ‖smoothingMainCorrelationPairing a p ζ s (P i) V - smoothingMainCorrelationPairing a p ζ s U V‖ ≤
+      ‖smoothingMainCorrelationPairing a p ζ s (P i) V - smoothingMainCorrelationPairing a p ζ s U
+        V‖ ≤
       C / a * Real.sqrt (∫ x, ‖P i x - U x‖ ^ 2) * Real.sqrt (∫ x, ‖V x‖ ^ 2) := by
     have hpi := hb a ha p s (P i) V (hP i) hV (hP2 i) hV2
     have hdi := hb a ha p s (P i - U) V ((hP i).sub hU) hV ((hP2 i).sub hU2) hV2
-    have he : smoothingMainCorrelationPairing a p ζ s (P i) V - smoothingMainCorrelationPairing a p ζ s U V =
+    have he : smoothingMainCorrelationPairing a p ζ s (P i) V - smoothingMainCorrelationPairing a
+      p ζ s U V =
         smoothingMainCorrelationPairing a p ζ s (P i - U) V := by
       unfold smoothingMainCorrelationPairing
       rw [← integral_sub hpi.1 hbase.1]
@@ -19450,11 +20211,13 @@ theorem smoothingMainCorrelation_pairing_tendsto_right
   obtain ⟨C, hC, hb⟩ := smoothingMainCorrelation_pairing_L2_bound hζ hc
   have hbase := hb a ha p s U V hU hV hU2 hV2
   have hbound (i : ι) :
-      ‖smoothingMainCorrelationPairing a p ζ s U (P i) - smoothingMainCorrelationPairing a p ζ s U V‖ ≤
+      ‖smoothingMainCorrelationPairing a p ζ s U (P i) - smoothingMainCorrelationPairing a p ζ s U
+        V‖ ≤
       C / a * Real.sqrt (∫ x, ‖U x‖ ^ 2) * Real.sqrt (∫ x, ‖P i x - V x‖ ^ 2) := by
     have hpi := hb a ha p s U (P i) hU (hP i) hU2 (hP2 i)
     have hdi := hb a ha p s U (P i - V) hU ((hP i).sub hV) hU2 ((hP2 i).sub hV2)
-    have he : smoothingMainCorrelationPairing a p ζ s U (P i) - smoothingMainCorrelationPairing a p ζ s U V =
+    have he : smoothingMainCorrelationPairing a p ζ s U (P i) - smoothingMainCorrelationPairing a
+      p ζ s U V =
         smoothingMainCorrelationPairing a p ζ s U (P i - V) := by
       unfold smoothingMainCorrelationPairing
       rw [← integral_sub hpi.1 hbase.1]
@@ -19485,7 +20248,8 @@ theorem smoothingMainCorrelation_pairing_bound_of_approximations
     {B : ℝ} (hb : ∀ S T, ‖smoothingMainCorrelationPairing a p ζ s (P S) (Q T)‖ ≤ B) :
     ‖smoothingMainCorrelationPairing a p ζ s U V‖ ≤ B := by
   have hfirst (T : Finset (Fin 2 → ℤ)) : ‖smoothingMainCorrelationPairing a p ζ s U (Q T)‖ ≤ B := by
-    have ht := smoothingMainCorrelation_pairing_tendsto_left hζ hc ha p s hU (hQ T) hU2 (hQ2 T) P hP hP2 htP
+    have ht := smoothingMainCorrelation_pairing_tendsto_left hζ hc ha p s hU (hQ T) hU2 (hQ2 T) P
+      hP hP2 htP
     exact le_of_tendsto ht.norm (Filter.Eventually.of_forall (fun S => hb S T))
   have ht := smoothingMainCorrelation_pairing_tendsto_right hζ hc ha p s hU hV hU2 hV2 Q hQ hQ2 htQ
   exact le_of_tendsto ht.norm (Filter.Eventually.of_forall hfirst)
@@ -19530,11 +20294,14 @@ translation and dilation, as required for uniform oscillatory estimates. -/
 theorem smoothingLocalSeriesCutoff_scale {a : ℝ} (ha : 0 < a) (m : Fin 2 → ℤ)
     (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingLocalSeriesCutoff ha m x =
-      smoothingLocalSeriesCutoff (by norm_num : (0 : ℝ) < 1) 0 (a • x - CalderonVaillancourt.latt 2 m) := by
+      smoothingLocalSeriesCutoff (by norm_num : (0 : ℝ) < 1) 0 (a • x - CalderonVaillancourt.latt
+        2 m) := by
   simp only [smoothingLocalSeriesCutoff, smoothingSamplingCutoff_apply]
   congr 1
   simp only [smul_sub, smul_smul]
-  have hz : CalderonVaillancourt.latt 2 (0 : Fin 2 → ℤ) = 0 := by ext i; simp [CalderonVaillancourt.latt]
+  have hz : CalderonVaillancourt.latt 2 (0 : Fin 2 → ℤ) = 0 := by
+    ext i;
+    simp [CalderonVaillancourt.latt]
   rw [hz, smul_zero, sub_zero]
   congr 2 <;> ring
 
@@ -19574,7 +20341,8 @@ theorem smoothingRawNormalizedAmplitude_contDiff {ζ : (ℝ × ℝ) × ℝ → �
     apply contDiff_pi.mpr
     intro i
     fin_cases i <;> dsimp <;> fun_prop
-  have hstar : ContDiff ℝ ∞ (star : ℂ → ℂ) := Complex.conjLIE.toContinuousLinearEquiv.toContinuousLinearMap.contDiff
+  have hstar : ContDiff ℝ ∞ (star : ℂ → ℂ) :=
+    Complex.conjLIE.toContinuousLinearEquiv.toContinuousLinearMap.contDiff
   unfold smoothingRawNormalizedAmplitude
   fun_prop
 
@@ -19592,7 +20360,8 @@ theorem smoothingRawNormalizedAmplitude_tsupport (ζ : (ℝ × ℝ) × ℝ → �
   have hm : ((u 0, u 1), (u 2, q 8)) ∈ Function.support smoothingCorrelationBump := hb
   rw [smoothingCorrelationBump.support_eq] at hm
   have hh : max (max |u 0| |u 1|) (max |u 2| |q 8|) < 8 := by
-    simpa [Metric.mem_ball, dist_zero_right, Prod.norm_def, Real.norm_eq_abs, smoothingCorrelationBump] using hm
+    simpa [Metric.mem_ball, dist_zero_right, Prod.norm_def, Real.norm_eq_abs,
+      smoothingCorrelationBump] using hm
   simp only [max_lt_iff] at hh
   have h0 := abs_lt.mp hh.1.1
   have h1 := abs_lt.mp hh.1.2
@@ -19638,27 +20407,31 @@ theorem smoothingRawNormalizedAmplitude_rescale {a : ℝ} (ha : 0 < a)
       WithLp.toLp 2 ![a * (p 0 + p 2) - (m.1 0 : ℝ) + u 0 + u 2,
         a * p 1 - (m.1 1 : ℝ) + u 1] := by
     ext i
-    fin_cases i <;> simp [hz, smoothingPlaneEquiv, CalderonVaillancourt.latt] <;> field_simp <;> ring
-  have h₂ : a • smoothingPlaneEquiv.symm (z 0, z 1 + (z 2)^2) - CalderonVaillancourt.latt 2 m.2 =
+    fin_cases i <;>
+       simp [hz, smoothingPlaneEquiv, CalderonVaillancourt.latt] <;> field_simp <;> ring
+  have h₂ : a • smoothingPlaneEquiv.symm (z 0, z 1 + (z 2) ^ 2) - CalderonVaillancourt.latt 2 m.2 =
       WithLp.toLp 2 ![a * p 0 - (m.2 0 : ℝ) + u 0,
-        a * (p 1 + (p 2)^2) - (m.2 1 : ℝ) + u 1 + 2 * p 2 * u 2 + a⁻¹ * (u 2)^2] := by
+        a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ) + u 1 + 2 * p 2 * u 2 + a⁻¹ * (u 2)^2] := by
     ext i
-    fin_cases i <;> simp [hz, smoothingPlaneEquiv, CalderonVaillancourt.latt] <;> field_simp <;> ring
+    fin_cases i <;>
+       simp [hz, smoothingPlaneEquiv, CalderonVaillancourt.latt] <;> field_simp <;> ring
   have hg₁ : smoothingLocalSeriesCutoff ha m.1 (smoothingPlaneEquiv.symm (z 0 + z 2, z 1)) =
       smoothingLocalSeriesCutoff (by norm_num : (0 : ℝ) < 1) 0
-        (WithLp.toLp 2 ![a * (p 0 + p 2) - (m.1 0 : ℝ) + u 0 + u 2, a * p 1 - (m.1 1 : ℝ) + u 1]) := by
+        (WithLp.toLp 2 ![a * (p 0 + p 2) - (m.1 0 : ℝ) + u 0 + u 2, a * p 1 - (m.1 1 : ℝ) + u 1])
+          := by
     rw [smoothingLocalSeriesCutoff_scale, h₁]
   have hg₂ : smoothingLocalSeriesCutoff ha m.2 (smoothingPlaneEquiv.symm (z 0, z 1 + (z 2)^2)) =
       smoothingLocalSeriesCutoff (by norm_num : (0 : ℝ) < 1) 0
         (WithLp.toLp 2 ![a * p 0 - (m.2 0 : ℝ) + u 0,
-          a * (p 1 + (p 2)^2) - (m.2 1 : ℝ) + u 1 + 2 * p 2 * u 2 + a⁻¹ * (u 2)^2]) := by
+          a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ) + u 1 + 2 * p 2 * u 2 + a⁻¹ * (u 2)^2]) := by
     rw [smoothingLocalSeriesCutoff_scale, h₂]
   have ht : p 2 + a⁻¹ * (u 2 + a * s) = z 2 + s := by rw [hz]; field_simp; ring
   change smoothingRawNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m k) u =
     smoothingRawOscillatoryAmplitude ha s p m ζ z * _
   simp only [smoothingRawOscillatoryAmplitude, hg₁, hg₂,
     smoothingLocalizedCorrelationCutoff, smoothingCorrelationGate, hρ]
-  dsimp [smoothingRawNormalizedAmplitude, smoothingNormalizedParameters, smoothingCorrelationCutoff]
+  dsimp [smoothingRawNormalizedAmplitude, smoothingNormalizedParameters,
+    smoothingCorrelationCutoff]
   rw [ht]
   simp only [hz]
   ring
@@ -19679,7 +20452,8 @@ theorem smoothingRawOscillatoryIntegrand_normalize {a : ℝ} (ha : 0 < a)
     Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k (p + a⁻¹ • u))) *
       smoothingRawOscillatoryAmplitude ha s p m ζ (p + a⁻¹ • u) =
     Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k p)) *
-      (Complex.exp (↑(-2 * Real.pi * inner ℝ u ((-1 / 4 : ℝ) • smoothingResonanceVector k (p 2))) * Complex.I) *
+      (Complex.exp (↑(-2 * Real.pi * inner ℝ u ((-1 / 4 : ℝ) • smoothingResonanceVector k (p 2)))
+        * Complex.I) *
         smoothingRawNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m k) u) := by
   have he : ↑Real.pi * Complex.I * (↑(smoothingOscillatoryPhase (a / 2) k (p + a⁻¹ • u)) : ℂ) =
       ↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k p) +
@@ -19708,14 +20482,15 @@ theorem smoothingRawOscillatoryIntegral_fourier {a : ℝ} (ha : 0 < a)
   rw [integral_const_mul, Real.fourier_eq']
   rfl
 
-/-- The enlarged reference cubes still place every normalized parameter in the same fixed compact ball. -/
+/-- The enlarged reference cubes still place every normalized parameter in the same fixed compact
+  ball. -/
 theorem smoothingNormalizedParameters_enlarged_bound {a R s : ℝ} (ha : 1 ≤ a) (hR : 0 ≤ R)
     (p : EuclideanSpace ℝ (Fin 3)) (m k : (Fin 2 → ℤ) × (Fin 2 → ℤ))
     (hp : ‖p‖ ≤ R)
     (h₀ : |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 2)
     (h₁ : |a * p 1 - (m.1 1 : ℝ)| ≤ 2)
     (h₂ : |a * p 0 - (m.2 0 : ℝ)| ≤ 2)
-    (h₃ : |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 2)
+    (h₃ : |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 2)
     (hs : |a * s| ≤ 8) (hk : |(k.2 1 : ℝ)| ≤ a) :
     smoothingNormalizedParameters a s p m k ∈
       Metric.closedBall (0 : EuclideanSpace ℝ (Fin 10)) (10 * (R + 9)) := by
@@ -19753,14 +20528,15 @@ theorem smoothingNormalizedParameters_enlarged_bound {a R s : ℝ} (ha : 1 ≤ a
   rw [sub_zero]
   nlinarith [norm_nonneg q, sq_nonneg (R + 9)]
 
-/-- Uniform nonstationary decay for the actual enlarged-cutoff Fourier modes, at the verified side-four frequency spacing. -/
+/-- Uniform nonstationary decay for the actual enlarged-cutoff Fourier modes, at the verified
+  side-four frequency spacing. -/
 theorem smoothingRawOscillatoryIntegral_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : ContDiff ℝ ∞ ζ) {R : ℝ} (hR : 0 ≤ R) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (a : ℝ) (ha : 1 ≤ a), ∀ s : ℝ, ∀ p : EuclideanSpace ℝ (Fin 3),
     ∀ m k : (Fin 2 → ℤ) × (Fin 2 → ℤ), ‖p‖ ≤ R →
     |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 2 →
     |a * p 1 - (m.1 1 : ℝ)| ≤ 2 → |a * p 0 - (m.2 0 : ℝ)| ≤ 2 →
-    |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 2 →
+    |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 2 →
     |a * s| ≤ 8 → |(k.2 1 : ℝ)| ≤ a →
     (1 + ‖smoothingResonanceVector k (p 2)‖)^N *
       ‖∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k z)) *
@@ -19781,7 +20557,8 @@ theorem smoothingRawOscillatoryIntegral_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
     apply pow_le_pow_left₀ (by positivity)
     rw [hw]
     linarith
-  have hunit : ‖Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k p))‖ = 1 := by
+  have hunit : ‖Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k p))‖ = 1
+    := by
     rw [Complex.norm_exp]
     simp
   rw [smoothingRawOscillatoryIntegral_fourier ha0, norm_smul, norm_mul, hunit, one_mul,
@@ -19801,7 +20578,8 @@ theorem smoothingRawOscillatoryAmplitude_normalize {a : ℝ} (ha : 0 < a)
     (s : ℝ) (p z : EuclideanSpace ℝ (Fin 3))
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (ζ : (ℝ × ℝ) × ℝ → ℂ) :
     smoothingRawOscillatoryAmplitude ha s p m ζ z =
-      smoothingRawNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m (0, 0)) (a • (z - p)) := by
+      smoothingRawNormalizedAmplitude ζ (smoothingNormalizedParameters a s p m (0, 0)) (a • (z -
+        p)) := by
   have he : p + a⁻¹ • (a • (z - p)) = z := by simp [smul_smul, ha.ne']
   have hh := smoothingRawNormalizedAmplitude_rescale ha s p (a • (z - p)) m (0, 0) ζ
   simpa [he, smoothingRawOscillatoryAmplitude] using hh.symm
@@ -19836,10 +20614,12 @@ theorem smoothingRawOscillatoryAmplitude_properties {a : ℝ} (ha : 0 < a)
 theorem smoothingRawOscillatoryIntegrand_integrable {a : ℝ} (ha : 0 < a)
     (s : ℝ) (p : EuclideanSpace ℝ (Fin 3)) (m k : (Fin 2 → ℤ) × (Fin 2 → ℤ))
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) :
-    Integrable (fun z => Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k z)) *
+    Integrable (fun z => Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k
+      z)) *
       smoothingRawOscillatoryAmplitude ha s p m ζ z) := by
   obtain ⟨hsm, hc⟩ := smoothingRawOscillatoryAmplitude_properties ha s p m hζ
-  have hp : Continuous (fun z => Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k z))) := by
+  have hp : Continuous (fun z => Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase
+    (a / 2) k z))) := by
     unfold smoothingOscillatoryPhase
     fun_prop
   exact (hp.mul hsm.continuous).integrable_of_hasCompactSupport hc.mul_left
@@ -19868,7 +20648,8 @@ theorem smoothingMainCorrelationPairing_finite_fourier {a : ℝ} (ha : 0 < a)
     smoothingMainCorrelationPairing a ((p 0, p 1), p 2) ζ s
       (smoothingRawLocalFourierApprox ha m.1 h F S) (smoothingRawLocalFourierApprox ha m.2 k G T) =
     ∑ u ∈ S, ∑ v ∈ T,
-      (smoothingRawLocalFourierCoefficient a m.1 h F u * smoothingRawLocalFourierCoefficient a m.2 k G v) *
+      (smoothingRawLocalFourierCoefficient a m.1 h F u * smoothingRawLocalFourierCoefficient a m.2
+        k G v) *
       (∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) (u, v) z)) *
         smoothingRawOscillatoryAmplitude ha s p m ζ z) := by
   let c₁ := smoothingRawLocalFourierCoefficient a m.1 h F
@@ -19926,7 +20707,8 @@ theorem smoothingFrequencyWeight_finite_schur_L2
     (S T : Finset (Fin 2 → ℤ)) (A B : (Fin 2 → ℤ) → ℝ) :
     (∑ i ∈ S, ∑ j ∈ T, smoothingFrequencyWeight (i + j) * A i * B j) ≤
       9 * Real.sqrt (∑ i ∈ S, (A i)^2) * Real.sqrt (∑ j ∈ T, (B j)^2) := by
-  apply smoothing_finite_frequency_schur_L2 S T A B (fun i j => smoothingFrequencyWeight (i + j)) (by norm_num)
+  apply smoothing_finite_frequency_schur_L2 S T A B (fun i j => smoothingFrequencyWeight (i + j))
+    (by norm_num)
   · intro i j
     unfold smoothingFrequencyWeight
     positivity
@@ -19937,11 +20719,10 @@ theorem smoothingFrequencyWeight_finite_schur_L2
 
 /-- Any finite discarded set is controlled by the spatial-frequency
 Schur weight and the actual two coefficient energies. -/
-theorem smoothing_finite_discarded_frequency_L2
-    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (S T : Finset (Fin 2 → ℤ))
-    (E : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ))) (hE : E ⊆ S ×ˢ T)
-    (H : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → ℂ) {D : ℝ} (hD : 0 ≤ D)
-    (hH : ∀ k ∈ E, ‖H k‖ ≤ D * smoothingFrequencyWeight (k.1 + k.2)) :
+theorem smoothing_finite_discarded_frequency_L2 (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (S T : Finset (Fin 2 → ℤ))
+    (E : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ))) (hE : E ⊆ S ×ˢ T) (H : ((Fin 2 → ℤ) × (Fin 2 → ℤ))
+      → ℂ) {D : ℝ}
+    (hD : 0 ≤ D) (hH : ∀ k ∈ E, ‖H k‖ ≤ D * smoothingFrequencyWeight (k.1 + k.2)) :
     (∑ k ∈ E, ‖c₁ k.1 * c₂ k.2 * H k‖) ≤
       (9 * D) * Real.sqrt (∑ i ∈ S, ‖c₁ i‖ ^ 2) * Real.sqrt (∑ j ∈ T, ‖c₂ j‖ ^ 2) := by
   let W := fun k : (Fin 2 → ℤ) × (Fin 2 → ℤ) =>
@@ -19961,7 +20742,8 @@ theorem smoothing_finite_discarded_frequency_L2
     _ = D * ∑ i ∈ S, ∑ j ∈ T, smoothingFrequencyWeight (i + j) * ‖c₁ i‖ * ‖c₂ j‖ := by
       rw [Finset.sum_product]
     _ ≤ D * (9 * Real.sqrt (∑ i ∈ S, ‖c₁ i‖ ^ 2) * Real.sqrt (∑ j ∈ T, ‖c₂ j‖ ^ 2)) :=
-      mul_le_mul_of_nonneg_left (smoothingFrequencyWeight_finite_schur_L2 S T (fun i => ‖c₁ i‖) (fun j => ‖c₂ j‖)) hD
+      mul_le_mul_of_nonneg_left (smoothingFrequencyWeight_finite_schur_L2 S T (fun i => ‖c₁ i‖)
+        (fun j => ‖c₂ j‖)) hD
     _ = _ := by ring
 
 /-- The nonresonant finite-mode bound of (3.17) for the actual enlarged
@@ -19971,14 +20753,15 @@ theorem smoothingRawOscillatoryIntegral_nonresonant_sum
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (a : ℝ) (ha : 1 ≤ a) (L : ℝ), 0 < L → ∀ (s : ℝ)
     (p : EuclideanSpace ℝ (Fin 3)) (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)), ‖p‖ ≤ R →
     |a * (p 0 + p 2) - (m.1 0 : ℝ)| ≤ 2 → |a * p 1 - (m.1 1 : ℝ)| ≤ 2 →
-    |a * p 0 - (m.2 0 : ℝ)| ≤ 2 → |a * (p 1 + (p 2)^2) - (m.2 1 : ℝ)| ≤ 2 → |a * s| ≤ 8 →
+    |a * p 0 - (m.2 0 : ℝ)| ≤ 2 → |a * (p 1 + (p 2) ^ 2) - (m.2 1 : ℝ)| ≤ 2 → |a * s| ≤ 8 →
     ∀ (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (S T : Finset (Fin 2 → ℤ))
     (E : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ))), E ⊆ S ×ˢ T →
     (∀ k ∈ E, k ∈ smoothingNonresonantFrequencies a L (p 2)) →
     (∑ k ∈ E, ‖c₁ k.1 * c₂ k.2 *
       (∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a / 2) k z)) *
         smoothingRawOscillatoryAmplitude (show 0 < a by linarith) s p m ζ z)‖) ≤
-      C * (a^3)⁻¹ * (L^N)⁻¹ * Real.sqrt (∑ i ∈ S, ‖c₁ i‖ ^ 2) * Real.sqrt (∑ j ∈ T, ‖c₂ j‖ ^ 2) := by
+      C * (a^3)⁻¹ * (L^N)⁻¹ * Real.sqrt (∑ i ∈ S, ‖c₁ i‖ ^ 2) * Real.sqrt (∑ j ∈ T, ‖c₂ j‖ ^ 2) :=
+        by
   obtain ⟨C, hC, hdec⟩ := smoothingRawOscillatoryIntegral_decay hζ hR (N + 4)
   refine ⟨9 * C, by positivity, ?_⟩
   intro a ha L hL s p m hp h₀ h₁ h₂ h₃ hs c₁ c₂ S T E hE hnon
@@ -19996,8 +20779,8 @@ theorem smoothingRawOscillatoryIntegral_nonresonant_sum
 /-- The first resonant-strip estimate with both genuine coefficient
 energies retained, using the existing general infinite Schur theorem. -/
 theorem smoothing_resonance_energy_first_L2 {L R t : ℝ} (hL : 1 ≤ L) (ht : |t| ≤ R)
-    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (hs₁ : Summable (fun k => ‖c₁ k‖^2))
-    (hs₂ : Summable (fun k => ‖c₂ k‖^2)) :
+    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (hs₁ : Summable (fun k => ‖c₁ k‖ ^ 2)) (hs₂ : Summable (fun k =>
+      ‖c₂ k‖ ^ 2)) :
     Summable (fun k : smoothingResonantFrequencies L t => ‖c₁ k.val.1 * c₂ k.val.2‖) ∧
     (∑' k : smoothingResonantFrequencies L t, ‖c₁ k.val.1 * c₂ k.val.2‖) ≤
       81 * L^2 * Real.sqrt (∑' k : smoothingResonantStrip ((1 + 2 * R) * L) t, ‖c₁ k.val‖^2) *
@@ -20011,7 +20794,8 @@ theorem smoothing_resonance_energy_first_L2 {L R t : ℝ} (hL : 1 ≤ L) (ht : |
   let E₂ := ∑' k, ‖c₂ k‖^2
   have hE : 0 ≤ E := tsum_nonneg (fun _ => sq_nonneg _)
   have hE₂ : 0 ≤ E₂ := tsum_nonneg (fun _ => sq_nonneg _)
-  have hstrip {k : (Fin 2 → ℤ) × (Fin 2 → ℤ)} (hk : k ∈ smoothingResonantFrequencies L t) : k.1 ∈ T := by
+  have hstrip {k : (Fin 2 → ℤ) × (Fin 2 → ℤ)} (hk : k ∈ smoothingResonantFrequencies L t) : k.1 ∈
+    T := by
     apply (smoothing_resonance_strips hk).1.trans
     exact mul_le_mul_of_nonneg_right (by linarith) (by linarith)
   have hA := smoothing_indicator_energy T c₁ (hs₁.subtype T) (le_refl E)
@@ -20036,8 +20820,8 @@ theorem smoothing_resonance_energy_first_L2 {L R t : ℝ} (hL : 1 ≤ L) (ht : |
 /-- The second resonant-strip estimate also keeps the full L2 energy
 of the complementary input instead of assuming it is one. -/
 theorem smoothing_resonance_energy_second_L2 {L t : ℝ} (hL : 1 ≤ L)
-    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (hs₁ : Summable (fun k => ‖c₁ k‖^2))
-    (hs₂ : Summable (fun k => ‖c₂ k‖^2)) :
+    (c₁ c₂ : (Fin 2 → ℤ) → ℂ) (hs₁ : Summable (fun k => ‖c₁ k‖ ^ 2)) (hs₂ : Summable (fun k =>
+      ‖c₂ k‖ ^ 2)) :
     Summable (fun k : smoothingResonantFrequencies L t => ‖c₁ k.val.1 * c₂ k.val.2‖) ∧
     (∑' k : smoothingResonantFrequencies L t, ‖c₁ k.val.1 * c₂ k.val.2‖) ≤
       81 * L^2 * Real.sqrt (∑' k, ‖c₁ k‖^2) *
@@ -20076,7 +20860,8 @@ theorem smoothing_resonance_energy_second_L2 {L t : ℝ} (hL : 1 ≤ L)
 smooth growth is used only for representation, not for a uniform bound. -/
 theorem smoothingSharpMultiplier_temperate (R : ℝ) (S : Finset ℤ) :
     (fun ξ => (smoothingSharpMultiplier R S ξ : ℂ)).HasTemperateGrowth := by
-  have hφ := smoothingPartitionCutoff_hasCompactSupport.hasTemperateGrowth smoothingPartitionCutoff_contDiff
+  have hφ := smoothingPartitionCutoff_hasCompactSupport.hasTemperateGrowth
+    smoothingPartitionCutoff_contDiff
   have hr : (smoothingSharpMultiplier R S).HasTemperateGrowth := by
     unfold smoothingSharpMultiplier
     apply Function.HasTemperateGrowth.sum
@@ -20085,7 +20870,8 @@ theorem smoothingSharpMultiplier_temperate (R : ℝ) (S : Finset ℤ) :
   exact Complex.ofRealCLM.hasTemperateGrowth.comp hr
 
 /-- The Schwartz representative of a selected sharp fiber. -/
-noncomputable def smoothingSharpSchwartz (f : SchwartzMap ℝ ℂ) (R : ℝ) (S : Finset ℤ) : SchwartzMap ℝ ℂ :=
+noncomputable def smoothingSharpSchwartz (f : SchwartzMap ℝ ℂ) (R : ℝ) (S : Finset ℤ) :
+  SchwartzMap ℝ ℂ :=
   SchwartzMap.fourierMultiplierCLM ℂ (fun ξ => (smoothingSharpMultiplier R S ξ : ℂ)) f
 
 /-- Its pointwise Fourier transform is exactly the selected multiplier. -/
@@ -20098,7 +20884,8 @@ theorem smoothingSharpSchwartz_fourier (f : SchwartzMap ℝ ℂ) (R : ℝ) (S : 
 theorem smoothingSharpSchwartz_toLp (f : SchwartzMap ℝ ℂ) (R : ℝ) (S : Finset ℤ) :
     (smoothingSharpSchwartz f R S).toLp 2 volume = smoothingSharpPart (f.toLp 2 volume) R S := by
   apply (Lp.fourierTransformₗᵢ ℝ ℂ).injective
-  change 𝓕 ((smoothingSharpSchwartz f R S).toLp 2 volume) = 𝓕 (smoothingSharpPart (f.toLp 2 volume) R S)
+  change 𝓕 ((smoothingSharpSchwartz f R S).toLp 2 volume) = 𝓕 (smoothingSharpPart (f.toLp 2
+    volume) R S)
   rw [SchwartzMap.toLp_fourier_eq]
   apply Lp.ext
   filter_upwards [(𝓕 (smoothingSharpSchwartz f R S)).coeFn_toLp 2 volume,
@@ -20116,21 +20903,24 @@ theorem smoothingFiberSharp_eq_schwartz (f : SchwartzMap (EuclideanSpace ℝ (Fi
     apply continuous_finsetSum S
     intro n hn
     exact (smoothingPiece_contDiff (g.toLp 2 volume) hR n).continuous.mul (by fun_prop)
-  have hfirst : smoothingFiberSharp f j z R S =ᵐ[volume] ⇑(smoothingSharpPart (g.toLp 2 volume) R S) := by
+  have hfirst : smoothingFiberSharp f j z R S =ᵐ[volume] ⇑(smoothingSharpPart (g.toLp 2 volume) R
+    S) := by
     filter_upwards [smoothingSharpPart_eq_sum_exp (g.toLp 2 volume) hR S] with u hu
     exact hu.symm
   have hsecond : (smoothingSharpPart (g.toLp 2 volume) R S : ℝ → ℂ) =ᵐ[volume]
       (smoothingSharpSchwartz g R S : ℝ → ℂ) := by
     rw [← smoothingSharpSchwartz_toLp]
     exact (smoothingSharpSchwartz g R S).coeFn_toLp 2 volume
-  exact (hraw.ae_eq_iff_eq volume (smoothingSharpSchwartz g R S).continuous).mp (hfirst.trans hsecond)
+  exact (hraw.ae_eq_iff_eq volume (smoothingSharpSchwartz g R S).continuous).mp (hfirst.trans
+    hsecond)
 
 /-- The actual flat fiber is also a Schwartz function on its preferred
 coordinate, despite its merely measurable transverse dependence. -/
 theorem smoothingFiberFlat_eq_schwartz (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (z : EuclideanSpace ℝ (Fin 2)) {R : ℝ} (hR : 0 < R) (S : Finset ℤ) :
     smoothingFiberFlat f j z R S =
-      (smoothingCoordinateFiber f j z - smoothingSharpSchwartz (smoothingCoordinateFiber f j z) R S : SchwartzMap ℝ ℂ) := by
+      (smoothingCoordinateFiber f j z - smoothingSharpSchwartz (smoothingCoordinateFiber f j z) R
+        S : SchwartzMap ℝ ℂ) := by
   funext u
   change f (z + smoothingCoordinateLine j u) - smoothingFiberSharp f j z R S u = _
   rw [smoothingFiberSharp_eq_schwartz f j z hR S]
@@ -20174,7 +20964,8 @@ theorem smoothingSharpSchwartz_iterated_deriv_norm (f : SchwartzMap ℝ ℂ)
     induction n with
     | zero => rfl
     | succ n ih =>
-      rw [Function.iterate_succ_apply', Function.iterate_succ_apply', ih, smoothingSharpSchwartz_deriv]
+      rw [Function.iterate_succ_apply', Function.iterate_succ_apply', ih,
+        smoothingSharpSchwartz_deriv]
   rw [hc, smoothingSharpSchwartz_toLp]
   exact smoothingSharpPart_norm_le _ R S
 
@@ -20214,20 +21005,24 @@ theorem smoothingCoordinateFiber_regularization_derivative_norm (ψ : SchwartzMa
     ∃ B : ℝ, 0 ≤ B ∧ ∀ (j : Fin 2) (r : ℝ), 0 < r →
     ∀ (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (z : EuclideanSpace ℝ (Fin 2)),
     ‖(((SchwartzMap.derivCLM ℂ ℂ)^[n])
-      (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)).toLp 2 volume‖ ≤
+      (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)).toLp 2
+        volume‖ ≤
       B * r ^ n * ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖ := by
   obtain ⟨B, hB, hb⟩ := ψ.decay n 0
   refine ⟨(2 * Real.pi) ^ n * B, by positivity, ?_⟩
   intro j r hr f z
   rw [← Lp.norm_fourier_eq ((((SchwartzMap.derivCLM ℂ ℂ)^[n])
-      (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)).toLp 2 volume),
+      (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)).toLp 2
+        volume),
     ← Lp.norm_fourier_eq ((smoothingCoordinateFiber f j z).toLp 2 volume),
     SchwartzMap.toLp_fourier_eq, SchwartzMap.toLp_fourier_eq]
   apply Lp.norm_le_mul_norm_of_ae_le_mul
   filter_upwards [(𝓕 (((SchwartzMap.derivCLM ℂ ℂ)^[n])
-    (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z))).coeFn_toLp 2 volume,
+    (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z))).coeFn_toLp
+      2 volume,
     (𝓕 (smoothingCoordinateFiber f j z)).coeFn_toLp 2 volume] with ξ h1 h2
-  rw [h1, h2, smoothingFiberDerivativeOrder_fourier, smoothingCoordinateFiber_regularization_fourier ψ j hr]
+  rw [h1, h2, smoothingFiberDerivativeOrder_fourier,
+    smoothingCoordinateFiber_regularization_fourier ψ j hr]
   have hm : |ξ / r| ^ n * ‖ψ (ξ / r)‖ ≤ B := by
     simpa only [Real.norm_eq_abs, norm_iteratedFDeriv_zero] using hb (ξ / r)
   have hs : |ξ| ^ n * ‖ψ (ξ / r)‖ ≤ r ^ n * B := by
@@ -20239,7 +21034,9 @@ theorem smoothingCoordinateFiber_regularization_derivative_norm (ψ : SchwartzMa
   simp only [norm_mul, norm_pow, Complex.norm_I, mul_one, Complex.norm_real,
     Real.norm_eq_abs, abs_of_pos Real.pi_pos, show ‖(2 : ℂ)‖ = 2 by norm_num]
   calc
-    _ = (2 * Real.pi) ^ n * (|ξ| ^ n * ‖ψ (ξ / r)‖) * ‖𝓕 (smoothingCoordinateFiber f j z) ξ‖ := by rw [mul_pow]; ring
+    _ = (2 * Real.pi) ^ n * (|ξ| ^ n * ‖ψ (ξ / r)‖) * ‖𝓕 (smoothingCoordinateFiber f j z) ξ‖ := by
+      rw [mul_pow];
+      ring
     _ ≤ (2 * Real.pi) ^ n * (r ^ n * B) * ‖𝓕 (smoothingCoordinateFiber f j z) ξ‖ :=
       mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hs (by positivity)) (norm_nonneg _)
     _ = _ := by ring
@@ -20279,12 +21076,15 @@ theorem smoothingRegularizedPiece_selected_derivative_energy (ψ : SchwartzMap �
   intro j r a R hr ha hR m f hf z S flat
   let g := smoothingCoordinateRegularization (some ψ) j r (smoothingSpatialPiece a m f)
   let v := smoothingCoordinateFiber g j z
-  let w : SchwartzMap ℝ ℂ := if flat then v - smoothingSharpSchwartz v R S else smoothingSharpSchwartz v R S
-  have hw : (if flat then smoothingFiberFlat g j z R S else smoothingFiberSharp g j z R S) = (w : ℝ → ℂ) := by
+  let w : SchwartzMap ℝ ℂ := if flat then v - smoothingSharpSchwartz v R S else
+    smoothingSharpSchwartz v R S
+  have hw : (if flat then smoothingFiberFlat g j z R S else smoothingFiberSharp g j z R S) = (w :
+    ℝ → ℂ) := by
     cases flat
     · exact smoothingFiberSharp_eq_schwartz g j z hR S
     · exact smoothingFiberFlat_eq_schwartz g j z hR S
-  change MemLp (iteratedDeriv n (if flat then smoothingFiberFlat g j z R S else smoothingFiberSharp g j z R S)) 2 volume ∧ _
+  change MemLp (iteratedDeriv n (if flat then smoothingFiberFlat g j z R S else
+    smoothingFiberSharp g j z R S)) 2 volume ∧ _
   rw [hw]
   refine ⟨(smoothingFiberDerivativeOrder_integral w n).1, ?_⟩
   rw [(smoothingFiberDerivativeOrder_integral w n).2]
@@ -20296,9 +21096,11 @@ theorem smoothingRegularizedPiece_selected_derivative_energy (ψ : SchwartzMap �
   have hd := hc.trans (hb j r hr (smoothingSpatialPiece a m f) z)
   have hp := smoothingSpatialPiece_fiber_norm_sq ha m f hf j z
   calc
-    _ ≤ (B * r ^ n * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖) ^ 2 :=
+    _ ≤ (B * r ^ n * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖)
+      ^ 2 :=
       pow_le_pow_left₀ (norm_nonneg _) hd 2
-    _ = B ^ 2 * (r ^ n) ^ 2 * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2 volume‖ ^ 2 := by ring
+    _ = B ^ 2 * (r ^ n) ^ 2 * ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j z).toLp 2
+      volume‖ ^ 2 := by ring
     _ ≤ B ^ 2 * (r ^ n) ^ 2 * (2 / a) := mul_le_mul_of_nonneg_left hp (by positivity)
     _ = _ := by rw [← pow_mul, Nat.mul_comm n 2]; ring
 
@@ -20334,14 +21136,17 @@ theorem smoothingCoordinateFiber_derivative_norm (f : SchwartzMap (EuclideanSpac
       ‖iteratedFDeriv ℝ n f (z + smoothingCoordinateLine j u)‖ := by
   change ‖iteratedDeriv n (fun v => f (z + v • EuclideanSpace.single j (1 : ℝ))) u‖ ≤ _
   rw [smoothing_coordinate_line_iteratedDeriv, smoothingCoordinateDerivativeOrder_apply]
-  simpa only [PiLp.norm_single, norm_one, Finset.prod_const_one, mul_one, smoothingCoordinateLine, ContinuousLinearMap.smulRight_apply, ContinuousLinearMap.id_apply] using
+  simpa only [PiLp.norm_single, norm_one, Finset.prod_const_one, mul_one,
+    smoothingCoordinateLine, ContinuousLinearMap.smulRight_apply, ContinuousLinearMap.id_apply]
+    using
     (iteratedFDeriv ℝ n f (z + u • EuclideanSpace.single j (1 : ℝ))).le_opNorm
       (fun _ : Fin n => EuclideanSpace.single j (1 : ℝ))
 
 /-- L2 multiplication by a bounded Schwartz fiber. -/
 theorem smoothingFiberProduct_norm (f g : SchwartzMap ℝ ℂ) {A : ℝ}
     (hf : ∀ u, ‖f u‖ ≤ A) :
-    ‖(SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) f g).toLp 2 volume‖ ≤ A * ‖g.toLp 2 volume‖ := by
+    ‖(SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) f g).toLp 2 volume‖ ≤ A * ‖g.toLp 2
+      volume‖ := by
   apply Lp.norm_le_mul_norm_of_ae_le_mul
   filter_upwards [(SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) f g).coeFn_toLp 2 volume,
     g.coeFn_toLp 2 volume] with u hp hg
@@ -20392,10 +21197,12 @@ theorem smoothingFiberProduct_derivative_norm {A B r : ℝ}
       have hp := smoothingFiberProduct_norm (((SchwartzMap.derivCLM ℂ ℂ)^[i]) f)
         (((SchwartzMap.derivCLM ℂ ℂ)^[n-i]) g)
         (fun u => by simpa only [← smoothingFiberDerivativeOrder_apply] using hf i hin u)
-      change (n.choose i : ℝ) * ‖(SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) _ _).toLp 2 volume‖ ≤ _
+      change (n.choose i : ℝ) * ‖(SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) _ _).toLp 2
+        volume‖ ≤ _
       calc
         _ ≤ (n.choose i : ℝ) * ((A * r ^ i) * (B * r ^ (n-i))) :=
-          mul_le_mul_of_nonneg_left (hp.trans (mul_le_mul_of_nonneg_left (hg (n-i) (by omega)) (by positivity))) (by positivity)
+          mul_le_mul_of_nonneg_left (hp.trans (mul_le_mul_of_nonneg_left (hg (n-i) (by omega))
+            (by positivity))) (by positivity)
         _ = (n.choose i : ℝ) * (A * B) * (r ^ i * r ^ (n-i)) := by ring
         _ = _ := by rw [← pow_add, Nat.add_sub_of_le hin]
     _ = _ := by
@@ -20437,10 +21244,14 @@ theorem smoothingRegularized_selected_derivative_norms (ψ : SchwartzMap ℝ ℂ
   dsimp only
   intro i hi
   have hc : ‖(((SchwartzMap.derivCLM ℂ ℂ)^[i])
-      (if flat then smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z -
-        smoothingSharpSchwartz (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z) R S
-       else smoothingSharpSchwartz (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z) R S)).toLp 2 volume‖ ≤
-      ‖(((SchwartzMap.derivCLM ℂ ℂ)^[i]) (smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j z)).toLp 2 volume‖ := by
+      (if flat then smoothingCoordinateFiber (smoothingCoordinateRegularization (some ψ) j r f) j
+        z -
+        smoothingSharpSchwartz (smoothingCoordinateFiber (smoothingCoordinateRegularization (some
+          ψ) j r f) j z) R S
+       else smoothingSharpSchwartz (smoothingCoordinateFiber (smoothingCoordinateRegularization
+         (some ψ) j r f) j z) R S)).toLp 2 volume‖ ≤
+      ‖(((SchwartzMap.derivCLM ℂ ℂ)^[i]) (smoothingCoordinateFiber
+        (smoothingCoordinateRegularization (some ψ) j r f) j z)).toLp 2 volume‖ := by
     cases flat
     · exact smoothingSharpSchwartz_iterated_deriv_norm _ R S i
     · exact smoothingFlatSchwartz_iterated_deriv_norm _ R S i
@@ -20468,15 +21279,18 @@ theorem smoothingRelocalized_selected_derivative_energy (ψ : SchwartzMap ℝ �
   intro j r a R hr ha har hR m f z S flat
   let g := smoothingCoordinateRegularization (some ψ) j r f
   let v := smoothingCoordinateFiber g j z
-  let w : SchwartzMap ℝ ℂ := if flat then v - smoothingSharpSchwartz v R S else smoothingSharpSchwartz v R S
+  let w : SchwartzMap ℝ ℂ := if flat then v - smoothingSharpSchwartz v R S else
+    smoothingSharpSchwartz v R S
   let χ := smoothingEnlargedCutoffFiber ha m j z
   let p := SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) χ w
-  have hw : (fun u => if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R S u) = (w : ℝ → ℂ) := by
+  have hw : (fun u => if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R
+    S u) = (w : ℝ → ℂ) := by
     cases flat
     · exact smoothingFiberSharp_eq_schwartz g j z hR S
     · exact smoothingFiberFlat_eq_schwartz g j z hR S
   have hp : (fun u => smoothingEnlargedCutoff a m (z + smoothingCoordinateLine j u) *
-      (if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R S u)) = (p : ℝ → ℂ) := by
+      (if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R S u)) = (p : ℝ
+        → ℂ) := by
     funext u
     rw [congrFun hw u]
     rfl
@@ -20524,9 +21338,12 @@ theorem smoothingRelocalizedFiberFamily_schwartz
   let z := smoothingCoordinateLine i y
   let S := smoothingFiberSelectedIndices g j R hρ z
   let v := smoothingCoordinateFiber g j z
-  let w : SchwartzMap ℝ ℂ := if flat then v - smoothingSharpSchwartz v R S else smoothingSharpSchwartz v R S
-  refine ⟨SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) (smoothingEnlargedCutoffFiber ha m j z) w, ?_⟩
-  have hw : (fun u => if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R S u) = (w : ℝ → ℂ) := by
+  let w : SchwartzMap ℝ ℂ := if flat then v - smoothingSharpSchwartz v R S else
+    smoothingSharpSchwartz v R S
+  refine ⟨SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) (smoothingEnlargedCutoffFiber ha m j
+    z) w, ?_⟩
+  have hw : (fun u => if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R
+    S u) = (w : ℝ → ℂ) := by
     cases flat
     · exact smoothingFiberSharp_eq_schwartz g j z hR S
     · exact smoothingFiberFlat_eq_schwartz g j z hR S
@@ -20544,9 +21361,11 @@ theorem smoothingFiber_fourier_tail_derivative (f : SchwartzMap ℝ ℂ) (n : �
   let d := ((SchwartzMap.derivCLM ℂ ℂ)^[n]) f
   let T := {ξ : ℝ | L ≤ |ξ|}
   have hi : Integrable (fun ξ : ℝ => ‖𝓕 d ξ‖ ^ 2) :=
-    (memLp_two_iff_integrable_sq_norm (𝓕 d).continuous.aestronglyMeasurable).mp ((𝓕 d).memLp 2 volume)
+    (memLp_two_iff_integrable_sq_norm (𝓕 d).continuous.aestronglyMeasurable).mp ((𝓕 d).memLp 2
+      volume)
   have hf : Integrable (fun ξ : ℝ => ‖𝓕 f ξ‖ ^ 2) :=
-    (memLp_two_iff_integrable_sq_norm (𝓕 f).continuous.aestronglyMeasurable).mp ((𝓕 f).memLp 2 volume)
+    (memLp_two_iff_integrable_sq_norm (𝓕 f).continuous.aestronglyMeasurable).mp ((𝓕 f).memLp 2
+      volume)
   have hb (ξ : ℝ) (hξ : ξ ∈ T) :
       (2 * Real.pi * L) ^ (2*n) * ‖𝓕 f ξ‖ ^ 2 ≤ ‖𝓕 d ξ‖ ^ 2 := by
     have he : ‖𝓕 d ξ‖ = (2 * Real.pi * |ξ|) ^ n * ‖𝓕 f ξ‖ := by
@@ -20566,14 +21385,16 @@ theorem smoothingFiber_fourier_tail_derivative (f : SchwartzMap ℝ ℂ) (n : �
     _ ≤ ∫ ξ : ℝ, ‖𝓕 d ξ‖ ^ 2 := integral_mono_measure Measure.restrict_le_self
       (Filter.Eventually.of_forall (fun ξ => sq_nonneg _)) hi
     _ = ∫ u : ℝ, ‖d u‖ ^ 2 := by
-      simpa only [SchwartzMap.fourier_coe] using smoothing_integral_norm_sq_fourier d.integrable (d.memLp 2 volume)
+      simpa only [SchwartzMap.fourier_coe] using smoothing_integral_norm_sq_fourier d.integrable
+        (d.memLp 2 volume)
     _ = _ := by
       apply integral_congr_ae
       filter_upwards [] with u
       rw [show d u = iteratedDeriv n f u from congrFun (smoothingFiberDerivativeOrder_apply f n) u]
 
 /-- The scalar multiplicative difference of a Schwartz fiber. -/
-noncomputable def smoothingFiberDifferenceSchwartz (f : SchwartzMap ℝ ℂ) (s : ℝ) : SchwartzMap ℝ ℂ :=
+noncomputable def smoothingFiberDifferenceSchwartz (f : SchwartzMap ℝ ℂ) (s : ℝ) : SchwartzMap ℝ ℂ
+  :=
   SchwartzMap.pairing (ContinuousLinearMap.mul ℂ ℂ) (f.compSubConstCLM ℂ (-s))
     (f.postcompCLM Complex.conjLIE.toLinearIsometry.toContinuousLinearMap)
 
@@ -20613,9 +21434,10 @@ theorem smoothing_fiber_shifted_product_energy {f g : ℝ → ℂ}
     Integrable (fun p : ℝ × ℝ => ‖f (p.2+p.1)‖ ^ 2 * ‖g p.2‖ ^ 2) (volume.prod volume) ∧
       (∫ p : ℝ × ℝ, ‖f (p.2+p.1)‖ ^ 2 * ‖g p.2‖ ^ 2 ∂(volume.prod volume)) =
         (∫ u : ℝ, ‖f u‖ ^ 2) * (∫ u : ℝ, ‖g u‖ ^ 2) := by
-  have hfi := (memLp_two_iff_integrable_sq_norm hf.1).mp hf
-  have hgi := (memLp_two_iff_integrable_sq_norm hg.1).mp hg
-  have hi := (measurePreserving_add_prod volume volume).integrable_comp_of_integrable (hfi.mul_prod hgi)
+  have hfi := (memLp_two_iff_integrable_sq_norm hf.aestronglyMeasurable).mp hf
+  have hgi := (memLp_two_iff_integrable_sq_norm hg.aestronglyMeasurable).mp hg
+  have hi := (measurePreserving_add_prod volume volume).integrable_comp_of_integrable
+    (hfi.mul_prod hgi)
   have he : Integrable (fun p : ℝ × ℝ => ‖f (p.2+p.1)‖ ^ 2 * ‖g p.2‖ ^ 2) (volume.prod volume) := by
     simpa only [Function.comp_def, add_comm] using hi
   refine ⟨he, ?_⟩
@@ -20632,24 +21454,31 @@ theorem smoothing_fiber_shifted_product_energy {f g : ℝ → ℂ}
 /-- Integrating the Leibniz expansion over the increment gives a bound
 by products of derivative energies, with no supremum norm of the fiber. -/
 theorem smoothingFiberDifference_derivative_energy (f : SchwartzMap ℝ ℂ) (n : ℕ) :
-    Integrable (fun p : ℝ × ℝ => ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2)
+    Integrable (fun p : ℝ × ℝ => ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^
+      2)
       (volume.prod volume) ∧
-    (∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2 ∂(volume.prod volume)) ≤
+    (∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2
+      ∂(volume.prod volume)) ≤
       (n+1 : ℝ) * ∑ i ∈ Finset.range (n+1), (n.choose i : ℝ)^2 *
         (∫ u : ℝ, ‖iteratedDeriv i f u‖ ^ 2) * (∫ u : ℝ, ‖iteratedDeriv (n-i) f u‖ ^ 2) := by
   let v := fun i : ℕ => ((SchwartzMap.derivCLM ℂ ℂ)^[i]) f
   let Q := fun (i : ℕ) (p : ℝ × ℝ) => (n.choose i : ℝ)^2 * ‖v i (p.2+p.1)‖^2 * ‖v (n-i) p.2‖^2
-  let H := fun p : ℝ × ℝ => ∑ i ∈ Finset.range (n+1), (n.choose i : ℂ) * v i (p.2+p.1) * star (v (n-i) p.2)
-  have hv (i : ℕ) (u : ℝ) : v i u = iteratedDeriv i f u := congrFun (smoothingFiberDerivativeOrder_apply f i) u
-  have hH : (fun p : ℝ × ℝ => iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2) = H := by
+  let H := fun p : ℝ × ℝ => ∑ i ∈ Finset.range (n+1), (n.choose i : ℂ) * v i (p.2+p.1) * star (v
+    (n-i) p.2)
+  have hv (i : ℕ) (u : ℝ) : v i u = iteratedDeriv i f u := congrFun
+    (smoothingFiberDerivativeOrder_apply f i) u
+  have hH : (fun p : ℝ × ℝ => iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2) = H
+    := by
     funext p
     simp only [smoothingFiberDifference_iteratedDeriv, H, hv]
   have hQi (i : ℕ) : Integrable (Q i) (volume.prod volume) := by
-    have hh := (smoothing_fiber_shifted_product_energy ((v i).memLp 2 volume) ((v (n-i)).memLp 2 volume)).1.const_mul ((n.choose i : ℝ)^2)
+    have hh := (smoothing_fiber_shifted_product_energy ((v i).memLp 2 volume) ((v (n-i)).memLp 2
+      volume)).1.const_mul ((n.choose i : ℝ)^2)
     simpa only [Q, mul_assoc] using hh
   have hQe (i : ℕ) : (∫ p : ℝ × ℝ, Q i p ∂(volume.prod volume)) = (n.choose i : ℝ)^2 *
       (∫ u : ℝ, ‖v i u‖^2) * (∫ u : ℝ, ‖v (n-i) u‖^2) := by
-    have hh := (smoothing_fiber_shifted_product_energy ((v i).memLp 2 volume) ((v (n-i)).memLp 2 volume)).2
+    have hh := (smoothing_fiber_shifted_product_energy ((v i).memLp 2 volume) ((v (n-i)).memLp 2
+      volume)).2
     dsimp only [Q]
     simp_rw [mul_assoc]
     rw [integral_const_mul, hh]
@@ -20659,17 +21488,21 @@ theorem smoothingFiberDifference_derivative_energy (f : SchwartzMap ℝ ℂ) (n 
     exact (continuous_const.mul ((v i).continuous.comp (continuous_snd.add continuous_fst))).mul
       (continuous_star.comp ((v (n-i)).continuous.comp continuous_snd))
   have hb (p : ℝ × ℝ) : ‖H p‖^2 ≤ (n+1 : ℝ) * ∑ i ∈ Finset.range (n+1), Q i p := by
-    have hnorm := norm_sum_le (Finset.range (n+1)) (fun i => (n.choose i : ℂ) * v i (p.2+p.1) * star (v (n-i) p.2))
+    have hnorm := norm_sum_le (Finset.range (n+1)) (fun i => (n.choose i : ℂ) * v i (p.2+p.1) *
+      star (v (n-i) p.2))
     have hs := sq_sum_le_card_mul_sum_sq (s := Finset.range (n+1))
       (f := fun i => ‖(n.choose i : ℂ) * v i (p.2+p.1) * star (v (n-i) p.2)‖)
     apply (pow_le_pow_left₀ (norm_nonneg _) hnorm 2).trans
     simpa only [Finset.card_range, Nat.cast_add, Nat.cast_one, norm_mul, norm_star,
       Complex.norm_natCast, mul_pow, Q] using hs
-  have hmaj : Integrable (fun p : ℝ × ℝ => (n+1 : ℝ) * ∑ i ∈ Finset.range (n+1), Q i p) (volume.prod volume) :=
+  have hmaj : Integrable (fun p : ℝ × ℝ => (n+1 : ℝ) * ∑ i ∈ Finset.range (n+1), Q i p)
+    (volume.prod volume) :=
     (integrable_finsetSum _ (fun i hi => hQi i)).const_mul _
   have hHi : Integrable (fun p : ℝ × ℝ => ‖H p‖^2) (volume.prod volume) :=
-    hmaj.mono' (hHc.norm.pow 2).aestronglyMeasurable (Filter.Eventually.of_forall (fun p => by simpa only [Real.norm_eq_abs, abs_pow, abs_norm] using hb p))
-  have hHp (p : ℝ × ℝ) : iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2 = H p := congrFun hH p
+    hmaj.mono' (hHc.norm.pow 2).aestronglyMeasurable (Filter.Eventually.of_forall (fun p =>
+      by simpa only [Real.norm_eq_abs, abs_pow, abs_norm] using hb p))
+  have hHp (p : ℝ × ℝ) : iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2 = H p :=
+    congrFun hH p
   simp_rw [hHp]
   refine ⟨hHi, (integral_mono_ae hHi hmaj (Filter.Eventually.of_forall hb)).trans_eq ?_⟩
   rw [integral_const_mul, integral_finsetSum _ (fun i hi => hQi i)]
@@ -20679,8 +21512,9 @@ theorem smoothingFiberDifference_derivative_energy (f : SchwartzMap ℝ ℂ) (n 
 frequency scale of the fiber derivatives. -/
 theorem smoothingFiberDifference_derivative_energy_scaled (f : SchwartzMap ℝ ℂ) (n : ℕ)
     {B r : ℝ} (hB : 0 ≤ B) (hr : 0 ≤ r)
-    (hb : ∀ i ≤ n, (∫ u : ℝ, ‖iteratedDeriv i f u‖ ^ 2) ≤ B * r ^ (2*i)) :
-    (∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2 ∂(volume.prod volume)) ≤
+    (hb : ∀ i ≤ n, (∫ u : ℝ, ‖iteratedDeriv i f u‖ ^ 2) ≤ B * r ^ (2 * i)) :
+    (∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2
+      ∂(volume.prod volume)) ≤
       ((n+1 : ℝ) * ∑ i ∈ Finset.range (n+1), (n.choose i : ℝ)^2) * B^2 * r^(2*n) := by
   apply (smoothingFiberDifference_derivative_energy f n).2.trans
   calc
@@ -20705,16 +21539,19 @@ theorem smoothingFiberDifference_fourier_tail (f : SchwartzMap ℝ ℂ) (n : ℕ
       ‖(𝓕 (smoothingMultiplicativeDifference (f : ℝ → ℂ) s) : ℝ → ℂ) ξ‖ ^ 2) ∧
     (2 * Real.pi * L)^(2*n) * (∫ s : ℝ, ∫ ξ in {ξ : ℝ | L ≤ |ξ|},
       ‖(𝓕 (smoothingMultiplicativeDifference (f : ℝ → ℂ) s) : ℝ → ℂ) ξ‖ ^ 2) ≤
-      ∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2 ∂(volume.prod volume) := by
+      ∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f p.1) p.2‖ ^ 2
+        ∂(volume.prod volume) := by
   let c := (2 * Real.pi * L)^(2*n)
   have hc : 0 < c := by positivity
   let E := fun s : ℝ => ∫ u : ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference f s) u‖ ^ 2
-  let T := fun s : ℝ => ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference (f : ℝ → ℂ) s) : ℝ → ℂ) ξ‖ ^ 2
+  let T := fun s : ℝ => ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference (f : ℝ →
+    ℂ) s) : ℝ → ℂ) ξ‖ ^ 2
   have hprod := (smoothingFiberDifference_derivative_energy f n).1
   have hEi : Integrable E := hprod.integral_prod_left
   have hjoint := smoothing_parameter_difference_fourier_measurable (fun _ : Unit => (f : ℝ → ℂ))
     (f.continuous.measurable.comp measurable_snd)
-  have hm : Measurable (fun p : ℝ × ℝ => (𝓕 (smoothingMultiplicativeDifference (f : ℝ → ℂ) p.1) : ℝ → ℂ) p.2) :=
+  have hm : Measurable (fun p : ℝ × ℝ => (𝓕 (smoothingMultiplicativeDifference (f : ℝ → ℂ) p.1) :
+    ℝ → ℂ) p.2) :=
     by
       have hh := hjoint.comp (show Measurable (fun p : ℝ × ℝ => (((),p.1),p.2)) by fun_prop)
       simpa only [Function.comp_def] using! hh
@@ -20722,10 +21559,12 @@ theorem smoothingFiberDifference_fourier_tail (f : SchwartzMap ℝ ℂ) (n : ℕ
     (ν := volume.restrict {ξ : ℝ | L ≤ |ξ|})).measurable
   have hb (s : ℝ) : c * T s ≤ E s := by
     have hh := smoothingFiber_fourier_tail_derivative (smoothingFiberDifferenceSchwartz f s) n hL
-    have he : (smoothingFiberDifferenceSchwartz f s : ℝ → ℂ) = smoothingMultiplicativeDifference f s :=
+    have he : (smoothingFiberDifferenceSchwartz f s : ℝ → ℂ) = smoothingMultiplicativeDifference f
+      s :=
       funext (smoothingFiberDifferenceSchwartz_apply f s)
     simpa only [SchwartzMap.fourier_coe, he] using hh
-  have hTi : Integrable T := (hEi.div_const c).mono' hTm.aestronglyMeasurable (Filter.Eventually.of_forall (fun s => by
+  have hTi : Integrable T := (hEi.div_const c).mono' hTm.aestronglyMeasurable
+    (Filter.Eventually.of_forall (fun s => by
     rw [Real.norm_eq_abs, abs_of_nonneg (show 0 ≤ T s from integral_nonneg (fun ξ => sq_nonneg _))]
     exact (le_div_iff₀ hc).mpr (by simpa only [mul_comm] using hb s)))
   refine ⟨hTi, ?_⟩
@@ -20742,10 +21581,12 @@ theorem smoothingRelocalizedFiberFamily_fourier_tail (ψ : SchwartzMap ℝ ℂ) 
       (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (flat : Bool) (y L : ℝ), 0 < L →
     let g := smoothingCoordinateRegularization (some ψ) j r f
     let F := fun u => smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,u)
-    Integrable (fun s : ℝ => ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference F s)) ξ‖ ^ 2) ∧
+    Integrable (fun s : ℝ => ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference F
+      s)) ξ‖ ^ 2) ∧
       (2 * Real.pi * L)^(2*n) * (∫ s : ℝ, ∫ ξ in {ξ : ℝ | L ≤ |ξ|},
         ‖(𝓕 (smoothingMultiplicativeDifference F s)) ξ‖ ^ 2) ≤
-      C * r^(2*n) * ‖(smoothingCoordinateFiber f j (smoothingCoordinateLine i y)).toLp 2 volume‖^4 := by
+      C * r^(2*n) * ‖(smoothingCoordinateFiber f j (smoothingCoordinateLine i y)).toLp 2 volume‖^4
+        := by
   choose C hC hderiv using smoothingRelocalized_selected_derivative_energy ψ
   let D := ∑ k ∈ Finset.range (n+1), C k
   have hD : 0 ≤ D := Finset.sum_nonneg (fun k hk => hC k)
@@ -20760,26 +21601,32 @@ theorem smoothingRelocalizedFiberFamily_fourier_tail (ψ : SchwartzMap ℝ ℂ) 
   have hE : 0 ≤ E := sq_nonneg _
   obtain ⟨v, hv⟩ := smoothingRelocalizedFiberFamily_schwartz g j i ha hR hρ m flat y
   have hFv : F = (v : ℝ → ℂ) := hv.symm
-  change Integrable (fun s : ℝ => ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference F s)) ξ‖ ^ 2) ∧
-    (2 * Real.pi * L)^(2*n) * (∫ s : ℝ, ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference F s)) ξ‖ ^ 2) ≤
+  change Integrable (fun s : ℝ => ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕 (smoothingMultiplicativeDifference
+    F s)) ξ‖ ^ 2) ∧
+    (2 * Real.pi * L)^(2*n) * (∫ s : ℝ, ∫ ξ in {ξ : ℝ | L ≤ |ξ|}, ‖(𝓕
+      (smoothingMultiplicativeDifference F s)) ξ‖ ^ 2) ≤
       K * D^2 * r^(2*n) * ‖(smoothingCoordinateFiber f j z).toLp 2 volume‖^4
   rw [hFv]
   refine ⟨(smoothingFiberDifference_fourier_tail v n hL).1, ?_⟩
   have hb (k : ℕ) (hk : k ≤ n) : (∫ u : ℝ, ‖iteratedDeriv k v u‖^2) ≤ (D*E)*r^(2*k) := by
     have hkd : C k ≤ D := Finset.single_le_sum (fun l hl => hC l) (Finset.mem_range.mpr (by omega))
-    have hh := (hderiv k j r a R hr ha har hR m f z (smoothingFiberSelectedIndices g j R hρ z) flat).2
+    have hh := (hderiv k j r a R hr ha har hR m f z (smoothingFiberSelectedIndices g j R hρ z)
+      flat).2
     have he : (fun u => smoothingEnlargedCutoff a m (z + smoothingCoordinateLine j u) *
         (if flat then smoothingFiberFlat g j z R (smoothingFiberSelectedIndices g j R hρ z) u
-          else smoothingFiberSharp g j z R (smoothingFiberSelectedIndices g j R hρ z) u)) = (v : ℝ → ℂ) := hv.symm
+          else smoothingFiberSharp g j z R (smoothingFiberSelectedIndices g j R hρ z) u)) = (v : ℝ
+            → ℂ) := hv.symm
     rw [he] at hh
     calc
       _ ≤ C k * r^(2*k) * E := hh
       _ ≤ D * r^(2*k) * E := by gcongr
       _ = _ := by ring
   calc
-    _ ≤ ∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference v p.1) p.2‖^2 ∂(volume.prod volume) :=
+    _ ≤ ∫ p : ℝ × ℝ, ‖iteratedDeriv n (smoothingMultiplicativeDifference v p.1) p.2‖^2
+      ∂(volume.prod volume) :=
       (smoothingFiberDifference_fourier_tail v n hL).2
-    _ ≤ K * (D*E)^2 * r^(2*n) := smoothingFiberDifference_derivative_energy_scaled v n (mul_nonneg hD hE) hr.le hb
+    _ ≤ K * (D*E)^2 * r^(2*n) := smoothingFiberDifference_derivative_energy_scaled v n (mul_nonneg
+      hD hE) hr.le hb
     _ = _ := by dsimp only [E, z]; ring
 
 /-- The actual relocalized family has integrated preferred-frequency
@@ -20804,7 +21651,8 @@ theorem smoothingRelocalized_integrated_fourier_tail (ψ : SchwartzMap ℝ ℂ) 
   let T := fun y s => ∫ ξ in {ξ : ℝ | L ≤ |ξ|},
     ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (y,u)) s)) ξ‖ ^ 2
   let E := fun y : ℝ => ∫ s : ℝ, T y s
-  let Q := fun y : ℝ => ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j (smoothingCoordinateLine i y)).toLp 2 volume‖^4
+  let Q := fun y : ℝ => ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j
+    (smoothingCoordinateLine i y)).toLp 2 volume‖^4
   let c := (2 * Real.pi * L)^(2*n)
   have hc : 0 < c := by positivity
   have hpoint (y : ℝ) : Integrable (T y) ∧ c*E y ≤ A*r^(2*n)*Q y :=
@@ -20818,7 +21666,8 @@ theorem smoothingRelocalized_integrated_fourier_tail (ψ : SchwartzMap ℝ ℂ) 
       (ν := volume.restrict {ξ : ℝ | L ≤ |ξ|})).integral_prod_right' (ν := (volume : Measure ℝ))
     exact hh.measurable
   have hE0 (y : ℝ) : 0 ≤ E y := integral_nonneg (fun s => integral_nonneg (fun ξ => sq_nonneg _))
-  have hEi : Integrable E := ((hQi.1.const_mul (A*r^(2*n))).div_const c).mono' hmE.aestronglyMeasurable
+  have hEi : Integrable E := ((hQi.1.const_mul (A*r^(2*n))).div_const c).mono'
+    hmE.aestronglyMeasurable
     (Filter.Eventually.of_forall (fun y => by
       rw [Real.norm_eq_abs, abs_of_nonneg (hE0 y)]
       exact (le_div_iff₀ hc).mpr (by simpa only [mul_comm] using (hpoint y).2)))
@@ -20829,7 +21678,7 @@ theorem smoothingRelocalized_integrated_fourier_tail (ψ : SchwartzMap ℝ ℂ) 
     _ ≤ ∫ y : ℝ, A*r^(2*n)*Q y := integral_mono_ae (hEi.const_mul c)
       (hQi.1.const_mul _) (Filter.Eventually.of_forall (fun y => (hpoint y).2))
     _ = A*r^(2*n)*(∫ y : ℝ, Q y) := integral_const_mul _ _
-    _ ≤ A*r^(2*n)*(B/a^3) := mul_le_mul_of_nonneg_left hQi.2 (by positivity)
+    _ ≤ A*r^(2*n)*(B/a ^ 3) := mul_le_mul_of_nonneg_left hQi.2 (by positivity)
     _ = _ := by ring
 
 /-- Any scalar L2 fiber has jointly integrable difference Fourier energy
@@ -20867,31 +21716,40 @@ theorem smoothing_plane_difference_fourier_energy (F : ℝ × ℝ → ℂ)
     (he : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in A,
       ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (u,y)) s)) ξ‖^2)) :
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ A},
-      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0) (smoothingPlaneEquiv x))) ξ‖^2
+      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0)
+        (smoothingPlaneEquiv x))) ξ‖^2
     Integrable E ∧ (∫ s : ℝ, E s) = ∫ y : ℝ, ∫ s : ℝ, ∫ ξ in A,
       ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (u,y)) s)) ξ‖^2 := by
-  let P := fun p : ℝ × (ℝ × ℝ) => ‖smoothingPartialFourierFirst (smoothingMultiplicativeDifference F (p.1,0)) p.2.1 p.2.2‖^2
-  let H := fun p : ℝ × (ℝ × ℝ) => ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (u,p.1)) p.2.1)) p.2.2‖^2
+  let P := fun p : ℝ × (ℝ × ℝ) => ‖smoothingPartialFourierFirst (smoothingMultiplicativeDifference
+    F (p.1,0)) p.2.1 p.2.2‖^2
+  let H := fun p : ℝ × (ℝ × ℝ) => ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (u,p.1))
+    p.2.1)) p.2.2‖^2
   let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ A},
-      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0) (smoothingPlaneEquiv x))) ξ‖^2
+      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0)
+        (smoothingPlaneEquiv x))) ξ‖^2
   have hP : Integrable P (volume.prod ((volume.restrict A).prod volume)) := by
     simp only [P, smoothing_plane_partial_difference]
     apply smoothing_family_difference_energy_integrable (fun y u => F (u,y))
-      (hFm.comp measurable_swap) A (fun y => smoothing_fiber_fourier_difference_integrable (hfiber y) A) he
+      (hFm.comp measurable_swap) A (fun y => smoothing_fiber_fourier_difference_integrable (hfiber
+        y) A) he
   have hP' : Integrable (fun p : ℝ × (ℝ × ℝ) => H (p.2.2,(p.1,p.2.1)))
       (volume.prod ((volume.restrict A).prod volume)) := by
     simpa only [P, H, smoothing_plane_partial_difference] using hP
   have hH : Integrable H (volume.prod (volume.prod (volume.restrict A))) :=
-    ((measurePreserving_prodAssoc volume (volume.restrict A) volume).integrable_comp_of_integrable hP').swap
+    ((measurePreserving_prodAssoc volume (volume.restrict A) volume).integrable_comp_of_integrable
+      hP').swap
   have hrows : ∀ᵐ s : ℝ, Integrable (fun p : ℝ × ℝ =>
-      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0) (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm p)‖^2)
+      ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0)
+        (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm p)‖^2)
       ((volume.restrict A).prod volume) ∧
       (∫ ξ in A, ∫ η : ℝ, ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) =>
-        smoothingMultiplicativeDifference F (s,0) (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm (ξ,η))‖^2) =
+        smoothingMultiplicativeDifference F (s,0) (smoothingPlaneEquiv x)))
+          (smoothingPlaneEquiv.symm (ξ,η))‖^2) =
       ∫ y : ℝ, ∫ ξ in A, P (s,(ξ,y)) := by
     filter_upwards [hP.prod_right_ae] with s hs
     have hi : Integrable (smoothingMultiplicativeDifference F (s,0)) :=
-      (hF2.comp_measurePreserving (measurePreserving_add_right volume (s,(0 : ℝ)))).integrable_mul hF2.star
+      (hF2.comp_measurePreserving (measurePreserving_add_right volume (s,(0 : ℝ)))).integrable_mul
+        hF2.star
     have hm : Measurable (smoothingMultiplicativeDifference F (s,0)) := by
       simpa only [smoothingMultiplicativeDifference, Function.comp_def, Pi.mul_def] using!
         (hFm.comp (measurable_id.add_const (s,(0 : ℝ)))).mul (continuous_star.measurable.comp hFm)
@@ -20900,7 +21758,8 @@ theorem smoothing_plane_difference_fourier_energy (F : ℝ × ℝ → ℂ)
     filter_upwards [hrows, hP.prod_right_ae] with s hs hps
     calc
       E s = ∫ ξ in A, ∫ η : ℝ,
-          ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0) (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm (ξ,η))‖^2 :=
+          ‖(𝓕 (fun x : EuclideanSpace ℝ (Fin 2) => smoothingMultiplicativeDifference F (s,0)
+            (smoothingPlaneEquiv x))) (smoothingPlaneEquiv.symm (ξ,η))‖^2 :=
         smoothing_plane_frequency_strip_integral _ A hA hs.1
       _ = ∫ y : ℝ, ∫ ξ in A, P (s,(ξ,y)) := hs.2
       _ = _ := (integral_integral_swap hps).symm
@@ -20910,23 +21769,28 @@ theorem smoothing_plane_difference_fourier_energy (F : ℝ × ℝ → ℂ)
   refine ⟨hEi, ?_⟩
   calc
     (∫ s : ℝ, E s) = ∫ s : ℝ, ∫ ξ in A, ∫ y : ℝ, P (s,(ξ,y)) := integral_congr_ae hEq
-    _ = ∫ s : ℝ, ∫ ξ in A, ∫ y : ℝ, H (y,(s,ξ)) := by simp only [P, H, smoothing_plane_partial_difference]
+    _ = ∫ s : ℝ, ∫ ξ in A, ∫ y : ℝ, H (y,(s,ξ)) :=
+      by simp only [P, H, smoothing_plane_partial_difference]
     _ = _ := smoothing_energy_integral_reorder hH
 
 /-- The general horizontal transfer in the repository's Euclidean
 coordinates, for arbitrary measurable frequency regions. -/
 theorem smoothing_first_difference_fourier_energy (F : EuclideanSpace ℝ (Fin 2) → ℂ)
     (hFm : Measurable F) (hF2 : MemLp F 2 volume) (A : Set ℝ) (hA : MeasurableSet A)
-    (hfiber : ∀ y : ℝ, MemLp (fun u => F (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u)) 2 volume)
+    (hfiber : ∀ y : ℝ, MemLp (fun u => F (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0
+      u)) 2 volume)
     (he : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u)) s)) ξ‖^2)) :
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 1 y +
+        smoothingCoordinateLine 0 u)) s)) ξ‖^2)) :
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | ξ 0 ∈ A},
       ‖(𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine 0 s))) ξ‖^2
     Integrable E ∧ (∫ s : ℝ, E s) = ∫ y : ℝ, ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u)) s)) ξ‖^2 := by
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 1 y +
+        smoothingCoordinateLine 0 u)) s)) ξ‖^2 := by
   let P := fun p : ℝ × ℝ => F (smoothingPlaneEquiv.symm p)
   have hPm : Measurable P := hFm.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hP2 : MemLp P 2 volume := hF2.comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
+  have hP2 : MemLp P 2 volume := hF2.comp_measurePreserving
+    smoothingPlaneEquiv_measurePreserving.symm
   have hp (y u : ℝ) : P (u,y) = F (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u) := by
     rw [smoothing_first_plane_point]
   have hpfiber : ∀ y : ℝ, MemLp (fun u => P (u,y)) 2 volume := by
@@ -20941,7 +21805,8 @@ theorem smoothing_first_difference_fourier_energy (F : EuclideanSpace ℝ (Fin 2
     funext x
     change F (smoothingPlaneEquiv.symm (smoothingPlaneEquiv x + (s,0))) *
       star (F (smoothingPlaneEquiv.symm (smoothingPlaneEquiv x))) = _
-    rw [map_add, smoothingPlaneEquiv.symm_apply_apply, ← smoothing_first_plane_point, map_zero, zero_add]
+    rw [map_add, smoothingPlaneEquiv.symm_apply_apply, ← smoothing_first_plane_point, map_zero,
+      zero_add]
     rfl
   have hset : {ξ : EuclideanSpace ℝ (Fin 2) | (smoothingPlaneEquiv ξ).1 ∈ A} =
       {ξ : EuclideanSpace ℝ (Fin 2) | ξ 0 ∈ A} := rfl
@@ -20968,35 +21833,45 @@ theorem smoothing_swap_frequency_region_integral (q : EuclideanSpace ℝ (Fin 2)
 one by the verified measure-preserving coordinate exchange. -/
 theorem smoothing_second_difference_fourier_energy (F : EuclideanSpace ℝ (Fin 2) → ℂ)
     (hFm : Measurable F) (hF2 : MemLp F 2 volume) (A : Set ℝ) (hA : MeasurableSet A)
-    (hfiber : ∀ y : ℝ, MemLp (fun u => F (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u)) 2 volume)
+    (hfiber : ∀ y : ℝ, MemLp (fun u => F (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1
+      u)) 2 volume)
     (he : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u)) s)) ξ‖^2)) :
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 0 y +
+        smoothingCoordinateLine 1 u)) s)) ξ‖^2)) :
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | ξ 1 ∈ A},
       ‖(𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine 1 s))) ξ‖^2
     Integrable E ∧ (∫ s : ℝ, E s) = ∫ y : ℝ, ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u)) s)) ξ‖^2 := by
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine 0 y +
+        smoothingCoordinateLine 1 u)) s)) ξ‖^2 := by
   let G := F ∘ smoothingCoordinateSwap
-  have h0 (s : ℝ) : smoothingCoordinateSwap (smoothingCoordinateLine 0 s) = smoothingCoordinateLine 1 s := by
+  have h0 (s : ℝ) : smoothingCoordinateSwap (smoothingCoordinateLine 0 s) =
+    smoothingCoordinateLine 1 s := by
     simpa only [smoothingCoordinateLine_apply] using smoothingCoordinateSwap_single s
-  have h1 (s : ℝ) : smoothingCoordinateSwap (smoothingCoordinateLine 1 s) = smoothingCoordinateLine 0 s := by
+  have h1 (s : ℝ) : smoothingCoordinateSwap (smoothingCoordinateLine 1 s) =
+    smoothingCoordinateLine 0 s := by
     rw [← h0 s, smoothingCoordinateSwap_involutive]
   have hmG : Measurable G := hFm.comp smoothingCoordinateSwap.continuous.measurable
-  have hG2 : MemLp G 2 volume := hF2.comp_measurePreserving smoothingCoordinateSwap.measurePreserving
+  have hG2 : MemLp G 2 volume := hF2.comp_measurePreserving
+    smoothingCoordinateSwap.measurePreserving
   have hp (y u : ℝ) : G (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u) =
       F (smoothingCoordinateLine 0 y + smoothingCoordinateLine 1 u) := by
     dsimp only [G, Function.comp_def]
     rw [map_add, h1, h0]
-  have hgfiber : ∀ y : ℝ, MemLp (fun u => G (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u)) 2 volume := by
+  have hgfiber : ∀ y : ℝ, MemLp (fun u => G (smoothingCoordinateLine 1 y + smoothingCoordinateLine
+    0 u)) 2 volume := by
     simpa only [hp] using hfiber
   have hge : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => G (smoothingCoordinateLine 1 y + smoothingCoordinateLine 0 u)) s)) ξ‖^2) := by
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => G (smoothingCoordinateLine 1 y +
+        smoothingCoordinateLine 0 u)) s)) ξ‖^2) := by
     simpa only [hp] using he
   have hh := smoothing_first_difference_fourier_energy G hmG hG2 A hA hgfiber hge
   have hfft (s : ℝ) (ξ : EuclideanSpace ℝ (Fin 2)) :
       (𝓕 (smoothingMultiplicativeDifference G (smoothingCoordinateLine 0 s))) ξ =
-      (𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine 1 s))) (smoothingCoordinateSwap ξ) := by
+      (𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine 1 s)))
+        (smoothingCoordinateSwap ξ) := by
     have hd : smoothingMultiplicativeDifference G (smoothingCoordinateLine 0 s) =
-        smoothingMultiplicativeDifference F (smoothingCoordinateLine 1 s) ∘ smoothingCoordinateSwap := by
+        smoothingMultiplicativeDifference F (smoothingCoordinateLine 1 s) ∘
+          smoothingCoordinateSwap := by
       funext x
       simp only [smoothingMultiplicativeDifference, G, Function.comp_def, map_add, h0]
     rw [hd]
@@ -21014,13 +21889,16 @@ integrated Fourier energy of the corresponding actual fibers. -/
 theorem smoothing_coordinate_difference_fourier_energy (F : EuclideanSpace ℝ (Fin 2) → ℂ)
     (j i : Fin 2) (hij : i ≠ j) (hFm : Measurable F) (hF2 : MemLp F 2 volume)
     (A : Set ℝ) (hA : MeasurableSet A)
-    (hfiber : ∀ y : ℝ, MemLp (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) 2 volume)
+    (hfiber : ∀ y : ℝ, MemLp (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j
+      u)) 2 volume)
     (he : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) s)) ξ‖^2)) :
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine i y +
+        smoothingCoordinateLine j u)) s)) ξ‖^2)) :
     let E := fun s : ℝ => ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | ξ j ∈ A},
       ‖(𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine j s))) ξ‖^2
     Integrable E ∧ (∫ s : ℝ, E s) = ∫ y : ℝ, ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) s)) ξ‖^2 := by
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine i y +
+        smoothingCoordinateLine j u)) s)) ξ‖^2 := by
   fin_cases j <;> fin_cases i
   · exact (hij rfl).elim
   · exact smoothing_first_difference_fourier_energy F hFm hF2 A hA hfiber he
@@ -21049,18 +21927,22 @@ theorem smoothingRelocalized_full_fourier_tail (ψ : SchwartzMap ℝ ℂ) (n : �
   have ht := hb j i hij r a R hr ha har hR ρ hρ m f hf flat L hL
   have hFm : Measurable F := (smoothingRelocalizedComponent_measurable_support g j ha R hρ m flat).1
   have hF2 : MemLp F 2 volume := smoothingRelocalizedComponent_memLp g j ha hR hρ m flat
-  have hfiber (y : ℝ) : MemLp (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) 2 volume := by
+  have hfiber (y : ℝ) : MemLp (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j
+    u)) 2 volume := by
     obtain ⟨v, hv⟩ := smoothingRelocalizedFiberFamily_schwartz g j i ha hR hρ m flat y
-    have he : (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) = (v : ℝ → ℂ) := by
+    have he : (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) = (v : ℝ →
+      ℂ) := by
       funext u
       rw [congrFun hv u]
       exact smoothingRelocalizedComponent_fiber g j i hij a R hρ m flat y u
     rw [he]
     exact v.memLp 2 volume
   have he : Integrable (fun y : ℝ => ∫ s : ℝ, ∫ ξ in A,
-      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine i y + smoothingCoordinateLine j u)) s)) ξ‖^2) := by
+      ‖(𝓕 (smoothingMultiplicativeDifference (fun u => F (smoothingCoordinateLine i y +
+        smoothingCoordinateLine j u)) s)) ξ‖^2) := by
     simpa only [F, smoothingRelocalizedComponent_fiber g j i hij, A, g] using ht.2.1
-  obtain ⟨hi, hid⟩ := smoothing_coordinate_difference_fourier_energy F j i hij hFm hF2 A hA hfiber he
+  obtain ⟨hi, hid⟩ := smoothing_coordinate_difference_fourier_energy F j i hij hFm hF2 A hA hfiber
+    he
   refine ⟨hi, ?_⟩
   change (2 * Real.pi * L)^(2*n) * (∫ s : ℝ, ∫ ξ in {ξ : EuclideanSpace ℝ (Fin 2) | ξ j ∈ A},
     ‖(𝓕 (smoothingMultiplicativeDifference F (smoothingCoordinateLine j s))) ξ‖^2) ≤ _
@@ -21111,7 +21993,8 @@ theorem smoothingRelocalized_coefficient_tail (ψ : SchwartzMap ℝ ℂ) (n N : 
   have hpoint (s : ℝ) : E s ≤ Q s :=
     (hsampling a ha T hT.le m j (smoothingCoordinateLine j s) F hmF
       (smoothingRelocalizedComponent_memLp g j ha hR hρ m flat) M hM hbound hsF).2
-  have hiE : Integrable E := hiQ.mono' hmE.aestronglyMeasurable (Filter.Eventually.of_forall (fun s => by
+  have hiE : Integrable E := hiQ.mono' hmE.aestronglyMeasurable (Filter.Eventually.of_forall (fun
+    s => by
     rw [Real.norm_eq_abs, abs_of_nonneg (show 0 ≤ E s from tsum_nonneg (fun k => sq_nonneg _))]
     exact hpoint s))
   have hbE₀ : (∫ s : ℝ, E₀ s) ≤ (A*(4/Real.pi)^(2*n)*(r/T)^(2*n))/a^3 := by
@@ -21133,13 +22016,14 @@ theorem smoothingRelocalized_coefficient_tail (ψ : SchwartzMap ℝ ℂ) (n N : 
     _ = K*a^2 * ((∫ s : ℝ, E₀ s) + (∫ s : ℝ, V s)/U) := by
       rw [integral_const_mul, integral_add hi₀ (hiV.div_const U), integral_div]
     _ ≤ K*a^2 * ((A*(4/Real.pi)^(2*n)*(r/T)^(2*n))/a^3 + (B/a^3)/U) :=
-      mul_le_mul_of_nonneg_left (add_le_add hbE₀ (div_le_div_of_nonneg_right hbV hU.le)) (by positivity)
+      mul_le_mul_of_nonneg_left (add_le_add hbE₀ (div_le_div_of_nonneg_right hbV hU.le))
+        (by positivity)
     _ = _ := by dsimp only [U]; field_simp
 
 /-- At the source localization scale gamma>1/2, the coefficients beyond
 the curvature threshold have arbitrarily rapid integrated decay. -/
 theorem smoothing_section3_3_high_coefficient_energy (ψ : SchwartzMap ℝ ℂ)
-    {γ : ℝ} (hγ : 1/2 < γ) (hγ1 : γ ≤ 1) (δ : ℝ) :
+    {γ : ℝ} (hγ : 1 / 2 < γ) (hγ1 : γ ≤ 1) (δ : ℝ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (j i : Fin 2), i ≠ j → ∀ (r : ℝ), 1 ≤ r →
     ∀ (R : ℝ) (hR : 0 < R) (ρ : ℝ) (hρ : 0 < ρ) (m : Fin 2 → ℤ)
       (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ), (∀ x, ‖f x‖ ≤ 1) → ∀ flat : Bool,
@@ -21162,8 +22046,9 @@ theorem smoothing_section3_3_high_coefficient_energy (ψ : SchwartzMap ℝ ℂ)
   intro j i hij r hr R hR ρ hρ m f hf flat
   have hr0 : 0 < r := by linarith
   have ha : 0 < r^γ := Real.rpow_pos_of_pos hr0 _
-  have har : r^γ ≤ r := by simpa only [Real.rpow_one] using Real.rpow_le_rpow_of_exponent_le hr hγ1
-  have hratio : (r/(r^γ)^2)^(2*N) ≤ r^(-δ) := by
+  have har : r^γ ≤ r :=
+    by simpa only [Real.rpow_one] using Real.rpow_le_rpow_of_exponent_le hr hγ1
+  have hratio : (r/(r ^ γ)^2)^(2*N) ≤ r^(-δ) := by
     have he : r/(r^γ)^2 = r^(1-2*γ) := by
       rw [Real.rpow_sub hr0, Real.rpow_one, show 2*γ = γ*(2 : ℕ) by push_cast; ring,
         Real.rpow_mul_natCast hr0.le]
@@ -21171,7 +22056,7 @@ theorem smoothing_section3_3_high_coefficient_energy (ψ : SchwartzMap ℝ ℂ)
     exact Real.rpow_le_rpow_of_exponent_le hr (by push_cast at hδ2N ⊢; nlinarith)
   have htail := smoothing_relocalization_tail_scale hr N hδγN
   have ht : 0 < (r^γ)^2 := sq_pos_of_pos ha
-  have hh := hb j i hij r (r^γ) R hr0 ha har hR ρ hρ m f hf flat ((r^γ)^2) ht
+  have hh := hb j i hij r (r^γ) R hr0 ha har hR ρ hρ m f hf flat ((r ^ γ)^2) ht
   have hthreshold : (r^γ)^2/(r^γ) = r^γ := by field_simp
   have hden : (r^γ)^2/(2*r^γ) = r^γ/2 := by field_simp
   dsimp only at hh ⊢
@@ -21196,10 +22081,12 @@ theorem smoothingFiber_interval_difference_energy (f : SchwartzMap ℝ ℂ) {l u
     (memLp_two_iff_integrable_sq_norm D.continuous.aestronglyMeasurable).mp (D.memLp 2 volume)
   have hw : Integrable (fun v : ℝ => ‖D v‖^2 * ‖(1 : ℂ)‖) (volume.restrict (Set.Ioc l u)) := by
     simpa only [norm_one, mul_one, IntegrableOn] using! hi.integrableOn (s := Set.Ioc l u)
-  have hh := smoothing_integral_weighted_cauchy_schwarz D.continuous.measurable measurable_const hconst hw
+  have hh := smoothing_integral_weighted_cauchy_schwarz D.continuous.measurable measurable_const
+    hconst hw
   have he : (∫ v in Set.Ioc l u, D v) = f u - f l := by
     rw [← intervalIntegral.integral_of_le hlu]
-    exact intervalIntegral.integral_deriv_eq_sub (fun v hv => f.differentiableAt) D.integrable.intervalIntegrable
+    exact intervalIntegral.integral_deriv_eq_sub (fun v hv => f.differentiableAt)
+      D.integrable.intervalIntegrable
   have hmass : (∫ v in Set.Ioc l u, (1 : ℝ)) = u-l := by
     simp only [integral_const, smul_eq_mul, mul_one, Measure.real, Measure.restrict_apply_univ,
       Real.volume_Ioc, ENNReal.toReal_ofReal (sub_nonneg.mpr hlu)]
@@ -21210,10 +22097,11 @@ theorem smoothingFiber_interval_difference_energy (f : SchwartzMap ℝ ℂ) {l u
 /-- If both endpoints lie in a short window, its full derivative energy
 controls their displacement regardless of the order of the endpoints. -/
 theorem smoothingFiber_window_difference_energy (f : SchwartzMap ℝ ℂ)
-    {c d x y : ℝ} (hd : 0 ≤ d) (hx : |x-c| ≤ d) (hy : |y-c| ≤ d) :
+    {c d x y : ℝ} (hd : 0 ≤ d) (hx : |x - c| ≤ d) (hy : |y - c| ≤ d) :
     ‖f x - f y‖^2 ≤ 2*d * ∫ v in Set.Icc (c-d) (c+d), ‖deriv f v‖^2 := by
   have hi : Integrable (fun v : ℝ => ‖deriv f v‖^2) :=
-    (memLp_two_iff_integrable_sq_norm (SchwartzMap.derivCLM ℂ ℂ f).continuous.aestronglyMeasurable).mp
+    (memLp_two_iff_integrable_sq_norm (SchwartzMap.derivCLM ℂ ℂ
+      f).continuous.aestronglyMeasurable).mp
       ((SchwartzMap.derivCLM ℂ ℂ f).memLp 2 volume)
   have hord (l u : ℝ) (hl : |l-c| ≤ d) (hu : |u-c| ≤ d) (hlu : l ≤ u) :
       ‖f u-f l‖^2 ≤ 2*d * ∫ v in Set.Icc (c-d) (c+d), ‖deriv f v‖^2 := by
@@ -21242,7 +22130,8 @@ theorem smoothing_window_translate (q : ℝ → ℝ) {d : ℝ} (hd : 0 ≤ d) (x
   rw [integral_Icc_eq_integral_Ioc, integral_Icc_eq_integral_Ioc,
     ← intervalIntegral.integral_of_le (by linarith : x-d ≤ x+d),
     ← intervalIntegral.integral_of_le (by linarith : -d ≤ d)]
-  simpa only [sub_eq_add_neg] using (intervalIntegral.integral_comp_add_left q (a := -d) (b := d) x).symm
+  simpa only [sub_eq_add_neg] using (intervalIntegral.integral_comp_add_left q (a := -d) (b :=
+    d) x).symm
 
 /-- Integrating a moving window counts each point by the window length. -/
 theorem smoothing_window_integral {q : ℝ → ℝ} (hq : Continuous q) (hqi : Integrable q)
@@ -21300,14 +22189,16 @@ theorem smoothing_affine_envelope_energy {q : ℝ → ℝ}
 /-- The derivative window gives a uniform integrated envelope for variable shifts. -/
 theorem smoothingFiber_window_envelope_energy (f g : SchwartzMap ℝ ℂ)
     {d b : ℝ} (hd : 0 ≤ d) (hb : 0 < b) :
-    let H := fun p : ℝ × ℝ => 2*d * (∫ v in Set.Icc (p.2+b*p.1-d) (p.2+b*p.1+d), ‖deriv f v‖^2) * ‖g p.2‖^2
+    let H := fun p : ℝ × ℝ => 2*d * (∫ v in Set.Icc (p.2+b*p.1-d) (p.2+b*p.1+d), ‖deriv f v‖^2) *
+      ‖g p.2‖^2
     Integrable H (volume.prod volume) ∧
     (∫ p : ℝ × ℝ, H p ∂(volume.prod volume)) =
       (4*d^2/b) * (∫ v : ℝ, ‖deriv f v‖^2) * ∫ u : ℝ, ‖g u‖^2 := by
   let q := fun v : ℝ => ‖deriv f v‖^2
   have hqc : Continuous q := (SchwartzMap.derivCLM ℂ ℂ f).continuous.norm.pow 2
   have hqi : Integrable q :=
-    (memLp_two_iff_integrable_sq_norm (SchwartzMap.derivCLM ℂ ℂ f).continuous.aestronglyMeasurable).mp
+    (memLp_two_iff_integrable_sq_norm (SchwartzMap.derivCLM ℂ ℂ
+      f).continuous.aestronglyMeasurable).mp
       ((SchwartzMap.derivCLM ℂ ℂ f).memLp 2 volume)
   let Q := fun x : ℝ => ∫ v in Set.Icc (x-d) (x+d), q v
   have hQm : Measurable Q := by
@@ -21315,11 +22206,13 @@ theorem smoothingFiber_window_envelope_energy (f g : SchwartzMap ℝ ℂ)
     have hh := hm.stronglyMeasurable.integral_prod_right' (ν := volume.restrict (Set.Icc (-d) d))
     simpa only [Q, smoothing_window_translate q hd] using hh.measurable
   have hQ := smoothing_window_integral hqc hqi hd
-  have hh := smoothing_affine_envelope_energy hQm hQ.1 (fun x => integral_nonneg (fun v => sq_nonneg _)) g hb
+  have hh := smoothing_affine_envelope_energy hQm hQ.1 (fun x => integral_nonneg (fun v =>
+    sq_nonneg _)) g hb
   dsimp only
   constructor
   · simpa only [Q, q, mul_assoc] using hh.1.const_mul (2*d)
-  · have hi := integral_const_mul (2*d) (fun p : ℝ × ℝ => Q (p.2+b*p.1) * ‖g p.2‖^2) (μ := volume.prod volume)
+  · have hi := integral_const_mul (2*d) (fun p : ℝ × ℝ => Q (p.2+b*p.1) * ‖g p.2‖^2) (μ :=
+      volume.prod volume)
     simp only [← mul_assoc] at hi
     rw [hi, hh.2, hQ.2]
     dsimp only [q]
@@ -21335,17 +22228,20 @@ theorem smoothingFiber_variable_shift_energy (f g : SchwartzMap ℝ ℂ)
     (∫ p in I ×ˢ Set.univ, E p ∂(volume.prod volume)) ≤
       (4*d^2/b) * (∫ v : ℝ, ‖deriv f v‖^2) * ∫ u : ℝ, ‖g u‖^2 := by
   let E := fun p : ℝ × ℝ => ‖f (p.2+b*p.1+δ p)-f (p.2+b*p.1)‖^2 * ‖g p.2‖^2
-  let H := fun p : ℝ × ℝ => 2*d * (∫ v in Set.Icc (p.2+b*p.1-d) (p.2+b*p.1+d), ‖deriv f v‖^2) * ‖g p.2‖^2
+  let H := fun p : ℝ × ℝ => 2*d * (∫ v in Set.Icc (p.2+b*p.1-d) (p.2+b*p.1+d), ‖deriv f v‖^2) * ‖g
+    p.2‖^2
   have hh := smoothingFiber_window_envelope_energy f g hd hb
   have hEm : Measurable E := by
     dsimp only [E]
-    exact (((f.continuous.measurable.comp ((by fun_prop : Measurable (fun p : ℝ × ℝ => p.2+b*p.1)).add hδm)).sub
+    exact (((f.continuous.measurable.comp
+      ((by fun_prop : Measurable (fun p : ℝ × ℝ => p.2+b*p.1)).add hδm)).sub
       (f.continuous.measurable.comp (by fun_prop))).norm.pow_const 2).mul (by fun_prop)
   have hEn (p : ℝ × ℝ) : 0 ≤ E p := mul_nonneg (sq_nonneg _) (sq_nonneg _)
   have hHn (p : ℝ × ℝ) : 0 ≤ H p := by dsimp only [H]; positivity
   have hbound (p : ℝ × ℝ) (hp : p ∈ I ×ˢ Set.univ) : E p ≤ H p := by
     apply mul_le_mul_of_nonneg_right _ (sq_nonneg _)
-    exact smoothingFiber_window_difference_energy f hd (by simpa only [add_sub_cancel_left] using hδ p hp.1)
+    exact smoothingFiber_window_difference_energy f hd
+      (by simpa only [add_sub_cancel_left] using hδ p hp.1)
       (by simpa using hd)
   have hbnd : E ≤ᵐ[(volume.prod volume).restrict (I ×ˢ Set.univ)] H := by
     filter_upwards [ae_restrict_mem (hI.prod MeasurableSet.univ)] with p hp
@@ -21357,7 +22253,8 @@ theorem smoothingFiber_variable_shift_energy (f g : SchwartzMap ℝ ℂ)
   dsimp only
   refine ⟨hi, ?_⟩
   calc
-    _ ≤ ∫ p in I ×ˢ Set.univ, H p ∂(volume.prod volume) := integral_mono_ae hi hh.1.integrableOn hbnd
+    _ ≤ ∫ p in I ×ˢ Set.univ, H p ∂(volume.prod volume) := integral_mono_ae hi hh.1.integrableOn
+      hbnd
     _ ≤ ∫ p : ℝ × ℝ, H p ∂(volume.prod volume) :=
       integral_mono_measure Measure.restrict_le_self (Filter.Eventually.of_forall hHn) hh.1
     _ = _ := hh.2
@@ -21375,7 +22272,8 @@ theorem smoothingRelocalizedFiberFamily_variable_shift_energy (ψ : SchwartzMap 
     let E := fun p : ℝ × ℝ => ‖F (p.2+b*p.1+δ p)-F (p.2+b*p.1)‖^2 * ‖F p.2‖^2
     IntegrableOn E (I ×ˢ Set.univ) (volume.prod volume) ∧
     (∫ p in I ×ˢ Set.univ, E p ∂(volume.prod volume)) ≤
-      C*r^2*d^2/b * ‖(smoothingCoordinateFiber f j (smoothingCoordinateLine i y)).toLp 2 volume‖^4 := by
+      C*r^2*d^2/b * ‖(smoothingCoordinateFiber f j (smoothingCoordinateLine i y)).toLp 2 volume‖^4
+        := by
   obtain ⟨A, hA, hzero⟩ := smoothingRelocalized_selected_derivative_energy ψ 0
   obtain ⟨B, hB, hone⟩ := smoothingRelocalized_selected_derivative_energy ψ 1
   refine ⟨4*A*B, by positivity, ?_⟩
@@ -21385,7 +22283,8 @@ theorem smoothingRelocalizedFiberFamily_variable_shift_energy (ψ : SchwartzMap 
   let S := smoothingFiberSelectedIndices g j R hρ z
   obtain ⟨v, hv⟩ := smoothingRelocalizedFiberFamily_schwartz g j i ha hR hρ m flat y
   have he : (fun u => smoothingEnlargedCutoff a m (z + smoothingCoordinateLine j u) *
-      (if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R S u)) = (v : ℝ → ℂ) := hv.symm
+      (if flat then smoothingFiberFlat g j z R S u else smoothingFiberSharp g j z R S u)) = (v : ℝ
+        → ℂ) := hv.symm
   have h0 := (hzero j r a R hr ha har hR m f z S flat).2
   have h1 := (hone j r a R hr ha har hR m f z S flat).2
   rw [he] at h0 h1
@@ -21393,9 +22292,17 @@ theorem smoothingRelocalizedFiberFamily_variable_shift_energy (ψ : SchwartzMap 
   simp only [iteratedDeriv_one, Nat.mul_one] at h1
   have hh := smoothingFiber_variable_shift_energy v v hd hb I hI δ hδm hδ
   dsimp only
-  have hFv : (fun u => smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,u)) = (v : ℝ → ℂ) := hv.symm
-  change IntegrableOn (fun p : ℝ × ℝ => ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2+b*p.1+δ p)-smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2+b*p.1)‖^2 * ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2)‖^2) (I ×ˢ Set.univ) (volume.prod volume) ∧ (∫ p in I ×ˢ Set.univ, ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2+b*p.1+δ p)-smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2+b*p.1)‖^2 * ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2)‖^2 ∂(volume.prod volume)) ≤ 4*A*B*r^2*d^2/b * ‖(smoothingCoordinateFiber f j (smoothingCoordinateLine i y)).toLp 2 volume‖^4
-  have hp (u : ℝ) : smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,u) = v u := congrFun hFv u
+  have hFv : (fun u => smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,u)) = (v : ℝ → ℂ) :=
+    hv.symm
+  change IntegrableOn (fun p : ℝ × ℝ => ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat
+    (y,p.2+b*p.1+δ p)-smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2+b*p.1)‖^2 *
+    ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2)‖^2) (I ×ˢ Set.univ) (volume.prod
+    volume) ∧ (∫ p in I ×ˢ Set.univ, ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat
+    (y,p.2+b*p.1+δ p)-smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2+b*p.1)‖^2 *
+    ‖smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,p.2)‖^2 ∂(volume.prod volume)) ≤
+    4*A*B*r^2*d^2/b * ‖(smoothingCoordinateFiber f j (smoothingCoordinateLine i y)).toLp 2 volume‖^4
+  have hp (u : ℝ) : smoothingRelocalizedFiberFamily g j i a R hρ m flat (y,u) = v u := congrFun
+    hFv u
   simp_rw [hp]
   refine ⟨hh.1, hh.2.trans ?_⟩
   calc
@@ -21422,7 +22329,7 @@ theorem smoothingRelocalized_integrated_variable_shift_energy (ψ : SchwartzMap 
     let E := fun y (p : ℝ × ℝ) => ‖F (y,p.2+b*p.1+δ p)-F (y,p.2+b*p.1)‖^2 * ‖F (y,p.2)‖^2
     (∀ y, IntegrableOn (E y) (I ×ˢ Set.univ) (volume.prod volume)) ∧
     Integrable (fun y : ℝ => ∫ p in I ×ˢ Set.univ, E y p ∂(volume.prod volume)) ∧
-    (∫ y : ℝ, ∫ p in I ×ˢ Set.univ, E y p ∂(volume.prod volume)) ≤ C*r^2*d^2/(b*a^3) := by
+    (∫ y : ℝ, ∫ p in I ×ˢ Set.univ, E y p ∂(volume.prod volume)) ≤ C*r^2*d^2/(b*a ^ 3) := by
   obtain ⟨A, hA, hbnd⟩ := smoothingRelocalizedFiberFamily_variable_shift_energy ψ
   obtain ⟨B, hB, hfourth⟩ := smoothingRegularizedPiece_integral_fiber_norm_fourth none
   refine ⟨A*B, by positivity, ?_⟩
@@ -21431,9 +22338,11 @@ theorem smoothingRelocalized_integrated_variable_shift_energy (ψ : SchwartzMap 
   let F := smoothingRelocalizedFiberFamily g j i a R hρ m flat
   let E := fun y (p : ℝ × ℝ) => ‖F (y,p.2+b*p.1+δ p)-F (y,p.2+b*p.1)‖^2 * ‖F (y,p.2)‖^2
   let T := fun y : ℝ => ∫ p in I ×ˢ Set.univ, E y p ∂(volume.prod volume)
-  let Q := fun y : ℝ => ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j (smoothingCoordinateLine i y)).toLp 2 volume‖^4
+  let Q := fun y : ℝ => ‖(smoothingCoordinateFiber (smoothingSpatialPiece a m f) j
+    (smoothingCoordinateLine i y)).toLp 2 volume‖^4
   have hpoint (y : ℝ) : IntegrableOn (E y) (I ×ˢ Set.univ) (volume.prod volume) ∧
-      T y ≤ A*r^2*d^2/b * Q y := hbnd j i r a R hr ha har hR ρ hρ m (smoothingSpatialPiece a m f) flat y d b hd hb I hI δ hδm hδ
+      T y ≤ A*r^2*d^2/b * Q y := hbnd j i r a R hr ha har hR ρ hρ m (smoothingSpatialPiece a m f)
+        flat y d b hd hb I hI δ hδm hδ
   have hQi : Integrable Q ∧ (∫ y : ℝ, Q y) ≤ B/a^3 := by
     simpa only [smoothingCoordinateRegularization] using! hfourth j i hij r a hr ha m f hf
   have hmF : Measurable F := smoothingRelocalizedFiberFamily_measurable g j i ha R hρ m flat
@@ -21444,7 +22353,8 @@ theorem smoothingRelocalized_integrated_variable_shift_energy (ψ : SchwartzMap 
     apply Measurable.pow_const
     apply Measurable.norm
     apply Measurable.sub
-    · exact hmF.comp (measurable_fst.prodMk ((by fun_prop : Measurable (fun w : ℝ × (ℝ × ℝ) => w.2.2+b*w.2.1)).add hmδ))
+    · exact hmF.comp (measurable_fst.prodMk
+        ((by fun_prop : Measurable (fun w : ℝ × (ℝ × ℝ) => w.2.2+b*w.2.1)).add hmδ))
     · exact hmF.comp (by fun_prop)
   have hmT : Measurable T := (hmE.stronglyMeasurable.integral_prod_right'
     (ν := (volume.prod volume).restrict (I ×ˢ Set.univ))).measurable
@@ -21456,7 +22366,7 @@ theorem smoothingRelocalized_integrated_variable_shift_energy (ψ : SchwartzMap 
     _ ≤ ∫ y : ℝ, A*r^2*d^2/b * Q y := integral_mono_ae hiT (hQi.1.const_mul _)
       (Filter.Eventually.of_forall (fun y => (hpoint y).2))
     _ = A*r^2*d^2/b * ∫ y : ℝ, Q y := integral_const_mul _ _
-    _ ≤ A*r^2*d^2/b * (B/a^3) := mul_le_mul_of_nonneg_left hQi.2 (by positivity)
+    _ ≤ A*r^2*d^2/b * (B/a ^ 3) := mul_le_mul_of_nonneg_left hQi.2 (by positivity)
     _ = _ := by ring
 
 /-- The quadratic-to-linear shift replacement preceding (3.9), applied
@@ -21483,7 +22393,10 @@ theorem smoothingRelocalized_quadratic_shift_energy (ψ : SchwartzMap ℝ ℂ) :
     have he : δ p = (t+p.1)^2-(t^2+2*p.1*t₀) := by dsimp only [δ]; ring
     rwa [he]
   have hh := hbnd j i hij r a R hr ha har hR ρ hρ m f hf flat (192*(a⁻¹)^2) (2*t₀)
-    (by positivity) (by positivity) I (measurableSet_le (by fun_prop) measurable_const) δ (by dsimp only [δ]; fun_prop) hδ
+    (by
+      positivity) (by
+        positivity) I (measurableSet_le (by fun_prop) measurable_const) δ (by
+          dsimp only [δ]; fun_prop) hδ
   have he₁ (p : ℝ × ℝ) : p.2+(2*t₀)*p.1+δ p = p.2+2*p.1*t+p.1^2 := by dsimp only [δ]; ring
   have he₂ (p : ℝ × ℝ) : p.2+(2*t₀)*p.1 = p.2+2*p.1*t₀ := by ring
   dsimp only at hh ⊢
@@ -21502,15 +22415,20 @@ theorem smoothing_correlation_energy_coordinates {H : ℝ × (ℝ × ℝ) → �
       ∫ p : ℝ × (ℝ × ℝ), H p ∂(volume.prod (volume.prod volume)) := by
   let e : (ℝ × (ℝ × ℝ)) ≃ᵐ (ℝ × (ℝ × ℝ)) :=
     MeasurableEquiv.prodAssoc.symm.trans
-      (MeasurableEquiv.prodComm.trans (MeasurableEquiv.prodCongr (MeasurableEquiv.refl ℝ) MeasurableEquiv.prodComm))
-  have he : MeasurePreserving e (volume.prod (volume.prod volume)) (volume.prod (volume.prod volume)) :=
+      (MeasurableEquiv.prodComm.trans (MeasurableEquiv.prodCongr (MeasurableEquiv.refl ℝ)
+        MeasurableEquiv.prodComm))
+  have he : MeasurePreserving e (volume.prod (volume.prod volume)) (volume.prod (volume.prod
+    volume)) :=
     ((MeasurePreserving.id (volume : Measure ℝ)).prod Measure.measurePreserving_swap).comp
-      (Measure.measurePreserving_swap.comp (measurePreserving_prodAssoc (volume : Measure ℝ) volume volume).symm)
+      (Measure.measurePreserving_swap.comp (measurePreserving_prodAssoc (volume : Measure ℝ)
+        volume volume).symm)
   let v : ℝ × (ℝ × ℝ) := (-t^2,(0,t))
-  have hv : MeasurePreserving (fun p : ℝ × (ℝ × ℝ) => p+v) (volume.prod (volume.prod volume)) (volume.prod (volume.prod volume)) := by
+  have hv : MeasurePreserving (fun p : ℝ × (ℝ × ℝ) => p+v) (volume.prod (volume.prod volume))
+    (volume.prod (volume.prod volume)) := by
     have hh := (measurePreserving_add_right volume (-t^2)).prod
       ((MeasurePreserving.id (volume : Measure ℝ)).prod (measurePreserving_add_right volume t))
-    have heq : (fun p : ℝ × (ℝ × ℝ) => p+v) = Prod.map (fun x : ℝ => x + -t^2) (Prod.map id (fun x : ℝ => x+t)) := by
+    have heq : (fun p : ℝ × (ℝ × ℝ) => p+v) = Prod.map (fun x : ℝ => x + -t^2) (Prod.map id (fun x
+      : ℝ => x+t)) := by
       funext p
       exact Prod.ext rfl (Prod.ext (add_zero p.2.1) rfl)
     rw [heq]
@@ -21531,7 +22449,8 @@ theorem smoothing_bounded_amplitude_L2_pairing_norm {X : Type*} [MeasurableSpace
     (μ : Measure X) {P Q K : X → ℂ} (hP : Measurable P) (hQ : Measurable Q) (hK : Measurable K)
     (hP2 : MemLp P 2 μ) (hQ2 : MemLp Q 2 μ) {M : ℝ} (hM : 0 ≤ M) (hKm : ∀ x, ‖K x‖ ≤ M) :
     Integrable (fun x => P x * Q x * K x) μ ∧
-    (∫ x, ‖P x * Q x * K x‖ ∂μ) ≤ M * Real.sqrt (∫ x, ‖P x‖^2 ∂μ) * Real.sqrt (∫ x, ‖Q x‖^2 ∂μ) := by
+    (∫ x, ‖P x * Q x * K x‖ ∂μ) ≤ M * Real.sqrt (∫ x, ‖P x‖^2 ∂μ) * Real.sqrt (∫ x, ‖Q x‖^2 ∂μ) :=
+      by
   have hip := hP2.norm.integrable_mul hQ2.norm
   have hb (x : X) : ‖P x * Q x * K x‖ ≤ M*(‖P x‖*‖Q x‖) := by
     rw [norm_mul, norm_mul]
@@ -21539,7 +22458,8 @@ theorem smoothing_bounded_amplitude_L2_pairing_norm {X : Type*} [MeasurableSpace
       _ ≤ (‖P x‖*‖Q x‖)*M := mul_le_mul_of_nonneg_left (hKm x) (by positivity)
       _ = _ := mul_comm _ _
   have hi : Integrable (fun x => P x * Q x * K x) μ :=
-    (hip.const_mul M).mono' ((hP.mul hQ).mul hK).aestronglyMeasurable (Filter.Eventually.of_forall hb)
+    (hip.const_mul M).mono' ((hP.mul hQ).mul hK).aestronglyMeasurable (Filter.Eventually.of_forall
+      hb)
   have hcs : (∫ x, ‖P x‖*‖Q x‖ ∂μ) ≤ Real.sqrt (∫ x, ‖P x‖^2 ∂μ) * Real.sqrt (∫ x, ‖Q x‖^2 ∂μ) := by
     have hh := integral_mul_le_Lp_mul_Lq_of_nonneg Real.HolderConjugate.two_two
       (Filter.Eventually.of_forall (fun x => norm_nonneg (P x)))
@@ -21581,14 +22501,17 @@ theorem smoothing_cross_fiber_correlation_error
     (K : ℝ × (ℝ × ℝ) → ℂ) (hK : Measurable K) {M : ℝ} (hM : 0 ≤ M) (hKm : ∀ w, ‖K w‖ ≤ M) :
     let μ := volume.prod ((volume.prod volume).restrict (I ×ˢ Set.univ))
     let P := fun w : ℝ × (ℝ × ℝ) => F (w.2.2-t^2,w.1+t+w.2.1)*star (F (w.2.2-t^2,w.1+t))
-    let Q := fun w : ℝ × (ℝ × ℝ) => (G (w.1,w.2.2+2*w.2.1*t+w.2.1^2)-G (w.1,w.2.2+2*w.2.1*t₀))*star (G (w.1,w.2.2))
+    let Q := fun w : ℝ × (ℝ × ℝ) => (G (w.1,w.2.2+2*w.2.1*t+w.2.1^2)-G
+      (w.1,w.2.2+2*w.2.1*t₀))*star (G (w.1,w.2.2))
     Integrable (fun w => P w * Q w * K w) μ ∧
     (∫ w, ‖P w * Q w * K w‖ ∂μ) ≤ M*Real.sqrt A*Real.sqrt B := by
   let ν : Measure (ℝ × (ℝ × ℝ)) := volume.prod (volume.prod volume)
   let μ : Measure (ℝ × (ℝ × ℝ)) := volume.prod ((volume.prod volume).restrict (I ×ˢ Set.univ))
   let P := fun w : ℝ × (ℝ × ℝ) => F (w.2.2-t^2,w.1+t+w.2.1)*star (F (w.2.2-t^2,w.1+t))
-  let Q := fun w : ℝ × (ℝ × ℝ) => (G (w.1,w.2.2+2*w.2.1*t+w.2.1^2)-G (w.1,w.2.2+2*w.2.1*t₀))*star (G (w.1,w.2.2))
-  have hPm : Measurable P := (hF.comp (by fun_prop)).mul (continuous_star.measurable.comp (hF.comp (by fun_prop)))
+  let Q := fun w : ℝ × (ℝ × ℝ) => (G (w.1,w.2.2+2*w.2.1*t+w.2.1^2)-G (w.1,w.2.2+2*w.2.1*t₀))*star
+    (G (w.1,w.2.2))
+  have hPm : Measurable P := (hF.comp (by fun_prop)).mul (continuous_star.measurable.comp (hF.comp
+    (by fun_prop)))
   have hQm : Measurable Q := ((hG.comp (by fun_prop)).sub (hG.comp (by fun_prop))).mul
     (continuous_star.measurable.comp (hG.comp (by fun_prop)))
   have hμ : μ ≤ ν := Measure.prod_mono le_rfl Measure.restrict_le_self
@@ -21628,21 +22551,25 @@ theorem smoothingRelocalized_correlation_error_at_time
     let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
     let F := smoothingRelocalizedFiberFamily g₁ 0 1 a R₁ hρ₁ m₁ flat₁
     let G := smoothingRelocalizedFiberFamily g₂ 1 0 a R₂ hρ₂ m₂ flat₂
-    let μ : Measure (ℝ × (ℝ × ℝ)) := volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ 8/a} ×ˢ Set.univ))
+    let μ : Measure (ℝ × (ℝ × ℝ)) := volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤
+      8/a} ×ˢ Set.univ))
     let P := fun w : ℝ × (ℝ × ℝ) => F (w.2.2-t^2,w.1+t+w.2.1)*star (F (w.2.2-t^2,w.1+t))
-    let Q := fun w : ℝ × (ℝ × ℝ) => (G (w.1,w.2.2+2*w.2.1*t+w.2.1^2)-G (w.1,w.2.2+2*w.2.1*t₀))*star (G (w.1,w.2.2))
+    let Q := fun w : ℝ × (ℝ × ℝ) => (G (w.1,w.2.2+2*w.2.1*t+w.2.1^2)-G
+      (w.1,w.2.2+2*w.2.1*t₀))*star (G (w.1,w.2.2))
     Integrable (fun w => P w * Q w * K w) μ ∧
     (∫ w, ‖P w * Q w * K w‖ ∂μ) ≤ M*C*r/(Real.sqrt t₀*a^5) := by
   obtain ⟨A, hA, hfirst⟩ := smoothingRelocalized_integrated_difference_energy ψ₁
   obtain ⟨B, hB, hsecond⟩ := smoothingRelocalized_quadratic_shift_energy ψ₂
   refine ⟨Real.sqrt A * Real.sqrt B, by positivity, ?_⟩
-  intro r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ t t₀ ht₀ ht K hK M hM hKm
+  intro r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ t t₀ ht₀ ht K hK
+    M hM hKm
   let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m₁ f₁)
   let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
   let F := smoothingRelocalizedFiberFamily g₁ 0 1 a R₁ hρ₁ m₁ flat₁
   let G := smoothingRelocalizedFiberFamily g₂ 1 0 a R₂ hρ₂ m₂ flat₂
   obtain ⟨hi, hb⟩ := hfirst 0 1 (by decide) r a R₁ ρ₁ hr ha hR₁ hρ₁ m₁ f₁ hf₁ flat₁
-  change Integrable (fun w : ℝ × (ℝ × ℝ) => ‖F (w.1,w.2.2+w.2.1)*star (F (w.1,w.2.2))‖^2) (volume.prod (volume.prod volume)) at hi
+  change Integrable (fun w : ℝ × (ℝ × ℝ) => ‖F (w.1,w.2.2+w.2.1)*star (F (w.1,w.2.2))‖^2)
+    (volume.prod (volume.prod volume)) at hi
   have hFA : (∫ w : ℝ × (ℝ × ℝ), ‖F (w.1,w.2.2+w.2.1)*star (F (w.1,w.2.2))‖^2
       ∂(volume.prod (volume.prod volume))) ≤ A/a^3 := by
     have he : (∫ w : ℝ × (ℝ × ℝ), ‖F (w.1,w.2.2+w.2.1)*star (F (w.1,w.2.2))‖^2
@@ -21654,7 +22581,8 @@ theorem smoothingRelocalized_correlation_error_at_time
       exact integral_prod _ hy
     rw [he]
     exact hb
-  obtain ⟨hGi, hGo, hGB⟩ := hsecond 1 0 (by decide) r a R₂ hr ha har hR₂ ρ₂ hρ₂ m₂ f₂ hf₂ flat₂ t t₀ ht₀ ht
+  obtain ⟨hGi, hGo, hGB⟩ := hsecond 1 0 (by decide) r a R₂ hr ha har hR₂ ρ₂ hρ₂ m₂ f₂ hf₂ flat₂ t
+    t₀ ht₀ ht
   have hh := smoothing_cross_fiber_correlation_error F G
     (smoothingRelocalizedFiberFamily_measurable g₁ 0 1 ha R₁ hρ₁ m₁ flat₁)
     (smoothingRelocalizedFiberFamily_measurable g₂ 1 0 ha R₂ hρ₂ m₂ flat₂)
@@ -21676,10 +22604,10 @@ theorem smoothing_time_window_integral {X : Type*} [MeasurableSpace X]
     (μ : Measure X) [SFinite μ] (H : ℝ × X → ℂ) (hH : Measurable H)
     {c L D : ℝ} (hL : 0 ≤ L)
     (hb : ∀ t : ℝ, |t-c| ≤ L → Integrable (fun x => H (t,x)) μ ∧ (∫ x, ‖H (t,x)‖ ∂μ) ≤ D) :
-    Integrable H ((volume.restrict (Set.Icc (c-L) (c+L))).prod μ) ∧
-    (∫ q, ‖H q‖ ∂((volume.restrict (Set.Icc (c-L) (c+L))).prod μ)) ≤ 2*L*D := by
-  let ν := volume.restrict (Set.Icc (c-L) (c+L))
-  have hmem (t : ℝ) (ht : t ∈ Set.Icc (c-L) (c+L)) : |t-c| ≤ L :=
+    Integrable H ((volume.restrict (Set.Icc (c - L) (c + L))).prod μ) ∧
+    (∫ q, ‖H q‖ ∂((volume.restrict (Set.Icc (c - L) (c + L))).prod μ)) ≤ 2*L*D := by
+  let ν := volume.restrict (Set.Icc (c - L) (c+L))
+  have hmem (t : ℝ) (ht : t ∈ Set.Icc (c - L) (c+L)) : |t-c| ≤ L :=
     abs_le.mpr ⟨by linarith [ht.1], by linarith [ht.2]⟩
   have hm : Measurable (fun t : ℝ => ∫ x, ‖H (t,x)‖ ∂μ) :=
     (hH.norm.stronglyMeasurable.integral_prod_right' (ν := μ)).measurable
@@ -21709,7 +22637,8 @@ coordinates used by the L2 linearization estimate. -/
 noncomputable def smoothingFiberCorrelationError (F G : ℝ × ℝ → ℂ) (t₀ : ℝ)
     (K : ℝ × (ℝ × (ℝ × ℝ)) → ℂ) (q : ℝ × (ℝ × (ℝ × ℝ))) : ℂ :=
   (F (q.2.2.2-q.1^2,q.2.1+q.1+q.2.2.1)*star (F (q.2.2.2-q.1^2,q.2.1+q.1))) *
-  ((G (q.2.1,q.2.2.2+2*q.2.2.1*q.1+q.2.2.1^2)-G (q.2.1,q.2.2.2+2*q.2.2.1*t₀))*star (G (q.2.1,q.2.2.2))) * K q
+  ((G (q.2.1,q.2.2.2+2*q.2.2.1*q.1+q.2.2.1^2)-G (q.2.1,q.2.2.2+2*q.2.2.1*t₀))*star (G
+    (q.2.1,q.2.2.2))) * K q
 
 theorem smoothingFiberCorrelationError_measurable {F G : ℝ × ℝ → ℂ}
     (hF : Measurable F) (hG : Measurable G) (t₀ : ℝ)
@@ -21738,12 +22667,14 @@ theorem smoothingRelocalized_correlation_integrated_error
     (∫ q, ‖smoothingFiberCorrelationError F G t₀ K q‖ ∂μ) ≤ M*C*r/(Real.sqrt t₀*a^6) := by
   obtain ⟨C, hC, hbnd⟩ := smoothingRelocalized_correlation_error_at_time ψ₁ ψ₂
   refine ⟨16*C, by positivity, ?_⟩
-  intro r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ t₀ ht₀ K hK M hM hKm
+  intro r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ t₀ ht₀ K hK M hM
+    hKm
   let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m₁ f₁)
   let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
   let F := smoothingRelocalizedFiberFamily g₁ 0 1 a R₁ hρ₁ m₁ flat₁
   let G := smoothingRelocalizedFiberFamily g₂ 1 0 a R₂ hρ₂ m₂ flat₂
-  let μ : Measure (ℝ × (ℝ × ℝ)) := volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ 8/a} ×ˢ Set.univ))
+  let μ : Measure (ℝ × (ℝ × ℝ)) := volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ 8/a}
+    ×ˢ Set.univ))
   have hm := smoothingFiberCorrelationError_measurable
     (smoothingRelocalizedFiberFamily_measurable g₁ 0 1 ha R₁ hρ₁ m₁ flat₁)
     (smoothingRelocalizedFiberFamily_measurable g₂ 1 0 ha R₂ hρ₂ m₂ flat₂) t₀ hK
@@ -21774,9 +22705,11 @@ def smoothingCorrelationCoordinates : (ℝ × (ℝ × (ℝ × ℝ))) ≃ₜ ((�
 theorem smoothing_measurePreserving_swap_first_two
     {X Y Z : Type*} [MeasurableSpace X] [MeasurableSpace Y] [MeasurableSpace Z]
     (μ : Measure X) (ν : Measure Y) (σ : Measure Z) [SFinite μ] [SFinite ν] [SFinite σ] :
-    MeasurePreserving (fun q : X × (Y × Z) => (q.2.1,(q.1,q.2.2))) (μ.prod (ν.prod σ)) (ν.prod (μ.prod σ)) := by
+    MeasurePreserving (fun q : X × (Y × Z) => (q.2.1,(q.1,q.2.2))) (μ.prod (ν.prod σ)) (ν.prod
+      (μ.prod σ)) := by
   have hh := (measurePreserving_prodAssoc ν μ σ).comp
-    ((Measure.measurePreserving_swap.prod (MeasurePreserving.id σ)).comp (measurePreserving_prodAssoc μ ν σ).symm)
+    ((Measure.measurePreserving_swap.prod (MeasurePreserving.id σ)).comp
+      (measurePreserving_prodAssoc μ ν σ).symm)
   exact hh
 
 /-- The physical correlation coordinate map has unit Jacobian, including
@@ -21787,13 +22720,16 @@ theorem smoothingCorrelationCoordinates_measurePreserving :
   let V : Measure ℝ := volume
   have hshift (t : ℝ) : MeasurePreserving (fun w : ℝ × (ℝ × ℝ) => (w.1,(w.2.1,w.2.2-t^2)))
       (V.prod (V.prod V)) (V.prod (V.prod V)) := by
-    have hh := (MeasurePreserving.id V).prod ((MeasurePreserving.id V).prod (measurePreserving_add_right V (-t^2)))
+    have hh := (MeasurePreserving.id V).prod ((MeasurePreserving.id V).prod
+      (measurePreserving_add_right V (-t^2)))
     simpa only [Prod.map_apply, id_eq, sub_eq_add_neg] using! hh
   have hs : MeasurePreserving (fun q : ℝ × (ℝ × (ℝ × ℝ)) => (q.1,(q.2.1,(q.2.2.1,q.2.2.2-q.1^2))))
       (V.prod (V.prod (V.prod V))) (V.prod (V.prod (V.prod V))) :=
-    (MeasurePreserving.id V).skew_product (by fun_prop) (Filter.Eventually.of_forall (fun t => (hshift t).map_eq))
+    (MeasurePreserving.id V).skew_product (by fun_prop) (Filter.Eventually.of_forall (fun t =>
+      (hshift t).map_eq))
   have h₁ := smoothing_measurePreserving_swap_first_two V V (V.prod V)
-  have h₂ := (MeasurePreserving.id V).prod ((MeasurePreserving.id V).prod (Measure.measurePreserving_swap (μ := V) (ν := V)))
+  have h₂ := (MeasurePreserving.id V).prod ((MeasurePreserving.id V).prod
+    (Measure.measurePreserving_swap (μ := V) (ν := V)))
   have h₃ := (MeasurePreserving.id V).prod (smoothing_measurePreserving_swap_first_two V V V)
   have h₄ := (measurePreserving_prodAssoc V V (V.prod V)).symm
   have hh := h₄.comp (h₃.comp (h₂.comp (h₁.comp hs)))
@@ -21808,8 +22744,10 @@ theorem smoothingFiberCorrelationError_source_identity (F G : ℝ × ℝ → ℂ
     (q : ℝ × (ℝ × (ℝ × ℝ))) :
     smoothingFiberCorrelationError F G p.2
       (fun w => smoothingLocalizedCorrelationCutoff a p ζ (smoothingCorrelationCoordinates w)) q =
-    smoothingCorrelationIntegrand a p (fun z => F (z.2,z.1)) G ζ (smoothingCorrelationCoordinates q) -
-      smoothingLinearizedCorrelationIntegrand a p (fun z => F (z.2,z.1)) G ζ (smoothingCorrelationCoordinates q) := by
+    smoothingCorrelationIntegrand a p (fun z => F (z.2,z.1)) G ζ (smoothingCorrelationCoordinates
+      q) -
+      smoothingLinearizedCorrelationIntegrand a p (fun z => F (z.2,z.1)) G ζ
+        (smoothingCorrelationCoordinates q) := by
   simp only [smoothingFiberCorrelationError, smoothingCorrelationIntegrand,
     smoothingLinearizedCorrelationIntegrand, smoothingMultiplicativeDifference,
     smoothingCorrelationCoordinates_apply,
@@ -21836,17 +22774,20 @@ theorem smoothingFiberCorrelationError_source_support (F G : ℝ × ℝ → ℂ)
 their support containment has been proved. -/
 theorem smoothing_correlation_window_extension (H : ℝ × (ℝ × (ℝ × ℝ)) → ℂ)
     (c L : ℝ)
-    (hs : Function.support H ⊆ Set.Icc (c-L) (c+L) ×ˢ (Set.univ ×ˢ ({s : ℝ | |s| ≤ L} ×ˢ Set.univ)))
-    (hi : Integrable H ((volume.restrict (Set.Icc (c-L) (c+L))).prod
+    (hs : Function.support H ⊆ Set.Icc (c - L) (c + L) ×ˢ (Set.univ ×ˢ ({s : ℝ | |s| ≤ L} ×ˢ
+      Set.univ)))
+    (hi : Integrable H ((volume.restrict (Set.Icc (c - L) (c + L))).prod
       (volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ L} ×ˢ Set.univ))))) :
     Integrable H (volume.prod (volume.prod (volume.prod volume))) ∧
     (∫ q, ‖H q‖ ∂(volume.prod (volume.prod (volume.prod volume)))) =
-    ∫ q, ‖H q‖ ∂((volume.restrict (Set.Icc (c-L) (c+L))).prod
+    ∫ q, ‖H q‖ ∂((volume.restrict (Set.Icc (c - L) (c + L))).prod
       (volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ L} ×ˢ Set.univ)))) := by
   let ν : Measure (ℝ × (ℝ × (ℝ × ℝ))) := volume.prod (volume.prod (volume.prod volume))
-  let S : Set (ℝ × (ℝ × (ℝ × ℝ))) := Set.Icc (c-L) (c+L) ×ˢ (Set.univ ×ˢ ({s : ℝ | |s| ≤ L} ×ˢ Set.univ))
-  have he : (volume.restrict (Set.Icc (c-L) (c+L))).prod
-      (volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ L} ×ˢ Set.univ))) = ν.restrict S := by
+  let S : Set (ℝ × (ℝ × (ℝ × ℝ))) := Set.Icc (c - L) (c + L) ×ˢ (Set.univ ×ˢ ({s : ℝ | |s| ≤ L} ×ˢ
+    Set.univ))
+  have he : (volume.restrict (Set.Icc (c - L) (c + L))).prod
+      (volume.prod ((volume.prod volume).restrict ({s : ℝ | |s| ≤ L} ×ˢ Set.univ))) = ν.restrict S
+        := by
     dsimp only [ν, S]
     simp only [← Measure.prod_restrict, Measure.restrict_univ]
   rw [he] at hi ⊢
@@ -21892,11 +22833,14 @@ theorem smoothingRelocalized_source_correlation_error
   let H := smoothingFiberCorrelationError F G p.2 K
   let E := fun q => smoothingCorrelationIntegrand a p (fun z => F (z.2,z.1)) G ζ q -
       smoothingLinearizedCorrelationIntegrand a p (fun z => F (z.2,z.1)) G ζ q
-  have hKm : Measurable K := (smoothingLocalizedCorrelationCutoff_properties hζ ha₀ p).1.continuous.measurable.comp
+  have hKm : Measurable K := (smoothingLocalizedCorrelationCutoff_properties hζ ha₀
+    p).1.continuous.measurable.comp
     smoothingCorrelationCoordinates.continuous.measurable
   have hKb (q : ℝ × (ℝ × (ℝ × ℝ))) : ‖K q‖ ≤ M := by
-    simpa only [K, norm_iteratedFDeriv_zero, pow_zero, mul_one] using! hcut a ha p 0 le_rfl (smoothingCorrelationCoordinates q)
-  obtain ⟨hi, hb⟩ := hbnd r a R₁ R₂ hr ha₀ har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ p.2 ht₀ K hKm M hM hKb
+    simpa only [K, norm_iteratedFDeriv_zero, pow_zero, mul_one] using! hcut a ha p 0 le_rfl
+      (smoothingCorrelationCoordinates q)
+  obtain ⟨hi, hb⟩ := hbnd r a R₁ R₂ hr ha₀ har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁
+    flat₂ p.2 ht₀ K hKm M hM hKb
   have hs := smoothingFiberCorrelationError_source_support F G ha₀ p hζ
   obtain ⟨hiH, heH⟩ := smoothing_correlation_window_extension H p.2 (8/a) hs hi
   have hHe : H = E ∘ smoothingCorrelationCoordinates := by
@@ -21905,10 +22849,12 @@ theorem smoothingRelocalized_source_correlation_error
   have hφ := smoothingCorrelationCoordinates_measurePreserving
   have hiE : Integrable E := by
     rw [hHe] at hiH
-    have hh := (hφ.integrable_comp_emb smoothingCorrelationCoordinates.toMeasurableEquiv.measurableEmbedding).mp hiH
+    have hh := (hφ.integrable_comp_emb
+      smoothingCorrelationCoordinates.toMeasurableEquiv.measurableEmbedding).mp hiH
     simpa only [← Measure.volume_eq_prod] using! hh
   have hmass : (∫ q, ‖E q‖) = ∫ q, ‖H q‖ ∂(volume.prod (volume.prod (volume.prod volume))) := by
-    have hh := hφ.integral_comp smoothingCorrelationCoordinates.toMeasurableEquiv.measurableEmbedding (fun q => ‖E q‖)
+    have hh := hφ.integral_comp
+      smoothingCorrelationCoordinates.toMeasurableEquiv.measurableEmbedding (fun q => ‖E q‖)
     simpa only [hHe, Function.comp_def, ← Measure.volume_eq_prod] using! hh.symm
   refine ⟨hiE, ?_⟩
   change (∫ q, ‖E q‖) ≤ _
@@ -21916,7 +22862,8 @@ theorem smoothingRelocalized_source_correlation_error
   apply hb.trans
   calc
     _ ≤ M*A*r/(Real.sqrt c*a^6) := div_le_div_of_nonneg_left (by positivity)
-      (by positivity) (mul_le_mul_of_nonneg_right (Real.sqrt_le_sqrt (htime p hp).1) (by positivity))
+      (by positivity) (mul_le_mul_of_nonneg_right (Real.sqrt_le_sqrt (htime p hp).1)
+        (by positivity))
     _ = _ := by ring
 
 /-- Bounded measurable inputs make both localized correlation integrals
@@ -21933,17 +22880,17 @@ theorem smoothingCorrelationIntegrands_measurable_integrable
     hcut.1.continuous.integrable_of_hasCompactSupport hcut.2.1
   constructor
   · unfold smoothingCorrelationIntegrand
-    apply hi.bdd_mul (Measurable.aestronglyMeasurable (by fun_prop))
+    apply hi.bdd_mul (c := M*M*N*N) (Measurable.aestronglyMeasurable (by fun_prop))
     filter_upwards [] with q
     simp only [norm_mul, norm_star]
-    show ‖F (q.1.1+q.2.1+q.2.2,q.1.2)‖ * ‖F (q.1.1+q.2.1,q.1.2)‖ *
+    change ‖F (q.1.1+q.2.1+q.2.2,q.1.2)‖ * ‖F (q.1.1+q.2.1,q.1.2)‖ *
       ‖G (q.1.1,q.1.2+(q.2.1+q.2.2)^2)‖ * ‖G (q.1.1,q.1.2+q.2.1^2)‖ ≤ M*M*N*N
     gcongr <;> first | apply hbF | apply hbG
   · unfold smoothingLinearizedCorrelationIntegrand smoothingMultiplicativeDifference
-    apply hi.bdd_mul (Measurable.aestronglyMeasurable (by fun_prop))
+    apply hi.bdd_mul (c := (M*M)*(N*N)) (Measurable.aestronglyMeasurable (by fun_prop))
     filter_upwards [] with q
     simp only [norm_mul, norm_star]
-    show (‖F ((q.1.1+q.2.1,q.1.2)+(q.2.2,0))‖ * ‖F (q.1.1+q.2.1,q.1.2)‖) *
+    change (‖F ((q.1.1+q.2.1,q.1.2)+(q.2.2,0))‖ * ‖F (q.1.1+q.2.1,q.1.2)‖) *
       (‖G ((q.1.1,q.1.2+q.2.1^2)+(0,2*q.2.2*p.2))‖ * ‖G (q.1.1,q.1.2+q.2.1^2)‖) ≤ (M*M)*(N*N)
     gcongr <;> first | apply hbF | apply hbG
 
@@ -21973,8 +22920,10 @@ theorem smoothingRelocalized_linearization
     ζ p ≠ 0 →
     let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m₁ f₁)
     let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
-    let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁ (smoothingPlaneEquiv.symm z)
-    let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂ (smoothingPlaneEquiv.symm z)
+    let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁
+      (smoothingPlaneEquiv.symm z)
+    let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂
+      (smoothingPlaneEquiv.symm z)
     Integrable (smoothingCorrelationIntegrand a p F G ζ) ∧
     Integrable (smoothingLinearizedCorrelationIntegrand a p F G ζ) ∧
     ‖(∫ q, smoothingCorrelationIntegrand a p F G ζ q) -
@@ -21985,8 +22934,10 @@ theorem smoothingRelocalized_linearization
   have ha₀ : 0 < a := by linarith
   let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m₁ f₁)
   let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
-  let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁ (smoothingPlaneEquiv.symm z)
-  let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂ (smoothingPlaneEquiv.symm z)
+  let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁ (smoothingPlaneEquiv.symm
+    z)
+  let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂ (smoothingPlaneEquiv.symm
+    z)
   have heF : F = fun z => smoothingRelocalizedFiberFamily g₁ 0 1 a R₁ hρ₁ m₁ flat₁ (z.2,z.1) := by
     funext z
     dsimp only [F]
@@ -21997,13 +22948,18 @@ theorem smoothingRelocalized_linearization
     dsimp only [G]
     rw [← smoothing_second_plane_point]
     exact smoothingRelocalizedComponent_fiber g₂ 1 0 (by decide) a R₂ hρ₂ m₂ flat₂ z.1 z.2
-  have herr : Integrable (fun q => smoothingCorrelationIntegrand a p F G ζ q - smoothingLinearizedCorrelationIntegrand a p F G ζ q) ∧
-      (∫ q, ‖smoothingCorrelationIntegrand a p F G ζ q - smoothingLinearizedCorrelationIntegrand a p F G ζ q‖) ≤ C*r/a^6 := by
-    simpa only [heF, heG] using! hb r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ p hp
+  have herr : Integrable (fun q => smoothingCorrelationIntegrand a p F G ζ q -
+    smoothingLinearizedCorrelationIntegrand a p F G ζ q) ∧
+      (∫ q, ‖smoothingCorrelationIntegrand a p F G ζ q - smoothingLinearizedCorrelationIntegrand a
+        p F G ζ q‖) ≤ C*r/a^6 := by
+    simpa only [heF, heG] using! hb r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁
+      hf₂ flat₁ flat₂ p hp
   obtain ⟨M, hM, hMb⟩ := smoothingRelocalizedComponent_bounded g₁ 0 a hR₁ hρ₁ m₁ flat₁
   obtain ⟨N, hN, hNb⟩ := smoothingRelocalizedComponent_bounded g₂ 1 a hR₂ hρ₂ m₂ flat₂
-  have hmF : Measurable F := (smoothingRelocalizedComponent_measurable_support g₁ 0 ha₀ R₁ hρ₁ m₁ flat₁).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hmG : Measurable G := (smoothingRelocalizedComponent_measurable_support g₂ 1 ha₀ R₂ hρ₂ m₂ flat₂).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hmF : Measurable F := (smoothingRelocalizedComponent_measurable_support g₁ 0 ha₀ R₁ hρ₁ m₁
+    flat₁).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hmG : Measurable G := (smoothingRelocalizedComponent_measurable_support g₂ 1 ha₀ R₂ hρ₂ m₂
+    flat₂).1.comp smoothingPlaneEquiv.symm.continuous.measurable
   obtain ⟨hi, hj⟩ := smoothingCorrelationIntegrands_measurable_integrable hmF hmG hM hN
     (fun z => hMb (smoothingPlaneEquiv.symm z)) (fun z => hNb (smoothingPlaneEquiv.symm z)) ha₀ p hζ
   refine ⟨hi, hj, ?_⟩
@@ -22029,7 +22985,8 @@ theorem smoothingFourierPolynomial_cube_energy (b : Fin 2 → ℝ)
   let P : C(UnitAddTorus (Fin 2), ℂ) := ∑ k ∈ S, c k • UnitAddTorus.mFourier k
   let v := ContinuousMap.toLp 2 volume ℂ P
   have hp (x : UnitAddTorus (Fin 2)) : P x = ∑ k ∈ S, c k * UnitAddTorus.mFourier k x := by
-    simp only [P, ContinuousMap.coe_sum, Finset.sum_apply, ContinuousMap.coe_smul, Pi.smul_apply, smul_eq_mul]
+    simp only [P, ContinuousMap.coe_sum, Finset.sum_apply, ContinuousMap.coe_smul,
+      Pi.smul_apply, smul_eq_mul]
   have hn : ‖v‖^2 = ∫ x : UnitAddTorus (Fin 2), ‖v x‖^2 := by
     simpa only [Set.indicator_univ, Measure.restrict_univ, Lp.toLp_coeFn] using
       smoothing_frequencyRestriction_norm_sq (Lp.memLp v) MeasurableSet.univ
@@ -22054,13 +23011,16 @@ theorem smoothingFourierPolynomial_cutoff_energy (b : Fin 2 → ℝ)
     (c : (Fin 2 → ℤ) → ℂ) (S : Finset (Fin 2 → ℤ))
     (χ : (Fin 2 → ℝ) → ℂ) (hχ : Measurable χ) (hχb : ∀ x, ‖χ x‖ ≤ 1)
     (hχs : ∀ x, χ x ≠ 0 → x ∈ smoothingFourierCube b) :
-    Integrable (fun x => ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))‖^2) ∧
+    Integrable (fun x => ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i :
+      UnitAddCircle))‖^2) ∧
     (∫ x, ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))‖^2) ≤
       ∑ k ∈ S, ‖c k‖^2 := by
   let P : C(UnitAddTorus (Fin 2), ℂ) := ∑ k ∈ S, c k • UnitAddTorus.mFourier k
   have hp (x : UnitAddTorus (Fin 2)) : P x = ∑ k ∈ S, c k * UnitAddTorus.mFourier k x := by
-    simp only [P, ContinuousMap.coe_sum, Finset.sum_apply, ContinuousMap.coe_smul, Pi.smul_apply, smul_eq_mul]
-  have hh := smoothingTorusLift_cutoff_error b (F := fun _ => (0 : ℂ)) measurable_const hχ zero_le_one
+    simp only [P, ContinuousMap.coe_sum, Finset.sum_apply, ContinuousMap.coe_smul,
+      Pi.smul_apply, smul_eq_mul]
+  have hh := smoothingTorusLift_cutoff_error b (F := fun _ => (0 : ℂ)) measurable_const hχ
+    zero_le_one
     (fun x => by simp) hχb (fun x hx => (hx rfl).elim) hχs P
   simp only [zero_sub, norm_neg, hp] at hh
   exact ⟨hh.1, hh.2.trans_eq (smoothingFourierPolynomial_cube_energy b c S)⟩
@@ -22076,21 +23036,27 @@ theorem smoothingRawLocalFourierApprox_energy {a : ℝ} (ha : 0 < a)
   let χ := fun x : Fin 2 → ℝ => smoothingLocalSeriesCutoff ha m ((4/a) • WithLp.toLp 2 x)
   have he (x : Fin 2 → ℝ) : (a/4) • ((4/a) • WithLp.toLp 2 x) = WithLp.toLp 2 x := by
     rw [smul_smul, show (a/4)*(4/a) = 1 by field_simp, one_smul]
-  have hmχ : Measurable χ := (smoothingLocalSeriesCutoff ha m).continuous.measurable.comp (by fun_prop)
+  have hmχ : Measurable χ := (smoothingLocalSeriesCutoff ha m).continuous.measurable.comp
+    (by fun_prop)
   have hbχ (x : Fin 2 → ℝ) : ‖χ x‖ ≤ 1 := smoothingLocalSeriesCutoff_bound ha m _
-  have hsχ (x : Fin 2 → ℝ) (hx : χ x ≠ 0) : x ∈ smoothingFourierCube (smoothingRawLocalFourierCorner m) := by
+  have hsχ (x : Fin 2 → ℝ) (hx : χ x ≠ 0) : x ∈ smoothingFourierCube
+    (smoothingRawLocalFourierCorner m) := by
     have hh := smoothingLocalSeriesCutoff_support ha m hx
     simpa only [he, WithLp.ofLp_toLp] using hh
-  have hh := smoothingFourierPolynomial_cutoff_energy (smoothingRawLocalFourierCorner m) c S χ hmχ hbχ hsχ
-  have hscale := smoothing_local_cube_integral_scale ha (fun x => ‖smoothingRawLocalFourierApprox ha m h F S x‖^2)
-  have hid : (∫ x : Fin 2 → ℝ, ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))‖^2) =
+  have hh := smoothingFourierPolynomial_cutoff_energy (smoothingRawLocalFourierCorner m) c S χ hmχ
+    hbχ hsχ
+  have hscale := smoothing_local_cube_integral_scale ha (fun x => ‖smoothingRawLocalFourierApprox
+    ha m h F S x‖^2)
+  have hid : (∫ x : Fin 2 → ℝ, ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i :
+    UnitAddCircle))‖^2) =
       (a^2/16) * ∫ x, ‖smoothingRawLocalFourierApprox ha m h F S x‖^2 := by
     convert hscale using 1
     apply integral_congr_ae
     filter_upwards [] with x
     simp only [smoothingRawLocalFourierApprox, he, χ, c]
   calc
-    _ = (16/a^2) * (∫ x : Fin 2 → ℝ, ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i : UnitAddCircle))‖^2) := by
+    _ = (16/a^2) * (∫ x : Fin 2 → ℝ, ‖χ x * ∑ k ∈ S, c k * UnitAddTorus.mFourier k (fun i => (x i
+      : UnitAddCircle))‖^2) := by
       rw [hid]
       field_simp
     _ ≤ _ := mul_le_mul_of_nonneg_left hh.2 (by positivity)
@@ -22119,11 +23085,13 @@ theorem smoothingMainCorrelationPairing_finite_energy
   apply hh.trans
   calc
     _ ≤ C/a * Real.sqrt ((16/a^2) * ∑ u ∈ S, ‖smoothingRawLocalFourierCoefficient a m.1 h F u‖^2) *
-        Real.sqrt ((16/a^2) * ∑ v ∈ T, ‖smoothingRawLocalFourierCoefficient a m.2 k G v‖^2) := by gcongr
+        Real.sqrt ((16/a^2) * ∑ v ∈ T, ‖smoothingRawLocalFourierCoefficient a m.2 k G v‖^2) :=
+          by gcongr
     _ = _ := by
       have hs : Real.sqrt (16/a^2) = 4/a := by
         rw [show 16/a^2 = (4/a)^2 by ring, Real.sqrt_sq (by positivity)]
-      rw [Real.sqrt_mul (by positivity : 0 ≤ 16/a^2), Real.sqrt_mul (by positivity : 0 ≤ 16/a^2), hs]
+      rw [Real.sqrt_mul (by positivity : 0 ≤ 16/a^2), Real.sqrt_mul (by positivity : 0 ≤ 16/a^2),
+        hs]
       field_simp ; ring
 
 open scoped Classical in
@@ -22141,7 +23109,8 @@ theorem smoothingRawOscillatoryIntegral_finite_low_bound
       (∫ z, Complex.exp (↑Real.pi * Complex.I * ↑(smoothingOscillatoryPhase (a/2) (u,v) z)) *
         smoothingRawOscillatoryAmplitude (show 0 < a by linarith) s p m ζ z)‖ ≤
       C/a^3 * ((L^N)⁻¹ * Real.sqrt (∑ u ∈ S, ‖c₁ u‖^2) * Real.sqrt (∑ v ∈ T, ‖c₂ v‖^2) +
-        ∑ k ∈ (S ×ˢ T).filter (fun k => k ∈ smoothingResonantFrequencies L (p 2)), ‖c₁ k.1*c₂ k.2‖) := by
+        ∑ k ∈ (S ×ˢ T).filter (fun k => k ∈ smoothingResonantFrequencies L (p 2)), ‖c₁ k.1*c₂
+          k.2‖) := by
   classical
   obtain ⟨A, hA, hnon⟩ := smoothingRawOscillatoryIntegral_nonresonant_sum hζ hR N
   obtain ⟨B, hB, hkernel⟩ := smoothingRawOscillatoryIntegral_decay hζ hR 0
@@ -22157,7 +23126,7 @@ theorem smoothingRawOscillatoryIntegral_finite_low_bound
   have hDn (k) (hk : k ∈ D) : k ∈ smoothingNonresonantFrequencies a L (p 2) := by
     have hh := Finset.mem_filter.mp hk
     refine ⟨hT k.2 (Finset.mem_product.mp hh.1).2, ?_⟩
-    simpa only [smoothingResonantFrequencies, Set.mem_setOf_eq, not_and_or, not_lt] using hh.2
+    simpa only [smoothingResonantFrequencies, Set.mem_ofPred_eq, not_and_or, not_lt] using hh.2
   have hn := hnon a ha L hL s p m hp h₀ h₁ h₂ h₃ hs c₁ c₂ S T D hD hDn
   have hr : (∑ k ∈ E, ‖W k‖) ≤ B*(a^3)⁻¹ * ∑ k ∈ E, ‖c₁ k.1*c₂ k.2‖ := by
     rw [Finset.mul_sum]
@@ -22170,7 +23139,8 @@ theorem smoothingRawOscillatoryIntegral_finite_low_bound
     rw [norm_mul, mul_comm (B*(a^3)⁻¹)]
     exact mul_le_mul_of_nonneg_left hh (norm_nonneg _)
   have hsplit : (∑ k ∈ S ×ˢ T, ‖W k‖) = (∑ k ∈ E, ‖W k‖) + ∑ k ∈ D, ‖W k‖ := by
-    exact (Finset.sum_filter_add_sum_filter_not (S ×ˢ T) (fun k => k ∈ smoothingResonantFrequencies L (p 2)) (fun k => ‖W k‖)).symm
+    exact (Finset.sum_filter_add_sum_filter_not (S ×ˢ T) (fun k => k ∈
+      smoothingResonantFrequencies L (p 2)) (fun k => ‖W k‖)).symm
   calc
     _ = ‖∑ k ∈ S ×ˢ T, W k‖ := by rw [Finset.sum_product]
     _ ≤ ∑ k ∈ S ×ˢ T, ‖W k‖ := norm_sum_le _ _
@@ -22182,21 +23152,25 @@ theorem smoothingRawOscillatoryIntegral_finite_low_bound
       have hEA : 0 ≤ ∑ k ∈ E, ‖c₁ k.1*c₂ k.2‖ := Finset.sum_nonneg (fun _ _ => norm_nonneg _)
       have ha₀ : 0 < a := by linarith
       have h1 := mul_nonneg (mul_nonneg hA (inv_nonneg.mpr (pow_nonneg ha₀.le 3))) hEA
-      have h2 : 0 ≤ B*(a^3)⁻¹*(L^N)⁻¹ * Real.sqrt (∑ u ∈ S, ‖c₁ u‖^2) * Real.sqrt (∑ v ∈ T, ‖c₂ v‖^2) := by positivity
+      have h2 : 0 ≤ B*(a^3)⁻¹*(L^N)⁻¹ * Real.sqrt (∑ u ∈ S, ‖c₁ u‖^2) * Real.sqrt (∑ v ∈ T, ‖c₂
+        v‖^2) := by positivity
       dsimp only [E] at h1
       simp only [div_eq_mul_inv]
       nlinarith
 
 /-- A finite subregion is bounded by the summable mass of its containing
 frequency region. -/
-theorem smoothing_finite_sum_le_subtype_tsum {X : Type*} (E : Finset X) (A : Set X)
-    (f : X → ℝ) (hE : ∀ x ∈ E, x ∈ A) (hf : ∀ x, 0 ≤ f x)
-    (hs : Summable (fun x : A => f x.val)) : (∑ x ∈ E, f x) ≤ ∑' x : A, f x.val := by
+theorem smoothing_finite_sum_le_subtype_tsum {X : Type*} (E : Finset X) (A : Set X) (f : X → ℝ)
+    (hE : ∀ x ∈ E, x ∈ A)
+    (hf : ∀ x, 0 ≤ f x) (hs : Summable (fun x : A => f x.val)) : (∑ x ∈ E, f x) ≤ ∑' x : A, f
+      x.val := by
   classical
   have hi : Summable (A.indicator f) := summable_subtype_iff_indicator.mp hs
   calc
-    _ = ∑ x ∈ E, A.indicator f x := Finset.sum_congr rfl (fun x hx => (Set.indicator_of_mem (hE x hx) f).symm)
-    _ ≤ ∑' x, A.indicator f x := hi.sum_le_tsum E (fun x hx => Set.indicator_nonneg (fun y hy => hf y) x)
+    _ = ∑ x ∈ E, A.indicator f x := Finset.sum_congr rfl (fun x hx => (Set.indicator_of_mem (hE x
+      hx) f).symm)
+    _ ≤ ∑' x, A.indicator f x := hi.sum_le_tsum E (fun x hx => Set.indicator_nonneg (fun y hy =>
+      hf y) x)
     _ = _ := (tsum_subtype A f).symm
 
 /-- Splitting the second finite Fourier set splits the actual pairing
@@ -22209,9 +23183,11 @@ theorem smoothingMainCorrelationPairing_finite_partition {a : ℝ} (ha : 0 < a)
     smoothingMainCorrelationPairing a ((p 0,p 1),p 2) ζ s
       (smoothingRawLocalFourierApprox ha m.1 h F S) (smoothingRawLocalFourierApprox ha m.2 k G T) =
     smoothingMainCorrelationPairing a ((p 0,p 1),p 2) ζ s
-      (smoothingRawLocalFourierApprox ha m.1 h F S) (smoothingRawLocalFourierApprox ha m.2 k G (T.filter P)) +
+      (smoothingRawLocalFourierApprox ha m.1 h F S) (smoothingRawLocalFourierApprox ha m.2 k G
+        (T.filter P)) +
     smoothingMainCorrelationPairing a ((p 0,p 1),p 2) ζ s
-      (smoothingRawLocalFourierApprox ha m.1 h F S) (smoothingRawLocalFourierApprox ha m.2 k G (T.filter (fun v => ¬P v))) := by
+      (smoothingRawLocalFourierApprox ha m.1 h F S) (smoothingRawLocalFourierApprox ha m.2 k G
+        (T.filter (fun v => ¬P v))) := by
   simp only [smoothingMainCorrelationPairing_finite_fourier ha s p m h k F G S _ hζ]
   rw [← Finset.sum_add_distrib]
   apply Finset.sum_congr rfl
@@ -22238,7 +23214,8 @@ theorem smoothingMainCorrelationPairing_finite_frequency_bound
       (smoothingRawLocalFourierApprox (show 0 < a by linarith) m.2 k G T)‖ ≤
     C/a^3 * ((L^N)⁻¹ * Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v, ‖c₂ v‖^2) +
       (∑' z : smoothingResonantFrequencies L (p 2), ‖c₁ z.val.1*c₂ z.val.2‖) +
-      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂ v.val‖^2)) := by
+      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂
+        v.val‖^2)) := by
   classical
   obtain ⟨A, hA, hlow⟩ := smoothingRawOscillatoryIntegral_finite_low_bound hζ hR N
   obtain ⟨B, hB, hhigh⟩ := smoothingMainCorrelationPairing_finite_energy hζ hc
@@ -22258,10 +23235,13 @@ theorem smoothingMainCorrelationPairing_finite_frequency_bound
   have he₁ : (∑ u ∈ S, ‖c₁ u‖^2) ≤ E₁ := hs₁.sum_le_tsum S (fun u hu => sq_nonneg _)
   have he₂ : (∑ v ∈ T₀, ‖c₂ v‖^2) ≤ E₂ := hs₂.sum_le_tsum T₀ (fun v hv => sq_nonneg _)
   have hehigh : (∑ v ∈ T₁, ‖c₂ v‖^2) ≤ Ehigh := smoothing_finite_sum_le_subtype_tsum T₁ _ _
-    (fun v hv => (lt_of_not_ge (Finset.mem_filter.mp hv).2).le) (fun v => sq_nonneg _) (hs₂.subtype _)
+    (fun v hv => (lt_of_not_ge (Finset.mem_filter.mp hv).2).le) (fun v => sq_nonneg _)
+      (hs₂.subtype _)
   have hres := (smoothing_resonance_energy_second_L2 (t := p 2) hL c₁ c₂ hs₁ hs₂).1
-  have hr : (∑ z ∈ (S ×ˢ T₀).filter (fun z => z ∈ smoothingResonantFrequencies L (p 2)), ‖c₁ z.1*c₂ z.2‖) ≤ Res :=
-    smoothing_finite_sum_le_subtype_tsum _ _ _ (fun z hz => (Finset.mem_filter.mp hz).2) (fun z => norm_nonneg _) hres
+  have hr : (∑ z ∈ (S ×ˢ T₀).filter (fun z => z ∈ smoothingResonantFrequencies L (p 2)), ‖c₁
+    z.1*c₂ z.2‖) ≤ Res :=
+    smoothing_finite_sum_le_subtype_tsum _ _ _ (fun z hz => (Finset.mem_filter.mp hz).2) (fun z =>
+      norm_nonneg _) hres
   have hlo : ‖P T₀‖ ≤ A/a^3 * ((L^N)⁻¹ * Real.sqrt E₁ * Real.sqrt E₂ + Res) := by
     have hh := hlow a ha L (by linarith) s p m hp h₀ h₁ h₂ h₃ hs c₁ c₂ S T₀
       (fun v hv => (Finset.mem_filter.mp hv).2)
@@ -22274,9 +23254,11 @@ theorem smoothingMainCorrelationPairing_finite_frequency_bound
     have hh := hhigh a ha ((p 0,p 1),p 2) s m h k F G S T₁
     apply hh.trans
     gcongr
-  have heq : P T = P T₀ + P T₁ := smoothingMainCorrelationPairing_finite_partition ha₀ s p m h k F G S T
+  have heq : P T = P T₀ + P T₁ := smoothingMainCorrelationPairing_finite_partition ha₀ s p m h k F
+    G S T
     (fun v => |(v 1 : ℝ)| ≤ a) hζ
-  change ‖P T‖ ≤ (A+B)/a^3 * ((L^N)⁻¹ * Real.sqrt E₁ * Real.sqrt E₂ + Res + Real.sqrt E₁ * Real.sqrt Ehigh)
+  change ‖P T‖ ≤ (A+B)/a^3 * ((L^N)⁻¹ * Real.sqrt E₁ * Real.sqrt E₂ + Res + Real.sqrt E₁ *
+    Real.sqrt Ehigh)
   rw [heq]
   apply (norm_add_le _ _).trans ((add_le_add hlo hhi).trans ?_)
   have hRes : 0 ≤ Res := tsum_nonneg (fun z => norm_nonneg _)
@@ -22305,14 +23287,18 @@ theorem smoothingMainCorrelationPairing_frequency_bound
       (smoothingMultiplicativeDifference F h) (smoothingMultiplicativeDifference G k)‖ ≤
     C/a^3 * ((L^N)⁻¹ * Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v, ‖c₂ v‖^2) +
       (∑' z : smoothingResonantFrequencies L (p 2), ‖c₁ z.val.1*c₂ z.val.2‖) +
-      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂ v.val‖^2)) := by
+      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂
+        v.val‖^2)) := by
   obtain ⟨C, hC, hb⟩ := smoothingMainCorrelationPairing_finite_frequency_bound hζ hc hR N
   refine ⟨C, hC, ?_⟩
   intro a ha L hL s p m hp h₀ h₁ h₂ h₃ hs h k F G hF hG hF2 hG2 M₁ M₂ hM₁ hM₂ hFb hGb hsF hsG
   have ha₀ : 0 < a := by linarith
-  have hc₁ := (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.1 h hF hM₁ hFb hsF).summable
-  have hc₂ := (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.2 k hG hM₂ hGb hsG).summable
-  exact smoothingMainCorrelation_pairing_bound_of_local_fourier hζ hc ha ((p 0,p 1),p 2) s m.1 m.2 h k
+  have hc₁ := (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.1 h hF hM₁ hFb
+    hsF).summable
+  have hc₂ := (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.2 k hG hM₂ hGb
+    hsG).summable
+  exact smoothingMainCorrelation_pairing_bound_of_local_fourier hζ hc ha ((p 0,p 1),p 2) s m.1 m.2
+    h k
     hF hG hF2 hG2 hM₁ hM₂ hFb hGb hsF hsG
     (hb a ha L hL s p m hp h₀ h₁ h₂ h₃ hs h k F G hc₁ hc₂)
 
@@ -22346,7 +23332,8 @@ theorem smoothingMainCorrelation_eq_pairing (a : ℝ) (p : (ℝ × ℝ) × ℝ)
     (F G : EuclideanSpace ℝ (Fin 2) → ℂ) (ζ : (ℝ × ℝ) × ℝ → ℂ) (s : ℝ) :
     smoothingMainCorrelation a p (fun z => F (smoothingPlaneEquiv.symm z))
       (fun z => G (smoothingPlaneEquiv.symm z)) ζ s =
-    smoothingMainCorrelationPairing a p ζ s (smoothingMultiplicativeDifference F (smoothingCoordinateLine 0 s))
+    smoothingMainCorrelationPairing a p ζ s (smoothingMultiplicativeDifference F
+      (smoothingCoordinateLine 0 s))
       (smoothingMultiplicativeDifference G (smoothingCoordinateLine 1 (2*s*p.2))) := by
   have h₀ : smoothingPlaneEquiv.symm (s,0) = smoothingCoordinateLine 0 s := by
     simpa only [map_zero, zero_add] using (smoothing_first_plane_point s 0).symm
@@ -22368,10 +23355,13 @@ theorem smoothingRelocalized_mainCorrelation_integrable
       (fun z => G (smoothingPlaneEquiv.symm z)) ζ) := by
   obtain ⟨M, hM, hMb⟩ := smoothingRelocalizedComponent_bounded g₁ 0 a hR₁ hρ₁ m.1 flat₁
   obtain ⟨N, hN, hNb⟩ := smoothingRelocalizedComponent_bounded g₂ 1 a hR₂ hρ₂ m.2 flat₂
-  have hmF := (smoothingRelocalizedComponent_measurable_support g₁ 0 ha R₁ hρ₁ m.1 flat₁).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hmG := (smoothingRelocalizedComponent_measurable_support g₂ 1 ha R₂ hρ₂ m.2 flat₂).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hmF := (smoothingRelocalizedComponent_measurable_support g₁ 0 ha R₁ hρ₁ m.1 flat₁).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hmG := (smoothingRelocalizedComponent_measurable_support g₂ 1 ha R₂ hρ₂ m.2 flat₂).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hi := (smoothingCorrelationIntegrands_measurable_integrable hmF hmG hM hN
-    (fun z => hMb (smoothingPlaneEquiv.symm z)) (fun z => hNb (smoothingPlaneEquiv.symm z)) ha p hζ).2
+    (fun z => hMb (smoothingPlaneEquiv.symm z)) (fun z => hNb (smoothingPlaneEquiv.symm z)) ha p
+      hζ).2
   exact (smoothingMainCorrelation_fubini_of_integrable a p _ _ ζ hi).1
 
 /-- All side conditions of the frequency estimate hold for the actual
@@ -22393,7 +23383,8 @@ theorem smoothingRelocalized_mainCorrelation_frequency_bound
       (fun z => G (smoothingPlaneEquiv.symm z)) ζ s‖ ≤
     C/a^3 * ((L^N)⁻¹ * Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v, ‖c₂ v‖^2) +
       (∑' z : smoothingResonantFrequencies L (p 2), ‖c₁ z.val.1*c₂ z.val.2‖) +
-      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂ v.val‖^2)) := by
+      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂
+        v.val‖^2)) := by
   obtain ⟨C, hC, hb⟩ := smoothingMainCorrelationPairing_frequency_bound hζ hc hR N
   refine ⟨C, hC, ?_⟩
   intro a ha L hL s p m hp h₀ h₁ h₂ h₃ hs g₁ g₂ R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ flat₁ flat₂
@@ -22406,7 +23397,8 @@ theorem smoothingRelocalized_mainCorrelation_frequency_bound
   have hG2 := smoothingRelocalizedComponent_memLp g₂ 1 ha₀ hR₂ hρ₂ m.2 flat₂
   dsimp only
   rw [smoothingMainCorrelation_eq_pairing]
-  exact hb a ha L hL s p m hp h₀ h₁ h₂ h₃ hs (smoothingCoordinateLine 0 s) (smoothingCoordinateLine 1 (2*s*(p 2)))
+  exact hb a ha L hL s p m hp h₀ h₁ h₂ h₃ hs (smoothingCoordinateLine 0 s)
+    (smoothingCoordinateLine 1 (2*s*(p 2)))
     _ _ hm₁ hm₂ hF2 hG2 M₁ M₂ hM₁ hM₂ hMb₁ hMb₂ hs₁ hs₂
 
 /-- The four source reference-point incidences with the fixed enlarged
@@ -22426,7 +23418,7 @@ def smoothingEnlargedInteractionIndices (ζ : (ℝ × ℝ) × ℝ → ℂ) (a : 
 theorem smoothingEnlargedIncidence_quadratic_relation {a R : ℝ} (ha : 1 ≤ a) (hR : 0 ≤ R)
     {m : (Fin 2 → ℤ) × (Fin 2 → ℤ)} {p : (ℝ × ℝ) × ℝ}
     (hp : smoothingEnlargedIncidence a m p) (ht : |p.2| ≤ R) :
-    |(m.2 1 : ℝ)-((m.1 1 : ℝ)+((m.1 0 : ℝ)-(m.2 0 : ℝ))^2/a)| ≤ 8*R+20 := by
+    |(m.2 1 : ℝ) - ((m.1 1 : ℝ) + ((m.1 0 : ℝ) - (m.2 0 : ℝ)) ^ 2 / a)| ≤ 8*R+20 := by
   have hh := smoothing_quadratic_lattice_relation_tolerance ha hR (by norm_num : (0 : ℝ) ≤ 2)
     ht hp.1 hp.2.1 hp.2.2.1 hp.2.2.2
   norm_num at hh
@@ -22470,7 +23462,8 @@ theorem smoothingEnlargedIncidence_box {a R : ℝ} (ha : 1 ≤ a) (hR : 1 ≤ R)
     m.1 ∈ smoothingSpatialIndices a (2*R+4) ∧ m.2 ∈ smoothingSpatialIndices a (2*R+4) ∧
     smoothingInteractionCode a m ∈ smoothingInteractionBox a (2*R+4) := by
   obtain ⟨h₁, h₂⟩ := smoothingEnlargedIncidence_coordinate_bounds ha hR hp hx hy ht
-  have hbound (n : Fin 2 → ℤ) (hn : ∀ i, |(n i : ℝ)| ≤ a*(R+R^2+2)) : n ∈ smoothingSpatialIndices a (2*R+4) := by
+  have hbound (n : Fin 2 → ℤ) (hn : ∀ i, |(n i : ℝ)| ≤ a*(R+R^2+2)) : n ∈ smoothingSpatialIndices
+    a (2*R+4) := by
     apply Fintype.mem_piFinset.mpr
     intro i
     have hb : |(n i : ℝ)| ≤ a*((2*R+4)+(2*R+4)^2+1) := (hn i).trans
@@ -22547,15 +23540,16 @@ theorem smoothingEnlargedIncidence_time_relation {a : ℝ}
   have he : (m.1 0 : ℝ) - (m.2 0 : ℝ) - a*p.2 =
       -(a*(p.1.1+p.2)-(m.1 0 : ℝ)) + (a*p.1.1-(m.2 0 : ℝ)) := by ring
   rw [he]
-  exact (abs_add_le _ _).trans (by simpa only [abs_neg, show (2 : ℝ)+2=4 by norm_num] using add_le_add hp.1 hp.2.2.1)
+  exact (abs_add_le _ _).trans
+    (by simpa only [abs_neg, show (2 : ℝ)+2=4 by norm_num] using add_le_add hp.1 hp.2.2.1)
 
 /-- Time diameter bounds the free coordinate at fixed first spatial index,
 including the enlarged support overlap. -/
 theorem smoothingEnlargedIncidence_first_diameter {a W : ℝ} (ha : 0 ≤ a)
     (m₁ m n : Fin 2 → ℤ) (p q : (ℝ × ℝ) × ℝ)
-    (hp : smoothingEnlargedIncidence a (m₁,m) p)
-    (hq : smoothingEnlargedIncidence a (m₁,n) q)
-    (hW : |p.2-q.2| ≤ W) : |(m 0 : ℝ)-(n 0 : ℝ)| ≤ 8+a*W := by
+    (hp : smoothingEnlargedIncidence a (m₁, m) p)
+    (hq : smoothingEnlargedIncidence a (m₁, n) q)
+    (hW : |p.2 - q.2| ≤ W) : |(m 0 : ℝ)-(n 0 : ℝ)| ≤ 8+a*W := by
   have hp' := smoothingEnlargedIncidence_time_relation hp
   have hq' := smoothingEnlargedIncidence_time_relation hq
   have he : (m 0 : ℝ)-(n 0 : ℝ) =
@@ -22572,9 +23566,9 @@ theorem smoothingEnlargedIncidence_first_diameter {a W : ℝ} (ha : 0 ≤ a)
 /-- The corresponding free-coordinate diameter at fixed second spatial index. -/
 theorem smoothingEnlargedIncidence_second_diameter {a W : ℝ} (ha : 0 ≤ a)
     (m₂ m n : Fin 2 → ℤ) (p q : (ℝ × ℝ) × ℝ)
-    (hp : smoothingEnlargedIncidence a (m,m₂) p)
-    (hq : smoothingEnlargedIncidence a (n,m₂) q)
-    (hW : |p.2-q.2| ≤ W) : |(m 0 : ℝ)-(n 0 : ℝ)| ≤ 8+a*W := by
+    (hp : smoothingEnlargedIncidence a (m, m₂) p)
+    (hq : smoothingEnlargedIncidence a (n, m₂) q)
+    (hW : |p.2 - q.2| ≤ W) : |(m 0 : ℝ)-(n 0 : ℝ)| ≤ 8+a*W := by
   have hp' := smoothingEnlargedIncidence_time_relation hp
   have hq' := smoothingEnlargedIncidence_time_relation hq
   have he : (m 0 : ℝ)-(n 0 : ℝ) =
@@ -22602,7 +23596,8 @@ theorem smoothingEnlargedIncidence_eq3_21 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc
   obtain ⟨c, _, hc0, _, htime⟩ := smoothing_cutoff_positive_time_bounds hc hpos
   let V : ℝ := 2 * (⌈8 * R + 21⌉ : ℝ) + 1
   have hV : 0 ≤ V := by
-    have hh : 0 ≤ (⌈8 * R + 21⌉ : ℝ) := by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 8 * R + 21 by linarith)
+    have hh : 0 ≤ (⌈8 * R + 21⌉ : ℝ) :=
+      by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 8 * R + 21 by linarith)
     dsimp [V]
     linarith
   refine ⟨(19 + 4 * R^2 / c) * V, by positivity, ?_⟩
@@ -22620,9 +23615,9 @@ theorem smoothingEnlargedIncidence_eq3_21 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc
     intro m hm n hn
     exact smoothingEnlargedIncidence_first_diameter ha0.le m₁ m n (P m) (P n)
       (hP m hm).2 (hP n hn).2
-
       (smoothing_resonance_time_diameter hc0 (ht m hm) (ht n hn) k hk (hres m hm) (hres n hn))
-  have hquad := fun m hm => smoothingEnlargedIncidence_quadratic_relation ha (by linarith : 0 ≤ R) (hP m hm).2 (hbound (P m).1.1 (P m).1.2 (P m).2 (hP m hm).1).2.2
+  have hquad := fun m hm => smoothingEnlargedIncidence_quadratic_relation ha (by linarith : 0 ≤ R)
+    (hP m hm).2 (hbound (P m).1.1 (P m).1.2 (P m).2 (hP m hm).1).2.2
   have hh := smoothing_quadratic_fiber_diameter_count a m₁ S
     (by positivity : 0 ≤ 8 + a * W) (by linarith : 0 ≤ 8 * R + 20) hdiam hquad
   have hfac : 2 * (8 + a * W) + 3 ≤ (19 + 4 * R^2 / c) * (1 + a * L / |(k 0 : ℝ)|) := by
@@ -22650,7 +23645,8 @@ theorem smoothingEnlargedIncidence_eq3_23 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc
   obtain ⟨R, hR, hbound⟩ := smoothing_cutoff_coordinate_bound hc
   let V : ℝ := 2 * (⌈8 * R + 21⌉ : ℝ) + 1
   have hV : 0 ≤ V := by
-    have hh : 0 ≤ (⌈8 * R + 21⌉ : ℝ) := by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 8 * R + 21 by linarith)
+    have hh : 0 ≤ (⌈8 * R + 21⌉ : ℝ) :=
+      by exact_mod_cast Int.ceil_nonneg (show 0 ≤ 8 * R + 21 by linarith)
     dsimp [V]
     linarith
   refine ⟨21 * V, by positivity, ?_⟩
@@ -22664,9 +23660,9 @@ theorem smoothingEnlargedIncidence_eq3_23 {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc
     intro m hm n hn
     exact smoothingEnlargedIncidence_second_diameter ha0.le m₂ m n (P m) (P n)
       (hP m hm).2 (hP n hn).2
-
       (smoothing_resonance_second_time_diameter k hk (hres m hm) (hres n hn))
-  have hquad := fun m hm => smoothingEnlargedIncidence_quadratic_relation ha (by linarith : 0 ≤ R) (hP m hm).2 (hbound (P m).1.1 (P m).1.2 (P m).2 (hP m hm).1).2.2
+  have hquad := fun m hm => smoothingEnlargedIncidence_quadratic_relation ha (by linarith : 0 ≤ R)
+    (hP m hm).2 (hbound (P m).1.1 (P m).1.2 (P m).2 (hP m hm).1).2.2
   have hh := smoothing_quadratic_second_fiber_diameter_count a m₂ S
     (by positivity : 0 ≤ 8 + a * W) (by linarith : 0 ≤ 8 * R + 20) hdiam hquad
   have hfac : 2 * (8 + a * W) + 3 ≤ 21 * (1 + a * L / |(k 1 : ℝ)|) := by
@@ -22702,10 +23698,11 @@ theorem smoothingEnlargedInteractionIndices_first_fiber_count
   have hdiam : ∀ m ∈ S, ∀ n ∈ S, |(m 0 : ℝ)-(n 0 : ℝ)| ≤ 2*a*(R+R^2+2) := by
     intro m hm n hn
     exact (abs_sub _ _).trans (by linarith [hcoord m hm, hcoord n hn])
-  have hquad : ∀ m ∈ S, |(m 1 : ℝ)-((m₁ 1 : ℝ)+((m₁ 0 : ℝ)-(m 0 : ℝ))^2/a)| ≤ 8*R+20 := by
+  have hquad : ∀ m ∈ S, |(m 1 : ℝ)-((m₁ 1 : ℝ)+((m₁ 0 : ℝ)-(m 0 : ℝ)) ^ 2 / a)| ≤ 8*R+20 := by
     intro m hm
     obtain ⟨p, hp, hi⟩ := hS m hm
-    exact smoothingEnlargedIncidence_quadratic_relation ha (by linarith) hi (hbound p.1.1 p.1.2 p.2 hp).2.2
+    exact smoothingEnlargedIncidence_quadratic_relation ha (by linarith) hi (hbound p.1.1 p.1.2
+      p.2 hp).2.2
   have hh := smoothing_quadratic_fiber_diameter_count a m₁ S
     (by positivity : 0 ≤ 2*a*(R+R^2+2)) (by linarith : 0 ≤ 8*R+20) hdiam hquad
   have hh' : (S.card : ℝ) ≤ (2*(2*a*(R+R^2+2))+3)*V := by
@@ -22736,10 +23733,11 @@ theorem smoothingEnlargedInteractionIndices_second_fiber_count
   have hdiam : ∀ m ∈ S, ∀ n ∈ S, |(m 0 : ℝ)-(n 0 : ℝ)| ≤ 2*a*(R+R^2+2) := by
     intro m hm n hn
     exact (abs_sub _ _).trans (by linarith [hcoord m hm, hcoord n hn])
-  have hquad : ∀ m ∈ S, |(m₂ 1 : ℝ)-((m 1 : ℝ)+((m 0 : ℝ)-(m₂ 0 : ℝ))^2/a)| ≤ 8*R+20 := by
+  have hquad : ∀ m ∈ S, |(m₂ 1 : ℝ)-((m 1 : ℝ)+((m 0 : ℝ)-(m₂ 0 : ℝ)) ^ 2 / a)| ≤ 8*R+20 := by
     intro m hm
     obtain ⟨p, hp, hi⟩ := hS m hm
-    exact smoothingEnlargedIncidence_quadratic_relation ha (by linarith) hi (hbound p.1.1 p.1.2 p.2 hp).2.2
+    exact smoothingEnlargedIncidence_quadratic_relation ha (by linarith) hi (hbound p.1.1 p.1.2
+      p.2 hp).2.2
   have hh := smoothing_quadratic_second_fiber_diameter_count a m₂ S
     (by positivity : 0 ≤ 2*a*(R+R^2+2)) (by linarith : 0 ≤ 8*R+20) hdiam hquad
   have hh' : (S.card : ℝ) ≤ (2*(2*a*(R+R^2+2))+3)*V := by
@@ -22772,7 +23770,8 @@ theorem smoothingRelocalizedComponent_scaled_support
     (hx : smoothingRelocalizedComponent g j a R hρ m flat x ≠ 0) :
     ∀ i, |a*x i-(m i : ℝ)| ≤ 2 := by
   intro i
-  exact (smoothingRelocalizedComponent_scaled_support_quarter g j ha R hρ m flat x hx i).trans (by norm_num)
+  exact (smoothingRelocalizedComponent_scaled_support_quarter g j ha R hρ m flat x hx i).trans
+    (by norm_num)
 /-- A nonzero localized product with the source cutoff is an enlarged
 interaction; this supplies the actual reference points for (3.21) and (3.23). -/
 theorem smoothingRelocalizedComponent_interaction
@@ -22782,9 +23781,9 @@ theorem smoothingRelocalizedComponent_interaction
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (flat₁ flat₂ : Bool)
     (ζ : (ℝ × ℝ) × ℝ → ℂ) (p : (ℝ × ℝ) × ℝ)
     (hp : smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m.1 flat₁
-        (smoothingPlaneEquiv.symm (p.1.1+p.2,p.1.2)) *
+        (smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2)) *
       smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m.2 flat₂
-        (smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2^2)) * ζ p ≠ 0) :
+        (smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^ 2)) * ζ p ≠ 0) :
     ζ p ≠ 0 ∧ smoothingEnlargedIncidence a m p := by
   have hζ := (mul_ne_zero_iff.mp hp).2
   have h₁ := (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hp).1).1
@@ -22793,7 +23792,8 @@ theorem smoothingRelocalizedComponent_interaction
   have hb₂ := smoothingRelocalizedComponent_scaled_support g₂ 1 ha R₂ hρ₂ m.2 flat₂ _ h₂
   exact ⟨hζ, hb₁ 0, hb₁ 1, hb₂ 0, hb₂ 1⟩
 
-/-- The spatial energy separation after (3.23), with enlarged supports and arbitrary summable nonnegative energies. -/
+/-- The spatial energy separation after (3.23), with enlarged supports and arbitrary summable
+  nonnegative energies. -/
 theorem smoothingEnlargedIncidence_low_high_energy_first {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hc : HasCompactSupport ζ) (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
     ∃ C D : ℝ, 0 ≤ C ∧ 0 ≤ D ∧ ∀ a : ℝ, 1 ≤ a →
@@ -23039,24 +24039,24 @@ theorem smoothingEnlargedInteractionIndices_weighted_second
 
 /-- Enlarged support and a reference incidence place the correlation
 inside the radius-seven region where the auxiliary gate is one. -/
-theorem smoothingEnlargedIncidence_correlation_region {a : ℝ}
-    (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) {p : (ℝ × ℝ) × ℝ}
-    (hp : smoothingEnlargedIncidence a m p) {x y t s : ℝ}
-    (hxt : |a*(x+t)-(m.1 0 : ℝ)| ≤ 5/4)
-    (hy : |a*y-(m.1 1 : ℝ)| ≤ 5/4)
-    (hxts : |a*(x+t+s)-(m.1 0 : ℝ)| ≤ 5/4)
-    (hx : |a*x-(m.2 0 : ℝ)| ≤ 5/4) :
+theorem smoothingEnlargedIncidence_correlation_region {a : ℝ} (m : (Fin 2 → ℤ) × (Fin 2 → ℤ))
+    {p : (ℝ × ℝ) × ℝ}
+    (hp : smoothingEnlargedIncidence a m p) {x y t s : ℝ} (hxt : |a * (x + t) - (m.1 0 : ℝ)| ≤
+      5 / 4)
+    (hy : |a * y - (m.1 1 : ℝ)| ≤ 5 / 4) (hxts : |a * (x + t + s) - (m.1 0 : ℝ)| ≤ 5 / 4)
+    (hx : |a * x - (m.2 0 : ℝ)| ≤ 5 / 4) :
     ‖a • (((x,y),(t,s))-smoothingCorrelationCenter p)‖ ≤ 7 := by
   have hx' : |a*(x-p.1.1)| ≤ 13/4 := by
-    have he : a*(x-p.1.1) = (a*x-(m.2 0 : ℝ))-(a*p.1.1-(m.2 0 : ℝ)) := by ring
+    have he : a*(x-p.1.1) = (a*x - (m.2 0 : ℝ))-(a*p.1.1-(m.2 0 : ℝ)) := by ring
     rw [he]
     exact (abs_sub _ _).trans (by linarith [hp.2.2.1])
   have hy' : |a*(y-p.1.2)| ≤ 13/4 := by
-    have he : a*(y-p.1.2) = (a*y-(m.1 1 : ℝ))-(a*p.1.2-(m.1 1 : ℝ)) := by ring
+    have he : a*(y-p.1.2) = (a*y - (m.1 1 : ℝ))-(a*p.1.2-(m.1 1 : ℝ)) := by ring
     rw [he]
     exact (abs_sub _ _).trans (by linarith [hp.2.1])
   have hxt' : |a*((x+t)-(p.1.1+p.2))| ≤ 13/4 := by
-    have he : a*((x+t)-(p.1.1+p.2)) = (a*(x+t)-(m.1 0 : ℝ))-(a*(p.1.1+p.2)-(m.1 0 : ℝ)) := by ring
+    have he : a*((x+t)-(p.1.1+p.2)) = (a*(x + t) - (m.1 0 : ℝ))-(a*(p.1.1+p.2)-(m.1 0 : ℝ)) :=
+      by ring
     rw [he]
     exact (abs_sub _ _).trans (by linarith [hp.1])
   have ht' : |a*(t-p.2)| ≤ 13/2 := by
@@ -23064,7 +24064,7 @@ theorem smoothingEnlargedIncidence_correlation_region {a : ℝ}
     rw [he]
     exact (abs_sub _ _).trans (by linarith)
   have hs' : |a*s| ≤ 5/2 := by
-    have he : a*s = (a*(x+t+s)-(m.1 0 : ℝ))-(a*(x+t)-(m.1 0 : ℝ)) := by ring
+    have he : a*s = (a*(x + t + s)-(m.1 0 : ℝ))-(a*(x + t) - (m.1 0 : ℝ)) := by ring
     rw [he]
     exact (abs_sub _ _).trans (by linarith)
   change max (max |a*(x-p.1.1)| |a*(y-p.1.2)|)
@@ -23095,7 +24095,7 @@ theorem smoothingLocalized_measurable_bounded_memLp {f g : ℝ × ℝ → ℂ}
   have hv : V z = ((∫ t : ℝ, ‖ζ (z,t)‖ : ℝ) : ℂ) := by
     simp only [V, smoothingLocalized, one_mul, Z]
     exact integral_ofReal
-  have hbn : ‖smoothingLocalized f g ζ z‖ ≤ (M*N)*(∫ t : ℝ, ‖ζ (z,t)‖) := by
+  have hbn : ‖smoothingLocalized f g ζ z‖ ≤ (M*N)*(∫ t : ℝ, ‖ζ (z, t)‖) := by
     apply (norm_integral_le_integral_norm _).trans
     rw [← integral_const_mul]
     apply integral_mono
@@ -23115,7 +24115,7 @@ def smoothingEnlargedOutputRectangle (a : ℝ) (m : (Fin 2 → ℤ) × (Fin 2 �
 /-- The enlarged rectangle has the same O(a^-2) area as in (3.7). -/
 theorem smoothingEnlargedOutputRectangle_volume {a : ℝ} (ha : 0 < a)
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) :
-    volume (smoothingEnlargedOutputRectangle a m) = ENNReal.ofReal (16/a^2) := by
+    volume (smoothingEnlargedOutputRectangle a m) = ENNReal.ofReal (16/a ^ 2) := by
   rw [smoothingEnlargedOutputRectangle, Measure.volume_eq_prod, Measure.prod_prod,
     Real.volume_Icc, Real.volume_Icc]
   have he (c : ℝ) : c+2/a-(c-2/a) = 4/a := by ring
@@ -23126,9 +24126,10 @@ theorem smoothingEnlargedOutputRectangle_volume {a : ℝ} (ha : 0 < a)
 /-- Enlarged input supports imply the output support needed by (3.7). -/
 theorem smoothingLocalized_enlarged_rectangle_support {a : ℝ} (ha : 0 < a)
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (F G : ℝ × ℝ → ℂ)
-    (hF : ∀ z, F z ≠ 0 → |a*z.1-(m.1 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m.1 1 : ℝ)| ≤ 5/4)
-    (hG : ∀ z, G z ≠ 0 → |a*z.1-(m.2 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m.2 1 : ℝ)| ≤ 5/4)
-    (ζ : (ℝ × ℝ) × ℝ → ℂ) :
+    (hF : ∀ z, F z ≠ 0 → |a * z.1 - (m.1 0 : ℝ)| ≤ 5 / 4 ∧ |a * z.2 - (m.1 1 : ℝ)| ≤ 5 / 4) (hG : ∀
+      z, G z
+      ≠ 0 → |a * z.1 - (m.2 0 : ℝ)| ≤ 5 / 4 ∧ |a * z.2 - (m.2 1 : ℝ)| ≤ 5 / 4) (ζ : (ℝ × ℝ) × ℝ →
+        ℂ) :
     Function.support (smoothingLocalized F G ζ) ⊆ smoothingEnlargedOutputRectangle a m := by
   intro z hz
   by_contra hn
@@ -23138,7 +24139,7 @@ theorem smoothingLocalized_enlarged_rectangle_support {a : ℝ} (ha : 0 < a)
   by_contra ht
   have h₁ := hF (z.1+t,z.2) (left_ne_zero_of_mul (left_ne_zero_of_mul ht))
   have h₂ := hG (z.1,z.2+t^2) (right_ne_zero_of_mul (left_ne_zero_of_mul ht))
-  have hb {x c : ℝ} (h : |a*x-c| ≤ 5/4) : x ∈ Set.Icc (c/a-2/a) (c/a+2/a) := by
+  have hb {x c : ℝ} (h : |a*x-c| ≤ 5 / 4) : x ∈ Set.Icc (c/a-2/a) (c/a+2/a) := by
     have h' := abs_le.mp h
     constructor
     · rw [← sub_div, div_le_iff₀ ha]
@@ -23151,24 +24152,29 @@ theorem smoothingLocalized_enlarged_rectangle_support {a : ℝ} (ha : 0 < a)
 used by the actual Section 3.3 components. -/
 theorem smoothingCorrelationGate_insert_enlarged {a : ℝ}
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (F G : ℝ × ℝ → ℂ)
-    (hF : ∀ z, F z ≠ 0 → |a*z.1-(m.1 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m.1 1 : ℝ)| ≤ 5/4)
-    (hG : ∀ z, G z ≠ 0 → |a*z.1-(m.2 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m.2 1 : ℝ)| ≤ 5/4)
-    (ζ : (ℝ × ℝ) × ℝ → ℂ) {p : (ℝ × ℝ) × ℝ}
+    (hF : ∀ z, F z ≠ 0 → |a * z.1 - (m.1 0 : ℝ)| ≤ 5 / 4 ∧ |a * z.2 - (m.1 1 : ℝ)| ≤ 5 / 4) (hG : ∀
+      z, G z
+      ≠ 0 → |a * z.1 - (m.2 0 : ℝ)| ≤ 5 / 4 ∧ |a * z.2 - (m.2 1 : ℝ)| ≤ 5 / 4) (ζ : (ℝ × ℝ) × ℝ → ℂ)
+        {p :
+      (ℝ × ℝ) × ℝ}
     (hp : smoothingEnlargedIncidence a m p) (z : ℝ × ℝ) (t s : ℝ) :
     let v := F (z.1+t+s,z.2) * star (F (z.1+t,z.2)) *
       G (z.1,z.2+(t+s)^2) * star (G (z.1,z.2+t^2))
-    v*smoothingCorrelationCutoff ζ (z,(t,s)) = v*smoothingLocalizedCorrelationCutoff a p ζ (z,(t,s)) := by
+    v*smoothingCorrelationCutoff ζ (z,(t,s)) = v*smoothingLocalizedCorrelationCutoff a p ζ
+      (z,(t,s)) := by
   dsimp only
   by_cases hz : F (z.1+t+s,z.2) * star (F (z.1+t,z.2)) *
       G (z.1,z.2+(t+s)^2) * star (G (z.1,z.2+t^2)) = 0
   · simp only [hz, zero_mul]
   have hfs := left_ne_zero_of_mul (left_ne_zero_of_mul (left_ne_zero_of_mul hz))
   have hf : F (z.1+t,z.2) ≠ 0 := by
-    simpa only [star_ne_zero] using right_ne_zero_of_mul (left_ne_zero_of_mul (left_ne_zero_of_mul hz))
+    simpa only [star_ne_zero] using right_ne_zero_of_mul (left_ne_zero_of_mul
+      (left_ne_zero_of_mul hz))
   have hg : G (z.1,z.2+t^2) ≠ 0 := by
     simpa only [star_ne_zero] using right_ne_zero_of_mul hz
   have hgate := smoothingCorrelationGate_one_enlarged a p
-    (smoothingEnlargedIncidence_correlation_region m hp (hF _ hf).1 (hF _ hf).2 (hF _ hfs).1 (hG _ hg).1)
+    (smoothingEnlargedIncidence_correlation_region m hp (hF _ hf).1 (hF _ hf).2 (hF _ hfs).1 (hG _
+      hg).1)
   rw [smoothingLocalizedCorrelationCutoff, hgate, one_smul]
 
 /-- The full operator Cauchy--Schwarz/correlation inequality (3.7) for
@@ -23177,9 +24183,11 @@ theorem smoothing_eq3_7_enlarged {a : ℝ} (ha : 0 < a)
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) {F G : ℝ × ℝ → ℂ}
     (hFm : Measurable F) (hGm : Measurable G)
     {M N : ℝ} (hM : 0 ≤ M) (hN : 0 ≤ N) (hFb : ∀ z, ‖F z‖ ≤ M) (hGb : ∀ z, ‖G z‖ ≤ N)
-    (hF : ∀ z, F z ≠ 0 → |a*z.1-(m.1 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m.1 1 : ℝ)| ≤ 5/4)
-    (hG : ∀ z, G z ≠ 0 → |a*z.1-(m.2 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m.2 1 : ℝ)| ≤ 5/4)
-    {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
+    (hF : ∀ z, F z ≠ 0 → |a * z.1 - (m.1 0 : ℝ)| ≤ 5 / 4 ∧ |a * z.2 - (m.1 1 : ℝ)| ≤ 5 / 4) (hG : ∀
+      z, G z
+      ≠ 0 → |a * z.1 - (m.2 0 : ℝ)| ≤ 5 / 4 ∧ |a * z.2 - (m.2 1 : ℝ)| ≤ 5 / 4) {ζ : (ℝ × ℝ) × ℝ → ℂ}
+        (hζ :
+      ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
     {p : (ℝ × ℝ) × ℝ} (hp : smoothingEnlargedIncidence a m p) :
     (∫ z, ‖smoothingLocalized F G ζ z‖)^2 ≤
       (16/a^2)*(∫ q, smoothingCorrelationIntegrand a p F G ζ q).re := by
@@ -23213,8 +24221,10 @@ theorem smoothingRelocalized_pair_separation
     ζ p ≠ 0 → smoothingEnlargedIncidence a (m₁,m₂) p →
     let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m₁ f₁)
     let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
-    let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁ (smoothingPlaneEquiv.symm z)
-    let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂ (smoothingPlaneEquiv.symm z)
+    let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁
+      (smoothingPlaneEquiv.symm z)
+    let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂
+      (smoothingPlaneEquiv.symm z)
     (∫ z, ‖smoothingLocalized F G ζ z‖) ≤
       (4/a)*Real.sqrt ‖∫ q, smoothingLinearizedCorrelationIntegrand a p F G ζ q‖ +
       (4/a)*Real.sqrt (C*r/a^6) := by
@@ -23224,12 +24234,16 @@ theorem smoothingRelocalized_pair_separation
   have ha₀ : 0 < a := by linarith
   let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m₁ f₁)
   let g₂ := smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m₂ f₂)
-  let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁ (smoothingPlaneEquiv.symm z)
-  let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂ (smoothingPlaneEquiv.symm z)
+  let F := fun z => smoothingRelocalizedComponent g₁ 0 a R₁ hρ₁ m₁ flat₁ (smoothingPlaneEquiv.symm
+    z)
+  let G := fun z => smoothingRelocalizedComponent g₂ 1 a R₂ hρ₂ m₂ flat₂ (smoothingPlaneEquiv.symm
+    z)
   obtain ⟨M,hM,hMb⟩ := smoothingRelocalizedComponent_bounded g₁ 0 a hR₁ hρ₁ m₁ flat₁
   obtain ⟨N,hN,hNb⟩ := smoothingRelocalizedComponent_bounded g₂ 1 a hR₂ hρ₂ m₂ flat₂
-  have hmF : Measurable F := (smoothingRelocalizedComponent_measurable_support g₁ 0 ha₀ R₁ hρ₁ m₁ flat₁).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hmG : Measurable G := (smoothingRelocalizedComponent_measurable_support g₂ 1 ha₀ R₂ hρ₂ m₂ flat₂).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hmF : Measurable F := (smoothingRelocalizedComponent_measurable_support g₁ 0 ha₀ R₁ hρ₁ m₁
+    flat₁).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hmG : Measurable G := (smoothingRelocalizedComponent_measurable_support g₂ 1 ha₀ R₂ hρ₂ m₂
+    flat₂).1.comp smoothingPlaneEquiv.symm.continuous.measurable
   have hsF : ∀ z, F z ≠ 0 → |a*z.1-(m₁ 0 : ℝ)| ≤ 5/4 ∧ |a*z.2-(m₁ 1 : ℝ)| ≤ 5/4 := by
     intro z hz
     have hh := smoothingRelocalizedComponent_scaled_support_quarter g₁ 0 ha₀ R₁ hρ₁ m₁ flat₁ _ hz
@@ -23239,20 +24253,23 @@ theorem smoothingRelocalized_pair_separation
     have hh := smoothingRelocalizedComponent_scaled_support_quarter g₂ 1 ha₀ R₂ hρ₂ m₂ flat₂ _ hz
     exact ⟨hh 0, hh 1⟩
   have hcs := smoothing_eq3_7_enlarged ha₀ (m₁,m₂) hmF hmG hM hN
-    (fun z => hMb (smoothingPlaneEquiv.symm z)) (fun z => hNb (smoothingPlaneEquiv.symm z)) hsF hsG hζ hc hinc
-  have herr := (hlinear r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ p hp).2.2
+    (fun z => hMb (smoothingPlaneEquiv.symm z)) (fun z => hNb (smoothingPlaneEquiv.symm z)) hsF
+      hsG hζ hc hinc
+  have herr := (hlinear r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m₁ m₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂
+    p hp).2.2
   rw [show 16/a^2 = (4/a)^2 by ring] at hcs
   exact smoothing_correlation_sqrt_separation (by positivity) (by positivity) hcs herr
 
 /-- Absolute spatial series reduce to the finite interaction set on the
 support of the source cutoff, before integrating in time. -/
-theorem smoothing_spatial_series_finite {α β : Type*}
-    (S : Finset (α × β)) (F : α → ℝ × ℝ → ℂ) (G : β → ℝ × ℝ → ℂ)
-    (f g : ℝ × ℝ → ℂ) (ζ : (ℝ × ℝ) × ℝ → ℂ)
-    (hf : ∀ z, f z = ∑' m, F m z) (hg : ∀ z, g z = ∑' n, G n z)
+theorem smoothing_spatial_series_finite {α β : Type*} (S : Finset (α × β)) (F : α → ℝ × ℝ → ℂ)
+    (G : β → ℝ × ℝ → ℂ)
+    (f g : ℝ × ℝ → ℂ) (ζ : (ℝ × ℝ) × ℝ → ℂ) (hf : ∀ z, f z = ∑' m, F m z) (hg : ∀ z, g z = ∑'
+      n, G n z)
     (hF : ∀ z, Summable (fun m => ‖F m z‖)) (hG : ∀ z, Summable (fun n => ‖G n z‖))
-    (hS : ∀ (m : α × β) (p : (ℝ × ℝ) × ℝ),
-      F m.1 (p.1.1+p.2,p.1.2)*G m.2 (p.1.1,p.1.2+p.2^2)*ζ p ≠ 0 → m ∈ S)
+    (hS :
+      ∀ (m : α × β) (p : (ℝ × ℝ) × ℝ), F m.1 (p.1.1 + p.2, p.1.2) * G m.2 (p.1.1, p.1.2 + p.2 ^
+        2) * ζ p ≠ 0 → m ∈ S)
     (z : ℝ × ℝ) (t : ℝ) :
     f (z.1+t,z.2)*g (z.1,z.2+t^2)*ζ (z,t) =
       ∑ m ∈ S, F m.1 (z.1+t,z.2)*G m.2 (z.1,z.2+t^2)*ζ (z,t) := by
@@ -23261,15 +24278,16 @@ theorem smoothing_spatial_series_finite {α β : Type*}
 
 /-- Finite spatial reconstruction commutes with the time integral for
 bounded measurable local pieces in the source triangle step. -/
-theorem smoothingLocalized_series_finite {α β : Type*}
-    (S : Finset (α × β)) (F : α → ℝ × ℝ → ℂ) (G : β → ℝ × ℝ → ℂ)
-    (f g : ℝ × ℝ → ℂ) (ζ : (ℝ × ℝ) × ℝ → ℂ)
-    (hf : ∀ z, f z = ∑' m, F m z) (hg : ∀ z, g z = ∑' n, G n z)
+theorem smoothingLocalized_series_finite {α β : Type*} (S : Finset (α × β)) (F : α → ℝ × ℝ → ℂ)
+    (G : β → ℝ × ℝ → ℂ)
+    (f g : ℝ × ℝ → ℂ) (ζ : (ℝ × ℝ) × ℝ → ℂ) (hf : ∀ z, f z = ∑' m, F m z) (hg : ∀ z, g z = ∑'
+      n, G n z)
     (hF : ∀ z, Summable (fun m => ‖F m z‖)) (hG : ∀ z, Summable (fun n => ‖G n z‖))
-    (hS : ∀ (m : α × β) (p : (ℝ × ℝ) × ℝ),
-      F m.1 (p.1.1+p.2,p.1.2)*G m.2 (p.1.1,p.1.2+p.2^2)*ζ p ≠ 0 → m ∈ S)
-    (hi : ∀ m ∈ S, ∀ z : ℝ × ℝ,
-      Integrable (fun t : ℝ => F m.1 (z.1+t,z.2)*G m.2 (z.1,z.2+t^2)*ζ (z,t))) :
+    (hS :
+      ∀ (m : α × β) (p : (ℝ × ℝ) × ℝ), F m.1 (p.1.1 + p.2, p.1.2) * G m.2 (p.1.1, p.1.2 + p.2 ^
+        2) * ζ p ≠ 0 → m ∈ S)
+    (hi : ∀ m ∈ S, ∀ z : ℝ × ℝ, Integrable (fun t : ℝ => F m.1 (z.1 + t, z.2) * G m.2 (z.1, z.2
+      + t ^ 2) * ζ (z, t))) :
     ∀ z, smoothingLocalized f g ζ z = ∑ m ∈ S, smoothingLocalized (F m.1) (G m.2) ζ z := by
   intro z
   unfold smoothingLocalized
@@ -23302,7 +24320,8 @@ theorem smoothingRelocalizedComponent_summable
     (flat : Bool) (x : EuclideanSpace ℝ (Fin 2)) :
     Summable (fun m => ‖smoothingRelocalizedComponent (g m) j a R hρ m flat x‖) :=
   (smoothingEnlargedCutoff_summable ha
-    (fun m x => if flat then smoothingFlatComponent (g m) j R hρ x else smoothingSharpComponent (g m) j R hρ x) x).2
+    (fun m x => if flat then smoothingFlatComponent (g m) j R hρ x else smoothingSharpComponent (g
+      m) j R hρ x) x).2
 
 /-- The source spatial triangle inequality for the actual measurable
 flat/sharp families, on their finite enlarged interaction set. -/
@@ -23311,8 +24330,10 @@ theorem smoothingRelocalized_spatial_triangle
     {a : ℝ} (ha : 1 ≤ a) {R₁ R₂ ρ₁ ρ₂ : ℝ}
     (hR₁ : 0 < R₁) (hR₂ : 0 < R₂) (hρ₁ : 0 < ρ₁) (hρ₂ : 0 < ρ₂)
     (g₁ g₂ : (Fin 2 → ℤ) → SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (flat₁ flat₂ : Bool) :
-    let F := fun m z => smoothingRelocalizedComponent (g₁ m) 0 a R₁ hρ₁ m flat₁ (smoothingPlaneEquiv.symm z)
-    let G := fun m z => smoothingRelocalizedComponent (g₂ m) 1 a R₂ hρ₂ m flat₂ (smoothingPlaneEquiv.symm z)
+    let F := fun m z => smoothingRelocalizedComponent (g₁ m) 0 a R₁ hρ₁ m flat₁
+      (smoothingPlaneEquiv.symm z)
+    let G := fun m z => smoothingRelocalizedComponent (g₂ m) 1 a R₂ hρ₂ m flat₂
+      (smoothingPlaneEquiv.symm z)
     ∃ (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
       (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingEnlargedInteractionIndices ζ a ∧
@@ -23327,36 +24348,44 @@ theorem smoothingRelocalized_spatial_triangle
   have hfin := (hcount a ha).1
   let S := hfin.toFinset
   have hS : ∀ m, m ∈ S ↔ m ∈ smoothingEnlargedInteractionIndices ζ a := fun m => hfin.mem_toFinset
-  let P := fun m => if hm : m ∈ smoothingEnlargedInteractionIndices ζ a then Classical.choose hm else 0
+  let P := fun m => if hm : m ∈ smoothingEnlargedInteractionIndices ζ a then Classical.choose hm
+    else 0
   have hP : ∀ m ∈ S, ζ (P m) ≠ 0 ∧ smoothingEnlargedIncidence a m (P m) := by
     intro m hm
     have hh := (hS m).mp hm
-    simpa only [P, dif_pos hh] using Classical.choose_spec hh
+    simpa only [P, dite_eq_left hh] using Classical.choose_spec hh
   have hFm (m) : Measurable (F m) :=
-    (smoothingRelocalizedComponent_measurable_support (g₁ m) 0 ha₀ R₁ hρ₁ m flat₁).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+    (smoothingRelocalizedComponent_measurable_support (g₁ m) 0 ha₀ R₁ hρ₁ m flat₁).1.comp
+      smoothingPlaneEquiv.symm.continuous.measurable
   have hGm (m) : Measurable (G m) :=
-    (smoothingRelocalizedComponent_measurable_support (g₂ m) 1 ha₀ R₂ hρ₂ m flat₂).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+    (smoothingRelocalizedComponent_measurable_support (g₂ m) 1 ha₀ R₂ hρ₂ m flat₂).1.comp
+      smoothingPlaneEquiv.symm.continuous.measurable
   have hbound (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) :
       ∃ M N : ℝ, 0 ≤ M ∧ 0 ≤ N ∧ (∀ z, ‖F m.1 z‖ ≤ M) ∧ (∀ z, ‖G m.2 z‖ ≤ N) := by
     obtain ⟨M,hM,hMb⟩ := smoothingRelocalizedComponent_bounded (g₁ m.1) 0 a hR₁ hρ₁ m.1 flat₁
     obtain ⟨N,hN,hNb⟩ := smoothingRelocalizedComponent_bounded (g₂ m.2) 1 a hR₂ hρ₂ m.2 flat₂
     exact ⟨M,N,hM,hN,fun z => hMb _,fun z => hNb _⟩
-  have hsupport : ∀ m p, F m.1 (p.1.1+p.2,p.1.2)*G m.2 (p.1.1,p.1.2+p.2^2)*ζ p ≠ 0 → m ∈ S := by
+  have hsupport : ∀ m p, F m.1 (p.1.1 + p.2, p.1.2) * G m.2 (p.1.1, p.1.2 + p.2 ^ 2)*ζ p ≠ 0 → m ∈ S
+    := by
     intro m p hp
-    exact (hS m).mpr ⟨p, smoothingRelocalizedComponent_interaction (g₁ m.1) (g₂ m.2) ha₀ R₁ R₂ hρ₁ hρ₂ m flat₁ flat₂ ζ p hp⟩
+    exact (hS m).mpr ⟨p, smoothingRelocalizedComponent_interaction (g₁ m.1) (g₂ m.2) ha₀ R₁ R₂ hρ₁
+      hρ₂ m flat₁ flat₂ ζ p hp⟩
   have hsum := smoothingLocalized_series_finite S F G _ _ ζ (fun _ => rfl) (fun _ => rfl)
     (fun z => smoothingRelocalizedComponent_summable g₁ 0 ha₀ R₁ hρ₁ flat₁ _)
     (fun z => smoothingRelocalizedComponent_summable g₂ 1 ha₀ R₂ hρ₂ flat₂ _) hsupport
     (fun m _ z => by
       obtain ⟨M,N,hM,hN,hMb,hNb⟩ := hbound m
       exact smoothingLocalized_measurable_bounded_fiber (hFm m.1) (hGm m.2) hM hN hMb hNb hζ hc z)
-  have htri := smoothingLocalized_finite_triangle S (fun m => smoothingLocalized (F m.1) (G m.2) ζ) _ hsum
+  have htri := smoothingLocalized_finite_triangle S (fun m => smoothingLocalized (F m.1) (G m.2)
+    ζ) _ hsum
     (fun m _ => by
       obtain ⟨M,N,hM,hN,hMb,hNb⟩ := hbound m
-      exact (smoothingLocalized_measurable_bounded_integrable (hFm m.1) (hGm m.2) hM hN hMb hNb hζ hc).2)
+      exact (smoothingLocalized_measurable_bounded_integrable (hFm m.1) (hGm m.2) hM hN hMb hNb hζ
+        hc).2)
   exact ⟨S,P,hfin.coe_toFinset,hP,htri⟩
 
-/-- The three-term correlation integration with an independent resonant energy on either input, as needed in both cases of (3.30). -/
+/-- The three-term correlation integration with an independent resonant energy on either input, as
+  needed in both cases of (3.30). -/
 theorem smoothing_increment_correlation_three_products_bound {ι : Type*}
     (S : Finset ι) (H : ι → ℝ → ℂ) (E F U G V : ι → ℝ → ℝ)
     (I : Set ℝ) (hI : MeasurableSet I) {K A B : ℝ} (hK : 0 ≤ K) (hA : 0 ≤ A) (hB : 0 ≤ B)
@@ -23368,16 +24397,19 @@ theorem smoothing_increment_correlation_three_products_bound {ι : Type*}
     (hG0 : ∀ i s, 0 ≤ G i s)
     (hU0 : ∀ i s, 0 ≤ U i s) (hV0 : ∀ i s, 0 ≤ V i s)
     (hz : ∀ i ∈ S, ∀ s ∉ I, H i s = 0)
-    (hb : ∀ i ∈ S, ∀ s ∈ I, ‖H i s‖ ≤ K*(
-      A*Real.sqrt (E i s)*Real.sqrt (F i s) +
-      B*Real.sqrt (U i s)*Real.sqrt (G i s) + Real.sqrt (E i s)*Real.sqrt (V i s))) :
-    (∫ s, ∑ i ∈ S, ‖H i s‖) ≤ K*(
-      A*Real.sqrt (∫ s in I, ∑ i ∈ S, E i s)*Real.sqrt (∫ s in I, ∑ i ∈ S, F i s) +
-      B*Real.sqrt (∫ s in I, ∑ i ∈ S, U i s)*Real.sqrt (∫ s in I, ∑ i ∈ S, G i s) +
-      Real.sqrt (∫ s in I, ∑ i ∈ S, E i s)*Real.sqrt (∫ s in I, ∑ i ∈ S, V i s)) := by
-  obtain ⟨hiEF,hbEF⟩ := smoothing_increment_energy_L2_cauchy_schwarz S E F (volume.restrict I) hE hF hE0 hF0
-  obtain ⟨hiUF,hbUF⟩ := smoothing_increment_energy_L2_cauchy_schwarz S U G (volume.restrict I) hU hG hU0 hG0
-  obtain ⟨hiEV,hbEV⟩ := smoothing_increment_energy_L2_cauchy_schwarz S E V (volume.restrict I) hE hV hE0 hV0
+    (hb : ∀ i ∈ S, ∀ s ∈ I, ‖H i s‖ ≤ K *
+      (A * Real.sqrt (E i s) * Real.sqrt (F i s) +
+      B * Real.sqrt (U i s) * Real.sqrt (G i s) + Real.sqrt (E i s) * Real.sqrt (V i s))) :
+    (∫ s, ∑ i ∈ S, ‖H i s‖) ≤ K *
+      (A * Real.sqrt (∫ s in I, ∑ i ∈ S, E i s) * Real.sqrt (∫ s in I, ∑ i ∈ S, F i s) +
+      B * Real.sqrt (∫ s in I, ∑ i ∈ S, U i s) * Real.sqrt (∫ s in I, ∑ i ∈ S, G i s) +
+      Real.sqrt (∫ s in I, ∑ i ∈ S, E i s) * Real.sqrt (∫ s in I, ∑ i ∈ S, V i s)) := by
+  obtain ⟨hiEF,hbEF⟩ := smoothing_increment_energy_L2_cauchy_schwarz S E F (volume.restrict I) hE
+    hF hE0 hF0
+  obtain ⟨hiUF,hbUF⟩ := smoothing_increment_energy_L2_cauchy_schwarz S U G (volume.restrict I) hU
+    hG hU0 hG0
+  obtain ⟨hiEV,hbEV⟩ := smoothing_increment_energy_L2_cauchy_schwarz S E V (volume.restrict I) hE
+    hV hE0 hV0
   have hsumH := integrable_finsetSum S (fun i hi => (hH i hi).norm)
   have he : (∫ s in I, ∑ i ∈ S, ‖H i s‖) = ∫ s, ∑ i ∈ S, ‖H i s‖ := by
     apply setIntegral_eq_integral_of_forall_compl_eq_zero
@@ -23388,12 +24420,15 @@ theorem smoothing_increment_correlation_three_products_bound {ι : Type*}
   have hbound := integral_mono_ae hsumH.integrableOn hmajor (by
     filter_upwards [ae_restrict_mem hI] with s hs
     have hh := Finset.sum_le_sum (fun i hi => hb i hi s hs)
-    simpa only [Finset.mul_sum, Finset.sum_add_distrib, mul_add, mul_assoc, Pi.add_apply] using hh)
+    simpa only [Finset.mul_sum, Finset.sum_add_distrib, mul_add, mul_assoc, Pi.add_apply] using
+      hh)
   simp only [Pi.add_apply] at hbound
-  have hadd : IntegrableOn (fun s => A*(∑ i ∈ S, Real.sqrt (E i s)*Real.sqrt (F i s)) + B*(∑ i ∈ S, Real.sqrt (U i s)*Real.sqrt (G i s))) I := (hiEF.const_mul A).add (hiUF.const_mul B)
+  have hadd : IntegrableOn (fun s => A*(∑ i ∈ S, Real.sqrt (E i s) * Real.sqrt (F i s)) + B*(∑ i ∈
+    S, Real.sqrt (U i s) * Real.sqrt (G i s))) I := (hiEF.const_mul A).add (hiUF.const_mul B)
   rw [integral_const_mul,
     integral_add hadd hiEV,
-    integral_add (hiEF.const_mul A) (hiUF.const_mul B), integral_const_mul, integral_const_mul] at hbound
+    integral_add (hiEF.const_mul A) (hiUF.const_mul B),
+    integral_const_mul, integral_const_mul] at hbound
   apply hbound.trans
   apply mul_le_mul_of_nonneg_left _ hK
   have h₁ := mul_le_mul_of_nonneg_left hbEF hA
@@ -23411,13 +24446,13 @@ theorem smoothing_increment_correlation_three_energy_bound {ι : Type*}
     (hE0 : ∀ i s, 0 ≤ E i s) (hF0 : ∀ i s, 0 ≤ F i s)
     (hU0 : ∀ i s, 0 ≤ U i s) (hV0 : ∀ i s, 0 ≤ V i s)
     (hz : ∀ i ∈ S, ∀ s ∉ I, H i s = 0)
-    (hb : ∀ i ∈ S, ∀ s ∈ I, ‖H i s‖ ≤ K*(
-      A*Real.sqrt (E i s)*Real.sqrt (F i s) +
-      B*Real.sqrt (U i s)*Real.sqrt (F i s) + Real.sqrt (E i s)*Real.sqrt (V i s))) :
-    (∫ s, ∑ i ∈ S, ‖H i s‖) ≤ K*(
-      A*Real.sqrt (∫ s in I, ∑ i ∈ S, E i s)*Real.sqrt (∫ s in I, ∑ i ∈ S, F i s) +
-      B*Real.sqrt (∫ s in I, ∑ i ∈ S, U i s)*Real.sqrt (∫ s in I, ∑ i ∈ S, F i s) +
-      Real.sqrt (∫ s in I, ∑ i ∈ S, E i s)*Real.sqrt (∫ s in I, ∑ i ∈ S, V i s)) := by
+    (hb : ∀ i ∈ S, ∀ s ∈ I, ‖H i s‖ ≤ K *
+      (A * Real.sqrt (E i s) * Real.sqrt (F i s) +
+      B * Real.sqrt (U i s) * Real.sqrt (F i s) + Real.sqrt (E i s) * Real.sqrt (V i s))) :
+    (∫ s, ∑ i ∈ S, ‖H i s‖) ≤ K *
+      (A * Real.sqrt (∫ s in I, ∑ i ∈ S, E i s) * Real.sqrt (∫ s in I, ∑ i ∈ S, F i s) +
+      B * Real.sqrt (∫ s in I, ∑ i ∈ S, U i s) * Real.sqrt (∫ s in I, ∑ i ∈ S, F i s) +
+      Real.sqrt (∫ s in I, ∑ i ∈ S, E i s) * Real.sqrt (∫ s in I, ∑ i ∈ S, V i s)) := by
   exact smoothing_increment_correlation_three_products_bound S H E F U F V I hI hK hA hB
     hH hE hF hF hU hV hE0 hF0 hF0 hU0 hV0 hz hb
 
@@ -23438,13 +24473,19 @@ theorem smoothingRelocalized_mainCorrelation_strip_bound
     ‖smoothingMainCorrelation a ((p 0,p 1),p 2) (fun z => F (smoothingPlaneEquiv.symm z))
       (fun z => G (smoothingPlaneEquiv.symm z)) ζ s‖ ≤
     C/a^3 * ((L^N)⁻¹ * Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v, ‖c₂ v‖^2) +
-      (81*L^2*Real.sqrt (∑' u : smoothingResonantStrip ((1+2*R)*L) (p 2), ‖c₁ u.val‖^2)*Real.sqrt (∑' v, ‖c₂ v‖^2)) +
-      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂ v.val‖^2)) ∧
+      (81 * L ^ 2 * Real.sqrt (∑' u : smoothingResonantStrip ((1+2*R)*L) (p 2), ‖c₁
+        u.val‖^2)*Real.sqrt
+        (∑' v, ‖c₂ v‖^2)) +
+      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂
+        v.val‖^2)) ∧
     ‖smoothingMainCorrelation a ((p 0,p 1),p 2) (fun z => F (smoothingPlaneEquiv.symm z))
       (fun z => G (smoothingPlaneEquiv.symm z)) ζ s‖ ≤
     C/a^3 * ((L^N)⁻¹ * Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v, ‖c₂ v‖^2) +
-      (81*L^2*Real.sqrt (∑' u, ‖c₁ u‖^2)*Real.sqrt (∑' v : smoothingResonantStrip (2*L) (p 2), ‖c₂ v.val‖^2)) +
-      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂ v.val‖^2)) := by
+      (81 * L ^ 2 * Real.sqrt (∑' u, ‖c₁ u‖^2)*Real.sqrt (∑' v : smoothingResonantStrip (2*L) (p 2),
+        ‖c₂
+        v.val‖^2)) +
+      Real.sqrt (∑' u, ‖c₁ u‖^2) * Real.sqrt (∑' v : {v : Fin 2 → ℤ | a ≤ |(v 1 : ℝ)|}, ‖c₂
+        v.val‖^2)) := by
   obtain ⟨C,hC,hbound⟩ := smoothingRelocalized_mainCorrelation_frequency_bound hζ hc hR N
   refine ⟨C,hC,?_⟩
   intro a ha L hL s p m hp h₀ h₁ h₂ h₃ hs g₁ g₂ R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ flat₁ flat₂
@@ -23458,25 +24499,30 @@ theorem smoothingRelocalized_mainCorrelation_strip_bound
   obtain ⟨hm₁,hs₁⟩ := smoothingRelocalizedComponent_measurable_support g₁ 0 ha₀ R₁ hρ₁ m.1 flat₁
   obtain ⟨hm₂,hs₂⟩ := smoothingRelocalizedComponent_measurable_support g₂ 1 ha₀ R₂ hρ₂ m.2 flat₂
   have hc₁ : Summable (fun u => ‖c₁ u‖^2) :=
-    (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.1 (smoothingCoordinateLine 0 s) hm₁ hM₁ hMb₁ hs₁).summable
+    (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.1 (smoothingCoordinateLine 0 s) hm₁
+      hM₁ hMb₁ hs₁).summable
   have hc₂ : Summable (fun v => ‖c₂ v‖^2) :=
-    (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.2 (smoothingCoordinateLine 1 (2*s*(p 2))) hm₂ hM₂ hMb₂ hs₂).summable
+    (smoothingRawLocalFourierCoefficient_parseval_scaled ha₀ m.2 (smoothingCoordinateLine 1
+      (2*s*(p 2))) hm₂ hM₂ hMb₂ hs₂).summable
   have ht : |p 2| ≤ R := (PiLp.norm_apply_le p 2).trans hp
   have hb := hbound a ha L hL s p m hp h₀ h₁ h₂ h₃ hs g₁ g₂ R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ flat₁ flat₂
   have hfirst := (smoothing_resonance_energy_first_L2 hL ht c₁ c₂ hc₁ hc₂).2
   have hsecond := (smoothing_resonance_energy_second_L2 (t := p 2) hL c₁ c₂ hc₁ hc₂).2
   constructor
-  · exact hb.trans (mul_le_mul_of_nonneg_left (add_le_add (add_le_add le_rfl hfirst) le_rfl) (by positivity))
-  · exact hb.trans (mul_le_mul_of_nonneg_left (add_le_add (add_le_add le_rfl hsecond) le_rfl) (by positivity))
+  · exact hb.trans (mul_le_mul_of_nonneg_left (add_le_add (add_le_add le_rfl hfirst) le_rfl)
+      (by positivity))
+  · exact hb.trans (mul_le_mul_of_nonneg_left (add_le_add (add_le_add le_rfl hsecond) le_rfl)
+      (by positivity))
 
 /-- The summed linearization error in (3.10) is O(sqrt(r)/a):
 there are O(a^3) interactions and each error is O(sqrt(r)/a^4). -/
 theorem smoothing_relocalized_error_sum {C D r a : ℝ}
     (hC : 0 ≤ C) (_ : 0 ≤ D) (hr : 0 < r) (ha : 0 < a)
-    {ι : Type*} (S : Finset ι) (hS : (S.card : ℝ) ≤ D*a^3) :
+    {ι : Type*} (S : Finset ι) (hS : (S.card : ℝ) ≤ D * a ^ 3) :
     (∑ _m ∈ S, (4/a)*Real.sqrt (C*r/a^6)) ≤ (4*D*Real.sqrt C)*Real.sqrt r/a := by
   have hroot : Real.sqrt (C*r/a^6) = Real.sqrt C*Real.sqrt r/a^3 := by
-    rw [Real.sqrt_div, Real.sqrt_mul hC, show a^6=(a^3)^2 by ring, Real.sqrt_sq (by positivity)] ; positivity
+    rw [Real.sqrt_div, Real.sqrt_mul hC, show a^6=(a^3)^2 by
+      ring, Real.sqrt_sq (by positivity)] ; positivity
   rw [Finset.sum_const, nsmul_eq_mul, hroot]
   calc
     _ ≤ (D*a^3)*((4/a)*(Real.sqrt C*Real.sqrt r/a^3)) :=
@@ -23494,9 +24540,12 @@ theorem smoothingRelocalized_global_main_separation
     (f₁ f₂ : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
     (∀ x, ‖f₁ x‖ ≤ 1) → (∀ x, ‖f₂ x‖ ≤ 1) → ∀ flat₁ flat₂ : Bool,
     let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece a m f₁)
-    let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m f₂)
-    let F := fun m z => smoothingRelocalizedComponent (g₁ m) 0 a R₁ hρ₁ m flat₁ (smoothingPlaneEquiv.symm z)
-    let G := fun m z => smoothingRelocalizedComponent (g₂ m) 1 a R₂ hρ₂ m flat₂ (smoothingPlaneEquiv.symm z)
+    let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece a m
+      f₂)
+    let F := fun m z => smoothingRelocalizedComponent (g₁ m) 0 a R₁ hρ₁ m flat₁
+      (smoothingPlaneEquiv.symm z)
+    let G := fun m z => smoothingRelocalizedComponent (g₂ m) 1 a R₂ hρ₂ m flat₂
+      (smoothingPlaneEquiv.symm z)
     ∃ (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
       (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingEnlargedInteractionIndices ζ a ∧
@@ -23509,10 +24558,11 @@ theorem smoothingRelocalized_global_main_separation
   obtain ⟨C,hC,hpair⟩ := smoothingRelocalized_pair_separation ψ₁ ψ₂ hζ hc hpos
   obtain ⟨B,B',hB,hB',hcount⟩ := smoothingEnlargedInteractionIndices_count hc
   obtain ⟨A,hA,hlinear⟩ := smoothingRelocalized_linearization ψ₁ ψ₂ hζ hc hpos
-  refine ⟨4*B*Real.sqrt C, by positivity, ?_⟩
+  refine ⟨4*B * Real.sqrt C, by positivity, ?_⟩
   intro r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ f₁ f₂ hf₁ hf₂ flat₁ flat₂ g₁ g₂ F G
   have ha₀ : 0 < a := by linarith
-  obtain ⟨S,P,hS,hP,hi,htri⟩ := smoothingRelocalized_spatial_triangle hζ.continuous hc ha hR₁ hR₂ hρ₁ hρ₂ g₁ g₂ flat₁ flat₂
+  obtain ⟨S,P,hS,hP,hi,htri⟩ := smoothingRelocalized_spatial_triangle hζ.continuous hc ha hR₁ hR₂
+    hρ₁ hρ₂ g₁ g₂ flat₁ flat₂
   refine ⟨S,P,hS,hP,?_⟩
   have hcard : (S.card : ℝ) ≤ B*a^3 := by
     have hh := (hcount a ha).2.1
@@ -23520,19 +24570,24 @@ theorem smoothingRelocalized_global_main_separation
     exact hh
   let H := fun m s => smoothingMainCorrelation a (P m) (F m.1) (G m.2) ζ s
   have hHi : ∀ m ∈ S, Integrable (H m) := fun m _ =>
-    smoothingRelocalized_mainCorrelation_integrable (g₁ m.1) (g₂ m.2) ha₀ hR₁ hR₂ hρ₁ hρ₂ m flat₁ flat₂ (P m) hζ
+    smoothingRelocalized_mainCorrelation_integrable (g₁ m.1) (g₂ m.2) ha₀ hR₁ hR₂ hρ₁ hρ₂ m flat₁
+      flat₂ (P m) hζ
   have hbound : ∀ m ∈ S, (∫ z, ‖smoothingLocalized (F m.1) (G m.2) ζ z‖) ≤
       (4/a)*Real.sqrt ‖∫ s, H m s‖+(4/a)*Real.sqrt (C*r/a^6) := by
     intro m hm
-    have hh := hpair r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m.1 m.2 f₁ f₂ hf₁ hf₂ flat₁ flat₂ (P m) (hP m hm).1 (hP m hm).2
-    have hj := (hlinear r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m.1 m.2 f₁ f₂ hf₁ hf₂ flat₁ flat₂ (P m) (hP m hm).1).2.1
+    have hh := hpair r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m.1 m.2 f₁ f₂ hf₁ hf₂ flat₁ flat₂
+      (P m) (hP m hm).1 (hP m hm).2
+    have hj := (hlinear r a R₁ R₂ hr ha har hR₁ hR₂ ρ₁ ρ₂ hρ₁ hρ₂ m.1 m.2 f₁ f₂ hf₁ hf₂ flat₁
+      flat₂ (P m) (hP m hm).1).2.1
     have he := (smoothingMainCorrelation_fubini_of_integrable a (P m) (F m.1) (G m.2) ζ hj).2
-    change _ ≤ (4/a)*Real.sqrt ‖∫ q, smoothingLinearizedCorrelationIntegrand a (P m) (F m.1) (G m.2) ζ q‖+_ at hh
+    change _ ≤ (4/a)*Real.sqrt ‖∫ q, smoothingLinearizedCorrelationIntegrand a (P m) (F m.1) (G
+      m.2) ζ q‖+_ at hh
     rw [he] at hh
     exact hh
   have hs := Finset.sum_le_sum hbound
   rw [Finset.sum_add_distrib, ← Finset.mul_sum] at hs
-  have hmain := mul_le_mul_of_nonneg_left (smoothing_main_sum_cauchy_schwarz S H hHi) (show 0 ≤ 4/a by positivity)
+  have hmain := mul_le_mul_of_nonneg_left (smoothing_main_sum_cauchy_schwarz S H hHi) (show 0 ≤
+    4/a by positivity)
   have herr := smoothing_relocalized_error_sum hC hB hr ha₀ S hcard
   exact htri.trans (hs.trans (by simpa only [mul_assoc] using add_le_add hmain herr))
 
@@ -23543,8 +24598,10 @@ theorem smoothingRelocalized_coefficient_properties
     {a R ρ : ℝ} (ha : 0 < a) (hR : 0 < R) (hρ : 0 < ρ)
     (m : Fin 2 → ℤ) (flat : Bool) :
     let F := smoothingRelocalizedComponent g j a R hρ m flat
-    (∀ k, Measurable (fun s : ℝ => smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F k)) ∧
-    (∀ h : EuclideanSpace ℝ (Fin 2), Summable (fun k => ‖smoothingRawLocalFourierCoefficient a m h F k‖^2)) := by
+    (∀ k, Measurable (fun s : ℝ => smoothingRawLocalFourierCoefficient a m
+      (smoothingCoordinateLine j s) F k)) ∧
+    (∀ h : EuclideanSpace ℝ (Fin 2), Summable (fun k => ‖smoothingRawLocalFourierCoefficient a m h
+      F k‖ ^ 2)) := by
   obtain ⟨hm,hs⟩ := smoothingRelocalizedComponent_measurable_support g j ha R hρ m flat
   obtain ⟨M,hM,hMb⟩ := smoothingRelocalizedComponent_bounded g j a hR hρ m flat
   exact ⟨fun k => smoothingRawLocalFourierCoefficient_measurable ha m j hm hs k,
@@ -23570,7 +24627,8 @@ theorem smoothingRelocalized_restricted_coefficient_energy (ψ : Option (Schwart
   have hp := smoothingRelocalized_coefficient_properties g j ha hR hρ m flat
   obtain ⟨hi,hb⟩ := henergy j i hij r a R ρ hr ha hR hρ m f hf flat
   have hh := smoothing_subtype_energy_integrable
-    (fun s k => ‖smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F k‖^2) volume
+    (fun s k => ‖smoothingRawLocalFourierCoefficient a m (smoothingCoordinateLine j s) F k‖^2)
+      volume
     (fun _ _ => sq_nonneg _) (fun k => (hp.1 k).norm.pow_const 2)
     (fun s => hp.2 (smoothingCoordinateLine j s)) hi U
   exact ⟨hh.1,hh.2.trans hb⟩
@@ -23608,7 +24666,8 @@ theorem smoothingRelocalized_flat_resonant_energy_first
   have ha₀ : 0 < r^γ := Real.rpow_pos_of_pos hr₀ _
   have hR : 0 < r^(γ+κ) := Real.rpow_pos_of_pos hr₀ _
   let I := Set.Icc (-(T/r^γ)) (T/r^γ)
-  let w := fun n s k => ‖smoothingRawLocalFourierCoefficient (r^γ) n (smoothingCoordinateLine 0 s) (F n) k‖^2
+  let w := fun n s k => ‖smoothingRawLocalFourierCoefficient (r^γ) n (smoothingCoordinateLine 0 s)
+    (F n) k‖^2
   have hp n := smoothingRelocalized_coefficient_properties
     (smoothingCoordinateRegularization ψ 0 r (smoothingSpatialPiece (r^γ) n f)) 0 ha₀ hR hρ n true
   have hi n : Integrable (fun s => ∑' k, w n s k) :=
@@ -23628,7 +24687,8 @@ theorem smoothingRelocalized_flat_resonant_energy_first
       _ ≤ ∑ _n ∈ S.image Prod.fst, U/r^γ := Finset.sum_le_sum (fun n _ => hib n)
       _ = ((S.image Prod.fst).card : ℝ)*(U/r^γ) := by rw [Finset.sum_const, nsmul_eq_mul]
       _ ≤ _ := mul_le_mul_of_nonneg_right hcard (by positivity)
-  have hblow : (∑ n ∈ S.image Prod.fst, ∫ s in I, ∑' k : {k : Fin 2 → ℤ | |(k 0 : ℝ)| ≤ r^κ}, w n s k.val) ≤
+  have hblow : (∑ n ∈ S.image Prod.fst, ∫ s in I, ∑' k : {k : Fin 2 → ℤ | |(k 0 : ℝ)| ≤ r^κ}, w n
+    s k.val) ≤
       D'*(r^γ)^2*(V*r^(-δ-γ)) := by
     calc
       _ ≤ ∑ _n ∈ S.image Prod.fst, V*r^(-δ-γ) := Finset.sum_le_sum (fun n _ => hlo n)
@@ -23636,21 +24696,24 @@ theorem smoothingRelocalized_flat_resonant_energy_first
       _ ≤ _ := mul_le_mul_of_nonneg_right hcard (by positivity)
   obtain ⟨hint,hb⟩ := hseparate (r^γ) ha w (volume.restrict I)
     (fun _ _ _ => sq_nonneg _) (fun n k => (hp n).1 k |>.norm.pow_const 2)
-    (fun n s => (hp n).2 (smoothingCoordinateLine 0 s)) (fun n => (hi n).integrableOn) S P hP L (r^κ) hL (by positivity)
+    (fun n s => (hp n).2 (smoothingCoordinateLine 0 s)) (fun n => (hi n).integrableOn) S P hP L
+      (r^κ) hL (by positivity)
   refine ⟨hint, hb.trans ?_⟩
   have hh := add_le_add (mul_le_mul_of_nonneg_left hblow (show 0 ≤ A*r^γ by positivity))
     (mul_le_mul_of_nonneg_left hbfull (show 0 ≤ B*(1+r^γ*L/r^κ) by positivity))
   apply hh.trans
   rw [Real.rpow_sub hr₀]
-  have he : A*r^γ*(D'*(r^γ)^2*(V*(r^(-δ)/r^γ))) +
+  have he : A*r^γ*(D'*(r^γ)^2*(V*(r^(-δ)/r ^ γ))) +
       B*(1+r^γ*L/r^κ)*(D'*(r^γ)^2*(U/r^γ)) =
       (A*D'*V)*(r^γ)^2*r^(-δ) + (B*D'*U)*(r^γ)^2*((r^γ)⁻¹+L/r^κ) := by
     field_simp
   rw [he]
   have hx : 0 ≤ r^(-δ) := by positivity
   have hy : 0 ≤ (r^γ)⁻¹+L/r^κ := by positivity
-  have h₁ := mul_le_mul_of_nonneg_right (show A*D'*V ≤ A*D'*V+B*D'*U by exact le_add_of_nonneg_right (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hx)
-  have h₂ := mul_le_mul_of_nonneg_right (show B*D'*U ≤ A*D'*V+B*D'*U by exact le_add_of_nonneg_left (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hy)
+  have h₁ := mul_le_mul_of_nonneg_right (show A*D'*V ≤ A*D'*V+B*D'*U
+    by exact le_add_of_nonneg_right (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hx)
+  have h₂ := mul_le_mul_of_nonneg_right (show B*D'*U ≤ A*D'*V+B*D'*U
+    by exact le_add_of_nonneg_left (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hy)
   nlinarith [h₁,h₂]
 
 /-- In the flat second-input case of (3.30), the spatially summed
@@ -23686,7 +24749,8 @@ theorem smoothingRelocalized_flat_resonant_energy_second
   have ha₀ : 0 < r^γ := Real.rpow_pos_of_pos hr₀ _
   have hR : 0 < r^(γ+κ) := Real.rpow_pos_of_pos hr₀ _
   let I := Set.Icc (-(T/r^γ)) (T/r^γ)
-  let w := fun n s k => ‖smoothingRawLocalFourierCoefficient (r^γ) n (smoothingCoordinateLine 1 s) (F n) k‖^2
+  let w := fun n s k => ‖smoothingRawLocalFourierCoefficient (r^γ) n (smoothingCoordinateLine 1 s)
+    (F n) k‖^2
   have hp n := smoothingRelocalized_coefficient_properties
     (smoothingCoordinateRegularization ψ 1 r (smoothingSpatialPiece (r^γ) n f)) 1 ha₀ hR hρ n true
   have hi n : Integrable (fun s => ∑' k, w n s k) :=
@@ -23706,7 +24770,8 @@ theorem smoothingRelocalized_flat_resonant_energy_second
       _ ≤ ∑ _n ∈ S.image Prod.snd, U/r^γ := Finset.sum_le_sum (fun n _ => hib n)
       _ = ((S.image Prod.snd).card : ℝ)*(U/r^γ) := by rw [Finset.sum_const, nsmul_eq_mul]
       _ ≤ _ := mul_le_mul_of_nonneg_right hcard (by positivity)
-  have hblow : (∑ n ∈ S.image Prod.snd, ∫ s in I, ∑' k : {k : Fin 2 → ℤ | |(k 1 : ℝ)| ≤ r^κ}, w n s k.val) ≤
+  have hblow : (∑ n ∈ S.image Prod.snd, ∫ s in I, ∑' k : {k : Fin 2 → ℤ | |(k 1 : ℝ)| ≤ r^κ}, w n
+    s k.val) ≤
       D'*(r^γ)^2*(V*r^(-δ-γ)) := by
     calc
       _ ≤ ∑ _n ∈ S.image Prod.snd, V*r^(-δ-γ) := Finset.sum_le_sum (fun n _ => hlo n)
@@ -23714,21 +24779,24 @@ theorem smoothingRelocalized_flat_resonant_energy_second
       _ ≤ _ := mul_le_mul_of_nonneg_right hcard (by positivity)
   obtain ⟨hint,hb⟩ := hseparate (r^γ) ha w (volume.restrict I)
     (fun _ _ _ => sq_nonneg _) (fun n k => (hp n).1 k |>.norm.pow_const 2)
-    (fun n s => (hp n).2 (smoothingCoordinateLine 1 s)) (fun n => (hi n).integrableOn) S P hP L (r^κ) hL (by positivity)
+    (fun n s => (hp n).2 (smoothingCoordinateLine 1 s)) (fun n => (hi n).integrableOn) S P hP L
+      (r^κ) hL (by positivity)
   refine ⟨hint, hb.trans ?_⟩
   have hh := add_le_add (mul_le_mul_of_nonneg_left hblow (show 0 ≤ A*r^γ by positivity))
     (mul_le_mul_of_nonneg_left hbfull (show 0 ≤ B*(1+r^γ*L/r^κ) by positivity))
   apply hh.trans
   rw [Real.rpow_sub hr₀]
-  have he : A*r^γ*(D'*(r^γ)^2*(V*(r^(-δ)/r^γ))) +
+  have he : A*r^γ*(D'*(r^γ)^2*(V*(r^(-δ)/r ^ γ))) +
       B*(1+r^γ*L/r^κ)*(D'*(r^γ)^2*(U/r^γ)) =
       (A*D'*V)*(r^γ)^2*r^(-δ) + (B*D'*U)*(r^γ)^2*((r^γ)⁻¹+L/r^κ) := by
     field_simp
   rw [he]
   have hx : 0 ≤ r^(-δ) := by positivity
   have hy : 0 ≤ (r^γ)⁻¹+L/r^κ := by positivity
-  have h₁ := mul_le_mul_of_nonneg_right (show A*D'*V ≤ A*D'*V+B*D'*U by exact le_add_of_nonneg_right (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hx)
-  have h₂ := mul_le_mul_of_nonneg_right (show B*D'*U ≤ A*D'*V+B*D'*U by exact le_add_of_nonneg_left (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hy)
+  have h₁ := mul_le_mul_of_nonneg_right (show A*D'*V ≤ A*D'*V+B*D'*U
+    by exact le_add_of_nonneg_right (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hx)
+  have h₂ := mul_le_mul_of_nonneg_right (show B*D'*U ≤ A*D'*V+B*D'*U
+    by exact le_add_of_nonneg_left (by positivity)) (mul_nonneg (sq_nonneg (r^γ)) hy)
   nlinarith [h₁,h₂]
 
 /-- The second-increment substitution after (3.20), summed over actual
@@ -23819,22 +24887,27 @@ theorem smoothingRelocalized_integrated_main_energy_bound
     (∀ m ∈ S, IntegrableOn (U₁ m) I) → (∀ m ∈ S, IntegrableOn (U₂ m) I) →
     (∀ m ∈ S, IntegrableOn (V m) I) →
     let H := fun m s => smoothingMainCorrelation a (P m)
-      (fun z => F m.1 (smoothingPlaneEquiv.symm z)) (fun z => G m.2 (smoothingPlaneEquiv.symm z)) ζ s
+      (fun z => F m.1 (smoothingPlaneEquiv.symm z)) (fun z => G m.2 (smoothingPlaneEquiv.symm z))
+        ζ s
     let J₁ := ∫ s in I, ∑ m ∈ S, E₁ m s
     let J₂ := ∫ s in I, ∑ m ∈ S, E₂ m s
     let K₁ := ∫ s in I, ∑ m ∈ S, U₁ m s
     let K₂ := ∫ s in I, ∑ m ∈ S, U₂ m s
     let Q := ∫ s in I, ∑ m ∈ S, V m s
-    ((∫ s, ∑ m ∈ S, ‖H m s‖) ≤ C/a^3*((L^N)⁻¹*Real.sqrt J₁*Real.sqrt J₂ +
-      81*L^2*Real.sqrt K₁*Real.sqrt J₂ + Real.sqrt J₁*Real.sqrt Q)) ∧
-    ((∫ s, ∑ m ∈ S, ‖H m s‖) ≤ C/a^3*((L^N)⁻¹*Real.sqrt J₁*Real.sqrt J₂ +
-      81*L^2*Real.sqrt J₁*Real.sqrt K₂ + Real.sqrt J₁*Real.sqrt Q)) := by
+    ((∫ s, ∑ m ∈ S, ‖H m s‖) ≤ C / a ^ 3 *
+ ((L^N)⁻¹*Real.sqrt J₁*Real.sqrt J₂ +
+      81 * L ^ 2 * Real.sqrt K₁*Real.sqrt J₂ + Real.sqrt J₁*Real.sqrt Q)) ∧
+    ((∫ s, ∑ m ∈ S, ‖H m s‖) ≤ C / a ^ 3 *
+ ((L^N)⁻¹*Real.sqrt J₁*Real.sqrt J₂ +
+      81 * L ^ 2 * Real.sqrt J₁*Real.sqrt K₂ + Real.sqrt J₁*Real.sqrt Q)) := by
   obtain ⟨C,hC,hbound⟩ := smoothingRelocalized_mainCorrelation_strip_bound hζ hc hR N
   refine ⟨C,hC,?_⟩
-  intro a L ha hL R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ g₁ g₂ flat₁ flat₂ S P hrad hinc F G c₁ c₂ E₁ E₂ U₁ U₂ V I hi₁ hi₂ hu₁ hu₂ hv H J₁ J₂ K₁ K₂ Q
+  intro a L ha hL R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ g₁ g₂ flat₁ flat₂ S P hrad hinc F G c₁ c₂ E₁ E₂ U₁
+    U₂ V I hi₁ hi₂ hu₁ hu₂ hv H J₁ J₂ K₁ K₂ Q
   have ha₀ : 0 < a := by linarith
   have hHi : ∀ m ∈ S, Integrable (H m) := fun m _ =>
-    smoothingRelocalized_mainCorrelation_integrable (g₁ m.1) (g₂ m.2) ha₀ hR₁ hR₂ hρ₁ hρ₂ m flat₁ flat₂ (P m) hζ
+    smoothingRelocalized_mainCorrelation_integrable (g₁ m.1) (g₂ m.2) ha₀ hR₁ hR₂ hρ₁ hρ₂ m flat₁
+      flat₂ (P m) hζ
   have hzero : ∀ m ∈ S, ∀ s ∉ I, H m s = 0 := by
     intro m hm s hs
     apply smoothingMainCorrelation_zero hζ ha₀
@@ -23842,10 +24915,15 @@ theorem smoothingRelocalized_integrated_main_energy_bound
     intro h
     exact hs (abs_le.mp h)
   have hp : ∀ m ∈ S, ∀ s ∈ I,
-      (‖H m s‖ ≤ C/a^3*((L^N)⁻¹*Real.sqrt (E₁ m s)*Real.sqrt (E₂ m s)+
-        81*L^2*Real.sqrt (U₁ m s)*Real.sqrt (E₂ m s)+Real.sqrt (E₁ m s)*Real.sqrt (V m s))) ∧
-      (‖H m s‖ ≤ C/a^3*((L^N)⁻¹*Real.sqrt (E₁ m s)*Real.sqrt (E₂ m s)+
-        81*L^2*Real.sqrt (E₁ m s)*Real.sqrt (U₂ m s)+Real.sqrt (E₁ m s)*Real.sqrt (V m s))) := by
+      (‖H m s‖ ≤ C / a ^ 3 *
+ ((L^N)⁻¹*Real.sqrt (E₁ m s) * Real.sqrt (E₂ m s)+
+        81 * L ^ 2 * Real.sqrt (U₁ m s) * Real.sqrt (E₂ m s)+Real.sqrt (E₁ m s) * Real.sqrt (V m
+          s))) ∧
+      (‖H m s‖ ≤ C / a ^ 3 *
+ ((L^N)⁻¹*Real.sqrt (E₁ m s) * Real.sqrt (E₂ m s)+
+        81 * L ^ 2 * Real.sqrt (E₁ m s) * Real.sqrt (U₂ m s)+Real.sqrt (E₁ m s) * Real.sqrt (V m
+          s))) :=
+          by
     intro m hm s hs
     let p : EuclideanSpace ℝ (Fin 3) := WithLp.toLp 2 ![(P m).1.1,(P m).1.2,(P m).2]
     have hsi : |a*s| ≤ 8 := by
@@ -23854,7 +24932,8 @@ theorem smoothingRelocalized_integrated_main_energy_bound
       have he : a*(8/a)=8 := by field_simp
       exact he ▸ hh
     have hh := hbound a ha L hL s p m (hrad m hm) (hinc m hm).1 (hinc m hm).2.1
-      (hinc m hm).2.2.1 (hinc m hm).2.2.2 hsi (g₁ m.1) (g₂ m.2) R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ flat₁ flat₂
+      (hinc m hm).2.2.1 (hinc m hm).2.2.2 hsi (g₁ m.1) (g₂ m.2) R₁ R₂ ρ₁ ρ₂ hR₁ hR₂ hρ₁ hρ₂ flat₁
+        flat₂
     exact hh
   have he₁ : ∀ m s, 0 ≤ E₁ m s := fun _ _ => tsum_nonneg (fun _ => sq_nonneg _)
   have he₂ : ∀ m s, 0 ≤ E₂ m s := fun _ _ => tsum_nonneg (fun _ => sq_nonneg _)
@@ -23863,19 +24942,21 @@ theorem smoothingRelocalized_integrated_main_energy_bound
   have hV : ∀ m s, 0 ≤ V m s := fun _ _ => tsum_nonneg (fun _ => sq_nonneg _)
   constructor
   · exact smoothing_increment_correlation_three_products_bound S H E₁ E₂ U₁ E₂ V I measurableSet_Icc
-      (by positivity) (by positivity) (by positivity) hHi hi₁ hi₂ hi₂ hu₁ hv he₁ he₂ he₂ hU₁ hV hzero
+      (by positivity) (by positivity) (by positivity) hHi hi₁ hi₂ hi₂ hu₁ hv he₁ he₂ he₂ hU₁ hV
+        hzero
       (fun m hm s hs => (hp m hm s hs).1)
   · exact smoothing_increment_correlation_three_products_bound S H E₁ E₂ E₁ U₂ V I measurableSet_Icc
-      (by positivity) (by positivity) (by positivity) hHi hi₁ hi₂ hu₂ hi₁ hv he₁ he₂ hU₂ he₁ hV hzero
+      (by positivity) (by positivity) (by positivity) hHi hi₁ hi₂ hu₂ hi₁ hv he₁ he₂ hU₂ he₁ hV
+        hzero
       (fun m hm s hs => (hp m hm s hs).2)
 
 /-- Cauchy--Schwarz products of two integrated coefficient energies
 retain the gain in one factor, as used when passing from (3.20) to (3.30). -/
 theorem smoothing_integrated_energy_product_scale {a A σ X Y : ℝ}
-    (hA : 0 ≤ A) (hσ : 0 ≤ σ) (hX : X ≤ A*a^2*σ) (hY : Y ≤ A*a^2) :
-    Real.sqrt X*Real.sqrt Y ≤ A*a^2*Real.sqrt σ := by
+    (hA : 0 ≤ A) (hσ : 0 ≤ σ) (hX : X ≤ A * a ^ 2 * σ) (hY : Y ≤ A * a ^ 2) :
+    Real.sqrt X * Real.sqrt Y ≤ A*a^2 * Real.sqrt σ := by
   calc
-    _ ≤ Real.sqrt (A*a^2*σ)*Real.sqrt (A*a^2) := by gcongr
+    _ ≤ Real.sqrt (A*a^2*σ)*Real.sqrt (A * a ^ 2) := by gcongr
     _ = Real.sqrt ((A*a^2)^2*σ) := by
       rw [← Real.sqrt_mul (by positivity : 0 ≤ A*a^2*σ)]
       congr 1
@@ -23883,12 +24964,17 @@ theorem smoothing_integrated_energy_product_scale {a A σ X Y : ℝ}
     _ = _ := by rw [Real.sqrt_mul (sq_nonneg _),Real.sqrt_sq (by positivity)]
 
 /-- The same scale cancellation when the resonant energy is on either input. -/
-theorem smoothing_integrated_main_products_scale {a C A σ τ X Y U Z V J L : ℝ} (N : ℕ)
-    (ha : 0 < a) (hC : 0 ≤ C) (hA : 0 ≤ A) (hσ : 0 ≤ σ) (hτ : 0 ≤ τ) (hL : 0 ≤ L)
-    (hX : X ≤ A*a^2) (hY : Y ≤ A*a^2) (hZ : Z ≤ A*a^2) (hU : U ≤ A*a^2*σ) (hV : V ≤ A*a^2*τ)
-    (hJ : J ≤ C/a^3*((L^N)⁻¹*Real.sqrt X*Real.sqrt Y+
-      81*L^2*Real.sqrt U*Real.sqrt Z+Real.sqrt X*Real.sqrt V)) :
-    J ≤ C*A/a*((L^N)⁻¹+81*L^2*Real.sqrt σ+Real.sqrt τ) := by
+theorem smoothing_integrated_main_products_scale {a C A σ τ X Y U Z V J L : ℝ} (N : ℕ) (ha : 0
+    < a) (hC : 0 ≤ C)
+    (hA : 0 ≤ A) (hσ : 0 ≤ σ) (hτ : 0 ≤ τ) (hL : 0 ≤ L) (hX : X ≤ A * a ^ 2) (hY : Y ≤ A * a ^
+      2) (hZ : Z ≤ A * a ^ 2)
+    (hU : U ≤ A * a ^ 2 * σ) (hV : V ≤ A * a ^ 2 * τ)
+    (hJ :
+      J ≤
+        C / a ^ 3 *
+          ((L ^ N)⁻¹ * Real.sqrt X * Real.sqrt Y + 81 * L ^ 2 * Real.sqrt U * Real.sqrt Z +
+            Real.sqrt X * Real.sqrt V)) :
+    J ≤ C*A/a*((L^N)⁻¹+81 * L ^ 2 * Real.sqrt σ+Real.sqrt τ) := by
   have hfull := smoothing_integrated_energy_product_scale hA (by norm_num : (0 : ℝ) ≤ 1)
     (by simpa only [mul_one] using hX) hY
   simp only [Real.sqrt_one,mul_one] at hfull
@@ -23896,10 +24982,10 @@ theorem smoothing_integrated_main_products_scale {a C A σ τ X Y U Z V J L : �
   have htail := smoothing_integrated_energy_product_scale hA hτ hV hX
   rw [mul_comm (Real.sqrt V) (Real.sqrt X)] at htail
   calc
-    J ≤ C/a^3*((L^N)⁻¹*(Real.sqrt X*Real.sqrt Y)+
-        (81*L^2)*(Real.sqrt U*Real.sqrt Z)+Real.sqrt X*Real.sqrt V) := by
+    J ≤ C/a^3*((L^N)⁻¹*(Real.sqrt X * Real.sqrt Y)+
+        (81*L^2)*(Real.sqrt U * Real.sqrt Z)+Real.sqrt X * Real.sqrt V) := by
       simpa only [mul_assoc] using hJ
-    _ ≤ C/a^3*((L^N)⁻¹*(A*a^2)+(81*L^2)*(A*a^2*Real.sqrt σ)+A*a^2*Real.sqrt τ) := by
+    _ ≤ C/a^3*((L^N)⁻¹*(A*a^2)+(81*L^2)*(A*a^2 * Real.sqrt σ)+A*a^2 * Real.sqrt τ) := by
       apply mul_le_mul_of_nonneg_left _ (by positivity)
       exact add_le_add (add_le_add (mul_le_mul_of_nonneg_left hfull (by positivity))
         (mul_le_mul_of_nonneg_left hres (by positivity))) htail
@@ -23907,19 +24993,23 @@ theorem smoothing_integrated_main_products_scale {a C A σ τ X Y U Z V J L : �
 
 /-- Substitute the actual full, resonant, and high-frequency energy
 masses into the integrated correlation inequality. -/
-theorem smoothing_integrated_main_energy_scale {a C A σ τ X Y U V J L : ℝ} (N : ℕ)
-    (ha : 0 < a) (hC : 0 ≤ C) (hA : 0 ≤ A) (hσ : 0 ≤ σ) (hτ : 0 ≤ τ) (hL : 0 ≤ L)
-    (hX : X ≤ A*a^2) (hY : Y ≤ A*a^2) (hU : U ≤ A*a^2*σ) (hV : V ≤ A*a^2*τ)
-    (hJ : J ≤ C/a^3*((L^N)⁻¹*Real.sqrt X*Real.sqrt Y+
-      81*L^2*Real.sqrt U*Real.sqrt Y+Real.sqrt X*Real.sqrt V)) :
-    J ≤ C*A/a*((L^N)⁻¹+81*L^2*Real.sqrt σ+Real.sqrt τ) := by
+theorem smoothing_integrated_main_energy_scale {a C A σ τ X Y U V J L : ℝ} (N : ℕ) (ha : 0 < a)
+    (hC : 0 ≤ C)
+    (hA : 0 ≤ A) (hσ : 0 ≤ σ) (hτ : 0 ≤ τ) (hL : 0 ≤ L) (hX : X ≤ A * a ^ 2) (hY : Y ≤ A * a ^ 2)
+    (hU : U ≤ A * a ^ 2 * σ) (hV : V ≤ A * a ^ 2 * τ)
+    (hJ :
+      J ≤
+        C / a ^ 3 *
+          ((L ^ N)⁻¹ * Real.sqrt X * Real.sqrt Y + 81 * L ^ 2 * Real.sqrt U * Real.sqrt Y +
+            Real.sqrt X * Real.sqrt V)) :
+    J ≤ C*A/a*((L^N)⁻¹+81 * L ^ 2 * Real.sqrt σ+Real.sqrt τ) := by
   exact smoothing_integrated_main_products_scale N ha hC hA hσ hτ hL hX hY hY hU hV hJ
 
 /-- The full and high-frequency terms in the actual (3.30) application
 have total spatial energy O(a^2) and O(a^2*r^-delta), respectively. -/
 theorem smoothingRelocalized_full_tail_spatial_energy
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
-    {γ : ℝ} (hγ : 1/2 < γ) (hγ1 : γ ≤ 1) (δ : ℝ)
+    {γ : ℝ} (hγ : 1 / 2 < γ) (hγ1 : γ ≤ 1) (δ : ℝ)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hc : HasCompactSupport ζ)
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
     ∃ A B D : ℝ, 0 ≤ A ∧ 0 ≤ B ∧ 0 ≤ D ∧ ∀ (r : ℝ), 1 ≤ r →
@@ -23931,13 +25021,18 @@ theorem smoothingRelocalized_full_tail_spatial_energy
     (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingEnlargedInteractionIndices ζ (r^γ) →
     (∀ m ∈ S, ζ (P m) ≠ 0) →
     let F := fun n => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ) R₁ hρ₁ n flat₁
+      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ) R₁ hρ₁
+        n flat₁
     let G := fun n => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ) R₂ hρ₂ n flat₂
-    let E₁ := fun m s => ∑' k, ‖smoothingRawLocalFourierCoefficient (r^γ) m.1 (smoothingCoordinateLine 0 s) (F m.1) k‖^2
-    let E₂ := fun m s => ∑' k, ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 (2*s*(P m).2)) (G m.2) k‖^2
+      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ)
+        R₂ hρ₂ n flat₂
+    let E₁ := fun m s => ∑' k, ‖smoothingRawLocalFourierCoefficient (r^γ) m.1
+      (smoothingCoordinateLine 0 s) (F m.1) k‖^2
+    let E₂ := fun m s => ∑' k, ‖smoothingRawLocalFourierCoefficient (r^γ) m.2
+      (smoothingCoordinateLine 1 (2*s*(P m).2)) (G m.2) k‖^2
     let V := fun m s => ∑' k : {k : Fin 2 → ℤ | r^γ ≤ |(k 1 : ℝ)|},
-      ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 (2*s*(P m).2)) (G m.2) k.val‖^2
+      ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 (2*s*(P m).2)) (G
+        m.2) k.val‖^2
     (∀ m ∈ S, Integrable (E₁ m)) ∧ (∀ m ∈ S, Integrable (E₂ m)) ∧ (∀ m ∈ S, Integrable (V m)) ∧
     ∀ I : Set ℝ,
       (∫ s in I, ∑ m ∈ S, E₁ m s) ≤ A*(r^γ)^2 ∧
@@ -23957,8 +25052,10 @@ theorem smoothingRelocalized_full_tail_spatial_energy
     have hh := (hcount (r^γ) ha).2.1
     rw [← hS,Set.ncard_coe_finset] at hh
     exact hh
-  let E := fun (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (s : ℝ) => ∑' k, ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 s) (G m.2) k‖^2
-  let W := fun (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (s : ℝ) => ∑' k : {k : Fin 2 → ℤ | r^γ ≤ |(k 1 : ℝ)|},
+  let E := fun (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (s : ℝ) => ∑' k,
+    ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 s) (G m.2) k‖^2
+  let W := fun (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (s : ℝ) => ∑' k : {k : Fin 2 → ℤ | r^γ ≤ |(k 1 :
+    ℝ)|},
     ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 s) (G m.2) k.val‖^2
   have hp₁ (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) : Integrable (E₁ m) ∧ (∫ s, E₁ m s) ≤ A/r^γ :=
     hfirst 0 1 (by decide) r (r^γ) R₁ ρ₁ hr₀ ha₀ hR₁ hρ₁ m.1 f₁ hf₁ flat₁
@@ -23968,9 +25065,11 @@ theorem smoothingRelocalized_full_tail_spatial_energy
     htail 1 0 (by decide) r hr R₂ hR₂ ρ₂ hρ₂ m.2 f₂ hf₂ flat₂
   have ht m (hm : m ∈ S) : c ≤ (P m).2 := (htime (P m) (hP m hm)).1
   have hi₂ m (hm : m ∈ S) : Integrable (E₂ m) :=
-    (smoothing_increment_energy_dilation (hp₂ m).1 (fun s => tsum_nonneg (fun k => sq_nonneg _)) hc₀ (ht m hm) Set.univ).1
+    (smoothing_increment_energy_dilation (hp₂ m).1 (fun s => tsum_nonneg (fun k => sq_nonneg _))
+      hc₀ (ht m hm) Set.univ).1
   have hiV m (hm : m ∈ S) : Integrable (V m) :=
-    (smoothing_increment_energy_dilation (hpV m).1 (fun s => tsum_nonneg (fun k => sq_nonneg _)) hc₀ (ht m hm) Set.univ).1
+    (smoothing_increment_energy_dilation (hpV m).1 (fun s => tsum_nonneg (fun k => sq_nonneg _))
+      hc₀ (ht m hm) Set.univ).1
   have hb₂ := (smoothing_dilated_energy_family_bound S E (fun m => (P m).2) hc₀ ht
     (fun m _ => (hp₂ m).1) (fun _ _ => tsum_nonneg (fun _ => sq_nonneg _)) (fun m _ => (hp₂ m).2)).2
   have hbV := (smoothing_dilated_energy_family_bound S W (fun m => (P m).2) hc₀ ht
@@ -23983,11 +25082,11 @@ theorem smoothingRelocalized_full_tail_spatial_energy
     exact hh.trans ((mul_le_mul_of_nonneg_right hcard (by positivity)).trans_eq (by field_simp ))
   · apply (hb₂ I).trans
     calc
-      _ ≤ (K*(r^γ)^3)/(2*c)*(B/r^γ) := by gcongr
+      _ ≤ (K*(r ^ γ)^3)/(2*c)*(B/r^γ) := by gcongr
       _ = _ := by field_simp
   · apply (hbV I).trans
     calc
-      _ ≤ (K*(r^γ)^3)/(2*c)*(D*r^(-δ-γ)) := by gcongr
+      _ ≤ (K*(r ^ γ)^3)/(2*c)*(D*r^(-δ-γ)) := by gcongr
       _ = _ := by rw [Real.rpow_sub hr₀]; field_simp
 
 /-- Both actual flat gains, on the common source increment interval.
@@ -24006,13 +25105,16 @@ theorem smoothingRelocalized_resonant_spatial_energy
     (∀ m ∈ S, ζ (P m) ≠ 0 ∧ smoothingEnlargedIncidence (r^γ) m (P m)) → ∀ L : ℝ, 0 ≤ L →
     let hρ : 0 < r^(-δ) := Real.rpow_pos_of_pos (by linarith) _
     let F := fun n => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ) (r^(γ+κ)) hρ n flat₁
+      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ)
+        (r^(γ+κ)) hρ n flat₁
     let G := fun n => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ) (r^(γ+κ)) hρ n flat₂
+      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ)
+        (r^(γ+κ)) hρ n flat₂
     let U₁ := fun m s => ∑' k : smoothingResonantStrip ((1+2*R)*L) (P m).2,
       ‖smoothingRawLocalFourierCoefficient (r^γ) m.1 (smoothingCoordinateLine 0 s) (F m.1) k.val‖^2
     let U₂ := fun m s => ∑' k : smoothingResonantStrip (2*L) (P m).2,
-      ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 (2*s*(P m).2)) (G m.2) k.val‖^2
+      ‖smoothingRawLocalFourierCoefficient (r^γ) m.2 (smoothingCoordinateLine 1 (2*s*(P m).2)) (G
+        m.2) k.val‖^2
     let I := Set.Icc (-(8/r^γ)) (8/r^γ)
     let σ := r^(-δ)+(r^γ)⁻¹+(2+2*R)*L/r^κ
     (∀ m ∈ S, Integrable (U₁ m)) ∧ (∀ m ∈ S, Integrable (U₂ m)) ∧
@@ -24020,7 +25122,8 @@ theorem smoothingRelocalized_resonant_spatial_energy
     (flat₂ = true → (∫ s in I, ∑ m ∈ S, U₂ m s) ≤ B*(r^γ)^2*σ) := by
   obtain ⟨J,T,hJ,hT,hdilate⟩ := smoothing_increment_energy_sum_dilation hc hpos
   obtain ⟨A,hA,hfirst⟩ := smoothingRelocalized_flat_resonant_energy_first ψ₁ 8 κ δ hκ hc hpos
-  obtain ⟨B,hB,hsecond⟩ := smoothingRelocalized_flat_resonant_energy_second (some ψ₂) T κ δ hκ hc hpos
+  obtain ⟨B,hB,hsecond⟩ := smoothingRelocalized_flat_resonant_energy_second (some ψ₂) T κ δ hκ hc
+    hpos
   obtain ⟨C,hC,hrestrict₁⟩ := smoothingRelocalized_restricted_coefficient_energy ψ₁
   obtain ⟨D,hD,hrestrict₂⟩ := smoothingRelocalized_restricted_coefficient_energy (some ψ₂)
   refine ⟨A,J*B,hA,by positivity,?_⟩
@@ -24037,13 +25140,14 @@ theorem smoothingRelocalized_resonant_spatial_energy
     (hrestrict₂ 1 0 (by decide) r (r^γ) (r^(γ+κ)) (r^(-δ)) hr₀ ha₀ hfreq hρ m.2 f₂ hf₂ flat₂ _).1
   have hi₂ m (hm : m ∈ S) : Integrable (U₂ m) := by
     have ht : 0 < (P m).2 := hpos _ (subset_tsupport ζ (hP m hm).1)
-    exact (smoothing_increment_energy_dilation (hiW m) (fun s => tsum_nonneg (fun k => sq_nonneg _)) ht le_rfl Set.univ).1
+    exact (smoothing_increment_energy_dilation (hiW m) (fun s => tsum_nonneg (fun k => sq_nonneg
+      _)) ht le_rfl Set.univ).1
   refine ⟨fun m _ => hi₁ m,hi₂,?_,?_⟩
   · intro hflat
     subst flat₁
     have hb := (hfirst r γ hr ha f₁ hf₁ S P hS hP ((1+2*R)*L) (by positivity)).2
     apply hb.trans
-    apply mul_le_mul_of_nonneg_left _ (by positivity : 0 ≤ A*(r^γ)^2)
+    apply mul_le_mul_of_nonneg_left _ (by positivity : 0 ≤ A*(r ^ γ)^2)
     dsimp only [σ]
     gcongr
     nlinarith
@@ -24057,7 +25161,7 @@ theorem smoothingRelocalized_resonant_spatial_energy
     calc
       _ = (J*B)*(r^γ)^2*(r^(-δ)+(r^γ)⁻¹+2*L/r^κ) := by ring
       _ ≤ _ := by
-        apply mul_le_mul_of_nonneg_left _ (by positivity : 0 ≤ (J*B)*(r^γ)^2)
+        apply mul_le_mul_of_nonneg_left _ (by positivity : 0 ≤ (J*B)*(r ^ γ)^2)
         dsimp only [σ]
         gcongr
         nlinarith
@@ -24066,7 +25170,7 @@ theorem smoothingRelocalized_resonant_spatial_energy
 gives the integrated flatness gain, with the source counting and tail remainders. -/
 theorem smoothingRelocalized_main_bound
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
-    {γ : ℝ} (hγ : 1/2 < γ) (hγ1 : γ ≤ 1) (κ δ η : ℝ) (hκ : 0 < κ)
+    {γ : ℝ} (hγ : 1 / 2 < γ) (hγ1 : γ ≤ 1) (κ δ η : ℝ) (hκ : 0 < κ)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) (N : ℕ) :
     ∃ C B : ℝ, 0 ≤ C ∧ 1 ≤ B ∧ ∀ (r : ℝ) (hr : 1 ≤ r), ∀ L : ℝ, 1 ≤ L →
@@ -24079,17 +25183,22 @@ theorem smoothingRelocalized_main_bound
     (∀ m ∈ S, ζ (P m) ≠ 0 ∧ smoothingEnlargedIncidence (r^γ) m (P m)) →
     let hρ : 0 < r^(-δ) := Real.rpow_pos_of_pos (by linarith) _
     let F := fun n => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ) (r^(γ+κ)) hρ n flat₁
+      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ)
+        (r^(γ+κ)) hρ n flat₁
     let G := fun n => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ) (r^(γ+κ)) hρ n flat₂
+      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ)
+        (r^(γ+κ)) hρ n flat₂
     (∫ s, ∑ m ∈ S, ‖smoothingMainCorrelation (r^γ) (P m)
-      (fun z => F m.1 (smoothingPlaneEquiv.symm z)) (fun z => G m.2 (smoothingPlaneEquiv.symm z)) ζ s‖) ≤
-      C/(r^γ)*((L^N)⁻¹+81*L^2*Real.sqrt (r^(-δ)+(r^γ)⁻¹+B*L/r^κ)+Real.sqrt (r^(-η))) := by
+      (fun z => F m.1 (smoothingPlaneEquiv.symm z)) (fun z => G m.2 (smoothingPlaneEquiv.symm z))
+        ζ s‖) ≤
+      C/(r^γ)*((L^N)⁻¹+81 * L ^ 2 * Real.sqrt (r^(-δ)+(r^γ)⁻¹+B*L/r^κ)+Real.sqrt (r^(-η))) := by
   classical
   obtain ⟨R,hR,hrad⟩ := smoothing_cutoff_euclidean_bound hc
   obtain ⟨C,hC,hcorr⟩ := smoothingRelocalized_integrated_main_energy_bound hζ hc hR N
-  obtain ⟨A₁,A₂,A₃,hA₁,hA₂,hA₃,hfull⟩ := smoothingRelocalized_full_tail_spatial_energy ψ₁ ψ₂ hγ hγ1 η hc hpos
-  obtain ⟨B₁,B₂,hB₁,hB₂,hres⟩ := smoothingRelocalized_resonant_spatial_energy ψ₁ ψ₂ κ δ R hκ hR hc hpos
+  obtain ⟨A₁,A₂,A₃,hA₁,hA₂,hA₃,hfull⟩ := smoothingRelocalized_full_tail_spatial_energy ψ₁ ψ₂ hγ
+    hγ1 η hc hpos
+  obtain ⟨B₁,B₂,hB₁,hB₂,hres⟩ := smoothingRelocalized_resonant_spatial_energy ψ₁ ψ₂ κ δ R hκ hR hc
+    hpos
   let K := A₁+A₂+A₃+B₁+B₂
   have hK : 0 ≤ K := by dsimp [K]; positivity
   have hKA₁ : A₁ ≤ K := by dsimp [K]; linarith
@@ -24109,7 +25218,8 @@ theorem smoothingRelocalized_main_bound
   have hτ : 0 ≤ r^(-η) := by positivity
   obtain ⟨hi₁,hi₂,hiV,hmass⟩ := hfull r hr (r^(γ+κ)) (r^(γ+κ)) (r^(-δ)) (r^(-δ))
     hfreq hfreq hρ hρ f₁ f₂ hf₁ hf₂ flat₁ flat₂ S P hS (fun m hm => (hP m hm).1)
-  obtain ⟨hu₁,hu₂,hres₁,hres₂⟩ := hres r γ hr ha f₁ f₂ hf₁ hf₂ flat₁ flat₂ S P hS hP L (by linarith : 0 ≤ L)
+  obtain ⟨hu₁,hu₂,hres₁,hres₂⟩ := hres r γ hr ha f₁ f₂ hf₁ hf₂ flat₁ flat₂ S P hS hP L
+    (by linarith : 0 ≤ L)
   have hradP : ∀ m ∈ S,
       ‖(WithLp.toLp 2 ![(P m).1.1,(P m).1.2,(P m).2] : EuclideanSpace ℝ (Fin 3))‖ ≤ R := by
     intro m hm
@@ -24119,32 +25229,36 @@ theorem smoothingRelocalized_main_bound
     (fun n => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂))
     flat₁ flat₂ S P hradP (fun m hm => (hP m hm).2)
     (fun m hm => (hi₁ m hm).integrableOn) (fun m hm => (hi₂ m hm).integrableOn)
-    (fun m hm => (hu₁ m hm).integrableOn) (fun m hm => (hu₂ m hm).integrableOn) (fun m hm => (hiV m hm).integrableOn)
+    (fun m hm => (hu₁ m hm).integrableOn) (fun m hm => (hu₂ m hm).integrableOn) (fun m hm => (hiV
+      m hm).integrableOn)
   have hmassI := hmass I
-  have hX := hmassI.1.trans (mul_le_mul_of_nonneg_right hKA₁ (sq_nonneg (r^γ)))
-  have hY := hmassI.2.1.trans (mul_le_mul_of_nonneg_right hKA₂ (sq_nonneg (r^γ)))
+  have hX := hmassI.1.trans (mul_le_mul_of_nonneg_right hKA₁ (sq_nonneg (r ^ γ)))
+  have hY := hmassI.2.1.trans (mul_le_mul_of_nonneg_right hKA₂ (sq_nonneg (r ^ γ)))
   have hV := hmassI.2.2.trans (mul_le_mul_of_nonneg_right
-    (mul_le_mul_of_nonneg_right hKA₃ (sq_nonneg (r^γ))) hτ)
+    (mul_le_mul_of_nonneg_right hKA₃ (sq_nonneg (r ^ γ))) hτ)
   rcases hflat with hflat | hflat
   · have hU := (hres₁ hflat).trans (mul_le_mul_of_nonneg_right
-      (mul_le_mul_of_nonneg_right hKB₁ (sq_nonneg (r^γ))) hσ)
-    exact smoothing_integrated_main_products_scale N ha₀ hC hK hσ hτ (by linarith : 0 ≤ L) hX hY hY hU hV hj.1
+      (mul_le_mul_of_nonneg_right hKB₁ (sq_nonneg (r ^ γ))) hσ)
+    exact smoothing_integrated_main_products_scale N ha₀ hC hK hσ hτ (by linarith : 0 ≤ L) hX hY
+      hY hU hV hj.1
   · have hU := (hres₂ hflat).trans (mul_le_mul_of_nonneg_right
-      (mul_le_mul_of_nonneg_right hKB₂ (sq_nonneg (r^γ))) hσ)
-    apply smoothing_integrated_main_products_scale N ha₀ hC hK hσ hτ (by linarith : 0 ≤ L) hX hY hX hU hV
+      (mul_le_mul_of_nonneg_right hKB₂ (sq_nonneg (r ^ γ))) hσ)
+    apply smoothing_integrated_main_products_scale N ha₀ hC hK hσ hτ (by linarith : 0 ≤ L) hX hY
+      hX hU hV
     convert hj.2 using 1 ; ring
 
 /-- The source interaction count cancels the inverse scale in the
 integrated main energy after the final Cauchy--Schwarz step. -/
 theorem smoothing_global_main_root_scale {D C a n J W : ℝ}
     (hD : 0 ≤ D) (hC : 0 ≤ C) (ha : 0 < a) (_ : 0 ≤ W)
-    (hn : n ≤ D*a^3) (hJ : J ≤ C/a*W) :
+    (hn : n ≤ D * a ^ 3) (hJ : J ≤ C / a * W) :
     (4/a)*Real.sqrt n*Real.sqrt J ≤ (4*Real.sqrt D*Real.sqrt C)*Real.sqrt W := by
-  have hp := mul_le_mul_of_nonneg_left (smoothing_main_sum_scale hD ha hn) (by norm_num : (0 : ℝ) ≤ 2)
+  have hp := mul_le_mul_of_nonneg_left (smoothing_main_sum_scale hD ha hn)
+    (by norm_num : (0 : ℝ) ≤ 2)
   have hp' : (4/a)*Real.sqrt n ≤ (4*Real.sqrt D)*Real.sqrt a := by
     calc
       _ = 2*((2*a⁻¹)*Real.sqrt n) := by ring
-      _ ≤ 2*((2*Real.sqrt D)*Real.sqrt a) := hp
+      _ ≤ 2*((2 * Real.sqrt D)*Real.sqrt a) := hp
       _ = _ := by ring
   have hprod : Real.sqrt a*Real.sqrt J ≤ Real.sqrt C*Real.sqrt W := by
     rw [← Real.sqrt_mul ha.le, ← Real.sqrt_mul hC]
@@ -24153,7 +25267,8 @@ theorem smoothing_global_main_root_scale {D C a n J W : ℝ}
     have he : a*(C/a*W)=C*W := by field_simp
     exact he ▸ hh
   calc
-    _ ≤ (4*Real.sqrt D)*Real.sqrt a*Real.sqrt J := mul_le_mul_of_nonneg_right hp' (Real.sqrt_nonneg _)
+    _ ≤ (4*Real.sqrt D)*Real.sqrt a*Real.sqrt J := mul_le_mul_of_nonneg_right hp'
+      (Real.sqrt_nonneg _)
     _ = (4*Real.sqrt D)*(Real.sqrt a*Real.sqrt J) := by ring
     _ ≤ (4*Real.sqrt D)*(Real.sqrt C*Real.sqrt W) := mul_le_mul_of_nonneg_left hprod (by positivity)
     _ = _ := by ring
@@ -24168,22 +25283,23 @@ theorem smoothing_sqrt_add_bound {X Y : ℝ} (hX : 0 ≤ X) (hY : 0 ≤ Y) :
 /-- The last square root of the integrated frequency bound splits into
 the nonresonant/tail term and the quarter power of the resonant energy. -/
 theorem smoothing_main_energy_root_split {U L σ : ℝ} (hU : 0 ≤ U) (hL : 0 ≤ L) (hσ : 0 ≤ σ) :
-    Real.sqrt (2*U+81*L^2*Real.sqrt σ) ≤ Real.sqrt 2*Real.sqrt U+9*L*σ^(1/4 : ℝ) := by
-  have hh := smoothing_sqrt_add_bound (by positivity : 0 ≤ 2*U) (by positivity : 0 ≤ 81*L^2*Real.sqrt σ)
+    Real.sqrt (2*U+81 * L ^ 2 * Real.sqrt σ) ≤ Real.sqrt 2 * Real.sqrt U+9*L*σ^(1/4 : ℝ) := by
+  have hh := smoothing_sqrt_add_bound (by positivity : 0 ≤ 2*U)
+    (by positivity : 0 ≤ 81 * L ^ 2 * Real.sqrt σ)
   have hq : Real.sqrt (Real.sqrt σ) = σ^(1/4 : ℝ) := by
     rw [Real.sqrt_eq_rpow,Real.sqrt_eq_rpow,← Real.rpow_mul hσ]
     norm_num
-  have he : Real.sqrt (81*L^2*Real.sqrt σ) = 9*L*σ^(1/4 : ℝ) := by
-    rw [Real.sqrt_mul (by positivity : 0 ≤ 81*L^2),Real.sqrt_mul (by norm_num : (0 : ℝ) ≤ 81),Real.sqrt_sq hL,hq]
+  have he : Real.sqrt (81 * L ^ 2 * Real.sqrt σ) = 9*L*σ^(1/4 : ℝ) := by
+    rw [Real.sqrt_mul (by positivity : 0 ≤ 81*L^2),Real.sqrt_mul
+      (by norm_num : (0 : ℝ) ≤ 81),Real.sqrt_sq hL,hq]
     rw [show (81 : ℝ)=(9 : ℝ)^2 by norm_num,Real.sqrt_sq (by norm_num : (0 : ℝ) ≤ 9)]
   rwa [Real.sqrt_mul (by norm_num : (0 : ℝ) ≤ 2),he] at hh
 
 /-- The source powers in (3.30) after substituting L=r^epsilon,
 rho=r^-delta, and the threshold r^kappa into the actual main bound. -/
 theorem smoothing_main_root_parameter_bound {r γ κ δ ε B : ℝ} (N : ℕ)
-    (hr : 1 ≤ r) (hδ : 0 ≤ δ) (hε : 0 ≤ ε) (hκγ : κ ≤ γ+ε)
-    (hB : 0 ≤ B) (hN : δ ≤ ε*N) :
-    Real.sqrt (((r^ε)^N)⁻¹+81*(r^ε)^2*Real.sqrt (r^(-δ)+(r^γ)⁻¹+B*r^ε/r^κ)+Real.sqrt (r^(-2*δ))) ≤
+    (hr : 1 ≤ r) (hδ : 0 ≤ δ) (hε : 0 ≤ ε) (hκγ : κ ≤ γ + ε) (hB : 0 ≤ B) (hN : δ ≤ ε * N) :
+    Real.sqrt (((r^ε)^N)⁻¹+81*(r^ε)^2 * Real.sqrt (r^(-δ)+(r^γ)⁻¹+B*r^ε/r^κ)+Real.sqrt (r^(-2*δ))) ≤
       (Real.sqrt 2+9)*r^(-δ/4+ε)+9*(B+1)^(1/4 : ℝ)*r^(-κ/4+5*ε/4) := by
   have hr₀ : 0 < r := by linarith
   let σ := r^(-δ)+(r^γ)⁻¹+B*r^ε/r^κ
@@ -24197,8 +25313,8 @@ theorem smoothing_main_root_parameter_bound {r γ κ δ ε B : ℝ} (N : ℕ)
     rw [smoothing_sqrt_spatial_scale hr₀]
     congr 1
     ring
-  have hw : (((r^ε)^N)⁻¹+81*(r^ε)^2*Real.sqrt σ+Real.sqrt (r^(-2*δ))) ≤
-      2*r^(-δ)+81*(r^ε)^2*Real.sqrt σ := by rw [htail]; linarith
+  have hw : (((r^ε)^N)⁻¹+81*(r^ε)^2 * Real.sqrt σ+Real.sqrt (r^(-2*δ))) ≤
+      2*r^(-δ)+81*(r^ε)^2 * Real.sqrt σ := by rw [htail]; linarith
   have hsigma : σ ≤ r^(-δ)+(B+1)*r^(ε-κ) := by
     have hscale : (r^γ)⁻¹ ≤ r^(ε-κ) := by
       rw [← Real.rpow_neg hr₀.le]
@@ -24216,15 +25332,16 @@ theorem smoothing_main_root_parameter_bound {r γ κ δ ε B : ℝ} (N : ℕ)
       _ ≤ (r^(-δ)+(B+1)*r^(ε-κ))^(1/4 : ℝ) := Real.rpow_le_rpow hσ hsigma (by norm_num)
       _ ≤ (r^(-δ))^(1/4 : ℝ)+((B+1)*r^(ε-κ))^(1/4 : ℝ) :=
         Real.rpow_add_le_add_rpow (by positivity) (by positivity) (by norm_num) (by norm_num)
-      _ = _ := by rw [Real.mul_rpow (by positivity : 0 ≤ B+1) (by positivity : 0 ≤ r^(ε-κ)),hqpow,hqpow]
+      _ = _ :=
+        by rw [Real.mul_rpow (by positivity : 0 ≤ B+1) (by positivity : 0 ≤ r^(ε-κ)),hqpow,hqpow]
   have hrootU : Real.sqrt (r^(-δ)) ≤ r^(-δ/4+ε) := by
     rw [smoothing_sqrt_spatial_scale hr₀]
     exact Real.rpow_le_rpow_of_exponent_le hr (by linarith)
   have hprod₁ : r^ε*r^(-δ/4) = r^(-δ/4+ε) := by rw [← Real.rpow_add hr₀]; congr 1 ; ring
   have hprod₂ : r^ε*r^((ε-κ)/4) = r^(-κ/4+5*ε/4) := by rw [← Real.rpow_add hr₀]; congr 1 ; ring
   calc
-    _ ≤ Real.sqrt (2*r^(-δ)+81*(r^ε)^2*Real.sqrt σ) := Real.sqrt_le_sqrt hw
-    _ ≤ Real.sqrt 2*Real.sqrt (r^(-δ))+9*r^ε*σ^(1/4 : ℝ) :=
+    _ ≤ Real.sqrt (2*r^(-δ)+81*(r^ε)^2 * Real.sqrt σ) := Real.sqrt_le_sqrt hw
+    _ ≤ Real.sqrt 2 * Real.sqrt (r^(-δ))+9*r^ε*σ^(1/4 : ℝ) :=
       smoothing_main_energy_root_split (by positivity) (by positivity) hσ
     _ ≤ Real.sqrt 2*r^(-δ/4+ε)+9*r^ε*(r^(-δ/4)+(B+1)^(1/4 : ℝ)*r^((ε-κ)/4)) :=
       add_le_add (mul_le_mul_of_nonneg_left hrootU (Real.sqrt_nonneg _))
@@ -24238,7 +25355,7 @@ theorem smoothing_main_root_parameter_bound {r γ κ δ ε B : ℝ} (N : ℕ)
 pair of global components whenever at least one input is flat. -/
 theorem smoothing_section3_3_relocalized_flat_bound
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
-    {γ κ δ ε : ℝ} (hγ : 1/2 < γ) (hγ1 : γ ≤ 1) (hκ : 0 < κ)
+    {γ κ δ ε : ℝ} (hγ : 1 / 2 < γ) (hγ1 : γ ≤ 1) (hκ : 0 < κ)
     (hκγ : κ ≤ γ) (hδ : 0 ≤ δ) (hε : 0 < ε)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
@@ -24248,9 +25365,11 @@ theorem smoothing_section3_3_relocalized_flat_bound
     (flat₁ = true ∨ flat₂ = true) →
     let hρ : 0 < r^(-δ) := Real.rpow_pos_of_pos (by linarith) _
     let F := fun n z => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ) (r^(γ+κ)) hρ n flat₁ (smoothingPlaneEquiv.symm z)
+      (smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) n f₁)) 0 (r^γ)
+        (r^(γ+κ)) hρ n flat₁ (smoothingPlaneEquiv.symm z)
     let G := fun n z => smoothingRelocalizedComponent
-      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ) (r^(γ+κ)) hρ n flat₂ (smoothingPlaneEquiv.symm z)
+      (smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) n f₂)) 1 (r^γ)
+        (r^(γ+κ)) hρ n flat₂ (smoothingPlaneEquiv.symm z)
     (∫ z, ‖smoothingLocalized (fun z => ∑' n, F n z) (fun z => ∑' n, G n z) ζ z‖) ≤
       C₀*r^(1/2-γ)+C₁*r^(-κ/4+5*ε/4)+C₂*r^(-δ/4+ε) := by
   obtain ⟨N,hN⟩ := exists_nat_ge (δ/ε)
@@ -24267,7 +25386,8 @@ theorem smoothing_section3_3_relocalized_flat_bound
   have hr₀ : 0 < r := by linarith
   have ha₀ : 0 < r^γ := Real.rpow_pos_of_pos hr₀ _
   have ha : 1 ≤ r^γ := Real.one_le_rpow hr (by linarith)
-  have har : r^γ ≤ r := by simpa only [Real.rpow_one] using Real.rpow_le_rpow_of_exponent_le hr hγ1
+  have har : r^γ ≤ r :=
+    by simpa only [Real.rpow_one] using Real.rpow_le_rpow_of_exponent_le hr hγ1
   have hfreq : 0 < r^(γ+κ) := Real.rpow_pos_of_pos hr₀ _
   obtain ⟨S,P,hS,hP,hg⟩ := hglobal r (r^γ) (r^(γ+κ)) (r^(γ+κ)) hr₀ ha har hfreq hfreq
     (r^(-δ)) (r^(-δ)) hρ hρ f₁ f₂ hf₁ hf₂ flat₁ flat₂
@@ -24277,16 +25397,16 @@ theorem smoothing_section3_3_relocalized_flat_bound
     exact hh
   have hj := hmain r hr (r^ε) (Real.one_le_rpow hr hε.le) f₁ f₂ hf₁ hf₂ flat₁ flat₂ hflat S P hS hP
   simp only [show -(2*δ)= -2*δ by ring] at hj
-  let W := ((r^ε)^N)⁻¹+81*(r^ε)^2*Real.sqrt (r^(-δ)+(r^γ)⁻¹+B*r^ε/r^κ)+Real.sqrt (r^(-2*δ))
+  let W := ((r^ε)^N)⁻¹+81*(r^ε)^2 * Real.sqrt (r^(-δ)+(r^γ)⁻¹+B*r^ε/r^κ)+Real.sqrt (r^(-2*δ))
   have hW : 0 ≤ W := by dsimp [W]; positivity
   have hscale := smoothing_global_main_root_scale hD hC ha₀ hW hcard hj
-  have hparam := smoothing_main_root_parameter_bound N hr hδ hε.le (by linarith : κ ≤ γ+ε)
+  have hparam := smoothing_main_root_parameter_bound N hr hδ hε.le (by linarith : κ ≤ γ + ε)
     (by linarith : 0 ≤ B) horder
   have hroot := hscale.trans (mul_le_mul_of_nonneg_left hparam hM)
   have herr : E*Real.sqrt r/(r^γ) = E*r^(1/2-γ) := by
     rw [Real.sqrt_eq_rpow,Real.rpow_sub hr₀]
     ring
-  have hh := hg.trans (add_le_add hroot (le_refl (E*Real.sqrt r/(r^γ))))
+  have hh := hg.trans (add_le_add hroot (le_refl (E*Real.sqrt r/(r ^ γ))))
   rw [herr] at hh
   exact hh.trans_eq (by dsimp only [M]; ring)
 
@@ -24294,16 +25414,16 @@ theorem smoothing_section3_3_relocalized_flat_bound
 one quarter of the spatial scale. This exposes the global error cancellation. -/
 theorem smoothingEnlargedCutoff_one_near_piece {a : ℝ} (ha : 0 < a)
     (m : Fin 2 → ℤ) (j : Fin 2) (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ)
-    (hu : |u| ≤ (4*a)⁻¹)
-    (hm : smoothingSpatialCutoff a m (x-EuclideanSpace.single j u) ≠ 0) :
+    (hu : |u| ≤ (4 * a)⁻¹)
+    (hm : smoothingSpatialCutoff a m (x - EuclideanSpace.single j u) ≠ 0) :
     smoothingEnlargedCutoff a m x = 1 := by
   apply smoothingEnlargedCutoff_one ha m
   intro i
-  have hn : smoothingSpatialBump (a • (x-EuclideanSpace.single j u) -
+  have hn : smoothingSpatialBump (a • (x - EuclideanSpace.single j u) -
       CalderonVaillancourt.latt 2 m) ≠ 0 := by
     simpa only [smoothingSpatialCutoff,ne_eq,Complex.ofReal_eq_zero] using hm
   have hh := smoothingSpatialBump_support_sharp hn i
-  change |a*((x-EuclideanSpace.single j u) i)-(m i : ℝ)| < 3/4 at hh
+  change |a*((x - EuclideanSpace.single j u) i)-(m i : ℝ)| < 3/4 at hh
   have he : (4*a)⁻¹ = a⁻¹/4 := by field_simp
   rw [he] at hu
   have hai : a*a⁻¹=1 := mul_inv_cancel₀ ha.ne'
@@ -24327,9 +25447,10 @@ theorem smoothingEnlargedCutoff_one_near_piece {a : ℝ} (ha : 0 < a)
 /-- The finite enlarged-index sum still equals the partition of unity
 at any nearby shifted point. -/
 theorem smoothingSpatialCutoff_near_sum {a : ℝ} (ha : 0 < a)
-    (j : Fin 2) (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ) (hu : |u| ≤ (4*a)⁻¹) :
+    (j : Fin 2) (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ) (hu : |u| ≤ (4 * a)⁻¹) :
     ∑ m ∈ smoothingEnlargedIndices a x,
-      smoothingEnlargedCutoff a m x * smoothingSpatialCutoff a m (x-EuclideanSpace.single j u) = 1 := by
+      smoothingEnlargedCutoff a m x * smoothingSpatialCutoff a m (x - EuclideanSpace.single j u) =
+        1 := by
   classical
   let y := x-EuclideanSpace.single j u
   have he (m : Fin 2 → ℤ) : smoothingEnlargedCutoff a m x*smoothingSpatialCutoff a m y =
@@ -24337,14 +25458,16 @@ theorem smoothingSpatialCutoff_near_sum {a : ℝ} (ha : 0 < a)
     by_cases hm : smoothingSpatialCutoff a m y=0
     · rw [hm,mul_zero]
     · rw [smoothingEnlargedCutoff_one_near_piece ha m j x u hu hm,one_mul]
-  change (∑ m ∈ smoothingEnlargedIndices a x, smoothingEnlargedCutoff a m x*smoothingSpatialCutoff a m y)=1
+  change (∑ m ∈ smoothingEnlargedIndices a x, smoothingEnlargedCutoff a m x*smoothingSpatialCutoff
+    a m y)=1
   simp_rw [he]
   have hz : ∀ m ∉ smoothingEnlargedIndices a x, smoothingSpatialCutoff a m y=0 := by
     intro m hm
     by_contra hn
     have hc := smoothingEnlargedCutoff_one_near_piece ha m j x u hu hn
     exact hm (smoothingEnlargedCutoff_index ha x m (by rw [hc]; norm_num))
-  have ht : (∑' m : Fin 2 → ℤ, smoothingSpatialCutoff a m y)=∑ m ∈ smoothingEnlargedIndices a x, smoothingSpatialCutoff a m y := tsum_eq_sum hz
+  have ht : (∑' m : Fin 2 → ℤ, smoothingSpatialCutoff a m y)=∑ m ∈ smoothingEnlargedIndices a x,
+    smoothingSpatialCutoff a m y := tsum_eq_sum hz
   rw [← ht]
   simp only [smoothingSpatialCutoff]
   rw [← Complex.ofReal_tsum,smoothingSpatialBump_partition,Complex.ofReal_one]
@@ -24352,12 +25475,16 @@ theorem smoothingSpatialCutoff_near_sum {a : ℝ} (ha : 0 < a)
 /-- The finite global commutator mask vanishes near the convolution
 origin, owing to the partition of unity at both points. -/
 theorem smoothingGlobalError_mask_zero {a : ℝ} (ha : 0 < a)
-    (j : Fin 2) (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ) (hu : |u| ≤ (4*a)⁻¹) :
+    (j : Fin 2) (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ) (hu : |u| ≤ (4 * a)⁻¹) :
     ∑ m ∈ smoothingEnlargedIndices a x, smoothingEnlargedCutoff a m x *
-      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x-EuclideanSpace.single j u))=0 := by
+      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x - EuclideanSpace.single j u))=0
+        := by
   simp_rw [mul_sub]
   rw [Finset.sum_sub_distrib,smoothingSpatialCutoff_near_sum ha j x u hu]
-  have hh := smoothingSpatialCutoff_near_sum ha j x 0 (by simp; positivity)
+  have hh := smoothingSpatialCutoff_near_sum ha j x 0 (by
+    simp only [abs_zero, mul_inv_rev, inv_pos, Nat.ofNat_pos,
+      mul_nonneg_iff_of_pos_right, inv_nonneg]
+    exact ha.le)
   simpa [EuclideanSpace.single,PiLp.single] using congrArg (fun z : ℂ => z-1) hh
 
 /-- The finite global commutator mask has a fixed bound, independent of
@@ -24365,19 +25492,24 @@ all scales, spatial indices, and convolution shifts. -/
 theorem smoothingGlobalError_mask_bound (a : ℝ) (j : Fin 2)
     (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ) :
     ‖∑ m ∈ smoothingEnlargedIndices a x, smoothingEnlargedCutoff a m x *
-      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x-EuclideanSpace.single j u))‖ ≤ 50 := by
+      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x - EuclideanSpace.single j u))‖ ≤
+        50 := by
   have hb (m : Fin 2 → ℤ) (y : EuclideanSpace ℝ (Fin 2)) : ‖smoothingSpatialCutoff a m y‖ ≤ 1 := by
     simpa only [smoothingSpatialCutoff,Complex.norm_real,Real.norm_eq_abs,
-      abs_of_nonneg (smoothingSpatialBump_properties.2.2.1 _)] using smoothingSpatialBump_properties.2.2.2 (a • y-CalderonVaillancourt.latt 2 m)
+      abs_of_nonneg (smoothingSpatialBump_properties.2.2.1 _)] using
+        smoothingSpatialBump_properties.2.2.2 (a • y-CalderonVaillancourt.latt 2 m)
   calc
     _ ≤ ∑ m ∈ smoothingEnlargedIndices a x, ‖smoothingEnlargedCutoff a m x *
-      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x-EuclideanSpace.single j u))‖ := norm_sum_le _ _
+      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x - EuclideanSpace.single j u))‖
+        := norm_sum_le _ _
     _ ≤ ∑ m ∈ smoothingEnlargedIndices a x, (2 : ℝ) := by
       apply Finset.sum_le_sum
       intro m hm
       rw [norm_mul]
-      have hh := (norm_sub_le (smoothingSpatialCutoff a m x) (smoothingSpatialCutoff a m (x-EuclideanSpace.single j u))).trans (add_le_add (hb m x) (hb m _))
-      exact (mul_le_mul (smoothingEnlargedCutoff_bounds a m x).1 hh (norm_nonneg _) (by norm_num)).trans_eq (by norm_num)
+      have hh := (norm_sub_le (smoothingSpatialCutoff a m x) (smoothingSpatialCutoff a m (x -
+        EuclideanSpace.single j u))).trans (add_le_add (hb m x) (hb m _))
+      exact (mul_le_mul (smoothingEnlargedCutoff_bounds a m x).1 hh (norm_nonneg _)
+        (by norm_num)).trans_eq (by norm_num)
     _ = 50 := by norm_num [smoothingEnlargedIndices_card]
 
 /-- Exact finite-mask convolution formula for the global error in (3.29).
@@ -24387,14 +25519,16 @@ theorem smoothingGlobalError_integral (ψ : SchwartzMap ℝ ℂ) (j : Fin 2)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : ∀ x, ‖f x‖ ≤ 1)
     (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingGlobalError (some ψ) j r a f x =
-      ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u * f (x-EuclideanSpace.single j u) *
+      ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u * f (x - EuclideanSpace.single j u) *
         ∑ m ∈ smoothingEnlargedIndices a x, smoothingEnlargedCutoff a m x *
-          (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x-EuclideanSpace.single j u)) := by
+          (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x - EuclideanSpace.single j
+            u)) := by
   classical
   let K := 𝓕⁻ (smoothingScalarRescale ψ hr)
   have hi := smoothing_coordinate_convolution_integrable K j f hf x
-  have hi' (m : Fin 2 → ℤ) : Integrable (fun u : ℝ => K u*f (x-EuclideanSpace.single j u)*
-      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x-EuclideanSpace.single j u))) := by
+  have hi' (m : Fin 2 → ℤ) : Integrable (fun u : ℝ => K u*f (x - EuclideanSpace.single j u)*
+      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x - EuclideanSpace.single j u)))
+        := by
     have hp := smoothing_coordinate_convolution_integrable K j (smoothingSpatialPiece a m f)
       (fun y => (smoothingSpatialPiece_bound a m f y).trans (hf y)) x
     have hh := (hi.mul_const (smoothingSpatialCutoff a m x)).sub hp
@@ -24410,7 +25544,8 @@ theorem smoothingGlobalError_integral (ψ : SchwartzMap ℝ ℂ) (j : Fin 2)
       by_contra hn
       exact hm (smoothingEnlargedCutoff_index ha x m hn)
     rw [hz,zero_mul])]
-  simp_rw [smoothingErrorPiece_eq _ j r ha,smoothingLocalizationCommutator_integral ψ j hr a _ f hf x,← integral_const_mul]
+  simp_rw [smoothingErrorPiece_eq _ j r ha,smoothingLocalizationCommutator_integral ψ j hr a _ f
+    hf x,← integral_const_mul]
   rw [← integral_finsetSum _ (fun m hm => (hi' m).const_mul (smoothingEnlargedCutoff a m x))]
   apply integral_congr_ae
   filter_upwards [] with u
@@ -24442,7 +25577,7 @@ shift dominate the global mask, because its near-diagonal part is zero. -/
 theorem smoothingGlobalError_mask_power_bound {a : ℝ} (ha : 0 < a)
     (j : Fin 2) (x : EuclideanSpace ℝ (Fin 2)) (u : ℝ) (N : ℕ) :
     ‖∑ m ∈ smoothingEnlargedIndices a x, smoothingEnlargedCutoff a m x *
-      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x-EuclideanSpace.single j u))‖ ≤
+      (smoothingSpatialCutoff a m x-smoothingSpatialCutoff a m (x - EuclideanSpace.single j u))‖ ≤
       50*(4*a)^N*|u|^N := by
   by_cases hu : |u| ≤ (4*a)⁻¹
   · rw [smoothingGlobalError_mask_zero ha j x u hu,norm_zero]
@@ -24475,7 +25610,8 @@ theorem smoothingGlobalError_rapid_bound (ψ : SchwartzMap ℝ ℂ) (N : ℕ) :
       filter_upwards [] with u
       rw [norm_mul,norm_mul]
       have hb := smoothingGlobalError_mask_power_bound ha j x u N
-      have hh := mul_le_mul (mul_le_mul_of_nonneg_left (hf (x-EuclideanSpace.single j u)) (norm_nonneg (K u))) hb
+      have hh := mul_le_mul (mul_le_mul_of_nonneg_left (hf (x - EuclideanSpace.single j u))
+        (norm_nonneg (K u))) hb
         (norm_nonneg _) (by positivity : 0 ≤ ‖K u‖*1)
       exact hh.trans_eq (by ring)
     _ = (50*(4*a)^N)*((r^N)⁻¹*M) := by
@@ -24538,11 +25674,14 @@ theorem smoothingGlobalFlatSharp_polynomial_bound (ψ : Option (SchwartzMap ℝ 
     have hh' := mul_le_mul_of_nonneg_left hunit hB
     nlinarith
   have hflat := smoothingEnlargedCutoff_tsum_bound ha
-    (fun m => smoothingFlatComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ)
+    (fun m => smoothingFlatComponent (smoothingCoordinateRegularization ψ j r
+      (smoothingSpatialPiece a m f)) j R hρ)
     (fun m y => (smoothingFlatComponent_bound _ j hR hρ (hg m) y).trans hscale) x
   have hsharp := smoothingEnlargedCutoff_tsum_bound ha
-    (fun m => smoothingSharpComponent (smoothingCoordinateRegularization ψ j r (smoothingSpatialPiece a m f)) j R hρ)
-    (fun m y => (smoothingSharpComponent_bound _ j hR hρ (hg m) y).trans ((le_add_of_nonneg_left hB).trans hscale)) x
+    (fun m => smoothingSharpComponent (smoothingCoordinateRegularization ψ j r
+      (smoothingSpatialPiece a m f)) j R hρ)
+    (fun m y => (smoothingSharpComponent_bound _ j hR hρ (hg m) y).trans ((le_add_of_nonneg_left
+      hB).trans hscale)) x
   constructor
   · exact hflat.trans_eq (by ring)
   · exact hsharp.trans_eq (by ring)
@@ -24569,7 +25708,8 @@ theorem smoothingLocalized_measurable_l1_bound {f g : ℝ × ℝ → ℂ}
     exact mul_le_mul_of_nonneg_right (mul_le_mul (hfb _) (hgb _) (norm_nonneg _) hM) (norm_nonneg _)
   calc
     _ ≤ ∫ z : ℝ × ℝ, (M*N)*∫ t : ℝ, ‖ζ (z,t)‖ :=
-      integral_mono (smoothingLocalized_measurable_bounded_integrable hf hg hM hN hfb hgb hζ hc).2.norm
+      integral_mono (smoothingLocalized_measurable_bounded_integrable hf hg hM hN hfb hgb hζ
+        hc).2.norm
         (hzip.integral_norm_prod_left.const_mul (M*N)) hp
     _ = _ := by rw [integral_const_mul,← integral_prod _ hzip.norm,← Measure.volume_eq_prod]
 
@@ -24595,15 +25735,19 @@ theorem smoothingGlobal_flat_sharp_error_bound
   have hr₀ : 0 < r := by linarith
   have ha := Real.rpow_pos_of_pos hr₀ γ
   let hρ := Real.rpow_pos_of_pos hr₀ (-δ)
-  have hF := (smoothing_eq3_26 ψ₁ 0 r R ha hρ f).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hS := (smoothingGlobalSharp_measurable_summable ψ₁ 0 r R ha hρ f).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hF := (smoothing_eq3_26 ψ₁ 0 r R ha hρ f).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hS := (smoothingGlobalSharp_measurable_summable ψ₁ 0 r R ha hρ f).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hE := (smoothing_eq3_29 ψ₂ 1 r ha g).1.comp smoothingPlaneEquiv.symm.continuous.measurable
   have hb := hcomp 0 r (r^γ) R hr ha hR f hf
   have he := herr 1 r hr g hg
   have hflat := smoothingLocalized_measurable_l1_bound hF hE hζ hc
-    (by positivity : 0 ≤ A*r^δ) (by positivity : 0 ≤ B*r^(-(δ+η))) (fun z => (hb _).1) (fun z => he _)
+    (by positivity : 0 ≤ A*r^δ) (by positivity : 0 ≤ B*r^(-(δ+η))) (fun z => (hb _).1) (fun z =>
+      he _)
   have hsharp := smoothingLocalized_measurable_l1_bound hS hE hζ hc
-    (by positivity : 0 ≤ A*r^δ) (by positivity : 0 ≤ B*r^(-(δ+η))) (fun z => (hb _).2) (fun z => he _)
+    (by positivity : 0 ≤ A*r^δ) (by positivity : 0 ≤ B*r^(-(δ+η))) (fun z => (hb _).2) (fun z =>
+      he _)
   have hid : (A*r^δ)*(B*r^(-(δ+η)))*Z=(A*B*Z)*r^(-η) := by
     have hh : r^δ*r^(-(δ+η))=r^(-η) := by rw [← Real.rpow_add hr₀]; congr 1 ; ring
     calc
@@ -24615,18 +25759,19 @@ theorem smoothingGlobal_flat_sharp_error_bound
 expanding the first input-flat contribution in (3.30). -/
 theorem smoothing_integral_four_term_bound {U V W X H : ℝ × ℝ → ℂ}
     (hU : Integrable U) (hV : Integrable V) (hW : Integrable W) (hX : Integrable X)
-    (he : ∀ z, H z=U z+V z+W z+X z) :
+    (he : ∀ z, H z = U z + V z + W z + X z) :
     (∫ z, ‖H z‖) ≤ (∫ z, ‖U z‖)+(∫ z, ‖V z‖)+(∫ z, ‖W z‖)+(∫ z, ‖X z‖) := by
-  have hh : H=fun z => U z+V z+W z+X z := funext he
+  have hh : H=fun z => U z + V z + W z+X z := funext he
   rw [hh]
   calc
     _ ≤ ∫ z, ‖U z‖+‖V z‖+‖W z‖+‖X z‖ := by
-      apply integral_mono ((hU.add hV).add hW |>.add hX).norm (((hU.norm.add hV.norm).add hW.norm).add hX.norm)
+      apply integral_mono ((hU.add hV).add hW |>.add hX).norm (((hU.norm.add hV.norm).add
+        hW.norm).add hX.norm)
       intro z
       simp only [Pi.add_apply]
       have h₁ := norm_add_le (U z) (V z)
       have h₂ := norm_add_le (U z+V z) (W z)
-      have h₃ := norm_add_le (U z+V z+W z) (X z)
+      have h₃ := norm_add_le (U z + V z+W z) (X z)
       linarith
     _ = _ := by
       have huv : Integrable (fun z => ‖U z‖+‖V z‖) := hU.norm.add hV.norm
@@ -24637,7 +25782,7 @@ theorem smoothing_integral_four_term_bound {U V W X H : ℝ × ℝ → ℂ}
 including its pairing with the unreplaced second input. -/
 theorem smoothing_eq3_30
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
-    {γ κ δ ε : ℝ} (hγ : 1/2 < γ) (hγ1 : γ < 1) (hκ : 0 < κ)
+    {γ κ δ ε : ℝ} (hγ : 1 / 2 < γ) (hγ1 : γ < 1) (hκ : 0 < κ)
     (hκγ : κ ≤ γ) (hδ : 0 ≤ δ) (hε : 0 < ε)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
@@ -24651,8 +25796,10 @@ theorem smoothing_eq3_30
       let G := smoothingGlobalComponent (some ψ₂) 1 r (r^γ) (r^(γ+κ)) hρ g
       (∫ z : ℝ × ℝ, ‖(smoothingLocalizedRaw (F 0) g ζ + smoothingLocalizedRaw (F 1) (G 0) ζ) z‖) ≤
         C₀*r^(1/2-γ)+C₁*r^(-κ/4+5*ε/4)+C₂*r^(-δ/4+ε) := by
-  obtain ⟨A,B,C,hA,hB,hC,hpair⟩ := smoothing_section3_3_relocalized_flat_bound ψ₁ ψ₂ hγ hγ1.le hκ hκγ hδ hε hζ hc hpos
-  obtain ⟨E,hE,herror⟩ := smoothingGlobal_flat_sharp_error_bound ψ₁ (some ψ₂) hγ1 hδ (γ-1/2) hζ.continuous hc
+  obtain ⟨A,B,C,hA,hB,hC,hpair⟩ := smoothing_section3_3_relocalized_flat_bound ψ₁ ψ₂ hγ hγ1.le hκ
+    hκγ hδ hε hζ hc hpos
+  obtain ⟨E,hE,herror⟩ := smoothingGlobal_flat_sharp_error_bound ψ₁ (some ψ₂) hγ1 hδ (γ-1/2)
+    hζ.continuous hc
   refine ⟨3*A+E,3*B,3*C,by positivity,by positivity,by positivity,?_⟩
   intro r hr f g hf hg hrep₁ hrep₂ hρ F G
   have hr₀ : 0 < r := by linarith
@@ -24660,9 +25807,12 @@ theorem smoothing_eq3_30
   have hR := Real.rpow_pos_of_pos hr₀ (γ+κ)
   let P := fun (v : EuclideanSpace ℝ (Fin 2) → ℂ) (z : ℝ × ℝ) => v (smoothingPlaneEquiv.symm z)
   obtain ⟨hmF,⟨M,hM,hbF⟩,heF⟩ := smoothingGlobalComponent_properties ψ₁ 0 hr₀ ha hR hρ f hf hrep₁
-  obtain ⟨hmG,⟨N,hN,hbG⟩,heG⟩ := smoothingGlobalComponent_properties (some ψ₂) 1 hr₀ ha hR hρ g hg hrep₂
-  have hFp (i : Fin 3) : Measurable (P (F i)) := (hmF i).comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hGp (i : Fin 3) : Measurable (P (G i)) := (hmG i).comp smoothingPlaneEquiv.symm.continuous.measurable
+  obtain ⟨hmG,⟨N,hN,hbG⟩,heG⟩ := smoothingGlobalComponent_properties (some ψ₂) 1 hr₀ ha hR hρ g hg
+    hrep₂
+  have hFp (i : Fin 3) : Measurable (P (F i)) := (hmF i).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hGp (i : Fin 3) : Measurable (P (G i)) := (hmG i).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hi (i k : Fin 3) : Integrable (smoothingLocalizedRaw (F i) (G k) ζ) :=
     (smoothingLocalized_measurable_bounded_integrable (hFp i) (hGp k) hM hN
       (fun z => hbF i _) (fun z => hbG k _) hζ.continuous hc).2
@@ -24672,7 +25822,8 @@ theorem smoothing_eq3_30
       smoothingLocalizedRaw (F 0) (G 0) ζ z+smoothingLocalizedRaw (F 0) (G 1) ζ z+
       smoothingLocalizedRaw (F 0) (G 2) ζ z := by
     unfold smoothingLocalizedRaw smoothingLocalized
-    rw [← integral_add' (ht 0 0 z) (ht 0 1 z),← integral_add' ((ht 0 0 z).add (ht 0 1 z)) (ht 0 2 z)]
+    rw [← integral_add' (ht 0 0 z) (ht 0 1 z),← integral_add' ((ht 0 0 z).add (ht 0 1 z)) (ht 0 2
+      z)]
     apply integral_congr_ae
     filter_upwards [] with t
     simp only [Pi.add_apply]
@@ -24690,11 +25841,14 @@ theorem smoothing_eq3_30
     simpa [W,smoothingLocalizedRaw,F,G,smoothingGlobalComponent,smoothingRelocalizedComponent,
       smoothingGlobalFlat,smoothingGlobalSharp] using hpair r hr f g hf hg false true (Or.inr rfl)
   have he : (∫ z, ‖smoothingLocalizedRaw (F 0) (G 2) ζ z‖) ≤ E*r^(1/2-γ) := by
-    simpa [F,G,smoothingGlobalComponent,show -(γ-1/2)=1/2-γ by ring] using (herror r (r^(γ+κ)) hr hR f g hf hg).1
+    simpa [F,G,smoothingGlobalComponent,show -(γ-1/2)=1/2-γ
+      by ring] using (herror r (r^(γ+κ)) hr hR f g hf hg).1
   have hh := smoothing_integral_four_term_bound (hi 0 0) (hi 0 1) (hi 0 2) (hi 1 0)
     (H := smoothingLocalizedRaw (F 0) g ζ+smoothingLocalizedRaw (F 1) (G 0) ζ)
     (fun z => by simp only [Pi.add_apply,hsplit])
-  exact hh.trans ((add_le_add (add_le_add (add_le_add hff hfs) he) hsf).trans_eq (by dsimp only [W]; ring))
+  exact hh.trans ((add_le_add (add_le_add (add_le_add hff hfs) he) hsf).trans_eq (by
+    dsimp only [W];
+    ring))
 
 /-- Equation (3.31): the two original error contributions have the source
 L1 bound C*lambda^(gamma-1). All components are the actual global sums. -/
@@ -24722,10 +25876,14 @@ theorem smoothing_eq3_31 (ψ₁ ψ₂ : Option (SchwartzMap ℝ ℂ))
   let E₁ := smoothingGlobalError ψ₁ 0 r (r^γ) f
   let E₂ := smoothingGlobalError ψ₂ 1 r (r^γ) g
   let P := fun (v : EuclideanSpace ℝ (Fin 2) → ℂ) (z : ℝ × ℝ) => v (smoothingPlaneEquiv.symm z)
-  have hS : Measurable (P S) := (smoothingGlobalSharp_measurable_summable ψ₁ 0 r R ha hρ f).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hE₁ : Measurable (P E₁) := (smoothing_eq3_29 ψ₁ 0 r ha f).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hE₂ : Measurable (P E₂) := (smoothing_eq3_29 ψ₂ 1 r ha g).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hG : Measurable (P g) := g.continuous.measurable.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hS : Measurable (P S) := (smoothingGlobalSharp_measurable_summable ψ₁ 0 r R ha hρ f).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hE₁ : Measurable (P E₁) := (smoothing_eq3_29 ψ₁ 0 r ha f).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hE₂ : Measurable (P E₂) := (smoothing_eq3_29 ψ₂ 1 r ha g).1.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hG : Measurable (P g) := g.continuous.measurable.comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hb₁ (x) : ‖E₁ x‖ ≤ B*r^(γ-1) := by
     simpa only [show -(1-γ)=γ-1 by ring] using herr₁ 0 r hr f hf x
   have hb₂ (x) : ‖E₂ x‖ ≤ D*r^(γ-1) := by
@@ -24741,11 +25899,13 @@ theorem smoothing_eq3_31 (ψ₁ ψ₂ : Option (SchwartzMap ℝ ℂ))
     simpa only [show -(1-γ)=γ-1 by ring] using (hsharp r R hr hR f g hf hg).2
   have hboundE := smoothingLocalized_measurable_l1_bound hE₁ hG hζ hc
     (by positivity : 0 ≤ B*r^(γ-1)) zero_le_one (fun z => hb₁ _) (fun z => hg _)
-  have hi : Integrable (fun z => ‖smoothingLocalizedRaw S E₂ ζ z‖+‖smoothingLocalizedRaw E₁ g ζ z‖) := hiS.norm.add hiE.norm
+  have hi : Integrable (fun z => ‖smoothingLocalizedRaw S E₂ ζ z‖+‖smoothingLocalizedRaw E₁ g ζ
+    z‖) := hiS.norm.add hiE.norm
   calc
     _ ≤ ∫ z, ‖smoothingLocalizedRaw S E₂ ζ z‖+‖smoothingLocalizedRaw E₁ g ζ z‖ :=
       integral_mono (hiS.add hiE).norm hi (fun z => norm_add_le _ _)
-    _ = (∫ z, ‖smoothingLocalizedRaw S E₂ ζ z‖)+(∫ z, ‖smoothingLocalizedRaw E₁ g ζ z‖) := integral_add hiS.norm hiE.norm
+    _ = (∫ z, ‖smoothingLocalizedRaw S E₂ ζ z‖)+(∫ z, ‖smoothingLocalizedRaw E₁ g ζ z‖) :=
+      integral_add hiS.norm hiE.norm
     _ ≤ E*r^(γ-1)+(B*r^(γ-1)*1)*Z := add_le_add hboundS hboundE
     _ = (E+B*Z)*r^(γ-1) := by ring
 
@@ -24765,7 +25925,8 @@ theorem smoothingStructuredAmplitude_measurable_support
     Measurable (smoothingStructuredAmplitude g j a R hρ m k) ∧
       ∀ x, smoothingStructuredAmplitude g j a R hρ m k x ≠ 0 →
         ∀ i, |x i-a⁻¹*(m i : ℝ)| < (5/4)*a⁻¹ := by
-  have hm := (smoothingIndexed_measurable g j _ (smoothingFiberSelectedIndices_measurable_card g j R hρ).1 R k).2
+  have hm := (smoothingIndexed_measurable g j _ (smoothingFiberSelectedIndices_measurable_card g j
+    R hρ).1 R k).2
   constructor
   · have hbase : Measurable (fun x : EuclideanSpace ℝ (Fin 2) =>
         (smoothingCoordinateLine j.rev (x j.rev),x j)) :=
@@ -24794,7 +25955,8 @@ theorem smoothingStructuredAmplitude_fiber
       smoothingEnlargedCutoffFiber ha m j (smoothingCoordinateLine j.rev v) u *
         smoothingIndexedAmplitude g j (smoothingFiberSelectedIndices g j R hρ) R k
           (smoothingCoordinateLine j.rev v) u := by
-  simp only [smoothingStructuredAmplitude,(smoothingStructuredAmplitude_fiber_coordinates j v u).1,
+  simp only [smoothingStructuredAmplitude,(smoothingStructuredAmplitude_fiber_coordinates j v
+    u).1,
     (smoothingStructuredAmplitude_fiber_coordinates j v u).2]
   rfl
 
@@ -24805,7 +25967,8 @@ theorem smoothingStructuredAmplitude_fiber_contDiff
     ContDiff ℝ ∞ (fun u => smoothingStructuredAmplitude g j a R hρ m k
       (smoothingCoordinateLine j.rev v+smoothingCoordinateLine j u)) := by
   have hh := smoothingIndexedAmplitude_derivatives g j (smoothingFiberSelectedIndices g j R hρ) hR
-    (M := SchwartzMap.seminorm ℝ 0 0 g) (fun x => by simpa using g.le_seminorm ℝ 0 0 x) k (smoothingCoordinateLine j.rev v)
+    (M := SchwartzMap.seminorm ℝ 0 0 g) (fun x => by simpa using g.le_seminorm ℝ 0 0 x) k
+      (smoothingCoordinateLine j.rev v)
   simp_rw [smoothingStructuredAmplitude_fiber g j ha R hρ m k v]
   exact (smoothingEnlargedCutoffFiber ha m j (smoothingCoordinateLine j.rev v)).smooth ⊤ |>.mul hh.1
 
@@ -24814,12 +25977,14 @@ amplitude in the integration-by-parts step following (3.36). -/
 theorem smoothing_smooth_product_derivative_bound_at {f g : ℝ → ℂ}
     (hf : ContDiff ℝ ∞ f) (hg : ContDiff ℝ ∞ g) {A B R : ℝ}
     (hA : 0 ≤ A) (_ : 0 ≤ B) (hR : 0 ≤ R) (n : ℕ) (u : ℝ)
-    (hb₁ : ∀ i ≤ n, ‖iteratedDeriv i f u‖ ≤ A*R^i)
-    (hb₂ : ∀ i ≤ n, ‖iteratedDeriv i g u‖ ≤ B*R^i) :
+    (hb₁ : ∀ i ≤ n, ‖iteratedDeriv i f u‖ ≤ A * R ^ i)
+    (hb₂ : ∀ i ≤ n, ‖iteratedDeriv i g u‖ ≤ B * R ^ i) :
     ‖iteratedDeriv n (fun u => f u*g u) u‖ ≤ 2^n*(A*B)*R^n := by
-  rw [iteratedDeriv_fun_mul (hf.contDiffAt.of_le (by exact_mod_cast le_top)) (hg.contDiffAt.of_le (by exact_mod_cast le_top))]
+  rw [iteratedDeriv_fun_mul (hf.contDiffAt.of_le (by exact_mod_cast le_top)) (hg.contDiffAt.of_le
+    (by exact_mod_cast le_top))]
   calc
-    _ ≤ ∑ i ∈ Finset.range (n+1), ‖(n.choose i : ℂ)*iteratedDeriv i f u*iteratedDeriv (n-i) g u‖ := norm_sum_le _ _
+    _ ≤ ∑ i ∈ Finset.range (n+1), ‖(n.choose i : ℂ)*iteratedDeriv i f u*iteratedDeriv (n-i) g u‖
+      := norm_sum_le _ _
     _ ≤ ∑ i ∈ Finset.range (n+1), (n.choose i : ℝ)*(A*B)*R^n := by
       apply Finset.sum_le_sum
       intro i hi
@@ -24841,8 +26006,8 @@ source's derivative scale retained at every order. -/
 theorem smoothing_smooth_product_derivative_bound {f g : ℝ → ℂ}
     (hf : ContDiff ℝ ∞ f) (hg : ContDiff ℝ ∞ g) {A B R : ℝ}
     (hA : 0 ≤ A) (hB : 0 ≤ B) (hR : 0 ≤ R) (n : ℕ)
-    (hb₁ : ∀ i ≤ n, ∀ u, ‖iteratedDeriv i f u‖ ≤ A*R^i)
-    (hb₂ : ∀ i ≤ n, ∀ u, ‖iteratedDeriv i g u‖ ≤ B*R^i) (u : ℝ) :
+    (hb₁ : ∀ i ≤ n, ∀ u, ‖iteratedDeriv i f u‖ ≤ A * R ^ i)
+    (hb₂ : ∀ i ≤ n, ∀ u, ‖iteratedDeriv i g u‖ ≤ B * R ^ i) (u : ℝ) :
     ‖iteratedDeriv n (fun u => f u*g u) u‖ ≤ 2^n*(A*B)*R^n := by
   exact smoothing_smooth_product_derivative_bound_at hf hg hA hB hR n u
     (fun i hi => hb₁ i hi u) (fun i hi => hb₂ i hi u)
@@ -24905,8 +26070,10 @@ def smoothingStructuredCorrelationAmplitude
     (g₁ g₂ : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (a R : ℝ)
     {ρ : ℝ} (hρ : 0 < ρ) (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (k l : ℕ)
     (ζ : (ℝ × ℝ) × ℝ → ℂ) (p : (ℝ × ℝ) × ℝ) : ℂ :=
-  smoothingStructuredAmplitude g₁ 0 a R hρ m.1 k (smoothingPlaneEquiv.symm (p.1.1+p.2,p.1.2)) *
-  smoothingStructuredAmplitude g₂ 1 a R hρ m.2 l (smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2^2)) * ζ p
+  smoothingStructuredAmplitude g₁ 0 a R hρ m.1 k (smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2)) *
+  smoothingStructuredAmplitude g₂ 1 a R hρ m.2 l (smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2 ^
+    2)) *
+    ζ p
 
 /-- The actual H_m is jointly measurable, compactly supported, and has
 a smooth time fiber, although its transverse dependence is only measurable. -/
@@ -24917,22 +26084,26 @@ theorem smoothingStructuredCorrelationAmplitude_properties
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) :
     Measurable (smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ) ∧
     HasCompactSupport (smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ) ∧
-    ∀ z : ℝ × ℝ, ContDiff ℝ ∞ (fun t => smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ (z,t)) := by
+    ∀ z : ℝ × ℝ, ContDiff ℝ ∞ (fun t => smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l
+      ζ (z,t)) := by
   have hm₁ := (smoothingStructuredAmplitude_measurable_support g₁ 0 ha R hρ m.1 k).1
   have hm₂ := (smoothingStructuredAmplitude_measurable_support g₂ 1 ha R hρ m.2 l).1
   refine ⟨?_,?_,?_⟩
   · exact ((hm₁.comp (show Measurable (fun p : (ℝ × ℝ) × ℝ =>
-        smoothingPlaneEquiv.symm (p.1.1+p.2,p.1.2)) by fun_prop)).mul
+        smoothingPlaneEquiv.symm (p.1.1 + p.2, p.1.2)) by fun_prop)).mul
       (hm₂.comp (show Measurable (fun p : (ℝ × ℝ) × ℝ =>
-        smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2^2)) by fun_prop))).mul hζ.continuous.measurable
+        smoothingPlaneEquiv.symm (p.1.1, p.1.2 + p.2^2)) by fun_prop))).mul hζ.continuous.measurable
   · exact hc.mul_left
   · intro z
     have hf := smoothingStructuredAmplitude_fiber_contDiff g₁ 0 ha hR hρ m.1 k z.2
     have hg := smoothingStructuredAmplitude_fiber_contDiff g₂ 1 ha hR hρ m.2 l z.1
-    have hf' : ContDiff ℝ ∞ (fun u => smoothingStructuredAmplitude g₁ 0 a R hρ m.1 k (smoothingPlaneEquiv.symm (u,z.2))) := by
+    have hf' : ContDiff ℝ ∞ (fun u => smoothingStructuredAmplitude g₁ 0 a R hρ m.1 k
+      (smoothingPlaneEquiv.symm (u,z.2))) := by
       simpa only [show (0 : Fin 2).rev=1 from rfl,smoothing_first_plane_point] using hf
-    have hg' : ContDiff ℝ ∞ (fun u => smoothingStructuredAmplitude g₂ 1 a R hρ m.2 l (smoothingPlaneEquiv.symm (z.1,u))) := by
-      have he (u : ℝ) : smoothingCoordinateLine 0 z.1+smoothingCoordinateLine 1 u=smoothingPlaneEquiv.symm (z.1,u) :=
+    have hg' : ContDiff ℝ ∞ (fun u => smoothingStructuredAmplitude g₂ 1 a R hρ m.2 l
+      (smoothingPlaneEquiv.symm (z.1,u))) := by
+      have he (u : ℝ) : smoothingCoordinateLine 0 z.1+smoothingCoordinateLine 1
+        u=smoothingPlaneEquiv.symm (z.1,u) :=
         (add_comm _ _).trans (smoothing_first_plane_point z.1 u)
       simpa only [show (1 : Fin 2).rev=0 from rfl,he] using hg
     exact ((hf'.comp (by fun_prop : ContDiff ℝ ∞ (fun t : ℝ => z.1+t))).mul
@@ -24946,7 +26117,8 @@ theorem smoothingStructuredAmplitude_bound
     {R M : ℝ} (hR : 0 < R) {ρ : ℝ} (hρ : 0 < ρ) (hg : ∀ x, ‖g x‖ ≤ M)
     (m : Fin 2 → ℤ) (k : ℕ) (x : EuclideanSpace ℝ (Fin 2)) :
     ‖smoothingStructuredAmplitude g j a R hρ m k x‖ ≤ smoothingDerivativeConstant 0*M := by
-  have hh := (smoothingIndexedAmplitude_derivatives g j (smoothingFiberSelectedIndices g j R hρ) hR hg k
+  have hh := (smoothingIndexedAmplitude_derivatives g j (smoothingFiberSelectedIndices g j R hρ)
+    hR hg k
     (smoothingCoordinateLine j.rev (x j.rev))).2 0 (x j)
   simp only [iteratedDeriv_zero,pow_zero,mul_one] at hh
   unfold smoothingStructuredAmplitude
@@ -24966,7 +26138,8 @@ theorem smoothingStructuredCorrelationAmplitude_support
   have h₁ := (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hp).1).1
   have h₂ := (mul_ne_zero_iff.mp (mul_ne_zero_iff.mp hp).1).2
   have hb (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (n : Fin 2 → ℤ)
-      (q : ℕ) (x : EuclideanSpace ℝ (Fin 2)) (hx : smoothingStructuredAmplitude g j a R hρ n q x ≠ 0)
+      (q : ℕ) (x : EuclideanSpace ℝ (Fin 2)) (hx : smoothingStructuredAmplitude g j a R hρ n q x ≠
+        0)
       (i : Fin 2) : |a*x i-(n i : ℝ)| ≤ 2 := by
     have hh := (smoothingStructuredAmplitude_measurable_support g j ha R hρ n q).2 x hx i
     have he : a*(x i-a⁻¹*(n i : ℝ))=a*x i-(n i : ℝ) := by field_simp
@@ -24986,32 +26159,41 @@ theorem smoothingStructuredCorrelationAmplitude_integrable
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (k l : ℕ)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : Continuous ζ) (hc : HasCompactSupport ζ) :
     Integrable (smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ) ∧
-    ∀ z : ℝ × ℝ, Integrable (fun t => smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ (z,t)) := by
+    ∀ z : ℝ × ℝ, Integrable (fun t => smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ
+      (z,t)) := by
   let P := fun (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (n : Fin 2 → ℤ) (q : ℕ)
     (z : ℝ × ℝ) => smoothingStructuredAmplitude g j a R hρ n q (smoothingPlaneEquiv.symm z)
-  have hm₁ : Measurable (P g₁ 0 m.1 k) := (smoothingStructuredAmplitude_measurable_support g₁ 0 ha R hρ m.1 k).1.comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hm₂ : Measurable (P g₂ 1 m.2 l) := (smoothingStructuredAmplitude_measurable_support g₂ 1 ha R hρ m.2 l).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hm₁ : Measurable (P g₁ 0 m.1 k) := (smoothingStructuredAmplitude_measurable_support g₁ 0 ha
+    R hρ m.1 k).1.comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hm₂ : Measurable (P g₂ 1 m.2 l) := (smoothingStructuredAmplitude_measurable_support g₂ 1 ha
+    R hρ m.2 l).1.comp smoothingPlaneEquiv.symm.continuous.measurable
   have hD : 0 ≤ smoothingDerivativeConstant 0 := integral_nonneg (fun _ => norm_nonneg _)
   have hb₁ := smoothingStructuredAmplitude_bound g₁ 0 a hR hρ
     (M := SchwartzMap.seminorm ℝ 0 0 g₁) (fun x => by simpa using g₁.le_seminorm ℝ 0 0 x) m.1 k
   have hb₂ := smoothingStructuredAmplitude_bound g₂ 1 a hR hρ
     (M := SchwartzMap.seminorm ℝ 0 0 g₂) (fun x => by simpa using g₂.le_seminorm ℝ 0 0 x) m.2 l
-  have hM : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₁ := mul_nonneg hD (apply_nonneg _ _)
-  have hN : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₂ := mul_nonneg hD (apply_nonneg _ _)
-  exact ⟨(smoothingLocalized_measurable_bounded_integrable hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z => hb₂ _) hζ hc).1,
-    fun z => smoothingLocalized_measurable_bounded_fiber hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z => hb₂ _) hζ hc z⟩
+  have hM : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₁ := mul_nonneg hD
+    (apply_nonneg _ _)
+  have hN : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₂ := mul_nonneg hD
+    (apply_nonneg _ _)
+  exact ⟨(smoothingLocalized_measurable_bounded_integrable hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z
+    => hb₂ _) hζ hc).1,
+    fun z => smoothingLocalized_measurable_bounded_fiber hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z =>
+      hb₂ _) hζ hc z⟩
 
 /-- The actual filled frequency of a structured amplitude, as a measurable
 function of its transverse coordinate. -/
 def smoothingStructuredFrequency (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (R d : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k : ℕ) (v : ℝ) : ℝ :=
-  smoothingIndexedFrequencyFilled (smoothingFiberSelectedIndices g j R hρ) R d k (smoothingCoordinateLine j.rev v)
+  smoothingIndexedFrequencyFilled (smoothingFiberSelectedIndices g j R hρ) R d k
+    (smoothingCoordinateLine j.rev v)
 
 /-- The phase coefficients in (3.32) are measurable actual selections. -/
 theorem smoothingStructuredFrequency_measurable
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (R d : ℝ)
     {ρ : ℝ} (hρ : 0 < ρ) (k : ℕ) : Measurable (smoothingStructuredFrequency g j R d hρ k) :=
-  (smoothingIndexedFrequencyFilled_measurable _ (smoothingFiberSelectedIndices_measurable_card g j R hρ).1 R d k).comp
+  (smoothingIndexedFrequencyFilled_measurable _ (smoothingFiberSelectedIndices_measurable_card g j
+    R hρ).1 R d k).comp
     (smoothingCoordinateLine j.rev).continuous.measurable
 
 /-- The relocalized sharp piece is exactly the finite oscillatory sum
@@ -25021,13 +26203,15 @@ theorem smoothingRelocalizedSharp_structured_sum
     {ρ : ℝ} (hρ : 0 < ρ) (m : Fin 2 → ℤ) (x : EuclideanSpace ℝ (Fin 2)) :
     smoothingRelocalizedComponent g j a R hρ m false x =
       ∑ k : Fin (smoothingStructuralTermCount ρ), smoothingStructuredAmplitude g j a R hρ m k x *
-        Complex.exp (Complex.I*((smoothingStructuredFrequency g j R d hρ k (x j.rev)*x j : ℝ) : ℂ)) := by
+        Complex.exp (Complex.I*((smoothingStructuredFrequency g j R d hρ k (x j.rev)*x j : ℝ) :
+          ℂ)) := by
   have hx : smoothingPlaneEquiv.symm (x 0,x 1)=x := by
     ext i
     fin_cases i <;> rfl
   have he : smoothingSharpComponent g j R hρ x =
       smoothingFiberSharp g j (smoothingCoordinateLine j.rev (x j.rev)) R
-        (smoothingFiberSelectedIndices g j R hρ (smoothingCoordinateLine j.rev (x j.rev))) (x j) := by
+        (smoothingFiberSelectedIndices g j R hρ (smoothingCoordinateLine j.rev (x j.rev))) (x j)
+          := by
     fin_cases j
     · simpa [hx,Fin.rev] using (smoothingSharpComponent_fiber g R hρ (x 0) (x 1)).1
     · simpa [hx,Fin.rev] using (smoothingSharpComponent_fiber g R hρ (x 0) (x 1)).2
@@ -25070,7 +26254,8 @@ def smoothingStructuredPiece (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
 theorem smoothingStructuredPiece_norm
     (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) (a R d : ℝ)
     {ρ : ℝ} (hρ : 0 < ρ) (m : Fin 2 → ℤ) (k : ℕ) (x : EuclideanSpace ℝ (Fin 2)) :
-    ‖smoothingStructuredPiece g j a R d hρ m k x‖=‖smoothingStructuredAmplitude g j a R hρ m k x‖ := by
+    ‖smoothingStructuredPiece g j a R d hρ m k x‖=‖smoothingStructuredAmplitude g j a R hρ m k x‖
+      := by
   simp [smoothingStructuredPiece,Complex.norm_exp,Complex.mul_re]
 
 /-- Individual structured pieces are measurable, including their
@@ -25084,7 +26269,8 @@ theorem smoothingStructuredPiece_measurable
     (EuclideanSpace.proj (𝕜 := ℝ) j.rev).continuous.measurable
   have hc := (EuclideanSpace.proj (𝕜 := ℝ) j).continuous.measurable
   have he : Measurable (fun x : EuclideanSpace ℝ (Fin 2) =>
-      Complex.exp (Complex.I*((smoothingStructuredFrequency g j R d hρ k (x j.rev)*x j : ℝ) : ℂ))) := by
+      Complex.exp (Complex.I*((smoothingStructuredFrequency g j R d hρ k (x j.rev)*x j : ℝ) : ℂ)))
+        := by
     fun_prop
   exact hm.mul he
 
@@ -25137,20 +26323,31 @@ theorem smoothingStructuredPiece_operator_integrable
       (smoothingStructuredPiece g₂ 1 a R d hρ m.2 l) ζ) ∧
     ∀ z : ℝ × ℝ, Integrable (fun t =>
       smoothingStructuredPiece g₁ 0 a R d hρ m.1 k (smoothingPlaneEquiv.symm (z.1+t,z.2))*
-      smoothingStructuredPiece g₂ 1 a R d hρ m.2 l (smoothingPlaneEquiv.symm (z.1,z.2+t^2))*ζ (z,t)) := by
-  have hm₁ := (smoothingStructuredPiece_measurable g₁ 0 ha R d hρ m.1 k).comp smoothingPlaneEquiv.symm.continuous.measurable
-  have hm₂ := (smoothingStructuredPiece_measurable g₂ 1 ha R d hρ m.2 l).comp smoothingPlaneEquiv.symm.continuous.measurable
+      smoothingStructuredPiece g₂ 1 a R d hρ m.2 l (smoothingPlaneEquiv.symm (z.1,z.2+t^2))*ζ
+        (z,t)) := by
+  have hm₁ := (smoothingStructuredPiece_measurable g₁ 0 ha R d hρ m.1 k).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
+  have hm₂ := (smoothingStructuredPiece_measurable g₂ 1 ha R d hρ m.2 l).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hD : 0 ≤ smoothingDerivativeConstant 0 := integral_nonneg (fun _ => norm_nonneg _)
-  have hb₁ (x) : ‖smoothingStructuredPiece g₁ 0 a R d hρ m.1 k x‖ ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₁ := by
+  have hb₁ (x) : ‖smoothingStructuredPiece g₁ 0 a R d hρ m.1 k x‖ ≤ smoothingDerivativeConstant
+    0*SchwartzMap.seminorm ℝ 0 0 g₁ := by
     rw [smoothingStructuredPiece_norm]
-    exact smoothingStructuredAmplitude_bound g₁ 0 a hR hρ (fun y => by simpa using g₁.le_seminorm ℝ 0 0 y) m.1 k x
-  have hb₂ (x) : ‖smoothingStructuredPiece g₂ 1 a R d hρ m.2 l x‖ ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₂ := by
+    exact smoothingStructuredAmplitude_bound g₁ 0 a hR hρ (fun y =>
+      by simpa using g₁.le_seminorm ℝ 0 0 y) m.1 k x
+  have hb₂ (x) : ‖smoothingStructuredPiece g₂ 1 a R d hρ m.2 l x‖ ≤ smoothingDerivativeConstant
+    0*SchwartzMap.seminorm ℝ 0 0 g₂ := by
     rw [smoothingStructuredPiece_norm]
-    exact smoothingStructuredAmplitude_bound g₂ 1 a hR hρ (fun y => by simpa using g₂.le_seminorm ℝ 0 0 y) m.2 l x
-  have hM : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₁ := mul_nonneg hD (apply_nonneg _ _)
-  have hN : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₂ := mul_nonneg hD (apply_nonneg _ _)
-  exact ⟨(smoothingLocalized_measurable_bounded_integrable hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z => hb₂ _) hζ hc).2,
-    fun z => smoothingLocalized_measurable_bounded_fiber hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z => hb₂ _) hζ hc z⟩
+    exact smoothingStructuredAmplitude_bound g₂ 1 a hR hρ (fun y =>
+      by simpa using g₂.le_seminorm ℝ 0 0 y) m.2 l x
+  have hM : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₁ := mul_nonneg hD
+    (apply_nonneg _ _)
+  have hN : 0 ≤ smoothingDerivativeConstant 0*SchwartzMap.seminorm ℝ 0 0 g₂ := mul_nonneg hD
+    (apply_nonneg _ _)
+  exact ⟨(smoothingLocalized_measurable_bounded_integrable hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z
+    => hb₂ _) hζ hc).2,
+    fun z => smoothingLocalized_measurable_bounded_fiber hm₁ hm₂ hM hN (fun z => hb₁ _) (fun z =>
+      hb₂ _) hζ hc z⟩
 
 /-- The finite oscillatory expansion in (3.32) for one actual spatial
 pair, with every exchange of finite sums and integrals justified. -/
@@ -25184,7 +26381,8 @@ theorem smoothingRelocalizedSharp_pair_structured_bound
   let U := fun (q : Fin (smoothingStructuralTermCount ρ) × Fin (smoothingStructuralTermCount ρ)) =>
     smoothingLocalized (F q.1) (G q.2) ζ
   have hi' (q) : Integrable (U q) := (hi q).1
-  have hh := (smoothingLocalized_finite_triangle Finset.univ U (smoothingLocalized f g ζ) he (fun q _ => hi' q)).2
+  have hh := (smoothingLocalized_finite_triangle Finset.univ U (smoothingLocalized f g ζ) he (fun
+    q _ => hi' q)).2
   apply hh.trans_eq
   apply Finset.sum_congr rfl
   intro q hq
@@ -25206,16 +26404,20 @@ theorem smoothing_eq3_32 (ψ₁ ψ₂ : Option (SchwartzMap ℝ ℂ))
     let g₂ := fun m => smoothingCoordinateRegularization ψ₂ 1 r (smoothingSpatialPiece (r^γ) m g)
     ∃ S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)),
       (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) = smoothingEnlargedInteractionIndices ζ (r^γ) ∧
-      (Fintype.card (Fin (smoothingStructuralTermCount (r^(-δ))) × Fin (smoothingStructuralTermCount (r^(-δ)))) : ℝ) ≤ 49*r^(2*δ) ∧
+      (Fintype.card (Fin (smoothingStructuralTermCount (r^(-δ))) × Fin
+        (smoothingStructuralTermCount (r^(-δ)))) : ℝ) ≤ 49*r^(2*δ) ∧
       (∫ z, ‖smoothingLocalizedRaw (smoothingGlobalSharp ψ₁ 0 r (r^γ) R hρ f)
         (smoothingGlobalSharp ψ₂ 1 r (r^γ) R hρ g) ζ z‖) ≤
-        ∑ q : Fin (smoothingStructuralTermCount (r^(-δ))) × Fin (smoothingStructuralTermCount (r^(-δ))),
-          ∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) R r hρ m q.1 q.2 ζ z‖ := by
+        ∑ q : Fin (smoothingStructuralTermCount (r^(-δ))) × Fin (smoothingStructuralTermCount
+          (r^(-δ))),
+          ∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) R r hρ m q.1
+            q.2 ζ z‖ := by
   classical
   intro hρ g₁ g₂
   have hr₀ : 0 < r := by linarith
   have ha := Real.rpow_pos_of_pos hr₀ γ
-  obtain ⟨S,P,hS,hP,hi,hspatial⟩ := smoothingRelocalized_spatial_triangle hζ hc (Real.one_le_rpow hr hγ)
+  obtain ⟨S,P,hS,hP,hi,hspatial⟩ := smoothingRelocalized_spatial_triangle hζ hc (Real.one_le_rpow
+    hr hγ)
     hR hR hρ hρ g₁ g₂ false false
   refine ⟨S,hS,?_,?_⟩
   · have hh := pow_le_pow_left₀ (Nat.cast_nonneg (smoothingStructuralTermCount (r^(-δ))))
@@ -25225,15 +26427,20 @@ theorem smoothing_eq3_32 (ψ₁ ψ₂ : Option (SchwartzMap ℝ ℂ))
       norm_num
       congr 1
       ring
-    simpa only [Fintype.card_prod,Fintype.card_fin,Nat.cast_mul,← pow_two,Nat.cast_pow] using hh.trans_eq he
+    simpa only [Fintype.card_prod,Fintype.card_fin,Nat.cast_mul,← pow_two,Nat.cast_pow] using
+      hh.trans_eq he
   · have hh : (∫ z, ‖smoothingLocalizedRaw (smoothingGlobalSharp ψ₁ 0 r (r^γ) R hρ f)
         (smoothingGlobalSharp ψ₂ 1 r (r^γ) R hρ g) ζ z‖) ≤
-        ∑ m ∈ S, ∫ z, ‖smoothingLocalizedRaw (smoothingRelocalizedComponent (g₁ m.1) 0 (r^γ) R hρ m.1 false)
+        ∑ m ∈ S, ∫ z, ‖smoothingLocalizedRaw (smoothingRelocalizedComponent (g₁ m.1) 0 (r^γ) R hρ
+          m.1 false)
           (smoothingRelocalizedComponent (g₂ m.2) 1 (r^γ) R hρ m.2 false) ζ z‖ := by
-      simpa only [smoothingLocalizedRaw,smoothingGlobalSharp,smoothingRelocalizedComponent,Bool.false_eq_true,↓reduceIte] using hspatial
+      simpa only
+        [smoothingLocalizedRaw,smoothingGlobalSharp,smoothingRelocalizedComponent,
+          Bool.false_eq_true,↓reduceIte] using hspatial
     apply hh.trans
     calc
-      _ ≤ ∑ m ∈ S, ∑ q : Fin (smoothingStructuralTermCount (r^(-δ))) × Fin (smoothingStructuralTermCount (r^(-δ))),
+      _ ≤ ∑ m ∈ S, ∑ q : Fin (smoothingStructuralTermCount (r^(-δ))) × Fin
+        (smoothingStructuralTermCount (r^(-δ))),
         ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) R r hρ m q.1 q.2 ζ z‖ := by
         apply Finset.sum_le_sum
         intro m hm
@@ -25248,7 +26455,7 @@ def smoothingEnlargedSpatialCube (a : ℝ) (m : Fin 2 → ℤ) : Set (EuclideanS
 /-- The enlarged cubes used for the disjoint-family partition are measurable. -/
 theorem smoothingEnlargedSpatialCube_closed (a : ℝ) (m : Fin 2 → ℤ) :
     IsClosed (smoothingEnlargedSpatialCube a m) := by
-  simp only [smoothingEnlargedSpatialCube,Set.setOf_forall]
+  simp only [smoothingEnlargedSpatialCube,Set.ofPred_forall]
   exact isClosed_iInter (fun i => isClosed_le (by fun_prop) continuous_const)
 
 /-- Residue classes modulo five give 25 spatial colors. Cubes of a fixed
@@ -25262,7 +26469,7 @@ def smoothingSpatialColor (m : Fin 2 → ℤ) : Fin 2 → Fin 5 :=
 /-- Two cubes of the same color cannot contain the same point unless
 they have the same spatial index. -/
 theorem smoothingEnlargedSpatialCube_color_unique (a : ℝ) {m n : Fin 2 → ℤ}
-    (hc : smoothingSpatialColor m=smoothingSpatialColor n)
+    (hc : smoothingSpatialColor m = smoothingSpatialColor n)
     {x : EuclideanSpace ℝ (Fin 2)} (hm : x ∈ smoothingEnlargedSpatialCube a m)
     (hn : x ∈ smoothingEnlargedSpatialCube a n) : m=n := by
   funext i
@@ -25281,9 +26488,11 @@ theorem smoothingEnlargedSpatialCube_color_unique (a : ℝ) {m n : Fin 2 → ℤ
 as required in the paragraph preceding (3.34). -/
 theorem smoothingEnlargedSpatialCube_color_disjoint (a : ℝ) (c : Fin 2 → Fin 5) :
     Set.Pairwise {m : Fin 2 → ℤ | smoothingSpatialColor m=c}
-      (fun m n => Disjoint (smoothingEnlargedSpatialCube a m) (smoothingEnlargedSpatialCube a n)) := by
+      (fun m n => Disjoint (smoothingEnlargedSpatialCube a m) (smoothingEnlargedSpatialCube a n))
+        := by
   intro m hm n hn hmn
-  exact Set.disjoint_left.mpr (fun x hxm hxn => hmn (smoothingEnlargedSpatialCube_color_unique a (hm.trans hn.symm) hxm hxn))
+  exact Set.disjoint_left.mpr (fun x hxm hxn => hmn (smoothingEnlargedSpatialCube_color_unique a
+    (hm.trans hn.symm) hxm hxn))
 
 /-- There are exactly 625 ordered pairs of spatial colors, independently
 of every frequency and localization parameter. -/
@@ -25297,10 +26506,11 @@ theorem smoothing_spatial_color_partition (a : ℝ) (S : Finset ((Fin 2 → ℤ)
     (∀ c : Fin 2 → Fin 5, Set.Pairwise {m : Fin 2 → ℤ | smoothingSpatialColor m=c}
       (fun m n => Disjoint (smoothingEnlargedSpatialCube a m) (smoothingEnlargedSpatialCube a n))) ∧
     (∑ m ∈ S, w m) = ∑ c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5),
-      ∑ m ∈ S.filter (fun m => (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c), w m := by
+      ∑ m ∈ S.filter (fun m => (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c), w m := by
   classical
   refine ⟨smoothingEnlargedSpatialCube_color_disjoint a,?_⟩
-  exact (Finset.sum_fiberwise S (fun m => (smoothingSpatialColor m.1,smoothingSpatialColor m.2)) w).symm
+  exact (Finset.sum_fiberwise S (fun m => (smoothingSpatialColor m.1, smoothingSpatialColor m.2))
+    w).symm
 
 /-- The actual H_m from (3.33) is supported in the two enlarged cubes
 used by the residue-class partition. -/
@@ -25310,7 +26520,7 @@ theorem smoothingStructuredCorrelationAmplitude_cube_support
     (ζ : (ℝ × ℝ) × ℝ → ℂ) (p : (ℝ × ℝ) × ℝ)
     (hp : smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ p ≠ 0) :
     smoothingPlaneEquiv.symm (p.1.1+p.2,p.1.2) ∈ smoothingEnlargedSpatialCube a m.1 ∧
-    smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2^2) ∈ smoothingEnlargedSpatialCube a m.2 := by
+    smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2 ^ 2) ∈ smoothingEnlargedSpatialCube a m.2 := by
   have hh := (smoothingStructuredCorrelationAmplitude_support g₁ g₂ ha R hρ m k l ζ p hp).2
   constructor
   · intro i
@@ -25334,14 +26544,15 @@ theorem smoothing_eq3_34
     (∀ (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) (p : (ℝ × ℝ) × ℝ),
       smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) a R hρ m k l ζ p ≠ 0 →
       smoothingPlaneEquiv.symm (p.1.1+p.2,p.1.2) ∈ smoothingEnlargedSpatialCube a m.1 ∧
-      smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2^2) ∈ smoothingEnlargedSpatialCube a m.2) ∧
+      smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2 ^ 2) ∈ smoothingEnlargedSpatialCube a m.2) ∧
     (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) a R d hρ m k l ζ z‖) =
       ∑ c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5),
-        ∑ m ∈ S.filter (fun m => (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c),
+        ∑ m ∈ S.filter (fun m => (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c),
           ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) a R d hρ m k l ζ z‖ := by
   have hh := smoothing_spatial_color_partition a S
     (fun m => ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) a R d hρ m k l ζ z‖)
-  exact ⟨hh.1,fun m p hp => smoothingStructuredCorrelationAmplitude_cube_support (g₁ m.1) (g₂ m.2) ha R hρ m k l ζ p hp,hh.2⟩
+  exact ⟨hh.1,fun m p hp => smoothingStructuredCorrelationAmplitude_cube_support (g₁ m.1) (g₂ m.2)
+    ha R hρ m k l ζ p hp,hh.2⟩
 
 /-- The actual contributing spatial pairs in the unnumbered definition
 after (3.34), for one fixed pair of disjoint cube families. -/
@@ -25350,7 +26561,7 @@ def smoothingStructuredInteractionIndices
     (a R d : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ)
     (ζ : (ℝ × ℝ) × ℝ → ℂ) (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) :
     Set ((Fin 2 → ℤ) × (Fin 2 → ℤ)) :=
-  {m | (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c ∧
+  {m | (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c ∧
     (∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) a R d hρ m k l ζ z‖) ≠ 0}
 
 /-- A nonzero oscillatory contribution has a genuine support point of
@@ -25372,9 +26583,11 @@ theorem smoothingStructuredInteractionIndices_subset
     (g₁ g₂ : (Fin 2 → ℤ) → SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     {a : ℝ} (ha : 0 < a) (R d : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ)
     (ζ : (ℝ × ℝ) × ℝ → ℂ) (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) :
-    smoothingStructuredInteractionIndices g₁ g₂ a R d hρ k l ζ c ⊆ smoothingEnlargedInteractionIndices ζ a := by
+    smoothingStructuredInteractionIndices g₁ g₂ a R d hρ k l ζ c ⊆
+      smoothingEnlargedInteractionIndices ζ a := by
   intro m hm
-  obtain ⟨p,hp⟩ := smoothingStructuredOscillatoryTerm_nonzero_support (g₁ m.1) (g₂ m.2) a R d hρ m k l ζ hm.2
+  obtain ⟨p,hp⟩ := smoothingStructuredOscillatoryTerm_nonzero_support (g₁ m.1) (g₂ m.2) a R d hρ m
+    k l ζ hm.2
   exact ⟨p,smoothingStructuredCorrelationAmplitude_support (g₁ m.1) (g₂ m.2) ha R hρ m k l ζ p hp⟩
 
 /-- The unnumbered count and reference-point construction following
@@ -25390,7 +26603,8 @@ theorem smoothing_section3_4_interaction_count
         (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) =
           smoothingStructuredInteractionIndices g₁ g₂ (r^γ) R d hρ k l ζ c ∧
         (S.card : ℝ) ≤ C*r^(3*γ) ∧
-        ∀ m ∈ S, smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) R hρ m k l ζ (P m) ≠ 0 := by
+        ∀ m ∈ S, smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) R hρ m k l ζ (P
+          m) ≠ 0 := by
   classical
   obtain ⟨C,D,hC,hD,hcount⟩ := smoothingEnlargedInteractionIndices_count hc
   refine ⟨C,hC,?_⟩
@@ -25408,23 +26622,26 @@ theorem smoothing_section3_4_interaction_count
     smoothingStructuredOscillatoryTerm_nonzero_support (g₁ m.1) (g₂ m.2) (r^γ) R d hρ m k l ζ hm.2
   let P := fun m => if hm : m ∈ J then Classical.choose (hsupport m hm) else 0
   refine ⟨S,P,by simp [S,J],?_,?_⟩
-  · have hn : J.ncard ≤ (smoothingEnlargedInteractionIndices ζ (r^γ)).ncard := Set.ncard_le_ncard hsub hfinE
-    have hn' : (J.ncard : ℝ) ≤ (smoothingEnlargedInteractionIndices ζ (r^γ)).ncard := by exact_mod_cast hn
+  · have hn : J.ncard ≤ (smoothingEnlargedInteractionIndices ζ (r^γ)).ncard := Set.ncard_le_ncard
+      hsub hfinE
+    have hn' : (J.ncard : ℝ) ≤ (smoothingEnlargedInteractionIndices ζ (r^γ)).ncard :=
+      by exact_mod_cast hn
     have hh := hn'.trans (hcount (r^γ) (Real.one_le_rpow hr hγ)).2.1
     have he : (r^γ)^3=r^(3*γ) := by rw [← Real.rpow_mul_natCast hr₀.le]; congr 1 ; ring
     simpa only [S,Set.ncard_eq_toFinset_card J hfin,he] using hh
   · intro m hm
     have hm' : m ∈ J := hfin.mem_toFinset.mp hm
-    simpa only [P,dif_pos hm'] using Classical.choose_spec (hsupport m hm')
+    simpa only [P,dite_eq_left hm'] using Classical.choose_spec (hsupport m hm')
 
 /-- The enlarged incidence region is closed, so support reference points
 and boundary points obey the same geometric inequalities. -/
 theorem smoothingEnlargedIncidence_closed (a : ℝ) (m : (Fin 2 → ℤ) × (Fin 2 → ℤ)) :
     IsClosed {p : (ℝ × ℝ) × ℝ | smoothingEnlargedIncidence a m p} := by
-  simp only [smoothingEnlargedIncidence,Set.setOf_and]
+  simp only [smoothingEnlargedIncidence,Set.ofPred_and]
   exact (isClosed_le (by fun_prop) continuous_const).inter
     ((isClosed_le (by fun_prop) continuous_const).inter
-      ((isClosed_le (by fun_prop) continuous_const).inter (isClosed_le (by fun_prop) continuous_const)))
+      ((isClosed_le (by fun_prop) continuous_const).inter (isClosed_le (by fun_prop)
+        continuous_const)))
 
 /-- The full topological support of the actual H_m stays in the enlarged
 incidence region used to control reference-time variation. -/
@@ -25434,7 +26651,8 @@ theorem smoothingStructuredCorrelationAmplitude_tsupport_incidence
     (ζ : (ℝ × ℝ) × ℝ → ℂ) :
     tsupport (smoothingStructuredCorrelationAmplitude g₁ g₂ a R hρ m k l ζ) ⊆
       {p | smoothingEnlargedIncidence a m p} :=
-  closure_minimal (fun p hp => (smoothingStructuredCorrelationAmplitude_support g₁ g₂ ha R hρ m k l ζ p hp).2)
+  closure_minimal (fun p hp => (smoothingStructuredCorrelationAmplitude_support g₁ g₂ ha R hρ m k
+    l ζ p hp).2)
     (smoothingEnlargedIncidence_closed a m)
 
 /-- Two points in the same enlarged interaction region have time
@@ -25442,7 +26660,7 @@ coordinates differing by at most eight spatial units. -/
 theorem smoothingEnlargedIncidence_time_distance {a : ℝ} (ha : 0 < a)
     {m : (Fin 2 → ℤ) × (Fin 2 → ℤ)} {p q : (ℝ × ℝ) × ℝ}
     (hp : smoothingEnlargedIncidence a m p) (hq : smoothingEnlargedIncidence a m q) :
-    |p.2-q.2| ≤ 8/a := by
+    |p.2 - q.2| ≤ 8/a := by
   have hp' := abs_le.mp (smoothingEnlargedIncidence_time_relation hp)
   have hq' := abs_le.mp (smoothingEnlargedIncidence_time_relation hq)
   have hh : |a*(p.2-q.2)| ≤ 8 := by
@@ -25454,10 +26672,11 @@ theorem smoothingEnlargedIncidence_time_distance {a : ℝ} (ha : 0 < a)
 /-- The actual filled phase retains the source upper frequency bound
 after passing to its transverse-coordinate representation. -/
 theorem smoothingStructuredFrequency_regularized_upper
-    (ψ : SchwartzMap ℝ ℂ) (hψ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ ξ=0) (j : Fin 2)
+    (ψ : SchwartzMap ℝ ℂ) (hψ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ ξ = 0) (j : Fin 2)
     {r R : ℝ} (hr : 0 < r) (hR : 0 < R) (hRr : R ≤ r/8) {ρ : ℝ} (hρ : 0 < ρ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (k : ℕ) (v : ℝ) :
-    |smoothingStructuredFrequency (smoothingCoordinateRegularization (some ψ) j r f) j R r hρ k v| ≤ (6*Real.pi)*r :=
+    |smoothingStructuredFrequency (smoothingCoordinateRegularization (some ψ) j r f) j R r hρ k v|
+      ≤ (6*Real.pi)*r :=
   smoothingIndexedFrequencyFilled_upper ψ hψ j hr hR hRr hρ f k (smoothingCoordinateLine j.rev v)
 
 /-- The source quadratic phase has derivative alpha+2*t*beta. -/
@@ -25486,14 +26705,15 @@ theorem smoothing_eq3_35
   have ha := Real.rpow_pos_of_pos hr γ
   have hi := smoothingStructuredCorrelationAmplitude_tsupport_incidence g₁ g₂ ha R hρ m k l ζ
   have ht := smoothingEnlargedIncidence_time_distance ha (hi hp) (hi hq)
-  have hb : |β| ≤ (6*Real.pi)*r := smoothingStructuredFrequency_regularized_upper ψ₂ hψ₂ 1 hr hR hRr hρ
+  have hb : |β| ≤ (6*Real.pi)*r := smoothingStructuredFrequency_regularized_upper ψ₂ hψ₂ 1 hr hR
+    hRr hρ
     (smoothingSpatialPiece (r^γ) m.2 f₂) l p.1.1
   refine ⟨smoothing_structured_phase_derivative α β p.2,?_⟩
   calc
-    _ = 2 * |p.2-q.2| * |β| := by
+    _ = 2 * |p.2 - q.2| * |β| := by
       rw [show (α+2*p.2*β)-(α+2*q.2*β)=2*(p.2-q.2)*β by ring,abs_mul,abs_mul]
       norm_num
-    _ ≤ (2*(8/(r^γ)))*((6*Real.pi)*r) :=
+    _ ≤ (2*(8/(r ^ γ)))*((6*Real.pi)*r) :=
       mul_le_mul (mul_le_mul_of_nonneg_left ht (by norm_num)) hb (abs_nonneg _) (by positivity)
     _ = (96*Real.pi)*r^(1-γ) := by rw [Real.rpow_sub hr,Real.rpow_one]; ring
 
@@ -25502,8 +26722,8 @@ when the inner curve has fixed bounds on its positive-order derivatives. -/
 theorem smoothing_smooth_comp_derivative_bound_at {g : ℝ → ℂ} {f : ℝ → ℝ}
     (hg : ContDiff ℝ ∞ g) (hf : ContDiff ℝ ∞ f) {C R D : ℝ}
     (hC : 0 ≤ C) (hR : 1 ≤ R) (n : ℕ) (u : ℝ)
-    (hb : ∀ i ≤ n, ‖iteratedDeriv i g (f u)‖ ≤ C*R^i)
-    (hd : ∀ i, 1 ≤ i → i ≤ n → ‖iteratedDeriv i f u‖ ≤ D^i) :
+    (hb : ∀ i ≤ n, ‖iteratedDeriv i g (f u)‖ ≤ C * R ^ i)
+    (hd : ∀ i, 1 ≤ i → i ≤ n → ‖iteratedDeriv i f u‖ ≤ D ^ i) :
     ‖iteratedDeriv n (g ∘ f) u‖ ≤ ((n.factorial : ℝ)*C*D^n)*R^n := by
   have hc (i : ℕ) (hi : i ≤ n) : ‖iteratedFDeriv ℝ i g (f u)‖ ≤ C*R^n := by
     rw [norm_iteratedFDeriv_eq_norm_iteratedDeriv]
@@ -25550,8 +26770,10 @@ theorem smoothing_polynomial_composition_derivative_bounds (d N : ℕ) (T : ℝ)
     (fun i hi => hb i (hi.trans hn) _) (fun i hi hin => hcurve q hq u hu i hi (hin.trans hn))
   have hc : (n.factorial : ℝ)*D^n ≤ C := by
     dsimp only [C]
-    exact Finset.single_le_sum (f := fun i : ℕ => (i.factorial : ℝ)*D^i) (s := Finset.range (N+1)) (fun i hi => by positivity) (Finset.mem_range.mpr (by omega))
-  have hc' := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right hc hA) (by positivity : 0 ≤ R^n)
+    exact Finset.single_le_sum (f := fun i : ℕ => (i.factorial : ℝ)*D^i) (s := Finset.range (N+1))
+      (fun i hi => by positivity) (Finset.mem_range.mpr (by omega))
+  have hc' := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right hc hA)
+    (by positivity : 0 ≤ R^n)
   exact hh.trans (hc'.trans_eq' (by ring))
 
 /-- One common constant controls all preferred derivatives of the actual
@@ -25597,8 +26819,10 @@ theorem smoothing_time_amplitude_derivative_bound
   have hfg (i : ℕ) (hi : i ≤ N) :
       ‖iteratedDeriv i (fun t : ℝ => f (z.1+t)*g (z.2+t^2)) u‖ ≤
         (2^N*((C₁*A)*(C₂*B)))*R^i := by
-    have hh := smoothing_smooth_product_derivative_bound_at hf' hg' (mul_nonneg hC₁ hA) (mul_nonneg hC₂ hB)
-      (by linarith : 0 ≤ R) i u (fun k hk => hb₁' k (hk.trans hi)) (fun k hk => hb₂' k (hk.trans hi))
+    have hh := smoothing_smooth_product_derivative_bound_at hf' hg' (mul_nonneg hC₁ hA)
+      (mul_nonneg hC₂ hB)
+      (by linarith : 0 ≤ R) i u (fun k hk => hb₁' k (hk.trans hi)) (fun k hk => hb₂' k (hk.trans
+        hi))
     exact hh.trans (mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right
       (pow_le_pow_right₀ (by norm_num : (1 : ℝ) ≤ 2) hi) (by positivity)) (by positivity))
   have hz (i : ℕ) (hi : i ≤ N) : ‖iteratedDeriv i (fun t : ℝ => ζ (z,t)) u‖ ≤ Z*R^i := by
@@ -25621,7 +26845,8 @@ theorem smoothing_section3_4_time_derivative_bound
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → ∀ (k l : ℕ) (z : ℝ × ℝ) (u : ℝ),
       let g₁ := smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m.1 f)
       let g₂ := smoothingCoordinateRegularization ψ₂ 1 r (smoothingSpatialPiece (r^γ) m.2 g)
-      ‖iteratedDeriv N (fun t => smoothingStructuredCorrelationAmplitude g₁ g₂ (r^γ) (r^τ) hρ m k l ζ (z,t)) u‖ ≤ C*r^(τ*N) := by
+      ‖iteratedDeriv N (fun t => smoothingStructuredCorrelationAmplitude g₁ g₂ (r^γ) (r^τ) hρ m k
+        l ζ (z,t)) u‖ ≤ C*r^(τ*N) := by
   obtain ⟨T,hT,hcoords⟩ := hc.isBounded.exists_pos_norm_le
   obtain ⟨A,hA,hamp₁⟩ := smoothing_section3_4_amplitude_derivatives_up_to ψ₁ N
   obtain ⟨B,hB,hamp₂⟩ := smoothing_section3_4_amplitude_derivatives_up_to ψ₂ N
@@ -25635,11 +26860,15 @@ theorem smoothing_section3_4_time_derivative_bound
   change ‖iteratedDeriv N (fun t => H (z,t)) u‖ ≤ _
   by_cases hp : (z,u) ∈ tsupport ζ
   · have hn := hcoords (z,u) hp
-    have hz₁ : |z.1| ≤ T := by simpa only [Real.norm_eq_abs] using (norm_fst_le z).trans ((norm_fst_le (z,u)).trans hn)
-    have hz₂ : |z.2| ≤ T := by simpa only [Real.norm_eq_abs] using (norm_snd_le z).trans ((norm_fst_le (z,u)).trans hn)
+    have hz₁ : |z.1| ≤ T :=
+      by simpa only [Real.norm_eq_abs] using (norm_fst_le z).trans ((norm_fst_le (z,u)).trans hn)
+    have hz₂ : |z.2| ≤ T :=
+      by simpa only [Real.norm_eq_abs] using (norm_snd_le z).trans ((norm_fst_le (z,u)).trans hn)
     have hu : |u| ≤ T := by simpa only [Real.norm_eq_abs] using (norm_snd_le (z,u)).trans hn
-    let F := fun v => smoothingStructuredAmplitude g₁ 0 (r^γ) (r^τ) hρ m.1 k (smoothingPlaneEquiv.symm (v,z.2))
-    let G := fun v => smoothingStructuredAmplitude g₂ 1 (r^γ) (r^τ) hρ m.2 l (smoothingPlaneEquiv.symm (z.1,v))
+    let F := fun v => smoothingStructuredAmplitude g₁ 0 (r^γ) (r^τ) hρ m.1 k
+      (smoothingPlaneEquiv.symm (v,z.2))
+    let G := fun v => smoothingStructuredAmplitude g₂ 1 (r^γ) (r^τ) hρ m.2 l
+      (smoothingPlaneEquiv.symm (z.1,v))
     have hF : ContDiff ℝ ∞ F := by
       simpa only [show (0 : Fin 2).rev=1 from rfl,smoothing_first_plane_point] using
         smoothingStructuredAmplitude_fiber_contDiff g₁ 0 ha hR hρ m.1 k z.2
@@ -25647,13 +26876,16 @@ theorem smoothing_section3_4_time_derivative_bound
       simpa only [show (1 : Fin 2).rev=0 from rfl,smoothing_second_plane_point] using
         smoothingStructuredAmplitude_fiber_contDiff g₂ 1 ha hR hρ m.2 l z.1
     have hbF (i : ℕ) (hi : i ≤ N) (v : ℝ) : ‖iteratedDeriv i F v‖ ≤ A*(r^τ)^i := by
-      simpa only [show (0 : Fin 2).rev=1 from rfl,smoothing_first_plane_point,Real.rpow_mul_natCast hr₀.le] using
+      simpa only [show (0 : Fin 2).rev=1 from
+        rfl,smoothing_first_plane_point,Real.rpow_mul_natCast hr₀.le] using
         hamp₁ i hi 0 r γ τ hr hγτ ρ hρ m.1 f hf k z.2 v
     have hbG (i : ℕ) (hi : i ≤ N) (v : ℝ) : ‖iteratedDeriv i G v‖ ≤ B*(r^τ)^i := by
-      simpa only [show (1 : Fin 2).rev=0 from rfl,smoothing_second_plane_point,Real.rpow_mul_natCast hr₀.le] using
+      simpa only [show (1 : Fin 2).rev=0 from
+        rfl,smoothing_second_plane_point,Real.rpow_mul_natCast hr₀.le] using
         hamp₂ i hi 1 r γ τ hr hγτ ρ hρ m.2 g hg l z.1 v
     have hh := hbound F G hF hG A B (r^τ) hA hB (Real.one_le_rpow hr hτ) hbF hbG z hz₁ hz₂ u hu
-    simpa only [H,F,G,smoothingStructuredCorrelationAmplitude,Real.rpow_mul_natCast hr₀.le] using hh
+    simpa only [H,F,G,smoothingStructuredCorrelationAmplitude,Real.rpow_mul_natCast hr₀.le]
+      using hh
   · have hsH : tsupport H ⊆ tsupport ζ := tsupport_mul_subset_right
     have hs : tsupport (fun t : ℝ => H (z,t)) ⊆ (fun t : ℝ => (z,t)) ⁻¹' tsupport ζ := by
       intro t ht
@@ -25701,12 +26933,14 @@ of the compact quadratic remainder. -/
 theorem smoothingQuadraticPhaseGate_derivative_bounds (B : ℝ) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ b : ℝ, |b| ≤ B → ∀ n ≤ N, ∀ u : ℝ,
       ‖iteratedDeriv n (smoothingQuadraticPhaseGate b) u‖ ≤ C := by
-  obtain ⟨C,hC,hb⟩ := smoothing_compact_parameter_derivative_bounds smoothingQuadraticPhaseGate_contDiff
+  obtain ⟨C,hC,hb⟩ := smoothing_compact_parameter_derivative_bounds
+    smoothingQuadraticPhaseGate_contDiff
     (isCompact_closedBall (0 : ℝ) B) (isCompact_closedBall (0 : ℝ) 9) N
   refine ⟨C,hC,?_⟩
   intro b hb' n hn u
   by_cases hu : u ∈ Metric.closedBall (0 : ℝ) 9
-  · have hh := hb n hn b (by simpa only [Metric.mem_closedBall,dist_zero_right,Real.norm_eq_abs] using hb') u hu
+  · have hh := hb n hn b
+      (by simpa only [Metric.mem_closedBall,dist_zero_right,Real.norm_eq_abs] using hb') u hu
     rwa [norm_iteratedFDeriv_eq_norm_iteratedDeriv] at hh
   · have hz : iteratedFDeriv ℝ n (smoothingQuadraticPhaseGate b) u=0 := by
       apply not_ne_iff.mp
@@ -25733,10 +26967,13 @@ theorem smoothingQuadraticPhaseGate_scaled_derivative_bounds (B : ℝ) (N : ℕ)
 /-- The compact gate equals the exact quadratic exponential on the
 entire normalized support of H_m. -/
 theorem smoothingQuadraticPhaseGate_eq {a : ℝ} (ha : 0 < a) (β t₀ t : ℝ)
-    (ht : |a*(t-t₀)| ≤ 8) :
-    smoothingQuadraticPhaseGate (β/a^2) (a*(t-t₀)) = Complex.exp (Complex.I*((β*(t-t₀)^2 : ℝ) : ℂ)) := by
+    (ht : |a * (t - t₀)| ≤ 8) :
+    smoothingQuadraticPhaseGate (β/a^2) (a*(t-t₀)) = Complex.exp (Complex.I*((β*(t-t₀)^2 : ℝ) :
+      ℂ)) := by
   have hh : smoothingQuadraticBump (a*(t-t₀))=1 := smoothingQuadraticBump.one_of_mem_closedBall
-    (by simpa only [Metric.mem_closedBall,dist_zero_right,Real.norm_eq_abs,smoothingQuadraticBump] using ht)
+    (by
+      simpa only [Metric.mem_closedBall,dist_zero_right,Real.norm_eq_abs,smoothingQuadraticBump]
+        using ht)
   have he : (β/a^2)*(a*(t-t₀))^2=β*(t-t₀)^2 := by field_simp
   rw [smoothingQuadraticPhaseGate,hh,Complex.ofReal_one,one_mul,he]
 
@@ -25753,9 +26990,7 @@ theorem smoothing_linear_oscillation_derivative_bound (f : SchwartzMap ℝ ℂ) 
     congr 1
     congr 1
     simp [inner]
-
     field_simp
-
   have hb (g : SchwartzMap ℝ ℂ) : ‖𝓕 g (-D/(2*Real.pi))‖ ≤ ∫ t : ℝ, ‖g t‖ := by
     rw [he]
     apply (norm_integral_le_integral_norm _).trans
@@ -25768,7 +27003,8 @@ theorem smoothing_linear_oscillation_derivative_bound (f : SchwartzMap ℝ ℂ) 
   rw [smoothingFiberDerivativeOrder_fourier] at hh
   have hnorm : ‖(2*Real.pi*Complex.I : ℂ)*((-D/(2*Real.pi) : ℝ) : ℂ)‖ = |D| := by
     simp only [norm_mul,Complex.norm_I,mul_one,Complex.norm_real,Real.norm_eq_abs,
-      abs_div,abs_neg,abs_mul,abs_of_pos Real.pi_pos,abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2),show ‖(2:ℂ)‖=2 by norm_num]
+      abs_div,abs_neg,abs_mul,abs_of_pos Real.pi_pos,abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2),show
+        ‖(2:ℂ)‖=2 by norm_num]
     field_simp
   simp only [norm_mul,norm_pow,hnorm,he] at hh
   simpa only [smoothingFiberDerivativeOrder_apply] using hh
@@ -25777,7 +27013,7 @@ theorem smoothing_linear_oscillation_derivative_bound (f : SchwartzMap ℝ ℂ) 
 integral and absorbing only its quadratic remainder into the amplitude. -/
 theorem smoothing_quadratic_phase_recenter {a : ℝ} (ha : 0 < a)
     (α β t₀ : ℝ) (H : ℝ → ℂ)
-    (hs : ∀ t, H t ≠ 0 → |a*(t-t₀)| ≤ 8) :
+    (hs : ∀ t, H t ≠ 0 → |a * (t - t₀)| ≤ 8) :
     ‖∫ t : ℝ, Complex.exp (Complex.I*((α*t+β*t^2 : ℝ) : ℂ))*H t‖ =
     ‖∫ t : ℝ, Complex.exp (Complex.I*(((α+2*t₀*β)*t : ℝ) : ℂ))*
       (smoothingQuadraticPhaseGate (β/a^2) (a*(t-t₀))*H t)‖ := by
@@ -25796,7 +27032,9 @@ theorem smoothing_quadratic_phase_recenter {a : ℝ} (ha : 0 < a)
   rw [integral_const_mul,norm_mul]
   have hn : ‖Complex.exp (Complex.I*((-β*t₀^2 : ℝ) : ℂ))‖=1 := by
     rw [Complex.norm_exp]
-    simp only [Complex.mul_re,Complex.I_re,Complex.I_im,Complex.ofReal_re,Complex.ofReal_im,mul_zero,zero_mul,sub_zero,Real.exp_zero]
+    simp only
+      [Complex.mul_re,Complex.I_re,Complex.I_im,Complex.ofReal_re,Complex.ofReal_im,mul_zero,
+        zero_mul,sub_zero,Real.exp_zero]
   rw [hn,one_mul]
 
 /-- A smooth compact time amplitude satisfies the linear integration by
@@ -25815,7 +27053,6 @@ theorem smoothing_linear_oscillation_compact_bound {F : ℝ → ℂ}
   apply hh.trans
   apply smoothing_integral_norm_support_bound hi measurableSet_Icc measure_Icc_lt_top.ne hb
   intro t ht
-
   apply hs
   have hn : iteratedFDeriv ℝ n F t ≠ 0 := by
     intro hz
@@ -25830,9 +27067,9 @@ theorem smoothing_quadratic_oscillation_derivative_bound (B T : ℝ) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (a R A α β t₀ : ℝ), 0 < a → a ≤ R → 0 ≤ A →
       |β/a^2| ≤ B → ∀ H : ℝ → ℂ, ContDiff ℝ ∞ H → HasCompactSupport H →
       tsupport H ⊆ Set.Icc (-T) T →
-      (∀ t, H t ≠ 0 → |a*(t-t₀)| ≤ 8) →
+      (∀ t, H t ≠ 0 → |a * (t - t₀)| ≤ 8) →
       (∀ n ≤ N, ∀ t, ‖iteratedDeriv n H t‖ ≤ A*R^n) →
-      |α+2*t₀*β|^N * ‖∫ t : ℝ, Complex.exp (Complex.I*((α*t+β*t^2 : ℝ) : ℂ))*H t‖ ≤
+      |α + 2 * t₀*β|^N * ‖∫ t : ℝ, Complex.exp (Complex.I*((α*t+β*t^2 : ℝ) : ℂ))*H t‖ ≤
         C*A*R^N := by
   obtain ⟨G,hG,hgate⟩ := smoothingQuadraticPhaseGate_scaled_derivative_bounds B N
   refine ⟨(2^N*G)*(volume (Set.Icc (-T) T)).toReal,by positivity,?_⟩
@@ -25845,7 +27082,8 @@ theorem smoothing_quadratic_oscillation_derivative_bound (B T : ℝ) (N : ℕ) :
     (hgate a (β/a^2) t₀ ha hβ n hn t).trans
       (mul_le_mul_of_nonneg_left (pow_le_pow_left₀ ha.le haR n) hG)
   have hprod (t : ℝ) : ‖iteratedDeriv N (fun t => Q t*H t) t‖ ≤ (2^N*G*A)*R^N := by
-    simpa only [mul_assoc] using smoothing_smooth_product_derivative_bound_at hQ hH hG hA (ha.le.trans haR) N t
+    simpa only [mul_assoc] using smoothing_smooth_product_derivative_bound_at hQ hH hG hA
+      (ha.le.trans haR) N t
       (fun n hn => hQR n hn t) (fun n hn => hb n hn t)
   have hc' : HasCompactSupport (fun t => Q t*H t) := hc.mul_left
   have hs' : tsupport (fun t => Q t*H t) ⊆ Set.Icc (-T) T :=
@@ -25858,10 +27096,10 @@ theorem smoothing_quadratic_oscillation_derivative_bound (B T : ℝ) (N : ℕ) :
 power lambda^(-nu) per time derivative. -/
 theorem smoothing_quadratic_oscillation_power_bound (B T : ℝ) (N : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (r γ τ ν A α β t₀ : ℝ), 1 ≤ r → 1/2 ≤ γ → γ ≤ τ → 0 ≤ A →
-      |β| ≤ B*r → r^(τ+ν) ≤ |α+2*t₀*β| →
+      |β| ≤ B*r → r^(τ+ν) ≤ |α + 2 * t₀*β| →
       ∀ H : ℝ → ℂ, ContDiff ℝ ∞ H → HasCompactSupport H →
       tsupport H ⊆ Set.Icc (-T) T →
-      (∀ t, H t ≠ 0 → |(r^γ)*(t-t₀)| ≤ 8) →
+      (∀ t, H t ≠ 0 → |(r^γ)*(t - t₀)| ≤ 8) →
       (∀ n ≤ N, ∀ t, ‖iteratedDeriv n H t‖ ≤ A*r^(τ*n)) →
       ‖∫ t : ℝ, Complex.exp (Complex.I*((α*t+β*t^2 : ℝ) : ℂ))*H t‖ ≤ C*A*r^(-ν*N) := by
   obtain ⟨C,hC,hb⟩ := smoothing_quadratic_oscillation_derivative_bound B T N
@@ -25883,13 +27121,15 @@ theorem smoothing_quadratic_oscillation_power_bound (B T : ℝ) (N : ℕ) :
     (fun n hn t => by simpa only [Real.rpow_mul_natCast hr₀.le] using hd n hn t)
   have hl : (r^(τ+ν))^N * ‖∫ t : ℝ, Complex.exp (Complex.I*((α*t+β*t^2 : ℝ) : ℂ))*H t‖ ≤
       C*A*(r^τ)^N :=
-    (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (Real.rpow_nonneg hr₀.le _) hD N) (norm_nonneg _)).trans hh
+    (mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (Real.rpow_nonneg hr₀.le _) hD N) (norm_nonneg
+      _)).trans hh
   have he : C*A*(r^τ)^N / (r^(τ+ν))^N = C*A*r^(-ν*N) := by
     rw [← Real.rpow_mul_natCast hr₀.le,← Real.rpow_mul_natCast hr₀.le,
       mul_div_assoc,← Real.rpow_sub hr₀]
     congr 2
     ring
-  exact ((le_div_iff₀ (pow_pos (Real.rpow_pos_of_pos hr₀ _) N)).mpr (by simpa only [mul_comm] using hl)).trans_eq he
+  exact ((le_div_iff₀ (pow_pos (Real.rpow_pos_of_pos hr₀ _) N)).mpr
+    (by simpa only [mul_comm] using hl)).trans_eq he
 
 /-- The integration-by-parts display after (3.36) for the actual selected
 frequencies and structured amplitudes, with one decay power per derivative. -/
@@ -25929,7 +27169,8 @@ theorem smoothing_eq3_36_power_bound
     have hp' := hHs (tsupport_comp_subset_preimage (f := fun t : ℝ => (z,t)) H (by fun_prop) ht)
     have hh := (norm_snd_le (z,t)).trans (hcoords (z,t) hp')
     exact abs_le.mp (by simpa only [Real.norm_eq_abs] using hh)
-  have hc' : HasCompactSupport (fun t => H (z,t)) := isCompact_Icc.of_isClosed_subset isClosed_closure hs
+  have hc' : HasCompactSupport (fun t => H (z,t)) := isCompact_Icc.of_isClosed_subset
+    isClosed_closure hs
   have hinc := smoothingStructuredCorrelationAmplitude_tsupport_incidence g₁ g₂ ha (r^τ) hρ m k l ζ
   have hnear (t : ℝ) (ht : H (z,t) ≠ 0) : |(r^γ)*(t-p.2)| ≤ 8 := by
     have hh := smoothingEnlargedIncidence_time_distance ha (hinc (subset_closure ht)) (hinc hp)
@@ -25994,7 +27235,8 @@ theorem smoothingStructuredOscillatoryTerm_support
   have hζ (t : ℝ) : ζ (z,t)=0 := by
     by_contra ht
     exact hn ⟨(z,t),subset_closure ht,rfl⟩
-  exact hz (by simp [smoothingStructuredOscillatoryTerm,smoothingStructuredCorrelationAmplitude,hζ])
+  exact hz
+    (by simp [smoothingStructuredOscillatoryTerm,smoothingStructuredCorrelationAmplitude,hζ])
 
 /-- Integrate a uniform bound only over the fixed compact support,
 including when the restricting phase set itself is unbounded. -/
@@ -26036,8 +27278,10 @@ theorem smoothingStructuredNonstationaryRegion_measurableSet
     {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ) (t₀ L : ℝ) :
     MeasurableSet (smoothingStructuredNonstationaryRegion g₁ g₂ R d hρ k l t₀ L) := by
   apply measurableSet_le measurable_const
-  simpa only [Real.norm_eq_abs,Pi.add_apply,Function.comp_def] using! ((smoothingStructuredFrequency_measurable g₁ 0 R d hρ k).comp measurable_snd |>.add
-    (((smoothingStructuredFrequency_measurable g₂ 1 R d hρ l).comp measurable_fst).const_mul (2*t₀))).norm
+  simpa only [Real.norm_eq_abs,Pi.add_apply,Function.comp_def] using!
+    ((smoothingStructuredFrequency_measurable g₁ 0 R d hρ k).comp measurable_snd |>.add
+    (((smoothingStructuredFrequency_measurable g₂ 1 R d hρ l).comp measurable_fst).const_mul
+      (2*t₀))).norm
 
 /-- Integrating (3.36) retains arbitrary-power decay on the fixed compact
 spatial projection of the source cutoff. -/
@@ -26063,9 +27307,11 @@ theorem smoothing_eq3_37_single
   have ha := Real.rpow_pos_of_pos hr₀ γ
   have hR := Real.rpow_pos_of_pos hr₀ τ
   let S := smoothingStructuredNonstationaryRegion g₁ g₂ (r^τ) r hρ k l p.2 (r^(τ+ν))
-  have hS : MeasurableSet S := smoothingStructuredNonstationaryRegion_measurableSet _ _ _ _ _ _ _ _ _
+  have hS : MeasurableSet S := smoothingStructuredNonstationaryRegion_measurableSet _ _ _ _ _ _ _
+    _ _
   let U := fun z => ‖smoothingStructuredOscillatoryTerm g₁ g₂ (r^γ) (r^τ) r hρ m k l ζ z‖
-  have hi : Integrable U := smoothingStructuredOscillatoryTerm_norm_integrable g₁ g₂ ha hR r hρ m k l hζ.continuous hc
+  have hi : Integrable U := smoothingStructuredOscillatoryTerm_norm_integrable g₁ g₂ ha hR r hρ m
+    k l hζ.continuous hc
   have hs : Function.support U ⊆ K := by
     intro z hz
     apply smoothingStructuredOscillatoryTerm_support g₁ g₂ (r^γ) (r^τ) r hρ m k l ζ
@@ -26087,14 +27333,18 @@ theorem smoothing_eq3_37
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) →
       ∀ (k l : ℕ) (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)),
       let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m f)
-      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) m g)
+      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece
+        (r^γ) m g)
       ∃ (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
         (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
         (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) =
           smoothingStructuredInteractionIndices g₁ g₂ (r^γ) (r^τ) r hρ k l ζ c ∧
-        (∀ m ∈ S, smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) hρ m k l ζ (P m) ≠ 0) ∧
-        (∑ m ∈ S, ∫ z in smoothingStructuredNonstationaryRegion (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l (P m).2 (r^(τ+ν)),
-          ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤ C*r^(-η) := by
+        (∀ m ∈ S, smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) hρ m k l ζ
+          (P m) ≠ 0) ∧
+        (∑ m ∈ S, ∫ z in smoothingStructuredNonstationaryRegion (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l
+          (P m).2 (r^(τ+ν)),
+          ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
+            C*r^(-η) := by
   obtain ⟨C,hC,hbound⟩ := smoothing_eq3_37_single ψ₁ ψ₂ hψ₂ (η+3) hν hζ hc
   obtain ⟨D,hD,hcount⟩ := smoothing_section3_4_interaction_count hc
   refine ⟨D*C,mul_nonneg hD hC,?_⟩
@@ -26124,7 +27374,8 @@ theorem smoothing_phase_region_integral_split {X : Type*} [MeasurableSpace X]
   have hm : Measurable (fun x => |D x|) := by simpa only [Real.norm_eq_abs] using hD.norm
   have hS := measurableSet_le measurable_const hm (f := fun _ => L)
   have hT := measurableSet_le hm measurable_const (g := fun _ => L)
-  rw [← integral_indicator hS,← integral_indicator hT,← integral_add (hU.indicator hS) (hU.indicator hT)]
+  rw [← integral_indicator hS,← integral_indicator hT,← integral_add (hU.indicator hS)
+    (hU.indicator hT)]
   apply integral_mono hU ((hU.indicator hS).add (hU.indicator hT))
   intro x
   simp only [Pi.add_apply]
@@ -26137,13 +27388,12 @@ theorem smoothing_phase_region_integral_split {X : Type*} [MeasurableSpace X]
 
 /-- The support-time variation in (3.35) converts the frozen resonant
 condition in (3.38) into the instantaneous condition with twice the threshold. -/
-theorem smoothing_resonant_phase_transfer {α β t t₀ L E : ℝ}
-    (hfrozen : |α+2*t₀*β| ≤ L)
-    (hvariation : |(α+2*t*β)-(α+2*t₀*β)| ≤ E) (hE : E ≤ L) :
+theorem smoothing_resonant_phase_transfer {α β t t₀ L E : ℝ} (hfrozen : |α + 2 * t₀ * β| ≤ L)
+    (hvariation : |(α + 2 * t * β) - (α + 2 * t₀ * β)| ≤ E) (hE : E ≤ L) :
     |α+2*t*β| ≤ 2*L := by
   calc
     _ = |((α+2*t*β)-(α+2*t₀*β))+(α+2*t₀*β)| := by congr 1; ring
-    _ ≤ |(α+2*t*β)-(α+2*t₀*β)|+|α+2*t₀*β| := abs_add_le _ _
+    _ ≤ |(α + 2 * t * β)-(α+2*t₀*β)|+|α + 2 * t₀*β| := abs_add_le _ _
     _ ≤ E+L := add_le_add hvariation hfrozen
     _ ≤ 2*L := by linarith
 
@@ -26156,7 +27406,7 @@ theorem smoothing_resonant_fiber_integral_bound
     (hS : MeasurableSet S) (hE : MeasurableSet E) (hfin : volume E ≠ ⊤)
     (hB : 0 ≤ B) (hb : ∀ p, ‖H p‖ ≤ B)
     (hs : ∀ p, p.1 ∈ S → H p ≠ 0 → p ∈ E)
-    (hfiber : ∀ z, ‖O z‖ ≤ ∫ t : ℝ, ‖H (z,t)‖) :
+    (hfiber : ∀ z, ‖O z‖ ≤ ∫ t : ℝ, ‖H (z, t)‖) :
     (∫ z in S, ‖O z‖) ≤ B*(volume E).toReal := by
   let U := (Prod.fst ⁻¹' S).indicator H
   have hm : MeasurableSet (Prod.fst ⁻¹' S : Set ((ℝ × ℝ) × ℝ)) := measurable_fst hS
@@ -26177,21 +27427,21 @@ theorem smoothing_resonant_fiber_integral_bound
   have hprod : Integrable (fun p : (ℝ × ℝ) × ℝ => ‖U p‖)
       ((volume : Measure (ℝ × ℝ)).prod (volume : Measure ℝ)) := by
     simpa only [← Measure.volume_eq_prod] using hi.norm
-  have he : (∫ p, ‖U p‖) = ∫ z, S.indicator (fun z => ∫ t : ℝ, ‖H (z,t)‖) z := by
+  have he : (∫ p, ‖U p‖) = ∫ z, S.indicator (fun z => ∫ t : ℝ, ‖H (z, t)‖) z := by
     rw [Measure.volume_eq_prod,integral_prod _ hprod]
     apply integral_congr_ae
     filter_upwards [] with z
     by_cases hz : z ∈ S
     · simp [U,hz]
     · simp [U,hz]
-  have hfint : Integrable (fun z => ∫ t : ℝ, ‖H (z,t)‖) := by
+  have hfint : Integrable (fun z => ∫ t : ℝ, ‖H (z, t)‖) := by
     have hiH : Integrable (fun p : (ℝ × ℝ) × ℝ => ‖H p‖)
         ((volume : Measure (ℝ × ℝ)).prod (volume : Measure ℝ)) := by
       simpa only [← Measure.volume_eq_prod] using hH.norm
     exact hiH.integral_prod_left
   calc
     _ = ∫ z, S.indicator (fun z => ‖O z‖) z := (integral_indicator hS).symm
-    _ ≤ ∫ z, S.indicator (fun z => ∫ t : ℝ, ‖H (z,t)‖) z := by
+    _ ≤ ∫ z, S.indicator (fun z => ∫ t : ℝ, ‖H (z, t)‖) z := by
       apply integral_mono (hO.indicator hS) (hfint.indicator hS)
       intro z
       by_cases hz : z ∈ S
@@ -26212,9 +27462,11 @@ theorem smoothingStructuredPhaseDerivative_measurable
     {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ) :
     Measurable (smoothingStructuredPhaseDerivative g₁ g₂ R d hρ k l) := by
   have h₁ : Measurable (fun p : (ℝ × ℝ) × ℝ => smoothingStructuredFrequency g₁ 0 R d hρ k p.1.2) :=
-    (smoothingStructuredFrequency_measurable g₁ 0 R d hρ k).comp (measurable_snd.comp measurable_fst)
+    (smoothingStructuredFrequency_measurable g₁ 0 R d hρ k).comp (measurable_snd.comp
+      measurable_fst)
   have h₂ : Measurable (fun p : (ℝ × ℝ) × ℝ => smoothingStructuredFrequency g₂ 1 R d hρ l p.1.1) :=
-    (smoothingStructuredFrequency_measurable g₂ 1 R d hρ l).comp (measurable_fst.comp measurable_fst)
+    (smoothingStructuredFrequency_measurable g₂ 1 R d hρ l).comp (measurable_fst.comp
+      measurable_fst)
   simpa only [smoothingStructuredPhaseDerivative,Pi.add_apply,Function.comp_def] using!
     h₁.add ((measurable_snd.const_mul 2).mul h₂)
 
@@ -26233,8 +27485,10 @@ theorem smoothingStructuredResonantSupport_measurableSet
     (ζ : (ℝ × ℝ) × ℝ → ℂ) (L : ℝ) :
     MeasurableSet (smoothingStructuredResonantSupport g₁ g₂ a R d hρ m k l ζ L) := by
   have hm : Measurable (fun p => |smoothingStructuredPhaseDerivative g₁ g₂ R d hρ k l p|) := by
-    simpa only [Real.norm_eq_abs] using (smoothingStructuredPhaseDerivative_measurable g₁ g₂ R d hρ k l).norm
-  exact (isClosed_closure.measurableSet.inter (smoothingEnlargedIncidence_closed a m).measurableSet).inter
+    simpa only [Real.norm_eq_abs] using (smoothingStructuredPhaseDerivative_measurable g₁ g₂ R d
+      hρ k l).norm
+  exact (isClosed_closure.measurableSet.inter (smoothingEnlargedIncidence_closed a
+    m).measurableSet).inter
     (measurableSet_le hm measurable_const)
 
 /-- Actual oscillatory time integrals are bounded by the integral of the
@@ -26269,7 +27523,8 @@ theorem smoothing_eq3_38_single
       ∀ p₀ ∈ tsupport (smoothingStructuredCorrelationAmplitude g₁ g₂ (r^γ) (r^τ) hρ m k l ζ),
       (∫ z in {z | |smoothingStructuredPhaseDerivative g₁ g₂ (r^τ) r hρ k l (z,p₀.2)| ≤ L},
         ‖smoothingStructuredOscillatoryTerm g₁ g₂ (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
-          C*(volume (smoothingStructuredResonantSupport g₁ g₂ (r^γ) (r^τ) r hρ m k l ζ (2*L))).toReal := by
+          C*(volume (smoothingStructuredResonantSupport g₁ g₂ (r^γ) (r^τ) r hρ m k l ζ
+            (2*L))).toReal := by
   obtain ⟨C,hC,hbound⟩ := smoothing_section3_4_time_derivative_bound ψ₁ (some ψ₂) 0 hζ hc
   refine ⟨C,hC,?_⟩
   intro r γ τ L hr hγ hγτ hRr hvar ρ hρ m f g hf hg k l g₁ g₂ p₀ hp₀
@@ -26283,10 +27538,12 @@ theorem smoothing_eq3_38_single
   have hS : MeasurableSet S := by
     have hm := (smoothingStructuredPhaseDerivative_measurable g₁ g₂ (r^τ) r hρ k l).comp
       (show Measurable (fun z : ℝ × ℝ => (z,p₀.2)) by fun_prop)
-    have hm' : Measurable (fun z => |smoothingStructuredPhaseDerivative g₁ g₂ (r^τ) r hρ k l (z,p₀.2)|) := by
+    have hm' : Measurable (fun z => |smoothingStructuredPhaseDerivative g₁ g₂ (r^τ) r hρ k l
+      (z,p₀.2)|) := by
       simpa only [Real.norm_eq_abs,Function.comp_def] using hm.norm
     exact measurableSet_le hm' measurable_const
-  have hE : MeasurableSet E := smoothingStructuredResonantSupport_measurableSet _ _ _ _ _ _ _ _ _ _ _
+  have hE : MeasurableSet E := smoothingStructuredResonantSupport_measurableSet _ _ _ _ _ _ _ _ _
+    _ _
   have hfin : volume E ≠ ⊤ := ne_top_of_le_ne_top hc.measure_lt_top.ne
     (measure_mono (fun p hp => hp.1.1))
   apply smoothing_resonant_fiber_integral_bound
@@ -26315,19 +27572,25 @@ theorem smoothing_eq3_38
       ∀ (ρ : ℝ) (hρ : 0 < ρ) (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → ∀ (k l : ℕ),
       let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m f)
-      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) m g)
+      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece
+        (r^γ) m g)
       ∀ (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
         (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
-      (∀ m ∈ S, P m ∈ tsupport (smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) hρ m k l ζ)) →
-      (∑ m ∈ S, ∫ z in {z | |smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l (z,(P m).2)| ≤ L},
+      (∀ m ∈ S, P m ∈ tsupport (smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ)
+        (r^τ) hρ m k l ζ)) →
+      (∑ m ∈ S, ∫ z in {z | |smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l
+        (z,(P m).2)| ≤ L},
         ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
       C*(∫ p : (ℝ × ℝ) × ℝ, ∑ m ∈ S,
-        (smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ (2*L)).indicator (fun _ => (1:ℝ)) p) := by
+        (smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ
+          (2*L)).indicator (fun _ => (1:ℝ)) p) := by
   obtain ⟨C,hC,hbound⟩ := smoothing_eq3_38_single ψ₁ ψ₂ hψ₂ hζ hc
   refine ⟨C,hC,?_⟩
   intro r γ τ L hr hγ hγτ hRr hvar ρ hρ f g hf hg k l g₁ g₂ S P hP
-  let E := fun m => smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ (2*L)
-  have hm (m) : MeasurableSet (E m) := smoothingStructuredResonantSupport_measurableSet _ _ _ _ _ _ _ _ _ _ _
+  let E := fun m => smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ
+    (2*L)
+  have hm (m) : MeasurableSet (E m) := smoothingStructuredResonantSupport_measurableSet _ _ _ _ _
+    _ _ _ _ _ _
   have hfin (m) : volume (E m) ≠ ⊤ := ne_top_of_le_ne_top hc.measure_lt_top.ne
     (measure_mono (fun p hp => hp.1.1))
   have hi (m) : Integrable ((E m).indicator (fun _ => (1:ℝ))) := by
@@ -26356,27 +27619,31 @@ noncomputable def smoothingSpatialSelector (a : ℝ) (c : Fin 2 → Fin 5)
 
 /-- Cube disjointness identifies the selector on every cube in its family. -/
 theorem smoothingSpatialSelector_eq (a : ℝ) (c : Fin 2 → Fin 5)
-    {m : Fin 2 → ℤ} (hm : smoothingSpatialColor m=c)
-    {x : EuclideanSpace ℝ (Fin 2)} (hx : x ∈ smoothingEnlargedSpatialCube a m) :
+    {m : Fin 2 → ℤ} (hm : smoothingSpatialColor m = c) {x : EuclideanSpace ℝ (Fin 2)} (hx : x ∈
+      smoothingEnlargedSpatialCube a m) :
     smoothingSpatialSelector a c x=m := by
   classical
   have h : ∃ n, smoothingSpatialColor n=c ∧ x ∈ smoothingEnlargedSpatialCube a n := ⟨m,hm,hx⟩
-  rw [smoothingSpatialSelector,dif_pos h]
-  exact smoothingEnlargedSpatialCube_color_unique a (h.choose_spec.1.trans hm.symm) h.choose_spec.2 hx
+  rw [smoothingSpatialSelector,dite_eq_left h]
+  exact smoothingEnlargedSpatialCube_color_unique a (h.choose_spec.1.trans hm.symm)
+    h.choose_spec.2 hx
 
 /-- Any union of the countable closed cube family is measurable. -/
 theorem smoothingSpatialCube_union_measurable (a : ℝ) (c : Fin 2 → Fin 5)
     (s : Set (Fin 2 → ℤ)) :
-    MeasurableSet {x | ∃ m ∈ s, smoothingSpatialColor m=c ∧ x ∈ smoothingEnlargedSpatialCube a m} := by
+    MeasurableSet {x | ∃ m ∈ s, smoothingSpatialColor m=c ∧ x ∈ smoothingEnlargedSpatialCube a m}
+      := by
   classical
-  simp only [Set.setOf_exists]
+  simp only [Set.ofPred_exists]
   apply MeasurableSet.iUnion
   intro m
   by_cases hm : m ∈ s ∧ smoothingSpatialColor m=c
-  · simpa only [hm.1,hm.2,true_and,Set.setOf_mem_eq] using! (smoothingEnlargedSpatialCube_closed a m).measurableSet
-  · have he : {x | m ∈ s ∧ smoothingSpatialColor m=c ∧ x ∈ smoothingEnlargedSpatialCube a m} = ∅ := by
+  · simpa only [hm.1,hm.2,true_and,Set.ofPred_mem_eq] using!
+      (smoothingEnlargedSpatialCube_closed a m).measurableSet
+  · have he : {x | m ∈ s ∧ smoothingSpatialColor m=c ∧ x ∈ smoothingEnlargedSpatialCube a m} = ∅
+      := by
       ext x
-      simp only [Set.mem_setOf_eq,Set.mem_empty_iff_false,iff_false]
+      simp only [Set.mem_ofPred_eq,Set.mem_empty_iff_false,iff_false]
       exact fun hh => hm ⟨hh.1,hh.2.1⟩
     rw [he]
     exact MeasurableSet.empty
@@ -26400,11 +27667,11 @@ theorem smoothingSpatialSelector_measurable (a : ℝ) (c : Fin 2 → Fin 5) :
       by_cases h : ∃ m, smoothingSpatialColor m=c ∧ x ∈ smoothingEnlargedSpatialCube a m
       · left
         refine ⟨h.choose,?_,h.choose_spec⟩
-        simpa only [Set.mem_preimage,smoothingSpatialSelector,dif_pos h] using hx
+        simpa only [Set.mem_preimage,smoothingSpatialSelector,dite_eq_left h] using hx
       · right
         have h0 : (0 : Fin 2 → ℤ) ∈ s := by
-          simpa only [Set.mem_preimage,smoothingSpatialSelector,dif_neg h] using hx
-        simpa only [if_pos h0,Set.mem_compl_iff,U,Set.mem_setOf_eq] using h
+          simpa only [Set.mem_preimage,smoothingSpatialSelector,dite_eq_right h] using hx
+        simpa only [ite_eq_left h0,Set.mem_compl_iff,U,Set.mem_ofPred_eq] using h
     · intro hx
       rcases hx with hx|hx
       · obtain ⟨m,hms,hmc,hmx⟩ := hx
@@ -26412,9 +27679,9 @@ theorem smoothingSpatialSelector_measurable (a : ℝ) (c : Fin 2 → Fin 5) :
         rwa [smoothingSpatialSelector_eq a c hmc hmx]
       · by_cases h0 : (0 : Fin 2 → ℤ) ∈ s
         · have hn : ¬ ∃ m, smoothingSpatialColor m=c ∧ x ∈ smoothingEnlargedSpatialCube a m := by
-            simpa only [if_pos h0,Set.mem_compl_iff,U,Set.mem_setOf_eq] using hx
-          simpa only [Set.mem_preimage,smoothingSpatialSelector,dif_neg hn] using h0
-        · simp only [if_neg h0,Set.mem_empty_iff_false] at hx
+            simpa only [ite_eq_left h0,Set.mem_compl_iff,U,Set.mem_ofPred_eq] using hx
+          simpa only [Set.mem_preimage,smoothingSpatialSelector,dite_eq_right hn] using h0
+        · simp only [ite_eq_right h0,Set.mem_empty_iff_false] at hx
   rw [he]
   apply (smoothingSpatialCube_union_measurable a c s).union
   split_ifs <;> first | exact hU.compl | exact MeasurableSet.empty
@@ -26425,18 +27692,23 @@ def smoothingAssembledFrequency
     (g : (Fin 2 → ℤ) → SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (a R d : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k : ℕ) (c : Fin 2 → Fin 5)
     (z : ℝ × ℝ) : ℝ :=
-    smoothingStructuredFrequency (g (smoothingSpatialSelector a c (smoothingPlaneEquiv.symm z))) j R d hρ k
+    smoothingStructuredFrequency (g (smoothingSpatialSelector a c (smoothingPlaneEquiv.symm z))) j
+      R d hρ k
       ((smoothingPlaneEquiv.symm z) j.rev)
 
 theorem smoothingAssembledFrequency_measurable
     (g : (Fin 2 → ℤ) → SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (a R d : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k : ℕ) (c : Fin 2 → Fin 5) :
     Measurable (smoothingAssembledFrequency g j a R d hρ k c) := by
-  have hF : Measurable (fun p : (Fin 2 → ℤ) × ℝ => smoothingStructuredFrequency (g p.1) j R d hρ k p.2) :=
-    measurable_from_prod_countable_right (fun m => smoothingStructuredFrequency_measurable (g m) j R d hρ k)
-  have hsel := (smoothingSpatialSelector_measurable a c).comp smoothingPlaneEquiv.symm.continuous.measurable
+  have hF : Measurable (fun p : (Fin 2 → ℤ) × ℝ => smoothingStructuredFrequency (g p.1) j R d hρ k
+    p.2) :=
+    measurable_from_prod_countable_right (fun m => smoothingStructuredFrequency_measurable (g m) j
+      R d hρ k)
+  have hsel := (smoothingSpatialSelector_measurable a c).comp
+    smoothingPlaneEquiv.symm.continuous.measurable
   have hcoord : Measurable (fun z : ℝ × ℝ => (smoothingPlaneEquiv.symm z) j.rev) :=
-    (EuclideanSpace.proj (𝕜 := ℝ) j.rev).continuous.measurable.comp smoothingPlaneEquiv.symm.continuous.measurable
+    (EuclideanSpace.proj (𝕜 := ℝ) j.rev).continuous.measurable.comp
+      smoothingPlaneEquiv.symm.continuous.measurable
   simpa only [Function.comp_def,smoothingAssembledFrequency] using! hF.comp (hsel.prodMk hcoord)
 
 /-- On each selected cube the assembled frequency equals that cube's
@@ -26444,7 +27716,7 @@ original transverse phase function. -/
 theorem smoothingAssembledFrequency_eq
     (g : (Fin 2 → ℤ) → SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
     (j : Fin 2) (a R d : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k : ℕ) (c : Fin 2 → Fin 5)
-    {m : Fin 2 → ℤ} (hm : smoothingSpatialColor m=c) {z : ℝ × ℝ}
+    {m : Fin 2 → ℤ} (hm : smoothingSpatialColor m = c) {z : ℝ × ℝ}
     (hz : smoothingPlaneEquiv.symm z ∈ smoothingEnlargedSpatialCube a m) :
     smoothingAssembledFrequency g j a R d hρ k c z =
       smoothingStructuredFrequency (g m) j R d hρ k ((smoothingPlaneEquiv.symm z) j.rev) := by
@@ -26456,7 +27728,7 @@ theorem smoothingEnlargedIncidence_cube_iff (a : ℝ) (m : (Fin 2 → ℤ) × (F
     (p : (ℝ × ℝ) × ℝ) :
     smoothingEnlargedIncidence a m p ↔
       smoothingPlaneEquiv.symm (p.1.1+p.2,p.1.2) ∈ smoothingEnlargedSpatialCube a m.1 ∧
-      smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2^2) ∈ smoothingEnlargedSpatialCube a m.2 := by
+      smoothingPlaneEquiv.symm (p.1.1,p.1.2+p.2 ^ 2) ∈ smoothingEnlargedSpatialCube a m.2 := by
   constructor
   · intro h
     constructor
@@ -26475,9 +27747,10 @@ theorem smoothingEnlargedIncidence_cube_iff (a : ℝ) (m : (Fin 2 → ℤ) × (F
 can contribute to the resonant sum. -/
 theorem smoothingEnlargedIncidence_color_unique (a : ℝ)
     {m n : (Fin 2 → ℤ) × (Fin 2 → ℤ)}
-    (h₁ : smoothingSpatialColor m.1=smoothingSpatialColor n.1)
-    (h₂ : smoothingSpatialColor m.2=smoothingSpatialColor n.2)
-    {p : (ℝ × ℝ) × ℝ} (hm : smoothingEnlargedIncidence a m p) (hn : smoothingEnlargedIncidence a n p) : m=n := by
+    (h₁ : smoothingSpatialColor m.1 = smoothingSpatialColor n.1)
+    (h₂ : smoothingSpatialColor m.2 = smoothingSpatialColor n.2)
+    {p : (ℝ × ℝ) × ℝ} (hm : smoothingEnlargedIncidence a m p) (hn : smoothingEnlargedIncidence a n
+      p) : m=n := by
   have hm' := (smoothingEnlargedIncidence_cube_iff a m p).mp hm
   have hn' := (smoothingEnlargedIncidence_cube_iff a n p).mp hn
   exact Prod.ext (smoothingEnlargedSpatialCube_color_unique a h₁ hm'.1 hn'.1)
@@ -26491,7 +27764,7 @@ def smoothingAssembledSublevel
     (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) (ζ : (ℝ × ℝ) × ℝ → ℂ) (ε : ℝ) : Set ((ℝ × ℝ) × ℝ) :=
     {p | p ∈ tsupport ζ ∧
       |r⁻¹*smoothingAssembledFrequency g₁ 0 a R r hρ k c.1 (p.1.1+p.2,p.1.2)-
-        2*p.2*(-r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1,p.1.2+p.2^2))| ≤ ε}
+        2*p.2*(-r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1, p.1.2 + p.2^2))| ≤ ε}
 
 /-- The actual local phase condition implies the assembled global one
 on the two cubes of its color pair. -/
@@ -26500,7 +27773,7 @@ theorem smoothingStructuredResonantSupport_subset_assembled
     (a R : ℝ) {r : ℝ} (hr : 0 < r) {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ)
     (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) (ζ : (ℝ × ℝ) × ℝ → ℂ) (L : ℝ)
     (m : (Fin 2 → ℤ) × (Fin 2 → ℤ))
-    (hc : (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c) :
+    (hc : (smoothingSpatialColor m.1, smoothingSpatialColor m.2) = c) :
     smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L ⊆
       smoothingAssembledSublevel g₁ g₂ a R r hρ k l c ζ (L/r) := by
   intro p hp
@@ -26509,7 +27782,7 @@ theorem smoothingStructuredResonantSupport_subset_assembled
   have h₂ := smoothingAssembledFrequency_eq g₂ 1 a R r hρ l c.2 (congrArg Prod.snd hc) hcube.2
   refine ⟨hp.1.1,?_⟩
   have he : r⁻¹*smoothingAssembledFrequency g₁ 0 a R r hρ k c.1 (p.1.1+p.2,p.1.2)-
-        2*p.2*(-r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1,p.1.2+p.2^2)) =
+        2*p.2*(-r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1, p.1.2 + p.2^2)) =
       r⁻¹*smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) R r hρ k l p := by
     rw [h₁,h₂]
     change r⁻¹*smoothingStructuredFrequency (g₁ m.1) 0 R r hρ k p.1.2-
@@ -26526,15 +27799,16 @@ theorem smoothing_resonant_indicator_sum_le
     (a R : ℝ) {r : ℝ} (hr : 0 < r) {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ)
     (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) (ζ : (ℝ × ℝ) × ℝ → ℂ) (L : ℝ)
     (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
-    (hc : ∀ m ∈ S, (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c)
-    (p : (ℝ × ℝ) × ℝ) :
-    (∑ m ∈ S, (smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L).indicator (fun _ => (1:ℝ)) p) ≤
+    (hc : ∀ m ∈ S, (smoothingSpatialColor m.1, smoothingSpatialColor m.2) = c) (p : (ℝ × ℝ) × ℝ) :
+    (∑ m ∈ S, (smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L).indicator
+      (fun _ => (1:ℝ)) p) ≤
       (smoothingAssembledSublevel g₁ g₂ a R r hρ k l c ζ (L/r)).indicator (fun _ => (1:ℝ)) p := by
   classical
   let E := fun m => smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L
   by_cases h : ∃ m ∈ S, p ∈ E m
   · obtain ⟨m,hms,hmp⟩ := h
-    have hp := smoothingStructuredResonantSupport_subset_assembled g₁ g₂ a R hr hρ k l c ζ L m (hc m hms) hmp
+    have hp := smoothingStructuredResonantSupport_subset_assembled g₁ g₂ a R hr hρ k l c ζ L m (hc
+      m hms) hmp
     rw [Set.indicator_of_mem hp]
     have he : (∑ n ∈ S, (E n).indicator (fun _ => (1:ℝ)) p) = 1 := by
       rw [Finset.sum_eq_single m]
@@ -26553,7 +27827,8 @@ theorem smoothing_resonant_indicator_sum_le
       apply Finset.sum_eq_zero
       intro n hn
       exact Set.indicator_of_notMem (fun hp => h ⟨n,hn,hp⟩) _
-    rw [show (∑ n ∈ S, (smoothingStructuredResonantSupport (g₁ n.1) (g₂ n.2) a R r hρ n k l ζ L).indicator (fun _ => (1:ℝ)) p)=0 from he]
+    rw [show (∑ n ∈ S, (smoothingStructuredResonantSupport (g₁ n.1) (g₂ n.2) a R r hρ n k l ζ
+      L).indicator (fun _ => (1:ℝ)) p)=0 from he]
     exact Set.indicator_nonneg (fun _ _ => by norm_num) p
 
 /-- The assembled global sublevel set is measurable. -/
@@ -26562,13 +27837,15 @@ theorem smoothingAssembledSublevel_measurableSet
     (a R r : ℝ) {ρ : ℝ} (hρ : 0 < ρ) (k l : ℕ)
     (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) (ζ : (ℝ × ℝ) × ℝ → ℂ) (ε : ℝ) :
     MeasurableSet (smoothingAssembledSublevel g₁ g₂ a R r hρ k l c ζ ε) := by
-  have h₁ : Measurable (fun p : (ℝ × ℝ) × ℝ => smoothingAssembledFrequency g₁ 0 a R r hρ k c.1 (p.1.1+p.2,p.1.2)) :=
+  have h₁ : Measurable (fun p : (ℝ × ℝ) × ℝ => smoothingAssembledFrequency g₁ 0 a R r hρ k c.1
+    (p.1.1 + p.2, p.1.2)) :=
     (smoothingAssembledFrequency_measurable g₁ 0 a R r hρ k c.1).comp (by fun_prop)
-  have h₂ : Measurable (fun p : (ℝ × ℝ) × ℝ => smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1,p.1.2+p.2^2)) :=
+  have h₂ : Measurable (fun p : (ℝ × ℝ) × ℝ => smoothingAssembledFrequency g₂ 1 a R r hρ l c.2
+    (p.1.1, p.1.2 + p.2^2)) :=
     (smoothingAssembledFrequency_measurable g₂ 1 a R r hρ l c.2).comp (by fun_prop)
   have hm : Measurable (fun p : (ℝ × ℝ) × ℝ =>
       |r⁻¹*smoothingAssembledFrequency g₁ 0 a R r hρ k c.1 (p.1.1+p.2,p.1.2)-
-        2*p.2*(-r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1,p.1.2+p.2^2))|) := by
+        2*p.2*(-r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 (p.1.1, p.1.2 + p.2^2))|) := by
     simpa only [Real.norm_eq_abs,Pi.sub_apply] using!
       ((h₁.const_mul r⁻¹).sub ((measurable_snd.const_mul 2).mul (h₂.const_mul (-r⁻¹)))).norm
   exact isClosed_closure.measurableSet.inter (measurableSet_le hm measurable_const)
@@ -26581,13 +27858,15 @@ theorem smoothing_resonant_indicator_integral_le
     (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : HasCompactSupport ζ) (L : ℝ)
     (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
-    (hc : ∀ m ∈ S, (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c) :
+    (hc : ∀ m ∈ S, (smoothingSpatialColor m.1, smoothingSpatialColor m.2) = c) :
     (∫ p : (ℝ × ℝ) × ℝ, ∑ m ∈ S,
-      (smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L).indicator (fun _ => (1:ℝ)) p) ≤
+      (smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L).indicator (fun _
+        => (1:ℝ)) p) ≤
       (volume (smoothingAssembledSublevel g₁ g₂ a R r hρ k l c ζ (L/r))).toReal := by
   let E := fun m => smoothingStructuredResonantSupport (g₁ m.1) (g₂ m.2) a R r hρ m k l ζ L
   let A := smoothingAssembledSublevel g₁ g₂ a R r hρ k l c ζ (L/r)
-  have hm (m) : MeasurableSet (E m) := smoothingStructuredResonantSupport_measurableSet _ _ _ _ _ _ _ _ _ _ _
+  have hm (m) : MeasurableSet (E m) := smoothingStructuredResonantSupport_measurableSet _ _ _ _ _
+    _ _ _ _ _ _
   have hA : MeasurableSet A := smoothingAssembledSublevel_measurableSet _ _ _ _ _ _ _ _ _ _ _
   have hi (m) : Integrable ((E m).indicator (fun _ => (1:ℝ))) := by
     rw [integrable_indicator_iff (hm m)]
@@ -26614,12 +27893,15 @@ theorem smoothing_eq3_39
       ∀ (ρ : ℝ) (hρ : 0 < ρ) (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → ∀ (k l : ℕ),
       let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m f)
-      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) m g)
+      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece
+        (r^γ) m g)
       ∀ (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
         (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
-      (∀ m ∈ S, (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c) →
-      (∀ m ∈ S, P m ∈ tsupport (smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) hρ m k l ζ)) →
-      (∑ m ∈ S, ∫ z in {z | |smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l (z,(P m).2)| ≤ L},
+      (∀ m ∈ S, (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c) →
+      (∀ m ∈ S, P m ∈ tsupport (smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ)
+        (r^τ) hρ m k l ζ)) →
+      (∑ m ∈ S, ∫ z in {z | |smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l
+        (z,(P m).2)| ≤ L},
         ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
       C*(volume (smoothingAssembledSublevel g₁ g₂ (r^γ) (r^τ) r hρ k l c ζ ((2*L)/r))).toReal := by
   obtain ⟨C,hC,hbound⟩ := smoothing_eq3_38 ψ₁ ψ₂ hψ₂ hζ hc
@@ -26627,16 +27909,17 @@ theorem smoothing_eq3_39
   intro r γ τ L hr hγ hγτ hRr hvar ρ hρ f g hf hg k l g₁ g₂ c S P hcolor hP
   have hh := hbound r γ τ L hr hγ hγτ hRr hvar ρ hρ f g hf hg k l S P hP
   exact hh.trans (mul_le_mul_of_nonneg_left
-    (smoothing_resonant_indicator_integral_le g₁ g₂ (r^γ) (r^τ) (by linarith) hρ k l c hc (2*L) S hcolor) hC)
+    (smoothing_resonant_indicator_integral_le g₁ g₂ (r^γ) (r^τ) (by linarith) hρ k l c hc (2*L) S
+      hcolor) hC)
 
 /-- The assembled coefficient preserves the source annular comparison
 everywhere, including the selector's default index. -/
 theorem smoothingAssembledFrequency_annular (C : LittlewoodPaley.lpCutoffs 1)
-    (hC : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ=0) (j : Fin 2)
-    {r R : ℝ} (hr : 0 < r) (hR : 0 < R) (hRr : R ≤ r/8)
-    (a : ℝ) {ρ : ℝ} (hρ : 0 < ρ)
+    (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (j : Fin 2)
+    {r R : ℝ} (hr : 0 < r) (hR : 0 < R) (hRr : R ≤ r / 8) (a : ℝ) {ρ : ℝ} (hρ : 0 < ρ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (k : ℕ) (c : Fin 2 → Fin 5) (z : ℝ × ℝ) :
-    let g := fun m => smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol C)) j r
+    let g := fun m => smoothingCoordinateRegularization (some (smoothingReproducingAnnularSymbol
+      C)) j r
       (smoothingSpatialPiece a m f)
     r ≤ |smoothingAssembledFrequency g j a R r hρ k c z| ∧
       |smoothingAssembledFrequency g j a R r hρ k c z| ≤ (6*Real.pi)*r := by
@@ -26663,24 +27946,31 @@ theorem smoothingAssembledSublevel_bound
   intro g₁ g₂ a R r hr ρ hρ k l c hnd ε hε
   let α := fun z => r⁻¹*smoothingAssembledFrequency g₁ 0 a R r hρ k c.1 z
   let β := fun z => -r⁻¹*smoothingAssembledFrequency g₂ 1 a R r hρ l c.2 z
-  have hmα : Measurable α := (smoothingAssembledFrequency_measurable g₁ 0 a R r hρ k c.1).const_mul _
-  have hmβ : Measurable β := (smoothingAssembledFrequency_measurable g₂ 1 a R r hρ l c.2).const_mul _
+  have hmα : Measurable α := (smoothingAssembledFrequency_measurable g₁ 0 a R r hρ k
+    c.1).const_mul _
+  have hmβ : Measurable β := (smoothingAssembledFrequency_measurable g₂ 1 a R r hρ l
+    c.2).const_mul _
   have hnd' : (∀ z, 1 ≤ |α z|) ∨ (∀ z, 1 ≤ |β z|) := by
     rcases hnd with h|h
     · left
       intro z
       dsimp only [α]
       rw [abs_mul,abs_of_pos (inv_pos.mpr hr)]
-      exact (show 1=r⁻¹*r by field_simp).le.trans (mul_le_mul_of_nonneg_left (h z) (inv_nonneg.mpr hr.le))
+      exact (show 1=r⁻¹*r by field_simp).le.trans (mul_le_mul_of_nonneg_left (h z)
+        (inv_nonneg.mpr hr.le))
     · right
       intro z
       dsimp only [β]
       rw [abs_mul,abs_neg,abs_of_pos (inv_pos.mpr hr)]
-      exact (show 1=r⁻¹*r by field_simp).le.trans (mul_le_mul_of_nonneg_left (h z) (inv_nonneg.mpr hr.le))
-  have hh : volume (smoothingSublevelSet α β (tsupport ζ) ε) ≤ ENNReal.ofReal ((A+B)*ε^(1/448 : ℝ)) := by
+      exact (show 1=r⁻¹*r by field_simp).le.trans (mul_le_mul_of_nonneg_left (h z)
+        (inv_nonneg.mpr hr.le))
+  have hh : volume (smoothingSublevelSet α β (tsupport ζ) ε) ≤ ENNReal.ofReal ((A+B)*ε^(1/448 :
+    ℝ)) := by
     rcases hnd' with h|h
-    · exact (hα α β hmα hmβ h ε hε).trans (ENNReal.ofReal_le_ofReal (by nlinarith [Real.rpow_nonneg hε.le (1/448:ℝ)]))
-    · exact (hβ α β hmα hmβ h ε hε).trans (ENNReal.ofReal_le_ofReal (by nlinarith [Real.rpow_nonneg hε.le (1/448:ℝ)]))
+    · exact (hα α β hmα hmβ h ε hε).trans (ENNReal.ofReal_le_ofReal
+        (by nlinarith [Real.rpow_nonneg hε.le (1/448:ℝ)]))
+    · exact (hβ α β hmα hmβ h ε hε).trans (ENNReal.ofReal_le_ofReal
+        (by nlinarith [Real.rpow_nonneg hε.le (1/448:ℝ)]))
   have hh' := ENNReal.toReal_mono ENNReal.ofReal_ne_top hh
   rw [ENNReal.toReal_ofReal (by positivity)] at hh'
   exact hh'
@@ -26690,20 +27980,24 @@ with the nondegenerate coefficient supplied by the actual annular input. -/
 theorem smoothing_section3_4_resonant_bound
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
-    {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
+    {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) (hpos : ∀ p ∈ tsupport
+      ζ, 0 < p.2) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (r γ τ L : ℝ), 1 ≤ r → 1/2 ≤ γ → γ ≤ τ → r^τ ≤ r/8 →
       (96*Real.pi)*r^(1-γ) ≤ L →
       ∀ (ρ : ℝ) (hρ : 0 < ρ) (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → ∀ (k l : ℕ),
       let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m f)
-      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) m g)
+      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece
+        (r^γ) m g)
       ∀ (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) (S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)))
         (P : ((Fin 2 → ℤ) × (Fin 2 → ℤ)) → (ℝ × ℝ) × ℝ),
-      (∀ m ∈ S, (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c) →
-      (∀ m ∈ S, P m ∈ tsupport (smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) hρ m k l ζ)) →
-      (∑ m ∈ S, ∫ z in {z | |smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l (z,(P m).2)| ≤ L},
+      (∀ m ∈ S, (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c) →
+      (∀ m ∈ S, P m ∈ tsupport (smoothingStructuredCorrelationAmplitude (g₁ m.1) (g₂ m.2) (r^γ)
+        (r^τ) hρ m k l ζ)) →
+      (∑ m ∈ S, ∫ z in {z | |smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l
+        (z,(P m).2)| ≤ L},
         ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
       C*(((2*L)/r)^(1/448 : ℝ)) := by
   obtain ⟨A,hA,hbound⟩ := smoothing_eq3_39 ψ₁ ψ₂ hψ₂ hζ hc
@@ -26718,10 +28012,12 @@ theorem smoothing_section3_4_resonant_bound
     rcases hnd with h|h
     · left
       intro z
-      simpa only [g₁,h] using (smoothingAssembledFrequency_annular Q hQ 0 hr₀ hR hRr (r^γ) hρ f k c.1 z).1
+      simpa only [g₁,h] using (smoothingAssembledFrequency_annular Q hQ 0 hr₀ hR hRr (r^γ) hρ f
+        k c.1 z).1
     · right
       intro z
-      simpa only [g₂,h] using (smoothingAssembledFrequency_annular Q hQ 1 hr₀ hR hRr (r^γ) hρ g l c.2 z).1
+      simpa only [g₂,h] using (smoothingAssembledFrequency_annular Q hQ 1 hr₀ hR hRr (r^γ) hρ g
+        l c.2 z).1
   have hh := hbound r γ τ L hr hγ hγτ hRr hvar ρ hρ f g hf hg k l c S P hcolor hP
   have hb := hsub g₁ g₂ (r^γ) (r^τ) r hr₀ ρ hρ k l c hnd' ((2*L)/r) (by positivity)
   exact (hh.trans (mul_le_mul_of_nonneg_left hb hA)).trans_eq (by ring)
@@ -26731,7 +28027,7 @@ family, before summing the selected terms in (3.32). -/
 theorem smoothing_section3_4_color_bound
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
     (η : ℝ) {ν : ℝ} (hν : 0 < ν)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
@@ -26743,18 +28039,20 @@ theorem smoothing_section3_4_color_bound
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) →
       ∀ (k l : ℕ) (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)),
       let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m f)
-      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) m g)
+      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece
+        (r^γ) m g)
       ∃ S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)),
         (S : Set ((Fin 2 → ℤ) × (Fin 2 → ℤ))) =
           smoothingStructuredInteractionIndices g₁ g₂ (r^γ) (r^τ) r hρ k l ζ c ∧
-        (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
+        (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k
+          l ζ z‖) ≤
           C*r^(-η)+D*r^((τ+ν-1)/448) := by
   obtain ⟨C,hC,hfar⟩ := smoothing_eq3_37 ψ₁ ψ₂ hψ₂ η hν hζ hc
   obtain ⟨B,hB,hnear⟩ := smoothing_section3_4_resonant_bound ψ₁ ψ₂ hψ₂ Q hQ hnd hζ hc hpos
   refine ⟨C,B*2^(1/448:ℝ),hC,by positivity,?_⟩
   intro r γ τ hr hγ hγ₁ hγτ hRr hvar ρ hρ f g hf hg k l c g₁ g₂
   obtain ⟨S,P,hS,hP,hfar'⟩ := hfar r γ τ hr hγ hγ₁ hγτ hRr ρ hρ f g hf hg k l c
-  have hcolor (m) (hm : m ∈ S) : (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c := by
+  have hcolor (m) (hm : m ∈ S) : (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c := by
     have hm' : m ∈ smoothingStructuredInteractionIndices g₁ g₂ (r^γ) (r^τ) r hρ k l ζ c := by
       rw [← hS]
       exact hm
@@ -26764,17 +28062,22 @@ theorem smoothing_section3_4_color_bound
   have hr₀ : 0 < r := by linarith
   have ha := Real.rpow_pos_of_pos hr₀ γ
   have hR := Real.rpow_pos_of_pos hr₀ τ
-  let U := fun m z => ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖
-  let D := fun m (z : ℝ × ℝ) => smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l (z,(P m).2)
+  let U := fun m z => ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l
+    ζ z‖
+  let D := fun m (z : ℝ × ℝ) => smoothingStructuredPhaseDerivative (g₁ m.1) (g₂ m.2) (r^τ) r hρ k
+    l (z,(P m).2)
   have hsplit (m) : (∫ z, U m z) ≤ (∫ z in {z | r^(τ+ν) ≤ |D m z|}, U m z)+
       ∫ z in {z | |D m z| ≤ r^(τ+ν)}, U m z := by
     apply smoothing_phase_region_integral_split
-      (smoothingStructuredOscillatoryTerm_norm_integrable (g₁ m.1) (g₂ m.2) ha hR r hρ m k l hζ.continuous hc)
-    · exact (smoothingStructuredPhaseDerivative_measurable (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l).comp (by fun_prop)
+      (smoothingStructuredOscillatoryTerm_norm_integrable (g₁ m.1) (g₂ m.2) ha hR r hρ m k l
+        hζ.continuous hc)
+    · exact (smoothingStructuredPhaseDerivative_measurable (g₁ m.1) (g₂ m.2) (r^τ) r hρ k l).comp
+        (by fun_prop)
     · exact fun z => norm_nonneg _
   have he : ((2*r^(τ+ν))/r)^(1/448:ℝ) = 2^(1/448:ℝ)*r^((τ+ν-1)/448) := by
     have he' : (2*r^(τ+ν))/r=2*r^(τ+ν-1) := by rw [Real.rpow_sub hr₀,Real.rpow_one]; ring
-    rw [he',Real.mul_rpow (by norm_num : (0:ℝ) ≤ 2) (Real.rpow_nonneg hr₀.le _),← Real.rpow_mul hr₀.le]
+    rw [he',Real.mul_rpow (by norm_num : (0:ℝ) ≤ 2) (Real.rpow_nonneg hr₀.le _),← Real.rpow_mul
+      hr₀.le]
     congr 2
     ring
   refine ⟨S,hS,?_⟩
@@ -26784,8 +28087,8 @@ theorem smoothing_section3_4_color_bound
 
 /-- A finite nonnegative sum is dominated by any finite set containing
 all of its nonzero terms. -/
-theorem smoothing_finite_sum_le_of_nonzero_cover {ι : Type*} [DecidableEq ι]
-    (S T : Finset ι) (w : ι → ℝ) (hw : ∀ i, 0 ≤ w i)
+theorem smoothing_finite_sum_le_of_nonzero_cover {ι : Type*} (S T : Finset ι) (w : ι → ℝ) (hw : ∀
+  i, 0 ≤ w i)
     (hc : ∀ i ∈ S, w i ≠ 0 → i ∈ T) : (∑ i ∈ S, w i) ≤ ∑ i ∈ T, w i := by
   classical
   rw [← Finset.sum_filter_ne_zero]
@@ -26800,7 +28103,7 @@ theorem smoothing_finite_sum_le_of_nonzero_cover {ι : Type*} [DecidableEq ι]
 theorem smoothing_section3_4_spatial_bound
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
     (η : ℝ) {ν : ℝ} (hν : 0 < ν)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
@@ -26811,9 +28114,11 @@ theorem smoothing_section3_4_spatial_bound
       ∀ (ρ : ℝ) (hρ : 0 < ρ) (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ),
       (∀ x, ‖f x‖ ≤ 1) → (∀ x, ‖g x‖ ≤ 1) → ∀ (k l : ℕ),
       let g₁ := fun m => smoothingCoordinateRegularization ψ₁ 0 r (smoothingSpatialPiece (r^γ) m f)
-      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece (r^γ) m g)
+      let g₂ := fun m => smoothingCoordinateRegularization (some ψ₂) 1 r (smoothingSpatialPiece
+        (r^γ) m g)
       ∀ S : Finset ((Fin 2 → ℤ) × (Fin 2 → ℤ)),
-        (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖) ≤
+        (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k
+          l ζ z‖) ≤
           C*r^(-η)+D*r^((τ+ν-1)/448) := by
   classical
   obtain ⟨C,D,hC,hD,hbound⟩ := smoothing_section3_4_color_bound ψ₁ ψ₂ hψ₂ Q hQ hnd η hν hζ hc hpos
@@ -26823,7 +28128,7 @@ theorem smoothing_section3_4_spatial_bound
     ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖
   have hw (m) : 0 ≤ w m := integral_nonneg (fun _ => norm_nonneg _)
   have hfamily (c : (Fin 2 → Fin 5) × (Fin 2 → Fin 5)) :
-      (∑ m ∈ S.filter (fun m => (smoothingSpatialColor m.1,smoothingSpatialColor m.2)=c), w m) ≤
+      (∑ m ∈ S.filter (fun m => (smoothingSpatialColor m.1, smoothingSpatialColor m.2)=c), w m) ≤
         C*r^(-η)+D*r^((τ+ν-1)/448) := by
     obtain ⟨T,hT,hb⟩ := hbound r γ τ hr hγ hγ₁ hγτ hRr hvar ρ hρ f g hf hg k l c
     apply (smoothing_finite_sum_le_of_nonzero_cover _ T w hw ?_).trans hb
@@ -26833,7 +28138,8 @@ theorem smoothing_section3_4_spatial_bound
     rw [← hT] at hh
     exact hh
   have hp := (smoothing_spatial_color_partition (r^γ) S w).2
-  rw [show (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m k l ζ z‖)=∑ m ∈ S,w m from rfl,hp]
+  rw [show (∑ m ∈ S, ∫ z, ‖smoothingStructuredOscillatoryTerm (g₁ m.1) (g₂ m.2) (r^γ) (r^τ) r hρ m
+    k l ζ z‖)=∑ m ∈ S,w m from rfl,hp]
   apply (Finset.sum_le_sum (fun c hc => hfamily c)).trans_eq
   simp only [Finset.sum_const,Finset.card_univ,smoothingSpatialColor_pair_card,nsmul_eq_mul]
   ring
@@ -26843,7 +28149,7 @@ nonstationary remainder kept explicit before the parameter choice. -/
 theorem smoothing_section3_4_sharp_bound
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
     (η : ℝ) {ν δ : ℝ} (hν : 0 < ν) (hδ : 0 ≤ δ)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
@@ -26862,17 +28168,20 @@ theorem smoothing_section3_4_sharp_bound
   intro r γ τ hr hγ hγ₁ hγτ hRr hvar f g hf hg hρ
   have hr₀ : 0 < r := by linarith
   have hR := Real.rpow_pos_of_pos hr₀ τ
-  obtain ⟨S,hS,hcard,hexpand⟩ := smoothing_eq3_32 ψ₁ (some ψ₂) (by linarith : 0 ≤ γ) hδ hζ.continuous hc r (r^τ) hr hR f g
+  obtain ⟨S,hS,hcard,hexpand⟩ := smoothing_eq3_32 ψ₁ (some ψ₂) (by linarith : 0 ≤ γ) hδ
+    hζ.continuous hc r (r^τ) hr hR f g
   let W := C*r^(-η)+D*r^((τ+ν-1)/448)
   have hW : 0 ≤ W := add_nonneg (mul_nonneg hC (Real.rpow_nonneg hr₀.le _))
     (mul_nonneg hD (Real.rpow_nonneg hr₀.le _))
   have hsum := Finset.sum_le_sum (s := Finset.univ)
-    (fun (q : Fin (smoothingStructuralTermCount (r^(-δ))) × Fin (smoothingStructuralTermCount (r^(-δ)))) hq =>
+    (fun (q : Fin (smoothingStructuralTermCount (r^(-δ))) × Fin (smoothingStructuralTermCount
+      (r^(-δ)))) hq =>
       hbound r γ τ hr hγ hγ₁ hγτ hRr hvar (r^(-δ)) hρ f g hf hg q.1 q.2 S)
   have hh : (∫ z, ‖smoothingLocalizedRaw (smoothingGlobalSharp ψ₁ 0 r (r^γ) (r^τ) hρ f)
         (smoothingGlobalSharp (some ψ₂) 1 r (r^γ) (r^τ) hρ g) ζ z‖) ≤ (49*r^(2*δ))*W := by
     apply (hexpand.trans hsum).trans
-    simpa only [Finset.sum_const,Finset.card_univ,nsmul_eq_mul] using mul_le_mul_of_nonneg_right hcard hW
+    simpa only [Finset.sum_const,Finset.card_univ,nsmul_eq_mul] using mul_le_mul_of_nonneg_right
+      hcard hW
   apply hh.trans_eq
   dsimp only [W]
   rw [mul_add,Real.rpow_sub hr₀,Real.rpow_add hr₀,Real.rpow_neg hr₀.le]
@@ -26883,7 +28192,7 @@ remainder is absorbed into the source sublevel decay exponent. -/
 theorem smoothing_section3_4_Tsharp
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
     {ν δ : ℝ} (hν : 0 < ν) (hδ : 0 ≤ δ)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
@@ -26897,7 +28206,8 @@ theorem smoothing_section3_4_Tsharp
       (∫ z, ‖smoothingLocalizedRaw (smoothingGlobalSharp ψ₁ 0 r (r^γ) (r^τ) hρ f)
         (smoothingGlobalSharp (some ψ₂) 1 r (r^γ) (r^τ) hρ g) ζ z‖) ≤
         C*r^(2*δ+(τ+ν-1)/448) := by
-  obtain ⟨C,D,hC,hD,hbound⟩ := smoothing_section3_4_sharp_bound ψ₁ ψ₂ hψ₂ Q hQ hnd 1 hν hδ hζ hc hpos
+  obtain ⟨C,D,hC,hD,hbound⟩ := smoothing_section3_4_sharp_bound ψ₁ ψ₂ hψ₂ Q hQ hnd 1 hν hδ hζ hc
+    hpos
   refine ⟨C+D,add_nonneg hC hD,?_⟩
   intro r γ τ hr hγ hγ₁ hγτ hRr hvar f g hf hg hρ
   have hh := hbound r γ τ hr hγ hγ₁ hγτ hRr hvar f g hf hg
@@ -26918,8 +28228,8 @@ theorem smoothing_section3_4_parameter_choice :
 
 /-- The source phase-variation error is smaller than the chosen
 nonstationary threshold for all sufficiently large scales. -/
-theorem smoothing_phase_variation_eventually {γ τ ν : ℝ} (h : 1-γ < τ+ν) :
-    ∃ r₀ : ℝ, 1 ≤ r₀ ∧ ∀ r : ℝ, r₀ ≤ r → (96*Real.pi)*r^(1-γ) ≤ r^(τ+ν) := by
+theorem smoothing_phase_variation_eventually {γ τ ν : ℝ} (h : 1 - γ < τ + ν) :
+    ∃ r₀ : ℝ, 1 ≤ r₀ ∧ ∀ r : ℝ, r₀ ≤ r → (96*Real.pi)*r^(1-γ) ≤ r^(τ + ν) := by
   have ht := tendsto_rpow_neg_atTop (sub_pos.mpr h)
   have he : ∀ᶠ r : ℝ in Filter.atTop, r^(-((τ+ν)-(1-γ))) < 1/(96*Real.pi) :=
     ht.eventually (eventually_lt_nhds (by positivity))
@@ -26928,7 +28238,7 @@ theorem smoothing_phase_variation_eventually {γ τ ν : ℝ} (h : 1-γ < τ+ν)
   intro r hr
   have hr₀ : 0 < r := lt_of_lt_of_le zero_lt_one ((le_max_left _ _).trans hr)
   have hh := hA r ((le_max_right _ _).trans hr)
-  have hx : -((τ+ν)-(1-γ))=(1-γ)-(τ+ν) := by ring
+  have hx : -((τ+ν)-(1-γ))=(1-γ)-(τ + ν) := by ring
   rw [hx,Real.rpow_sub hr₀] at hh
   have hh' := (div_lt_iff₀ (Real.rpow_pos_of_pos hr₀ (τ+ν))).mp hh
   have hp := mul_le_mul_of_nonneg_left hh'.le (by positivity : 0 ≤ 96*Real.pi)
@@ -26939,7 +28249,7 @@ error contributions give the frequency-localized decay (3.2) at large scales. -/
 theorem smoothing_eq3_2_reproduced_eventually
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
@@ -26949,7 +28259,8 @@ theorem smoothing_eq3_2_reproduced_eventually
       smoothingCoordinateRegularization ψ₁ 0 r f=f →
       smoothingCoordinateRegularization (some ψ₂) 1 r g=g →
       (∫ z, ‖smoothingLocalizedRaw f g ζ z‖) ≤ C*r^(-s) := by
-  obtain ⟨γ,κ,δ,ε,ν,s,hγ,hγ1,hκ,hκγ,hδ,hε,hν,hs,hτ,hgap,e₁,e₂,e₃,e₄,e₅⟩ := smoothing_section3_4_parameter_choice
+  obtain ⟨γ,κ,δ,ε,ν,s,hγ,hγ1,hκ,hκγ,hδ,hε,hν,hs,hτ,hgap,e₁,e₂,e₃,e₄,e₅⟩ :=
+    smoothing_section3_4_parameter_choice
   obtain ⟨A,B,D,hA,hB,hD,hflat⟩ := smoothing_eq3_30 ψ₁ ψ₂ hγ hγ1 hκ hκγ hδ.le hε hζ hc hpos
   obtain ⟨E,hE,herror⟩ := smoothing_eq3_31 ψ₁ (some ψ₂) hγ1 hδ.le hζ.continuous hc
   obtain ⟨F,hF,hsharp⟩ := smoothing_section3_4_Tsharp ψ₁ ψ₂ hψ₂ Q hQ hnd hν hδ.le hζ hc hpos
@@ -26967,7 +28278,8 @@ theorem smoothing_eq3_2_reproduced_eventually
   let Tflat := smoothingLocalizedRaw (U 0) g ζ+smoothingLocalizedRaw (U 1) (V 0) ζ
   let Tsharp := smoothingLocalizedRaw (U 1) (V 1) ζ
   let Terr := smoothingLocalizedRaw (U 1) (V 2) ζ+smoothingLocalizedRaw (U 2) g ζ
-  have hi := smoothing_section3_3_operator_decomposition ψ₁ (some ψ₂) hr₀ ha hR hρ f g hf hg hrep₁ hrep₂ hζ.continuous hc
+  have hi := smoothing_section3_3_operator_decomposition ψ₁ (some ψ₂) hr₀ ha hR hρ f g hf hg hrep₁
+    hrep₂ hζ.continuous hc
   have hTf : (∫ z, ‖Tflat z‖) ≤ (A+B+D)*r^(-s) := by
     have hh := hflat r hr1 f g hf hg hrep₁ hrep₂
     have h₁ := mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hr1 e₁) hA
@@ -26981,7 +28293,8 @@ theorem smoothing_eq3_2_reproduced_eventually
   have hTe : (∫ z, ‖Terr z‖) ≤ E*r^(-s) := by
     have hh := herror r (r^(γ+κ)) hr1 hR f g hf hg
     exact hh.trans (mul_le_mul_of_nonneg_left (Real.rpow_le_rpow_of_exponent_le hr1 e₄) hE)
-  have hh := smoothing_integral_four_term_bound (H := smoothingLocalizedRaw f g ζ) hi.1 hi.2.1 hi.2.2.1
+  have hh := smoothing_integral_four_term_bound (H := smoothingLocalizedRaw f g ζ) hi.1 hi.2.1
+    hi.2.2.1
     (integrable_zero (ℝ × ℝ) ℂ volume : Integrable (fun _ : ℝ × ℝ => (0:ℂ)))
     (fun z => by simpa only [add_zero] using hi.2.2.2 z)
   simp only [norm_zero,integral_zero,add_zero] at hh
@@ -26992,7 +28305,7 @@ L-infinity input bound on the fixed compact cutoff. -/
 theorem smoothing_eq3_2_reproduced
     (ψ₁ : Option (SchwartzMap ℝ ℂ)) (ψ₂ : SchwartzMap ℝ ℂ)
     (hψ₂ : ∀ ξ : ℝ, (8/3 : ℝ) ≤ |ξ| → ψ₂ ξ=0)
-    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4/3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
+    (Q : LittlewoodPaley.lpCutoffs 1) (hQ : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → Q.cutoff ξ=0)
     (hnd : ψ₁=some (smoothingReproducingAnnularSymbol Q) ∨ ψ₂=smoothingReproducingAnnularSymbol Q)
     {ζ : (ℝ × ℝ) × ℝ → ℂ} (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ)
     (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
@@ -27002,7 +28315,8 @@ theorem smoothing_eq3_2_reproduced
       smoothingCoordinateRegularization ψ₁ 0 r f=f →
       smoothingCoordinateRegularization (some ψ₂) 1 r g=g →
       (∫ z, ‖smoothingLocalizedRaw f g ζ z‖) ≤ C*r^(-s) := by
-  obtain ⟨s,C,r₀,hs,hC,hr₀,hbound⟩ := smoothing_eq3_2_reproduced_eventually ψ₁ ψ₂ hψ₂ Q hQ hnd hζ hc hpos
+  obtain ⟨s,C,r₀,hs,hC,hr₀,hbound⟩ := smoothing_eq3_2_reproduced_eventually ψ₁ ψ₂ hψ₂ Q hQ hnd hζ
+    hc hpos
   let Z := ∫ p : (ℝ × ℝ) × ℝ, ‖ζ p‖
   have hZ : 0 ≤ Z := integral_nonneg (fun _ => norm_nonneg _)
   have hr₀pos : 0 < r₀ := by linarith
@@ -27014,7 +28328,8 @@ theorem smoothing_eq3_2_reproduced
       (mul_le_mul_of_nonneg_right (by nlinarith [Real.rpow_nonneg hr₀pos.le s] : C ≤ C+Z*r₀^s+1)
         (Real.rpow_nonneg hrpos.le _))
   · have hbase : (∫ z, ‖smoothingLocalizedRaw f g ζ z‖) ≤ Z := by
-      simpa only [one_mul,smoothingLocalizedRaw,Function.comp_def,Z] using! smoothingLocalized_measurable_l1_bound
+      simpa only [one_mul,smoothingLocalizedRaw,Function.comp_def,Z] using!
+        smoothingLocalized_measurable_l1_bound
         (f.continuous.measurable.comp smoothingPlaneEquiv.symm.continuous.measurable)
         (g.continuous.measurable.comp smoothingPlaneEquiv.symm.continuous.measurable)
         hζ.continuous hc zero_le_one zero_le_one (fun z => hf _) (fun z => hg _)
@@ -27074,7 +28389,8 @@ theorem smoothing_eq3_2
   intro r f g M₁ M₂ hr hM₁ hM₂ hf hg hfreq
   exact (hbound r f g M₁ M₂ hr hM₁ hM₂ hf hg hfreq).trans
     (mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right
-      (mul_le_mul_of_nonneg_right (by linarith : D ≤ D+1) (Real.rpow_nonneg (by linarith) _)) hM₁) hM₂)
+      (mul_le_mul_of_nonneg_right (by linarith : D ≤ D+1) (Real.rpow_nonneg (by linarith) _)) hM₁)
+        hM₂)
 
 /-- The nonnegative smooth time majorant used in the triangle/Fubini
 display after (3.2), with compact support strictly inside positive times. -/
@@ -27138,7 +28454,8 @@ theorem smoothing_averaging_pair_integrable {F G : ℝ × ℝ → ℂ}
     simpa only [Function.comp_def,Prod.fst_add,Prod.snd_add,← sub_eq_add_neg] using! hbase
   apply (hb.const_mul B).mono' (by fun_prop)
   filter_upwards [] with p
-  rw [Real.norm_eq_abs,abs_of_nonneg (mul_nonneg (norm_nonneg _) (mul_nonneg (hηn _) (norm_nonneg _)))]
+  rw [Real.norm_eq_abs,abs_of_nonneg (mul_nonneg (norm_nonneg _) (mul_nonneg (hηn _) (norm_nonneg
+    _)))]
   exact mul_le_mul_of_nonneg_right (hB _) (mul_nonneg (hηn _) (norm_nonneg _))
 
 /-- The triangle inequality, Fubini, and x-translation in the unnumbered
@@ -27156,27 +28473,36 @@ theorem smoothing_averaging_majorant {F G : ℝ × ℝ → ℂ}
   let H : ℝ × (ℝ × ℝ) → ℝ := fun p => ‖F (p.2.1+p.1,p.2.2)‖*(η p.1*‖G (p.2.1,p.2.2+p.1^2)‖)
   have hJ : Integrable J := smoothing_averaging_pair_integrable hF hG hGi hB hη hηc hηn
   have hH : Integrable H := by
-    have hh := (smoothing_averaging_translation_measurePreserving (fun t => (t,0)) (by fun_prop)).integrable_comp_of_integrable hJ
-    simpa only [J,H,Function.comp_def,Prod.fst_add,Prod.snd_add,Prod.add_def,add_zero,add_sub_cancel_right] using! hh
+    have hh := (smoothing_averaging_translation_measurePreserving (fun t => (t,0))
+      (by fun_prop)).integrable_comp_of_integrable hJ
+    simpa only
+      [J,H,Function.comp_def,Prod.fst_add,Prod.snd_add,Prod.add_def,add_zero,add_sub_cancel_right]
+      using! hh
   have hpoint (z : ℝ × ℝ) : ‖smoothingLocalized F G ζ z‖ ≤ ∫ t, H (t,z) := by
     have hi : Integrable (fun t => H (t,z)) := by
       have hh : Continuous (fun t => ‖F (z.1+t,z.2)‖*(‖G (z.1,z.2+t^2)‖*η t)) := by fun_prop
-      have hs : HasCompactSupport (fun t => ‖F (z.1+t,z.2)‖*(‖G (z.1,z.2+t^2)‖*η t)) := hηc.mul_left.mul_left
+      have hs : HasCompactSupport (fun t => ‖F (z.1+t,z.2)‖*(‖G (z.1,z.2+t^2)‖*η t)) :=
+        hηc.mul_left.mul_left
       simpa only [H,mul_comm (η _) ‖G _‖] using hh.integrable_of_hasCompactSupport hs
     apply norm_integral_le_of_norm_le hi
     filter_upwards [] with t
     change ‖F (z.1+t,z.2)*G (z.1,z.2+t^2)*ζ (z,t)‖ ≤ _
     rw [norm_mul,norm_mul]
-    exact (mul_le_mul_of_nonneg_left (hmajor (z,t)) (mul_nonneg (norm_nonneg _) (norm_nonneg _))).trans_eq (by dsimp [H]; ring)
+    exact (mul_le_mul_of_nonneg_left (hmajor (z,t)) (mul_nonneg (norm_nonneg _) (norm_nonneg
+      _))).trans_eq (by
+      dsimp [H];
+      ring)
   calc
     _ ≤ ∫ z : ℝ × ℝ, ∫ t : ℝ, H (t,z) :=
-      integral_mono (smoothingLocalized_output_integrable hF hG hζ hc).norm hH.integral_prod_right hpoint
+      integral_mono (smoothingLocalized_output_integrable hF hG hζ hc).norm hH.integral_prod_right
+        hpoint
     _ = ∫ t : ℝ, ∫ z : ℝ × ℝ, H (t,z) := (integral_integral_swap hH).symm
     _ = ∫ t : ℝ, ∫ z : ℝ × ℝ, J (t,z) := by
       apply integral_congr_ae
       filter_upwards [] with t
       have he := integral_add_right_eq_self (μ := volume) (fun z : ℝ × ℝ => J (t,z)) (t,0)
-      simpa only [J,H,Prod.fst_add,Prod.snd_add,Prod.add_def,add_zero,add_sub_cancel_right] using! he
+      simpa only [J,H,Prod.fst_add,Prod.snd_add,Prod.add_def,add_zero,add_sub_cancel_right]
+        using! he
     _ = ∫ z : ℝ × ℝ, ∫ t : ℝ, J (t,z) := integral_integral_swap hJ
     _ = _ := by
       apply integral_congr_ae
@@ -27190,8 +28516,10 @@ theorem smoothing_averaging_majorant {F G : ℝ × ℝ → ℂ}
 /-- Reflection of the second coordinate used to match the source parabola. -/
 def smoothingAveragingReflect (z : ℝ × ℝ) : ℝ × ℝ := (z.1,-z.2)
 
-theorem smoothingAveragingReflect_measurePreserving : MeasurePreserving smoothingAveragingReflect volume volume := by
-  exact (MeasurePreserving.id (volume : Measure ℝ)).prod (Measure.measurePreserving_neg (volume : Measure ℝ))
+theorem smoothingAveragingReflect_measurePreserving : MeasurePreserving smoothingAveragingReflect
+  volume volume := by
+  exact (MeasurePreserving.id (volume : Measure ℝ)).prod (Measure.measurePreserving_neg (volume :
+    Measure ℝ))
 
 /-- The parabolic average in the coordinates arising directly from the source x-translation. -/
 def smoothingParabolicAverage (η : ℝ → ℝ) (G : ℝ × ℝ → ℂ) (z : ℝ × ℝ) : ℂ :=
@@ -27205,7 +28533,8 @@ theorem smoothingParabolicAverage_eq (η : ℝ → ℝ) (G : ℝ × ℝ → ℂ)
         (parabolicPlaneEquiv.symm (smoothingAveragingReflect z)) := by
   apply integral_congr_ae
   filter_upwards [] with t
-  rw [map_sub,ContinuousLinearEquiv.apply_symm_apply,parabolicCurve,ContinuousLinearEquiv.apply_symm_apply]
+  rw [map_sub,ContinuousLinearEquiv.apply_symm_apply,parabolicCurve,
+    ContinuousLinearEquiv.apply_symm_apply]
   congr 2
   simp [smoothingAveragingReflect,Prod.sub_def,add_comm]
 
@@ -27214,29 +28543,36 @@ theorem smoothing_parabolic_average_bound {η : ℝ → ℝ}
     (hη : Continuous η) (hηc : HasCompactSupport η) :
     ∃ C : ℝ, 0 < C ∧ ∀ G : ℝ × ℝ → ℂ, Measurable G → Integrable G → MemLp G (3/2) volume →
       MemLp (smoothingParabolicAverage η G) 3 volume ∧
-        eLpNorm (smoothingParabolicAverage η G) 3 volume ≤ ENNReal.ofReal C*eLpNorm G (3/2) volume := by
+        eLpNorm (smoothingParabolicAverage η G) 3 volume ≤ ENNReal.ofReal C*eLpNorm G (3/2) volume
+          := by
   have hη' : Continuous (fun t => (η t:ℂ)) := Complex.continuous_ofReal.comp hη
   have hηc' : HasCompactSupport (fun t => (η t:ℂ)) := hηc.comp_left (g := Complex.ofReal) (by rfl)
   obtain ⟨C,hC,hav⟩ := parabolicAveraging_Lp_improving hη' hηc'
   refine ⟨C,hC,?_⟩
   intro G hm hi hp
-  let F : EuclideanSpace ℝ (Fin 2) → ℂ := fun x => G (smoothingAveragingReflect (parabolicPlaneEquiv x))
-  have hP : MeasurePreserving (fun x : EuclideanSpace ℝ (Fin 2) => smoothingAveragingReflect (parabolicPlaneEquiv x)) volume volume :=
+  let F : EuclideanSpace ℝ (Fin 2) → ℂ := fun x => G (smoothingAveragingReflect
+    (parabolicPlaneEquiv x))
+  have hP : MeasurePreserving (fun x : EuclideanSpace ℝ (Fin 2) => smoothingAveragingReflect
+    (parabolicPlaneEquiv x)) volume volume :=
     smoothingAveragingReflect_measurePreserving.comp parabolicPlaneEquiv_measurePreserving
-  have hQ : MeasurePreserving (fun z : ℝ × ℝ => parabolicPlaneEquiv.symm (smoothingAveragingReflect z)) volume volume :=
+  have hQ : MeasurePreserving (fun z : ℝ × ℝ => parabolicPlaneEquiv.symm
+    (smoothingAveragingReflect z)) volume volume :=
     parabolicPlaneEquiv_measurePreserving.symm.comp smoothingAveragingReflect_measurePreserving
   have hFm : Measurable F := hm.comp hP.measurable
   have hFi : Integrable F := hP.integrable_comp_of_integrable hi
   have hFp : MemLp F (3/2) volume := hp.comp_measurePreserving hP
   obtain ⟨hA,hbound⟩ := hav F hFm hFi hFp
   have he : smoothingParabolicAverage η G =
-      fun z => parabolicWeightedAverage (fun t => (η t:ℂ)) F (parabolicPlaneEquiv.symm (smoothingAveragingReflect z)) :=
+      fun z => parabolicWeightedAverage (fun t => (η t:ℂ)) F (parabolicPlaneEquiv.symm
+        (smoothingAveragingReflect z)) :=
     funext (smoothingParabolicAverage_eq η G)
   rw [he]
   refine ⟨hA.comp_measurePreserving hQ,?_⟩
-  have hout : eLpNorm (fun z => parabolicWeightedAverage (fun t => (η t:ℂ)) F (parabolicPlaneEquiv.symm (smoothingAveragingReflect z))) 3 volume =
+  have hout : eLpNorm (fun z => parabolicWeightedAverage (fun t => (η t:ℂ)) F
+    (parabolicPlaneEquiv.symm (smoothingAveragingReflect z))) 3 volume =
       eLpNorm (parabolicWeightedAverage (fun t => (η t:ℂ)) F) 3 volume := by
-    simpa only [Function.comp_def] using! eLpNorm_comp_measurePreserving (p := (3:ENNReal)) hA.aestronglyMeasurable hQ
+    simpa only [Function.comp_def] using! eLpNorm_comp_measurePreserving (p := (3:ENNReal))
+      hA.aestronglyMeasurable hQ
   rw [hout]
   have hin : eLpNorm F (3/2) volume = eLpNorm G (3/2) volume :=
     eLpNorm_comp_measurePreserving hp.aestronglyMeasurable hP
@@ -27245,10 +28581,10 @@ theorem smoothing_parabolic_average_bound {η : ℝ → ℝ}
 
 /-- The scalar norm pairing in the source Hölder display after (3.2). -/
 theorem smoothing_averaging_holder {F A : ℝ × ℝ → ℂ}
-    (hF : MemLp F (3/2) volume) (hA : MemLp A 3 volume) :
+    (hF : MemLp F (3 / 2) volume) (hA : MemLp A 3 volume) :
     (∫ z, ‖F z‖*‖A z‖) ≤
-      (eLpNorm F (3/2) volume).toReal*(eLpNorm A 3 volume).toReal := by
-  letI : ENNReal.HolderConjugate (3/2) 3 := by
+      (eLpNorm F (3 / 2) volume).toReal*(eLpNorm A 3 volume).toReal := by
+  let : ENNReal.HolderConjugate (3/2) 3 := by
     have hn : (3/2:ENNReal) ≠ 0 := ENNReal.div_ne_zero.mpr ⟨by norm_num,by norm_num⟩
     apply ENNReal.holderConjugate_iff.mpr
     apply (ENNReal.toReal_eq_toReal_iff' (by finiteness) (by finiteness)).mp
@@ -27256,16 +28592,21 @@ theorem smoothing_averaging_holder {F A : ℝ × ℝ → ℂ}
     norm_num [ENNReal.toReal_inv,ENNReal.toReal_div]
   have hp : eLpNorm (fun z => ‖F z‖*‖A z‖) 1 volume ≤
       eLpNorm F (3/2) volume*eLpNorm A 3 volume := by
-    simpa only [eLpNorm_norm,ENNReal.coe_one,one_mul] using
-      (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm (p := 3/2) (q := 3) (r := 1) hF.1.norm hA.1.norm
-        (fun x y : ℝ => x*y) 1 (Filter.Eventually.of_forall (fun _ => by simp)))
+    simpa only [eLpNorm_norm _ hF.aestronglyMeasurable,
+      eLpNorm_norm _ hA.aestronglyMeasurable, ENNReal.coe_one, one_mul] using
+      (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm (p := 3/2) (q := 3) (r := 1)
+        (fun x y : ℝ => x*y) 1 (by fun_prop)
+        hF.aestronglyMeasurable.norm hA.aestronglyMeasurable.norm (Filter.Eventually.of_forall
+          (fun _ => by simp)))
   calc
     _ = ∫ z, ‖‖F z‖*‖A z‖‖ := by simp
     _ = (eLpNorm (fun z => ‖F z‖*‖A z‖) 1 volume).toReal := by
-      rw [eLpNorm_one_eq_lintegral_enorm]
-      simpa only [Pi.mul_apply] using integral_norm_eq_lintegral_enorm (hF.1.norm.mul hA.1.norm)
+      rw [eLpNorm_one_eq_lintegral_enorm (f := fun z => ‖F z‖ * ‖A z‖)
+        (hF.aestronglyMeasurable.norm.mul hA.aestronglyMeasurable.norm)]
+      simpa only [Pi.mul_apply] using integral_norm_eq_lintegral_enorm
+        (hF.aestronglyMeasurable.norm.mul hA.aestronglyMeasurable.norm)
     _ ≤ (eLpNorm F (3/2) volume*eLpNorm A 3 volume).toReal :=
-      ENNReal.toReal_mono (ENNReal.mul_ne_top hF.2.ne hA.2.ne) hp
+      ENNReal.toReal_mono (ENNReal.mul_ne_top hF.eLpNorm_lt_top.ne hA.eLpNorm_lt_top.ne) hp
     _ = _ := ENNReal.toReal_mul
 
 /-- The source average of the absolute value is a nonnegative scalar integral. -/
@@ -27286,26 +28627,31 @@ theorem smoothing_averaging_pair_bound {η : ℝ → ℝ}
     ∃ C : ℝ, 0 < C ∧ ∀ F G : ℝ × ℝ → ℂ,
       MemLp F (3/2) volume → Measurable G → Integrable G → MemLp G (3/2) volume →
       (∫ z, ‖F z‖*(∫ t : ℝ, ‖G (z.1-t,z.2+t^2)‖*η t)) ≤
-        C*(eLpNorm F (3/2) volume).toReal*(eLpNorm G (3/2) volume).toReal := by
+        C*(eLpNorm F (3 / 2) volume).toReal*(eLpNorm G (3 / 2) volume).toReal := by
   obtain ⟨C,hC,hav⟩ := smoothing_parabolic_average_bound hη hηc
   refine ⟨C,hC,?_⟩
   intro F G hF hm hi hp
   have hnm : Measurable (fun z => (‖G z‖:ℂ)) := Complex.continuous_ofReal.measurable.comp hm.norm
   have hni : Integrable (fun z => (‖G z‖:ℂ)) := Complex.ofRealCLM.integrable_comp hi.norm
   have hn : eLpNorm (fun z => (‖G z‖:ℂ)) (3/2) volume = eLpNorm G (3/2) volume :=
-    eLpNorm_congr_norm_ae (Filter.Eventually.of_forall (fun z => by simp))
-  have hnp : MemLp (fun z => (‖G z‖:ℂ)) (3/2) volume := ⟨hnm.aestronglyMeasurable,by rw [hn]; exact hp.2⟩
+    eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (Filter.Eventually.of_forall (fun z =>
+      by simp))
+  have hnp : MemLp (fun z => (‖G z‖:ℂ)) (3/2) volume := by
+    change eLpNorm _ _ _ < ⊤
+    rw [hn]
+    exact hp
   obtain ⟨hA,hbound⟩ := hav _ hnm hni hnp
   rw [hn] at hbound
-  have hr := ENNReal.toReal_mono (ENNReal.mul_ne_top ENNReal.ofReal_ne_top hp.2.ne) hbound
+  have hr := ENNReal.toReal_mono (ENNReal.mul_ne_top ENNReal.ofReal_ne_top hp.eLpNorm_lt_top.ne)
+    hbound
   rw [ENNReal.toReal_mul,ENNReal.toReal_ofReal hC.le] at hr
   calc
     _ = ∫ z, ‖F z‖*‖smoothingParabolicAverage η (fun w => (‖G w‖:ℂ)) z‖ := by
       simp_rw [smoothingParabolicAverage_normInput η hηn]
-    _ ≤ (eLpNorm F (3/2) volume).toReal*
+    _ ≤ (eLpNorm F (3 / 2) volume).toReal*
         (eLpNorm (smoothingParabolicAverage η (fun w => (‖G w‖:ℂ))) 3 volume).toReal :=
       smoothing_averaging_holder hF hA
-    _ ≤ (eLpNorm F (3/2) volume).toReal*(C*(eLpNorm G (3/2) volume).toReal) :=
+    _ ≤ (eLpNorm F (3 / 2) volume).toReal*(C*(eLpNorm G (3 / 2) volume).toReal) :=
       mul_le_mul_of_nonneg_left hr ENNReal.toReal_nonneg
     _ = _ := by ring
 
@@ -27315,7 +28661,7 @@ theorem smoothing_averaging_endpoint {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
     ∃ C : ℝ, 0 < C ∧ ∀ f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ,
       smoothingLocalizedL1 ζ f g ≤
-        C*(eLpNorm f (3/2) volume).toReal*(eLpNorm g (3/2) volume).toReal := by
+        C*(eLpNorm f (3 / 2) volume).toReal*(eLpNorm g (3 / 2) volume).toReal := by
   obtain ⟨η,hη,hηc,hηn,hηpos,hmajor⟩ := smoothing_averaging_time_majorant hζ.continuous hc hpos
   obtain ⟨C,hC,hpair⟩ := smoothing_averaging_pair_bound hη.continuous hηc hηn
   refine ⟨C,hC,?_⟩
@@ -27325,54 +28671,68 @@ theorem smoothing_averaging_endpoint {ζ : (ℝ × ℝ) × ℝ → ℂ}
   have hGi : Integrable (smoothingPlaneFunction g) :=
     smoothingPlaneEquiv_measurePreserving.symm.integrable_comp_of_integrable g.integrable
   have hFp : MemLp (smoothingPlaneFunction f) (3/2) volume :=
-    (f.memLp (3/2) volume).comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
+    (f.memLp (3 / 2) volume).comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
   have hGp : MemLp (smoothingPlaneFunction g) (3/2) volume :=
-    (g.memLp (3/2) volume).comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
+    (g.memLp (3 / 2) volume).comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
   have hFn : eLpNorm (smoothingPlaneFunction f) (3/2) volume = eLpNorm f (3/2) volume :=
-    eLpNorm_comp_measurePreserving f.continuous.aestronglyMeasurable smoothingPlaneEquiv_measurePreserving.symm
+    eLpNorm_comp_measurePreserving f.continuous.aestronglyMeasurable
+      smoothingPlaneEquiv_measurePreserving.symm
   have hGn : eLpNorm (smoothingPlaneFunction g) (3/2) volume = eLpNorm g (3/2) volume :=
-    eLpNorm_comp_measurePreserving g.continuous.aestronglyMeasurable smoothingPlaneEquiv_measurePreserving.symm
+    eLpNorm_comp_measurePreserving g.continuous.aestronglyMeasurable
+      smoothingPlaneEquiv_measurePreserving.symm
   have hB : ∀ z, ‖smoothingPlaneFunction f z‖ ≤ SchwartzMap.seminorm ℝ 0 0 f :=
     fun z => f.norm_le_seminorm ℝ _
-  exact (smoothing_averaging_majorant hF hG hGi hB hζ.continuous hc hη.continuous hηc hηn hmajor).trans
+  exact (smoothing_averaging_majorant hF hG hGi hB hζ.continuous hc hη.continuous hηc hηn
+    hmajor).trans
     (by simpa only [hFn,hGn] using hpair _ _ hFp hG.measurable hGi hGp)
 
 /-- Fiber translations underlying the coordinate Fourier multiplier preserve product volume. -/
 theorem smoothing_coordinate_average_integrable (κ : SchwartzMap ℝ ℂ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) :
-    Integrable (fun p : ℝ × EuclideanSpace ℝ (Fin 2) => κ p.1*f (p.2-EuclideanSpace.single j p.1)) := by
+    Integrable (fun p : ℝ × EuclideanSpace ℝ (Fin 2) => κ p.1*f (p.2-EuclideanSpace.single j p.1))
+      := by
   have hm : MeasurePreserving
-      (fun p : ℝ × EuclideanSpace ℝ (Fin 2) => (p.1,p.2-EuclideanSpace.single j p.1)) volume volume := by
+      (fun p : ℝ × EuclideanSpace ℝ (Fin 2) => (p.1,p.2-EuclideanSpace.single j p.1)) volume
+        volume := by
     change MeasurePreserving _ (volume.prod volume) (volume.prod volume)
     exact (MeasurePreserving.id volume).skew_product
       (g := fun u x => x-EuclideanSpace.single j u) (by
-        simpa only [Pi.sub_apply,Function.comp_def,smoothingCoordinateLine_apply,Function.uncurry_def] using! (continuous_snd.sub ((smoothingCoordinateLine j).continuous.comp continuous_fst)).measurable)
-      (Filter.Eventually.of_forall (fun u => (measurePreserving_sub_right volume (EuclideanSpace.single j u)).map_eq))
+        simpa only
+          [Pi.sub_apply,Function.comp_def,smoothingCoordinateLine_apply,Function.uncurry_def]
+          using! (continuous_snd.sub ((smoothingCoordinateLine j).continuous.comp
+          continuous_fst)).measurable)
+      (Filter.Eventually.of_forall (fun u => (measurePreserving_sub_right volume
+        (EuclideanSpace.single j u)).map_eq))
   exact hm.integrable_comp_of_integrable (κ.integrable.mul_prod f.integrable)
 
 /-- The coordinate convolution has its kernel's L1 norm as an L1 operator bound. -/
 theorem smoothing_coordinate_average_L1 (κ : SchwartzMap ℝ ℂ)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (j : Fin 2) :
-    eLpNorm (fun x => ∫ u : ℝ, κ u*f (x-EuclideanSpace.single j u)) 1 volume ≤
+    eLpNorm (fun x => ∫ u : ℝ, κ u*f (x - EuclideanSpace.single j u)) 1 volume ≤
       eLpNorm κ 1 volume*eLpNorm f 1 volume := by
   have hi := smoothing_coordinate_average_integrable κ f j
   have ho := hi.integral_prod_right
-  have hb : (∫ x, ‖∫ u : ℝ, κ u*f (x-EuclideanSpace.single j u)‖) ≤
+  have hb : (∫ x, ‖∫ u : ℝ, κ u*f (x - EuclideanSpace.single j u)‖) ≤
       (∫ u : ℝ, ‖κ u‖)*(∫ x, ‖f x‖) := by
     calc
-      _ ≤ ∫ x, ∫ u : ℝ, ‖κ u*f (x-EuclideanSpace.single j u)‖ :=
-        integral_mono ho.norm hi.norm.integral_prod_right (fun x => norm_integral_le_integral_norm _)
-      _ = ∫ u : ℝ, ∫ x, ‖κ u*f (x-EuclideanSpace.single j u)‖ :=
+      _ ≤ ∫ x, ∫ u : ℝ, ‖κ u*f (x - EuclideanSpace.single j u)‖ :=
+        integral_mono ho.norm hi.norm.integral_prod_right (fun x => norm_integral_le_integral_norm
+          _)
+      _ = ∫ u : ℝ, ∫ x, ‖κ u*f (x - EuclideanSpace.single j u)‖ :=
         (integral_integral_swap hi.norm).symm
       _ = _ := by
         simp_rw [norm_mul,integral_const_mul]
-        have hs (u : ℝ) : (∫ x, ‖f (x-EuclideanSpace.single j u)‖) = ∫ x, ‖f x‖ :=
+        have hs (u : ℝ) : (∫ x, ‖f (x - EuclideanSpace.single j u)‖) = ∫ x, ‖f x‖ :=
           integral_sub_right_eq_self (μ := volume) (fun x => ‖f x‖) (EuclideanSpace.single j u)
         simp_rw [hs]
         exact integral_mul_const _ _
-  simp_rw [eLpNorm_one_eq_lintegral_enorm]
-  rw [← ofReal_integral_norm_eq_lintegral_enorm ho,← ofReal_integral_norm_eq_lintegral_enorm κ.integrable,
-    ← ofReal_integral_norm_eq_lintegral_enorm f.integrable,← ENNReal.ofReal_mul (integral_nonneg (fun u => norm_nonneg (κ u)))]
+  rw [eLpNorm_one_eq_lintegral_enorm ho.aestronglyMeasurable,
+    eLpNorm_one_eq_lintegral_enorm κ.continuous.aestronglyMeasurable,
+    eLpNorm_one_eq_lintegral_enorm f.continuous.aestronglyMeasurable]
+  rw [← ofReal_integral_norm_eq_lintegral_enorm ho,← ofReal_integral_norm_eq_lintegral_enorm
+    κ.integrable,
+    ← ofReal_integral_norm_eq_lintegral_enorm f.integrable,← ENNReal.ofReal_mul (integral_nonneg
+      (fun u => norm_nonneg (κ u)))]
   exact ENNReal.ofReal_le_ofReal hb
 
 /-- The coordinate multiplier used in the source frequency reduction has
@@ -27382,15 +28742,18 @@ theorem smoothingCoordinateRegularization_L1 (ψ : SchwartzMap ℝ ℂ) (j : Fin
     eLpNorm (smoothingCoordinateRegularization (some ψ) j r f) 1 volume ≤
       eLpNorm (𝓕⁻ ψ : SchwartzMap ℝ ℂ) 1 volume*eLpNorm f 1 volume := by
   have he : (smoothingCoordinateRegularization (some ψ) j r f : EuclideanSpace ℝ (Fin 2) → ℂ) =
-      fun x => ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u*f (x-EuclideanSpace.single j u) := by
+      fun x => ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u*f (x - EuclideanSpace.single j u) := by
     ext x
-    simpa only [smoothingScalarRescale_kernel] using smoothingCoordinateRegularization_convolution ψ j hr f x
+    simpa only [smoothingScalarRescale_kernel] using
+      smoothingCoordinateRegularization_convolution ψ j hr f x
   rw [he]
   have hb := smoothing_coordinate_average_L1 (𝓕⁻ (smoothingScalarRescale ψ hr)) f j
-  have hn : eLpNorm (𝓕⁻ (smoothingScalarRescale ψ hr) : SchwartzMap ℝ ℂ) 1 volume = eLpNorm (𝓕⁻ ψ : SchwartzMap ℝ ℂ) 1 volume := by
-    simp_rw [eLpNorm_one_eq_lintegral_enorm]
+  have hn : eLpNorm (𝓕⁻ (smoothingScalarRescale ψ hr) : SchwartzMap ℝ ℂ) 1 volume = eLpNorm (𝓕⁻ ψ
+    : SchwartzMap ℝ ℂ) 1 volume := by
+    simp_rw [eLpNorm_one_eq_lintegral_enorm (SchwartzMap.continuous _).aestronglyMeasurable]
     rw [← ofReal_integral_norm_eq_lintegral_enorm (𝓕⁻ (smoothingScalarRescale ψ hr)).integrable,
-      ← ofReal_integral_norm_eq_lintegral_enorm (𝓕⁻ ψ).integrable,smoothingScalarRescale_kernel_norm ψ hr]
+      ← ofReal_integral_norm_eq_lintegral_enorm (𝓕⁻
+        ψ).integrable,smoothingScalarRescale_kernel_norm ψ hr]
   rw [hn] at hb
   exact hb
 
@@ -27399,10 +28762,15 @@ theorem smoothing_schwartz_norm_le_Linfty
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)) :
     ‖f x‖ ≤ (eLpNorm f ⊤ volume).toReal := by
   have ha : ∀ᵐ y, ‖f y‖ ≤ (eLpNorm f ⊤ volume).toReal := by
-    filter_upwards [ae_le_eLpNormEssSup (f := (f : EuclideanSpace ℝ (Fin 2) → ℂ)) (μ := volume)] with y hy
-    have hh := ENNReal.toReal_mono (f.memLp ⊤ volume).2.ne hy
-    simpa only [← ofReal_norm,ENNReal.toReal_ofReal (norm_nonneg _),eLpNorm_exponent_top] using hh
-  have hc : IsClosed {y | ‖f y‖ ≤ (eLpNorm f ⊤ volume).toReal} := isClosed_le f.continuous.norm continuous_const
+    filter_upwards [ae_le_eLpNormEssSup (f := (f : EuclideanSpace ℝ (Fin 2) → ℂ)) (μ := volume)]
+      with y hy
+    have hh := ENNReal.toReal_mono
+      (by simpa only [eLpNorm_exponent_top f.continuous.aestronglyMeasurable]
+        using (f.memLp ⊤ volume).ne) hy
+    simpa only [← ofReal_norm,ENNReal.toReal_ofReal (norm_nonneg _),eLpNorm_exponent_top
+      f.continuous.aestronglyMeasurable] using hh
+  have hc : IsClosed {y | ‖f y‖ ≤ (eLpNorm f ⊤ volume).toReal} := isClosed_le f.continuous.norm
+    continuous_const
   have hs : {y | ‖f y‖ ≤ (eLpNorm f ⊤ volume).toReal} = Set.univ :=
     hc.closure_eq.symm.trans (Measure.dense_of_ae ha).closure_eq
   have hx := Set.mem_univ x
@@ -27414,8 +28782,10 @@ projection, before interpolation with the spatial regularizer. -/
 theorem smoothingCoordinateRegularization_endpoints (ψ : SchwartzMap ℝ ℂ) :
     ∃ K : ℝ, 0 < K ∧ ∀ (j : Fin 2) (r : ℝ), 0 < r →
     ∀ f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ,
-      eLpNorm (smoothingCoordinateRegularization (some ψ) j r f) 1 volume ≤ ENNReal.ofReal K*eLpNorm f 1 volume ∧
-      eLpNorm (smoothingCoordinateRegularization (some ψ) j r f) ⊤ volume ≤ ENNReal.ofReal K*eLpNorm f ⊤ volume := by
+      eLpNorm (smoothingCoordinateRegularization (some ψ) j r f) 1 volume ≤ ENNReal.ofReal
+        K*eLpNorm f 1 volume ∧
+      eLpNorm (smoothingCoordinateRegularization (some ψ) j r f) ⊤ volume ≤ ENNReal.ofReal
+        K*eLpNorm f ⊤ volume := by
   obtain ⟨D,hD,hb⟩ := smoothingCoordinateRegularization_bound (some ψ)
   let J : ℝ := ∫ u : ℝ, ‖(𝓕⁻ ψ) u‖
   have hJ : 0 ≤ J := integral_nonneg (fun _ => norm_nonneg _)
@@ -27427,16 +28797,18 @@ theorem smoothingCoordinateRegularization_endpoints (ψ : SchwartzMap ℝ ℂ) :
   · apply (smoothingCoordinateRegularization_L1 ψ j hr f).trans
     apply mul_le_mul' _ le_rfl
     have he : eLpNorm (𝓕⁻ ψ : SchwartzMap ℝ ℂ) 1 volume = ENNReal.ofReal J := by
-      rw [eLpNorm_one_eq_lintegral_enorm,← ofReal_integral_norm_eq_lintegral_enorm (𝓕⁻ ψ).integrable]
+      rw [eLpNorm_one_eq_lintegral_enorm (𝓕⁻ ψ).continuous.aestronglyMeasurable,
+        ← ofReal_integral_norm_eq_lintegral_enorm (𝓕⁻ ψ).integrable]
     rw [he]
     apply ENNReal.ofReal_le_ofReal
     dsimp [K]
     linarith
   · have hbound := hb j r hr f (smoothing_schwartz_norm_le_Linfty f)
     have hn := eLpNormEssSup_le_of_ae_bound (μ := volume) (Filter.Eventually.of_forall hbound)
-    change eLpNormEssSup (smoothingCoordinateRegularization (some ψ) j r f) volume ≤ _
+    rw [eLpNorm_exponent_top
+      (smoothingCoordinateRegularization (some ψ) j r f).continuous.aestronglyMeasurable]
     apply hn.trans
-    rw [ENNReal.ofReal_mul hD,ENNReal.ofReal_toReal (f.memLp ⊤ volume).2.ne]
+    rw [ENNReal.ofReal_mul hD,ENNReal.ofReal_toReal (f.memLp ⊤ volume).eLpNorm_lt_top.ne]
     apply mul_le_mul' _ le_rfl
     apply ENNReal.ofReal_le_ofReal
     dsimp [K]
@@ -27448,7 +28820,8 @@ def smoothingProjectedRegularizer (ψ : SchwartzMap ℝ ℂ) (j : Fin 2) (r : �
     (hκ : HasCompactSupport κ) (hχ : HasCompactSupport χ) :
     SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ →ₗ[ℂ]
       SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ :=
-  (SchwartzMap.fourierMultiplierCLM ℂ (fun ξ : EuclideanSpace ℝ (Fin 2) => ψ (ξ j/r))).toLinearMap.comp
+  (SchwartzMap.fourierMultiplierCLM ℂ (fun ξ : EuclideanSpace ℝ (Fin 2) => ψ (ξ
+    j/r))).toLinearMap.comp
     (smoothingSimpleRegularizer κ χ hκ hχ)
 
 @[simp] theorem smoothingProjectedRegularizer_apply (ψ : SchwartzMap ℝ ℂ) (j : Fin 2) (r : ℝ)
@@ -27475,12 +28848,14 @@ theorem smoothingProjectedRegularizer_Lp (ψ : SchwartzMap ℝ ℂ) :
   let Q := smoothingProjectedRegularizer ψ j r κ χ hκ hχ
   let T : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ → EuclideanSpace ℝ (Fin 2) → ℂ := fun u => Q u
   have h0 (u : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) (hu : Integrable u) :
-      eLpNorm (T u) 1 volume ≤ ENNReal.ofReal (K*D)*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) 1 volume := by
+      eLpNorm (T u) 1 volume ≤ ENNReal.ofReal (K*D)*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) 1
+        volume := by
     have hh := (hends j r hr (smoothingSimpleRegularizer κ χ hκ hχ u)).1
     have hs := (smoothingSimpleRegularizer_L1 κ χ hκ hχ hχb u hu).trans (mul_le_mul' hκD le_rfl)
     exact (hh.trans (mul_le_mul' le_rfl hs)).trans_eq (by rw [ENNReal.ofReal_mul hK.le,mul_assoc])
   have h1 (u : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) :
-      eLpNorm (T u) ⊤ volume ≤ ENNReal.ofReal (K*D)*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume := by
+      eLpNorm (T u) ⊤ volume ≤ ENNReal.ofReal (K*D)*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤
+        volume := by
     have hh := (hends j r hr (smoothingSimpleRegularizer κ χ hκ hχ u)).2
     have hs := (smoothingSimpleRegularizer_Linfty κ χ hκ hχ hχb u).trans (mul_le_mul' hκD le_rfl)
     exact (hh.trans (mul_le_mul' le_rfl hs)).trans_eq (by rw [ENNReal.ofReal_mul hK.le,mul_assoc])
@@ -27488,8 +28863,14 @@ theorem smoothingProjectedRegularizer_Lp (ψ : SchwartzMap ℝ ℂ) :
     simpa only [inv_one,ENNReal.inv_top,mul_one,mul_zero,add_zero] using hp
   obtain ⟨_,hb⟩ := SteinInterpolation.riesz_thorin_core
     (μ := volume) (ν := volume) (T := T) (by norm_num) le_top (by norm_num) le_top hθ he he
-    (by intro u v hu hv; exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ (Fin 2) → ℂ)) (map_add Q u v))
-    (by intro c u hu; exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ (Fin 2) → ℂ)) (map_smul Q c u))
+    (by
+      intro u v hu hv;
+      exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ
+        (Fin 2) → ℂ)) (map_add Q u v))
+    (by
+      intro c u hu;
+      exact congrArg (fun q : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ => (q : EuclideanSpace ℝ
+        (Fin 2) → ℂ)) (map_smul Q c u))
     (by intro u hu; exact (Q u).continuous.measurable)
     (mul_pos hK hD) (mul_pos hK hD) h0 (fun u hu => h1 u) f hf
   have hpow : Real.rpow (K*D) (1-θ)*Real.rpow (K*D) θ = K*D := by
@@ -27506,27 +28887,34 @@ def smoothingLocalizedSchwartzBilinear {ζ : (ℝ × ℝ) × ℝ → ℂ}
   toFun f := {
     toFun g := smoothingLocalized (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ
     map_add' g h := by
-      have he : smoothingPlaneFunction (g+h) = smoothingPlaneFunction g+smoothingPlaneFunction h := rfl
+      have he : smoothingPlaneFunction (g+h) = smoothingPlaneFunction g+smoothingPlaneFunction h
+        := rfl
       rw [he]
       exact smoothingLocalized_add_right (smoothingPlaneFunction_continuous f)
         (smoothingPlaneFunction_continuous g) (smoothingPlaneFunction_continuous h) hζ hc
     map_smul' c g := by
       have he : smoothingPlaneFunction (c • g) = c • smoothingPlaneFunction g := rfl
       rw [he]
-      simpa only [one_smul,one_mul,RingHom.id_apply] using! smoothingLocalized_smul (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ 1 c }
+      simpa only [one_smul,one_mul,RingHom.id_apply] using! smoothingLocalized_smul
+        (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ 1 c }
   map_add' f h := by
     ext g z
-    change (∫ t : ℝ, (smoothingPlaneFunction f (z.1+t,z.2)+smoothingPlaneFunction h (z.1+t,z.2))*smoothingPlaneFunction g (z.1,z.2+t^2)*ζ (z,t)) = _
+    change (∫ t : ℝ, (smoothingPlaneFunction f (z.1+t,z.2)+smoothingPlaneFunction h
+      (z.1+t,z.2))*smoothingPlaneFunction g (z.1,z.2+t^2)*ζ (z,t)) = _
     simp_rw [add_mul]
     exact integral_add
-      (smoothingLocalized_integrable (smoothingPlaneFunction_continuous f) (smoothingPlaneFunction_continuous g) hζ hc z)
-      (smoothingLocalized_integrable (smoothingPlaneFunction_continuous h) (smoothingPlaneFunction_continuous g) hζ hc z)
+      (smoothingLocalized_integrable (smoothingPlaneFunction_continuous f)
+        (smoothingPlaneFunction_continuous g) hζ hc z)
+      (smoothingLocalized_integrable (smoothingPlaneFunction_continuous h)
+        (smoothingPlaneFunction_continuous g) hζ hc z)
   map_smul' c f := by
     ext g z
     have he : smoothingPlaneFunction (c • f) = c • smoothingPlaneFunction f := rfl
-    change smoothingLocalized (smoothingPlaneFunction (c • f)) (smoothingPlaneFunction g) ζ z = c*smoothingLocalized (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ z
+    change smoothingLocalized (smoothingPlaneFunction (c • f)) (smoothingPlaneFunction g) ζ z =
+      c*smoothingLocalized (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ z
     rw [he]
-    have hh := congrFun (smoothingLocalized_smul (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ c 1) z
+    have hh := congrFun (smoothingLocalized_smul (smoothingPlaneFunction f)
+      (smoothingPlaneFunction g) ζ c 1) z
     simpa only [one_smul,mul_one,Pi.smul_apply,smul_eq_mul] using hh
 
 /-- The L1 seminorm of the actual bilinear map is the source L1 quantity. -/
@@ -27535,9 +28923,13 @@ theorem smoothingLocalizedSchwartzBilinear_L1 {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
     eLpNorm (smoothingLocalizedSchwartzBilinear hζ hc f g) 1 volume =
       ENNReal.ofReal (smoothingLocalizedL1 ζ f g) := by
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (f := smoothingLocalizedSchwartzBilinear hζ hc f g)
+    (smoothingLocalized_continuous (smoothingPlaneFunction_continuous f)
+      (smoothingPlaneFunction_continuous g) hζ hc).aestronglyMeasurable]
   exact (ofReal_integral_norm_eq_lintegral_enorm
-    (smoothingLocalized_output_integrable (smoothingPlaneFunction_continuous f) (smoothingPlaneFunction_continuous g) hζ hc)).symm
+    (smoothingLocalized_output_integrable (smoothingPlaneFunction_continuous f)
+      (smoothingPlaneFunction_continuous g) hζ hc)).symm
 
 /-- The averaging endpoint in the seminorm form consumed by interpolation. -/
 theorem smoothingLocalizedSchwartzBilinear_averaging {ζ : (ℝ × ℝ) × ℝ → ℂ}
@@ -27551,7 +28943,8 @@ theorem smoothingLocalizedSchwartzBilinear_averaging {ζ : (ℝ × ℝ) × ℝ �
   rw [smoothingLocalizedSchwartzBilinear_L1]
   apply (ENNReal.ofReal_le_ofReal (hb f g)).trans_eq
   rw [ENNReal.ofReal_mul (mul_nonneg hC.le ENNReal.toReal_nonneg),ENNReal.ofReal_mul hC.le,
-    ENNReal.ofReal_toReal (f.memLp (3/2) volume).2.ne,ENNReal.ofReal_toReal (g.memLp (3/2) volume).2.ne]
+    ENNReal.ofReal_toReal (f.memLp (3 / 2) volume).eLpNorm_lt_top.ne,ENNReal.ofReal_toReal (g.memLp
+      (3 / 2) volume).eLpNorm_lt_top.ne]
 
 /-- Estimate (3.2) in the essential-supremum form consumed by interpolation. -/
 theorem smoothingLocalizedSchwartzBilinear_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
@@ -27571,7 +28964,8 @@ theorem smoothingLocalizedSchwartzBilinear_decay {ζ : (ℝ × ℝ) × ℝ → �
   rw [smoothingLocalizedSchwartzBilinear_L1]
   apply (ENNReal.ofReal_le_ofReal hh).trans_eq
   rw [ENNReal.ofReal_mul (mul_nonneg hcr ENNReal.toReal_nonneg),ENNReal.ofReal_mul hcr,
-    ENNReal.ofReal_toReal (f.memLp ⊤ volume).2.ne,ENNReal.ofReal_toReal (g.memLp ⊤ volume).2.ne]
+    ENNReal.ofReal_toReal (f.memLp ⊤ volume).eLpNorm_lt_top.ne,ENNReal.ofReal_toReal (g.memLp ⊤
+      volume).eLpNorm_lt_top.ne]
 
 /-- The interpolation constant retains one quarter of the decay exponent. -/
 theorem smoothing_interpolation_decay_factor {C0 C1 A r s : ℝ}
@@ -27587,7 +28981,8 @@ theorem smoothing_interpolation_decay_factor {C0 C1 A r s : ℝ}
     ring
   calc
     _ = (C0^(3/4:ℝ)*C1^(1/4:ℝ))*((r^(-s))^(1/4:ℝ))*(A^(3/4:ℝ)*A^(1/4:ℝ)) := by
-      rw [Real.mul_rpow hC0.le hA.le,Real.mul_rpow (mul_nonneg hC1.le (Real.rpow_nonneg hr.le _)) hA.le,
+      rw [Real.mul_rpow hC0.le hA.le,Real.mul_rpow (mul_nonneg hC1.le (Real.rpow_nonneg hr.le _))
+        hA.le,
         Real.mul_rpow hC1.le (Real.rpow_nonneg hr.le _)]
       ring
     _ = _ := by rw [hpow,hrpow]
@@ -27598,13 +28993,18 @@ is an estimate for the actual operator (3.1), on the approximation core. -/
 theorem smoothing_regularized_interpolation {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) (hpos : ∀ p ∈ tsupport ζ, 0 < p.2) :
     ∃ s C : ℝ, 0 < s ∧ 0 < C ∧ ∀ r A0 A1 : ℝ, 1 ≤ r → 0 < A0 → 0 < A1 →
-    ∀ Q0 Q1 : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ →ₗ[ℂ] SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ,
+    ∀ Q0 Q1 : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ →ₗ[ℂ] SchwartzMap (EuclideanSpace ℝ (Fin 2))
+      ℂ,
     (∀ u : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ, Integrable u →
-      eLpNorm (Q0 u) (3/2) volume ≤ ENNReal.ofReal A0*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) (3/2) volume ∧
-      eLpNorm (Q0 u) ⊤ volume ≤ ENNReal.ofReal A0*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume) →
+      eLpNorm (Q0 u) (3/2) volume ≤ ENNReal.ofReal A0*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ)
+        (3/2) volume ∧
+      eLpNorm (Q0 u) ⊤ volume ≤ ENNReal.ofReal A0*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤
+        volume) →
     (∀ u : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ, Integrable u →
-      eLpNorm (Q1 u) (3/2) volume ≤ ENNReal.ofReal A1*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) (3/2) volume ∧
-      eLpNorm (Q1 u) ⊤ volume ≤ ENNReal.ofReal A1*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume) →
+      eLpNorm (Q1 u) (3/2) volume ≤ ENNReal.ofReal A1*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ)
+        (3/2) volume ∧
+      eLpNorm (Q1 u) ⊤ volume ≤ ENNReal.ofReal A1*eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤
+        volume) →
     (∀ f g, smoothingAnnularSupport 0 r (Q0 f) ∨ smoothingAnnularSupport 1 r (Q1 g)) →
     ∀ f g : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ, Integrable f → Integrable g →
       eLpNorm (smoothingLocalizedSchwartzBilinear hζ.continuous hc (Q0 f) (Q1 g)) 1 volume ≤
@@ -27612,7 +29012,9 @@ theorem smoothing_regularized_interpolation {ζ : (ℝ × ℝ) × ℝ → ℂ}
           eLpNorm (g : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume := by
   obtain ⟨C0,hC0,havg⟩ := smoothingLocalizedSchwartzBilinear_averaging hζ hc hpos
   obtain ⟨s,C1,hs,hC1,hdecay⟩ := smoothingLocalizedSchwartzBilinear_decay hζ hc hpos
-  refine ⟨s/4,C0^(3/4:ℝ)*C1^(1/4:ℝ),by positivity,mul_pos (Real.rpow_pos_of_pos hC0 _) (Real.rpow_pos_of_pos hC1 _),?_⟩
+  refine
+    ⟨s/4,C0^(3/4:ℝ)*C1^(1/4:ℝ),by
+      positivity,mul_pos (Real.rpow_pos_of_pos hC0 _) (Real.rpow_pos_of_pos hC1 _),?_⟩
   intro r A0 A1 hr hA0 hA1 Q0 Q1 hQ0 hQ1 hfreq f g hf hg
   let B := (smoothingLocalizedSchwartzBilinear hζ.continuous hc).compl₁₂ Q0 Q1
   have hBm : ∀ u v, Measurable (B u v) := by
@@ -27625,22 +29027,27 @@ theorem smoothing_regularized_interpolation {ζ : (ℝ × ℝ) × ℝ → ℂ}
       (smoothingPlaneFunction_continuous (Q1 v)) hζ.continuous hc
   have hB0 (u v : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) (hu : Integrable u) (hv : Integrable v) :
       eLpNorm (B u v) 1 volume ≤ ENNReal.ofReal (C0*(A0*A1))*
-        eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) (3/2) volume*eLpNorm (v : EuclideanSpace ℝ (Fin 2) → ℂ) (3/2) volume := by
+        eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) (3/2) volume*eLpNorm (v : EuclideanSpace ℝ (Fin
+          2) → ℂ) (3/2) volume := by
     apply (havg (Q0 u) (Q1 v)).trans
     apply (mul_le_mul' (mul_le_mul' le_rfl (hQ0 u hu).1) (hQ1 v hv).1).trans_eq
     rw [ENNReal.ofReal_mul hC0.le,ENNReal.ofReal_mul hA0.le]
     ring
   have hB1 (u v : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) (hu : Integrable u) (hv : Integrable v) :
       eLpNorm (B u v) 1 volume ≤ ENNReal.ofReal (C1*r^(-s)*(A0*A1))*
-        eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume*eLpNorm (v : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume := by
+        eLpNorm (u : EuclideanSpace ℝ (Fin 2) → ℂ) ⊤ volume*eLpNorm (v : EuclideanSpace ℝ (Fin 2)
+          → ℂ) ⊤ volume := by
     apply (hdecay r hr (Q0 u) (Q1 v) (hfreq u v)).trans
     apply (mul_le_mul' (mul_le_mul' le_rfl (hQ0 u hu).2) (hQ1 v hv).2).trans_eq
-    rw [ENNReal.ofReal_mul (mul_nonneg hC1.le (Real.rpow_nonneg (by linarith) _)),ENNReal.ofReal_mul hA0.le]
+    rw [ENNReal.ofReal_mul (mul_nonneg hC1.le (Real.rpow_nonneg (by linarith)
+      _)),ENNReal.ofReal_mul hA0.le]
     ring
   have hbound := smoothing_bilinear_interpolation B hBm hBi
-    (mul_pos hC0 (mul_pos hA0 hA1)) (mul_pos (mul_pos hC1 (Real.rpow_pos_of_pos (by linarith) _)) (mul_pos hA0 hA1))
+    (mul_pos hC0 (mul_pos hA0 hA1)) (mul_pos (mul_pos hC1 (Real.rpow_pos_of_pos (by linarith) _))
+      (mul_pos hA0 hA1))
     hB0 hB1 f g hf hg
-  have he := smoothing_interpolation_decay_factor (s := s) hC0 hC1 (mul_pos hA0 hA1) (by linarith : 0<r)
+  have he := smoothing_interpolation_decay_factor (s := s) hC0 hC1 (mul_pos hA0 hA1)
+    (by linarith : 0<r)
   rw [he] at hbound
   simpa only [B,mul_assoc] using! hbound
 
@@ -27660,16 +29067,18 @@ theorem smoothingLocalizedSchwartzBilinear_tendsto {ζ : (ℝ × ℝ) × ℝ →
   have hi : Integrable (fun t : ℝ => ζ (z,t)) := by
     simpa only [one_mul] using smoothingLocalized_integrable
       (f₁ := fun _ => (1:ℂ)) (f₂ := fun _ => (1:ℂ)) continuous_const continuous_const hζ hc z
-  apply tendsto_integral_of_dominated_convergence (fun t : ℝ => M*N*‖ζ (z,t)‖)
+  apply tendsto_integral_of_dominated_convergence (fun t : ℝ => M*N*‖ζ (z, t)‖)
   · intro n
     exact (smoothingLocalized_integrable (smoothingPlaneFunction_continuous (f n))
       (smoothingPlaneFunction_continuous (g n)) hζ hc z).aestronglyMeasurable
   · exact hi.norm.const_mul (M*N)
   · intro n
     filter_upwards [] with t
-    change ‖f n (smoothingPlaneEquiv.symm (z.1+t,z.2))*g n (smoothingPlaneEquiv.symm (z.1,z.2+t^2))*ζ (z,t)‖ ≤ _
+    change ‖f n (smoothingPlaneEquiv.symm (z.1+t,z.2))*g n (smoothingPlaneEquiv.symm
+      (z.1,z.2+t^2))*ζ (z,t)‖ ≤ _
     rw [norm_mul,norm_mul]
-    exact mul_le_mul_of_nonneg_right (mul_le_mul (hf n _) (hg n _) (norm_nonneg _) hM) (norm_nonneg _)
+    exact mul_le_mul_of_nonneg_right (mul_le_mul (hf n _) (hg n _) (norm_nonneg _) hM)
+      (norm_nonneg _)
   · filter_upwards [] with t
     exact ((hfl (smoothingPlaneEquiv.symm (z.1+t,z.2))).mul
       (hgl (smoothingPlaneEquiv.symm (z.1,z.2+t^2)))).mul tendsto_const_nhds
@@ -27684,7 +29093,8 @@ theorem smoothingLocalizedSchwartzBilinear_bound_of_tendsto {ζ : (ℝ × ℝ) �
     (hf : ∀ n x, ‖f n x‖ ≤ M) (hg : ∀ n x, ‖g n x‖ ≤ N)
     (hfl : ∀ x, Filter.Tendsto (fun n => f n x) Filter.atTop (nhds (F x)))
     (hgl : ∀ x, Filter.Tendsto (fun n => g n x) Filter.atTop (nhds (G x)))
-    {C : ENNReal} (hb : ∀ n, eLpNorm (smoothingLocalizedSchwartzBilinear hζ hc (f n) (g n)) 1 volume ≤ C) :
+    {C : ENNReal} (hb : ∀ n, eLpNorm (smoothingLocalizedSchwartzBilinear hζ hc (f n) (g n)) 1
+      volume ≤ C) :
     eLpNorm (smoothingLocalizedSchwartzBilinear hζ hc F G) 1 volume ≤ C := by
   apply Lp.eLpNorm_le_of_ae_tendsto (u := Filter.atTop)
     (f := fun n => smoothingLocalizedSchwartzBilinear hζ hc (f n) (g n))
@@ -27692,7 +29102,10 @@ theorem smoothingLocalizedSchwartzBilinear_bound_of_tendsto {ζ : (ℝ × ℝ) �
   · intro n
     exact (smoothingLocalized_continuous (smoothingPlaneFunction_continuous (f n))
       (smoothingPlaneFunction_continuous (g n)) hζ hc).aestronglyMeasurable
-  · exact Filter.Eventually.of_forall (smoothingLocalizedSchwartzBilinear_tendsto hζ hc f g F G hM hN hf hg hfl hgl)
+  · exact (smoothingLocalized_continuous (smoothingPlaneFunction_continuous F)
+      (smoothingPlaneFunction_continuous G) hζ hc).aestronglyMeasurable
+  · exact Filter.Eventually.of_forall (smoothingLocalizedSchwartzBilinear_tendsto hζ hc f g F G hM
+      hN hf hg hfl hgl)
 
 /-- Coordinate Fourier regularization preserves bounded pointwise
 convergence, by its integrable convolution kernel. -/
@@ -27706,19 +29119,22 @@ theorem smoothingCoordinateRegularization_tendsto (ψ : SchwartzMap ℝ ℂ) (j 
       Filter.atTop (nhds (smoothingCoordinateRegularization (some ψ) j r F x)) := by
   have he (g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
       smoothingCoordinateRegularization (some ψ) j r g x =
-      ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u*g (x-EuclideanSpace.single j u) := by
-    simpa only [smoothingScalarRescale_kernel] using smoothingCoordinateRegularization_convolution ψ j hr g x
+      ∫ u : ℝ, (𝓕⁻ (smoothingScalarRescale ψ hr)) u*g (x - EuclideanSpace.single j u) := by
+    simpa only [smoothingScalarRescale_kernel] using
+      smoothingCoordinateRegularization_convolution ψ j hr g x
   simp_rw [he]
-  apply tendsto_integral_of_dominated_convergence (fun u : ℝ => ‖(𝓕⁻ (smoothingScalarRescale ψ hr)) u‖*M)
+  apply tendsto_integral_of_dominated_convergence (fun u : ℝ => ‖(𝓕⁻ (smoothingScalarRescale ψ
+    hr)) u‖*M)
   · intro n
-    exact (smoothing_coordinate_convolution_integrable (𝓕⁻ (smoothingScalarRescale ψ hr)) j (f n) (hf n) x).aestronglyMeasurable
+    exact (smoothing_coordinate_convolution_integrable (𝓕⁻ (smoothingScalarRescale ψ hr)) j (f n)
+      (hf n) x).aestronglyMeasurable
   · exact (𝓕⁻ (smoothingScalarRescale ψ hr)).integrable.norm.mul_const M
   · intro n
     filter_upwards [] with u
     rw [norm_mul]
     exact mul_le_mul_of_nonneg_left (hf n _) (norm_nonneg _)
   · filter_upwards [] with u
-    exact Filter.Tendsto.const_mul _ (hlim (x-EuclideanSpace.single j u))
+    exact Filter.Tendsto.const_mul _ (hlim (x - EuclideanSpace.single j u))
 
 /-- Common endpoint constants for the normalized projected approximation,
 ready to instantiate the actual bilinear interpolation bound. -/
@@ -27748,7 +29164,8 @@ theorem smoothingProjectedRegularizer_interpolation_bounds (ψ : SchwartzMap ℝ
   · have hh := (he j r hr (smoothingSimpleRegularizer κ χ hκ hχ u)).2
     have hb := (smoothingSimpleRegularizer_Linfty κ χ hκ hχ hχb u).trans (mul_le_mul' hκ1 le_rfl)
     simp only [one_mul] at hb
-    exact (hh.trans (mul_le_mul' le_rfl hb)).trans (mul_le_mul' (ENNReal.ofReal_le_ofReal (by linarith)) le_rfl)
+    exact (hh.trans (mul_le_mul' le_rfl hb)).trans (mul_le_mul' (ENNReal.ofReal_le_ofReal
+      (by linarith)) le_rfl)
 
 /-- A scalar annular symbol gives the exact Fourier support required by (3.2). -/
 theorem smoothingCoordinateRegularization_symbol_annular (ψ : SchwartzMap ℝ ℂ)
@@ -27829,31 +29246,37 @@ theorem smoothing_interpolation_approximation_data
         (nhds (smoothingInterpolationApprox1 f m n x))) ∧
       (∀ m x, Filter.Tendsto (fun n => smoothingInterpolationApprox1 f m n x) Filter.atTop
         (nhds (smoothingInterpolationApprox2 f m x))) ∧
-      (∀ x, Filter.Tendsto (fun m => smoothingInterpolationApprox2 f m x) Filter.atTop (nhds (f x))) := by
+      (∀ x, Filter.Tendsto (fun m => smoothingInterpolationApprox2 f m x) Filter.atTop (nhds (f
+        x))) := by
   let A := SchwartzMap.seminorm ℝ 0 0 f
   have hA : 0 ≤ A := apply_nonneg _ _
   have hfb (x) : ‖f x‖ ≤ A := f.norm_le_seminorm ℝ x
   have hsb (k : ℕ) (x) : ‖smoothingSimpleApproximation f k x‖ ≤ 2*A :=
-    (smoothingSimpleApproximation_bound f k x).trans (mul_le_mul_of_nonneg_left (hfb x) (by norm_num))
+    (smoothingSimpleApproximation_bound f k x).trans (mul_le_mul_of_nonneg_left (hfb x)
+      (by norm_num))
   refine ⟨2*A,mul_nonneg (by norm_num) hA,?_,?_,?_,?_,?_,?_⟩
   · intro m n k x
-    have hh := smoothingSimpleRegularizer_uniform (smoothingApproximationKernel n) (smoothingApproximationCutoff m)
+    have hh := smoothingSimpleRegularizer_uniform (smoothingApproximationKernel n)
+      (smoothingApproximationCutoff m)
       (smoothingApproximationKernel_compact n) (smoothingApproximationCutoff_compact m)
       (smoothingApproximationCutoff_bound m) (smoothingSimpleApproximation f k)
       (Filter.Eventually.of_forall (hsb k)) x
     simpa only [smoothingApproximationKernel_integral_norm,mul_one] using! hh
   · intro m n x
-    have hh := smoothingSchwartzRegularizer_uniform (smoothingApproximationKernel n) (smoothingApproximationCutoff m)
+    have hh := smoothingSchwartzRegularizer_uniform (smoothingApproximationKernel n)
+      (smoothingApproximationCutoff m)
       f (smoothingApproximationCutoff_bound m) hfb x
     rw [smoothingApproximationKernel_integral_norm,mul_one] at hh
     exact hh.trans (by linarith)
   · intro m x
     change ‖smoothingApproximationCutoff m x*f x‖ ≤ 2*A
     rw [norm_mul]
-    exact ((mul_le_mul_of_nonneg_right (smoothingApproximationCutoff_bound m x) (norm_nonneg _)).trans_eq
+    exact ((mul_le_mul_of_nonneg_right (smoothingApproximationCutoff_bound m x) (norm_nonneg
+      _)).trans_eq
       (one_mul _)).trans ((hfb x).trans (by linarith))
   · intro m n x
-    exact smoothingSimpleRegularizer_tendsto (smoothingApproximationKernel n) (smoothingApproximationCutoff m)
+    exact smoothingSimpleRegularizer_tendsto (smoothingApproximationKernel n)
+      (smoothingApproximationCutoff m)
       (smoothingApproximationKernel_compact n) (smoothingApproximationCutoff_compact m)
       (smoothingApproximationCutoff_bound m) (smoothingSimpleApproximation f) f hsb
       (smoothingSimpleApproximation_tendsto f) x
@@ -27868,14 +29291,22 @@ theorem smoothing_projected_interpolation_approximation_data
     (ψ : SchwartzMap ℝ ℂ) (j : Fin 2) {r : ℝ} (hr : 0 < r)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
     ∃ M : ℝ, 0 ≤ M ∧
-      (∀ m n k x, ‖smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox0 f m n k) x‖ ≤ M) ∧
-      (∀ m n x, ‖smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox1 f m n) x‖ ≤ M) ∧
-      (∀ m x, ‖smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox2 f m) x‖ ≤ M) ∧
-      (∀ m n x, Filter.Tendsto (fun k => smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox0 f m n k) x) Filter.atTop
-        (nhds (smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox1 f m n) x))) ∧
-      (∀ m x, Filter.Tendsto (fun n => smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox1 f m n) x) Filter.atTop
-        (nhds (smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox2 f m) x))) ∧
-      (∀ x, Filter.Tendsto (fun m => smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox2 f m) x) Filter.atTop
+      (∀ m n k x, ‖smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox0 f
+        m n k) x‖ ≤ M) ∧
+      (∀ m n x, ‖smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox1 f m
+        n) x‖ ≤ M) ∧
+      (∀ m x, ‖smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox2 f m)
+        x‖ ≤ M) ∧
+      (∀ m n x, Filter.Tendsto (fun k => smoothingCoordinateRegularization (some ψ) j r
+        (smoothingInterpolationApprox0 f m n k) x) Filter.atTop
+        (nhds (smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox1 f m
+          n) x))) ∧
+      (∀ m x, Filter.Tendsto (fun n => smoothingCoordinateRegularization (some ψ) j r
+        (smoothingInterpolationApprox1 f m n) x) Filter.atTop
+        (nhds (smoothingCoordinateRegularization (some ψ) j r (smoothingInterpolationApprox2 f m)
+          x))) ∧
+      (∀ x, Filter.Tendsto (fun m => smoothingCoordinateRegularization (some ψ) j r
+        (smoothingInterpolationApprox2 f m) x) Filter.atTop
         (nhds (smoothingCoordinateRegularization (some ψ) j r f x))) := by
   obtain ⟨A,hA,h0,h1,h2,hl0,hl1,hl2⟩ := smoothing_interpolation_approximation_data f
   obtain ⟨D,hD,hbound⟩ := smoothingCoordinateRegularization_bound (some ψ)
@@ -27910,12 +29341,15 @@ theorem smoothing_projected_schwartz_decay {ζ : (ℝ × ℝ) × ℝ → ℂ}
   obtain ⟨s,C,hs,hC,hcore⟩ := smoothing_projected_simple_decay hζ hc hpos ψ0 ψ1
   refine ⟨s,4*C,hs,by positivity,?_⟩
   intro r r0 r1 hr hr0 hr1 hfreq f g
-  obtain ⟨M,hM,hf0,hf1,hf2,hfl0,hfl1,hfl2⟩ := smoothing_projected_interpolation_approximation_data ψ0 0 hr0 f
-  obtain ⟨N,hN,hg0,hg1,hg2,hgl0,hgl1,hgl2⟩ := smoothing_projected_interpolation_approximation_data ψ1 1 hr1 g
+  obtain ⟨M,hM,hf0,hf1,hf2,hfl0,hfl1,hfl2⟩ := smoothing_projected_interpolation_approximation_data
+    ψ0 0 hr0 f
+  obtain ⟨N,hN,hg0,hg1,hg2,hgl0,hgl1,hgl2⟩ := smoothing_projected_interpolation_approximation_data
+    ψ1 1 hr1 g
   have hb0 (m n k : ℕ) :
       eLpNorm (smoothingLocalizedSchwartzBilinear hζ.continuous hc
         (smoothingCoordinateRegularization (some ψ0) 0 r0 (smoothingInterpolationApprox0 f m n k))
-        (smoothingCoordinateRegularization (some ψ1) 1 r1 (smoothingInterpolationApprox0 g m n k))) 1 volume ≤
+        (smoothingCoordinateRegularization (some ψ1) 1 r1 (smoothingInterpolationApprox0 g m n
+          k))) 1 volume ≤
         ENNReal.ofReal (4*C*r^(-s))*eLpNorm f 2 volume*eLpNorm g 2 volume := by
     have hh := hcore r r0 r1 hr hr0 hr1 hfreq
       (smoothingApproximationKernel n) (smoothingApproximationCutoff m)
@@ -27941,16 +29375,21 @@ theorem smoothing_integral_norm_mul_L2 {F G : ℝ × ℝ → ℂ}
     (hF : MemLp F 2 volume) (hG : MemLp G 2 volume) :
     (∫ z, ‖F z‖*‖G z‖) ≤ (eLpNorm F 2 volume).toReal*(eLpNorm G 2 volume).toReal := by
   have hp : eLpNorm (fun z => ‖F z‖*‖G z‖) 1 volume ≤ eLpNorm F 2 volume*eLpNorm G 2 volume := by
-    simpa only [eLpNorm_norm,ENNReal.coe_one,one_mul] using
-      (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm (p := 2) (q := 2) (r := 1) hF.1.norm hG.1.norm
-        (fun x y : ℝ => x*y) 1 (Filter.Eventually.of_forall (fun _ => by simp)))
+    simpa only [eLpNorm_norm _ hF.aestronglyMeasurable,
+      eLpNorm_norm _ hG.aestronglyMeasurable, ENNReal.coe_one, one_mul] using
+      (eLpNorm_le_eLpNorm_mul_eLpNorm_of_nnnorm (p := 2) (q := 2) (r := 1)
+        (fun x y : ℝ => x*y) 1 (by fun_prop)
+        hF.aestronglyMeasurable.norm hG.aestronglyMeasurable.norm
+        (Filter.Eventually.of_forall (fun _ => by simp)))
   calc
     _ = ∫ z, ‖‖F z‖*‖G z‖‖ := by simp
     _ = (eLpNorm (fun z => ‖F z‖*‖G z‖) 1 volume).toReal := by
-      rw [eLpNorm_one_eq_lintegral_enorm]
-      simpa only [Pi.mul_apply] using integral_norm_eq_lintegral_enorm (hF.1.norm.mul hG.1.norm)
+      rw [eLpNorm_one_eq_lintegral_enorm (f := fun z => ‖F z‖ * ‖G z‖)
+        (hF.aestronglyMeasurable.norm.mul hG.aestronglyMeasurable.norm)]
+      simpa only [Pi.mul_apply] using integral_norm_eq_lintegral_enorm
+        (hF.aestronglyMeasurable.norm.mul hG.aestronglyMeasurable.norm)
     _ ≤ (eLpNorm F 2 volume*eLpNorm G 2 volume).toReal :=
-      ENNReal.toReal_mono (ENNReal.mul_ne_top hF.2.ne hG.2.ne) hp
+      ENNReal.toReal_mono (ENNReal.mul_ne_top hF.eLpNorm_lt_top.ne hG.eLpNorm_lt_top.ne) hp
     _ = _ := ENNReal.toReal_mul
 
 /-- The basic L2 x L2 to L1 bound for the low-low term of the
@@ -27969,13 +29408,18 @@ theorem smoothingLocalized_L2_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
   let G := smoothingPlaneFunction g
   have hF := smoothingPlaneFunction_continuous f
   have hG := smoothingPlaneFunction_continuous g
-  have hGi : Integrable G := smoothingPlaneEquiv_measurePreserving.symm.integrable_comp_of_integrable g.integrable
-  have hFp : MemLp F 2 volume := (f.memLp 2 volume).comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
-  have hGp : MemLp G 2 volume := (g.memLp 2 volume).comp_measurePreserving smoothingPlaneEquiv_measurePreserving.symm
+  have hGi : Integrable G :=
+    smoothingPlaneEquiv_measurePreserving.symm.integrable_comp_of_integrable g.integrable
+  have hFp : MemLp F 2 volume := (f.memLp 2 volume).comp_measurePreserving
+    smoothingPlaneEquiv_measurePreserving.symm
+  have hGp : MemLp G 2 volume := (g.memLp 2 volume).comp_measurePreserving
+    smoothingPlaneEquiv_measurePreserving.symm
   have hFn : eLpNorm F 2 volume = eLpNorm f 2 volume :=
-    eLpNorm_comp_measurePreserving f.continuous.aestronglyMeasurable smoothingPlaneEquiv_measurePreserving.symm
+    eLpNorm_comp_measurePreserving f.continuous.aestronglyMeasurable
+      smoothingPlaneEquiv_measurePreserving.symm
   have hGn : eLpNorm G 2 volume = eLpNorm g 2 volume :=
-    eLpNorm_comp_measurePreserving g.continuous.aestronglyMeasurable smoothingPlaneEquiv_measurePreserving.symm
+    eLpNorm_comp_measurePreserving g.continuous.aestronglyMeasurable
+      smoothingPlaneEquiv_measurePreserving.symm
   have hfb : ∀ z, ‖F z‖ ≤ SchwartzMap.seminorm ℝ 0 0 f := fun z => f.norm_le_seminorm ℝ _
   have hJ := smoothing_averaging_pair_integrable hF hG hGi hfb hη.continuous hηc hηn
   have he : (∫ z : ℝ × ℝ, ‖F z‖*(∫ t : ℝ, ‖G (z.1-t,z.2+t^2)‖*η t)) =
@@ -27994,7 +29438,7 @@ theorem smoothingLocalized_L2_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
       (eLpNorm F 2 volume).toReal*(eLpNorm G 2 volume).toReal := by
     have hm := measurePreserving_add_right (volume : Measure (ℝ × ℝ)) (-t,t^2)
     have hh := smoothing_integral_norm_mul_L2 hFp (hGp.comp_measurePreserving hm)
-    have hn := eLpNorm_comp_measurePreserving (p := (2:ENNReal)) hGp.1 hm
+    have hn := eLpNorm_comp_measurePreserving (p := (2:ENNReal)) hGp.aestronglyMeasurable hm
     rw [hn] at hh
     simpa only [Function.comp_def,Prod.add_def,← sub_eq_add_neg] using! hh
   have hbi : Integrable (fun t : ℝ => η t*(∫ z : ℝ × ℝ, ‖F z‖*‖G (z.1-t,z.2+t^2)‖)) := by
@@ -28006,19 +29450,26 @@ theorem smoothingLocalized_L2_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
       exact Filter.Eventually.of_forall (fun z => by ring)
     change Integrable (fun t : ℝ => ∫ z : ℝ × ℝ, ‖F z‖*(η t*‖G (z.1-t,z.2+t^2)‖)) at hh
     simpa only [heq] using hh
-  have hreal : smoothingLocalizedL1 ζ f g ≤ (D+1)*(eLpNorm f 2 volume).toReal*(eLpNorm g 2 volume).toReal := by
+  have hreal : smoothingLocalizedL1 ζ f g ≤ (D+1)*(eLpNorm f 2 volume).toReal*(eLpNorm g 2
+    volume).toReal := by
     calc
       _ ≤ ∫ z : ℝ × ℝ, ‖F z‖*(∫ t : ℝ, ‖G (z.1-t,z.2+t^2)‖*η t) :=
         smoothing_averaging_majorant hF hG hGi hfb hζ.continuous hc hη.continuous hηc hηn hmajor
       _ = _ := he
       _ ≤ ∫ t : ℝ, η t*((eLpNorm F 2 volume).toReal*(eLpNorm G 2 volume).toReal) :=
-        integral_mono hbi ((hη.continuous.integrable_of_hasCompactSupport hηc).mul_const _) (fun t => mul_le_mul_of_nonneg_left (hp t) (hηn t))
-      _ = D*(eLpNorm f 2 volume).toReal*(eLpNorm g 2 volume).toReal := by rw [integral_mul_const,hFn,hGn]; exact (mul_assoc _ _ _).symm
-      _ ≤ _ := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (by linarith) ENNReal.toReal_nonneg) ENNReal.toReal_nonneg
+        integral_mono hbi ((hη.continuous.integrable_of_hasCompactSupport hηc).mul_const _) (fun t
+          => mul_le_mul_of_nonneg_left (hp t) (hηn t))
+      _ = D*(eLpNorm f 2 volume).toReal*(eLpNorm g 2 volume).toReal := by
+        rw [integral_mul_const,hFn,hGn];
+        exact (mul_assoc _ _ _).symm
+      _ ≤ _ := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (by linarith)
+        ENNReal.toReal_nonneg) ENNReal.toReal_nonneg
   rw [smoothingLocalizedSchwartzBilinear_L1]
   apply (ENNReal.ofReal_le_ofReal hreal).trans_eq
-  rw [ENNReal.ofReal_mul (mul_nonneg (by linarith) ENNReal.toReal_nonneg),ENNReal.ofReal_mul (by linarith),
-    ENNReal.ofReal_toReal (f.memLp 2 volume).2.ne,ENNReal.ofReal_toReal (g.memLp 2 volume).2.ne]
+  rw [ENNReal.ofReal_mul (mul_nonneg (by linarith) ENNReal.toReal_nonneg),ENNReal.ofReal_mul
+    (by linarith),
+    ENNReal.ofReal_toReal (f.memLp 2 volume).eLpNorm_lt_top.ne,ENNReal.ofReal_toReal (g.memLp 2
+      volume).eLpNorm_lt_top.ne]
 
 /-- A low-pass containing one dyadic output band is controlled by the
 printed negative coordinate Sobolev norm. -/
@@ -28043,12 +29494,14 @@ theorem smoothing_lowpass_sobolev_bound (C : LittlewoodPaley.lpCutoffs 1)
     (smoothingCoordinateLow C j (4*r)) (smoothingCoordinateLow_temperate C j (4*r))
     (fun ξ => C.norm_le_one _) hfreq
   simp only [one_mul] at hb
-  exact hb.trans (mul_le_mul' (ENNReal.ofReal_le_ofReal (smoothingSobolev_radius_bound hs hr)) le_rfl)
+  exact hb.trans (mul_le_mul' (ENNReal.ofReal_le_ofReal (smoothingSobolev_radius_bound hs hr))
+    le_rfl)
 
 /-- The two fixed scalar shapes of the source-sized annular subbands. -/
 def smoothingFinalBandRatio (b : Bool) : ℝ := if b then 4/3 else 3/2
 
-theorem smoothingFinalBandRatio_bounds (b : Bool) : 1 ≤ smoothingFinalBandRatio b ∧ smoothingFinalBandRatio b ≤ 3/2 := by
+theorem smoothingFinalBandRatio_bounds (b : Bool) : 1 ≤ smoothingFinalBandRatio b ∧
+  smoothingFinalBandRatio b ≤ 3/2 := by
   cases b <;> norm_num [smoothingFinalBandRatio]
 
 def smoothingFinalBandSymbol (C : LittlewoodPaley.lpCutoffs 1) (b : Bool) : SchwartzMap ℝ ℂ :=
@@ -28056,12 +29509,13 @@ def smoothingFinalBandSymbol (C : LittlewoodPaley.lpCutoffs 1) (b : Bool) : Schw
     (lt_of_lt_of_le zero_lt_one (smoothingFinalBandRatio_bounds b).1) - smoothingScalarCutoff C
 
 theorem smoothingFinalBandSymbol_apply (C : LittlewoodPaley.lpCutoffs 1) (b : Bool) (t : ℝ) :
-    smoothingFinalBandSymbol C b t = smoothingScalarCutoff C (t/smoothingFinalBandRatio b)-smoothingScalarCutoff C t := by
+    smoothingFinalBandSymbol C b t = smoothingScalarCutoff C (t/smoothingFinalBandRatio
+      b)-smoothingScalarCutoff C t := by
   simp only [smoothingFinalBandSymbol,sub_apply,smoothingScalarRescale_apply]
 
 /-- Each fixed annular shape has the exact factor-two support of (3.2). -/
 theorem smoothingFinalBandSymbol_annular (C : LittlewoodPaley.lpCutoffs 1)
-    (hC : ∀ ξ, (4/3:ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (b : Bool) :
+    (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (b : Bool) :
     ∀ t, smoothingFinalBandSymbol C b t ≠ 0 → 1 ≤ |t| ∧ |t| ≤ 2 := by
   intro t hn
   have ha := smoothingFinalBandRatio_bounds b
@@ -28080,7 +29534,10 @@ theorem smoothingFinalBandSymbol_annular (C : LittlewoodPaley.lpCutoffs 1)
       rw [abs_div,abs_of_pos ha0]
       apply (le_div_iff₀ ha0).mpr
       nlinarith [ha.2]
-    exact hn (by rw [smoothingScalarCutoff_zero C hC hta,smoothingScalarCutoff_zero C hC (by linarith),sub_self])
+    exact hn
+      (by
+        rw [smoothingScalarCutoff_zero C hC hta,smoothingScalarCutoff_zero C hC
+          (by linarith),sub_self])
 
 /-- Equality of Schwartz inputs can be checked on their Fourier transforms. -/
 theorem smoothing_schwartz_eq_of_fourier_eq
@@ -28119,10 +29576,10 @@ theorem smoothingBandProjection_regularization (C : LittlewoodPaley.lpCutoffs 1)
       smoothingLowProjection_fourier,smoothingCoordinateRegularization_fourier,
       smoothingCoordinateLow_scalar,smoothingFinalBandSymbol_apply,
       smoothingFinalBandRatio,smoothingBandScale,one_mul]
-  · have he : ξ j / (2:ℝ)^n / (3/2) = ξ j / (3/2*(2:ℝ)^n) := by ring
+  · have he : ξ j / (2 : ℝ)^n / (3/2) = ξ j / (3/2*(2 : ℝ)^n) := by ring
     rw [he]
     ring
-  · have he : ξ j / (3/2*(2:ℝ)^n) / (4/3) = ξ j / (2:ℝ)^(n+1) := by
+  · have he : ξ j / (3/2*(2 : ℝ)^n) / (4/3) = ξ j / (2:ℝ)^(n+1) := by
       rw [pow_succ]
       field_simp
       ring
@@ -28165,7 +29622,7 @@ def smoothingFinalSymbol (C : LittlewoodPaley.lpCutoffs 1) : Option Bool → Sch
   | some b => smoothingFinalBandSymbol C b
 
 theorem smoothingFinalSymbol_support (C : LittlewoodPaley.lpCutoffs 1)
-    (hC : ∀ ξ, (4/3:ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (a : Option Bool) :
+    (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) (a : Option Bool) :
     ∀ t, smoothingFinalSymbol C a t ≠ 0 → |t| ≤ 2 := by
   cases a with
   | none => exact smoothingScalarCutoff_support_two C
@@ -28196,7 +29653,7 @@ theorem smoothingFinalScale_bounds (a : Option (ℕ × Bool)) :
   | none => norm_num [smoothingFinalLevel,smoothingFinalScale]
   | some p =>
     rcases p with ⟨n,b⟩
-    have hp : 0 < (2:ℝ)^n := pow_pos (by norm_num) _
+    have hp : 0 < (2 : ℝ)^n := pow_pos (by norm_num) _
     cases b <;> simp only [smoothingFinalLevel,smoothingFinalScale,smoothingBandScale,
       Bool.false_eq_true,↓reduceIte,one_mul] <;> constructor <;> nlinarith
 
@@ -28271,7 +29728,7 @@ theorem smoothing_projected_weighted_decay
 
 /-- Decay at the larger coordinate scale gives a summable weight in both indices. -/
 theorem smoothing_final_geometric_decay {d r : ℝ} (hd : 0 < d) (m n : ℕ)
-    (hm : (2:ℝ)^m ≤ r) (hn : (2:ℝ)^n ≤ r) :
+    (hm : (2 : ℝ) ^ m ≤ r) (hn : (2 : ℝ) ^ n ≤ r) :
     r^(-d/2) ≤ ((2:ℝ)^(-d/4))^m*((2:ℝ)^(-d/4))^n := by
   have hmax : (2:ℝ)^(max m n) ≤ r := by
     rcases le_total m n with h | h
@@ -28286,15 +29743,20 @@ theorem smoothing_final_geometric_decay {d r : ℝ} (hd : 0 < d) (m n : ℕ)
       have hm' : (m:ℝ) ≤ (max m n:ℕ) := by exact_mod_cast le_max_left m n
       have hn' : (n:ℝ) ≤ (max m n:ℕ) := by exact_mod_cast le_max_right m n
       nlinarith
-    _ = _ := by rw [Real.rpow_add (by norm_num),Real.rpow_mul_natCast (by norm_num),Real.rpow_mul_natCast (by norm_num)]
+    _ = _ :=
+      by
+        rw [Real.rpow_add (by norm_num),Real.rpow_mul_natCast (by norm_num),Real.rpow_mul_natCast
+          (by norm_num)]
 
 /-- The largest scale in a non-low pair is an annular scale. -/
 theorem smoothing_final_annular_max (C : LittlewoodPaley.lpCutoffs 1)
-    (hC : ∀ ξ, (4/3:ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0)
+    (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0)
     (a b : Option (ℕ × Bool)) (h : a ≠ none ∨ b ≠ none) :
     let r := max (smoothingFinalScale a) (smoothingFinalScale b)
-    (r = smoothingFinalScale a ∧ ∀ t, smoothingFinalSymbol C (smoothingFinalShape a) t ≠ 0 → 1 ≤ |t| ∧ |t| ≤ 2) ∨
-    (r = smoothingFinalScale b ∧ ∀ t, smoothingFinalSymbol C (smoothingFinalShape b) t ≠ 0 → 1 ≤ |t| ∧ |t| ≤ 2) := by
+    (r = smoothingFinalScale a ∧ ∀ t, smoothingFinalSymbol C (smoothingFinalShape a) t ≠ 0 → 1 ≤
+      |t| ∧ |t| ≤ 2) ∨
+    (r = smoothingFinalScale b ∧ ∀ t, smoothingFinalSymbol C (smoothingFinalShape b) t ≠ 0 → 1 ≤
+      |t| ∧ |t| ≤ 2) := by
   cases a with
   | none =>
     cases b with
@@ -28307,7 +29769,8 @@ theorem smoothing_final_annular_max (C : LittlewoodPaley.lpCutoffs 1)
     cases b with
     | none =>
       left
-      exact ⟨max_eq_left (smoothingFinalScale_one_le (some p)),smoothingFinalBandSymbol_annular C hC p.2⟩
+      exact ⟨max_eq_left (smoothingFinalScale_one_le (some p)),smoothingFinalBandSymbol_annular C
+        hC p.2⟩
     | some q =>
       rcases le_total (smoothingFinalScale (some p)) (smoothingFinalScale (some q)) with hh | hh
       · exact Or.inr ⟨max_eq_right hh,smoothingFinalBandSymbol_annular C hC q.2⟩
@@ -28331,7 +29794,7 @@ theorem smoothing_low_unit_sobolev_bound (C : LittlewoodPaley.lpCutoffs 1)
 /-- All frequency pairs satisfy one geometric majorant in the printed Sobolev norms. -/
 theorem smoothing_final_piece_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (hζ : ContDiff ℝ ∞ ζ) (hc : HasCompactSupport ζ) (hpos : ∀ p ∈ tsupport ζ, 0 < p.2)
-    (C : LittlewoodPaley.lpCutoffs 1) (hC : ∀ ξ, (4/3:ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) :
+    (C : LittlewoodPaley.lpCutoffs 1) (hC : ∀ ξ, (4 / 3 : ℝ) ≤ ‖ξ‖ → C.cutoff ξ = 0) :
     ∃ σ A q : ℝ, 0 < σ ∧ 0 < A ∧ 0 < q ∧ q < 1 ∧
     ∀ a b : Option (ℕ × Bool), ∀ f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ,
       eLpNorm (smoothingLocalizedSchwartzBilinear hζ.continuous hc
@@ -28383,7 +29846,8 @@ theorem smoothing_final_piece_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
     have hr : 1 ≤ r := (smoothingFinalScale_one_le a).trans hra
     have hfreq := smoothing_final_annular_max C hC a b hnon
     have hb := smoothing_projected_weighted_decay hζ hc C
-      (smoothingFinalSymbol C (smoothingFinalShape a)) (smoothingFinalSymbol C (smoothingFinalShape b))
+      (smoothingFinalSymbol C (smoothingFinalShape a)) (smoothingFinalSymbol C
+        (smoothingFinalShape b))
       (smoothingFinalSymbol_support C hC _) (smoothingFinalSymbol_support C hC _)
       hD hσ.le hr (by linarith [smoothingFinalScale_one_le a])
       (by linarith [smoothingFinalScale_one_le b]) hra hrb
@@ -28409,7 +29873,8 @@ def smoothingFinalIndices (N : ℕ) : Finset (Option (ℕ × Bool)) :=
 
 theorem smoothingFinalIndices_sum {M : Type*} [AddCommMonoid M]
     (F : Option (ℕ × Bool) → M) (N : ℕ) :
-    ∑ a ∈ smoothingFinalIndices N, F a = F none + ∑ n ∈ Finset.range N, ∑ b : Bool, F (some (n,b)) := by
+    ∑ a ∈ smoothingFinalIndices N, F a = F none + ∑ n ∈ Finset.range N, ∑ b : Bool, F (some (n,b))
+      := by
   classical
   rw [smoothingFinalIndices,Finset.sum_insert (by simp),Finset.sum_image]
   · rw [Finset.sum_product]
@@ -28441,7 +29906,6 @@ theorem smoothingFinalIndices_geometric {q : ℝ} (hq : 0 ≤ q) (hq1 : q < 1) (
 theorem smoothing_bilinear_finite_sum_bound
     {V W : Type*} [AddCommMonoid V] [Module ℂ V] [AddCommMonoid W] [Module ℂ W]
     (B : V →ₗ[ℂ] W →ₗ[ℂ] (ℝ × ℝ → ℂ))
-    (hm : ∀ f g, AEStronglyMeasurable (B f g) volume)
     {ι κ : Type*} (I : Finset ι) (J : Finset κ) (f : ι → V) (g : κ → W) :
     eLpNorm (B (∑ i ∈ I, f i) (∑ j ∈ J, g j)) 1 volume ≤
       ∑ i ∈ I, ∑ j ∈ J, eLpNorm (B (f i) (g j)) 1 volume := by
@@ -28450,8 +29914,8 @@ theorem smoothing_bilinear_finite_sum_bound
     simp only [map_sum,LinearMap.sum_apply]
     exact Finset.sum_comm
   rw [he]
-  apply (eLpNorm_sum_le (fun i _ => Finset.aestronglyMeasurable_sum J (fun j _ => hm (f i) (g j))) le_rfl).trans
-  exact Finset.sum_le_sum (fun i _ => eLpNorm_sum_le (fun j _ => hm (f i) (g j)) le_rfl)
+  apply (eLpNorm_sum_le le_rfl).trans
+  exact Finset.sum_le_sum (fun i _ => eLpNorm_sum_le le_rfl)
 
 /-- Factorization of the finite geometric majorant. -/
 theorem smoothing_final_majorant_sum {A q : ℝ} (hA : 0 ≤ A) (hq : 0 ≤ q)
@@ -28487,8 +29951,6 @@ theorem smoothing_final_truncation_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
         eLpNorm (smoothingSobolevFourier σ 1 g) 2 volume := by
   rw [← smoothingFinalPiece_reconstruction,← smoothingFinalPiece_reconstruction]
   apply (smoothing_bilinear_finite_sum_bound (smoothingLocalizedSchwartzBilinear hζ.continuous hc)
-    (fun f g => (smoothingLocalized_continuous (smoothingPlaneFunction_continuous f)
-      (smoothingPlaneFunction_continuous g) hζ.continuous hc).aestronglyMeasurable)
     _ _ _ _).trans
   apply (Finset.sum_le_sum (fun a _ => Finset.sum_le_sum (fun b _ => hb a b f g))).trans
   rw [smoothing_final_majorant_sum hA hq]
@@ -28504,7 +29966,8 @@ theorem smoothing_final_lowpass_tendsto (C : LittlewoodPaley.lpCutoffs 1)
     (j : Fin 2) (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) (x : EuclideanSpace ℝ (Fin 2)) :
     Filter.Tendsto (fun N : ℕ => smoothingLowProjection C j ((2:ℝ)^N) f x)
       Filter.atTop (nhds (f x)) := by
-  obtain ⟨e,he,hen,heb⟩ := smoothingLowProjection_uniform_reconstruction C j (by norm_num : (0:ℝ)<1) f
+  obtain ⟨e,he,hen,heb⟩ := smoothingLowProjection_uniform_reconstruction C j
+    (by norm_num : (0:ℝ)<1) f
   apply tendsto_iff_norm_sub_tendsto_zero.mpr
   apply squeeze_zero (fun N => norm_nonneg _) _ he
   intro N
@@ -28521,7 +29984,8 @@ theorem smoothing_positive_sobolev_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
   obtain ⟨σ,A,q,hσ,hA,hq,hq1,hb⟩ := smoothing_final_piece_bound hζ hc hpos C hC
   refine ⟨σ,A*(1+2*(1-q)⁻¹)^2,hσ,by positivity,?_⟩
   intro f g
-  have hK : 0 ≤ ∫ u : ℝ, ‖(𝓕 (smoothingScalarCutoff C)) u‖ := integral_nonneg (fun _ => norm_nonneg _)
+  have hK : 0 ≤ ∫ u : ℝ, ‖(𝓕 (smoothingScalarCutoff C)) u‖ := integral_nonneg (fun _ =>
+    norm_nonneg _)
   have hf := fun N x => smoothingLowProjection_bound C 0 (pow_pos (by norm_num : (0:ℝ)<2) N)
     f (fun y => f.norm_le_seminorm ℝ y) x
   have hg := fun N x => smoothingLowProjection_bound C 1 (pow_pos (by norm_num : (0:ℝ)<2) N)
@@ -28558,7 +30022,8 @@ def smoothingReflectedSchwartz (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ
   SchwartzMap.compCLMOfContinuousLinearEquiv ℂ smoothingFirstReflection.toContinuousLinearEquiv f
 
 theorem smoothingReflectedSchwartz_apply (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
-    (x : EuclideanSpace ℝ (Fin 2)) : smoothingReflectedSchwartz f x = f (smoothingFirstReflection x) := rfl
+    (x : EuclideanSpace ℝ (Fin 2)) : smoothingReflectedSchwartz f x = f (smoothingFirstReflection
+      x) := rfl
 
 /-- The Fourier transform commutes with the orthogonal reflection. -/
 theorem smoothingReflectedSchwartz_fourier (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ)
@@ -28584,7 +30049,7 @@ theorem smoothingSobolevFourier_antitone {s t : ℝ} (hst : s ≤ t) (j : Fin 2)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
     eLpNorm (smoothingSobolevFourier t j f) 2 volume ≤
       eLpNorm (smoothingSobolevFourier s j f) 2 volume := by
-  apply eLpNorm_mono
+  apply eLpNorm_mono (smoothingSobolevFourier_continuous _ _ _).aestronglyMeasurable
   intro ξ
   have hx : 1 ≤ 1+|ξ j|^2 := by nlinarith [sq_nonneg |ξ j|]
   simp only [smoothingSobolevFourier,norm_mul,Complex.norm_real,Real.norm_eq_abs,
@@ -28594,9 +30059,11 @@ theorem smoothingSobolevFourier_antitone {s t : ℝ} (hst : s ≤ t) (j : Fin 2)
 
 /-- Reflection agrees in Euclidean and displayed pair coordinates. -/
 theorem smoothingReflectedSchwartz_plane (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
-    smoothingPlaneFunction (smoothingReflectedSchwartz f) = smoothingReflectX (smoothingPlaneFunction f) := by
+    smoothingPlaneFunction (smoothingReflectedSchwartz f) = smoothingReflectX
+      (smoothingPlaneFunction f) := by
   funext z
-  change f (smoothingFirstReflection (smoothingPlaneEquiv.symm z)) = f (smoothingPlaneEquiv.symm (-z.1,z.2))
+  change f (smoothingFirstReflection (smoothingPlaneEquiv.symm z)) = f (smoothingPlaneEquiv.symm
+    (-z.1,z.2))
   congr 1
   ext j
   fin_cases j <;> simp [smoothingFirstReflection_apply,smoothingPlaneEquiv]
@@ -28604,8 +30071,10 @@ theorem smoothingReflectedSchwartz_plane (f : SchwartzMap (EuclideanSpace ℝ (F
 /-- Either coordinate Sobolev factor can be weakened to a common smaller exponent. -/
 theorem smoothingSobolevNorm_coordinate_mono {s t : ℝ} (hs : 0 ≤ s) (ht : s ≤ t)
     (f : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
-    ENNReal.ofReal (smoothingSobolevNorm (-t) 0 f) ≤ ENNReal.ofReal (smoothingSobolevNorm (-s) 0 f) ∧
-    ENNReal.ofReal (smoothingSobolevNorm 0 (-t) f) ≤ ENNReal.ofReal (smoothingSobolevNorm 0 (-s) f) := by
+    ENNReal.ofReal (smoothingSobolevNorm (-t) 0 f) ≤ ENNReal.ofReal (smoothingSobolevNorm (-s) 0
+      f) ∧
+    ENNReal.ofReal (smoothingSobolevNorm 0 (-t) f) ≤ ENNReal.ofReal (smoothingSobolevNorm 0 (-s)
+      f) := by
   rw [smoothingSobolevNorm_first (hs.trans ht),smoothingSobolevNorm_first hs,
     smoothingSobolevNorm_second (hs.trans ht),smoothingSobolevNorm_second hs]
   exact ⟨smoothingSobolevFourier_antitone ht 0 f,smoothingSobolevFourier_antitone ht 1 f⟩
@@ -28619,7 +30088,8 @@ theorem smoothing_positive_sobolev_weaken {ζ : (ℝ × ℝ) × ℝ → ℂ}
         ENNReal.ofReal (A*smoothingSobolevNorm (-t) 0 f*smoothingSobolevNorm 0 (-t) g))
     (f g : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ) :
     eLpNorm (smoothingLocalizedSchwartzBilinear hζ.continuous hc f g) 1 volume ≤
-      ENNReal.ofReal A*ENNReal.ofReal (smoothingSobolevNorm (-s) 0 f)*ENNReal.ofReal (smoothingSobolevNorm 0 (-s) g) := by
+      ENNReal.ofReal A*ENNReal.ofReal (smoothingSobolevNorm (-s) 0 f)*ENNReal.ofReal
+        (smoothingSobolevNorm 0 (-s) g) := by
   apply (hb f g).trans
   have hn : 0 ≤ smoothingSobolevNorm (-t) 0 f := Real.sqrt_nonneg _
   rw [ENNReal.ofReal_mul (mul_nonneg hA hn),ENNReal.ofReal_mul hA]
@@ -28651,29 +30121,34 @@ theorem smoothing_sobolev_bound {ζ : (ℝ × ℝ) × ℝ → ℂ}
     (smoothingLocalized_continuous (smoothingPlaneFunction_continuous f)
       (smoothingPlaneFunction_continuous g) hp.continuous hpc).aestronglyMeasurable
   have hNm : AEStronglyMeasurable N volume :=
-    (smoothingLocalized_continuous (smoothingPlaneFunction_continuous (smoothingReflectedSchwartz f))
-      (smoothingPlaneFunction_continuous (smoothingReflectedSchwartz g)) hn.continuous hnc).aestronglyMeasurable
+    (smoothingLocalized_continuous (smoothingPlaneFunction_continuous (smoothingReflectedSchwartz
+      f))
+      (smoothingPlaneFunction_continuous (smoothingReflectedSchwartz g)) hn.continuous
+        hnc).aestronglyMeasurable
   have hNrm : AEStronglyMeasurable (smoothingReflectX N) volume := by
-    exact (smoothingLocalized_continuous (smoothingPlaneFunction_continuous (smoothingReflectedSchwartz f))
+    exact (smoothingLocalized_continuous (smoothingPlaneFunction_continuous
+      (smoothingReflectedSchwartz f))
       (smoothingPlaneFunction_continuous (smoothingReflectedSchwartz g)) hn.continuous hnc).comp
         (by fun_prop : Continuous (fun z : ℝ × ℝ => (-z.1,z.2))) |>.aestronglyMeasurable
   have he : smoothingLocalizedSchwartzBilinear hζ.continuous hc f g = P+smoothingReflectX N := by
     funext z
     change smoothingLocalized (smoothingPlaneFunction f) (smoothingPlaneFunction g) ζ z =
-      smoothingLocalized (smoothingPlaneFunction f) (smoothingPlaneFunction g) (smoothingPositiveCutoff ζ) z +
+      smoothingLocalized (smoothingPlaneFunction f) (smoothingPlaneFunction g)
+        (smoothingPositiveCutoff ζ) z +
       smoothingLocalized (smoothingPlaneFunction (smoothingReflectedSchwartz f))
         (smoothingPlaneFunction (smoothingReflectedSchwartz g))
         (smoothingPositiveCutoff (smoothingReflectCutoff ζ)) (-z.1,z.2)
     rw [smoothingReflectedSchwartz_plane,smoothingReflectedSchwartz_plane,
       smoothingLocalized_positiveCutoff,smoothingLocalized_positiveCutoff]
     exact smoothingLocalized_time_split _ _ _ _ (smoothingLocalized_integrable
-      (smoothingPlaneFunction_continuous f) (smoothingPlaneFunction_continuous g) hζ.continuous hc z)
+      (smoothingPlaneFunction_continuous f) (smoothingPlaneFunction_continuous g) hζ.continuous hc
+        z)
   have hpb := smoothing_positive_sobolev_weaken hp hpc hAp.le hσ.le (min_le_left sp sn) hbp f g
   have hnb := smoothing_positive_sobolev_weaken hn hnc hAn.le hσ.le (min_le_right sp sn) hbn
     (smoothingReflectedSchwartz f) (smoothingReflectedSchwartz g)
   rw [smoothingReflectedSchwartz_sobolev,smoothingReflectedSchwartz_sobolev] at hnb
   rw [he]
-  apply (eLpNorm_add_le hPm hNrm le_rfl).trans
+  apply (eLpNorm_add_le le_rfl).trans
   rw [smoothingReflectX_eLpNorm N hNm 1]
   apply (add_le_add hpb hnb).trans_eq
   have hfn : 0 ≤ smoothingSobolevNorm (-σ) 0 f := Real.sqrt_nonneg _
@@ -28732,7 +30207,8 @@ theorem smoothingTrilinearForm_duality {ζ : (ℝ × ℝ) × ℝ → ℂ}
       apply norm_integral_le_of_norm_le (hi.norm.mul_const _)
       filter_upwards [] with z
       rw [norm_mul]
-      exact mul_le_mul_of_nonneg_left (smoothing_schwartz_norm_le_Linfty h (smoothingPlaneEquiv.symm z)) (norm_nonneg _)
+      exact mul_le_mul_of_nonneg_left (smoothing_schwartz_norm_le_Linfty h
+        (smoothingPlaneEquiv.symm z)) (norm_nonneg _)
     _ = _ := integral_mul_const _ _
 
 /-- Theorem 5, equation (1.10), of arXiv:2008.10140v2.
@@ -28746,7 +30222,8 @@ theorem smoothing_theorem5 {ζ : (ℝ × ℝ) × ℝ → ℂ}
     ∃ σ C : ℝ, 0 < σ ∧ 0 < C ∧
       ∀ f g h : SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ,
       ‖smoothingTrilinearForm ζ f g h‖ ≤
-        C*smoothingSobolevNorm (-σ) 0 f*smoothingSobolevNorm 0 (-σ) g*(eLpNorm h ⊤ volume).toReal := by
+        C*smoothingSobolevNorm (-σ) 0 f*smoothingSobolevNorm 0 (-σ) g*(eLpNorm h ⊤ volume).toReal
+          := by
   obtain ⟨σ,C,hσ,hC,hb⟩ := smoothing_sobolev_bound hζ hc hoff
   refine ⟨σ,C,hσ,hC,?_⟩
   intro f g h
@@ -28754,7 +30231,8 @@ theorem smoothing_theorem5 {ζ : (ℝ × ℝ) × ℝ → ℂ}
   rw [smoothingLocalizedSchwartzBilinear_L1] at hh
   have hn1 : 0 ≤ smoothingSobolevNorm (-σ) 0 f := Real.sqrt_nonneg _
   have hn2 : 0 ≤ smoothingSobolevNorm 0 (-σ) g := Real.sqrt_nonneg _
-  have hreal : smoothingLocalizedL1 ζ f g ≤ C*smoothingSobolevNorm (-σ) 0 f*smoothingSobolevNorm 0 (-σ) g :=
+  have hreal : smoothingLocalizedL1 ζ f g ≤ C*smoothingSobolevNorm (-σ) 0 f*smoothingSobolevNorm 0
+    (-σ) g :=
     (ENNReal.ofReal_le_ofReal_iff (mul_nonneg (mul_nonneg hC.le hn1) hn2)).mp hh
   exact (smoothingTrilinearForm_duality hζ.continuous hc f g h).trans
     (mul_le_mul_of_nonneg_right hreal ENNReal.toReal_nonneg)

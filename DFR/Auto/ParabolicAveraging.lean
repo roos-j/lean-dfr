@@ -90,13 +90,16 @@ theorem parabolicGaussian_exp_norm_le (u v : ℝ) :
     (mul_nonneg (by norm_num) (Complex.normSq_nonneg _))
 
 /-- The quadratic coefficient stays uniformly away from zero. -/
-theorem parabolicGaussianCoefficient_norm_one_le (v : ℝ) : 1 ≤ ‖parabolicGaussianCoefficient v‖ := by
-  simpa only [parabolicGaussianCoefficient_re,abs_one] using Complex.abs_re_le_norm (parabolicGaussianCoefficient v)
+theorem parabolicGaussianCoefficient_norm_one_le (v : ℝ) : 1 ≤ ‖parabolicGaussianCoefficient v‖ :=
+  by
+  simpa only [parabolicGaussianCoefficient_re,abs_one] using Complex.abs_re_le_norm
+    (parabolicGaussianCoefficient v)
 
 /-- Gaussian parabolic averaging has the transverse half-derivative
 Fourier decay used on the L2 boundary of the analytic family. -/
 theorem parabolicGaussianSymbol_norm_le (ξ : ℝ × ℝ) :
-    ‖parabolicGaussianSymbol ξ‖ ≤ Real.pi^(1/2:ℝ)*‖parabolicGaussianCoefficient ξ.2‖^(-(1/2:ℝ)) := by
+    ‖parabolicGaussianSymbol ξ‖ ≤ Real.pi^(1/2:ℝ)*‖parabolicGaussianCoefficient ξ.2‖^(-(1/2:ℝ)) :=
+      by
   rw [parabolicGaussianSymbol_formula,norm_mul]
   have he : ‖Complex.exp (-((-2*Real.pi*(ξ.1:ℂ))^2)/(4*parabolicGaussianCoefficient ξ.2))‖ ≤ 1 := by
     simpa only [Complex.ofReal_mul,Complex.ofReal_neg,Complex.ofReal_ofNat] using
@@ -119,14 +122,15 @@ def parabolicAnalyticMultiplier (z : ℂ) (ξ : ℝ × ℝ) : ℂ :=
 
 /-- The transverse power compensates the Gaussian multiplier decay
 throughout the half-plane needed for interpolation. -/
-theorem parabolicGaussian_power_symbol_bound (z : ℂ) (hz : -(1/2:ℝ) ≤ z.re) (ξ : ℝ × ℝ) :
+theorem parabolicGaussian_power_symbol_bound (z : ℂ) (hz : -(1 / 2 : ℝ) ≤ z.re) (ξ : ℝ × ℝ) :
     ‖(parabolicGaussianCoefficient ξ.2)^(-z)*parabolicGaussianSymbol ξ‖ ≤
       Real.pi^(1/2:ℝ)*Real.exp (Real.pi*|z.im|) := by
   let b := parabolicGaussianCoefficient ξ.2
   have hb := parabolicGaussianCoefficient_ne_zero ξ.2
   have hn : 0 < ‖b‖ := norm_pos_iff.mpr hb
   have hp : ‖b^(-z)‖ ≤ ‖b‖^(-z.re)*Real.exp (Real.pi*|z.im|) := by
-    rw [Complex.norm_cpow_of_ne_zero hb,Complex.neg_re,Complex.neg_im,mul_neg,Real.exp_neg,div_inv_eq_mul]
+    rw [Complex.norm_cpow_of_ne_zero
+      hb,Complex.neg_re,Complex.neg_im,mul_neg,Real.exp_neg,div_inv_eq_mul]
     apply mul_le_mul_of_nonneg_left _ (Real.rpow_nonneg (norm_nonneg _) _)
     apply Real.exp_le_exp.mpr
     calc
@@ -142,7 +146,7 @@ theorem parabolicGaussian_power_symbol_bound (z : ℂ) (hz : -(1/2:ℝ) ≤ z.re
       ring
     _ ≤ _ := by
       have hh := Real.rpow_le_one_of_one_le_of_nonpos (parabolicGaussianCoefficient_norm_one_le ξ.2)
-        (show -z.re-(1/2:ℝ) ≤ 0 by linarith)
+        (show -z.re-(1 / 2 : ℝ) ≤ 0 by linarith)
       exact (mul_le_mul_of_nonneg_left hh (by positivity)).trans_eq (mul_one _)
 
 /-- Gamma is bounded on the compact positive real interval encountered
@@ -150,10 +154,13 @@ by the analytic family. -/
 theorem parabolic_gamma_strip_bound :
     ∃ G : ℝ, 0 < G ∧ ∀ x ∈ Set.Icc (1/2:ℝ) 2, Real.Gamma x ≤ G := by
   have hc : ContinuousOn Real.Gamma (Set.Icc (1/2:ℝ) 2) :=
-    Real.differentiableOn_Gamma_Ioi.continuousOn.mono (by intro x hx; exact lt_of_lt_of_le (by norm_num) hx.1)
+    Real.differentiableOn_Gamma_Ioi.continuousOn.mono (by
+      intro x hx;
+      exact lt_of_lt_of_le (by norm_num) hx.1)
   obtain ⟨G,hG⟩ := isCompact_Icc.bddAbove_image hc
   have h1 : 1 ≤ G := by
-    simpa only [Real.Gamma_one] using hG (Set.mem_image_of_mem Real.Gamma (show (1:ℝ) ∈ Set.Icc (1/2:ℝ) 2 by norm_num))
+    simpa only [Real.Gamma_one] using hG (Set.mem_image_of_mem Real.Gamma (show (1:ℝ) ∈ Set.Icc
+      (1/2:ℝ) 2 by norm_num))
   exact ⟨G,by linarith,fun x hx => hG (Set.mem_image_of_mem _ hx)⟩
 
 /-- Gaussian damping gives a single uniform multiplier bound on the
@@ -166,7 +173,9 @@ theorem parabolicAnalyticMultiplier_uniform_bound :
   intro z hz ξ
   have hg : ‖Complex.Gamma (z+1)‖ ≤ G :=
     (parabolic_gamma_norm_le (by simp only [Complex.add_re,Complex.one_re]; linarith [hz.1])).trans
-      (hgamma _ (by simp only [Set.mem_Icc,Complex.add_re,Complex.one_re]; constructor <;> linarith [hz.1,hz.2]))
+      (hgamma _ (by
+        simp only [Set.mem_Icc,Complex.add_re,Complex.one_re];
+        constructor <;> linarith [hz.1,hz.2]))
   have he : (z^2).re=z.re^2-z.im^2 := by simp [pow_two,Complex.mul_re]
   have hn : ‖parabolicAnalyticMultiplier z ξ‖ =
       Real.exp (z.re^2-z.im^2)*‖Complex.Gamma (z+1)‖*
@@ -198,7 +207,8 @@ theorem parabolicLaplaceIntegrand_continuousOn (z b : ℂ) :
     intro u hu
     exact (continuousAt_cpow_const (Complex.ofReal_mem_slitPlane.mpr hu)).comp
       Complex.continuous_ofReal.continuousAt
-  · exact (Complex.continuous_exp.comp (continuous_const.mul Complex.continuous_ofReal)).continuousOn
+  · exact (Complex.continuous_exp.comp (continuous_const.mul
+    Complex.continuous_ofReal)).continuousOn
 
 /-- Exact scalar majorant for the complex Laplace integrand. -/
 theorem parabolicLaplaceIntegrand_norm (z b : ℂ) {u : ℝ} (hu : 0 < u) :
@@ -213,8 +223,9 @@ theorem parabolicLaplaceIntegrand_integrable {z b : ℂ} (hz : 0 < z.re) (hb : 0
     IntegrableOn (parabolicLaplaceIntegrand z b) (Set.Ioi 0) := by
   have hi : IntegrableOn (fun u : ℝ => u^(z.re-1)*Real.exp (-b.re*u)) (Set.Ioi 0) := by
     simpa only [Real.rpow_one] using integrableOn_rpow_mul_exp_neg_mul_rpow
-      (p := 1) (s := z.re-1) (by linarith) le_rfl hb
-  apply hi.mono' ((parabolicLaplaceIntegrand_continuousOn z b).aestronglyMeasurable measurableSet_Ioi)
+      (p := 1) (s := z.re-1) (by linarith) (by norm_num) hb
+  apply hi.mono' ((parabolicLaplaceIntegrand_continuousOn z b).aestronglyMeasurable
+    measurableSet_Ioi)
   filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with u hu
   exact (parabolicLaplaceIntegrand_norm z b hu).le
 
@@ -223,7 +234,8 @@ any right half-plane bounded away from the imaginary axis. -/
 theorem parabolicLaplaceIntegrand_derivative_bound (z b : ℂ) {d u : ℝ}
     (hu : 0 < u) (hb : d ≤ b.re) :
     ‖(-(u:ℂ))*parabolicLaplaceIntegrand z b u‖ ≤ u^z.re*Real.exp (-d*u) := by
-  rw [norm_mul,norm_neg,Complex.norm_real,Real.norm_eq_abs,abs_of_pos hu,parabolicLaplaceIntegrand_norm z b hu]
+  rw [norm_mul,norm_neg,Complex.norm_real,Real.norm_eq_abs,abs_of_pos
+    hu,parabolicLaplaceIntegrand_norm z b hu]
   have he : u*u^(z.re-1)=u^z.re := by rw [mul_comm,← Real.rpow_add_one hu.ne']; congr 1 ; ring
   rw [← mul_assoc,he]
   apply mul_le_mul_of_nonneg_left _ (Real.rpow_nonneg hu.le _)
@@ -235,20 +247,28 @@ parameter, justified by an integrable derivative majorant. -/
 theorem parabolicLaplace_differentiableAt {z b₀ : ℂ} (hz : 0 < z.re) (hb₀ : 0 < b₀.re) :
     DifferentiableAt ℂ (fun b => ∫ u in Set.Ioi (0:ℝ), parabolicLaplaceIntegrand z b u) b₀ := by
   let V : Set ℂ := {b | b₀.re/2 < b.re}
-  have hV : V ∈ nhds b₀ := (isOpen_lt continuous_const Complex.continuous_re).mem_nhds (by dsimp [V]; linarith)
+  have hV : V ∈ nhds b₀ := (isOpen_lt continuous_const Complex.continuous_re).mem_nhds (by
+    dsimp [V];
+    linarith)
   let F' : ℂ → ℝ → ℂ := fun b u => (-(u:ℂ))*parabolicLaplaceIntegrand z b u
-  have hdiff (b : ℂ) (u : ℝ) : HasDerivAt (fun b => parabolicLaplaceIntegrand z b u) (F' b u) b := by
+  have hdiff (b : ℂ) (u : ℝ) : HasDerivAt (fun b => parabolicLaplaceIntegrand z b u) (F' b u) b :=
+    by
     have hh := ((hasDerivAt_id b).neg.mul_const (u:ℂ)).cexp.const_mul ((u:ℂ)^(z-1))
-    simpa only [parabolicLaplaceIntegrand,F',id_eq,Pi.neg_apply,one_mul,neg_mul,mul_neg,mul_neg_one,mul_assoc,mul_left_comm,mul_comm] using! hh
-  have hmeas (b : ℂ) : AEStronglyMeasurable (parabolicLaplaceIntegrand z b) (volume.restrict (Set.Ioi 0)) :=
+    simpa only
+      [parabolicLaplaceIntegrand,F',id_eq,Pi.neg_apply,one_mul,neg_mul,mul_neg,mul_neg_one,
+        mul_assoc,mul_left_comm,mul_comm] using! hh
+  have hmeas (b : ℂ) : AEStronglyMeasurable (parabolicLaplaceIntegrand z b) (volume.restrict
+    (Set.Ioi 0)) :=
     (parabolicLaplaceIntegrand_continuousOn z b).aestronglyMeasurable measurableSet_Ioi
   have hmeas' : AEStronglyMeasurable (F' b₀) (volume.restrict (Set.Ioi 0)) :=
-    (Complex.continuous_ofReal.neg.continuousOn.mul (parabolicLaplaceIntegrand_continuousOn z b₀)).aestronglyMeasurable measurableSet_Ioi
+    (Complex.continuous_ofReal.neg.continuousOn.mul (parabolicLaplaceIntegrand_continuousOn z
+      b₀)).aestronglyMeasurable measurableSet_Ioi
   have hmajor : IntegrableOn (fun u : ℝ => u^z.re*Real.exp (-(b₀.re/2)*u)) (Set.Ioi 0) := by
     simpa only [Real.rpow_one] using integrableOn_rpow_mul_exp_neg_mul_rpow
-      (p := 1) (s := z.re) (by linarith) le_rfl (by linarith : 0 < b₀.re/2)
+      (p := 1) (s := z.re) (by linarith) (by norm_num) (by linarith : 0 < b₀.re/2)
   have hh := hasDerivAt_integral_of_dominated_loc_of_deriv_le (F := parabolicLaplaceIntegrand z)
-    (F' := F') hV (Filter.Eventually.of_forall hmeas) (parabolicLaplaceIntegrand_integrable hz hb₀) hmeas'
+    (F' := F') hV (Filter.Eventually.of_forall hmeas) (parabolicLaplaceIntegrand_integrable hz
+      hb₀) hmeas'
     (bound := fun u : ℝ => u^z.re*Real.exp (-(b₀.re/2)*u))
     (by
       filter_upwards [self_mem_ae_restrict measurableSet_Ioi] with u hu
@@ -306,13 +326,15 @@ def parabolicAnalyticKernel (z : ℂ) (p : ℝ × ℝ) : ℂ :=
 
 theorem parabolicLaplaceDensity_integrable {z : ℂ} (hz : 0 < z.re) :
     Integrable (parabolicLaplaceDensity z) := by
-  exact (parabolicLaplaceIntegrand_integrable hz (by norm_num : 0 < (1:ℂ).re)).integrable_indicator measurableSet_Ioi
+  exact (parabolicLaplaceIntegrand_integrable hz
+    (by norm_num : 0 < (1:ℂ).re)).integrable_indicator measurableSet_Ioi
 
 /-- On the right interpolation boundary the one-sided density is bounded by one. -/
 theorem parabolicLaplaceDensity_norm_le_one {z : ℂ} (hz : z.re = 1) (u : ℝ) :
     ‖parabolicLaplaceDensity z u‖ ≤ 1 := by
   by_cases hu : 0 < u
-  · rw [parabolicLaplaceDensity,Set.indicator_of_mem (show u ∈ Set.Ioi (0:ℝ) from hu),parabolicLaplaceIntegrand_norm z 1 hu]
+  · rw [parabolicLaplaceDensity,Set.indicator_of_mem (show u ∈ Set.Ioi (0:ℝ) from
+    hu),parabolicLaplaceIntegrand_norm z 1 hu]
     simp only [hz,sub_self,Real.rpow_zero,one_mul,Complex.one_re,neg_one_mul]
     exact (Real.exp_le_one_iff).mpr (by linarith)
   · simp [parabolicLaplaceDensity,Set.indicator_of_notMem (show u ∉ Set.Ioi (0:ℝ) from hu)]
@@ -354,7 +376,8 @@ theorem parabolicShear_measurePreserving (c : ℝ) :
     MeasurePreserving (fun p : ℝ × ℝ => (p.1,p.2+c*p.1^2)) volume volume := by
   change MeasurePreserving _ (volume.prod volume) (volume.prod volume)
   exact (MeasurePreserving.id volume).skew_product (g := fun x y : ℝ => y+c*x^2)
-    (by fun_prop) (Filter.Eventually.of_forall (fun x => (measurePreserving_add_right volume (c*x^2)).map_eq))
+    (by fun_prop) (Filter.Eventually.of_forall (fun x => (measurePreserving_add_right volume
+      (c*x^2)).map_eq))
 
 /-- Absolute integrability of the analytic kernel when Re z is positive. -/
 theorem parabolicAnalyticKernel_integrable {z : ℂ} (hz : 0 < z.re) :
@@ -528,7 +551,9 @@ theorem parabolicAnalyticMultiplier_measurable (z : ℂ) :
       unfold parabolicGaussianCoefficient
       fun_prop
     exact (continuousAt_cpow_const (show parabolicGaussianCoefficient ξ.2 ∈ Complex.slitPlane from
-      Or.inl (by rw [parabolicGaussianCoefficient_re]; norm_num))).comp (f := fun η : ℝ × ℝ => parabolicGaussianCoefficient η.2) (x := ξ) hc
+      Or.inl (by
+        rw [parabolicGaussianCoefficient_re];
+        norm_num))).comp (f := fun η : ℝ × ℝ => parabolicGaussianCoefficient η.2) (x := ξ) hc
   exact ((measurable_const.mul hp.measurable).mul parabolicGaussianSymbol_measurable)
 
 /-- Multiplication by a bounded measurable symbol preserves L2. -/
@@ -536,7 +561,9 @@ theorem parabolicL2_product_memLp {X : Type*} [MeasurableSpace X] (μ : Measure 
     {m : X → ℂ} (hm : Measurable m) {C : ℝ} (hC : ∀ x, ‖m x‖ ≤ C)
     (f : Lp ℂ 2 μ) : MemLp (fun x => m x*f x) 2 μ := by
   apply (Lp.memLp f).of_le_mul (c := C) (hm.aestronglyMeasurable.mul (Lp.aestronglyMeasurable f))
-  exact Filter.Eventually.of_forall (fun x => by rw [Pi.mul_apply,norm_mul]; exact mul_le_mul_of_nonneg_right (hC x) (norm_nonneg _))
+  exact Filter.Eventually.of_forall (fun x => by
+    rw [Pi.mul_apply,norm_mul];
+    exact mul_le_mul_of_nonneg_right (hC x) (norm_nonneg _))
 
 /-- The bounded measurable multiplication operator on L2. -/
 def parabolicL2Multiply {X : Type*} [MeasurableSpace X] (μ : Measure X)
@@ -549,7 +576,8 @@ def parabolicL2Multiply {X : Type*} [MeasurableSpace X] (μ : Measure X)
       (parabolicL2_product_memLp μ hm hC f).coeFn_toLp,
       (parabolicL2_product_memLp μ hm hC g).coeFn_toLp,
       Lp.coeFn_add f g,
-      Lp.coeFn_add ((parabolicL2_product_memLp μ hm hC f).toLp _) ((parabolicL2_product_memLp μ hm hC g).toLp _)] with x hfg hf hg ha hb
+      Lp.coeFn_add ((parabolicL2_product_memLp μ hm hC f).toLp _) ((parabolicL2_product_memLp μ hm
+        hC g).toLp _)] with x hfg hf hg ha hb
     simp only [Pi.add_apply] at ha hb
     rw [hfg,hb,hf,hg,ha,mul_add]
   map_smul' c f := by
@@ -583,7 +611,7 @@ def parabolicMultiplierBound : ℝ := parabolicAnalyticMultiplier_uniform_bound.
 theorem parabolicMultiplierBound_pos : 0 < parabolicMultiplierBound :=
   parabolicAnalyticMultiplier_uniform_bound.choose_spec.1
 
-theorem parabolicMultiplierBound_spec {z : ℂ} (hz : z.re ∈ Set.Icc (-1/2:ℝ) 1)
+theorem parabolicMultiplierBound_spec {z : ℂ} (hz : z.re ∈ Set.Icc (-1 / 2 : ℝ) 1)
     (ξ : ℝ × ℝ) : ‖parabolicAnalyticMultiplier z ξ‖ ≤ parabolicMultiplierBound :=
   parabolicAnalyticMultiplier_uniform_bound.choose_spec.2 z (by simpa only [neg_div] using hz) ξ
 
@@ -596,16 +624,19 @@ theorem parabolicStripSymbol_measurable (z : ℂ) : Measurable (parabolicStripSy
   classical
   unfold parabolicStripSymbol
   by_cases hz : z.re ∈ Set.Icc (-1/2:ℝ) 1
-  · simpa only [parabolicStripSymbol,if_pos hz,Function.comp_def] using!
+  · simpa only [parabolicStripSymbol,ite_eq_left hz,Function.comp_def] using!
       (parabolicAnalyticMultiplier_measurable z).comp parabolicPlaneEquiv.continuous.measurable
-  · simpa only [parabolicStripSymbol,if_neg hz] using (measurable_const : Measurable (fun _ : EuclideanSpace ℝ (Fin 2) => (0:ℂ)))
+  · simpa only [parabolicStripSymbol,ite_eq_right hz] using (measurable_const : Measurable (fun _
+    : EuclideanSpace ℝ (Fin 2) => (0:ℂ)))
 
 theorem parabolicStripSymbol_bound (z : ℂ) (ξ : EuclideanSpace ℝ (Fin 2)) :
     ‖parabolicStripSymbol z ξ‖ ≤ parabolicMultiplierBound := by
   classical
   by_cases hz : z.re ∈ Set.Icc (-1/2:ℝ) 1
-  · simpa only [parabolicStripSymbol,if_pos hz] using parabolicMultiplierBound_spec hz (parabolicPlaneEquiv ξ)
-  · simpa only [parabolicStripSymbol,if_neg hz,norm_zero] using parabolicMultiplierBound_pos.le
+  · simpa only [parabolicStripSymbol,ite_eq_left hz] using parabolicMultiplierBound_spec hz
+      (parabolicPlaneEquiv ξ)
+  · simpa only [parabolicStripSymbol,ite_eq_right hz,norm_zero] using
+    parabolicMultiplierBound_pos.le
 
 /-- The analytic parabola family on L2, defined by the verified multiplier. -/
 def parabolicL2Family (z : ℂ) :
@@ -631,24 +662,29 @@ def parabolicMultiplierDerivative (z : ℂ) (ξ : ℝ × ℝ) : ℂ :=
   (((2*z*Complex.exp (z^2))*Complex.Gamma (z+1)+Complex.exp (z^2)*deriv Complex.Gamma (z+1))*
     (parabolicGaussianCoefficient ξ.2)^(-z)+
     (Complex.exp (z^2)*Complex.Gamma (z+1))*
-      ((parabolicGaussianCoefficient ξ.2)^(-z)*Complex.log (parabolicGaussianCoefficient ξ.2)*(-1)))*
+      ((parabolicGaussianCoefficient ξ.2)^(-z)*Complex.log (parabolicGaussianCoefficient
+        ξ.2)*(-1)))*
     parabolicGaussianSymbol ξ
 
 /-- Exact derivative formula for the analytic multiplier. -/
 theorem parabolicAnalyticMultiplier_hasDerivAt {z : ℂ} (hz : -1 < z.re) (ξ : ℝ × ℝ) :
-    HasDerivAt (fun w => parabolicAnalyticMultiplier w ξ) (parabolicMultiplierDerivative z ξ) z := by
+    HasDerivAt (fun w => parabolicAnalyticMultiplier w ξ) (parabolicMultiplierDerivative z ξ) z :=
+      by
   have havoid : ∀ n : ℕ, z+1 ≠ -(n:ℂ) := by
     intro n he
     have hre := congrArg Complex.re he
     simp only [Complex.add_re,Complex.one_re,Complex.neg_re,Complex.natCast_re] at hre
     have hn : (0:ℝ) ≤ n := Nat.cast_nonneg n
     linarith
-  have hg := (Complex.differentiableAt_Gamma (z+1) havoid).hasDerivAt.comp z ((hasDerivAt_id z).add_const 1)
+  have hg := (Complex.differentiableAt_Gamma (z+1) havoid).hasDerivAt.comp z ((hasDerivAt_id
+    z).add_const 1)
   have hp := (hasDerivAt_id z).neg.const_cpow (Or.inl (parabolicGaussianCoefficient_ne_zero ξ.2))
   have he := ((hasDerivAt_id z).pow 2).cexp
   have hh := ((he.mul hg).mul hp).mul_const (parabolicGaussianSymbol ξ)
   convert! hh using 1
-  simp only [parabolicMultiplierDerivative,id_eq,Pi.neg_apply,Pi.pow_apply,Pi.mul_apply,Function.comp_def,mul_one]
+  simp only
+    [parabolicMultiplierDerivative,id_eq,Pi.neg_apply,Pi.pow_apply,Pi.mul_apply,
+      Function.comp_def,mul_one]
   norm_num
   ring_nf
   simp
@@ -663,7 +699,9 @@ theorem parabolicMultiplierDerivative_measurable (z : ℂ) :
       unfold parabolicGaussianCoefficient
       fun_prop
     exact (continuousAt_cpow_const (show parabolicGaussianCoefficient ξ.2 ∈ Complex.slitPlane from
-      Or.inl (by rw [parabolicGaussianCoefficient_re]; norm_num))).comp (f := fun η : ℝ × ℝ => parabolicGaussianCoefficient η.2) (x := ξ) hc
+      Or.inl (by
+        rw [parabolicGaussianCoefficient_re];
+        norm_num))).comp (f := fun η : ℝ × ℝ => parabolicGaussianCoefficient η.2) (x := ξ) hc
   have hl : Continuous (fun ξ : ℝ × ℝ => Complex.log (parabolicGaussianCoefficient ξ.2)) := by
     apply continuous_iff_continuousAt.mpr
     intro ξ
@@ -671,7 +709,9 @@ theorem parabolicMultiplierDerivative_measurable (z : ℂ) :
       unfold parabolicGaussianCoefficient
       fun_prop
     exact (continuousAt_clog (show parabolicGaussianCoefficient ξ.2 ∈ Complex.slitPlane from
-      Or.inl (by rw [parabolicGaussianCoefficient_re]; norm_num))).comp (f := fun η : ℝ × ℝ => parabolicGaussianCoefficient η.2) (x := ξ) hc
+      Or.inl (by
+        rw [parabolicGaussianCoefficient_re];
+        norm_num))).comp (f := fun η : ℝ × ℝ => parabolicGaussianCoefficient η.2) (x := ξ) hc
   exact ((measurable_const.mul hp.measurable).add
     (measurable_const.mul ((hp.measurable.mul hl.measurable).mul measurable_const))).mul
       parabolicGaussianSymbol_measurable
@@ -679,7 +719,7 @@ theorem parabolicMultiplierDerivative_measurable (z : ℂ) :
 /-- A Cauchy estimate for the multiplier derivative on any disk contained
 in the closed interpolation strip. -/
 theorem parabolicMultiplierDerivative_bound {z : ℂ} {R : ℝ} (hR : 0 < R)
-    (hball : ∀ w ∈ Metric.closedBall z R, w.re ∈ Set.Icc (-1/2:ℝ) 1)
+    (hball : ∀ w ∈ Metric.closedBall z R, w.re ∈ Set.Icc (-1 / 2 : ℝ) 1)
     (ξ : ℝ × ℝ) : ‖parabolicMultiplierDerivative z ξ‖ ≤ parabolicMultiplierBound/R := by
   have hz := hball z (Metric.mem_closedBall_self hR.le)
   have hd : DifferentiableOn ℂ (fun w => parabolicAnalyticMultiplier w ξ) {w | -1 < w.re} :=
@@ -692,10 +732,12 @@ theorem parabolicMultiplierDerivative_bound {z : ℂ} {R : ℝ} (hR : 0 < R)
 
 /-- Every interior strip point has a disk twice as large as the local
 neighborhood on which one common Cauchy derivative bound will be used. -/
-theorem parabolicStrip_interior_disk {z : ℂ} (hz : z.re ∈ Set.Ioo (-1/2:ℝ) 1) :
+theorem parabolicStrip_interior_disk {z : ℂ} (hz : z.re ∈ Set.Ioo (-1 / 2 : ℝ) 1) :
     ∃ R : ℝ, 0 < R ∧ ∀ w ∈ Metric.closedBall z (2*R), w.re ∈ Set.Icc (-1/2:ℝ) 1 := by
   let R := min (z.re+1/2) (1-z.re)/4
-  have hR : 0 < R := by dsimp [R]; exact div_pos (lt_min (by linarith [hz.1]) (by linarith [hz.2])) (by norm_num)
+  have hR : 0 < R := by
+    dsimp [R];
+    exact div_pos (lt_min (by linarith [hz.1]) (by linarith [hz.2])) (by norm_num)
   refine ⟨R,hR,?_⟩
   intro w hw
   have hn : |w.re-z.re| ≤ 2*R := by
@@ -710,7 +752,7 @@ theorem parabolicStrip_interior_disk {z : ℂ} (hz : z.re ∈ Set.Ioo (-1/2:ℝ)
 
 /-- Absolute integrability of multiplier pairings throughout the closed strip. -/
 theorem parabolicMultiplierPairing_integrable {h : (ℝ × ℝ) → ℂ} (hh : Integrable h)
-    {z : ℂ} (hz : z.re ∈ Set.Icc (-1/2:ℝ) 1) :
+    {z : ℂ} (hz : z.re ∈ Set.Icc (-1 / 2 : ℝ) 1) :
     Integrable (fun ξ => parabolicAnalyticMultiplier z ξ*h ξ) := by
   apply (hh.norm.const_mul parabolicMultiplierBound).mono'
     ((parabolicAnalyticMultiplier_measurable z).aestronglyMeasurable.mul hh.aestronglyMeasurable)
@@ -726,16 +768,19 @@ theorem parabolicMultiplierPairing_continuousOn {h : (ℝ × ℝ) → ℂ} (hh :
   · intro z hz
     exact (parabolicMultiplierPairing_integrable hh hz).aestronglyMeasurable
   · intro z hz
-    exact Filter.Eventually.of_forall (fun ξ => by rw [norm_mul]; exact mul_le_mul_of_nonneg_right (parabolicMultiplierBound_spec hz ξ) (norm_nonneg _))
+    exact Filter.Eventually.of_forall (fun ξ => by
+      rw [norm_mul];
+      exact mul_le_mul_of_nonneg_right (parabolicMultiplierBound_spec hz ξ) (norm_nonneg _))
   · exact hh.norm.const_mul _
   · filter_upwards [] with ξ
     intro z hz
-    exact ((parabolicAnalyticMultiplier_differentiableAt (by linarith [hz.1]) ξ).continuousAt.mul continuousAt_const).continuousWithinAt
+    exact ((parabolicAnalyticMultiplier_differentiableAt (by linarith [hz.1]) ξ).continuousAt.mul
+      continuousAt_const).continuousWithinAt
 
 /-- Holomorphy of the Fourier pairing in the open strip, with all
 interchanges justified by the Cauchy derivative majorant. -/
 theorem parabolicMultiplierPairing_differentiableAt {h : (ℝ × ℝ) → ℂ} (hh : Integrable h)
-    {z : ℂ} (hz : z.re ∈ Set.Ioo (-1/2:ℝ) 1) :
+    {z : ℂ} (hz : z.re ∈ Set.Ioo (-1 / 2 : ℝ) 1) :
     DifferentiableAt ℂ (fun w => ∫ ξ, parabolicAnalyticMultiplier w ξ*h ξ) z := by
   obtain ⟨R,hR,hball⟩ := parabolicStrip_interior_disk hz
   have hlocal {w : ℂ} (hw : w ∈ Metric.ball z R) : w.re ∈ Set.Icc (-1/2:ℝ) 1 :=
@@ -764,7 +809,9 @@ theorem parabolicMultiplierPairing_differentiableAt {h : (ℝ × ℝ) → ℂ} (
       rw [norm_mul]
       exact mul_le_mul_of_nonneg_right (hderiv hw ξ) (norm_nonneg _)))
     (hh.norm.const_mul _) (Filter.Eventually.of_forall (fun ξ w hw =>
-      (parabolicAnalyticMultiplier_hasDerivAt (by have := (hlocal hw).1; linarith) ξ).mul_const (h ξ)))
+      (parabolicAnalyticMultiplier_hasDerivAt (by
+        have := (hlocal hw).1;
+        linarith) ξ).mul_const (h ξ)))
   exact hresult.2.differentiableAt
 
 /-- The planar coordinate equivalence preserves Lebesgue volume. -/
@@ -775,13 +822,15 @@ theorem parabolicPlaneEquiv_measurePreserving :
 /-- The Fourier transform of the L2 family is multiplication by its symbol. -/
 theorem parabolicL2Family_fourier_ae (z : ℂ) (f : Lp (α := EuclideanSpace ℝ (Fin 2)) ℂ 2) :
     (fun ξ => (𝓕 (parabolicL2Family z f)) ξ) =ᵐ[volume]
-      (fun ξ : EuclideanSpace ℝ (Fin 2) => parabolicStripSymbol z ξ*(𝓕 f : Lp (α := EuclideanSpace ℝ (Fin 2)) ℂ 2) ξ) := by
+      (fun ξ : EuclideanSpace ℝ (Fin 2) => parabolicStripSymbol z ξ*(𝓕 f : Lp (α := EuclideanSpace
+        ℝ (Fin 2)) ℂ 2) ξ) := by
   have he : 𝓕 (parabolicL2Family z f) =
       parabolicL2Multiply volume (parabolicStripSymbol z) (parabolicStripSymbol_measurable z)
         parabolicMultiplierBound (parabolicStripSymbol_bound z) (𝓕 f) := by
     exact (Lp.fourierTransformₗᵢ (EuclideanSpace ℝ (Fin 2)) ℂ).apply_symm_apply _
   rw [he]
-  exact (parabolicL2_product_memLp volume (parabolicStripSymbol_measurable z) (parabolicStripSymbol_bound z) (𝓕 f)).coeFn_toLp
+  exact (parabolicL2_product_memLp volume (parabolicStripSymbol_measurable z)
+    (parabolicStripSymbol_bound z) (𝓕 f)).coeFn_toLp
 
 /-- The fixed product of two L2 Fourier transforms, in pair coordinates. -/
 def parabolicFourierPair (f g : Lp (α := EuclideanSpace ℝ (Fin 2)) ℂ 2) (ξ : ℝ × ℝ) : ℂ :=
@@ -794,7 +843,7 @@ theorem parabolicFourierPair_integrable (f g : Lp (α := EuclideanSpace ℝ (Fin
 
 /-- Plancherel identifies the operator pairing with the analytic Fourier
 integral already controlled above. -/
-theorem parabolicL2Family_inner {z : ℂ} (hz : z.re ∈ Set.Icc (-1/2:ℝ) 1)
+theorem parabolicL2Family_inner {z : ℂ} (hz : z.re ∈ Set.Icc (-1 / 2 : ℝ) 1)
     (f g : Lp (α := EuclideanSpace ℝ (Fin 2)) ℂ 2) :
     inner ℂ g (parabolicL2Family z f) =
       ∫ ξ : ℝ × ℝ, parabolicAnalyticMultiplier z ξ*parabolicFourierPair f g ξ := by
@@ -805,13 +854,14 @@ theorem parabolicL2Family_inner {z : ℂ} (hz : z.re ∈ Set.Icc (-1/2:ℝ) 1)
     apply integral_congr_ae
     filter_upwards [parabolicL2Family_fourier_ae z f] with ξ hξ
     rw [hξ]
-    simp only [parabolicStripSymbol,if_pos hz,RCLike.inner_apply,starRingEnd_apply]
+    simp only [parabolicStripSymbol,ite_eq_left hz,RCLike.inner_apply,starRingEnd_apply]
     ring
   rw [he]
   have hc := parabolicPlaneEquiv_measurePreserving.integral_comp
     parabolicPlaneEquiv.toHomeomorph.toMeasurableEquiv.measurableEmbedding
     (fun ξ => parabolicAnalyticMultiplier z ξ*parabolicFourierPair f g ξ)
-  change (∫ ξ : EuclideanSpace ℝ (Fin 2), parabolicAnalyticMultiplier z (parabolicPlaneEquiv ξ)*parabolicFourierPair f g (parabolicPlaneEquiv ξ)) =
+  change (∫ ξ : EuclideanSpace ℝ (Fin 2), parabolicAnalyticMultiplier z (parabolicPlaneEquiv
+    ξ)*parabolicFourierPair f g (parabolicPlaneEquiv ξ)) =
     (∫ ξ : ℝ × ℝ, parabolicAnalyticMultiplier z ξ*parabolicFourierPair f g ξ) at hc
   simpa only [parabolicFourierPair,ContinuousLinearEquiv.symm_apply_apply] using! hc
 
@@ -824,7 +874,8 @@ theorem parabolicL2Family_inner_analytic (f g : Lp (α := EuclideanSpace ℝ (Fi
       {z : ℂ | z.re ∈ Set.Icc (-1/2:ℝ) 1} :=
     closure_minimal (fun z hz => ⟨hz.1.le,hz.2.le⟩) (isClosed_Icc.preimage Complex.continuous_re)
   constructor
-  · have hd : DifferentiableOn ℂ (fun z => ∫ ξ, parabolicAnalyticMultiplier z ξ*parabolicFourierPair f g ξ)
+  · have hd : DifferentiableOn ℂ (fun z => ∫ ξ, parabolicAnalyticMultiplier z
+    ξ*parabolicFourierPair f g ξ)
         {z : ℂ | z.re ∈ Set.Ioo (-1/2:ℝ) 1} :=
       fun z hz => (parabolicMultiplierPairing_differentiableAt hh hz).differentiableWithinAt
     exact hd.congr (fun z hz => parabolicL2Family_inner ⟨hz.1.le,hz.2.le⟩ f g)
@@ -843,8 +894,11 @@ theorem parabolicL2Family_stein_analytic (f g : Lp (α := EuclideanSpace ℝ (Fi
     DiffContOnCl ℂ (fun w => inner ℂ g (parabolicL2Family (parabolicInterpolationParameter w) f))
       (Complex.HadamardThreeLines.verticalStrip 0 1) := by
   apply (parabolicL2Family_inner_analytic f g).comp
-    (show DiffContOnCl ℂ parabolicInterpolationParameter (Complex.HadamardThreeLines.verticalStrip 0 1) from
-      (show Differentiable ℂ parabolicInterpolationParameter by unfold parabolicInterpolationParameter; fun_prop).diffContOnCl)
+    (show DiffContOnCl ℂ parabolicInterpolationParameter (Complex.HadamardThreeLines.verticalStrip
+      0 1) from
+      (show Differentiable ℂ parabolicInterpolationParameter by
+        unfold parabolicInterpolationParameter;
+        fun_prop).diffContOnCl)
   intro w hw
   change (parabolicInterpolationParameter w).re ∈ Set.Ioo (-1/2:ℝ) 1
   change w.re ∈ Set.Ioo (0:ℝ) 1 at hw
@@ -858,7 +912,8 @@ theorem parabolicSimple_memLp {X : Type*} [MeasurableSpace X] {μ : Measure X}
 
 /-- Inclusion of the integrable simple-function core into L2, extended
 by zero off that core so the interpolation family is a total function. -/
-def parabolicSimpleToL2 {X : Type*} [MeasurableSpace X] (μ : Measure X) (f : SimpleFunc X ℂ) : Lp ℂ 2 μ := by
+def parabolicSimpleToL2 {X : Type*} [MeasurableSpace X] (μ : Measure X) (f : SimpleFunc X ℂ) : Lp
+  ℂ 2 μ := by
   classical
   exact if hf : Integrable f μ then (parabolicSimple_memLp f hf).toLp f else 0
 
@@ -866,14 +921,14 @@ theorem parabolicSimpleToL2_add {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (f g : SimpleFunc X ℂ) (hf : Integrable f μ) (hg : Integrable g μ) :
     parabolicSimpleToL2 μ (f+g) = parabolicSimpleToL2 μ f+parabolicSimpleToL2 μ g := by
   have hfg : Integrable (f+g : SimpleFunc X ℂ) μ := hf.add hg
-  simp only [parabolicSimpleToL2,dif_pos hf,dif_pos hg,dif_pos hfg]
+  simp only [parabolicSimpleToL2,dite_eq_left hf,dite_eq_left hg,dite_eq_left hfg]
   exact MemLp.toLp_add (parabolicSimple_memLp f hf) (parabolicSimple_memLp g hg)
 
 theorem parabolicSimpleToL2_smul {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (c : ℂ) (f : SimpleFunc X ℂ) (hf : Integrable f μ) :
     parabolicSimpleToL2 μ (c • f) = c • parabolicSimpleToL2 μ f := by
   have hcf : Integrable (c • f : SimpleFunc X ℂ) μ := hf.smul c
-  simp only [parabolicSimpleToL2,dif_pos hf,dif_pos hcf]
+  simp only [parabolicSimpleToL2,dite_eq_left hf,dite_eq_left hcf]
   exact MemLp.toLp_const_smul c (parabolicSimple_memLp f hf)
 
 /-- The simple-function operator family in the exact form required by
@@ -904,7 +959,7 @@ theorem parabolicSteinFamily_smul (w c : ℂ) (f : SimpleFunc (EuclideanSpace �
 theorem parabolicSimpleToL2_ae {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (f : SimpleFunc X ℂ) (hf : Integrable f μ) :
     (parabolicSimpleToL2 μ f : X → ℂ) =ᵐ[μ] f := by
-  simp only [parabolicSimpleToL2,dif_pos hf]
+  simp only [parabolicSimpleToL2,dite_eq_left hf]
   exact (parabolicSimple_memLp f hf).coeFn_toLp
 
 theorem parabolicSteinFamily_ae (w : ℂ) (f : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) :
@@ -933,7 +988,8 @@ theorem parabolicSteinFamily_pair_inner (w : ℂ)
   apply integral_congr_ae
   have hgs : Integrable (star g : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) :=
     memLp_one_iff_integrable.mp ((memLp_one_iff_integrable.mpr hg).star)
-  filter_upwards [parabolicSteinFamily_ae w f,parabolicSimpleToL2_ae volume (star g) hgs] with x hx hgx
+  filter_upwards [parabolicSteinFamily_ae w f,parabolicSimpleToL2_ae volume (star g) hgs] with x
+    hx hgx
   rw [hx,hgx]
   simp only [RCLike.inner_apply,starRingEnd_apply,SimpleFunc.coe_star,Pi.star_apply,star_star]
 
@@ -953,13 +1009,16 @@ theorem parabolicSteinFamily_pair_analytic
 theorem parabolicSteinFamily_L2_bound (w : ℂ)
     (f : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ) (hf : Integrable f) :
     eLpNorm (parabolicSteinFamily w f) 2 volume ≤
-      ENNReal.ofReal parabolicMultiplierBound*eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume := by
+      ENNReal.ofReal parabolicMultiplierBound*eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume
+        := by
   rw [eLpNorm_congr_ae (parabolicSteinFamily_ae w f),← Lp.enorm_def]
-  have he : eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume = ‖parabolicSimpleToL2 volume f‖ₑ := by
-    simp only [parabolicSimpleToL2,dif_pos hf,Lp.enorm_toLp]
+  have he : eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 2 volume = ‖parabolicSimpleToL2 volume f‖ₑ
+    := by
+    simp only [parabolicSimpleToL2,dite_eq_left hf,Lp.enorm_toLp]
   rw [he]
   simpa only [← ofReal_norm,← ENNReal.ofReal_mul parabolicMultiplierBound_pos.le] using
-    ENNReal.ofReal_le_ofReal (parabolicL2Family_norm_le (parabolicInterpolationParameter w) (parabolicSimpleToL2 volume f))
+    ENNReal.ofReal_le_ofReal (parabolicL2Family_norm_le (parabolicInterpolationParameter w)
+      (parabolicSimpleToL2 volume f))
 
 /-- Coordinate form of the Euclidean Fourier character. -/
 theorem parabolicFourierCharacter_euclidean (ξ x : EuclideanSpace ℝ (Fin 2)) :
@@ -980,7 +1039,8 @@ def parabolicEuclideanKernel (z : ℂ) (x : EuclideanSpace ℝ (Fin 2)) : ℂ :=
 
 theorem parabolicEuclideanKernel_integrable {z : ℂ} (hz : 0 < z.re) :
     Integrable (parabolicEuclideanKernel z) :=
-  parabolicPlaneEquiv_measurePreserving.integrable_comp_of_integrable (parabolicAnalyticKernel_integrable hz)
+  parabolicPlaneEquiv_measurePreserving.integrable_comp_of_integrable
+    (parabolicAnalyticKernel_integrable hz)
 
 /-- The verified coordinate Fourier identity agrees with Mathlib's Euclidean Fourier transform. -/
 theorem parabolicEuclideanKernel_fourier {z : ℂ} (hz : 0 < z.re)
@@ -1009,14 +1069,16 @@ theorem parabolicKernelConvolution_bound {z : ℂ} (hz : z.re = 1)
     (Filter.Eventually.of_forall (fun y => show ‖f y*parabolicEuclideanKernel z (x-y)‖ ≤
       (2*Real.exp 1)*‖f y‖ by
       rw [norm_mul,mul_comm]
-      exact mul_le_mul_of_nonneg_right (parabolicAnalyticKernel_boundary_bound hz _) (norm_nonneg _)))
+      exact mul_le_mul_of_nonneg_right (parabolicAnalyticKernel_boundary_bound hz _) (norm_nonneg
+        _)))
   simpa only [integral_const_mul] using hh
 
 /-- Absolute integrability of the boundary convolution. -/
 theorem parabolicKernelConvolution_integrable {z : ℂ} (hz : 0 < z.re)
     {f : EuclideanSpace ℝ (Fin 2) → ℂ} (hf : Integrable f) :
     Integrable (parabolicKernelConvolution z f) :=
-  hf.integrable_convolution (L := ContinuousLinearMap.mul ℂ ℂ) (parabolicEuclideanKernel_integrable hz)
+  hf.integrable_convolution (L := ContinuousLinearMap.mul ℂ ℂ)
+    (parabolicEuclideanKernel_integrable hz)
 
 /-- The right-boundary convolution belongs to L2 because it is both
 integrable and bounded. -/
@@ -1050,8 +1112,9 @@ theorem parabolicL2Family_kernel_eq {z : ℂ} (hz : z.re = 1)
   change (𝓕 (parabolicL2Family z (hf2.toLp f))) ξ =
     (𝓕 ((parabolicKernelConvolution_memLp hz hf).toLp (parabolicKernelConvolution z f))) ξ
   rw [hT,hfξ,hK]
-  rw [parabolicKernelConvolution,Real.fourier_mul_convolution_eq hf (parabolicEuclideanKernel_integrable hzpos),
-    parabolicEuclideanKernel_fourier hzpos,parabolicStripSymbol,if_pos hzstrip,mul_comm]
+  rw [parabolicKernelConvolution,Real.fourier_mul_convolution_eq hf
+    (parabolicEuclideanKernel_integrable hzpos),
+    parabolicEuclideanKernel_fourier hzpos,parabolicStripSymbol,ite_eq_left hzstrip,mul_comm]
 
 /-- The right boundary of the simple-function family has the required
 L1 to L-infinity bound. -/
@@ -1061,16 +1124,23 @@ theorem parabolicSteinFamily_right_bound (t : ℝ)
       ENNReal.ofReal (2*Real.exp 1)*eLpNorm (f : EuclideanSpace ℝ (Fin 2) → ℂ) 1 volume := by
   let z := parabolicInterpolationParameter (1+(t:ℂ)*Complex.I)
   have hz : z.re = 1 := by dsimp [z]; rw [parabolicInterpolationParameter_re]; norm_num
-  have hconv : parabolicSteinFamily (1+(t:ℂ)*Complex.I) f =ᵐ[volume] parabolicKernelConvolution z f := by
+  have hconv : parabolicSteinFamily (1+(t:ℂ)*Complex.I) f =ᵐ[volume] parabolicKernelConvolution z
+    f := by
     have ha := parabolicSteinFamily_ae (1+(t:ℂ)*Complex.I) f
-    change parabolicSteinFamily (1+(t:ℂ)*Complex.I) f =ᵐ[volume] parabolicL2Family z (parabolicSimpleToL2 volume f) at ha
-    rw [parabolicSimpleToL2,dif_pos hf,parabolicL2Family_kernel_eq hz hf (parabolicSimple_memLp f hf)] at ha
+    change parabolicSteinFamily (1+(t:ℂ)*Complex.I) f =ᵐ[volume] parabolicL2Family z
+      (parabolicSimpleToL2 volume f) at ha
+    rw [parabolicSimpleToL2,dite_eq_left hf,parabolicL2Family_kernel_eq hz hf
+      (parabolicSimple_memLp f hf)] at ha
     exact ha.trans (parabolicKernelConvolution_memLp hz hf).coeFn_toLp
   have hb : ∀ᵐ x, ‖parabolicSteinFamily (1+(t:ℂ)*Complex.I) f x‖ ≤
-      (2*Real.exp 1)*(∫ y, ‖f y‖) := hconv.mono (fun x hx => by rw [hx]; exact parabolicKernelConvolution_bound hz hf x)
+      (2*Real.exp 1)*(∫ y, ‖f y‖) := hconv.mono (fun x hx => by
+        rw [hx];
+        exact parabolicKernelConvolution_bound hz hf x)
   have he := eLpNormEssSup_le_of_ae_bound hb
-  rw [ENNReal.ofReal_mul (by positivity : 0 ≤ 2*Real.exp 1),ofReal_integral_norm_eq_lintegral_enorm hf,
-    ← eLpNorm_one_eq_lintegral_enorm] at he
+  rw [ENNReal.ofReal_mul
+    (by positivity : 0 ≤ 2*Real.exp 1),ofReal_integral_norm_eq_lintegral_enorm hf,
+    ← eLpNorm_one_eq_lintegral_enorm hf.aestronglyMeasurable] at he
+  rw [eLpNorm_exponent_top (parabolicSteinFamily_measurable _ f).aestronglyMeasurable]
   exact he
 
 /-- The uniform L2 bound supplies the sub-double-exponential pairing
@@ -1079,17 +1149,19 @@ theorem parabolicSteinFamily_growth :
     ∃ a : ℝ, a < Real.pi ∧
       ∀ (f g : SimpleFunc (EuclideanSpace ℝ (Fin 2)) ℂ), Integrable f → Integrable g →
         ∃ C : ℝ, ∀ w : Complex.HadamardThreeLines.verticalClosedStrip 0 1,
-          ‖∫ x, parabolicSteinFamily w f x*g x‖ ≤ Real.exp (C*Real.exp (a*|(w:ℂ).im|)) := by
+          ‖∫ x, parabolicSteinFamily w f x*g x‖ ≤ Real.exp (C * Real.exp (a*|(w:ℂ).im|)) := by
   refine ⟨0,Real.pi_pos,?_⟩
   intro f g hf hg
-  let C := ‖parabolicSimpleToL2 volume (star g)‖*(parabolicMultiplierBound*‖parabolicSimpleToL2 volume f‖)
+  let C := ‖parabolicSimpleToL2 volume (star g)‖*(parabolicMultiplierBound*‖parabolicSimpleToL2
+    volume f‖)
   refine ⟨C,?_⟩
   intro w
   simp only [zero_mul,Real.exp_zero,mul_one]
   rw [parabolicSteinFamily_pair_inner w f g hg]
   calc
     _ ≤ ‖parabolicSimpleToL2 volume (star g)‖*
-        ‖parabolicL2Family (parabolicInterpolationParameter w) (parabolicSimpleToL2 volume f)‖ := norm_inner_le_norm _ _
+        ‖parabolicL2Family (parabolicInterpolationParameter w) (parabolicSimpleToL2 volume f)‖ :=
+          norm_inner_le_norm _ _
     _ ≤ C := mul_le_mul_of_nonneg_left (parabolicL2Family_norm_le _ _) (norm_nonneg _)
     _ ≤ Real.exp C := (le_add_of_nonneg_right zero_le_one).trans (Real.add_one_le_exp C)
 
@@ -1117,8 +1189,15 @@ theorem parabolicStein_simple_bound
     (θ := 1/3) (M₀ := parabolicMultiplierBound) (M₁ := 2*Real.exp 1)
     parabolicSteinFamily (by norm_num) le_rfl (by norm_num) le_top
     (by norm_num)
-    (by norm_num [ENNReal.ofReal_div_of_pos (by norm_num : (0:ℝ) < 3),ENNReal.inv_div]; apply (ENNReal.toReal_eq_toReal_iff' (by finiteness) (by finiteness)).mp; rw [ENNReal.toReal_add (by finiteness) (by finiteness)]; norm_num [ENNReal.toReal_mul,ENNReal.toReal_div,ENNReal.toReal_inv])
-    (by norm_num [ENNReal.ofReal_div_of_pos (by norm_num : (0:ℝ) < 3)]; apply (ENNReal.toReal_eq_toReal_iff' (by finiteness) (by finiteness)).mp; norm_num [ENNReal.toReal_mul,ENNReal.toReal_div,ENNReal.toReal_inv])
+    (by
+      norm_num [ENNReal.ofReal_div_of_pos (by norm_num : (0:ℝ) < 3),ENNReal.inv_div];
+      apply (ENNReal.toReal_eq_toReal_iff' (by finiteness) (by finiteness)).mp;
+      rw [ENNReal.toReal_add (by finiteness) (by finiteness)];
+      norm_num [ENNReal.toReal_mul,ENNReal.toReal_div,ENNReal.toReal_inv])
+    (by
+      norm_num [ENNReal.ofReal_div_of_pos (by norm_num : (0:ℝ) < 3)];
+      apply (ENNReal.toReal_eq_toReal_iff' (by finiteness) (by finiteness)).mp;
+      norm_num [ENNReal.toReal_mul,ENNReal.toReal_div,ENNReal.toReal_inv])
     (fun w f g hf hg => parabolicSteinFamily_add w f g hf hg)
     (fun w c f hf => parabolicSteinFamily_smul w c f hf)
     (fun w f hf => parabolicSteinFamily_measurable w f)
@@ -1127,7 +1206,8 @@ theorem parabolicStein_simple_bound
     parabolicSteinFamily_growth parabolicMultiplierBound_pos (by positivity)
     (fun t f hf => parabolicSteinFamily_L2_bound ((t:ℂ)*Complex.I) f hf)
     parabolicSteinFamily_right_bound f hf
-  simpa only [Complex.ofReal_div,Complex.ofReal_one,Complex.ofReal_ofNat,parabolicAveragingBound] using! hh
+  simpa only [Complex.ofReal_div,Complex.ofReal_one,Complex.ofReal_ofNat,parabolicAveragingBound]
+    using! hh
 
 /-- The parabola in Euclidean coordinates. -/
 def parabolicCurve (t : ℝ) : EuclideanSpace ℝ (Fin 2) := parabolicPlaneEquiv.symm (t,t^2)
@@ -1145,18 +1225,21 @@ theorem parabolicGaussianWeight_norm (t : ℝ) : ‖parabolicGaussianWeight t‖
   simp only [Complex.neg_re,← Complex.ofReal_pow,Complex.ofReal_re]
 
 /-- The actual Gaussian parabola averaging operator. -/
-def parabolicGaussianAverage (f : EuclideanSpace ℝ (Fin 2) → ℂ) (x : EuclideanSpace ℝ (Fin 2)) : ℂ :=
+def parabolicGaussianAverage (f : EuclideanSpace ℝ (Fin 2) → ℂ) (x : EuclideanSpace ℝ (Fin 2)) : ℂ
+  :=
   ∫ t : ℝ, parabolicGaussianWeight t*f (x-parabolicCurve t)
 
 /-- Fiberwise translation along the parabola preserves product volume. -/
 theorem parabolicCurveTranslation_measurePreserving :
-    MeasurePreserving (fun p : ℝ × EuclideanSpace ℝ (Fin 2) => (p.1,p.2-parabolicCurve p.1)) volume volume := by
+    MeasurePreserving (fun p : ℝ × EuclideanSpace ℝ (Fin 2) => (p.1,p.2-parabolicCurve p.1))
+      volume volume := by
   change MeasurePreserving _ (volume.prod volume) (volume.prod volume)
   apply (MeasurePreserving.id volume).skew_product (g := fun t x => x-parabolicCurve t)
   · unfold parabolicCurve
     fun_prop
   · exact Filter.Eventually.of_forall (fun t => by
-      simpa only [sub_eq_add_neg] using (measurePreserving_add_right volume (-parabolicCurve t)).map_eq)
+      simpa only [sub_eq_add_neg] using (measurePreserving_add_right volume (-parabolicCurve
+        t)).map_eq)
 
 /-- Absolute integrability of the joint averaging integrand. -/
 theorem parabolicGaussianAverage_integrand_integrable
@@ -1192,13 +1275,15 @@ theorem parabolicCurve_fourier_translation (f : EuclideanSpace ℝ (Fin 2) → �
     (innerₗ (EuclideanSpace ℝ (Fin 2))) f (-parabolicCurve t)) ξ
   change (𝓕 (f ∘ (fun x => x+(-parabolicCurve t)))) ξ =
     Real.fourierChar (inner ℝ (-parabolicCurve t) ξ) • (𝓕 f) ξ at hh
-  simpa only [Function.comp_def,← sub_eq_add_neg,inner_neg_left,Circle.smul_def,smul_eq_mul] using! hh
+  simpa only [Function.comp_def,← sub_eq_add_neg,inner_neg_left,Circle.smul_def,smul_eq_mul]
+    using! hh
 
 /-- The actual Gaussian parabola average has the Gaussian parabola multiplier. -/
 theorem parabolicGaussianAverage_fourier
     {f : EuclideanSpace ℝ (Fin 2) → ℂ} (hf : Integrable f)
     (ξ : EuclideanSpace ℝ (Fin 2)) :
-    (𝓕 (parabolicGaussianAverage f)) ξ = parabolicGaussianSymbol (parabolicPlaneEquiv ξ)*(𝓕 f) ξ := by
+    (𝓕 (parabolicGaussianAverage f)) ξ = parabolicGaussianSymbol (parabolicPlaneEquiv ξ)*(𝓕 f) ξ
+      := by
   let χ : EuclideanSpace ℝ (Fin 2) → ℂ := fun x => Real.fourierChar (-inner ℝ x ξ)
   let J : ℝ × EuclideanSpace ℝ (Fin 2) → ℂ := fun p =>
     χ p.2*(parabolicGaussianWeight p.1*f (p.2-parabolicCurve p.1))
@@ -1207,14 +1292,17 @@ theorem parabolicGaussianAverage_fourier
     fun_prop
   have hJ : Integrable J := by
     apply (parabolicGaussianAverage_integrand_integrable hf).norm.mono'
-      (hχ.aestronglyMeasurable.mul (parabolicGaussianAverage_integrand_integrable hf).aestronglyMeasurable)
+      (hχ.aestronglyMeasurable.mul (parabolicGaussianAverage_integrand_integrable
+        hf).aestronglyMeasurable)
     filter_upwards [] with p
     dsimp [J,χ]
     rw [norm_mul,Circle.norm_coe,one_mul]
   have hphase (t : ℝ) : χ (parabolicCurve t) =
-      Complex.exp (-2*Real.pi*Complex.I*((((parabolicPlaneEquiv ξ).1)*t+(parabolicPlaneEquiv ξ).2*t^2:ℝ):ℂ)) := by
+      Complex.exp (-2*Real.pi*Complex.I*((((parabolicPlaneEquiv ξ).1)*t+(parabolicPlaneEquiv
+        ξ).2*t^2:ℝ):ℂ)) := by
     rw [show χ (parabolicCurve t) = parabolicFourierCharacter (parabolicPlaneEquiv ξ)
-        (parabolicPlaneEquiv (parabolicCurve t)) from parabolicFourierCharacter_euclidean ξ (parabolicCurve t)]
+        (parabolicPlaneEquiv (parabolicCurve t)) from parabolicFourierCharacter_euclidean ξ
+          (parabolicCurve t)]
     simp only [parabolicCurve,ContinuousLinearEquiv.apply_symm_apply,parabolicFourierCharacter]
   calc
     _ = ∫ x : EuclideanSpace ℝ (Fin 2), ∫ t : ℝ, J (t,x) := by
@@ -1230,7 +1318,8 @@ theorem parabolicGaussianAverage_fourier
       rw [Real.fourier_eq,← integral_const_mul]
       apply integral_congr_ae
       filter_upwards [] with x
-      change χ x*(parabolicGaussianWeight t*f (x-parabolicCurve t)) = parabolicGaussianWeight t*(χ x*f (x-parabolicCurve t))
+      change χ x*(parabolicGaussianWeight t*f (x-parabolicCurve t)) = parabolicGaussianWeight t*(χ
+        x*f (x-parabolicCurve t))
       ring
     _ = (∫ t : ℝ, parabolicGaussianWeight t*χ (parabolicCurve t))*(𝓕 f) ξ := by
       simp_rw [parabolicCurve_fourier_translation,← mul_assoc]
@@ -1271,7 +1360,7 @@ theorem parabolicL2Family_zero_eq
   change (𝓕 (parabolicL2Family 0 (hf2.toLp f))) ξ =
     (𝓕 ((parabolicGaussianAverage_memLp hf hB).toLp (parabolicGaussianAverage f))) ξ
   rw [hT,hfξ,hA,parabolicGaussianAverage_fourier hf,parabolicStripSymbol,
-    if_pos (by norm_num : (0:ℂ).re ∈ Set.Icc (-1/2:ℝ) 1),parabolicAnalyticMultiplier_zero]
+    ite_eq_left (by norm_num : (0:ℂ).re ∈ Set.Icc (-1 / 2 : ℝ) 1),parabolicAnalyticMultiplier_zero]
 
 /-- The interpolated simple-function family equals the actual Gaussian average. -/
 theorem parabolicSteinFamily_average_ae
@@ -1279,8 +1368,10 @@ theorem parabolicSteinFamily_average_ae
     parabolicSteinFamily (1/3:ℂ) f =ᵐ[volume] parabolicGaussianAverage f := by
   obtain ⟨B,hB⟩ := f.exists_forall_norm_le
   have ha := parabolicSteinFamily_ae (1/3:ℂ) f
-  have hz : parabolicInterpolationParameter (1/3:ℂ) = 0 := by norm_num [parabolicInterpolationParameter]
-  rw [hz,parabolicSimpleToL2,dif_pos hf,parabolicL2Family_zero_eq hf (parabolicSimple_memLp f hf) hB] at ha
+  have hz : parabolicInterpolationParameter (1/3:ℂ) = 0 :=
+    by norm_num [parabolicInterpolationParameter]
+  rw [hz,parabolicSimpleToL2,dite_eq_left hf,parabolicL2Family_zero_eq hf (parabolicSimple_memLp f
+    hf) hB] at ha
   exact ha.trans (parabolicGaussianAverage_memLp hf hB).coeFn_toLp
 
 /-- Exact L^(3/2) to L^3 Gaussian parabola averaging estimate on integrable simple functions. -/
@@ -1298,7 +1389,7 @@ convergence of their Gaussian parabola averages. -/
 theorem parabolicGaussianAverage_tendsto
     {f : EuclideanSpace ℝ (Fin 2) → ℂ} (hf : Integrable f)
     {F : ℕ → EuclideanSpace ℝ (Fin 2) → ℂ} (hF : ∀ n, Measurable (F n))
-    (hbound : ∀ n x, ‖F n x‖ ≤ 2*‖f x‖)
+    (hbound : ∀ n x, ‖F n x‖ ≤ 2 * ‖f x‖)
     (hlim : ∀ x, Filter.Tendsto (fun n => F n x) Filter.atTop (nhds (f x))) :
     ∀ᵐ x, Filter.Tendsto (fun n => parabolicGaussianAverage (F n) x) Filter.atTop
       (nhds (parabolicGaussianAverage f x)) := by
@@ -1332,25 +1423,31 @@ theorem parabolicGaussianAverage_bound_general
     simpa only [F,two_mul] using SimpleFunc.norm_approxOn_zero_le hm (Set.mem_univ (0:ℂ)) x n
   have hint (n : ℕ) : Integrable (F n : EuclideanSpace ℝ (Fin 2) → ℂ) :=
     (hf.norm.const_mul 2).mono' (F n).aestronglyMeasurable (Filter.Eventually.of_forall (hbound n))
-  have hlim (x : EuclideanSpace ℝ (Fin 2)) : Filter.Tendsto (fun n => F n x) Filter.atTop (nhds (f x)) :=
+  have hlim (x : EuclideanSpace ℝ (Fin 2)) : Filter.Tendsto (fun n => F n x) Filter.atTop (nhds (f
+    x)) :=
     SimpleFunc.tendsto_approxOn hm (Set.mem_univ 0) (by simp)
-  apply Lp.eLpNorm_le_of_ae_tendsto (u := Filter.atTop) (f := fun n => parabolicGaussianAverage (F n))
+  apply Lp.eLpNorm_le_of_ae_tendsto (u := Filter.atTop) (f := fun n => parabolicGaussianAverage (F
+    n))
   · apply Filter.Eventually.of_forall
     intro n
     have hi := (parabolicGaussianAverage_simple_bound (F n) (hint n)).2
-    have hn := eLpNorm_le_mul_eLpNorm_of_ae_le_mul (μ := volume) (Filter.Eventually.of_forall (hbound n)) (3/2:ENNReal)
+    have hn := eLpNorm_le_mul_eLpNorm_of_ae_le_mul (μ := volume) (F n).aestronglyMeasurable
+      (Filter.Eventually.of_forall (hbound n)) (3/2:ENNReal)
     calc
-      _ ≤ ENNReal.ofReal parabolicAveragingBound*eLpNorm (F n : EuclideanSpace ℝ (Fin 2) → ℂ) (3/2) volume := hi
-      _ ≤ ENNReal.ofReal parabolicAveragingBound*(ENNReal.ofReal 2*eLpNorm f (3/2) volume) := mul_le_mul' le_rfl hn
+      _ ≤ ENNReal.ofReal parabolicAveragingBound*eLpNorm (F n : EuclideanSpace ℝ (Fin 2) → ℂ)
+        (3/2) volume := hi
+      _ ≤ ENNReal.ofReal parabolicAveragingBound*(ENNReal.ofReal 2*eLpNorm f (3/2) volume) :=
+        mul_le_mul' le_rfl hn
       _ = _ := by rw [ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]; ring
   · intro n
     exact (parabolicGaussianAverage_integrable (hint n)).aestronglyMeasurable
+  · exact (parabolicGaussianAverage_integrable hf).aestronglyMeasurable
   · exact parabolicGaussianAverage_tendsto hf (fun n => (F n).measurable) hbound hlim
 
 /-- Every continuous compact time cutoff is dominated by a Gaussian. -/
 theorem parabolic_cutoff_gaussian_domination {η : ℝ → ℂ}
     (hη : Continuous η) (hc : HasCompactSupport η) :
-    ∃ C : ℝ, 0 < C ∧ ∀ t, ‖η t‖ ≤ C*Real.exp (-t^2) := by
+    ∃ C : ℝ, 0 < C ∧ ∀ t, ‖η t‖ ≤ C * Real.exp (-t^2) := by
   have hprod : HasCompactSupport (fun t : ℝ => η t*(Real.exp (t^2):ℂ)) := hc.mul_right
   have hp : Continuous (fun t : ℝ => η t*(Real.exp (t^2):ℂ)) := by fun_prop
   obtain ⟨B,hB⟩ := hprod.exists_bound_of_continuous hp
@@ -1369,7 +1466,8 @@ def parabolicWeightedAverage (η : ℝ → ℂ) (f : EuclideanSpace ℝ (Fin 2) 
 theorem parabolicWeightedAverage_integrable {η : ℝ → ℂ} (hη : Integrable η)
     {f : EuclideanSpace ℝ (Fin 2) → ℂ} (hf : Integrable f) :
     Integrable (parabolicWeightedAverage η f) :=
-  (parabolicCurveTranslation_measurePreserving.integrable_comp_of_integrable (hη.mul_prod hf)).integral_prod_right
+  (parabolicCurveTranslation_measurePreserving.integrable_comp_of_integrable (hη.mul_prod
+    hf)).integral_prod_right
 
 /-- Gaussian averaging of the pointwise norm is the nonnegative scalar
 majorant used for compactly supported time weights. -/
@@ -1385,9 +1483,10 @@ theorem parabolicGaussianAverage_normInput (f : EuclideanSpace ℝ (Fin 2) → �
 
 /-- Gaussian domination controls any dominated weighted average almost everywhere. -/
 theorem parabolicWeightedAverage_domination {η : ℝ → ℂ} {C : ℝ}
-    (hC : ∀ t, ‖η t‖ ≤ C*Real.exp (-t^2))
-    {f : EuclideanSpace ℝ (Fin 2) → ℂ} (hf : Integrable f) :
-    ∀ᵐ x, ‖parabolicWeightedAverage η f x‖ ≤ C*‖parabolicGaussianAverage (fun y => (‖f y‖:ℂ)) x‖ := by
+    (hC : ∀ t, ‖η t‖ ≤ C * Real.exp (-t ^ 2)) {f : EuclideanSpace ℝ (Fin 2) → ℂ} (hf :
+      Integrable f) :
+    ∀ᵐ x, ‖parabolicWeightedAverage η f x‖ ≤ C*‖parabolicGaussianAverage (fun y => (‖f y‖:ℂ)) x‖
+      := by
   filter_upwards [(parabolicGaussianAverage_integrand_integrable hf).prod_left_ae] with x hx
   rw [parabolicGaussianAverage_normInput]
   apply (norm_integral_le_of_norm_le (hx.norm.const_mul C) _).trans_eq
@@ -1405,17 +1504,22 @@ theorem parabolicAveraging_Lp_improving {η : ℝ → ℂ}
     ∃ C : ℝ, 0 < C ∧ ∀ f : EuclideanSpace ℝ (Fin 2) → ℂ,
       Measurable f → Integrable f → MemLp f (3/2) volume →
       MemLp (parabolicWeightedAverage η f) 3 volume ∧
-        eLpNorm (parabolicWeightedAverage η f) 3 volume ≤ ENNReal.ofReal C*eLpNorm f (3/2) volume := by
+        eLpNorm (parabolicWeightedAverage η f) 3 volume ≤ ENNReal.ofReal C*eLpNorm f (3/2) volume
+          := by
   obtain ⟨D,hD,hdom⟩ := parabolic_cutoff_gaussian_domination hη hc
-  refine ⟨D*(2*parabolicAveragingBound),mul_pos hD (mul_pos (by norm_num) parabolicAveragingBound_pos),?_⟩
+  refine ⟨D*(2*parabolicAveragingBound),mul_pos hD (mul_pos (by norm_num)
+    parabolicAveragingBound_pos),?_⟩
   intro f hm hf hfp
   have hnm : Measurable (fun x => (‖f x‖:ℂ)) := Complex.continuous_ofReal.measurable.comp hm.norm
   have hni : Integrable (fun x => (‖f x‖:ℂ)) := Complex.ofRealCLM.integrable_comp hf.norm
   have hn : eLpNorm (fun x => (‖f x‖:ℂ)) (3/2) volume = eLpNorm f (3/2) volume :=
-    eLpNorm_congr_norm_ae (Filter.Eventually.of_forall (fun x => by simp))
+    eLpNorm_congr_norm_ae hnm.aestronglyMeasurable hm.aestronglyMeasurable
+      (Filter.Eventually.of_forall (fun x => by simp))
   have hgauss := parabolicGaussianAverage_bound_general hnm hni
   rw [hn] at hgauss
   have hw := eLpNorm_le_mul_eLpNorm_of_ae_le_mul
+    (parabolicWeightedAverage_integrable
+      (hη.integrable_of_hasCompactSupport hc) hf).aestronglyMeasurable
     (parabolicWeightedAverage_domination hdom hf) (3:ENNReal)
   have hbound : eLpNorm (parabolicWeightedAverage η f) 3 volume ≤
       ENNReal.ofReal (D*(2*parabolicAveragingBound))*eLpNorm f (3/2) volume := by
@@ -1424,8 +1528,8 @@ theorem parabolicAveraging_Lp_improving {η : ℝ → ℂ}
       _ ≤ ENNReal.ofReal D*(ENNReal.ofReal (2*parabolicAveragingBound)*eLpNorm f (3/2) volume) :=
         mul_le_mul' le_rfl hgauss
       _ = _ := by rw [ENNReal.ofReal_mul hD.le,mul_assoc]
-  refine ⟨⟨(parabolicWeightedAverage_integrable (hη.integrable_of_hasCompactSupport hc) hf).aestronglyMeasurable,?_⟩,hbound⟩
-  exact hbound.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfp.2)
+  refine ⟨?_, hbound⟩
+  exact hbound.trans_lt (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfp)
 
 end
 end Auto

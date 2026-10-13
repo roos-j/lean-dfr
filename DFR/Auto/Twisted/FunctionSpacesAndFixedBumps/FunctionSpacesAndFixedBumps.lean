@@ -27,11 +27,9 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
-
-universe u
 
 /-!
 # Function spaces and fixed bumps
@@ -40,9 +38,11 @@ Section 2 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -50,7 +50,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -93,7 +94,7 @@ theorem schwartz_integrable (f : Schwartz3) : Integrable f :=
   f.integrable
 
 /-- A concrete one-dimensional rapid-decay estimate extracted from a Schwartz
-seminorm.  This is the form used for the fixed spatial cutoffs in the model
+seminorm. This is the form used for the fixed spatial cutoffs in the model
 kernel estimates. -/
 theorem schwartz_oneDim_decay (f : SchwartzMap ℝ ℂ) (r : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, ‖f x‖ ≤ C / (1 + |x|) ^ r := by
@@ -135,7 +136,7 @@ theorem schwartz_decay_norm {E : Type*} [NormedAddCommGroup E] [NormedSpace ℝ 
 
 /-! ## Fixed Gaussian and comparison kernels
 
-This begins the source's fixed-kernel block (`def:gaussian`).  The exact
+This begins the source's fixed-kernel block (`def:gaussian`). The exact
 Gaussian normalization is retained, rather than replacing it by an abstract
 Schwartz cutoff, because the later Calderón identity uses its Fourier-side
 normalization. -/
@@ -155,7 +156,7 @@ theorem gaussian_le_one (x : ℝ) : gaussian x ≤ 1 := by
   rw [Real.exp_le_one_iff]
   exact mul_nonpos_of_nonpos_of_nonneg (neg_nonpos.mpr Real.pi_pos.le) (sq_nonneg x)
 
-/-- Every fixed polynomial weight is bounded against the Gaussian.  The
+/-- Every fixed polynomial weight is bounded against the Gaussian. The
 proof uses the Gaussian's exponential decay at the cocompact filter and the
 extreme-value theorem, so the resulting constant is genuinely global. -/
 theorem gaussian_polynomial_decay (n : ℕ) :
@@ -204,14 +205,14 @@ theorem gaussian_even (x : ℝ) : gaussian (-x) = gaussian x := by
 /-! ### The standard frequency bump
 
 The literal source definition constructs the cutoff through an infinite
-convolution product.  The analytic work below and later in the proof uses
-only its proved properties.  We therefore package a direct smooth compactly
+convolution product. The analytic work below and later in the proof uses
+only its proved properties. We therefore package a direct smooth compactly
 supported realization with exactly those support and plateau radii; the
 source-audit entry records this implementation-level replacement.
 -/
 
 /-- A real, even, smooth cutoff with plateau `[-1/2, 1/2]` and support in
-`[-1, 1]`.  It realizes the frequency-side bump `b` of `def:bumps`. -/
+`[-1, 1]`. It realizes the frequency-side bump `b` of `def:bumps`. -/
 noncomputable def standardFrequencyBump : ℝ → ℝ :=
   (⟨(1 : ℝ) / 2, 1, by norm_num, by norm_num⟩ : ContDiffBump (0 : ℝ))
 
@@ -661,7 +662,7 @@ theorem conePhiPhysicalReal_decay (r : ℕ) :
 /-! ### Positive Gaussian superposition
 
 The proof of the third estimate in `lem:domination` only uses a fixed
-equivalent norm on the four scalar variables.  We use the coordinate `ℓ¹`
+equivalent norm on the four scalar variables. We use the coordinate `ℓ¹`
 radius below, which makes the source's translation bookkeeping completely
 explicit while retaining the same Gaussian superposition on the right.
 -/
@@ -795,7 +796,7 @@ theorem superposition_coordinate_abs_div_le_one (z : E4) {s : ℝ}
   exact (abs_coordinate_le_fourRadius z a).trans (by linarith)
 
 /-- A constant lower bound on a compact subinterval transfers to the positive
-improper scale integral.  This isolates the interval restriction in the
+improper scale integral. This isolates the interval restriction in the
 source proof of `eq:superposition`. -/
 theorem setIntegral_lower_of_pointwise
     (A c : ℝ) (hA : 0 ≤ A) (hc : 0 ≤ c) (f : ℝ → ℝ)
@@ -822,7 +823,8 @@ theorem setIntegral_lower_of_pointwise
   calc
     c * (2 * A) ^ (-51 : ℝ) * A = ∫ s in Set.Icc A (2 * A), q := by
       rw [integral_const]
-      simp [q]
+      simp only [Real.rpow_neg_ofNat, Int.reduceNeg, zpow_neg, zpow_ofNat, MeasurableSet.univ,
+        measureReal_restrict_apply, univ_inter, Real.volume_real_Icc, smul_eq_mul, q]
       rw [max_eq_left (by nlinarith [hA])]
       ring
     _ ≤ ∫ s in Set.Icc A (2 * A), f s := hmono
@@ -1003,7 +1005,7 @@ theorem four_factor_mul_pow_distribute
   ac_rfl
 
 /-- The four fixed spatial factors have arbitrary polynomial decay in their
-joint translated coordinate radius.  Keeping the order as a variable avoids
+joint translated coordinate radius. Keeping the order as a variable avoids
 kernel reduction of a concrete large natural power in the bookkeeping proof. -/
 theorem superpositionInput_shift_weighted_decay_at (n : ℕ) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (z : E4) (u : E3),

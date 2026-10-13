@@ -83,16 +83,28 @@ namespace Auto
 noncomputable section
 
 theorem measurable_monoShift1 : Measurable fun p : (ℝ × ℝ) × ℝ => (p.1.1 + p.2, p.1.2) :=
-  ((measurable_fst.comp measurable_fst).add measurable_snd).prodMk (measurable_snd.comp measurable_fst)
+  ((measurable_fst.comp measurable_fst).add measurable_snd).prodMk (measurable_snd.comp
+    measurable_fst)
 
 theorem measurable_monoShift2 {r : ℝ} (hr : 0 < r) :
     Measurable fun p : (ℝ × ℝ) × ℝ => (p.1.1, p.1.2 + monoQ r p.2) :=
   (measurable_fst.comp measurable_fst).prodMk
-    ((measurable_snd.comp measurable_fst).add ((continuous_monoQ hr).measurable.comp measurable_snd))
+    ((measurable_snd.comp measurable_fst).add ((continuous_monoQ hr).measurable.comp
+      measurable_snd))
 
-theorem eLpNorm_two_eq_lintegral {f : ℝ × ℝ → ℂ} :
+@[fun_prop] theorem measurable_monoT {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Measurable ψ) {a b : ℝ
+  × ℝ → ℂ}
+    (ha : Measurable a) (hb : Measurable b) : Measurable (monoT r ψ a b) := by
+  have h : StronglyMeasurable (Function.uncurry fun (z : ℝ × ℝ) (t : ℝ) =>
+      (ψ t : ℂ) * (a (z.1 + t, z.2) * b (z.1, z.2 + monoQ r t))) :=
+    Measurable.stronglyMeasurable ((Complex.measurable_ofReal.comp (hψ.comp measurable_snd)).mul
+      ((ha.comp measurable_monoShift1).mul (hb.comp (measurable_monoShift2 hr))))
+  exact h.integral_prod_right'.measurable
+
+theorem eLpNorm_two_eq_lintegral {f : ℝ × ℝ → ℂ}
+    (hf : AEStronglyMeasurable f volume := by fun_prop) :
     eLpNorm f 2 volume = (∫⁻ z, ‖f z‖ₑ ^ (2 : ℝ)) ^ (1 / 2 : ℝ) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) (by fun_prop)]
   norm_num
 
 /-- Cauchy-Schwarz for two translates: `∫ |f(z+a)| |g(z+b)| dz ≤ ‖f‖_2 ‖g‖_2`. -/
@@ -127,7 +139,7 @@ theorem eLpNorm_monoT_le {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Measur
     {f₁ f₂ : ℝ × ℝ → ℂ} (hf₁ : Measurable f₁) (hf₂ : Measurable f₂) :
     eLpNorm (monoT r ψ f₁ f₂) 1 volume
       ≤ (∫⁻ t, ‖ψ t‖ₑ) * (eLpNorm f₁ 2 volume * eLpNorm f₂ 2 volume) := by
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop)]
   have hmeas : Measurable (Function.uncurry fun (z : ℝ × ℝ) (t : ℝ) =>
       ‖ψ t‖ₑ * (‖f₁ (z.1 + t, z.2)‖ₑ * ‖f₂ (z.1, z.2 + monoQ r t)‖ₑ)) :=
     (hψ.comp measurable_snd).enorm.mul ((hf₁.comp measurable_monoShift1).enorm.mul
@@ -167,14 +179,15 @@ noncomputable section
 
 /-! ### (1.6)-(1.8): autocorrelation on `ℝ` (lines 150-199) -/
 
-/-- `U_R(G) = ∫ ∫_{|ξ| ≤ R} |(D_s G)^(ξ)|^2 dξ ds` (line 158), with `D_s G(x) = G(x+s) \bar{G(x)}`. -/
+/-- `U_R(G) = ∫ ∫_{|ξ| ≤ R} |(D_s G)^(ξ)|^2 dξ ds` (line 158), with `D_s G(x) = G(x+s)
+  \bar{G(x)}`. -/
 def monoU (R : ℝ) (G : ℝ → ℂ) : ℝ≥0∞ :=
   ∫⁻ s, ∫⁻ ξ in Icc (-R) R, ‖(𝓕 (smoothingMultiplicativeDifference G s) : ℝ → ℂ) ξ‖ₑ ^ 2
 
 theorem lintegral_enorm_sq_eq_ofReal {F : ℝ → ℂ} (hF : MemLp F 2 volume) :
     ∫⁻ x, ‖F x‖ₑ ^ 2 = ENNReal.ofReal (∫ x, ‖F x‖ ^ 2) := by
   have hi : Integrable (fun x => ‖F x‖ ^ 2) volume :=
-    (memLp_two_iff_integrable_sq_norm hF.1).mp hF
+    (memLp_two_iff_integrable_sq_norm hF.aestronglyMeasurable).mp hF
   rw [ofReal_integral_eq_lintegral_ofReal hi (Eventually.of_forall fun x => by positivity)]
   refine lintegral_congr fun x => ?_
   rw [← ofReal_norm, ENNReal.ofReal_pow (norm_nonneg _)]
@@ -209,7 +222,7 @@ theorem monoU_le {G : ℝ → ℂ} (hG1 : Integrable G volume) (hG2 : MemLp G 2 
     smoothing_fourier_toLp_ae_eq hG1 hG2
   set w : ℝ → ℝ := fun ξ => ‖(𝓕 f : Lp (α := ℝ) ℂ 2 volume) ξ‖ ^ 2
   have hwi : Integrable w volume :=
-    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).1).mp (Lp.memLp (𝓕 f))
+    (memLp_two_iff_integrable_sq_norm (Lp.memLp (𝓕 f)).aestronglyMeasurable).mp (Lp.memLp (𝓕 f))
   -- the energy as a Bochner integral
   have hE := smoothing_fourierDifference_ball_energy f R
   have hint := smoothing_integrable_fourierDifference_energy f
@@ -220,7 +233,8 @@ theorem monoU_le {G : ℝ → ℂ} (hG1 : Integrable G volume) (hG2 : MemLp G 2 
     have hp := hint.restrict (s := Set.univ ×ˢ Metric.closedBall (0 : ℝ) R)
     rw [← Measure.prod_restrict, Measure.restrict_univ] at hp
     rw [integral_integral hp, ofReal_integral_eq_lintegral_ofReal hp
-      (Eventually.of_forall fun p => by positivity), lintegral_prod _ hp.aemeasurable.ennreal_ofReal]
+      (Eventually.of_forall fun p => by positivity), lintegral_prod _
+        hp.aemeasurable.ennreal_ofReal]
     unfold monoU
     rw [← hball]
     refine lintegral_congr fun s => lintegral_congr fun ξ => ?_
@@ -248,7 +262,7 @@ theorem monoU_le {G : ℝ → ℂ} (hG1 : Integrable G volume) (hG2 : MemLp G 2 
     by_cases h0 : ∫⁻ x, ‖G x‖ₑ ^ 2 = 0
     · -- `G = 0` a.e., so everything vanishes
       have hG0 : G =ᵐ[volume] 0 := by
-        have := (lintegral_eq_zero_iff' (hG2.1.enorm.pow_const 2)).mp h0
+        have := (lintegral_eq_zero_iff' (hG2.aestronglyMeasurable.enorm.pow_const 2)).mp h0
         filter_upwards [this] with x hx
         simpa using hx
       have hf0 : ∀ᵐ η ∂volume, w η = 0 := by
@@ -320,7 +334,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Section 2 preliminaries: the partition cutoff and its modulated kernels -/
-
 theorem monoThetaC_contDiff : ContDiff ℝ ∞ (fun x : ℝ => (smoothingPartitionCutoff x : ℂ)) :=
   Complex.ofRealCLM.contDiff.comp smoothingPartitionCutoff_contDiff
 
@@ -434,11 +447,11 @@ theorem sum_indicator_Icc_le {R : ℝ} (hR : 0 < R) (T : Finset ℤ) (ξ : ℝ) 
     constructor
     · rw [Int.ceil_le]
       have : ξ / R ≤ n + 4 := by rw [div_le_iff₀ hR]; linarith
-      show ξ / R - 4 ≤ n
+      change ξ / R - 4 ≤ n
       linarith
     · rw [Int.le_floor]
       have : (n : ℝ) - 4 ≤ ξ / R := by rw [le_div_iff₀ hR]; linarith
-      show (n : ℝ) ≤ ξ / R + 4
+      change (n : ℝ) ≤ ξ / R + 4
       linarith
   have hcard : (Finset.Icc ⌈y - 4⌉ ⌊y + 4⌋).card ≤ 9 := by
     rw [Int.card_Icc]
@@ -458,7 +471,8 @@ theorem sum_indicator_Icc_le {R : ℝ} (hR : 0 < R) (T : Finset ℤ) (ξ : ℝ) 
     _ ≤ 9 := by exact_mod_cast hcard
 
 /-- The interval masses sum to at most `9 E`. -/
-theorem sum_lintegral_Icc_le {R : ℝ} (hR : 0 < R) (T : Finset ℤ) (w : ℝ → ℝ≥0∞) (hw : Measurable w) :
+theorem sum_lintegral_Icc_le {R : ℝ} (hR : 0 < R) (T : Finset ℤ) (w : ℝ → ℝ≥0∞) (hw : Measurable
+  w) :
     ∑ n ∈ T, ∫⁻ ξ in Icc ((n - 4) * R) ((n + 4) * R), w ξ ≤ 9 * ∫⁻ ξ, w ξ := by
   calc ∑ n ∈ T, ∫⁻ ξ in Icc ((n - 4) * R) ((n + 4) * R), w ξ
       = ∫⁻ ξ, ∑ n ∈ T, (Icc ((n - 4) * R) ((n + 4) * R)).indicator (1 : ℝ → ℝ≥0∞) ξ * w ξ := by
@@ -488,7 +502,7 @@ theorem card_le_of_selected {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ) {F : ℝ �
   rcases eq_or_ne (monoE F) 0 with h0 | h0
   · -- no integer is selected
     rcases T.eq_empty_or_nonempty with he | ⟨n, hn⟩
-    · simp [he]; positivity
+    · simp only [he, Finset.card_empty, CharP.cast_eq_zero]; positivity
     · exfalso
       have h := hT n hn
       unfold monoSelP at h
@@ -544,7 +558,7 @@ theorem mem_monoSel {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ) {F : ℝ → ℂ}
     n ∈ monoSel R ρ F ↔ monoSelP R ρ F n := by
   classical
   unfold monoSel
-  rw [dif_pos (monoSel_finite hR hρ hF hE), Set.Finite.mem_toFinset, mem_setOf_eq]
+  rw [dite_eq_left (monoSel_finite hR hρ hF hE), Set.Finite.mem_toFinset, mem_ofPred_eq]
 
 /-- **The count of selected integers** (lines 256-257): at most `9/ρ`. -/
 theorem card_monoSel_le {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ) {F : ℝ → ℂ}
@@ -566,10 +580,11 @@ theorem summable_partition (x : ℝ) : Summable fun n : ℤ => smoothingPartitio
 theorem tsum_partition (x : ℝ) : ∑' n : ℤ, smoothingPartitionCutoff (x - n) = 1 := by
   have hreindex := (Equiv.neg ℤ).tsum_eq (fun n : ℤ => smoothingPartitionCutoff (x - n))
   rw [← hreindex]
-  simpa only [Equiv.neg_apply, Int.cast_neg, sub_neg_eq_add] using smoothingPartitionCutoff_partition x
+  simpa only [Equiv.neg_apply, Int.cast_neg, sub_neg_eq_add] using
+    smoothingPartitionCutoff_partition x
 
 theorem monoMult_nonneg (R : ℝ) (S : Finset ℤ) (ξ : ℝ) : 0 ≤ monoMult R S ξ :=
-  Finset.sum_nonneg fun n _ => (smoothingPartitionCutoff_bounds _).1
+  Finset.sum_nonneg fun _ _ => (smoothingPartitionCutoff_bounds _).1
 
 theorem monoMult_le_one (R : ℝ) (S : Finset ℤ) (ξ : ℝ) : monoMult R S ξ ≤ 1 := by
   rw [← tsum_partition (ξ / R)]
@@ -592,7 +607,7 @@ theorem integrable_monoSharp {R : ℝ} (hR : 0 < R) (ρ : ℝ) {F : ℝ → ℂ}
   have : monoSharp R ρ F = ∑ n ∈ monoSel R ρ F, monoPiece R n F := by
     funext x; simp [monoSharp, Finset.sum_apply]
   rw [this]
-  exact integrable_finset_sum' _ fun n _ => integrable_monoPiece hR n hF
+  exact integrable_finsetSum' _ fun n _ => integrable_monoPiece hR n hF
 
 theorem integrable_monoFlat {R : ℝ} (hR : 0 < R) (ρ : ℝ) {F : ℝ → ℂ} (hF : Integrable F volume) :
     Integrable (monoFlat R ρ F) volume :=
@@ -602,7 +617,8 @@ theorem fourier_finset_sum {ι : Type*} (S : Finset ι) {f : ι → ℝ → ℂ}
     (hf : ∀ i ∈ S, Integrable (f i) volume) (ξ : ℝ) :
     𝓕 (fun x => ∑ i ∈ S, f i x) ξ = ∑ i ∈ S, 𝓕 (f i) ξ := by
   simp only [Real.fourier_real_eq, Finset.smul_sum]
-  exact integral_finsetSum S fun i hi => (Real.fourierIntegral_convergent_iff ξ).2 (hf i hi) |>.congr
+  exact integral_finsetSum S fun i hi => (Real.fourierIntegral_convergent_iff ξ).2 (hf i hi)
+    |>.congr
     (Eventually.of_forall fun x => by simp [mul_comm])
 
 /-- `(f_♯)^ = (∑_{n ∈ S} ϑ(ξ/R - n)) f̂` (line 261). -/
@@ -617,7 +633,8 @@ theorem fourier_sub' {f g : ℝ → ℂ} (hf : Integrable f volume) (hg : Integr
   simp only [Real.fourier_real_eq, smul_sub]
   exact integral_sub ((Real.fourierIntegral_convergent_iff ξ).2 hf |>.congr
     (Eventually.of_forall fun x => by simp [mul_comm]))
-    ((Real.fourierIntegral_convergent_iff ξ).2 hg |>.congr (Eventually.of_forall fun x => by simp [mul_comm]))
+    ((Real.fourierIntegral_convergent_iff ξ).2 hg |>.congr (Eventually.of_forall fun x =>
+      by simp [mul_comm]))
 
 /-- `(f_♭)^ = (1 - ∑_{n ∈ S} ϑ(ξ/R - n)) f̂`. -/
 theorem fourier_monoFlat {R : ℝ} (hR : 0 < R) (ρ : ℝ) {F : ℝ → ℂ} (hF : Integrable F volume)
@@ -694,9 +711,10 @@ namespace Auto
 noncomputable section
 
 /-! ### Convolution of a decaying kernel with a bounded function -/
-
-theorem mono_schwartz_decay_two (f : 𝓢(ℝ, ℂ)) : ∃ C : ℝ, 0 ≤ C ∧ ∀ u, ‖f u‖ ≤ C / (1 + |u|) ^ 2 := by
-  set C : ℝ := 2 ^ 2 * (Finset.Iic ((2 : ℕ), (0 : ℕ))).sup (fun m => SchwartzMap.seminorm ℝ m.1 m.2) f
+theorem mono_schwartz_decay_two (f : 𝓢(ℝ, ℂ)) : ∃ C : ℝ, 0 ≤ C ∧ ∀ u, ‖f u‖ ≤ C / (1 + |u|) ^ 2 :=
+  by
+  set C : ℝ := 2 ^ 2 * (Finset.Iic ((2 : ℕ), (0 : ℕ))).sup (fun m => SchwartzMap.seminorm ℝ m.1
+    m.2) f
   refine ⟨C, by positivity, fun u => ?_⟩
   have h := SchwartzMap.one_add_le_sup_seminorm_apply (𝕜 := ℝ) (m := ((2 : ℕ), (0 : ℕ)))
     (k := 2) (n := 0) le_rfl le_rfl f u
@@ -709,7 +727,7 @@ theorem integrable_inv_one_add_sq (x0 : ℝ) :
   have h := integrable_one_add_norm (E := ℝ) (μ := volume) (r := 2) (by norm_num)
   have h2 := h.comp_sub_left x0
   refine h2.congr (Eventually.of_forall fun t => ?_)
-  simp only [Function.comp_apply, Real.norm_eq_abs]
+  simp only [Real.norm_eq_abs]
   rw [Real.rpow_neg (by positivity), one_div, Real.rpow_two]
 
 theorem inv_one_add_sq_shift {x x0 t : ℝ} (hx : |x - x0| < 1) :
@@ -736,7 +754,8 @@ theorem hasDerivAt_conv_bdd {K K' : ℝ → ℂ} (hK : ∀ u, HasDerivAt K (K' u
     exact (div_nonneg_iff.mp this).elim (fun h => h.1) (fun h => absurd h.2 (not_le.mpr h0))
   have hmeas : ∀ x, AEStronglyMeasurable (fun t => K (x - t) * g t) volume := fun x =>
     ((hKc.comp (continuous_const.sub continuous_id)).aestronglyMeasurable).mul hg
-  refine (hasDerivAt_integral_of_dominated_loc_of_deriv_le (x₀ := x0) (Metric.ball_mem_nhds x0 one_pos)
+  refine (hasDerivAt_integral_of_dominated_loc_of_deriv_le (x₀ := x0) (Metric.ball_mem_nhds x0
+    one_pos)
     (F := fun x t => K (x - t) * g t) (F' := fun x t => K' (x - t) * g t)
     (bound := fun t => 4 * C1 * M * (1 / (1 + |x0 - t|) ^ 2))
     (Eventually.of_forall hmeas) ?_ ?_ ?_ ?_ ?_).2
@@ -787,7 +806,8 @@ def monoKR (R : ℝ) (u : ℝ) : ℂ := (R : ℂ) * monoKappa (R * u)
 def monoKR' (R : ℝ) (u : ℝ) : ℂ := (R : ℂ) ^ 2 * deriv monoKappa (R * u)
 
 theorem hasDerivAt_monoKR (R u : ℝ) : HasDerivAt (monoKR R) (monoKR' R u) u := by
-  have h1 : HasDerivAt (fun u : ℝ => R * u) R u := by simpa using (hasDerivAt_id u).const_mul R
+  have h1 : HasDerivAt (fun u : ℝ => R * u) R u :=
+    by simpa using (hasDerivAt_id u).const_mul R
   have h2 := (monoKappa.differentiableAt (x := R * u)).hasDerivAt.scomp u h1
   have h3 := h2.const_mul (R : ℂ)
   have h4 : HasDerivAt (monoKR R) ((R : ℂ) * ((R : ℂ) * deriv (monoKappa : ℝ → ℂ) (R * u))) u := by
@@ -802,7 +822,8 @@ theorem continuous_monoKR' (R : ℝ) : Continuous (monoKR' R) := by
   have : Continuous (deriv (monoKappa : ℝ → ℂ)) := (monoKappa.smooth 1).continuous_deriv le_rfl
   exact continuous_const.mul (this.comp (continuous_const.mul continuous_id))
 
-theorem monoKR_decay {R : ℝ} (hR : 1 ≤ R) : ∃ C : ℝ, 0 ≤ C ∧ ∀ u, ‖monoKR R u‖ ≤ C / (1 + |u|) ^ 2 := by
+theorem monoKR_decay {R : ℝ} (hR : 1 ≤ R) : ∃ C : ℝ, 0 ≤ C ∧ ∀ u, ‖monoKR R u‖ ≤ C / (1 + |u|) ^ 2
+  := by
   obtain ⟨C, hC, h⟩ := mono_schwartz_decay_two monoKappa
   refine ⟨R * C, by positivity, fun u => ?_⟩
   have hR0 : 0 < R := by linarith
@@ -847,7 +868,8 @@ theorem integral_norm_monoKR' {R : ℝ} (hR : 0 < R) (x : ℝ) :
   have h1 : ∫ t, ‖monoKR' R (x - t)‖ = ∫ t, ‖monoKR' R t‖ :=
     integral_sub_left_eq_self (fun t => ‖monoKR' R t‖) (μ := volume) x
   rw [h1]
-  simp only [monoKR', norm_mul, norm_pow, Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
+  simp only [monoKR', norm_mul, norm_pow, Complex.norm_real, Real.norm_eq_abs, abs_of_pos
+    hR]
   rw [integral_const_mul, Measure.integral_comp_mul_left (fun u => ‖deriv (monoKappa : ℝ → ℂ) u‖) R,
     abs_inv, abs_of_pos hR, smul_eq_mul]
   field_simp
@@ -859,10 +881,11 @@ theorem integrable_norm_monoKR {R : ℝ} (hR : 0 < R) (x : ℝ) :
 
 theorem integrable_norm_monoKR' {R : ℝ} (hR : 0 < R) (x : ℝ) :
     Integrable (fun t => ‖monoKR' R (x - t)‖) volume := by
-  have h := ((integrable_scaled_schwartz (SchwartzMap.derivCLM ℝ ℂ monoKappa) hR).comp_sub_left x).norm
+  have h := ((integrable_scaled_schwartz (SchwartzMap.derivCLM ℝ ℂ monoKappa) hR).comp_sub_left
+    x).norm
   have h2 := h.const_mul R
   refine h2.congr (Eventually.of_forall fun t => ?_)
-  simp only [Function.comp_apply, monoKR', SchwartzMap.derivCLM_apply, norm_mul, norm_pow,
+  simp only [monoKR', SchwartzMap.derivCLM_apply, norm_mul, norm_pow,
     Complex.norm_real, Real.norm_eq_abs, abs_of_pos hR]
   ring
 
@@ -880,7 +903,8 @@ theorem monoPiece_eq_monoH (R : ℝ) (n : ℤ) (F : ℝ → ℂ) (x : ℝ) :
   rw [monoPiece, convolution_eq_swap, monoH, ← integral_mul_const]
   refine integral_congr_ae (Eventually.of_forall fun t => ?_)
   simp only [ContinuousLinearMap.mul_apply', monoKn, monoKR]
-  have : ((𝐞 (n * R * (x - t)) : Circle) : ℂ) = (𝐞 (-(n * R * t)) : Circle) * (𝐞 (n * R * x) : Circle) := by
+  have : ((𝐞 (n * R * (x - t)) : Circle) : ℂ) = (𝐞 (-(n * R * t)) : Circle) * (𝐞 (n * R * x) :
+    Circle) := by
     rw [← Circle.coe_mul, ← AddChar.map_add_eq_mul]; congr 2; ring
   rw [show R * (x - t) = R * (x - t) from rfl, this]
   ring
@@ -903,8 +927,8 @@ theorem hasDerivAt_monoH {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ}
     (norm_modF_le hM) x
 
 /-- **(2.4), `k = 0`**: `‖h_n‖_∞ ≤ ‖κ‖_1 ‖F‖_∞`. -/
-theorem norm_monoH_le {R : ℝ} (hR : 0 < R) (n : ℤ) {F : ℝ → ℂ} (hF : AEStronglyMeasurable F volume)
-    {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
+theorem norm_monoH_le {R : ℝ} (hR : 0 < R) (n : ℤ) {F : ℝ → ℂ} {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x
+    : ℝ) :
     ‖monoH R n F x‖ ≤ (∫ u, ‖monoKappa u‖) * M := by
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
   unfold monoH
@@ -919,8 +943,8 @@ theorem norm_monoH_le {R : ℝ} (hR : 0 < R) (n : ℤ) {F : ℝ → ℂ} (hF : A
     _ = (∫ u, ‖monoKappa u‖) * M := by rw [integral_mul_const, integral_norm_monoKR hR]
 
 /-- **(2.4), `k = 1`**: `‖h_n'‖_∞ ≤ R ‖κ'‖_1 ‖F‖_∞`. -/
-theorem norm_monoH'_le {R : ℝ} (hR : 0 < R) (n : ℤ) {F : ℝ → ℂ} (hF : AEStronglyMeasurable F volume)
-    {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
+theorem norm_monoH'_le {R : ℝ} (hR : 0 < R) (n : ℤ) {F : ℝ → ℂ} {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M)
+    (x : ℝ) :
     ‖monoH' R n F x‖ ≤ R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) * M := by
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
   unfold monoH'
@@ -946,10 +970,10 @@ theorem continuous_monoPiece {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ
   exact hH.mul (by fun_prop)
 
 theorem norm_monoPiece_le {R : ℝ} (hR : 0 < R) (n : ℤ) {F : ℝ → ℂ}
-    (hF : AEStronglyMeasurable F volume) {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
+     {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
     ‖monoPiece R n F x‖ ≤ (∫ u, ‖monoKappa u‖) * M := by
   rw [monoPiece_eq_monoH, norm_mul, Circle.norm_coe, mul_one]
-  exact norm_monoH_le hR n hF hM x
+  exact norm_monoH_le hR n hM x
 
 theorem memLp_two_of_bdd {G : ℝ → ℂ} (hG : Integrable G volume) {M : ℝ} (hM : ∀ x, ‖G x‖ ≤ M) :
     MemLp G 2 volume := by
@@ -976,13 +1000,13 @@ theorem monoPiece_eq_zero {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ} (
         rw [e, abs_mul, abs_of_pos hR0]; nlinarith
       rw [h ξ this, mul_zero]
   have hI := integrable_monoPiece hR0 n hF
-  have hB := norm_monoPiece_le hR0 n hF.1 hM
+  have hB := norm_monoPiece_le hR0 n hM
   have h2 := memLp_two_of_bdd hI hB
   have hpl := lintegral_fourier_sq_eq hI h2
   simp only [hF0, enorm_zero, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow,
     lintegral_zero] at hpl
   have hae : monoPiece R n F =ᵐ[volume] 0 := by
-    have := (lintegral_eq_zero_iff' (h2.1.enorm.pow_const 2)).mp hpl.symm
+    have := (lintegral_eq_zero_iff' (h2.aestronglyMeasurable.enorm.pow_const 2)).mp hpl.symm
     filter_upwards [this] with x hx
     simpa using hx
   exact (continuous_monoPiece hR n hF.1 hM).ae_eq_iff_eq volume continuous_const |>.mp hae
@@ -1014,7 +1038,7 @@ theorem fourier_schwartz_mul (χ : 𝓢(ℝ, ℂ)) {G : ℝ → ℂ} (hG : Integ
     rw [SchwartzMap.fourierInv_coe, SchwartzMap.fourier_coe, Real.fourierInv_eq] at h
     rw [← h]
     refine integral_congr_ae (Eventually.of_forall fun η => ?_)
-    simp only [Circle.smul_def, smul_eq_mul, real_inner_eq_re_inner, RCLike.inner_apply,
+    simp only [Circle.smul_def, smul_eq_mul, RCLike.inner_apply,
       conj_trivial]
     ring_nf
   have hχ1 : Integrable (𝓕 (⇑χ)) volume := by
@@ -1092,20 +1116,18 @@ theorem monoE_eq {F : ℝ → ℂ} (h1 : Integrable F volume) (h2 : MemLp F 2 vo
 theorem lintegral_enorm_sq_ne_top {F : ℝ → ℂ} (h2 : MemLp F 2 volume) : ∫⁻ x, ‖F x‖ₑ ^ 2 ≠ ⊤ := by
   rw [lintegral_enorm_sq_eq_ofReal h2]; exact ENNReal.ofReal_ne_top
 
-theorem norm_monoSharp_le {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} (hF : AEStronglyMeasurable F volume)
-    {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
+theorem norm_monoSharp_le {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
     ‖monoSharp R ρ F x‖ ≤ (monoSel R ρ F).card * ((∫ u, ‖monoKappa u‖) * M) := by
   unfold monoSharp
   refine (norm_sum_le _ _).trans ?_
   calc ∑ n ∈ monoSel R ρ F, ‖monoPiece R n F x‖
       ≤ ∑ n ∈ monoSel R ρ F, (∫ u, ‖monoKappa u‖) * M :=
-        Finset.sum_le_sum fun n _ => norm_monoPiece_le hR n hF hM x
+        Finset.sum_le_sum fun n _ => norm_monoPiece_le hR n hM x
     _ = _ := by rw [Finset.sum_const, nsmul_eq_mul]
 
-theorem norm_monoFlat_le {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} (hF : AEStronglyMeasurable F volume)
-    {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
+theorem norm_monoFlat_le {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
     ‖monoFlat R ρ F x‖ ≤ M + (monoSel R ρ F).card * ((∫ u, ‖monoKappa u‖) * M) :=
-  (norm_sub_le _ _).trans (add_le_add (hM x) (norm_monoSharp_le hR hF hM x))
+  (norm_sub_le _ _).trans (add_le_add (hM x) (norm_monoSharp_le hR hM x))
 
 /-- **(2.7)**, lines 293-307: for a Schwartz cutoff `χ` with `|χ| ≤ 1`,
 `U_R(χ f_♭) ≤ ‖χ̂‖_1^2 ρ ‖f‖_2^4`. -/
@@ -1118,7 +1140,7 @@ theorem monoU_flat_local {R ρ : ℝ} (hR : 1 ≤ R) (hρ : 0 < ρ) (χ : 𝓢(�
   have hE : monoE F ≠ ⊤ := by rw [monoE_eq hF hF2]; exact lintegral_enorm_sq_ne_top hF2
   set Fb := monoFlat R ρ F
   have hFb1 : Integrable Fb volume := integrable_monoFlat hR0 ρ hF
-  have hFb2 : MemLp Fb 2 volume := memLp_two_of_bdd hFb1 (norm_monoFlat_le hR0 hF.1 hM)
+  have hFb2 : MemLp Fb 2 volume := memLp_two_of_bdd hFb1 (norm_monoFlat_le hR0 hM)
   set G : ℝ → ℂ := fun x => χ x * Fb x
   have hGle : ∀ x, ‖G x‖ ≤ ‖Fb x‖ := fun x => by
     simp only [G, norm_mul]; exact mul_le_of_le_one_left (norm_nonneg _) (hχ x)
@@ -1126,7 +1148,7 @@ theorem monoU_flat_local {R ρ : ℝ} (hR : 1 ≤ R) (hρ : 0 < ρ) (χ : 𝓢(�
     hFb1.norm.mono' (χ.continuous.aestronglyMeasurable.mul hFb1.1)
       (Eventually.of_forall fun x => hGle x)
   have hG2 : MemLp G 2 volume :=
-    memLp_two_of_bdd hG1 fun x => (hGle x).trans (norm_monoFlat_le hR0 hF.1 hM x)
+    memLp_two_of_bdd hG1 fun x => (hGle x).trans (norm_monoFlat_le hR0 hM x)
   set W : ℝ := ∫ η, ‖𝓕 (⇑χ) η‖
   have hχ1 : Integrable (𝓕 (⇑χ)) volume := by
     rw [← SchwartzMap.fourier_coe]; exact (𝓕 χ).integrable
@@ -1143,7 +1165,8 @@ theorem monoU_flat_local {R ρ : ℝ} (hR : 1 ≤ R) (hρ : 0 < ρ) (χ : 𝓢(�
           exact ENNReal.ofReal_le_ofReal (norm_fourier_monoFlat_le hR0 ρ hF ξ)
   -- the interval masses
   have hcF : Continuous (𝓕 Fb) := continuous_fourier_real hFb1
-  have hwm : Measurable fun η => ‖𝓕 (⇑χ) η‖ₑ := (continuous_fourier_real χ.integrable).measurable.enorm
+  have hwm : Measurable fun η => ‖𝓕 (⇑χ) η‖ₑ := (continuous_fourier_real
+    χ.integrable).measurable.enorm
   have hint : ∀ a : ℝ, ∫⁻ ξ in Icc (a - R) (a + R), ‖𝓕 G ξ‖ₑ ^ 2
       ≤ ENNReal.ofReal (W ^ 2 * ρ) * monoE F := by
     intro a
@@ -1156,7 +1179,8 @@ theorem monoU_flat_local {R ρ : ℝ} (hR : 1 ≤ R) (hρ : 0 < ρ) (χ : 𝓢(�
         exact lintegral_congr fun η => enorm_mul _ _
       calc ‖𝓕 G ξ‖ₑ ^ 2 ≤ (∫⁻ η, ‖𝓕 (⇑χ) η‖ₑ * ‖𝓕 Fb (ξ - η)‖ₑ) ^ 2 := by gcongr
         _ ≤ (∫⁻ η, ‖𝓕 (⇑χ) η‖ₑ) * ∫⁻ η, ‖𝓕 (⇑χ) η‖ₑ * ‖𝓕 Fb (ξ - η)‖ₑ ^ 2 :=
-            lintegral_mul_sq_le hwm ((hcF.comp (continuous_const.sub continuous_id)).measurable.enorm)
+            lintegral_mul_sq_le hwm ((hcF.comp (continuous_const.sub
+              continuous_id)).measurable.enorm)
         _ = _ := by rw [hW]
     have hshift : ∀ η, ∫⁻ ξ in Icc (a - R) (a + R), ‖𝓕 Fb (ξ - η)‖ₑ ^ 2
         ≤ ENNReal.ofReal ρ * monoE F := by
@@ -1244,9 +1268,9 @@ theorem monoPt_sub_E (j : Fin 2) (a p s : ℝ) : monoPt j a p - monoEj j s = mon
 
 theorem continuous_monoPt (j : Fin 2) : Continuous fun q : ℝ × ℝ => monoPt j q.1 q.2 := by
   fin_cases j
-  · simp only [monoPt, Fin.zero_eta, if_true]
+  · simp only [monoPt, Fin.zero_eta, ite_true]
     exact continuous_fst.prodMk continuous_snd
-  · simp only [monoPt, Fin.mk_one, one_ne_zero, if_false]
+  · simp only [monoPt, Fin.mk_one, one_ne_zero, ite_false]
     exact continuous_snd.prodMk continuous_fst
 
 theorem measurable_monoPt (j : Fin 2) : Measurable fun q : ℝ × ℝ => monoPt j q.1 q.2 :=
@@ -1256,9 +1280,9 @@ theorem measurable_monoPt (j : Fin 2) : Measurable fun q : ℝ × ℝ => monoPt 
 theorem lintegral_monoPt (j : Fin 2) {F : ℝ × ℝ → ℝ≥0∞} (hF : Measurable F) :
     ∫⁻ z, F z = ∫⁻ p, ∫⁻ a, F (monoPt j a p) := by
   fin_cases j
-  · simp only [monoPt, Fin.zero_eta, if_true]
+  · simp only [monoPt, Fin.zero_eta, ite_true]
     rw [Measure.volume_eq_prod, lintegral_prod_symm _ hF.aemeasurable]
-  · simp only [monoPt, Fin.mk_one, one_ne_zero, if_false]
+  · simp only [monoPt, Fin.mk_one, one_ne_zero, ite_false]
     rw [Measure.volume_eq_prod, lintegral_prod _ hF.aemeasurable]
 
 /-- The fiber of `f` through passive coordinate `p`. -/
@@ -1284,7 +1308,8 @@ theorem measurable_monoCConv {j : Fin 2} {K : ℝ → ℂ} (hK : Measurable K) {
   have hs : Measurable fun q : (ℝ × ℝ) × ℝ => q.1 - monoEj j q.2 := by
     unfold monoEj
     exact measurable_fst.sub ((measurable_monoPt j).comp (measurable_snd.prodMk measurable_const))
-  have h : StronglyMeasurable (Function.uncurry fun (z : ℝ × ℝ) (s : ℝ) => K s * f (z - monoEj j s)) :=
+  have h : StronglyMeasurable (Function.uncurry fun (z : ℝ × ℝ) (s : ℝ) => K s * f (z - monoEj j
+    s)) :=
     ((hK.comp measurable_snd).mul (hf.comp hs)).stronglyMeasurable
   exact h.integral_prod_right'.measurable
 
@@ -1389,13 +1414,15 @@ def monoC20 (ψ : ℝ → ℝ) : ℝ := ∑ k ∈ Finset.range 21, ⨆ t, |itera
 
 /-- **The global annular estimate (7.7)** in the form used in Section 8: for smooth cutoffs
 supported in `[A,B]`, one annular input (multiplier `ψ(D_j/L)`) and the other with bounded
-frequencies (multiplier `φ(D_2/L)` in slot 2, resp. `φ(2 D_1/L)` in slot 1), `‖T_ψ(f_1,f_2)‖_1 ≤ C ‖ψ‖_{C^20} L^{-s} ‖u_1‖_2 ‖u_2‖_2`. -/
+frequencies (multiplier `φ(D_2/L)` in slot 2, resp. `φ(2 D_1/L)` in slot 1), `‖T_ψ(f_1,f_2)‖_1 ≤ C
+  ‖ψ‖_{C^20} L^{-s} ‖u_1‖_2 ‖u_2‖_2`. -/
 def MonoGlobal77 (r A B C s : ℝ) : Prop :=
   ∀ ψ : ℝ → ℝ, ContDiff ℝ ∞ ψ → tsupport ψ ⊆ Icc A B → ∀ L : ℝ, 1 ≤ L →
     ∀ u₁ u₂ : ℝ × ℝ → ℂ, Measurable u₁ → Measurable u₂ →
       eLpNorm u₁ 2 volume ≠ ⊤ → eLpNorm u₂ 2 volume ≠ ⊤ →
       eLpNorm (monoT r ψ (monoP 0 monoKPsiA L u₁) (monoP 1 monoKPhi L u₂)) 1 volume
-          ≤ ENNReal.ofReal (C * monoC20 ψ * L ^ (-s)) * (eLpNorm u₁ 2 volume * eLpNorm u₂ 2 volume) ∧
+          ≤ ENNReal.ofReal (C * monoC20 ψ * L ^ (-s)) * (eLpNorm u₁ 2 volume * eLpNorm u₂ 2
+            volume) ∧
       eLpNorm (monoT r ψ (monoP 0 monoKPhi (L / 2) u₁) (monoP 1 monoKPsiA L u₂)) 1 volume
           ≤ ENNReal.ofReal (C * monoC20 ψ * L ^ (-s)) * (eLpNorm u₁ 2 volume * eLpNorm u₂ 2 volume)
 
@@ -1458,7 +1485,8 @@ def MonoSublevel (r A B : ℝ) : Prop :=
           ≤ ENNReal.ofReal (C * ε ^ (1 / 39 : ℝ))
 
 /-- **Lemma 5.1** (the local correlation estimate, (5.5)) as a proposition: families `v_{1,m}`,
-`v_{2,n}` localized to cubes of side `2 C_0 h` centered at `h m`, bounded by `B_j`, `B_j L`-Lipschitz
+`v_{2,n}` localized to cubes of side `2 C_0 h` centered at `h m`, bounded
+  by `B_j`, `B_j L`-Lipschitz
 in the active coordinate (5.2), with fiber energy (5.3), and the uniformity (5.4) for one family. -/
 def MonoLocCorr (r A B : ℝ) : Prop :=
   ∀ χ : ℝ × ℝ → ℝ, ContDiff ℝ ∞ χ → HasCompactSupport χ → ∀ C0 : ℝ, 1 ≤ C0 →
@@ -1553,7 +1581,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Lemma 2.1 on fibers, measurably (lines 309-313) -/
-
 theorem measurable_monoPt_pair (j : Fin 2) :
     Measurable fun q : (ℝ × ℝ) × ℝ => monoPt j (q.1.2 - q.2) q.1.1 :=
   (measurable_monoPt j).comp ((measurable_snd.comp measurable_fst).sub measurable_snd |>.prodMk
@@ -1633,7 +1660,8 @@ theorem tendsto_monoSharp_trunc {R ρ : ℝ} (F : ℝ → ℂ) (a : ℝ) :
       if n ∈ monoSel R ρ F then monoPiece R n F a else 0) atTop (𝓝 (monoSharp R ρ F a)) := by
   obtain ⟨N0, hN0⟩ : ∃ N0 : ℕ, monoSel R ρ F ⊆ Finset.Icc (-(N0 : ℤ)) N0 := by
     refine ⟨(monoSel R ρ F).sup fun n => n.natAbs, fun n hn => ?_⟩
-    have h1 : n.natAbs ≤ (monoSel R ρ F).sup fun n => n.natAbs := Finset.le_sup (f := fun n => n.natAbs) hn
+    have h1 : n.natAbs ≤ (monoSel R ρ F).sup fun n => n.natAbs := Finset.le_sup (f := fun n =>
+      n.natAbs) hn
     rw [Finset.mem_Icc]; omega
   refine tendsto_atTop_of_eventually_const (i₀ := N0) fun N hN => ?_
   have hsub : monoSel R ρ F ⊆ Finset.Icc (-(N : ℤ)) N :=
@@ -1648,7 +1676,8 @@ theorem measurable_monoSharp2 (j : Fin 2) {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < �
     (hG : Measurable G) (hint : ∀ p, Integrable (monoFib j G p) volume)
     (hfin : ∀ p, monoE (monoFib j G p) ≠ ⊤) : Measurable (monoSharp2 j R ρ G) := by
   have hq : Measurable fun z : ℝ × ℝ => (monoPas j z, monoAct j z) := by
-    unfold monoPas monoAct; fin_cases j <;> simp <;> fun_prop
+    unfold monoPas monoAct; fin_cases j <;> simp only [Fin.zero_eta, Fin.isValue, ↓reduceIte,
+      Fin.mk_one, one_ne_zero, Prod.mk.eta] <;> fun_prop
   refine measurable_of_tendsto_metrizable (f := fun N z => ∑ n ∈ Finset.Icc (-(N : ℤ)) N,
     if n ∈ monoSel R ρ (monoFib j G (monoPas j z)) then
       monoPiece R n (monoFib j G (monoPas j z)) (monoAct j z) else 0) (fun N => ?_) ?_
@@ -1674,10 +1703,9 @@ namespace Auto
 noncomputable section
 
 /-! ### (6.6)-(6.8) on a single fiber -/
-
 theorem monoSharp_memLp {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} (hF : Integrable F volume) {M : ℝ}
     (hM : ∀ t, ‖F t‖ ≤ M) : MemLp (monoSharp R ρ F) 2 volume :=
-  memLp_two_of_bdd (integrable_monoSharp hR ρ hF) (norm_monoSharp_le hR hF.1 hM)
+  memLp_two_of_bdd (integrable_monoSharp hR ρ hF) (norm_monoSharp_le hR hM)
 
 /-- `∫ |f_♯|^2 ≤ ∫ |f|^2` (from (2.1) and Plancherel). -/
 theorem lintegral_monoSharp_sq_le {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} (hF : Integrable F volume)
@@ -1695,7 +1723,7 @@ theorem lintegral_monoFlat_sq_le {R ρ : ℝ} (hR : 0 < R) {F : ℝ → ℂ} (hF
     {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) :
     ∫⁻ x, ‖monoFlat R ρ F x‖ₑ ^ 2 ≤ ∫⁻ x, ‖F x‖ₑ ^ 2 := by
   have h2 : MemLp (monoFlat R ρ F) 2 volume :=
-    memLp_two_of_bdd (integrable_monoFlat hR ρ hF) (norm_monoFlat_le hR hF.1 hM)
+    memLp_two_of_bdd (integrable_monoFlat hR ρ hF) (norm_monoFlat_le hR hM)
   rw [← lintegral_fourier_sq_eq (integrable_monoFlat hR ρ hF) h2,
     ← lintegral_fourier_sq_eq hF (memLp_two_of_bdd hF hM)]
   refine lintegral_mono fun ξ => ?_
@@ -1709,8 +1737,9 @@ theorem norm_monoSharp_le' {R ρ : ℝ} (hR : 0 < R) (hρ : 0 < ρ) {F : ℝ →
     ‖monoSharp R ρ F x‖ ≤ 9 / ρ * ((∫ u, ‖monoKappa u‖) * M) := by
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
   have hE : monoE F ≠ ⊤ := by
-    rw [monoE_eq hF (memLp_two_of_bdd hF hM)]; exact lintegral_enorm_sq_ne_top (memLp_two_of_bdd hF hM)
-  refine (norm_monoSharp_le hR hF.1 hM x).trans ?_
+    rw [monoE_eq hF (memLp_two_of_bdd hF hM)];
+    exact lintegral_enorm_sq_ne_top (memLp_two_of_bdd hF hM)
+  refine (norm_monoSharp_le hR hM x).trans ?_
   exact mul_le_mul_of_nonneg_right (card_monoSel_le hR hρ hF hE)
     (mul_nonneg (integral_nonneg fun _ => norm_nonneg _) hM0)
 
@@ -1759,16 +1788,17 @@ theorem hasDerivAt_monoPiece {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ
 
 /-- The derivative bound of a piece: `|(ϑ(D/R - n) F)'| ≤ (R ‖κ'‖_1 + 2π|nR| ‖κ‖_1) ‖F‖_∞`. -/
 theorem norm_deriv_monoPiece_le {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ}
-    (hF : AEStronglyMeasurable F volume) {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
+     {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (x : ℝ) :
     ‖monoH' R n F x * (𝐞 (n * R * x) : Circle) +
         monoH R n F x * ((2 * π * n * R : ℝ) * Complex.I * (𝐞 (n * R * x) : Circle))‖
-      ≤ (R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * |(n : ℝ) * R| * (∫ u, ‖monoKappa u‖)) * M := by
+      ≤ (R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * |(n : ℝ) * R| * (∫ u, ‖monoKappa u‖))
+        * M := by
   have hR0 : 0 < R := by linarith
   refine (norm_add_le _ _).trans ?_
   rw [norm_mul, Circle.norm_coe, mul_one, norm_mul, norm_mul, norm_mul, Circle.norm_coe, mul_one,
     Complex.norm_I, mul_one, Complex.norm_real, Real.norm_eq_abs]
-  have h1 := norm_monoH'_le hR0 n hF hM x
-  have h2 := norm_monoH_le hR0 n hF hM x
+  have h1 := norm_monoH'_le hR0 n hM x
+  have h2 := norm_monoH_le hR0 n hM x
   have habs : |2 * π * n * R| = 2 * π * |(n : ℝ) * R| := by
     rw [show 2 * π * n * R = (2 * π) * (n * R) by ring, abs_mul, abs_of_pos (by positivity)]
   rw [habs]
@@ -1816,7 +1846,7 @@ theorem sum_eq_sum_enum (S : Finset ℤ) {N : ℕ} (hN : S.card ≤ N) (f : ℤ 
   congr 1
   apply List.ext_get (by simp)
   intro i h1 h2
-  simp [List.getD_eq_getElem, l]
+  simp [l]
 
 /-- A function of the selected set is measurable in the passive coordinate. -/
 theorem measurable_of_finset_valued {S : ℝ → Finset ℤ} (hS : ∀ n, MeasurableSet {p | n ∈ S p})
@@ -1824,7 +1854,8 @@ theorem measurable_of_finset_valued {S : ℝ → Finset ℤ} (hS : ∀ n, Measur
   have hT : ∀ T : Finset ℤ, MeasurableSet {p | S p = T} := by
     intro T
     have e : {p | S p = T} = ⋂ n : ℤ, {p | n ∈ S p ↔ n ∈ T} := by
-      ext p; simp only [mem_setOf_eq, mem_iInter]; exact ⟨fun h n => by rw [h], fun h => Finset.ext h⟩
+      ext p; simp only [mem_ofPred_eq, mem_iInter]; exact ⟨fun h n => by
+        rw [h], fun h => Finset.ext h⟩
     rw [e]
     refine MeasurableSet.iInter fun n => ?_
     by_cases hn : n ∈ T
@@ -1902,7 +1933,8 @@ theorem card_filter_Icc_le {ι : Type*} (T : Finset ι) (t : ι → ℝ) {h M₀
     ⟨⌈ℓ / h⌉₊, Nat.le_ceil _, (Nat.ceil_lt_add_one (by positivity)).le⟩
   have hM0 : 0 ≤ M₀ := (Nat.cast_nonneg _).trans (hmult a)
   have hsub : T.filter (fun i => t i ∈ Icc a (a + ℓ))
-      ⊆ (Finset.range (K + 1)).biUnion fun k => T.filter fun i => t i ∈ Icc (a + k * h) (a + k * h + h) := by
+      ⊆ (Finset.range (K + 1)).biUnion fun k => T.filter fun i => t i ∈ Icc (a + k * h) (a + k * h
+        + h) := by
     intro i hi
     simp only [Finset.mem_filter, mem_Icc] at hi
     obtain ⟨hiT, h1, h2⟩ := hi
@@ -2002,7 +2034,8 @@ theorem one_add_rpow_neg_le {x : ℝ} (hx : 0 ≤ x) {d : ℕ} (hd : 1 ≤ d) (h
   have hx1 : 0 < 1 + x := by linarith
   rw [Real.rpow_neg hx1.le, show ((8 : ℝ)) = ((8 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
   have e : (2 : ℝ) ^ 8 * ((2 : ℝ) ^ d)⁻¹ ^ 8 = (((2 : ℝ) ^ (d - 1)) ^ 8)⁻¹ := by
-    rw [h2, mul_inv, mul_pow, inv_pow, ← mul_assoc, mul_inv_cancel₀ (by positivity), one_mul, inv_pow]
+    rw [h2, mul_inv, mul_pow, inv_pow, ← mul_assoc, mul_inv_cancel₀ (by positivity), one_mul,
+      inv_pow]
   rw [e]
   exact inv_anti₀ (by positivity) (pow_le_pow_left₀ (by positivity) h1 8)
 
@@ -2019,7 +2052,8 @@ theorem slope_sum_le {ι : Type*} (T : Finset ι) (t : ι → ℝ) {q : ℝ → 
   have hM0 : 0 ≤ M₀ := (Nat.cast_nonneg _).trans (hmult 0)
   have hk2 : 0 < |k₂| := abs_pos.mpr hk
   set x : ι → ℝ := fun i => |k₁ - q (t i) * k₂|
-  have hex : ∀ i, ∃ d : ℕ, x i ≤ 2 ^ d := fun i => pow_unbounded_of_one_lt (x i) (by norm_num) |>.imp
+  have hex : ∀ i, ∃ d : ℕ, x i ≤ 2 ^ d := fun i => pow_unbounded_of_one_lt (x i) (by norm_num)
+    |>.imp
     fun _ h => h.le
   set d0 : ι → ℕ := fun i => Nat.find (hex i)
   set D : ℕ := T.sup d0 + 1
@@ -2031,11 +2065,13 @@ theorem slope_sum_le {ι : Type*} (T : Finset ι) (t : ι → ℝ) {q : ℝ → 
     refine le_trans ?_ (Finset.single_le_sum (f := fun d => 2 ^ 8 * (2 ^ d : ℝ)⁻¹ ^ 8 *
       (if x i ≤ 2 ^ d then 1 else 0)) (fun d _ => by positivity) (Finset.mem_range.mpr hd0))
     have hspec : x i ≤ 2 ^ d0 i := Nat.find_spec (hex i)
-    simp only [hspec, if_true, mul_one]
+    simp only [hspec, ite_true, mul_one]
     rcases Nat.eq_zero_or_pos (d0 i) with h0 | hpos
     · rw [h0]; simp only [pow_zero, inv_one, one_pow, mul_one]
       have hx0 : 0 ≤ x i := abs_nonneg _
-      calc (1 + x i) ^ (-8 : ℝ) ≤ 1 := Real.rpow_le_one_of_one_le_of_nonpos (by linarith) (by norm_num)
+      calc
+        (1 + x i) ^ (-8 : ℝ) ≤ 1 :=
+          Real.rpow_le_one_of_one_le_of_nonpos (by linarith) (by norm_num)
         _ ≤ 2 ^ 8 := by norm_num
     · have hlt : ¬ x i ≤ 2 ^ (d0 i - 1) := Nat.find_min (hex i) (Nat.sub_lt hpos one_pos)
       exact one_add_rpow_neg_le (abs_nonneg _) hpos (lt_of_not_ge hlt)
@@ -2045,7 +2081,8 @@ theorem slope_sum_le {ι : Type*} (T : Finset ι) (t : ι → ℝ) {q : ℝ → 
   calc ∑ i ∈ T, (1 + |k₁ - q (t i) * k₂|) ^ (-8 : ℝ)
       ≤ ∑ i ∈ T, ∑ d ∈ Finset.range D, 2 ^ 8 * (2 ^ d : ℝ)⁻¹ ^ 8 * (if x i ≤ 2 ^ d then 1 else 0) :=
         Finset.sum_le_sum hw
-    _ = ∑ d ∈ Finset.range D, 2 ^ 8 * (2 ^ d : ℝ)⁻¹ ^ 8 * ((T.filter fun i => x i ≤ 2 ^ d).card : ℝ) := by
+    _ = ∑ d ∈ Finset.range D, 2 ^ 8 * (2 ^ d : ℝ)⁻¹ ^ 8 * ((T.filter fun i => x i ≤ 2 ^ d).card :
+      ℝ) := by
         rw [Finset.sum_comm]
         refine Finset.sum_congr rfl fun d _ => ?_
         rw [← Finset.mul_sum, Finset.sum_boole]
@@ -2092,7 +2129,6 @@ namespace Auto
 noncomputable section
 
 /-! ### (6.17)-(6.18): the choice of parameters (lines 1154-1187) -/
-
 theorem rpow_le_rpow_of_exp_le {L a b : ℝ} (hL : 1 ≤ L) (hab : a ≤ b) : L ^ a ≤ L ^ b :=
   Real.rpow_le_rpow_of_exponent_le hL hab
 
@@ -2159,7 +2195,6 @@ noncomputable section
 
 /-! ### Fiber cutoffs of `χ_m` as Schwartz functions (line 307: constants unchanged by
 translation and dilation) -/
-
 theorem monoBeta_contDiff : ContDiff ℝ ∞ monoBeta :=
   monoPhi_contDiff.comp ((contDiff_const.mul contDiff_id).div_const 3)
 
@@ -2203,7 +2238,7 @@ theorem norm_monoBetaFibS_le {h : ℝ} (hh : 0 < h) (a : ℝ) {c : ℝ} (hc0 : 0
     (x : ℝ) : ‖monoBetaFibS hh a c x‖ ≤ 1 := by
   rw [monoBetaFibS_apply, monoBetaFib, Complex.norm_real, Real.norm_eq_abs,
     abs_of_nonneg (mul_nonneg hc0 (monoBeta_bounds _).1)]
-  exact mul_le_one₀ hc1 (monoBeta_bounds _).1 (monoBeta_bounds _).2
+  exact ((mul_le_of_le_one_left (monoBeta_bounds _).1 hc1).trans (monoBeta_bounds _).2)
 
 /-- `𝓕(c β(·/h - a))(ξ) = c h e(-h a ξ) 𝓕β(h ξ)`. -/
 theorem fourier_monoBetaFib {h : ℝ} (hh : 0 < h) (a c ξ : ℝ) :
@@ -2215,7 +2250,8 @@ theorem fourier_monoBetaFib {h : ℝ} (hh : 0 < h) (a c ξ : ℝ) :
           monoBetaFib 1 0 1 u))) (v / h - a) := by
     intro v
     simp only [monoBetaFib, Circle.smul_def, smul_eq_mul, div_one, sub_zero, one_mul]
-    have : (𝐞 (-(v * ξ)) : ℂ) = (𝐞 (-(h * a * ξ)) : Circle) * (𝐞 (-((v / h - a) * (h * ξ))) : Circle) := by
+    have : (𝐞 (-(v * ξ)) : ℂ) = (𝐞 (-(h * a * ξ)) : Circle) * (𝐞 (-((v / h - a) * (h * ξ))) :
+      Circle) := by
       rw [← Circle.coe_mul, ← AddChar.map_add_eq_mul]; congr 2; field_simp; ring
     rw [this]; push_cast; ring
   simp_rw [e1]
@@ -2225,7 +2261,7 @@ theorem fourier_monoBetaFib {h : ℝ} (hh : 0 < h) (a c ξ : ℝ) :
   rw [h1, Measure.integral_comp_div (fun w => g (w - a)) h, integral_sub_right_eq_self g a,
     abs_of_pos hh]
   simp only [g, integral_const_mul, Complex.real_smul]
-  push_cast; ring
+  ring
 
 end
 
@@ -2243,7 +2279,6 @@ namespace Auto
 noncomputable section
 
 /-! ### The spatial partition of unity `η_m` and the enlarged cutoffs `χ_m` (lines 939-950) -/
-
 theorem mloc_theta_nonneg (x : ℝ) : 0 ≤ smoothingPartitionCutoff x :=
   (smoothingPartitionCutoff_bounds x).1
 
@@ -2278,13 +2313,13 @@ theorem mloc_Eta_nonneg (h : ℝ) (m : ℤ × ℤ) (z : ℝ × ℝ) : 0 ≤ mono
   mul_nonneg (mloc_theta_nonneg _) (mloc_theta_nonneg _)
 
 theorem mloc_Eta_le_one (h : ℝ) (m : ℤ × ℤ) (z : ℝ × ℝ) : monoEta h m z ≤ 1 :=
-  mul_le_one₀ (mloc_theta_le_one _) (mloc_theta_nonneg _) (mloc_theta_le_one _)
+  ((mul_le_of_le_one_left (mloc_theta_nonneg _) (mloc_theta_le_one _)).trans (mloc_theta_le_one _))
 
 theorem mloc_ChiM_nonneg (h : ℝ) (m : ℤ × ℤ) (z : ℝ × ℝ) : 0 ≤ monoChiM h m z :=
   mul_nonneg (mloc_beta_nonneg _) (mloc_beta_nonneg _)
 
 theorem mloc_ChiM_le_one (h : ℝ) (m : ℤ × ℤ) (z : ℝ × ℝ) : monoChiM h m z ≤ 1 :=
-  mul_le_one₀ (mloc_beta_le_one _) (mloc_beta_nonneg _) (mloc_beta_le_one _)
+  ((mul_le_of_le_one_left (mloc_beta_nonneg _) (mloc_beta_le_one _)).trans (mloc_beta_le_one _))
 
 theorem mloc_Eta_ne_zero {h : ℝ} {m : ℤ × ℤ} {z : ℝ × ℝ} (hz : monoEta h m z ≠ 0) :
     |z.1 / h - m.1| < 3 / 4 ∧ |z.2 / h - m.2| < 3 / 4 :=
@@ -2378,7 +2413,6 @@ theorem mloc_Eta_tsum (h : ℝ) (z : ℝ × ℝ) : ∑' m : ℤ × ℤ, monoEta 
   (mloc_Eta_hasSum h z).tsum_eq
 
 /-! #### Smoothness and the Lipschitz bounds `|∇η_m|, |∇χ_m| ≲ 1/h` -/
-
 theorem mloc_Eta_contDiff (h : ℝ) (m : ℤ × ℤ) : ContDiff ℝ ∞ (monoEta h m) := by
   unfold monoEta
   exact (smoothingPartitionCutoff_contDiff.comp ((contDiff_fst.div_const h).sub contDiff_const)).mul
@@ -2429,7 +2463,8 @@ theorem mloc_prod_lip {g : ℝ → ℝ} {K : ℝ} (hg0 : ∀ x, 0 ≤ g x) (hg1 
   fin_cases j
   · simpa [monoEj, monoPt] using key z.1 (z.2 / h - m.2) m.1
   · have := key z.2 (z.1 / h - m.1) m.2
-    simp only [monoEj, monoPt, Fin.mk_one, one_ne_zero, if_false, Prod.fst_add, Prod.snd_add,
+    simp only [monoEj, monoPt, Fin.mk_one, one_ne_zero, ite_false, Prod.fst_add,
+      Prod.snd_add,
       add_zero]
     rwa [mul_comm (g (z.1 / h - m.1)), mul_comm (g (z.1 / h - m.1))]
 
@@ -2463,7 +2498,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Sup and Lipschitz bounds for the coordinate multipliers (1.5) -/
-
 theorem mloc_monoEj_add (j : Fin 2) (s t : ℝ) : monoEj j (s + t) = monoEj j s + monoEj j t := by
   fin_cases j <;> simp [monoEj, monoPt]
 
@@ -2519,7 +2553,8 @@ theorem mloc_kernel_diff_le {K K' : ℝ → ℂ} (hd : ∀ s, HasDerivAt K (K' s
   exact intervalIntegral.norm_integral_le_integral_norm ha
 
 theorem mloc_prod_integrable {K' : ℝ → ℂ} (hK'c : Continuous K') (hK' : Integrable K') (a : ℝ) :
-    Integrable (Function.uncurry fun s t => ‖K' (s + t)‖) (volume.prod (volume.restrict (Ioc 0 a))) := by
+    Integrable (Function.uncurry fun s t => ‖K' (s + t)‖) (volume.prod (volume.restrict (Ioc 0
+      a))) := by
   have hc : Continuous (Function.uncurry fun s t : ℝ => ‖K' (s + t)‖) :=
     (hK'c.comp (continuous_fst.add continuous_snd)).norm
   rw [integrable_prod_iff' hc.aestronglyMeasurable]
@@ -2623,7 +2658,6 @@ namespace Auto
 noncomputable section
 
 /-! ### The commutator estimate (6.3) -/
-
 theorem mloc_monoEta_meas (h : ℝ) (m : ℤ × ℤ) : Measurable fun w => (monoEta h m w : ℂ) :=
   Complex.measurable_ofReal.comp (mloc_Eta_contDiff h m).continuous.measurable
 
@@ -2807,7 +2841,6 @@ theorem mloc_monoP_comp {κ₁ κ₂ : 𝓢(ℝ, ℂ)} {L₁ L₂ : ℝ} (h₁ :
   simpa only [ContinuousLinearMap.mul_apply'] using this
 
 /-! #### The specific enlarged multipliers -/
-
 theorem mloc_psiA_ne_zero {x : ℝ} (hx : monoPsiA x ≠ 0) : 1 / 2 < |x| ∧ |x| < 2 := by
   constructor
   · by_contra h
@@ -2998,11 +3031,13 @@ def monoMPas (j : Fin 2) (m : ℤ × ℤ) : ℤ := if j = 0 then m.2 else m.1
 
 theorem monoEta_pt (j : Fin 2) (h : ℝ) (m : ℤ × ℤ) (a p : ℝ) :
     monoEta h m (monoPt j a p)
-      = smoothingPartitionCutoff (a / h - monoMAct j m) * smoothingPartitionCutoff (p / h - monoMPas j m) := by
+      = smoothingPartitionCutoff (a / h - monoMAct j m) * smoothingPartitionCutoff (p / h -
+        monoMPas j m) := by
   fin_cases j <;> simp [monoEta, monoPt, monoMAct, monoMPas, mul_comm]
 
 theorem monoChiM_pt (j : Fin 2) (h : ℝ) (m : ℤ × ℤ) (a p : ℝ) :
-    monoChiM h m (monoPt j a p) = monoBeta (a / h - monoMAct j m) * monoBeta (p / h - monoMPas j m) := by
+    monoChiM h m (monoPt j a p) = monoBeta (a / h - monoMAct j m) * monoBeta (p / h - monoMPas j
+      m) := by
   fin_cases j <;> simp [monoChiM, monoPt, monoMAct, monoMPas, mul_comm]
 
 /-- A bounded measurable function supported in `[c, d]` is integrable with
@@ -3019,7 +3054,7 @@ theorem mono_integrable_of_bdd_Icc {F : ℝ → ℂ} (hF : AEStronglyMeasurable 
       (Eventually.of_forall hM)
   exact hI.integrable_indicator measurableSet_Icc
 
-theorem lintegral_sq_le_of_bdd_Icc {F : ℝ → ℂ} {M c d : ℝ} (hM0 : 0 ≤ M) (hM : ∀ a, ‖F a‖ ≤ M)
+theorem lintegral_sq_le_of_bdd_Icc {F : ℝ → ℂ} {M c d : ℝ} (hM : ∀ a, ‖F a‖ ≤ M)
     (hS : ∀ a, F a ≠ 0 → a ∈ Icc c d) :
     ∫⁻ a, ‖F a‖ₑ ^ 2 ≤ ENNReal.ofReal (M ^ 2 * (d - c)) := by
   calc ∫⁻ a, ‖F a‖ₑ ^ 2 ≤ ∫⁻ a, (Icc c d).indicator (fun _ => ENNReal.ofReal (M ^ 2)) a := by
@@ -3042,7 +3077,8 @@ def monoEtaF (h : ℝ) (m : ℤ × ℤ) (f : ℝ × ℝ → ℂ) (w : ℝ × ℝ
 
 theorem monoEtaF_fib_ne_zero {j : Fin 2} {h : ℝ} (hh : 0 < h) {m : ℤ × ℤ} {f : ℝ × ℝ → ℂ} {p a : ℝ}
     (hz : monoFib j (monoEtaF h m f) p a ≠ 0) :
-    a ∈ Icc (h * (monoMAct j m - 3 / 4)) (h * (monoMAct j m + 3 / 4)) ∧ |p / h - monoMPas j m| < 3 / 4 := by
+    a ∈ Icc (h * (monoMAct j m - 3 / 4)) (h * (monoMAct j m + 3 / 4)) ∧ |p / h - monoMPas j m| < 3
+      / 4 := by
   have hη : monoEta h m (monoPt j a p) ≠ 0 := by
     intro h0; apply hz; simp [monoFib, monoEtaF, h0]
   rw [monoEta_pt] at hη
@@ -3060,7 +3096,8 @@ theorem monoEtaF_fib_ne_zero {j : Fin 2} {h : ℝ} (hh : 0 < h) {m : ℤ × ℤ}
 
 theorem norm_monoEtaF_le {h : ℝ} {m : ℤ × ℤ} {f : ℝ × ℝ → ℂ} {M : ℝ} (hM : ∀ z, ‖f z‖ ≤ M)
     (z : ℝ × ℝ) : ‖monoEtaF h m f z‖ ≤ M := by
-  rw [monoEtaF, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (mloc_Eta_nonneg _ _ _)]
+  rw [monoEtaF, norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (mloc_Eta_nonneg _ _
+    _)]
   calc monoEta h m z * ‖f z‖ ≤ 1 * ‖f z‖ :=
         mul_le_mul_of_nonneg_right (mloc_Eta_le_one _ _ _) (norm_nonneg _)
     _ ≤ M := by rw [one_mul]; exact hM z
@@ -3073,12 +3110,12 @@ theorem integrable_monoEtaF_fib {j : Fin 2} {h : ℝ} (hh : 0 < h) {m : ℤ × �
     (hf : Measurable f) {M : ℝ} (hM : ∀ z, ‖f z‖ ≤ M) (p : ℝ) :
     Integrable (monoFib j (monoEtaF h m f) p) volume :=
   mono_integrable_of_bdd_Icc (measurable_monoFib (measurable_monoEtaF hf) p).aestronglyMeasurable
-    (fun a => norm_monoEtaF_le hM _) fun a ha => (monoEtaF_fib_ne_zero hh ha).1
+    (fun _ => norm_monoEtaF_le hM _) fun _ ha => (monoEtaF_fib_ne_zero hh ha).1
 
 theorem lintegral_monoEtaF_fib_sq {j : Fin 2} {h : ℝ} (hh : 0 < h) {m : ℤ × ℤ} {f : ℝ × ℝ → ℂ}
-    {M : ℝ} (hM0 : 0 ≤ M) (hM : ∀ z, ‖f z‖ ≤ M) (p : ℝ) :
+    {M : ℝ} (hM : ∀ z, ‖f z‖ ≤ M) (p : ℝ) :
     ∫⁻ a, ‖monoFib j (monoEtaF h m f) p a‖ₑ ^ 2 ≤ ENNReal.ofReal (M ^ 2 * (3 / 2 * h)) := by
-  refine (lintegral_sq_le_of_bdd_Icc hM0 (fun a => norm_monoEtaF_le hM _)
+  refine (lintegral_sq_le_of_bdd_Icc (fun a => norm_monoEtaF_le hM _)
     fun a ha => (monoEtaF_fib_ne_zero hh ha).1).trans (le_of_eq ?_)
   congr 1; ring
 
@@ -3107,14 +3144,15 @@ theorem integrable_monoUjm_fib (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {L h : ℝ} (hL
   mloc_P_fib_integrable j κ hL.ne' (integrable_monoEtaF_fib hh hf hM p)
 
 theorem lintegral_monoUjm_fib_sq (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {L h : ℝ} (hL : 0 < L) (hh : 0 < h)
-    (m : ℤ × ℤ) {f : ℝ × ℝ → ℂ} (hf : Measurable f) {M : ℝ} (hM0 : 0 ≤ M) (hM : ∀ z, ‖f z‖ ≤ M)
+    (m : ℤ × ℤ) {f : ℝ × ℝ → ℂ} (hf : Measurable f) {M : ℝ} (hM : ∀ z, ‖f z‖ ≤ M)
     (p : ℝ) :
     ∫⁻ a, ‖monoFib j (monoUjm j κ L h m f) p a‖ₑ ^ 2
       ≤ ENNReal.ofReal ((∫ s, ‖κ s‖) ^ 2 * (M ^ 2 * (3 / 2 * h))) := by
   refine (mloc_P_fib_lintegral_sq j κ hL (measurable_monoEtaF hf) p).trans ?_
-  rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_pow (integral_nonneg fun _ => norm_nonneg _)]
+  rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_pow (integral_nonneg fun _ => norm_nonneg
+    _)]
   gcongr
-  exact lintegral_monoEtaF_fib_sq hh hM0 hM p
+  exact lintegral_monoEtaF_fib_sq hh hM p
 
 theorem monoUjm_fib_eq_zero (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {h : ℝ} (hh : 0 < h) (m : ℤ × ℤ)
     {f : ℝ × ℝ → ℂ} {p : ℝ} (hp : 3 / 4 ≤ |p / h - monoMPas j m|) :
@@ -3171,7 +3209,8 @@ theorem monoPiece_lip {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ} (hF :
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
   by_cases hn : Ω + R < |(n : ℝ) * R|
   · rw [monoPiece_eq_zero_of_large hR n hF hM hΩ hn]; simp only [Pi.zero_apply, sub_self, norm_zero]
-    have : 0 ≤ R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * (Ω + R) * (∫ u, ‖monoKappa u‖) := by
+    have : 0 ≤ R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * (Ω + R) * (∫ u, ‖monoKappa u‖)
+      := by
       have : 0 ≤ ∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖ := integral_nonneg fun u => norm_nonneg _
       have : 0 ≤ ∫ u, ‖monoKappa u‖ := integral_nonneg fun u => norm_nonneg _
       have : 0 ≤ R := by linarith
@@ -3179,7 +3218,7 @@ theorem monoPiece_lip {R : ℝ} (hR : 1 ≤ R) (n : ℤ) {F : ℝ → ℂ} (hF :
     positivity
   · push Not at hn
     refine norm_sub_le_of_deriv (hasDerivAt_monoPiece hR n hF.1 hM) (fun x => ?_) a b
-    refine (norm_deriv_monoPiece_le hR n hF.1 hM x).trans ?_
+    refine (norm_deriv_monoPiece_le hR n hM x).trans ?_
     gcongr
 
 /-- **The Lipschitz bound in (6.8) for the sharp part**. -/
@@ -3190,7 +3229,8 @@ theorem monoSharp_lip {R ρ : ℝ} (hR : 1 ≤ R) (hρ : 0 < ρ) {F : ℝ → �
           (∫ u, ‖monoKappa u‖)) * M * |b - a|) := by
   have hR0 : 0 < R := by linarith
   have hE : monoE F ≠ ⊤ := by
-    rw [monoE_eq hF (memLp_two_of_bdd hF hM)]; exact lintegral_enorm_sq_ne_top (memLp_two_of_bdd hF hM)
+    rw [monoE_eq hF (memLp_two_of_bdd hF hM)];
+    exact lintegral_enorm_sq_ne_top (memLp_two_of_bdd hF hM)
   unfold monoSharp
   rw [← Finset.sum_sub_distrib]
   refine (norm_sum_le _ _).trans ?_
@@ -3233,7 +3273,8 @@ structure MonoGoodPiece (j : Fin 2) (h M E1 Ω Λ : ℝ) (m : ℤ × ℤ) (G : �
   fibFT : ∀ p ξ, Ω < |ξ| → 𝓕 (monoFib j G p) ξ = 0
   lip : ∀ z a, ‖G (z + monoEj j a) - G z‖ ≤ Λ * |a|
 
-theorem monoPas_add_E (j : Fin 2) (z : ℝ × ℝ) (a : ℝ) : monoPas j (z + monoEj j a) = monoPas j z := by
+theorem monoPas_add_E (j : Fin 2) (z : ℝ × ℝ) (a : ℝ) : monoPas j (z + monoEj j a) = monoPas j z
+  := by
   fin_cases j <;> simp [monoPas, monoEj, monoPt]
 
 theorem monoAct_add_E (j : Fin 2) (z : ℝ × ℝ) (a : ℝ) :
@@ -3242,7 +3283,7 @@ theorem monoAct_add_E (j : Fin 2) (z : ℝ × ℝ) (a : ℝ) :
 
 theorem MonoGoodPiece.monoE_ne_top {j : Fin 2} {h M E1 Ω Λ : ℝ} {m : ℤ × ℤ} {G : ℝ × ℝ → ℂ}
     (hG : MonoGoodPiece j h M E1 Ω Λ m G) (p : ℝ) : monoE (monoFib j G p) ≠ ⊤ := by
-  have h2 := memLp_two_of_bdd (hG.fibInt p) (fun a => hG.bdd _)
+  have h2 := memLp_two_of_bdd (hG.fibInt p) (fun _ => hG.bdd _)
   rw [monoE_eq (hG.fibInt p) h2]; exact lintegral_enorm_sq_ne_top h2
 
 /-- The three families: `χ_m G_♯`, `χ_m G_♭`, `χ_m G`. -/
@@ -3291,8 +3332,10 @@ theorem norm_chiM_mul_le {F : ℝ × ℝ → ℂ} {B : ℝ} (hF : ∀ z, ‖F z�
     _ ≤ B := by rw [one_mul]; exact hF z
 
 /-- Lipschitz bound for `χ_m F` in the active coordinate. -/
-theorem lip_chiM_mul {Cχ : ℝ} (hCχ : ∀ z a, |monoChiM h m (z + monoEj j a) - monoChiM h m z| ≤ Cχ / h * |a|)
-    {F : ℝ × ℝ → ℂ} {B Λ' : ℝ} (hF : ∀ z, ‖F z‖ ≤ B) (hFl : ∀ z a, ‖F (z + monoEj j a) - F z‖ ≤ Λ' * |a|)
+theorem lip_chiM_mul {Cχ : ℝ} (hCχ : ∀ z a, |monoChiM h m (z + monoEj j a) - monoChiM h m z| ≤ Cχ
+  / h * |a|)
+    {F : ℝ × ℝ → ℂ} {B Λ' : ℝ} (hF : ∀ z, ‖F z‖ ≤ B) (hFl : ∀ z a, ‖F (z + monoEj j a) - F z‖ ≤ Λ'
+      * |a|)
     (z : ℝ × ℝ) (a : ℝ) :
     ‖(monoChiM h m (z + monoEj j a) : ℂ) * F (z + monoEj j a) - (monoChiM h m z : ℂ) * F z‖
       ≤ (Cχ / h * B + Λ') * |a| := by
@@ -3313,7 +3356,7 @@ theorem lip_chiM_mul {Cχ : ℝ} (hCχ : ∀ z a, |monoChiM h m (z + monoEj j a)
 
 theorem monoSharp2_bdd (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 0 < R) (hρ : 0 < ρ)
     (z : ℝ × ℝ) : ‖monoSharp2 j R ρ G z‖ ≤ 9 / ρ * ((∫ u, ‖monoKappa u‖) * M) :=
-  norm_monoSharp_le' hR hρ (hG.fibInt _) (fun a => hG.bdd _) _
+  norm_monoSharp_le' hR hρ (hG.fibInt _) (fun _ => hG.bdd _) _
 
 theorem monoFlat2_bdd (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 0 < R) (hρ : 0 < ρ)
     (z : ℝ × ℝ) : ‖monoFlat2 j R ρ G z‖ ≤ M + 9 / ρ * ((∫ u, ‖monoKappa u‖) * M) :=
@@ -3328,7 +3371,7 @@ theorem monoSharp2_lip (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 1 ≤ R) (h
     ‖monoSharp2 j R ρ G (z + monoEj j a) - monoSharp2 j R ρ G z‖ ≤ monoLipS R ρ Ω M * |a| := by
   unfold monoSharp2
   rw [monoPas_add_E, monoAct_add_E]
-  have h := monoSharp_lip hR hρ (hG.fibInt (monoPas j z)) (fun a => hG.bdd _) hΩ0
+  have h := monoSharp_lip hR hρ (hG.fibInt (monoPas j z)) (fun _ => hG.bdd _) hΩ0
     (hG.fibFT _) (monoAct j z) (monoAct j z + a)
   rw [show monoAct j z + a - monoAct j z = a by ring] at h
   refine h.trans (le_of_eq ?_)
@@ -3339,7 +3382,8 @@ theorem monoFlat2_lip (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 1 ≤ R) (h�
     ‖monoFlat2 j R ρ G (z + monoEj j a) - monoFlat2 j R ρ G z‖ ≤ (Λ + monoLipS R ρ Ω M) * |a| := by
   unfold monoFlat2
   have e : G (z + monoEj j a) - monoSharp2 j R ρ G (z + monoEj j a) - (G z - monoSharp2 j R ρ G z)
-      = (G (z + monoEj j a) - G z) - (monoSharp2 j R ρ G (z + monoEj j a) - monoSharp2 j R ρ G z) := by
+      = (G (z + monoEj j a) - G z) - (monoSharp2 j R ρ G (z + monoEj j a) - monoSharp2 j R ρ G z)
+        := by
     ring
   rw [e]
   refine (norm_sub_le _ _).trans ?_
@@ -3400,12 +3444,13 @@ theorem lintegral_window_le (hh : 0 < h) {g : ℝ → ℝ≥0∞} {c : ℝ≥0�
 
 theorem fib_chiM_mul (hh : 0 < h) (F : ℝ × ℝ → ℂ) (p : ℝ) :
     monoFib j (fun z => (monoChiM h m z : ℂ) * F z) p
-      = fun a => monoBetaFibS hh (monoMAct j m) (monoBeta (p / h - monoMPas j m)) a * monoFib j F p a := by
+      = fun a => monoBetaFibS hh (monoMAct j m) (monoBeta (p / h - monoMPas j m)) a * monoFib j F
+        p a := by
   funext a
   simp only [monoFib, monoChiM_pt, monoBetaFibS_apply, monoBetaFib]
   push_cast; ring
 
-theorem lintegral_fib_chiM_mul_le (hh : 0 < h) (F : ℝ × ℝ → ℂ) (p : ℝ) :
+theorem lintegral_fib_chiM_mul_le (F : ℝ × ℝ → ℂ) (p : ℝ) :
     ∫⁻ a, ‖(monoChiM h m (monoPt j a p) : ℂ) * F (monoPt j a p)‖ₑ ^ 2
       ≤ ∫⁻ a, ‖monoFib j F p a‖ₑ ^ 2 := by
   refine lintegral_mono fun a => ?_
@@ -3422,11 +3467,11 @@ theorem energy_monoVSharp (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hh : 0 < h) (
       ≤ ENNReal.ofReal (E1 ^ 2 * (3 / 2 * h)) := by
   have hin : ∀ p, ∫⁻ a, ‖monoVSharp j h R ρ m G (monoPt j a p)‖ₑ ^ 2 ≤ ENNReal.ofReal E1 := by
     intro p
-    refine (lintegral_fib_chiM_mul_le (m := m) hh (monoSharp2 j R ρ G) p).trans ?_
+    refine (lintegral_fib_chiM_mul_le (m := m) (monoSharp2 j R ρ G) p).trans ?_
     have e : monoFib j (monoSharp2 j R ρ G) p = monoSharp R ρ (monoFib j G p) := by
       funext a; exact monoSharp2_fib j R ρ G p a
     rw [e]
-    exact (lintegral_monoSharp_sq_le hR (hG.fibInt p) (fun a => hG.bdd _)).trans (hG.fibL2 p)
+    exact (lintegral_monoSharp_sq_le hR (hG.fibInt p) (fun _ => hG.bdd _)).trans (hG.fibL2 p)
   refine (lintegral_window_le (j := j) (m := m) hh (c := ENNReal.ofReal E1 ^ 2)
     (fun p => by gcongr; exact hin p) (fun p hp => ?_)).trans (le_of_eq ?_)
   · have e : ∀ a, monoVSharp j h R ρ m G (monoPt j a p) = 0 := by
@@ -3447,11 +3492,11 @@ theorem energy_monoVFlat (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hh : 0 < h) (h
       ≤ ENNReal.ofReal (E1 ^ 2 * (3 / 2 * h)) := by
   have hin : ∀ p, ∫⁻ a, ‖monoVFlat j h R ρ m G (monoPt j a p)‖ₑ ^ 2 ≤ ENNReal.ofReal E1 := by
     intro p
-    refine (lintegral_fib_chiM_mul_le (m := m) hh (monoFlat2 j R ρ G) p).trans ?_
+    refine (lintegral_fib_chiM_mul_le (m := m) (monoFlat2 j R ρ G) p).trans ?_
     have e : monoFib j (monoFlat2 j R ρ G) p = monoFlat R ρ (monoFib j G p) := by
       funext a; exact monoFlat2_fib j R ρ G p a
     rw [e]
-    exact (lintegral_monoFlat_sq_le hR (hG.fibInt p) (fun a => hG.bdd _)).trans (hG.fibL2 p)
+    exact (lintegral_monoFlat_sq_le hR (hG.fibInt p) (fun _ => hG.bdd _)).trans (hG.fibL2 p)
   refine (lintegral_window_le (j := j) (m := m) hh (c := ENNReal.ofReal E1 ^ 2)
     (fun p => by gcongr; exact hin p) (fun p hp => ?_)).trans (le_of_eq ?_)
   · have e : ∀ a, monoVFlat j h R ρ m G (monoPt j a p) = 0 := by
@@ -3470,7 +3515,7 @@ theorem energy_monoVWhole (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hh : 0 < h) (
     ∫⁻ p, (∫⁻ a, ‖monoVWhole h m G (monoPt j a p)‖ₑ ^ 2) ^ 2
       ≤ ENNReal.ofReal (E1 ^ 2 * (3 / 2 * h)) := by
   have hin : ∀ p, ∫⁻ a, ‖monoVWhole h m G (monoPt j a p)‖ₑ ^ 2 ≤ ENNReal.ofReal E1 := fun p =>
-    (lintegral_fib_chiM_mul_le (m := m) hh G p).trans (hG.fibL2 p)
+    (lintegral_fib_chiM_mul_le (m := m) G p).trans (hG.fibL2 p)
   refine (lintegral_window_le (j := j) (m := m) hh (c := ENNReal.ofReal E1 ^ 2)
     (fun p => by gcongr; exact hin p) (fun p hp => ?_)).trans (le_of_eq ?_)
   · have e : ∀ a, monoVWhole h m G (monoPt j a p) = 0 := by
@@ -3503,13 +3548,14 @@ theorem uniformity_monoVFlat (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hh : 0 < h
       funext a; rw [monoFlat2_fib]
     rw [e]
     refine (monoU_flat_local hR hρ (monoBetaFibS hh (monoMAct j m) c)
-      (norm_monoBetaFibS_le hh _ hc0 hc1) (hG.fibInt p) (fun a => hG.bdd _)).trans ?_
+      (norm_monoBetaFibS_le hh _ hc0 hc1) (hG.fibInt p) (fun _ => hG.bdd _)).trans ?_
     have hW : ∫ ξ, ‖𝓕 (⇑(monoBetaFibS hh (monoMAct j m) c)) ξ‖ ≤ monoW0 := by
       have : (⇑(monoBetaFibS hh (monoMAct j m) c) : ℝ → ℂ) = monoBetaFib h (monoMAct j m) c := rfl
       rw [this, integral_norm_fourier_monoBetaFib hh, abs_of_nonneg hc0]
       exact mul_le_of_le_one_left monoW0_nonneg hc1
     refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) (pow_le_pow_left₀ bot_le (hG.fibL2 p) 2)
-    exact mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (integral_nonneg fun _ => norm_nonneg _) hW 2)
+    exact mul_le_mul_of_nonneg_right (pow_le_pow_left₀ (integral_nonneg fun _ => norm_nonneg _) hW
+      2)
       hρ.le
   refine (lintegral_window_le (j := j) (m := m) hh hpt (fun p hp => ?_)).trans (le_of_eq ?_)
   · have e : monoFib j (monoVFlat j h R ρ m G) p = 0 := by
@@ -3556,18 +3602,21 @@ theorem monoPsiE_eq_zero_small {x : ℝ} (hx : |x| < 1 / 4) : monoPsiE x = 0 := 
 /-- The localized pieces `u_{j,m} = ϑ̃(D_j/L)(η_m f)` are good pieces. -/
 theorem monoUjm_good (j : Fin 2) {ϑ : ℝ → ℝ} (hs : ContDiff ℝ ∞ ϑ) (hc : HasCompactSupport ϑ)
     (hvan : ∀ x, 4 < |x| → ϑ x = 0) {L h : ℝ} (hL : 0 < L) (hh : 0 < h) (m : ℤ × ℤ)
-    {f : ℝ × ℝ → ℂ} (hf : Measurable f) {A : ℝ} (hA0 : 0 ≤ A) (hA : ∀ z, ‖f z‖ ≤ A) :
+    {f : ℝ × ℝ → ℂ} (hf : Measurable f) {A : ℝ} (hA : ∀ z, ‖f z‖ ≤ A) :
     MonoGoodPiece j h ((∫ s, ‖monoMultK hs hc s‖) * A)
       ((∫ s, ‖monoMultK hs hc s‖) ^ 2 * (A ^ 2 * (3 / 2 * h))) (4 * L)
-      (L * (∫ s, ‖deriv (monoMultK hs hc : ℝ → ℂ) s‖) * A) m (monoUjm j (monoMultK hs hc) L h m f) where
+      (L * (∫ s, ‖deriv (monoMultK hs hc : ℝ → ℂ) s‖) * A) m (monoUjm j (monoMultK hs hc) L h m f)
+        where
   meas := measurable_monoUjm j _ L h m hf
   bdd := norm_monoUjm_le j _ hL h m hA
   fibInt := integrable_monoUjm_fib j _ hL hh m hf hA
   fibZero := fun p hp => monoUjm_fib_eq_zero j _ L hh m hp
-  fibL2 := lintegral_monoUjm_fib_sq j _ hL hh m hf hA0 hA
+  fibL2 := lintegral_monoUjm_fib_sq j _ hL hh m hf hA
   fibFT := fun p ξ hξ => by
     rw [monoUjm, mloc_P_fib_fourier j hs hc hL (integrable_monoEtaF_fib hh hf hA p)]
-    rw [hvan (ξ / L) (by rw [abs_div, abs_of_pos hL, lt_div_iff₀ hL]; linarith), Complex.ofReal_zero,
+    rw [hvan (ξ / L) (by
+      rw [abs_div, abs_of_pos hL, lt_div_iff₀ hL];
+      linarith), Complex.ofReal_zero,
       zero_mul]
   lip := fun z a => mloc_P_lip j _ hL (measurable_monoEtaF hf) (fun z => norm_monoEtaF_le hA z) z a
 
@@ -3613,7 +3662,8 @@ theorem norm_sub_monoFTilde_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {C : ℝ}
     (hA : ∀ z, ‖f z‖ ≤ A) (hrep : monoP j κ L f = f) (M : Finset (ℤ × ℤ)) (z : ℝ × ℝ)
     (hM : mlocNb h z ⊆ M) :
     ‖f z - monoFTilde j κ L h M f z‖ ≤ 9 * (C * A / (L * h)) := by
-  have hsum1 : f z = ∑ m ∈ mlocNb h z, (monoChiM h m z : ℂ) * ((monoEta h m z : ℂ) * monoP j κ L f z) := by
+  have hsum1 : f z = ∑ m ∈ mlocNb h z, (monoChiM h m z : ℂ) * ((monoEta h m z : ℂ) * monoP j κ L f
+    z) := by
     rw [hrep]
     have h1 : ∑ m ∈ mlocNb h z, (monoEta h m z : ℂ) = 1 := by
       rw [← Complex.ofReal_sum, mloc_Eta_sum_nb]; simp
@@ -3625,7 +3675,8 @@ theorem norm_sub_monoFTilde_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {C : ℝ}
           · simp [hη]
           · rw [mloc_ChiM_eq_one_of_monoEta_ne_zero hη]; push_cast; ring
   have hsum2 : monoFTilde j κ L h M f z
-      = ∑ m ∈ mlocNb h z, (monoChiM h m z : ℂ) * monoP j κ L (fun w => (monoEta h m w : ℂ) * f w) z := by
+      = ∑ m ∈ mlocNb h z, (monoChiM h m z : ℂ) * monoP j κ L (fun w => (monoEta h m w : ℂ) * f w)
+        z := by
     unfold monoFTilde monoVWhole monoUjm monoEtaF
     rw [← Finset.sum_subset hM fun m _ hm => by rw [mloc_ChiM_eq_zero_of_not_mem hm]; simp]
   rw [hsum1, hsum2, ← Finset.sum_sub_distrib]
@@ -3643,16 +3694,20 @@ theorem norm_sub_monoFTilde_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {C : ℝ}
 /-- The box of indices `[-N, N]^2`. -/
 def monoBox (N : ℕ) : Finset (ℤ × ℤ) := Finset.Icc (-(N : ℤ)) N ×ˢ Finset.Icc (-(N : ℤ)) N
 
-theorem mlocNb_subset_box {h : ℝ} (hh : 0 < h) {ρ0 : ℝ} (hρ0 : 0 ≤ ρ0) {z : ℝ × ℝ}
+theorem mlocNb_subset_box {h : ℝ} (hh : 0 < h) {ρ0 : ℝ} {z : ℝ × ℝ}
     (hz : |z.1| ≤ ρ0 ∧ |z.2| ≤ ρ0) : mlocNb h z ⊆ monoBox (⌈ρ0 / h⌉₊ + 3) := by
   intro m hm
-  have hχ : ∀ x : ℝ, |x| ≤ ρ0 → ∀ n : ℤ, n ∈ mlocNb1 (x / h) → n ∈ Finset.Icc (-((⌈ρ0 / h⌉₊ + 3 : ℕ) : ℤ)) ((⌈ρ0 / h⌉₊ + 3 : ℕ) : ℤ) := by
+  have hχ : ∀ x : ℝ, |x| ≤ ρ0 → ∀ n : ℤ, n ∈ mlocNb1 (x / h) → n ∈ Finset.Icc (-((⌈ρ0 / h⌉₊ + 3 :
+    ℕ) : ℤ)) ((⌈ρ0 / h⌉₊ + 3 : ℕ) : ℤ) := by
     intro x hx n hn
     simp only [mlocNb1, Finset.mem_Icc] at hn
-    have h1 : |x / h| ≤ ρ0 / h := by rw [abs_div, abs_of_pos hh]; exact div_le_div_of_nonneg_right hx hh.le
+    have h1 : |x / h| ≤ ρ0 / h := by
+      rw [abs_div, abs_of_pos hh];
+      exact div_le_div_of_nonneg_right hx hh.le
     have h2 : ρ0 / h ≤ ⌈ρ0 / h⌉₊ := Nat.le_ceil _
     have hf1 : (⌊x / h - 3 / 2⌋ : ℝ) ≤ x / h - 3 / 2 := Int.floor_le _
-    have hf2 : x / h - 3 / 2 - 1 < (⌊x / h - 3 / 2⌋ : ℝ) := by linarith [Int.lt_floor_add_one (x / h - 3 / 2)]
+    have hf2 : x / h - 3 / 2 - 1 < (⌊x / h - 3 / 2⌋ : ℝ) :=
+      by linarith [Int.lt_floor_add_one (x / h - 3 / 2)]
     obtain ⟨l, u⟩ := abs_le.mp h1
     rw [Finset.mem_Icc]
     constructor
@@ -3683,7 +3738,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Bilinearity and crude bounds for `χ T_ψ` -/
-
 theorem integrable_monoT_integrand {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Integrable ψ volume)
     {a b : ℝ × ℝ → ℂ} (ha : Measurable a) (hb : Measurable b) {α β : ℝ} (hα : ∀ z, ‖a z‖ ≤ α)
     (hβ : ∀ z, ‖b z‖ ≤ β) (z : ℝ × ℝ) :
@@ -3699,7 +3753,8 @@ theorem integrable_monoT_integrand {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (h�
 
 theorem monoT_add_left {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Integrable ψ volume)
     {a₁ a₂ b : ℝ × ℝ → ℂ} (h₁ : Measurable a₁) (h₂ : Measurable a₂) (hb : Measurable b)
-    {α₁ α₂ β : ℝ} (hα₁ : ∀ z, ‖a₁ z‖ ≤ α₁) (hα₂ : ∀ z, ‖a₂ z‖ ≤ α₂) (hβ : ∀ z, ‖b z‖ ≤ β) (z : ℝ × ℝ) :
+    {α₁ α₂ β : ℝ} (hα₁ : ∀ z, ‖a₁ z‖ ≤ α₁) (hα₂ : ∀ z, ‖a₂ z‖ ≤ α₂) (hβ : ∀ z, ‖b z‖ ≤ β) (z : ℝ ×
+      ℝ) :
     monoT r ψ (a₁ + a₂) b z = monoT r ψ a₁ b z + monoT r ψ a₂ b z := by
   unfold monoT
   rw [← integral_add (integrable_monoT_integrand hr hψ h₁ hb hα₁ hβ z)
@@ -3708,20 +3763,14 @@ theorem monoT_add_left {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Integrab
 
 theorem monoT_add_right {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Integrable ψ volume)
     {a b₁ b₂ : ℝ × ℝ → ℂ} (ha : Measurable a) (h₁ : Measurable b₁) (h₂ : Measurable b₂)
-    {α β₁ β₂ : ℝ} (hα : ∀ z, ‖a z‖ ≤ α) (hβ₁ : ∀ z, ‖b₁ z‖ ≤ β₁) (hβ₂ : ∀ z, ‖b₂ z‖ ≤ β₂) (z : ℝ × ℝ) :
+    {α β₁ β₂ : ℝ} (hα : ∀ z, ‖a z‖ ≤ α) (hβ₁ : ∀ z, ‖b₁ z‖ ≤ β₁) (hβ₂ : ∀ z, ‖b₂ z‖ ≤ β₂) (z : ℝ ×
+      ℝ) :
     monoT r ψ a (b₁ + b₂) z = monoT r ψ a b₁ z + monoT r ψ a b₂ z := by
   unfold monoT
   rw [← integral_add (integrable_monoT_integrand hr hψ ha h₁ hα hβ₁ z)
     (integrable_monoT_integrand hr hψ ha h₂ hα hβ₂ z)]
   congr 1; funext t; simp only [Pi.add_apply]; ring
 
-theorem measurable_monoT {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Measurable ψ) {a b : ℝ × ℝ → ℂ}
-    (ha : Measurable a) (hb : Measurable b) : Measurable (monoT r ψ a b) := by
-  have h : StronglyMeasurable (Function.uncurry fun (z : ℝ × ℝ) (t : ℝ) =>
-      (ψ t : ℂ) * (a (z.1 + t, z.2) * b (z.1, z.2 + monoQ r t))) :=
-    Measurable.stronglyMeasurable ((Complex.measurable_ofReal.comp (hψ.comp measurable_snd)).mul
-      ((ha.comp measurable_monoShift1).mul (hb.comp (measurable_monoShift2 hr))))
-  exact h.integral_prod_right'.measurable
 
 theorem measurable_chiT {r : ℝ} (hr : 0 < r) {χ : ℝ × ℝ → ℝ} (hχ : Measurable χ) {ψ : ℝ → ℝ}
     (hψ : Measurable ψ) {a b : ℝ × ℝ → ℂ} (ha : Measurable a) (hb : Measurable b) :
@@ -3731,14 +3780,16 @@ theorem measurable_chiT {r : ℝ} (hr : 0 < r) {χ : ℝ × ℝ → ℝ} (hχ : 
 /-- **The crude local bound**: `‖χ T_ψ(a,b)‖_1 ≤ ‖χ‖_1 ‖ψ‖_1 α β` when `|a| ≤ α` and `|b| ≤ β` at
 all points reached from `supp χ` with `t ∈ supp ψ`. -/
 theorem eLpNorm_chiT_le {r : ℝ} {χ : ℝ × ℝ → ℝ} (hχi : Integrable χ volume) {ψ : ℝ → ℝ}
-    (hψi : Integrable ψ volume) {A B : ℝ} (hψs : ∀ t, t ∉ Icc A B → ψ t = 0) {a b : ℝ × ℝ → ℂ} {α β : ℝ} (hα0 : 0 ≤ α)
-    (hβ0 : 0 ≤ β)
+    (hψi : Integrable ψ volume) {A B : ℝ} (hψs : ∀ t, t ∉ Icc A B → ψ t = 0) {a b : ℝ × ℝ → ℂ} {α
+      β : ℝ} (hα0 : 0 ≤ α)
     (hα : ∀ z, χ z ≠ 0 → ∀ t ∈ Icc A B, ‖a (z.1 + t, z.2)‖ ≤ α)
-    (hβ : ∀ z, χ z ≠ 0 → ∀ t ∈ Icc A B, ‖b (z.1, z.2 + monoQ r t)‖ ≤ β) :
+    (hβ : ∀ z, χ z ≠ 0 → ∀ t ∈ Icc A B, ‖b (z.1, z.2 + monoQ r t)‖ ≤ β)
+    (hm : AEStronglyMeasurable (fun z => (χ z : ℂ) * monoT r ψ a b z) volume := by fun_prop) :
     eLpNorm (fun z => (χ z : ℂ) * monoT r ψ a b z) 1 volume
       ≤ ENNReal.ofReal ((∫ z, |χ z|) * (∫ t, |ψ t|) * α * β) := by
-  rw [eLpNorm_one_eq_lintegral_enorm]
-  have hpt2 : ∀ z, ‖(χ z : ℂ) * monoT r ψ a b z‖ₑ ≤ ‖χ z‖ₑ * ((∫⁻ t, ‖ψ t‖ₑ) * ENNReal.ofReal (α * β)) := by
+  rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop)]
+  have hpt2 : ∀ z, ‖(χ z : ℂ) * monoT r ψ a b z‖ₑ ≤ ‖χ z‖ₑ * ((∫⁻ t, ‖ψ t‖ₑ) * ENNReal.ofReal (α *
+    β)) := by
     intro z
     rw [enorm_mul, monoEnorm_ofReal]
     by_cases hz : χ z = 0
@@ -3784,7 +3835,6 @@ namespace Auto
 noncomputable section
 
 /-! ### The sharp parts as sums of modulated components (lines 1081-1133) -/
-
 theorem monoEnum_mem {S : Finset ℤ} {ν : ℕ} (hν : ν < S.card) : monoEnum S ν ∈ S := by
   unfold monoEnum
   have hlen : (S.sort (· ≤ ·)).length = S.card := Finset.length_sort _
@@ -3809,7 +3859,8 @@ def monoCompH (R : ℝ) (T : Finset ℤ) (F : ℝ → ℂ) (ν : ℕ) (x : ℝ) 
 def monoCompω (R ωpad : ℝ) (T : Finset ℤ) (ν : ℕ) : ℝ :=
   if ν < T.card then (monoEnum T ν : ℝ) * R else ωpad
 
-theorem sum_pieces_eq_comp {R : ℝ} (T : Finset ℤ) (F : ℝ → ℂ) {N : ℕ} (hN : T.card ≤ N) (ωpad x : ℝ) :
+theorem sum_pieces_eq_comp {R : ℝ} (T : Finset ℤ) (F : ℝ → ℂ) {N : ℕ} (hN : T.card ≤ N) (ωpad x :
+  ℝ) :
     ∑ n ∈ T, monoPiece R n F x
       = ∑ ν ∈ Finset.range N, monoCompH R T F ν x *
           Complex.exp (2 * π * Complex.I * (monoCompω R ωpad T ν * x)) := by
@@ -3821,22 +3872,22 @@ theorem sum_pieces_eq_comp {R : ℝ} (T : Finset ℤ) (F : ℝ → ℂ) {N : ℕ
   · simp
 
 theorem norm_monoCompH_le {R : ℝ} (hR : 0 < R) (T : Finset ℤ) {F : ℝ → ℂ}
-    (hF : AEStronglyMeasurable F volume) {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (ν : ℕ) (x : ℝ) :
+     {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (ν : ℕ) (x : ℝ) :
     ‖monoCompH R T F ν x‖ ≤ (∫ u, ‖monoKappa u‖) * M := by
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hM 0)
   unfold monoCompH
   split_ifs
-  · exact norm_monoH_le hR _ hF hM x
+  · exact norm_monoH_le hR _ hM x
   · rw [norm_zero]; exact mul_nonneg (integral_nonneg fun _ => norm_nonneg _) hM0
 
 theorem hasDerivAt_monoCompH {R : ℝ} (hR : 1 ≤ R) (T : Finset ℤ) {F : ℝ → ℂ}
     (hF : AEStronglyMeasurable F volume) {M : ℝ} (hM : ∀ t, ‖F t‖ ≤ M) (ν : ℕ) (x : ℝ) :
     HasDerivAt (monoCompH R T F ν) (if ν < T.card then monoH' R (monoEnum T ν) F x else 0) x := by
   by_cases hν : ν < T.card
-  · have e : monoCompH R T F ν = monoH R (monoEnum T ν) F := funext fun x => if_pos hν
-    rw [e, if_pos hν]; exact hasDerivAt_monoH hR _ hF hM x
-  · have e : monoCompH R T F ν = fun _ => 0 := funext fun x => if_neg hν
-    rw [e, if_neg hν]; exact hasDerivAt_const x 0
+  · have e : monoCompH R T F ν = monoH R (monoEnum T ν) F := funext fun x => ite_eq_left hν
+    rw [e, ite_eq_left hν]; exact hasDerivAt_monoH hR _ hF hM x
+  · have e : monoCompH R T F ν = fun _ => 0 := funext fun x => ite_eq_right hν
+    rw [e, ite_eq_right hν]; exact hasDerivAt_const x 0
 
 theorem measurable_monoCompω {R ωpad : ℝ} {T : ℝ → Finset ℤ} (hT : ∀ n, MeasurableSet {p | n ∈ T p})
     (ν : ℕ) : Measurable fun p => monoCompω R ωpad (T p) ν :=
@@ -3862,7 +3913,7 @@ theorem measurable_monoCompH_fib (j : Fin 2) {R : ℝ} {G : ℝ × ℝ → ℂ} 
       = {q : ℝ × ℝ | ν < (T q.1).card}.piecewise
           (fun q => monoH R (monoEnum (T q.1) ν) (monoFib j G q.1) q.2) (fun _ => 0) := by
     funext q
-    simp only [monoCompH, Set.piecewise, mem_setOf_eq]
+    simp only [monoCompH, Set.piecewise, mem_ofPred_eq]
   rw [e]
   exact Measurable.piecewise hC hm measurable_const
 
@@ -3882,14 +3933,14 @@ namespace Auto
 noncomputable section
 
 /-! ### Normalizations for Proposition 6.1 (line 940) -/
-
 theorem hasCompactSupport_iteratedDeriv' {ψ : ℝ → ℝ} (hc : HasCompactSupport ψ) (k : ℕ) :
     HasCompactSupport (iteratedDeriv k ψ) := by
   induction k with
   | zero => simpa using hc
   | succ k ih => rw [iteratedDeriv_succ]; exact ih.deriv
 
-theorem bddAbove_iteratedDeriv {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) (hc : HasCompactSupport ψ) (k : ℕ) :
+theorem bddAbove_iteratedDeriv {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) (hc : HasCompactSupport ψ) (k :
+  ℕ) :
     BddAbove (range fun t => |iteratedDeriv k ψ t|) := by
   have hck : HasCompactSupport (iteratedDeriv k ψ) := hasCompactSupport_iteratedDeriv' hc k
   have hcont : Continuous (iteratedDeriv k ψ) :=
@@ -3898,7 +3949,7 @@ theorem bddAbove_iteratedDeriv {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) (h
   exact ⟨C, by rintro _ ⟨t, rfl⟩; simpa [Real.norm_eq_abs] using hC t⟩
 
 theorem monoC20_nonneg (ψ : ℝ → ℝ) : 0 ≤ monoC20 ψ :=
-  Finset.sum_nonneg fun k _ => Real.iSup_nonneg fun t => abs_nonneg _
+  Finset.sum_nonneg fun _ _ => Real.iSup_nonneg fun _ => abs_nonneg _
 
 theorem abs_le_monoC20 {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) (hc : HasCompactSupport ψ) (t : ℝ) :
     |ψ t| ≤ monoC20 ψ := by
@@ -3916,7 +3967,7 @@ theorem eq_zero_of_monoC20 {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) (hc : 
   rw [h0] at this
   exact abs_nonpos_iff.mp this
 
-theorem monoC20_const_mul {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) {c : ℝ} (hc : 0 ≤ c) :
+theorem monoC20_const_mul {ψ : ℝ → ℝ} {c : ℝ} (hc : 0 ≤ c) :
     monoC20 (fun t => c * ψ t) = c * monoC20 ψ := by
   unfold monoC20
   rw [Finset.mul_sum]
@@ -3990,7 +4041,7 @@ theorem mss_card_box {h C0 : ℝ} (hh : 0 < h) (hC0 : 0 ≤ C0) (M : Finset (ℤ
       (Finset.Icc ⌈w.1 / h - C0⌉ ⌊w.1 / h + C0⌋) ×ˢ (Finset.Icc ⌈w.2 / h - C0⌉ ⌊w.2 / h + C0⌋) := by
     intro m hm
     rw [Finset.mem_filter] at hm
-    simp only [mssBox, mem_setOf_eq] at hm
+    simp only [mssBox, mem_ofPred_eq] at hm
     obtain ⟨-, h1, h2⟩ := hm
     rw [abs_le] at h1 h2
     simp only [Finset.mem_product, Finset.mem_Icc]
@@ -4018,7 +4069,7 @@ theorem mss_box_disjoint {h C0 : ℝ} (hh : 0 < h) {K : ℕ} (hK : 2 * C0 < K) {
     Disjoint (mssBox h C0 m) (mssBox h C0 m') := by
   rw [Set.disjoint_left]
   intro w hw hw'
-  simp only [mssBox, mem_setOf_eq] at hw hw'
+  simp only [mssBox, mem_ofPred_eq] at hw hw'
   apply hne
   have key : ∀ (x : ℝ) (a b : ℤ), a % K = b % K → |x - h * (a : ℝ)| ≤ C0 * h →
       |x - h * (b : ℝ)| ≤ C0 * h → a = b := by
@@ -4064,14 +4115,15 @@ theorem mss_psi_zero_of_not_mem_Ioo {ψ : ℝ → ℝ} (hc : Continuous ψ) {A B
     (hs : tsupport ψ ⊆ Icc A B) {t : ℝ} (ht : t ∉ Ioo A B) : ψ t = 0 := by
   by_cases h : t ∈ Icc A B
   · have : t = A ∨ t = B := by
-      by_contra hne; push_neg at hne
+      by_contra hne; push Not at hne
       exact ht ⟨lt_of_le_of_ne h.1 (Ne.symm hne.1), lt_of_le_of_ne h.2 hne.2⟩
     rcases this with rfl | rfl
     · exact (mss_psi_endpoints hc hs).1
     · exact (mss_psi_endpoints hc hs).2
   · exact mss_psi_zero_of_not_mem hs h
 
-theorem mss_iterDeriv_le_C20 {ψ : ℝ → ℝ} {k : ℕ} (hk : k < 21) (hbdd : BddAbove (Set.range fun t => |iteratedDeriv k ψ t|))
+theorem mss_iterDeriv_le_C20 {ψ : ℝ → ℝ} {k : ℕ} (hk : k < 21) (hbdd : BddAbove (Set.range fun t
+  => |iteratedDeriv k ψ t|))
     (t : ℝ) : |iteratedDeriv k ψ t| ≤ monoC20 ψ := by
   unfold monoC20
   refine (le_ciSup hbdd t).trans ?_
@@ -4094,7 +4146,8 @@ theorem mss_psi_bounds {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) {A B : ℝ
   · intro t
     have hb : BddAbove (Set.range fun t => |iteratedDeriv 1 ψ t|) := by
       simp only [iteratedDeriv_one]
-      simpa [Real.norm_eq_abs] using hc1.norm.bddAbove_range_of_hasCompactSupport hcs.deriv.norm
+      simpa [Real.norm_eq_abs] using hc1.norm.bddAbove_range_of_hasCompactSupport
+        hcs.deriv.norm
     have := mss_iterDeriv_le_C20 (by norm_num) hb t
     simp only [iteratedDeriv_one] at this
     linarith
@@ -4165,7 +4218,8 @@ theorem mnst_int_abs_inv_deriv {a b : ℝ} {φ' φ'' : ℝ → ℝ} {S : ℝ} (h
     (hsgn : (∀ t ∈ Icc a b, 2 * S ≤ φ' t) ∨ (∀ t ∈ Icc a b, φ' t ≤ -(2 * S))) :
     ∫ t in a..b, |φ'' t / φ' t ^ 2| ≤ 1 / (2 * S) := by
   rcases hab.eq_or_lt with h | hlt
-  · subst h; simp; positivity
+  · subst h; simp only [integral_same, one_div, mul_inv_rev, inv_pos, Nat.ofNat_pos,
+    mul_nonneg_iff_of_pos_right, inv_nonneg]; positivity
   have hne : ∀ t ∈ Icc a b, φ' t ≠ 0 := by
     intro t ht; rcases hsgn with h | h
     · have := h t ht; intro h0; linarith
@@ -4296,7 +4350,7 @@ theorem mnst_ibp_piece {a b : ℝ} {H H' : ℝ → ℂ} {φ φ' φ'' : ℝ → �
   have hu0 : 0 < u := by positivity
   have hgb : ∀ t ∈ Icc a b, ‖g t‖ ≤ M * u * ‖k‖⁻¹ := by
     intro t ht
-    simp only [hg, norm_div, norm_mul, Complex.norm_real, Real.norm_eq_abs, div_eq_mul_inv]
+    simp only [hg, norm_mul, Complex.norm_real, Real.norm_eq_abs, div_eq_mul_inv]
     gcongr
     · exact hM t ht
     · exact hr t ht
@@ -4334,7 +4388,7 @@ theorem mnst_ibp_piece {a b : ℝ} {H H' : ℝ → ℂ} {φ φ' φ'' : ℝ → �
     exact add_le_add (mul_le_mul_of_nonneg_left (hr t ht) (norm_nonneg _))
       (mul_le_mul_of_nonneg_right (hM t ht) (abs_nonneg _))
   rw [hk.symm] at *
-  show ‖∫ t in a..b, Complex.exp (k * φ t) * H t‖ ≤ _
+  change ‖∫ t in a..b, Complex.exp (k * φ t) * H t‖ ≤ _
   rw [heq, hibp]
   have ha' : a ∈ Icc a b := ⟨le_rfl, hab⟩
   have hb' : b ∈ Icc a b := ⟨hab, le_rfl⟩
@@ -4373,7 +4427,8 @@ theorem mnst_indicator_intervalIntegrable {c d S : ℝ} {H : ℝ → ℂ} {φ' :
       volume c d := by
   set ψ : ℝ → ℝ := fun t => φ' (Set.projIcc c d hcd t) with hψ
   have hψc : Continuous ψ :=
-    hφ'c.comp_continuous (continuous_subtype_val.comp continuous_projIcc) (fun t => (Set.projIcc c d hcd t).2)
+    hφ'c.comp_continuous (continuous_subtype_val.comp continuous_projIcc) (fun t => (Set.projIcc c
+      d hcd t).2)
   have hmeas : MeasurableSet {t | |ψ t| ≤ 2 * S} :=
     (isClosed_le (continuous_abs.comp hψc) continuous_const).measurableSet
   have h1 : IntegrableOn (Set.indicator {t | |ψ t| ≤ 2 * S} (fun t => ‖H t‖)) (Icc c d) :=
@@ -4382,7 +4437,7 @@ theorem mnst_indicator_intervalIntegrable {c d S : ℝ} {H : ℝ → ℂ} {φ' :
     (by
       intro t ht
       have : ψ t = φ' t := by simp [hψ, Set.projIcc_of_mem hcd ht]
-      simp only [Set.indicator, mem_setOf_eq, this]) measurableSet_Icc
+      simp only [Set.indicator, mem_ofPred_eq, this]) measurableSet_Icc
   exact (intervalIntegrable_iff_integrableOn_Icc_of_le hcd).2 h2
 
 theorem mnst_cont_integrand {c d : ℝ} {H : ℝ → ℂ} {φ : ℝ → ℝ}
@@ -4405,7 +4460,7 @@ theorem mnst_mid {c d a b S : ℝ} {H : ℝ → ℂ} {φ φ' : ℝ → ℝ} (hca
     apply setIntegral_congr_fun measurableSet_Ioo
     intro t ht
     dsimp only; rw [norm_mul, mnst_norm_expPhase, one_mul]
-    simp only [Set.indicator, mem_setOf_eq, hmid t ht, if_true]
+    simp only [Set.indicator, mem_ofPred_eq, hmid t ht, ite_true]
   rw [e1]
   exact integral_mono_interval hca hab hbd
     (Filter.Eventually.of_forall fun t => Set.indicator_nonneg (fun _ _ => norm_nonneg _) t)
@@ -4414,7 +4469,7 @@ theorem mnst_mid {c d a b S : ℝ} {H : ℝ → ℂ} {φ φ' : ℝ → ℝ} (hca
 theorem mnst_norm_int_mono {c d a b : ℝ} {H' : ℝ → ℂ} (hca : c ≤ a) (hab : a ≤ b)
     (hbd : b ≤ d) (hH' : ContinuousOn H' (Icc c d)) :
     ∫ t in a..b, ‖H' t‖ ≤ ∫ t in c..d, ‖H' t‖ :=
-  integral_mono_interval hca hab hbd (Filter.Eventually.of_forall fun t => norm_nonneg _)
+  integral_mono_interval hca hab hbd (Filter.Eventually.of_forall fun _ => norm_nonneg _)
     (hH'.norm.intervalIntegrable_of_Icc (hca.trans (hab.trans hbd)))
 
 end
@@ -4588,7 +4643,8 @@ theorem mnst_nonstationary : ∃ C : ℝ, 0 < C ∧ ∀ (c d : ℝ) (H H' : ℝ 
       rw [← mnst_intervalIntegral_conj hcd]
       apply integral_congr
       intro t _
-      simp only [map_mul, ← Complex.exp_conj, Complex.conj_ofReal, Complex.conj_I, map_ofNat]
+      simp only [map_mul, ← Complex.exp_conj, Complex.conj_ofReal, Complex.conj_I,
+        map_ofNat]
       push_cast; ring_nf
     rw [e1, Complex.norm_conj] at key
     simpa [abs_neg, Complex.norm_conj] using key
@@ -4727,7 +4783,7 @@ theorem mss_term : ∃ C : ℝ, 0 < C ∧ ∀ {r A B : ℝ}, 1 < r → 0 < A →
       r).mul_const b).const_add a
     exact h1
   have hφ''c : ContinuousOn φ'' (Icc A B) := by
-    show ContinuousOn (fun t => r * ((r - 1) * t ^ (r - 1 - 1)) * b) _
+    change ContinuousOn (fun t => r * ((r - 1) * t ^ (r - 1 - 1)) * b) _
     refine (continuousOn_const.mul (continuousOn_const.mul
       (continuousOn_id.rpow_const fun x hx => Or.inl (hIcc x hx).ne'))).mul continuousOn_const
   have hmono : MonotoneOn φ' (Icc A B) ∨ AntitoneOn φ' (Icc A B) := by
@@ -4943,12 +4999,12 @@ theorem mss_Hd_sum_le {r A B h C0 R : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A �
     (mss_continuous_Hd hr hψ (hDu m) (hDuc m) (hDv n) (hDvc n)).norm
   have e1 : ∑ m ∈ M₁, ∑ n ∈ M₂, ∫ t in A..B, ‖mssHd r ψ (f m) (g n) (Du m) (Dv n) z t‖ =
       ∫ t in A..B, ∑ m ∈ M₁, ∑ n ∈ M₂, ‖mssHd r ψ (f m) (g n) (Du m) (Dv n) z t‖ := by
-    rw [intervalIntegral.integral_finset_sum]
+    rw [intervalIntegral.integral_finsetSum]
     · refine Finset.sum_congr rfl fun m _ => ?_
-      rw [intervalIntegral.integral_finset_sum]
+      rw [intervalIntegral.integral_finsetSum]
       intro n _; exact (hc m n).intervalIntegrable _ _
     · intro m _
-      exact (continuous_finset_sum _ fun n _ => hc m n).intervalIntegrable _ _
+      exact (continuous_finsetSum _ fun n _ => hc m n).intervalIntegrable _ _
   rw [e1]
   have hpt : ∀ t ∈ Icc A B, ∑ m ∈ M₁, ∑ n ∈ M₂, ‖mssHd r ψ (f m) (g n) (Du m) (Dv n) z t‖ ≤
       (2 * C0 + 1) ^ 2 * (2 * C0 + 1) ^ 2 * Kt := by
@@ -4982,7 +5038,8 @@ theorem mss_Hd_sum_le {r A B h C0 R : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A �
     calc (P₁.card : ℝ) * ((P₂.card : ℝ) * Kt) = (P₁.card : ℝ) * (P₂.card : ℝ) * Kt := by ring
       _ ≤ (2 * C0 + 1) ^ 2 * (2 * C0 + 1) ^ 2 * Kt := by gcongr
   refine (intervalIntegral.integral_mono_on hAB
-    ((continuous_finset_sum _ fun m _ => continuous_finset_sum _ fun n _ => hc m n).intervalIntegrable _ _)
+    ((continuous_finsetSum _ fun m _ => continuous_finsetSum _ fun n _ => hc m
+      n).intervalIntegrable _ _)
     intervalIntegrable_const hpt).trans (le_of_eq ?_)
   rw [intervalIntegral.integral_const, smul_eq_mul]
 
@@ -5050,7 +5107,7 @@ theorem msub_pos_min_of_contOn {A B : ℝ} (hAB : A ≤ B) {f : ℝ → ℝ} (hf
 
 theorem msub_rpow_contOn {A B a : ℝ} (hA : 0 < A) :
     ContinuousOn (fun t : ℝ => t ^ a) (Icc A B) :=
-  continuousOn_id.rpow_const (fun x hx => Or.inl (ne_of_gt (lt_of_lt_of_le hA hx.1)))
+  continuousOn_id.rpow_const (fun _ hx => Or.inl (ne_of_gt (lt_of_lt_of_le hA hx.1)))
 
 theorem msub_monoq_hasDeriv (r : ℝ) {t : ℝ} (ht : 0 < t) :
     HasDerivAt (monoq r) (r * ((r - 1) * t ^ (r - 1 - 1))) t := by
@@ -5098,8 +5155,6 @@ end Auto
 end
 
 section
-
-set_option linter.unusedTactic false
 
 open MeasureTheory Set Filter Topology
 open scoped ENNReal NNReal
@@ -5173,20 +5228,20 @@ theorem msub_V_lower {F : ℝ → ℝ} {A B κ : ℝ}
   first
   | exact hsym a b c ha hc hab hbc rfl rfl
   | exact hsym a c b ha hb hac hbc
-      (abs_eq_abs.mpr (by unfold msubP; first | (left; ring1) | (right; ring1)))
-      (abs_eq_abs.mpr (by unfold msubV; first | (left; ring1) | (right; ring1)))
+      (abs_eq_abs.mpr (by unfold msubP; right; ring))
+      (abs_eq_abs.mpr (by unfold msubV; right; ring))
   | exact hsym c a b hc hb hac hab
-      (abs_eq_abs.mpr (by unfold msubP; first | (left; ring1) | (right; ring1)))
-      (abs_eq_abs.mpr (by unfold msubV; first | (left; ring1) | (right; ring1)))
+      (abs_eq_abs.mpr (by unfold msubP; left; ring))
+      (abs_eq_abs.mpr (by unfold msubV; left; ring))
   | exact hsym b a c hb hc hab hac
-      (abs_eq_abs.mpr (by unfold msubP; first | (left; ring1) | (right; ring1)))
-      (abs_eq_abs.mpr (by unfold msubV; first | (left; ring1) | (right; ring1)))
+      (abs_eq_abs.mpr (by unfold msubP; right; ring))
+      (abs_eq_abs.mpr (by unfold msubV; right; ring))
   | exact hsym b c a hb ha hbc hac
-      (abs_eq_abs.mpr (by unfold msubP; first | (left; ring1) | (right; ring1)))
-      (abs_eq_abs.mpr (by unfold msubV; first | (left; ring1) | (right; ring1)))
+      (abs_eq_abs.mpr (by unfold msubP; left; ring))
+      (abs_eq_abs.mpr (by unfold msubV; left; ring))
   | exact hsym c b a hc ha hbc hab
-      (abs_eq_abs.mpr (by unfold msubP; first | (left; ring1) | (right; ring1)))
-      (abs_eq_abs.mpr (by unfold msubV; first | (left; ring1) | (right; ring1)))
+      (abs_eq_abs.mpr (by unfold msubP; right; ring))
+      (abs_eq_abs.mpr (by unfold msubV; right; ring))
 
 end
 end Auto
@@ -5261,7 +5316,8 @@ theorem msub_det_lower {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A ≤ B) :
     have := mul_le_mul (mul_le_mul h0.2 h1.2 p1.le hB.le) h2.2 p2.le (by positivity)
     nlinarith
   have hr0 : 0 < r := by linarith
-  have habs : |msubDet r t| * (t.1 * t.2.1 * t.2.2) = r * |msubV (fun x => x ^ r) t.1 t.2.1 t.2.2| := by
+  have habs : |msubDet r t| * (t.1 * t.2.1 * t.2.2) = r * |msubV (fun x => x ^ r) t.1 t.2.1 t.2.2|
+    := by
     rw [← abs_of_pos hprod, ← abs_mul, he, abs_mul, abs_of_pos hr0]
   have hP0 : 0 ≤ |msubP t.1 t.2.1 t.2.2| := abs_nonneg _
   rw [div_mul_eq_mul_div, div_le_iff₀ (by positivity)]
@@ -5561,7 +5617,7 @@ theorem msub_vol_le_of_antilip {s : Set (ℝ × ℝ × ℝ)} {f : ℝ × ℝ × 
     have := hf x hx y hy
     rw [hxy, sub_self, norm_zero] at this
     have : ‖x - y‖ ≤ 0 := by
-      by_contra hc; push_neg at hc; nlinarith [mul_pos hm hc]
+      by_contra hc; push Not at hc; nlinarith [mul_pos hm hc]
     exact sub_eq_zero.mp (norm_le_zero_iff.mp this)
   set g := Function.invFunOn f s
   have hg : ∀ x ∈ s, g (f x) = x := fun x hx => hinj.leftInvOn_invFunOn hx
@@ -5603,8 +5659,9 @@ theorem msub_vol_graph (g : ℝ × ℝ → ℝ) (hg : Measurable g) (u : ℝ × 
       ENNReal.ofReal (2 * δ) * (ENNReal.ofReal (2 * ρ) * ENNReal.ofReal (2 * ρ)) := by
   have hm : MeasurableSet {w : ℝ × ℝ × ℝ | w.2 ∈ Metric.closedBall u ρ ∧ |w.1 - g w.2| ≤ δ} :=
     (measurable_snd Metric.isClosed_closedBall.measurableSet).inter
-      (measurableSet_le (continuous_abs.measurable.comp (measurable_fst.sub (hg.comp measurable_snd))) measurable_const)
-  rw [Measure.volume_eq_prod, Measure.prod_apply_symm hm, ← msub_vol_ball2,
+      (measurableSet_le (continuous_abs.measurable.comp (measurable_fst.sub (hg.comp
+        measurable_snd))) measurable_const)
+  rw [Measure.volume_eq_prod, Measure.prod_apply_symm hm, ← msub_vol_ball2 u ρ,
     ← lintegral_indicator_const Metric.isClosed_closedBall.measurableSet]
   refine lintegral_mono fun y => ?_
   by_cases hy : y ∈ Metric.closedBall u ρ
@@ -5613,7 +5670,7 @@ theorem msub_vol_graph (g : ℝ × ℝ → ℝ) (hg : Measurable g) (u : ℝ × 
           |w.1 - g w.2| ≤ δ}) ≤ volume (Icc (g y - δ) (g y + δ)) := by
           apply measure_mono
           intro x hx
-          simp only [mem_preimage, mem_setOf_eq] at hx
+          simp only [mem_preimage, mem_ofPred_eq] at hx
           rw [mem_Icc]; constructor <;> linarith [abs_le.mp hx.2]
       _ = ENNReal.ofReal (2 * δ) := by rw [Real.volume_Icc]; ring_nf
   · rw [indicator_of_notMem hy]
@@ -5646,18 +5703,19 @@ theorem msub_slice_le {Z : Type*} [MeasureSpace Z] {A B : ℝ} {Y : Set (ℝ × 
     rw [show Prod.mk a ⁻¹' Y = ∅ from eq_empty_of_forall_notMem fun z hz => ha (hY a z hz).1]
     exact measure_empty
 
-theorem msub_vol_diag2 {A B η : ℝ} (hη : 0 ≤ η) :
+theorem msub_vol_diag2 {A B η : ℝ} :
     volume {p : ℝ × ℝ | p.1 ∈ Icc A B ∧ p.2 ∈ Icc A B ∧ |p.1 - p.2| < η} ≤
       ENNReal.ofReal (2 * η) * ENNReal.ofReal (B - A) := by
   apply msub_prod_le
   · exact (measurable_fst measurableSet_Icc).inter ((measurable_snd measurableSet_Icc).inter
-      (measurableSet_lt (continuous_abs.measurable.comp (measurable_fst.sub measurable_snd)) measurable_const))
+      (measurableSet_lt (continuous_abs.measurable.comp (measurable_fst.sub measurable_snd))
+        measurable_const))
   · refine msub_slice_le (W := fun a => Ioo (a - η) (a + η)) (fun a z hz => ⟨hz.1, ?_⟩)
       (fun a => ?_)
     · have := abs_lt.mp hz.2.2; constructor <;> linarith
     · rw [Real.volume_Ioo]; ring_nf; exact le_rfl
 
-theorem msub_vol_X {A B η : ℝ} (hη : 0 ≤ η) :
+theorem msub_vol_X {A B η : ℝ} :
     volume {t : ℝ × ℝ × ℝ | t ∈ msubI3 A B ∧ (|t.1 - t.2.1| < η ∨ |t.1 - t.2.2| < η ∨
       |t.2.1 - t.2.2| < η)} ≤ 3 * (ENNReal.ofReal (2 * η) * ENNReal.ofReal (B - A) *
         ENNReal.ofReal (B - A)) := by
@@ -5692,11 +5750,12 @@ theorem msub_vol_X {A B η : ℝ} (hη : 0 ≤ η) :
   have h3 : volume {t : ℝ × ℝ × ℝ | t ∈ msubI3 A B ∧ |t.2.1 - t.2.2| < η} ≤
       ENNReal.ofReal (2 * η) * ENNReal.ofReal (B - A) * ENNReal.ofReal (B - A) := by
     apply msub_prod_le
-    · exact mI.inter (measurableSet_lt (continuous_abs.measurable.comp ((measurable_fst.comp measurable_snd).sub
+    · exact mI.inter (measurableSet_lt (continuous_abs.measurable.comp ((measurable_fst.comp
+        measurable_snd).sub
         (measurable_snd.comp measurable_snd))) measurable_const)
     · exact msub_slice_le
         (W := fun _ => {p : ℝ × ℝ | p.1 ∈ Icc A B ∧ p.2 ∈ Icc A B ∧ |p.1 - p.2| < η})
-        (fun a z hz => ⟨hz.1.1, hz.1.2.1, hz.1.2.2, hz.2⟩) (fun _ => msub_vol_diag2 hη)
+        (fun a z hz => ⟨hz.1.1, hz.1.2.1, hz.1.2.2, hz.2⟩) (fun _ => msub_vol_diag2 )
   calc _ ≤ _ := measure_mono hsub
     _ ≤ _ := measure_union_le _ _
     _ ≤ _ := add_le_add le_rfl (measure_union_le _ _)
@@ -5857,7 +5916,7 @@ theorem msub_core_eta {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
     refine (Finset.sum_le_sum fun k _ => hpiece k).trans ?_
     rw [Finset.sum_const, Finset.card_univ, Fintype.card_prod, Fintype.card_prod,
       Fintype.card_fin, nsmul_eq_mul]
-  have hXb := msub_vol_X (A := A) (B := B) hη.le
+  have hXb := msub_vol_X (A := A) (B := B) (η := η)
   -- real form of the bounds
   set R1 := 3 * (2 * η * (B - A) * (B - A))
   set R2 := ((N * (N * N) : ℕ) : ℝ) * (m⁻¹ ^ 3 * (2 * δ * (2 * ρ * (2 * ρ))))
@@ -6202,7 +6261,8 @@ theorem msub_fub_core {Γ : ℝ → ℝ × ℝ} (hΓ : Measurable Γ) {iE : (ℝ
     rw [lintegral_lintegral_swap]
     · refine lintegral_congr fun t => ?_
       rw [lintegral_lintegral_swap]
-      exact (hGm.comp (by fun_prop : Measurable fun q : (ℝ × ℝ) × ℝ => ((q.1, t), q.2))).aemeasurable
+      exact (hGm.comp
+        (by fun_prop : Measurable fun q : (ℝ × ℝ) × ℝ => ((q.1, t), q.2))).aemeasurable
     · exact (Measurable.lintegral_prod_right' hGm).aemeasurable
   have e3 : ∀ t s, ∫⁻ z, G z t s = ∫⁻ z, H t s z := by
     intro t s
@@ -6214,7 +6274,8 @@ theorem msub_fub_core {Γ : ℝ → ℝ × ℝ} (hΓ : Measurable Γ) {iE : (ℝ
     rw [lintegral_lintegral_swap]
     · refine lintegral_congr fun s => ?_
       rw [lintegral_lintegral_swap]
-      exact (hHm.comp (by fun_prop : Measurable fun q : ℝ × (ℝ × ℝ) => ((q.1, s), q.2))).aemeasurable
+      exact (hHm.comp
+        (by fun_prop : Measurable fun q : ℝ × (ℝ × ℝ) => ((q.1, s), q.2))).aemeasurable
     · exact (Measurable.lintegral_prod_right' hHm).aemeasurable
   have e5 : ∀ s z, ∫⁻ t, H t s z = iE (z, s) * (dA z * ∫⁻ t, iE (z + Γ s - Γ t, t)) := by
     intro s z
@@ -6224,7 +6285,8 @@ theorem msub_fub_core {Γ : ℝ → ℝ × ℝ} (hΓ : Measurable Γ) {iE : (ℝ
     · fun_prop
   have e6 : ∫⁻ s, ∫⁻ z, iE (z, s) * (dA z * ∫⁻ t, iE (z + Γ s - Γ t, t)) =
       ∫⁻ p, iE p * (dA p.1 * ∫⁻ t, iE (p.1 + Γ p.2 - Γ t, t)) := by
-    have hm : Measurable fun p : (ℝ × ℝ) × ℝ => iE p * (dA p.1 * ∫⁻ t, iE (p.1 + Γ p.2 - Γ t, t)) := by
+    have hm : Measurable fun p : (ℝ × ℝ) × ℝ => iE p * (dA p.1 * ∫⁻ t, iE (p.1 + Γ p.2 - Γ t, t))
+      := by
       refine hiE.mul (hdA.comp measurable_fst |>.mul ?_)
       exact hdB.comp (measurable_fst.add (hΓ.comp measurable_snd))
     rw [show (volume : Measure ((ℝ × ℝ) × ℝ)) = volume.prod volume from rfl,
@@ -6360,7 +6422,7 @@ theorem msub_P3 {Γ : ℝ → ℝ × ℝ} (hΓ : Measurable Γ) {E : Set ((ℝ �
     have heq : lowB = (fun p : (ℝ × ℝ) × ℝ => (p.1 + Γ p.2, p.2)) ⁻¹'
         (E' ∩ {q | volume (Prod.mk q.1 ⁻¹' E') < b}) := by
       ext p
-      simp only [lowB, E', mem_inter_iff, mem_setOf_eq, mem_preimage, add_sub_cancel_right,
+      simp only [lowB, E', mem_inter_iff, mem_ofPred_eq, mem_preimage, add_sub_cancel_right,
         hdBE']
     rw [heq, msub_shear hΓ hS]
     refine (msub_prune hE' hD1 (fun p hp => ?_) b).trans (le_of_eq ?_)
@@ -6393,7 +6455,7 @@ theorem msub_P3 {Γ : ℝ → ℝ × ℝ} (hΓ : Measurable Γ) {E : Set ((ℝ �
       have : iE p = 1 := by simp [iE, indicator_of_mem hp.1.1]
       rw [this, one_mul]
       exact mul_le_mul' hp.1.2 hp.2
-    · rw [indicator_of_notMem hp]; exact zero_le'
+    · rw [indicator_of_notMem hp]; exact zero_le
   -- real arithmetic
   have hgf : volume good ≠ ∞ := ne_top_of_le_ne_top hEf (measure_mono fun p hp => hp.1.1)
   have hr1 : x ≤ x / 4 + x / 4 + (volume good).toReal := by
@@ -6548,7 +6610,8 @@ theorem msub_Eset_meas (r A B R : ℝ) {α β : ℝ × ℝ → ℝ} (hα : Measu
   have hG := msub_meas_Gam r
   refine ((by fun_prop : Measurable fun p : (ℝ × ℝ) × ℝ => (p.1.1 - p.2, p.1.2))
     Metric.isClosed_closedBall.measurableSet).inter ((measurable_snd measurableSet_Icc).inter ?_)
-  exact measurableSet_le (f := fun p : (ℝ × ℝ) × ℝ => |α p.1 - monoq r p.2 * β (p.1 + msubGam r p.2)|)
+  exact measurableSet_le (f := fun p : (ℝ × ℝ) × ℝ => |α p.1 - monoq r p.2 * β (p.1 + msubGam r
+    p.2)|)
     (continuous_abs.measurable.comp (f := fun p : (ℝ × ℝ) × ℝ =>
       α p.1 - monoq r p.2 * β (p.1 + msubGam r p.2)) (by fun_prop)) measurable_const
 
@@ -6778,7 +6841,8 @@ theorem mss_glue_eq {h C0 : ℝ} {P : Finset (ℤ × ℤ)}
     mssGlue h C0 P F w = F m w := by
   unfold mssGlue
   have hU : w ∈ ⋃ m ∈ P, mssBox h C0 m := mem_biUnion hm hw
-  rw [indicator_of_notMem (show w ∉ (⋃ m ∈ P, mssBox h C0 m)ᶜ from fun hh => hh hU), add_zero, Finset.sum_eq_single_of_mem m hm,
+  rw [indicator_of_notMem (show w ∉ (⋃ m ∈ P, mssBox h C0 m)ᶜ from fun hh => hh hU), add_zero,
+    Finset.sum_eq_single_of_mem m hm,
     indicator_of_mem hw]
   intro m' hm' hne
   exact indicator_of_notMem (fun hw' => Set.disjoint_left.1 (hP m' hm' m hm hne) hw' hw) _
@@ -6955,7 +7019,8 @@ theorem mss_stationary_sum {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B)
         rw [show (K : ℝ) ^ 4 * Cs * (2 * S / L) ^ (1 / 39 : ℝ) =
           ((K : ℝ) * K) * (((K : ℝ) * K) * (Cs * (2 * S / L) ^ (1 / 39 : ℝ))) by ring]
         rw [ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
-          ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_natCast, ENNReal.ofReal_mul (by positivity),
+          ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_natCast, ENNReal.ofReal_mul
+            (by positivity),
           ENNReal.ofReal_natCast]
     _ ≤ ENNReal.ofReal ((K : ℝ) ^ 4 * Cs * 2 * (S / L) ^ (1 / 39 : ℝ)) := by
         apply ENNReal.ofReal_le_ofReal
@@ -6998,9 +7063,9 @@ theorem mss_expand {ι₁ ι₂ : Type*} (r : ℝ) (ψ : ℝ → ℝ) (P₁ : Fi
     refine Finset.sum_congr rfl fun i _ => ?_
     rw [Finset.mul_sum]
   simp_rw [e]
-  rw [integral_finset_sum _ fun i _ => integrable_finset_sum _ fun j _ => hint i j]
+  rw [integral_finsetSum _ fun i _ => integrable_finsetSum _ fun j _ => hint i j]
   refine (norm_sum_le _ _).trans (Finset.sum_le_sum fun i _ => ?_)
-  rw [integral_finset_sum _ fun j _ => hint i j]
+  rw [integral_finsetSum _ fun j _ => hint i j]
   exact norm_sum_le _ _
 
 theorem mss_sum_rearrange {β : Type*} [AddCommMonoid β] (M₁ M₂ : Finset (ℤ × ℤ)) (N : ℕ)
@@ -7201,7 +7266,12 @@ theorem mss_sharpsharp {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (χ
         _ ≤ _ := by gcongr
     · have : χ z = 0 := image_eq_zero_of_notMem_tsupport (fun h => hz (hρ h))
       simp [this]
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (f := fun z => (χ z : ℂ) * monoT r ψ (fun w => ∑ p ∈ P₁, G₁ p w) (fun w => ∑ q ∈ P₂, G₂ q w) z)
+    ((Complex.measurable_ofReal.comp hχ.continuous.measurable).mul
+      (measurable_monoT (by linarith) hψ.continuous.measurable
+        (Finset.measurable_sum _ fun p _ => hG₁m p)
+        (Finset.measurable_sum _ fun q _ => hG₂m q))).aestronglyMeasurable]
   refine (lintegral_mono hpt').trans ?_
   have hmS : ∀ p q, Measurable fun z : ℝ × ℝ => volume (Prod.mk z ⁻¹' E p q) := fun p q =>
     measurable_measure_prodMk_left (hEm p q)
@@ -7211,9 +7281,9 @@ theorem mss_sharpsharp {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (χ
     lintegral_mul_const _ hχ.continuous.measurable.enorm]
   have hSig : ∫⁻ z, ∑ p ∈ P₁, ∑ q ∈ P₂, volume (Prod.mk z ⁻¹' E p q) =
       ∑ p ∈ P₁, ∑ q ∈ P₂, volume (E p q) := by
-    rw [lintegral_finset_sum _ fun p _ => Finset.measurable_sum _ fun q _ => hmS p q]
+    rw [lintegral_finsetSum _ fun p _ => Finset.measurable_sum _ fun q _ => hmS p q]
     refine Finset.sum_congr rfl fun p _ => ?_
-    rw [lintegral_finset_sum _ fun q _ => hmS p q]
+    rw [lintegral_finsetSum _ fun q _ => hmS p q]
     refine Finset.sum_congr rfl fun q _ => ?_
     exact (Measure.prod_apply (μ := (volume : Measure (ℝ × ℝ))) (ν := (volume : Measure ℝ))
       (hEm p q)).symm
@@ -7271,12 +7341,13 @@ namespace Auto
 noncomputable section
 
 /-! ### The sharp families as modulated components (lines 1081-1133) -/
-
 theorem exists_deriv_monoBeta_bound : ∃ C : ℝ, 0 ≤ C ∧ ∀ x, |deriv monoBeta x| ≤ C := by
-  have hc : Continuous (deriv monoBeta) := monoBeta_contDiff.continuous_deriv (by exact_mod_cast le_top)
+  have hc : Continuous (deriv monoBeta) := monoBeta_contDiff.continuous_deriv
+    (by exact_mod_cast le_top)
   have hs : HasCompactSupport (deriv monoBeta) := by
     have : HasCompactSupport monoBeta :=
-      HasCompactSupport.of_support_subset_isCompact (isCompact_Icc (a := -3/2) (b := 3/2)) fun x hx => by
+      HasCompactSupport.of_support_subset_isCompact (isCompact_Icc (a := -3/2) (b := 3/2)) fun x
+        hx => by
         by_contra h; apply hx; apply monoBeta_eq_zero
         simp only [mem_Icc, not_and_or, not_le] at h
         rcases h with h | h
@@ -7285,10 +7356,11 @@ theorem exists_deriv_monoBeta_bound : ∃ C : ℝ, 0 ≤ C ∧ ∀ x, |deriv mon
     exact this.deriv
   obtain ⟨C, hC⟩ := hc.bounded_above_of_compact_support hs
   exact ⟨max C 0, le_max_right _ _, fun x =>
-    (show |deriv monoBeta x| ≤ C by simpa [Real.norm_eq_abs] using hC x).trans (le_max_left _ _)⟩
+    (show |deriv monoBeta x| ≤ C by simpa [Real.norm_eq_abs] using hC x).trans
+      (le_max_left _ _)⟩
 
 /-- The derivative of `a ↦ χ_m(pt a p)`. -/
-theorem hasDerivAt_chiM_pt (j : Fin 2) {h : ℝ} (hh : 0 < h) (m : ℤ × ℤ) (p a : ℝ) :
+theorem hasDerivAt_chiM_pt (j : Fin 2) {h : ℝ} (m : ℤ × ℤ) (p a : ℝ) :
     HasDerivAt (fun a => monoChiM h m (monoPt j a p))
       (deriv monoBeta (a / h - monoMAct j m) / h * monoBeta (p / h - monoMPas j m)) a := by
   simp_rw [monoChiM_pt]
@@ -7336,8 +7408,8 @@ theorem monoSharp_eq_monoTSet (high : Bool) {R ρ L : ℝ} (hR : 1 ≤ R) (hRL :
     monoSharp R ρ F x = ∑ n ∈ monoTSet high R ρ L F, monoPiece R n F x := by
   refine monoSharp_eq_sum_subset (monoTSet_subset high R ρ L F) (fun n hn hnT => ?_) x
   cases high
-  · simp [monoTSet] at hnT; exact absurd hn hnT
-  · simp only [monoTSet, if_true, Finset.mem_filter, not_and, not_le] at hnT
+  · simp only [monoTSet, Bool.false_eq_true, ↓reduceIte] at hnT; exact absurd hn hnT
+  · simp only [monoTSet, ite_true, Finset.mem_filter, not_and, not_le] at hnT
     have hsmall := hnT hn
     exact monoPiece_eq_zero_of_small hR n hF hM (hlow rfl) (by linarith)
 
@@ -7365,7 +7437,8 @@ def monoSST (m : ℤ × ℤ) (p : ℝ) : Finset ℤ := monoTSet high R ρ L (mon
 /-- The normalized components `H_{m,ν} = Bh^{-1} χ_m H_ν`. -/
 def monoSSH (m : ℤ × ℤ) (ν : ℕ) (w : ℝ × ℝ) : ℂ :=
   (Bh⁻¹ : ℂ) * (monoChiM h m w : ℂ) *
-    monoCompH R (monoSST j high R ρ L G m (monoPas j w)) (monoFib j (G m) (monoPas j w)) ν (monoAct j w)
+    monoCompH R (monoSST j high R ρ L G m (monoPas j w)) (monoFib j (G m) (monoPas j w)) ν
+      (monoAct j w)
 
 /-- The frequencies `ω_{m,ν}`. -/
 def monoSSω (m : ℤ × ℤ) (ν : ℕ) (p : ℝ) : ℝ := monoCompω R L (monoSST j high R ρ L G m p) ν
@@ -7383,7 +7456,8 @@ theorem sum_monoVSharp_eq (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR
     ∑ m ∈ Ms, monoVSharp j h R ρ m (G m) w
       = (Bh : ℂ) * ∑ m ∈ Ms, ∑ ν ∈ Finset.range (⌊9 / ρ⌋₊ + 1),
           monoSSH j high h R ρ L Bh G m ν w *
-            Complex.exp (2 * π * Complex.I * (monoSSω j high R ρ L G m ν (monoPas j w) * monoAct j w)) := by
+            Complex.exp (2 * π * Complex.I * (monoSSω j high R ρ L G m ν (monoPas j w) * monoAct j
+              w)) := by
   have hR0 : 0 < R := by linarith
   rw [Finset.mul_sum]
   refine Finset.sum_congr rfl fun m _ => ?_
@@ -7392,10 +7466,12 @@ theorem sum_monoVSharp_eq (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR
   have hF : Integrable F volume := (hG m).fibInt p
   have hFM : ∀ t, ‖F t‖ ≤ M := fun t => (hG m).bdd _
   have hE : monoE F ≠ ⊤ := (hG m).monoE_ne_top p
-  have hsharp : monoSharp2 j R ρ (G m) w = ∑ n ∈ monoSST j high R ρ L G m p, monoPiece R n F (monoAct j w) :=
+  have hsharp : monoSharp2 j R ρ (G m) w = ∑ n ∈ monoSST j high R ρ L G m p, monoPiece R n F
+    (monoAct j w) :=
     monoSharp_eq_monoTSet high hR hRL hF hFM (fun hh ξ hξ => hlow hh m p ξ hξ) _
   rw [monoVSharp, hsharp, show monoSST j high R ρ L G m p = monoTSet high R ρ L F from rfl,
-    sum_pieces_eq_comp _ F (card_monoTSet_lt high hR0 hρ hF hE).le L, Finset.mul_sum, Finset.mul_sum]
+    sum_pieces_eq_comp _ F (card_monoTSet_lt high hR0 hρ hF hE).le L, Finset.mul_sum,
+      Finset.mul_sum]
   refine Finset.sum_congr rfl fun ν _ => ?_
   unfold monoSSH monoSSω monoSST
   have hBh' : (Bh : ℂ) ≠ 0 := by exact_mod_cast hBh
@@ -7408,7 +7484,8 @@ theorem measurable_monoSSH (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (h
   have hT : ∀ n, MeasurableSet {p | n ∈ monoSST j high R ρ L G m p} := fun n =>
     measurableSet_monoTSet j high hR hρ (hG m).meas (hG m).fibInt (hG m).monoE_ne_top n
   have hq : Measurable fun w : ℝ × ℝ => (monoPas j w, monoAct j w) := by
-    unfold monoPas monoAct; fin_cases j <;> simp <;> fun_prop
+    unfold monoPas monoAct; fin_cases j <;> simp only [Fin.zero_eta, Fin.isValue, ↓reduceIte,
+      Fin.mk_one, one_ne_zero, Prod.mk.eta] <;> fun_prop
   have hc := measurable_monoCompH_fib j (R := R) (hG m).meas hT ν
   have h2 := hc.comp hq
   simp only [Function.comp_def] at h2
@@ -7423,7 +7500,8 @@ theorem support_monoSSH (hh : 0 < h) {m : ℤ × ℤ} {ν : ℕ} {w : ℝ × ℝ
     (hw : monoSSH j high h R ρ L Bh G m ν w ≠ 0) :
     |w.1 - h * m.1| ≤ 3 / 2 * h ∧ |w.2 - h * m.2| ≤ 3 / 2 * h := by
   refine support_chiM_mul (F := fun w => (Bh⁻¹ : ℂ) *
-    monoCompH R (monoSST j high R ρ L G m (monoPas j w)) (monoFib j (G m) (monoPas j w)) ν (monoAct j w)) hh ?_
+    monoCompH R (monoSST j high R ρ L G m (monoPas j w)) (monoFib j (G m) (monoPas j w)) ν
+      (monoAct j w)) hh ?_
   intro h0; apply hw; unfold monoSSH; rw [← h0]; ring
 
 theorem norm_monoSSH_le (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR : 0 < R)
@@ -7432,8 +7510,9 @@ theorem norm_monoSSH_le (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR :
   unfold monoSSH
   rw [norm_mul, norm_mul, norm_inv, Complex.norm_real, Complex.norm_real, Real.norm_eq_abs,
     Real.norm_eq_abs, abs_of_pos hBh0, abs_of_nonneg (mloc_ChiM_nonneg _ _ _)]
-  have h1 := norm_monoCompH_le hR (monoSST j high R ρ L G m (monoPas j w))
-    ((hG m).fibInt (monoPas j w)).1 (fun t => (hG m).bdd _) ν (monoAct j w)
+  have h1 := norm_monoCompH_le (F := monoFib j (G m) (monoPas j w)) hR (monoSST j high R ρ L G
+    m (monoPas j w))
+     (fun t => (hG m).bdd _) ν (monoAct j w)
   have h2 := mloc_ChiM_le_one h m w
   have h3 := mloc_ChiM_nonneg h m w
   calc Bh⁻¹ * monoChiM h m w * ‖monoCompH R (monoSST j high R ρ L G m (monoPas j w))
@@ -7447,7 +7526,7 @@ theorem abs_monoSSω_ge (hL : 0 ≤ L) (m : ℤ × ℤ) (ν : ℕ) (p : ℝ) :
   unfold monoSSω monoCompω
   split_ifs with hν
   · have hmem := monoEnum_mem hν
-    simp only [monoSST, monoTSet, if_true, Finset.mem_filter] at hmem
+    simp only [monoSST, monoTSet, ite_true, Finset.mem_filter] at hmem
     exact hmem.2
   · rw [abs_of_nonneg hL]; linarith
 
@@ -7480,7 +7559,8 @@ active coordinate with continuous derivative bounded by `(C_β' + ‖κ'‖_1) R
 theorem deriv_monoSSH (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR : 1 ≤ R) (hh : 0 < h)
     (hRh : 1 ≤ R * h) (hBh1 : (∫ u, ‖monoKappa u‖) * M ≤ Bh) (hBh2 : M ≤ Bh) (hBh0 : 0 < Bh)
     {Cβ : ℝ} (hCβ0 : 0 ≤ Cβ) (hCβ : ∀ x, |deriv monoBeta x| ≤ Cβ) (m : ℤ × ℤ) (ν : ℕ) (p : ℝ) :
-    ∃ H' : ℝ → ℂ, (∀ a, HasDerivAt (fun a => monoSSH j high h R ρ L Bh G m ν (monoPt j a p)) (H' a) a) ∧
+    ∃ H' : ℝ → ℂ, (∀ a, HasDerivAt (fun a => monoSSH j high h R ρ L Bh G m ν (monoPt j a p)) (H'
+      a) a) ∧
       Continuous H' ∧ ∀ a, ‖H' a‖ ≤ (Cβ + ∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) * R := by
   have hR0 : 0 < R := by linarith
   set T := monoSST j high R ρ L G m p
@@ -7488,34 +7568,37 @@ theorem deriv_monoSSH (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR : 1
   have hF : AEStronglyMeasurable F volume := ((hG m).fibInt p).1
   have hFM : ∀ t, ‖F t‖ ≤ M := fun t => (hG m).bdd _
   have hM0 : 0 ≤ M := (norm_nonneg _).trans (hFM 0)
-  set dχ : ℝ → ℝ := fun a => deriv monoBeta (a / h - monoMAct j m) / h * monoBeta (p / h - monoMPas j m)
+  set dχ : ℝ → ℝ := fun a => deriv monoBeta (a / h - monoMAct j m) / h * monoBeta (p / h -
+    monoMPas j m)
   set dH : ℝ → ℂ := fun a => if ν < T.card then monoH' R (monoEnum T ν) F a else 0
-  refine ⟨fun a => (Bh⁻¹ : ℂ) * ((dχ a : ℂ) * monoCompH R T F ν a + (monoChiM h m (monoPt j a p) : ℂ) * dH a),
+  refine ⟨fun a => (Bh⁻¹ : ℂ) * ((dχ a : ℂ) * monoCompH R T F ν a + (monoChiM h m (monoPt j a p) :
+    ℂ) * dH a),
     fun a => ?_, ?_, fun a => ?_⟩
   · have e : (fun a => monoSSH j high h R ρ L Bh G m ν (monoPt j a p))
         = fun a => (Bh⁻¹ : ℂ) * ((monoChiM h m (monoPt j a p) : ℂ) * monoCompH R T F ν a) := by
       funext a; simp only [monoSSH, monoPas_pt, monoAct_pt]; ring
     rw [e]
-    have h1 := (hasDerivAt_chiM_pt j hh m p a).ofReal_comp
+    have h1 := (hasDerivAt_chiM_pt j (h := h) m p a).ofReal_comp
     have h2 := hasDerivAt_monoCompH hR T hF hFM ν a
     exact (h1.mul h2).const_mul _
   · have hcβ : Continuous (deriv monoBeta) :=
       monoBeta_contDiff.continuous_deriv (by exact_mod_cast le_top)
     have h1 : Continuous fun a => (dχ a : ℂ) :=
-      Complex.continuous_ofReal.comp (((hcβ.comp ((continuous_id.div_const h).sub continuous_const)).div_const h).mul
+      Complex.continuous_ofReal.comp (((hcβ.comp ((continuous_id.div_const h).sub
+        continuous_const)).div_const h).mul
         continuous_const)
     have h2 : Continuous (monoCompH R T F ν) := by
       unfold monoCompH
       by_cases hν : ν < T.card
-      · simp only [hν, if_true]; exact continuous_monoH hR _ hF hFM
-      · simp only [hν, if_false]; exact continuous_const
+      · simp only [hν, ite_true]; exact continuous_monoH hR _ hF hFM
+      · simp only [hν, ite_false]; exact continuous_const
     have h3 : Continuous fun a => (monoChiM h m (monoPt j a p) : ℂ) :=
       Complex.continuous_ofReal.comp ((mloc_ChiM_contDiff h m).continuous.comp
         ((continuous_monoPt j).comp (continuous_id.prodMk continuous_const)))
     have h4 : Continuous dH := by
       by_cases hν : ν < T.card
-      · simp only [dH, hν, if_true]; exact continuous_monoH' hR _ hF hFM
-      · simp only [dH, hν, if_false]; exact continuous_const
+      · simp only [dH, hν, ite_true]; exact continuous_monoH' hR _ hF hFM
+      · simp only [dH, hν, ite_false]; exact continuous_const
     exact continuous_const.mul ((h1.mul h2).add (h3.mul h4))
   · have hk0 : 0 ≤ ∫ u, ‖monoKappa u‖ := integral_nonneg fun _ => norm_nonneg _
     have hk1 : 0 ≤ ∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖ := integral_nonneg fun _ => norm_nonneg _
@@ -7528,11 +7611,11 @@ theorem deriv_monoSSH (hG : ∀ m, MonoGoodPiece j h M E1 Ω Λ m (G m)) (hR : 1
             (by positivity)
         _ = Cβ / h := mul_one _
     have hH : ‖monoCompH R T F ν a‖ ≤ Bh :=
-      (norm_monoCompH_le hR0 T hF hFM ν a).trans hBh1
+      (norm_monoCompH_le hR0 T hFM ν a).trans hBh1
     have hdH : ‖dH a‖ ≤ R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) * Bh := by
       simp only [dH]
       split_ifs
-      · exact (norm_monoH'_le hR0 _ hF hFM a).trans (by gcongr)
+      · exact (norm_monoH'_le hR0 _ hFM a).trans (by gcongr)
       · rw [norm_zero]; positivity
     have hχ := mloc_ChiM_le_one h m (monoPt j a p)
     have hχ0 := mloc_ChiM_nonneg h m (monoPt j a p)
@@ -7569,7 +7652,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Proposition 6.1: the assembly for one input configuration -/
-
 theorem norm_monoFTilde_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {L h : ℝ} (M : Finset (ℤ × ℤ))
     {f : ℝ × ℝ → ℂ} {B : ℝ} (hB : ∀ m z, ‖monoUjm j κ L h m f z‖ ≤ B) (hB0 : 0 ≤ B) (z : ℝ × ℝ) :
     ‖monoFTilde j κ L h M f z‖ ≤ 9 * B := by
@@ -7608,7 +7690,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Proposition 6.1: parameter facts and elementary bounds -/
-
 theorem rpow_ge_of_ge_two_pow {L : ℝ} (hL : 2 ^ 16 ≤ L) {e : ℝ} (he : 0 ≤ e) :
     (2 : ℝ) ^ (16 * e) ≤ L ^ e := by
   rw [show (2 : ℝ) ^ (16 * e) = ((2 : ℝ) ^ (16 : ℝ)) ^ e by rw [← Real.rpow_mul (by norm_num)]]
@@ -7670,9 +7751,10 @@ def monoC2 (Cχ a0 : ℝ) : ℝ :=
 section
 variable {j : Fin 2} {h M E1 Ω Λ R ρ L Cχ a0 : ℝ} {m : ℤ × ℤ} {G : ℝ × ℝ → ℂ}
 
-theorem monoLipS_le (hR0 : 0 ≤ R) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L) (hM0 : 0 ≤ M)
+theorem monoLipS_le (hR0 : 0 ≤ R) (hRL : R ≤ L) (hΩ : Ω ≤ 4 * L) (hM0 : 0 ≤ M)
     (hM : M ≤ a0) (hρ : 0 < ρ) :
-    monoLipS R ρ Ω M ≤ 9 * ((∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 10 * π * ∫ u, ‖monoKappa u‖) * a0 * L / ρ := by
+    monoLipS R ρ Ω M ≤ 9 * ((∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 10 * π * ∫ u, ‖monoKappa u‖) *
+      a0 * L / ρ := by
   have hk0 : 0 ≤ ∫ u, ‖monoKappa u‖ := integral_nonneg fun _ => norm_nonneg _
   have hk1 : 0 ≤ ∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖ := integral_nonneg fun _ => norm_nonneg _
   have hL0 : 0 ≤ L := hR0.trans hRL
@@ -7684,8 +7766,10 @@ theorem monoLipS_le (hR0 : 0 ≤ R) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω 
   have h2 : (R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * (Ω + R) * (∫ u, ‖monoKappa u‖)) * M
       ≤ ((∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 10 * π * ∫ u, ‖monoKappa u‖) * L * a0 :=
     mul_le_mul h1 hM hM0 (by positivity)
-  calc 9 / ρ * ((R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * (Ω + R) * (∫ u, ‖monoKappa u‖)) * M)
-      ≤ 9 / ρ * (((∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 10 * π * ∫ u, ‖monoKappa u‖) * L * a0) := by
+  calc 9 / ρ * ((R * (∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 2 * π * (Ω + R) * (∫ u, ‖monoKappa
+    u‖)) * M)
+      ≤ 9 / ρ * (((∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖) + 10 * π * ∫ u, ‖monoKappa u‖) * L * a0) :=
+        by
         gcongr
     _ = _ := by field_simp
 
@@ -7716,7 +7800,8 @@ theorem monoKappa_L1_nonneg : 0 ≤ ∫ u, ‖monoKappa u‖ := integral_nonneg 
 theorem monoKappa'_L1_nonneg : 0 ≤ ∫ u, ‖deriv (monoKappa : ℝ → ℂ) u‖ :=
   integral_nonneg fun _ => norm_nonneg _
 
-theorem le_monoC2 (hCχ : 0 ≤ Cχ) (ha0 : 0 ≤ a0) : (1 + 9 * ∫ u, ‖monoKappa u‖) * a0 ≤ monoC2 Cχ a0 := by
+theorem le_monoC2 (hCχ : 0 ≤ Cχ) (ha0 : 0 ≤ a0) : (1 + 9 * ∫ u, ‖monoKappa u‖) * a0 ≤ monoC2 Cχ a0
+  := by
   have hk0 := monoKappa_L1_nonneg
   have hk1 := monoKappa'_L1_nonneg
   unfold monoC2
@@ -7729,7 +7814,7 @@ theorem monoC2_nonneg (hCχ : 0 ≤ Cχ) (ha0 : 0 ≤ a0) : 0 ≤ monoC2 Cχ a0 
   le_trans (by have := monoKappa_L1_nonneg; positivity) (le_monoC2 hCχ ha0)
 
 /-- The sup bound of the flat part, `≤ c₂/ρ`. -/
-theorem flat_bdd_le (hCχ : 0 ≤ Cχ) (hM0 : 0 ≤ M) (hM : M ≤ a0) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1) :
+theorem flat_bdd_le (hM0 : 0 ≤ M) (hM : M ≤ a0) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1) :
     M + 9 / ρ * ((∫ u, ‖monoKappa u‖) * M) ≤ (1 + 9 * ∫ u, ‖monoKappa u‖) * a0 / ρ := by
   have hk0 := monoKappa_L1_nonneg
   have ha0 : 0 ≤ a0 := hM0.trans hM
@@ -7744,13 +7829,14 @@ theorem monoVFlat_bdd (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 0 < R) (hρ 
     (hCχ : 0 ≤ Cχ) (hM0 : 0 ≤ M) (hM : M ≤ a0) (z : ℝ × ℝ) :
     ‖monoVFlat j h R ρ m G z‖ ≤ monoC2 Cχ a0 / ρ :=
   (norm_chiM_mul_le (fun z => monoFlat2_bdd hG hR hρ z) z).trans
-    ((flat_bdd_le hCχ hM0 hM hρ hρ1).trans (div_le_div_of_nonneg_right (le_monoC2 hCχ (hM0.trans hM)) hρ.le))
+    ((flat_bdd_le hM0 hM hρ hρ1).trans (div_le_div_of_nonneg_right (le_monoC2 hCχ (hM0.trans
+      hM)) hρ.le))
 
 theorem monoVSharp_bdd (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 0 < R) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1)
     (hCχ : 0 ≤ Cχ) (hM0 : 0 ≤ M) (hM : M ≤ a0) (z : ℝ × ℝ) :
     ‖monoVSharp j h R ρ m G z‖ ≤ monoC2 Cχ a0 / ρ := by
   refine (norm_chiM_mul_le (fun z => monoSharp2_bdd hG hR hρ z) z).trans ?_
-  refine le_trans ?_ (flat_bdd_le hCχ hM0 hM hρ hρ1 |>.trans
+  refine le_trans ?_ (flat_bdd_le hM0 hM hρ hρ1 |>.trans
     (div_le_div_of_nonneg_right (le_monoC2 hCχ (hM0.trans hM)) hρ.le))
   linarith
 
@@ -7764,15 +7850,15 @@ theorem monoVWhole_bdd (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hρ : 0 < ρ) (h
   exact h1.trans (div_le_div_of_nonneg_right (le_monoC2 hCχ (hM0.trans hM)) hρ.le)
 
 /-- The common Lipschitz bound. -/
-theorem lip_bound_le (hCχ : 0 ≤ Cχ) (hh : 0 < h) (hhL : 1 / h ≤ L) (hR0 : 0 ≤ R) (hRL : R ≤ L)
-    (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L) (hM0 : 0 ≤ M) (hM : M ≤ a0) (hΛ : Λ ≤ a0 * L) (hρ : 0 < ρ)
+theorem lip_bound_le (hCχ : 0 ≤ Cχ) (hhL : 1 / h ≤ L) (hR0 : 0 ≤ R) (hRL : R ≤ L)
+     (hΩ : Ω ≤ 4 * L) (hM0 : 0 ≤ M) (hM : M ≤ a0) (hΛ : Λ ≤ a0 * L) (hρ : 0 < ρ)
     (hρ1 : ρ ≤ 1) {X : ℝ} (hX0 : 0 ≤ X) (hX : X ≤ (1 + 9 * ∫ u, ‖monoKappa u‖) * a0 / ρ) (l0 : ℝ)
     (hl0 : l0 ≤ Λ + monoLipS R ρ Ω M) :
     Cχ / h * X + l0 ≤ monoC2 Cχ a0 / ρ * L := by
   have hk0 := monoKappa_L1_nonneg
   have ha0 : 0 ≤ a0 := hM0.trans hM
   have hL0 : 0 ≤ L := hR0.trans hRL
-  have hS := monoLipS_le hR0 hRL hΩ0 hΩ hM0 hM hρ
+  have hS := monoLipS_le hR0 hRL hΩ hM0 hM hρ
   have h1 : Cχ / h * X ≤ Cχ * (1 + 9 * ∫ u, ‖monoKappa u‖) * a0 * L / ρ := by
     have : Cχ / h ≤ Cχ * L := by rw [div_eq_mul_one_div]; exact mul_le_mul_of_nonneg_left hhL hCχ
     calc Cχ / h * X ≤ Cχ * L * ((1 + 9 * ∫ u, ‖monoKappa u‖) * a0 / ρ) :=
@@ -7792,29 +7878,31 @@ variable (hCχl : ∀ z a, |monoChiM h m (z + monoEj j a) - monoChiM h m z| ≤ 
 include hCχl
 
 theorem monoVFlat_lip (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 1 ≤ R) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1)
-    (hCχ : 0 ≤ Cχ) (hh : 0 < h) (hhL : 1 / h ≤ L) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L)
+    (hCχ : 0 ≤ Cχ) (hhL : 1 / h ≤ L) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L)
     (hM0 : 0 ≤ M) (hM : M ≤ a0) (hΛ : Λ ≤ a0 * L) (z : ℝ × ℝ) (a : ℝ) :
-    ‖monoVFlat j h R ρ m G (z + monoEj j a) - monoVFlat j h R ρ m G z‖ ≤ monoC2 Cχ a0 / ρ * L * |a| := by
+    ‖monoVFlat j h R ρ m G (z + monoEj j a) - monoVFlat j h R ρ m G z‖ ≤ monoC2 Cχ a0 / ρ * L *
+      |a| := by
   have h1 := lip_chiM_mul hCχl (fun z => monoFlat2_bdd hG (by linarith) hρ z)
     (fun z a => monoFlat2_lip hG hR hρ hΩ0 z a) z a
   refine h1.trans (mul_le_mul_of_nonneg_right ?_ (abs_nonneg _))
   have hk0 := monoKappa_L1_nonneg
-  exact lip_bound_le hCχ hh hhL (by linarith) hRL hΩ0 hΩ hM0 hM hΛ hρ hρ1 (by positivity)
-    (flat_bdd_le hCχ hM0 hM hρ hρ1) _ le_rfl
+  exact lip_bound_le hCχ hhL (by linarith) hRL hΩ hM0 hM hΛ hρ hρ1 (by positivity)
+    (flat_bdd_le hM0 hM hρ hρ1) _ le_rfl
 
 theorem monoVSharp_lip (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 1 ≤ R) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1)
-    (hCχ : 0 ≤ Cχ) (hh : 0 < h) (hhL : 1 / h ≤ L) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L)
+    (hCχ : 0 ≤ Cχ) (hhL : 1 / h ≤ L) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L)
     (hM0 : 0 ≤ M) (hM : M ≤ a0) (hΛ : Λ ≤ a0 * L) (hΛ0 : 0 ≤ Λ) (z : ℝ × ℝ) (a : ℝ) :
-    ‖monoVSharp j h R ρ m G (z + monoEj j a) - monoVSharp j h R ρ m G z‖ ≤ monoC2 Cχ a0 / ρ * L * |a| := by
+    ‖monoVSharp j h R ρ m G (z + monoEj j a) - monoVSharp j h R ρ m G z‖ ≤ monoC2 Cχ a0 / ρ * L *
+      |a| := by
   have h1 := lip_chiM_mul hCχl (fun z => monoSharp2_bdd hG (by linarith) hρ z)
     (fun z a => monoSharp2_lip hG hR hρ hΩ0 z a) z a
   refine h1.trans (mul_le_mul_of_nonneg_right ?_ (abs_nonneg _))
   have hk0 := monoKappa_L1_nonneg
-  exact lip_bound_le hCχ hh hhL (by linarith) hRL hΩ0 hΩ hM0 hM hΛ hρ hρ1 (by positivity)
-    ((le_add_of_nonneg_left hM0).trans (flat_bdd_le hCχ hM0 hM hρ hρ1)) _ (by linarith)
+  exact lip_bound_le hCχ hhL (by linarith) hRL hΩ hM0 hM hΛ hρ hρ1 (by positivity)
+    ((le_add_of_nonneg_left hM0).trans (flat_bdd_le hM0 hM hρ hρ1)) _ (by linarith)
 
 theorem monoVWhole_lip (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 1 ≤ R) (hρ : 0 < ρ) (hρ1 : ρ ≤ 1)
-    (hCχ : 0 ≤ Cχ) (hh : 0 < h) (hhL : 1 / h ≤ L) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L)
+    (hCχ : 0 ≤ Cχ) (hhL : 1 / h ≤ L) (hRL : R ≤ L) (hΩ0 : 0 ≤ Ω) (hΩ : Ω ≤ 4 * L)
     (hM0 : 0 ≤ M) (hM : M ≤ a0) (hΛ : Λ ≤ a0 * L) (z : ℝ × ℝ) (a : ℝ) :
     ‖monoVWhole h m G (z + monoEj j a) - monoVWhole h m G z‖ ≤ monoC2 Cχ a0 / ρ * L * |a| := by
   have h1 := lip_chiM_mul hCχl hG.bdd hG.lip z a
@@ -7824,7 +7912,7 @@ theorem monoVWhole_lip (hG : MonoGoodPiece j h M E1 Ω Λ m G) (hR : 1 ≤ R) (h
     unfold monoLipS; have := Real.pi_pos; have := monoKappa'_L1_nonneg
     have : 0 ≤ R := by linarith
     positivity
-  refine lip_bound_le hCχ hh hhL (by linarith) hRL hΩ0 hΩ hM0 hM hΛ hρ hρ1 hM0 ?_ _ (by linarith)
+  refine lip_bound_le hCχ hhL (by linarith) hRL hΩ hM0 hM hΛ hρ hρ1 hM0 ?_ _ (by linarith)
   rw [le_div_iff₀ hρ]; nlinarith
 
 end
@@ -7845,7 +7933,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Proposition 6.1: the sharp-sharp term -/
-
 theorem monoPt_zero' (a p : ℝ) : monoPt 0 a p = (a, p) := by simp [monoPt]
 theorem monoPt_one' (a p : ℝ) : monoPt 1 a p = (p, a) := by simp [monoPt]
 theorem monoPas_zero' (w : ℝ × ℝ) : monoPas 0 w = w.2 := by simp [monoPas]
@@ -7982,7 +8069,8 @@ theorem mono61_ss {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (χ : �
   have hq0 : 0 ≤ R / S + (S / L) ^ (1 / 39 : ℝ) := by
     have : 0 ≤ S / L := by positivity
     positivity
-  have key : (N : ℝ) ^ 2 * (R / S + (S / L) ^ (1 / 39 : ℝ)) ≤ 200 * L ^ (-((1 / 39 : ℝ) / 256)) := by
+  have key : (N : ℝ) ^ 2 * (R / S + (S / L) ^ (1 / 39 : ℝ)) ≤ 200 * L ^ (-((1 / 39 : ℝ) / 256)) :=
+    by
     calc (N : ℝ) ^ 2 * (R / S + (S / L) ^ (1 / 39 : ℝ))
         ≤ 100 * ρ⁻¹ ^ 2 * (R / S + (S / L) ^ (1 / 39 : ℝ)) := mul_le_mul_of_nonneg_right hN hq0
       _ = 100 * (ρ⁻¹ ^ 2 * (R / S) + ρ⁻¹ ^ 2 * (S / L) ^ (1 / 39 : ℝ)) := by ring
@@ -8009,13 +8097,14 @@ namespace Auto
 noncomputable section
 
 /-! ### Proposition 6.1: the flat terms via Lemma 5.1 -/
-
 theorem energy_conv0 {v : ℝ × ℝ → ℂ} {c : ℝ≥0∞}
-    (hv : ∫⁻ p, (∫⁻ a, ‖v (monoPt 0 a p)‖ₑ ^ 2) ^ 2 ≤ c) : ∫⁻ y, (∫⁻ x, ‖v (x, y)‖ₑ ^ 2) ^ 2 ≤ c := by
+    (hv : ∫⁻ p, (∫⁻ a, ‖v (monoPt 0 a p)‖ₑ ^ 2) ^ 2 ≤ c) : ∫⁻ y, (∫⁻ x, ‖v (x, y)‖ₑ ^ 2) ^ 2 ≤ c
+      := by
   simpa only [monoPt_zero'] using hv
 
 theorem energy_conv1 {v : ℝ × ℝ → ℂ} {c : ℝ≥0∞}
-    (hv : ∫⁻ p, (∫⁻ a, ‖v (monoPt 1 a p)‖ₑ ^ 2) ^ 2 ≤ c) : ∫⁻ x, (∫⁻ y, ‖v (x, y)‖ₑ ^ 2) ^ 2 ≤ c := by
+    (hv : ∫⁻ p, (∫⁻ a, ‖v (monoPt 1 a p)‖ₑ ^ 2) ^ 2 ≤ c) : ∫⁻ x, (∫⁻ y, ‖v (x, y)‖ₑ ^ 2) ^ 2 ≤ c
+      := by
   simpa only [monoPt_one'] using hv
 
 theorem unif_conv0 {v : ℝ × ℝ → ℂ} {R : ℝ} {c : ℝ≥0∞}
@@ -8041,7 +8130,9 @@ theorem unif_scalar {E a0 h C0 ρ : ℝ} (hE0 : 0 ≤ E) (hE : E ≤ a0 * h) (hh
     monoW0 ^ 2 * ρ * E ^ 2 * (3 / 2 * h) ≤ C0 * ρ * h ^ 3 := by
   have h1 : E ^ 2 ≤ (a0 * h) ^ 2 := pow_le_pow_left₀ hE0 hE 2
   have h2 : 0 ≤ ρ * h ^ 3 := by positivity
-  calc monoW0 ^ 2 * ρ * E ^ 2 * (3 / 2 * h) ≤ monoW0 ^ 2 * ρ * (a0 * h) ^ 2 * (3 / 2 * h) := by gcongr
+  calc
+    monoW0 ^ 2 * ρ * E ^ 2 * (3 / 2 * h)
+        ≤ monoW0 ^ 2 * ρ * (a0 * h) ^ 2 * (3 / 2 * h) := by gcongr
     _ = 3 / 2 * a0 ^ 2 * monoW0 ^ 2 * (ρ * h ^ 3) := by ring
     _ ≤ C0 * (ρ * h ^ 3) := mul_le_mul_of_nonneg_right hC0 h2
     _ = C0 * ρ * h ^ 3 := by ring
@@ -8097,15 +8188,18 @@ theorem mono61_lc {r A B : ℝ} (hLC : MonoLocCorr r A B) (χ : ℝ × ℝ → �
       |z.1 - h * m.1| ≤ C0 * h ∧ |z.2 - h * m.2| ≤ C0 * h := fun F m z hz => by
     obtain ⟨a, b⟩ := support_chiM_mul hh hz
     exact ⟨a.trans (by gcongr), b.trans (by gcongr)⟩
-  have hfin : ENNReal.ofReal (Clc * (c₂ / ρ * (c₂ / ρ) * L ^ (1 / 2 : ℝ) * h + (ρ + h + 1 / K) ^ (1 / 4 : ℝ)))
+  have hfin : ENNReal.ofReal (Clc * (c₂ / ρ * (c₂ / ρ) * L ^ (1 / 2 : ℝ) * h + (ρ + h + 1 / K) ^
+    (1 / 4 : ℝ)))
       ≤ ENNReal.ofReal (Clc * (c₂ ^ 2 + 3) * L ^ (-((1 / 39 : ℝ) / 256))) := by
     refine ENNReal.ofReal_le_ofReal ?_
-    have e : c₂ / ρ * (c₂ / ρ) * L ^ (1 / 2 : ℝ) * h = c₂ ^ 2 * (ρ⁻¹ ^ 2 * L ^ (1 / 2 : ℝ) * h) := by
+    have e : c₂ / ρ * (c₂ / ρ) * L ^ (1 / 2 : ℝ) * h = c₂ ^ 2 * (ρ⁻¹ ^ 2 * L ^ (1 / 2 : ℝ) * h) :=
+      by
       rw [div_eq_mul_inv]; ring
     rw [e]
     have hLe : 0 ≤ L ^ (-((1 / 39 : ℝ) / 256)) := by positivity
     calc Clc * (c₂ ^ 2 * (ρ⁻¹ ^ 2 * L ^ (1 / 2 : ℝ) * h) + (ρ + h + 1 / K) ^ (1 / 4 : ℝ))
-        ≤ Clc * (c₂ ^ 2 * L ^ (-((1 / 39 : ℝ) / 256)) + 3 * L ^ (-((1 / 39 : ℝ) / 256))) := by gcongr
+        ≤ Clc * (c₂ ^ 2 * L ^ (-((1 / 39 : ℝ) / 256)) + 3 * L ^ (-((1 / 39 : ℝ) / 256))) :=
+          by gcongr
       _ = Clc * (c₂ ^ 2 + 3) * L ^ (-((1 / 39 : ℝ) / 256)) := by ring
   have hen : ∀ E : ℝ, 0 ≤ E → E ≤ a0 * h →
       ENNReal.ofReal (E ^ 2 * (3 / 2 * h)) ≤ ENNReal.ofReal (C0 * h ^ 3) := fun E hE0 hE =>
@@ -8122,37 +8216,44 @@ theorem mono61_lc {r A B : ℝ} (hLC : MonoLocCorr r A B) (χ : ℝ × ℝ → �
       (fun m z => monoVWhole_bdd (hG₂ m) hρ0 hρ1.le hCχ0 hM₂0 hM₂ z)
       (fun m z a => by
         rw [← monoEj_zero']
-        exact monoVFlat_lip (hCχl h hh m 0) (hG₁ m) hR1 hρ0 hρ1.le hCχ0 hh hhL' hRL hΩ₁0 hΩ₁ hM₁0 hM₁
+        exact monoVFlat_lip (hCχl h hh m 0) (hG₁ m) hR1 hρ0 hρ1.le hCχ0 hhL' hRL hΩ₁0 hΩ₁ hM₁0
+          hM₁
           hΛ₁ z a)
       (fun m z a => by
         rw [← monoEj_one']
-        exact monoVWhole_lip (hCχl h hh m 1) (hG₂ m) hR1 hρ0 hρ1.le hCχ0 hh hhL' hRL hΩ₂0 hΩ₂ hM₂0 hM₂
+        exact monoVWhole_lip (hCχl h hh m 1) (hG₂ m) hR1 hρ0 hρ1.le hCχ0 hhL' hRL hΩ₂0 hΩ₂ hM₂0
+          hM₂
           hΛ₂ z a)
       (fun m => energy_conv0 ((energy_monoVFlat (hG₁ m) hh hR0 hE₁0).trans (hen E₁ hE₁0 hE₁)))
       (fun m => energy_conv1 ((energy_monoVWhole (hG₂ m) hh hE₂0).trans (hen E₂ hE₂0 hE₂)))
       (Or.inl fun m => by
         rw [hKh]
-        exact unif_conv0 ((uniformity_monoVFlat (hG₁ m) hh hR1 hρ0 hE₁0).trans (hun E₁ hE₁0 hE₁)))).trans
+        exact unif_conv0 ((uniformity_monoVFlat (hG₁ m) hh hR1 hρ0 hE₁0).trans (hun E₁ hE₁0
+          hE₁)))).trans
       hfin
   · refine (hlc ψ hψ hψs hC20 h L K ρ hh hh1 hhL hK hρ0 hρ1 S₁ S₂
       (fun m => monoVSharp 0 h R ρ m (G₁ m)) (fun m => monoVFlat 1 h R ρ m (G₂ m)) (c₂ / ρ) (c₂ / ρ)
-      (fun m => measurable_monoVSharp (hG₁ m) hR0 hρ0) (fun m => measurable_monoVFlat (hG₂ m) hR0 hρ0)
+      (fun m => measurable_monoVSharp (hG₁ m) hR0 hρ0) (fun m => measurable_monoVFlat (hG₂ m) hR0
+        hρ0)
       (fun m z hz => hsupp _ m z hz) (fun m z hz => hsupp _ m z hz)
       (fun m z => monoVSharp_bdd (hG₁ m) hR0 hρ0 hρ1.le hCχ0 hM₁0 hM₁ z)
       (fun m z => monoVFlat_bdd (hG₂ m) hR0 hρ0 hρ1.le hCχ0 hM₂0 hM₂ z)
       (fun m z a => by
         rw [← monoEj_zero']
-        exact monoVSharp_lip (hCχl h hh m 0) (hG₁ m) hR1 hρ0 hρ1.le hCχ0 hh hhL' hRL hΩ₁0 hΩ₁ hM₁0 hM₁
+        exact monoVSharp_lip (hCχl h hh m 0) (hG₁ m) hR1 hρ0 hρ1.le hCχ0 hhL' hRL hΩ₁0 hΩ₁ hM₁0
+          hM₁
           hΛ₁ hΛ₁0 z a)
       (fun m z a => by
         rw [← monoEj_one']
-        exact monoVFlat_lip (hCχl h hh m 1) (hG₂ m) hR1 hρ0 hρ1.le hCχ0 hh hhL' hRL hΩ₂0 hΩ₂ hM₂0 hM₂
+        exact monoVFlat_lip (hCχl h hh m 1) (hG₂ m) hR1 hρ0 hρ1.le hCχ0 hhL' hRL hΩ₂0 hΩ₂ hM₂0
+          hM₂
           hΛ₂ z a)
       (fun m => energy_conv0 ((energy_monoVSharp (hG₁ m) hh hR0 hE₁0).trans (hen E₁ hE₁0 hE₁)))
       (fun m => energy_conv1 ((energy_monoVFlat (hG₂ m) hh hR0 hE₂0).trans (hen E₂ hE₂0 hE₂)))
       (Or.inr fun m => by
         rw [hKh]
-        exact unif_conv1 ((uniformity_monoVFlat (hG₂ m) hh hR1 hρ0 hE₂0).trans (hun E₂ hE₂0 hE₂)))).trans
+        exact unif_conv1 ((uniformity_monoVFlat (hG₂ m) hh hR1 hρ0 hE₂0).trans (hun E₂ hE₂0
+          hE₂)))).trans
       hfin
 
 end
@@ -8171,10 +8272,10 @@ namespace Auto
 noncomputable section
 
 /-! ### Proposition 6.1: the main estimate for the localized inputs -/
-
 theorem integrable_of_tsupport_Icc {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) {A B : ℝ}
     (hψs : tsupport ψ ⊆ Icc A B) : Integrable ψ volume :=
-  hψ.continuous.integrable_of_hasCompactSupport (isCompact_Icc.of_isClosed_subset (isClosed_tsupport ψ) hψs)
+  hψ.continuous.integrable_of_hasCompactSupport (isCompact_Icc.of_isClosed_subset
+    (isClosed_tsupport ψ) hψs)
 
 theorem mono61_whole {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : MonoLocCorr r A B)
     (χ : ℝ × ℝ → ℝ) (hχ : ContDiff ℝ ∞ χ) (hχc : HasCompactSupport χ) {a0 : ℝ} (ha0 : 0 ≤ a0) :
@@ -8226,11 +8327,15 @@ theorem mono61_whole {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC 
   have hW₂ : Wh₂ = Sh₂ + Fl₂ := by
     funext w; simp only [Wh₂, Sh₂, Fl₂, Pi.add_apply, ← Finset.sum_add_distrib]
     exact Finset.sum_congr rfl fun m _ => monoVWhole_eq_add 1 h R ρ m (G₂ m) w
-  have mS₁ : Measurable Sh₁ := Finset.measurable_sum _ fun m _ => measurable_monoVSharp (hG₁ m) hR0 hρ0
-  have mF₁ : Measurable Fl₁ := Finset.measurable_sum _ fun m _ => measurable_monoVFlat (hG₁ m) hR0 hρ0
+  have mS₁ : Measurable Sh₁ := Finset.measurable_sum _ fun m _ => measurable_monoVSharp (hG₁ m)
+    hR0 hρ0
+  have mF₁ : Measurable Fl₁ := Finset.measurable_sum _ fun m _ => measurable_monoVFlat (hG₁ m) hR0
+    hρ0
   have mW₁ : Measurable Wh₁ := Finset.measurable_sum _ fun m _ => measurable_monoVWhole (hG₁ m)
-  have mS₂ : Measurable Sh₂ := Finset.measurable_sum _ fun m _ => measurable_monoVSharp (hG₂ m) hR0 hρ0
-  have mF₂ : Measurable Fl₂ := Finset.measurable_sum _ fun m _ => measurable_monoVFlat (hG₂ m) hR0 hρ0
+  have mS₂ : Measurable Sh₂ := Finset.measurable_sum _ fun m _ => measurable_monoVSharp (hG₂ m)
+    hR0 hρ0
+  have mF₂ : Measurable Fl₂ := Finset.measurable_sum _ fun m _ => measurable_monoVFlat (hG₂ m) hR0
+    hρ0
   have mW₂ : Measurable Wh₂ := Finset.measurable_sum _ fun m _ => measurable_monoVWhole (hG₂ m)
   have bS₁ := norm_finset_sum_le_card S₁ fun m z =>
     monoVSharp_bdd (hG₁ m) hR0 hρ0 hρ1.le le_rfl hM₁0 hM₁ (Cχ := 0) z
@@ -8258,8 +8363,8 @@ theorem mono61_whole {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC 
   have a1 := (measurable_chiT hr0 hχm hψm mS₁ mS₂).aestronglyMeasurable (μ := volume)
   have a2 := (measurable_chiT hr0 hχm hψm mS₁ mF₂).aestronglyMeasurable (μ := volume)
   have a3 := (measurable_chiT hr0 hχm hψm mF₁ mW₂).aestronglyMeasurable (μ := volume)
-  refine (eLpNorm_add_le (a1.add a2) a3 le_rfl).trans ?_
-  refine (add_le_add (eLpNorm_add_le a1 a2 le_rfl) le_rfl).trans ?_
+  refine (eLpNorm_add_le le_rfl).trans ?_
+  refine (add_le_add (eLpNorm_add_le le_rfl) le_rfl).trans ?_
   refine (add_le_add (add_le_add e1 e2) e3).trans ?_
   have hLe : 0 ≤ L ^ (-((1 / 39 : ℝ) / 256)) := by positivity
   rw [← ENNReal.ofReal_add (by positivity) (by positivity), ← ENNReal.ofReal_add (by positivity)
@@ -8283,7 +8388,8 @@ noncomputable section
 
 /-! ### Proposition 6.1: the localization `f ↦ f̃` (lines 952-960) -/
 
-theorem measurable_monoP' (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
+@[fun_prop] theorem measurable_monoP' (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {u : ℝ × ℝ → ℂ} (hu :
+  Measurable u) :
     Measurable (monoP j κ L u) :=
   measurable_monoCConv (by fun_prop) hu
 
@@ -8298,7 +8404,7 @@ theorem integral_abs_le_of_Icc {ψ : ℝ → ℝ} {A B c : ℝ} (hAB : A ≤ B)
   · simp [Real.volume_real_Icc_of_le hAB]
 
 theorem vanish_of_tsupport {ψ : ℝ → ℝ} {A B : ℝ} (hψs : tsupport ψ ⊆ Icc A B) :
-    ∀ t, t ∉ Icc A B → ψ t = 0 := fun t ht => image_eq_zero_of_notMem_tsupport fun h => ht (hψs h)
+    ∀ t, t ∉ Icc A B → ψ t = 0 := fun _ ht => image_eq_zero_of_notMem_tsupport fun h => ht (hψs h)
 
 theorem exists_support_bound {χ : ℝ × ℝ → ℝ} (hχc : HasCompactSupport χ) :
     ∃ Rχ : ℝ, 0 ≤ Rχ ∧ ∀ z, χ z ≠ 0 → |z.1| ≤ Rχ ∧ |z.2| ≤ Rχ := by
@@ -8308,7 +8414,8 @@ theorem exists_support_bound {χ : ℝ × ℝ → ℝ} (hχc : HasCompactSupport
   exact ⟨(norm_fst_le z).trans (h1.trans (le_max_left _ _)),
     (norm_snd_le z).trans (h1.trans (le_max_left _ _))⟩
 
-theorem const_bounds {a b X Y : ℝ} (ha : 0 ≤ a) (haX : a ≤ X) (hb : 0 ≤ b) (hbY : b ≤ Y) (hX : 1 ≤ X)
+theorem const_bounds {a b X Y : ℝ} (ha : 0 ≤ a) (haX : a ≤ X) (hb : 0 ≤ b) (hbY : b ≤ Y) (hX : 1 ≤
+  X)
     (hY : 1 ≤ Y) : a * b ≤ 2 * X ^ 2 * Y ^ 2 ∧ a ^ 2 * (b ^ 2 * (3 / 2)) ≤ 2 * X ^ 2 * Y ^ 2 := by
   have h1 : a * b ≤ X * Y := mul_le_mul haX hbY hb (by linarith)
   have h2 : X * Y ≤ (X * Y) ^ 2 := by nlinarith [mul_le_mul hX hY zero_le_one (by linarith)]
@@ -8317,9 +8424,11 @@ theorem const_bounds {a b X Y : ℝ} (ha : 0 ≤ a) (haX : a ≤ X) (hb : 0 ≤ 
   constructor <;> nlinarith [sq_nonneg (X * Y)]
 
 set_option maxHeartbeats 4000000 in
+-- The extended analytic estimates below require additional elaboration steps.
 theorem mono61_loc {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : MonoLocCorr r A B)
     (χ : ℝ × ℝ → ℝ) (hχ : ContDiff ℝ ∞ χ) (hχc : HasCompactSupport χ)
-    {ϑ₁ ϑ₂ : ℝ → ℝ} (hs₁ : ContDiff ℝ ∞ ϑ₁) (hc₁ : HasCompactSupport ϑ₁) (hv₁ : ∀ x, 4 < |x| → ϑ₁ x = 0)
+    {ϑ₁ ϑ₂ : ℝ → ℝ} (hs₁ : ContDiff ℝ ∞ ϑ₁) (hc₁ : HasCompactSupport ϑ₁) (hv₁ : ∀ x, 4 < |x| → ϑ₁
+      x = 0)
     (hs₂ : ContDiff ℝ ∞ ϑ₂) (hc₂ : HasCompactSupport ϑ₂) (hv₂ : ∀ x, 4 < |x| → ϑ₂ x = 0)
     {Â : ℝ} (hÂ : 0 ≤ Â) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ ψ : ℝ → ℝ, ContDiff ℝ ∞ ψ → tsupport ψ ⊆ Icc A B → monoC20 ψ ≤ 1 →
@@ -8381,7 +8490,7 @@ theorem mono61_loc {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : 
   have hBr : 0 ≤ B ^ r := Real.rpow_nonneg (by linarith) _
   set box := monoBox (⌈ρ0 / h⌉₊ + 3)
   have hbox : ∀ w : ℝ × ℝ, |w.1| ≤ ρ0 → |w.2| ≤ ρ0 → mlocNb h w ⊆ box := fun w h1 h2 =>
-    mlocNb_subset_box hh hρ0 ⟨h1, h2⟩
+    mlocNb_subset_box hh ⟨h1, h2⟩
   have htb : ∀ t ∈ Icc A B, |t| ≤ B ∧ |monoQ r t| ≤ B ^ r := fun t ht => by
     have ht0 : 0 ≤ t := hA.le.trans ht.1
     refine ⟨by rw [abs_of_nonneg ht0]; exact ht.2, ?_⟩
@@ -8391,8 +8500,8 @@ theorem mono61_loc {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : 
   -- the pieces
   set G₁ : ℤ × ℤ → ℝ × ℝ → ℂ := fun m => monoUjm 0 κ₁ L h m f₁
   set G₂ : ℤ × ℤ → ℝ × ℝ → ℂ := fun m => monoUjm 1 κ₂ L h m f₂
-  have hG₁ := fun m => monoUjm_good 0 hs₁ hc₁ hv₁ hL0 hh m hf₁ hÂ hb₁
-  have hG₂ := fun m => monoUjm_good 1 hs₂ hc₂ hv₂ hL0 hh m hf₂ hÂ hb₂
+  have hG₁ := fun m => monoUjm_good 0 hs₁ hc₁ hv₁ hL0 hh m hf₁ hb₁
+  have hG₂ := fun m => monoUjm_good 1 hs₂ hc₂ hv₂ hL0 hh m hf₂ hb₂
   obtain ⟨c₁a, c₁b⟩ := const_bounds hk₁ (by linarith) hÂ (by linarith) hX hY
   obtain ⟨c₂a, c₂b⟩ := const_bounds hk₂ (by linarith) hÂ (by linarith) hX hY
   obtain ⟨c₁c, -⟩ := const_bounds hk₁' (by linarith) hÂ (by linarith) hX hY
@@ -8446,7 +8555,8 @@ theorem mono61_loc {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : 
   have hLh : 0 < L * h := by positivity
   have err₁ : eLpNorm (fun z => (χ z : ℂ) * monoT r ψ (f₁ - F₁) f₂ z) 1 volume
       ≤ ENNReal.ofReal (Iχ * (∫ t, |ψ t|) * (9 * (Cc₁ * Â / (L * h))) * Â) := by
-    refine eLpNorm_chiT_le hχi hψi hψv (by positivity) hÂ (fun z hz t ht => ?_) (fun z _ t _ => hb₂ _)
+    refine eLpNorm_chiT_le hχi hψi hψv (by positivity) (fun z hz t ht => ?_) (fun z _ t _ =>
+      hb₂ _)
     obtain ⟨hz1, hz2⟩ := hRχ z hz
     obtain ⟨ht1, -⟩ := htb t ht
     have hsub := hbox (z.1 + t, z.2) (by
@@ -8456,7 +8566,7 @@ theorem mono61_loc {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : 
     rw [Pi.sub_apply, eF₁]; exact this
   have err₂ : eLpNorm (fun z => (χ z : ℂ) * monoT r ψ F₁ (f₂ - F₂) z) 1 volume
       ≤ ENNReal.ofReal (Iχ * (∫ t, |ψ t|) * (9 * (k₁ * Â)) * (9 * (Cc₂ * Â / (L * h)))) := by
-    refine eLpNorm_chiT_le hχi hψi hψv (by positivity) (by positivity) (fun z _ t _ => bF₁ _)
+    refine eLpNorm_chiT_le hχi hψi hψv (by positivity) (fun z _ t _ => bF₁ _)
       (fun z hz t ht => ?_)
     obtain ⟨hz1, hz2⟩ := hRχ z hz
     obtain ⟨-, ht2⟩ := htb t ht
@@ -8465,8 +8575,8 @@ theorem mono61_loc {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : 
       linarith)
     have := norm_sub_monoFTilde_le 1 κ₂ hcomm₂ hL0 hh hf₂ hb₂ hrep₂ box (z.1, z.2 + monoQ r t) hsub
     rw [Pi.sub_apply, eF₂]; exact this
-  refine (eLpNorm_add_le (a1.add a2) a3 le_rfl).trans ?_
-  refine (add_le_add (eLpNorm_add_le a1 a2 le_rfl) le_rfl).trans ?_
+  refine (eLpNorm_add_le le_rfl).trans ?_
+  refine (add_le_add (eLpNorm_add_le le_rfl) le_rfl).trans ?_
   refine (add_le_add (add_le_add hmain err₁) err₂).trans ?_
   have hLe : 0 ≤ L ^ (-((1 / 39 : ℝ) / 256)) := by positivity
   have hIψ0 : 0 ≤ ∫ t, |ψ t| := integral_nonneg fun _ => abs_nonneg _
@@ -8505,7 +8615,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Proposition 6.1 -/
-
 theorem exists_normalize {u : ℝ × ℝ → ℂ} (hu : Measurable u) {B : ℝ} (hb : ∀ z, ‖u z‖ ≤ B) :
     ∃ u' : ℝ × ℝ → ℂ, Measurable u' ∧ (∀ z, ‖u' z‖ ≤ 1) ∧ u = fun z => (B : ℂ) * u' z := by
   have hB0 : 0 ≤ B := (norm_nonneg _).trans (hb 0)
@@ -8515,17 +8624,20 @@ theorem exists_normalize {u : ℝ × ℝ → ℂ} (hu : Measurable u) {B : ℝ} 
     have := hb z; rw [← hB] at this
     simpa using norm_le_zero_iff.mp this
   · refine ⟨fun z => (B⁻¹ : ℂ) * u z, measurable_const.mul hu, fun z => ?_, ?_⟩
-    · rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hB.le, inv_mul_le_iff₀ hB, mul_one]
+    · rw [norm_mul, norm_inv, Complex.norm_real, Real.norm_of_nonneg hB.le, inv_mul_le_iff₀ hB,
+        mul_one]
       exact hb z
     · funext z
       have : (B : ℂ) ≠ 0 := by exact_mod_cast hB.ne'
       field_simp
 
-theorem monoT_zero_psi (r : ℝ) (f₁ f₂ : ℝ × ℝ → ℂ) (z : ℝ × ℝ) : monoT r (0 : ℝ → ℝ) f₁ f₂ z = 0 := by
+theorem monoT_zero_psi (r : ℝ) (f₁ f₂ : ℝ × ℝ → ℂ) (z : ℝ × ℝ) : monoT r (0 : ℝ → ℝ) f₁ f₂ z = 0
+  := by
   simp [monoT]
 
 /-- The normalized form of Proposition 6.1. -/
-theorem mono61_normalized {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : MonoLocCorr r A B)
+theorem mono61_normalized {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC : MonoLocCorr r
+  A B)
     (χ : ℝ × ℝ → ℝ) (hχ : ContDiff ℝ ∞ χ) (hχc : HasCompactSupport χ) :
     ∃ C : ℝ, 0 < C ∧ ∀ ψ : ℝ → ℝ, ContDiff ℝ ∞ ψ → tsupport ψ ⊆ Icc A B → monoC20 ψ ≤ 1 →
       ∀ L : ℝ, 1 ≤ L → ∀ u₁ u₂ : ℝ × ℝ → ℂ, Measurable u₁ → Measurable u₂ →
@@ -8567,15 +8679,20 @@ theorem mono61_normalized {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) 
   have hkA' : (∫ s, ‖monoKPsiA s‖) ≤ Â := by linarith
   have hkP' : (∫ s, ‖monoKPhi s‖) ≤ Â := by linarith
   -- the small-`L` case
-  have hsmall : ∀ f₁ f₂ : ℝ × ℝ → ℂ, (∀ z, ‖f₁ z‖ ≤ Â) → (∀ z, ‖f₂ z‖ ≤ Â) → L < 2 ^ 16 →
+  have hsmall : ∀ f₁ f₂ : ℝ × ℝ → ℂ, Measurable f₁ → Measurable f₂ → (∀ z, ‖f₁ z‖ ≤ Â) → (∀ z, ‖f₂
+    z‖ ≤ Â) → L < 2 ^ 16 →
       eLpNorm (fun z => (χ z : ℂ) * monoT r ψ f₁ f₂ z) 1 volume
         ≤ ENNReal.ofReal ((C₁ + C₂ + Cs + 1) * L ^ (-σ)) := by
-    intro f₁ f₂ hf₁ hf₂ hL16
-    refine (eLpNorm_chiT_le hχi hψi hψv hÂ hÂ (fun z _ t _ => hf₁ _) (fun z _ t _ => hf₂ _)).trans ?_
+    intro f₁ f₂ hm₁ hm₂ hf₁ hf₂ hL16
+    refine (eLpNorm_chiT_le hχi hψi hψv hÂ (fun z _ t _ => hf₁ _) (fun z _ t _ => hf₂ _)
+      ((Complex.measurable_ofReal.comp hχ.continuous.measurable).mul
+        (measurable_monoT (by linarith) hψ.continuous.measurable hm₁
+          hm₂)).aestronglyMeasurable).trans ?_
     refine ENNReal.ofReal_le_ofReal ?_
     have hIψ : ∫ t, |ψ t| ≤ 1 * (B - A) :=
       integral_abs_le_of_Icc hAB.le hψv fun t =>
-        (abs_le_monoC20 hψ (isCompact_Icc.of_isClosed_subset (isClosed_tsupport ψ) hψs) t).trans hC20
+        (abs_le_monoC20 hψ (isCompact_Icc.of_isClosed_subset (isClosed_tsupport ψ) hψs) t).trans
+          hC20
     have h1 : 1 ≤ c16 * L ^ (-σ) := by
       rw [Real.rpow_neg hL0.le, ← div_eq_mul_inv, le_div_iff₀ (by positivity), one_mul]
       exact Real.rpow_le_rpow hL0.le hL16.le (by positivity)
@@ -8593,24 +8710,29 @@ theorem mono61_normalized {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) 
   constructor
   · by_cases hL16 : 2 ^ 16 ≤ L
     · have hh : 0 < L ^ (-(3 / 4 : ℝ)) := by positivity
-      refine (h₁ ψ hψ hψs hC20 L hL16 true false (Or.inl rfl) _ _ (hmP 0 _ L u₁ hu₁) (hmP 1 _ L u₂ hu₂)
+      refine (h₁ ψ hψ hψs hC20 L hL16 true false (Or.inl rfl) _ _ (hmP 0 _ L u₁ hu₁) (hmP 1 _ L u₂
+        hu₂)
         (hbP 0 _ L hL0 hkA' u₁ hb₁) (hbP 1 _ L hL0 hkP' u₂ hb₂)
         (mloc_P_psiE_psiA 0 hL0 hu₁ hb₁) (mloc_P_phiE_phi 1 hL0 hu₂ hb₂)
-        (fun _ m p ξ hξ => monoUjm_psiE_low 0 hL0 hh m (hmP 0 _ L u₁ hu₁) (hbP 0 _ L hL0 hkA' u₁ hb₁)
+        (fun _ m p ξ hξ => monoUjm_psiE_low 0 hL0 hh m (hmP 0 _ L u₁ hu₁) (hbP 0 _ L hL0 hkA' u₁
+          hb₁)
           p ξ hξ)
         (fun h => absurd h (by simp))).trans ?_
       exact ENNReal.ofReal_le_ofReal (by gcongr; linarith)
-    · exact hsmall _ _ (hbP 0 _ L hL0 hkA' u₁ hb₁) (hbP 1 _ L hL0 hkP' u₂ hb₂) (not_le.mp hL16)
+    · exact hsmall _ _ (by fun_prop) (by fun_prop) (hbP 0 _ L hL0 hkA' u₁ hb₁) (hbP 1 _ L hL0 hkP'
+        u₂ hb₂) (not_le.mp hL16)
   · by_cases hL16 : 2 ^ 16 ≤ L
     · have hh : 0 < L ^ (-(3 / 4 : ℝ)) := by positivity
       refine (h₂ ψ hψ hψs hC20 L hL16 false true (Or.inr rfl) _ _ (hmP 0 _ (L / 2) u₁ hu₁)
         (hmP 1 _ L u₂ hu₂) (hbP 0 _ (L / 2) (by positivity) hkP' u₁ hb₁) (hbP 1 _ L hL0 hkA' u₂ hb₂)
         (mloc_P_phiE_phi_half 0 hL0 hu₁ hb₁) (mloc_P_psiE_psiA 1 hL0 hu₂ hb₂)
         (fun h => absurd h (by simp))
-        (fun _ m p ξ hξ => monoUjm_psiE_low 1 hL0 hh m (hmP 1 _ L u₂ hu₂) (hbP 1 _ L hL0 hkA' u₂ hb₂)
+        (fun _ m p ξ hξ => monoUjm_psiE_low 1 hL0 hh m (hmP 1 _ L u₂ hu₂) (hbP 1 _ L hL0 hkA' u₂
+          hb₂)
           p ξ hξ)).trans ?_
       exact ENNReal.ofReal_le_ofReal (by gcongr; linarith)
-    · exact hsmall _ _ (hbP 0 _ (L / 2) (by positivity) hkP' u₁ hb₁) (hbP 1 _ L hL0 hkA' u₂ hb₂)
+    · exact hsmall _ _ (by fun_prop) (by fun_prop) (hbP 0 _ (L / 2) (by positivity) hkP' u₁ hb₁)
+        (hbP 1 _ L hL0 hkA' u₂ hb₂)
         (not_le.mp hL16)
 
 /-- **Proposition 6.1** from Lemma 5.1. -/
@@ -8638,7 +8760,7 @@ theorem mono_local61 {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) (hLC 
   have hψ's : tsupport ψ' ⊆ Icc A B :=
     (tsupport_mul_subset_right (f := fun _ => c⁻¹) (g := ψ)).trans hψs
   have hC20' : monoC20 ψ' ≤ 1 := by
-    rw [monoC20_const_mul hψ (inv_nonneg.mpr hc), inv_mul_cancel₀ hc0.ne']
+    rw [monoC20_const_mul (inv_nonneg.mpr hc), inv_mul_cancel₀ hc0.ne']
   have eψ : ψ = fun t => c * ψ' t := by funext t; simp only [ψ']; field_simp
   obtain ⟨n₁, n₂⟩ := hN ψ' hψ' hψ's hC20' L hL v₁ v₂ hv₁ hv₂ hbv₁ hbv₂
   have hscale : ∀ (f₁ f₂ : ℝ × ℝ → ℂ),
@@ -8719,7 +8841,8 @@ theorem mimp_monoq_sep {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
     intro a ha b hb hab
     have ha0 : 0 < a := lt_of_lt_of_le hA ha.1
     obtain ⟨ξ, hξ, hξeq⟩ := exists_hasDerivAt_eq_slope (monoq r) d hab
-      (fun x hx => (mimp_hasDerivAt_monoq (lt_of_lt_of_le ha0 hx.1)).continuousAt.continuousWithinAt)
+      (fun x hx => (mimp_hasDerivAt_monoq (lt_of_lt_of_le ha0
+        hx.1)).continuousAt.continuousWithinAt)
       (fun x hx => mimp_hasDerivAt_monoq (lt_trans ha0 hx.1))
     have hξI : ξ ∈ Icc A B := ⟨by linarith [ha.1, hξ.1], by linarith [hb.2, hξ.2]⟩
     have hle : d t0 ≤ d ξ := hmin hξI
@@ -8873,7 +8996,8 @@ theorem mimp_measurable_K (c L B : ℝ) : Measurable (mimpK c L B) := by
   unfold mimpK
   refine Measurable.ite ?_ ?_ measurable_const
   · refine (measurableSet_Ioc.preimage measurable_fst).inter ?_
-    exact measurableSet_le (f := fun v : ℝ × ℝ => |v.2|) (g := fun v : ℝ × ℝ => L * |v.1|) (by fun_prop) (by fun_prop)
+    exact measurableSet_le (f := fun v : ℝ × ℝ => |v.2|) (g := fun v : ℝ × ℝ => L * |v.1|)
+      (by fun_prop) (by fun_prop)
   · exact ENNReal.measurable_ofReal.comp (by fun_prop)
 
 theorem mimp_K_slice {c L B h : ℝ} (hh : h ∈ Ioc (-B) B) (H : ℝ × ℝ → ℝ≥0∞) :
@@ -8977,7 +9101,8 @@ theorem mimp_intInt_abs_rpow {B : ℝ} (hB : 0 < B) :
   have h0 : IntervalIntegrable (fun x : ℝ => |x| ^ (-(1 / 2 : ℝ))) volume 0 B := by
     rw [intervalIntegrable_iff_integrableOn_Ioc_of_le hB.le]
     have := (intervalIntegrable_iff_integrableOn_Ioc_of_le hB.le).1
-      (intervalIntegral.intervalIntegrable_rpow' (a := 0) (b := B) (r := -(1 / 2 : ℝ)) (by norm_num))
+      (intervalIntegral.intervalIntegrable_rpow' (a := 0) (b := B) (r := -(1 / 2 : ℝ))
+        (by norm_num))
     refine this.congr_fun (fun x hx => ?_) measurableSet_Ioc
     simp [abs_of_pos hx.1]
   have h1 : IntervalIntegrable (fun x : ℝ => |x| ^ (-(1 / 2 : ℝ))) volume (-B) 0 := by
@@ -9157,7 +9282,9 @@ theorem mimp_young3 {G k : ℝ × ℝ → ℝ≥0∞} (hG : Measurable G) (hk : 
     fun p => (G p.1 * k p.2) ^ (3 / 2 : ℝ), fun p => (G (p.1 + p.2) * k p.2) ^ (3 / 2 : ℝ)]
   have hf : ∀ i ∈ (Finset.univ : Finset (Fin 3)), AEMeasurable (f i) μ := by
     intro i _
-    fin_cases i <;> (apply Measurable.aemeasurable; simp [f]; fun_prop)
+    fin_cases i <;> (apply Measurable.aemeasurable; simp only [Fin.zero_eta, Fin.isValue,
+      Matrix.cons_val_zero, f, Fin.mk_one, Matrix.cons_val_one, Fin.reduceFinMk,
+      Matrix.cons_val]; fun_prop)
   have hH := ENNReal.lintegral_prod_norm_pow_le (μ := μ) Finset.univ hf
     (p := fun _ => (1 / 3 : ℝ)) (by norm_num) (fun _ _ => by norm_num)
   simp only [Fin.prod_univ_three] at hH
@@ -9174,7 +9301,8 @@ theorem mimp_young3 {G k : ℝ × ℝ → ℝ≥0∞} (hG : Measurable G) (hk : 
     simp only [f, Matrix.cons_val_zero]
     rw [lintegral_prod _ (by apply Measurable.aemeasurable; fun_prop)]
     simp_rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ 3 / 2)]
-    have : ∀ w : ℝ × ℝ, ∫⁻ v, G w ^ (3 / 2 : ℝ) * G (w + v) ^ (3 / 2 : ℝ) = G w ^ (3 / 2 : ℝ) * a := by
+    have : ∀ w : ℝ × ℝ, ∫⁻ v, G w ^ (3 / 2 : ℝ) * G (w + v) ^ (3 / 2 : ℝ) = G w ^ (3 / 2 : ℝ) * a
+      := by
       intro w
       rw [lintegral_const_mul _ (by fun_prop),
         lintegral_add_left_eq_self (fun v => G v ^ (3 / 2 : ℝ)) w]
@@ -9189,7 +9317,8 @@ theorem mimp_young3 {G k : ℝ × ℝ → ℝ≥0∞} (hG : Measurable G) (hk : 
     rw [lintegral_prod _ (by apply Measurable.aemeasurable; fun_prop)]
     simp_rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ 3 / 2)]
     rw [lintegral_lintegral_swap (by apply Measurable.aemeasurable; fun_prop)]
-    have : ∀ v : ℝ × ℝ, ∫⁻ w, G (w + v) ^ (3 / 2 : ℝ) * k v ^ (3 / 2 : ℝ) = k v ^ (3 / 2 : ℝ) * a := by
+    have : ∀ v : ℝ × ℝ, ∫⁻ w, G (w + v) ^ (3 / 2 : ℝ) * k v ^ (3 / 2 : ℝ) = k v ^ (3 / 2 : ℝ) * a
+      := by
       intro v
       rw [lintegral_mul_const _ (by fun_prop),
         lintegral_add_right_eq_self (fun v => G v ^ (3 / 2 : ℝ)) v, mul_comm]
@@ -9197,7 +9326,8 @@ theorem mimp_young3 {G k : ℝ × ℝ → ℝ≥0∞} (hG : Measurable G) (hk : 
     rw [lintegral_mul_const _ (by fun_prop)]
   rw [I0, I1, I2, ← ENNReal.mul_rpow_of_nonneg _ _ (by norm_num),
     ← ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
-  rw [show (4 / 3 : ℝ) = ((4 : ℕ) : ℝ) / 3 by norm_num, show (2 / 3 : ℝ) = ((2 : ℕ) : ℝ) / 3 by norm_num,
+  rw [show (4 / 3 : ℝ) = ((4 : ℕ) : ℝ) / 3
+    by norm_num, show (2 / 3 : ℝ) = ((2 : ℕ) : ℝ) / 3 by norm_num,
     mimp_pow_third_eq, mimp_pow_third_eq, ← ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
   congr 1
   ring
@@ -9346,7 +9476,8 @@ theorem mimp_final_algebra (X Y κ : ℝ≥0∞) :
     (Y ^ (1 / 2 : ℝ) * (X ^ (4 / 3 : ℝ) * κ ^ (2 / 3 : ℝ)) ^ (1 / 2 : ℝ)) ^ (1 / 2 : ℝ) *
       (X ^ (1 / 2 : ℝ) * (Y ^ (4 / 3 : ℝ) * κ ^ (2 / 3 : ℝ)) ^ (1 / 2 : ℝ)) ^ (1 / 2 : ℝ) =
     κ ^ (1 / 3 : ℝ) * X ^ (7 / 12 : ℝ) * Y ^ (7 / 12 : ℝ) := by
-  simp only [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ 1 / 2), ← ENNReal.rpow_mul]
+  simp only [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0 : ℝ) ≤ 1 / 2), ←
+    ENNReal.rpow_mul]
   rw [show (7 / 12 : ℝ) = 1 / 2 * (1 / 2) + 4 / 3 * (1 / 2) * (1 / 2) by norm_num,
     show (1 / 3 : ℝ) = 2 / 3 * (1 / 2) * (1 / 2) + 2 / 3 * (1 / 2) * (1 / 2) by norm_num,
     ENNReal.rpow_add_of_nonneg _ _ (by norm_num) (by norm_num),
@@ -9442,12 +9573,13 @@ theorem mimp_subst {r A B : ℝ} (hr : 0 < r) {F G : ℝ × ℝ → ℝ≥0∞} 
   simp only [e2]
   rw [← e2, e3]
 
-theorem mimp_eLpNorm_12_7 (f : ℝ × ℝ → ℂ) :
+theorem mimp_eLpNorm_12_7 {f : ℝ × ℝ → ℂ}
+    (hf : AEStronglyMeasurable f volume := by fun_prop) :
     eLpNorm f (12 / 7 : ℝ≥0∞) volume =
       (∫⁻ z, ‖f z‖ₑ ^ (12 / 7 : ℝ)) ^ (7 / 12 : ℝ) := by
   have ht : (12 / 7 : ℝ≥0∞).toReal = 12 / 7 := by
     rw [ENNReal.toReal_div]; norm_num
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by finiteness), ht]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by finiteness) (by fun_prop), ht]
   norm_num
 
 theorem mimp_improving {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
@@ -9462,13 +9594,15 @@ theorem mimp_improving {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
   have hC0 : C0 ≠ ∞ :=
     (ENNReal.rpow_lt_top_of_nonneg (by norm_num) (mimp_K_finite hc (by linarith)).ne).ne
   refine ⟨C0.toReal, ENNReal.toReal_nonneg, ?_⟩
-  intro ψ _ hψ M hM f₁ f₂ hf₁ hf₂
+  intro ψ hψm hψ M hM f₁ f₂ hf₁ hf₂
   have hM0 : 0 ≤ M := (abs_nonneg _).trans (hM 0)
   have hF : Measurable fun z => ‖f₁ z‖ₑ := hf₁.enorm
   have hG : Measurable fun z => ‖f₂ z‖ₑ := hf₂.enorm
   have hB := mimp_B_generic (S := Icc A B) (mimp_measurable_Γ (r := r) (by linarith))
     (mimp_measurable_K c (monoq r B) B) (mimp_diff hr hA hc hsep) hF hG
-  rw [eLpNorm_one_eq_lintegral_enorm, mimp_eLpNorm_12_7, mimp_eLpNorm_12_7,
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (measurable_monoT (by linarith) hψm hf₁ hf₂).aestronglyMeasurable, mimp_eLpNorm_12_7,
+      mimp_eLpNorm_12_7,
     ENNReal.ofReal_mul ENNReal.toReal_nonneg, ENNReal.ofReal_toReal hC0]
   calc ∫⁻ z, ‖monoT r ψ f₁ f₂ z‖ₑ
       ≤ ∫⁻ z, ENNReal.ofReal M *
@@ -9510,11 +9644,15 @@ theorem ms7_monoPhi_le_one (x : ℝ) : monoPhi x ≤ 1 := Real.smoothTransition.
 theorem ms7Chi_contDiff : ContDiff ℝ ∞ ms7Chi :=
   (monoPhi_contDiff.comp contDiff_fst).mul (monoPhi_contDiff.comp contDiff_snd)
 
+@[fun_prop] theorem ms7Chi_continuous : Continuous ms7Chi := ms7Chi_contDiff.continuous
+
+
 theorem ms7Chi_nonneg (z : ℝ × ℝ) : 0 ≤ ms7Chi z :=
   mul_nonneg (ms7_monoPhi_nonneg _) (ms7_monoPhi_nonneg _)
 
 theorem ms7Chi_le_one (z : ℝ × ℝ) : ms7Chi z ≤ 1 :=
-  mul_le_one₀ (ms7_monoPhi_le_one _) (ms7_monoPhi_nonneg _) (ms7_monoPhi_le_one _)
+  ((mul_le_of_le_one_left (ms7_monoPhi_nonneg _) (ms7_monoPhi_le_one _)).trans (ms7_monoPhi_le_one
+    _))
 
 theorem ms7_abs_lt_two_of_monoPhi_ne {x : ℝ} (h : monoPhi x ≠ 0) : |x| < 2 := by
   by_contra h'
@@ -9539,7 +9677,7 @@ def ms7Box (q : ℝ × ℝ) (R : ℝ) : Set (ℝ × ℝ) := {z | |z.1 - q.1| ≤
 theorem ms7Box_eq (q : ℝ × ℝ) (R : ℝ) :
     ms7Box q R = Icc (q.1 - R) (q.1 + R) ×ˢ Icc (q.2 - R) (q.2 + R) := by
   ext z
-  simp only [ms7Box, mem_setOf_eq, mem_prod, mem_Icc, abs_le]
+  simp only [ms7Box, mem_ofPred_eq, mem_prod, mem_Icc, abs_le]
   constructor <;> rintro ⟨⟨a, b⟩, c, d⟩ <;> refine ⟨⟨?_, ?_⟩, ?_, ?_⟩ <;> linarith
 
 theorem ms7Box_meas (q : ℝ × ℝ) (R : ℝ) : MeasurableSet (ms7Box q R) := by
@@ -9552,11 +9690,11 @@ theorem ms7Box_vol (q : ℝ × ℝ) {R : ℝ} (hR : 0 ≤ R) :
   congr 1; ring
 
 theorem ms7Box_comm {q z : ℝ × ℝ} {R : ℝ} : z ∈ ms7Box q R ↔ q ∈ ms7Box z R := by
-  simp only [ms7Box, mem_setOf_eq, abs_sub_comm]
+  simp only [ms7Box, mem_ofPred_eq, abs_sub_comm]
 
 theorem ms7Box_meas_prod (R : ℝ) :
     MeasurableSet {p : (ℝ × ℝ) × (ℝ × ℝ) | p.2 ∈ ms7Box p.1 R} := by
-  simp only [ms7Box, setOf_and]
+  simp only [ms7Box, ofPred_and]
   refine (measurableSet_le ?_ measurable_const).inter (measurableSet_le ?_ measurable_const)
   · fun_prop
   · fun_prop
@@ -9565,7 +9703,8 @@ theorem ms7Box_meas_prod (R : ℝ) :
 theorem ms7_measK (κ : 𝓢(ℝ, ℂ)) (L : ℝ) : Measurable fun s : ℝ => (L : ℂ) * κ (L * s) := by
   have := κ.continuous; fun_prop
 
-theorem ms7_measP (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
+@[fun_prop] theorem ms7_measP (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {u : ℝ × ℝ → ℂ} (hu : Measurable
+  u) :
     Measurable (monoP j κ L u) :=
   measurable_monoCConv (ms7_measK κ L) hu
 
@@ -9612,7 +9751,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Young's inequality for coordinate convolutions, kernel integrals -/
-
 theorem ms7_meas_shift (j : Fin 2) :
     Measurable fun q : (ℝ × ℝ) × ℝ => q.1 - monoEj j q.2 := by
   unfold monoEj
@@ -9673,12 +9811,13 @@ theorem ms7_young (j : Fin 2) {p : ℝ} (hp : 1 < p) {k : ℝ → ℝ≥0∞} (h
 /-- Young's inequality in `eLpNorm` form, for any function dominated by a convolution. -/
 theorem ms7_young_eLp (j : Fin 2) {p : ℝ≥0∞} (hp : 1 < p.toReal) {k : ℝ → ℝ≥0∞}
     (hk : Measurable k) {g : ℝ × ℝ → ℝ≥0∞} (hg : Measurable g) {F : ℝ × ℝ → ℂ}
-    (hF : ∀ z, ‖F z‖ₑ ≤ ∫⁻ s, k s * g (z - monoEj j s)) :
+    (hF : ∀ z, ‖F z‖ₑ ≤ ∫⁻ s, k s * g (z - monoEj j s))
+    (hFm : AEStronglyMeasurable F volume := by fun_prop) :
     eLpNorm F p volume ≤ (∫⁻ s, k s) * (∫⁻ z, g z ^ p.toReal) ^ (1 / p.toReal) := by
   have hp0 : p ≠ 0 := by rintro rfl; simp at hp; linarith
   have hpt : p ≠ ⊤ := by rintro rfl; simp at hp; linarith
   have hpr : 0 < p.toReal := by linarith
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hpt]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hpt (by fun_prop)]
   calc (∫⁻ z, ‖F z‖ₑ ^ p.toReal) ^ (1 / p.toReal)
       ≤ (∫⁻ z, (∫⁻ s, k s * g (z - monoEj j s)) ^ p.toReal) ^ (1 / p.toReal) := by
         gcongr with z; exact hF z
@@ -9688,11 +9827,12 @@ theorem ms7_young_eLp (j : Fin 2) {p : ℝ≥0∞} (hp : 1 < p.toReal) {k : ℝ 
         rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), one_div,
           ENNReal.rpow_rpow_inv hpr.ne']
 
-theorem ms7_eLpNorm_eq_enorm {p : ℝ≥0∞} (hp : 1 < p.toReal) (u : ℝ × ℝ → ℂ) :
+theorem ms7_eLpNorm_eq_enorm {p : ℝ≥0∞} (hp : 1 < p.toReal) (u : ℝ × ℝ → ℂ)
+    (hu : AEStronglyMeasurable u volume := by fun_prop) :
     (∫⁻ z, ‖u z‖ₑ ^ p.toReal) ^ (1 / p.toReal) = eLpNorm u p volume := by
   have hp0 : p ≠ 0 := by rintro rfl; simp at hp; linarith
   have hpt : p ≠ ⊤ := by rintro rfl; simp at hp; linarith
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hpt]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hpt (by fun_prop)]
 
 /-- Pointwise bound for the coordinate convolution. -/
 theorem ms7_enorm_P_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) (u : ℝ × ℝ → ℂ) (z : ℝ × ℝ) :
@@ -9737,7 +9877,7 @@ theorem ms7_M1_integrable (κ : 𝓢(ℝ, ℂ)) : Integrable (fun x : ℝ => |x|
   simp [Real.norm_eq_abs]
 
 theorem ms7_M1_nonneg (κ : 𝓢(ℝ, ℂ)) : 0 ≤ ms7M1 κ :=
-  integral_nonneg fun x => mul_nonneg (abs_nonneg _) (norm_nonneg _)
+  integral_nonneg fun _ => mul_nonneg (abs_nonneg _) (norm_nonneg _)
 
 /-- The tail kernel `1_{|s| ≥ R} |L κ(L s)|`. -/
 def ms7Tail (κ : 𝓢(ℝ, ℂ)) (L R : ℝ) (s : ℝ) : ℝ≥0∞ :=
@@ -9844,7 +9984,8 @@ theorem ms7_P_split (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) {L : ℝ} (hL : 0 < L) {u 
   set K : ℝ → ℂ := fun s => (L : ℂ) * κ (L * s)
   have hKm : Measurable K := ms7_measK κ L
   have hv : Measurable fun s => u (monoPt j a p - monoEj j s) :=
-    hu.comp (measurable_const.sub ((measurable_monoPt j).comp (measurable_id.prodMk measurable_const)))
+    hu.comp (measurable_const.sub ((measurable_monoPt j).comp (measurable_id.prodMk
+      measurable_const)))
   have hint : Integrable (fun s => K s * u (monoPt j a p - monoEj j s)) volume := by
     refine ⟨(hKm.mul hv).aestronglyMeasurable, ?_⟩
     unfold HasFiniteIntegral
@@ -10014,7 +10155,6 @@ namespace Auto
 noncomputable section
 
 /-! ### The cutoff `ψ`; localization of (4.1); Hölder on boxes -/
-
 theorem ms7_psi_zero {A B : ℝ} {ψ : ℝ → ℝ} (hsupp : tsupport ψ ⊆ Icc A B) {t : ℝ}
     (ht : t ∉ Icc A B) : ψ t = 0 :=
   image_eq_zero_of_notMem_tsupport fun h => ht (hsupp h)
@@ -10043,7 +10183,8 @@ theorem ms7_C20_nonneg {A B : ℝ} {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ
 
 theorem ms7_psi_L1 {A B : ℝ} {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) (hsupp : tsupport ψ ⊆ Icc A B) :
     ∫⁻ t, ‖ψ t‖ₑ ≠ ⊤ :=
-  ((hψ.continuous.integrable_of_hasCompactSupport (μ := volume) (ms7_psi_hcs hsupp)).hasFiniteIntegral).ne
+  ((hψ.continuous.integrable_of_hasCompactSupport (μ := volume) (ms7_psi_hcs
+    hsupp)).hasFiniteIntegral).ne
 
 /-- The localization radius: `χ_q T_ψ(f,g)` only sees `f, g` on `q + [-R_0,R_0]^2`. -/
 def ms7R0 (r B : ℝ) : ℝ := 2 + B + monoQ r B
@@ -10072,11 +10213,11 @@ theorem ms7_localize {r A B : ℝ} (hr : 0 < r) (hA : 0 < A) {ψ : ℝ → ℝ}
     have hQB : monoQ r t ≤ monoQ r B := Real.rpow_le_rpow ht0 ht.2 hr.le
     have hB : t ≤ B := ht.2
     have m1 : ((z.1 + t, z.2) : ℝ × ℝ) ∈ ms7Box q (ms7R0 r B) := by
-      simp only [ms7Box, mem_setOf_eq, ms7R0]
+      simp only [ms7Box, mem_ofPred_eq, ms7R0]
       rw [abs_lt] at h1 h2
       constructor <;> rw [abs_le] <;> constructor <;> linarith
     have m2 : ((z.1, z.2 + monoQ r t) : ℝ × ℝ) ∈ ms7Box q (ms7R0 r B) := by
-      simp only [ms7Box, mem_setOf_eq, ms7R0]
+      simp only [ms7Box, mem_ofPred_eq, ms7R0]
       rw [abs_lt] at h1 h2
       constructor <;> rw [abs_le] <;> constructor <;> linarith
     rw [indicator_of_mem m1, indicator_of_mem m2]
@@ -10096,8 +10237,13 @@ theorem ms7_loc41 {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
   have hr0 : 0 < r := by linarith
   simp_rw [ms7_localize hr0 hA hsupp f g q]
   refine (eLpNorm_mono (g := monoT r ψ ((ms7Box q (ms7R0 r B)).indicator f)
-    ((ms7Box q (ms7R0 r B)).indicator g)) fun z => ?_).trans ?_
-  · rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (ms7Chi_nonneg _)]
+    ((ms7Box q (ms7R0 r B)).indicator g))
+      (((Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp
+        (continuous_id.sub continuous_const))).measurable.mul
+        (ms7_measT hr0 hψ.continuous.measurable (hf.indicator hD)
+          (hg.indicator hD))).aestronglyMeasurable) fun z => ?_).trans ?_
+  · change ‖(ms7Chi (z - q) : ℂ) * _‖ ≤ _
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (ms7Chi_nonneg _)]
     exact mul_le_of_le_one_left (norm_nonneg _) (ms7Chi_le_one _)
   · exact himp ψ hψ.continuous.measurable (fun t ht => ms7_psi_zero hsupp ht) _
       (ms7_psi_bound hψ hsupp) _ _ (hf.indicator hD) (hg.indicator hD)
@@ -10135,7 +10281,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Level-set truncation, translation of (6.1), triangle inequality for three terms -/
-
 theorem ms7_real_alg {Λ a : ℝ} (hΛ : 0 < Λ) (ha : 0 < a) :
     ((Λ * a) ^ (-(2 / 7) : ℝ) * a ^ (2 : ℝ)) ^ (7 / 12 : ℝ) = Λ ^ (-(1 / 6) : ℝ) * a := by
   rw [Real.mul_rpow hΛ.le ha.le, mul_assoc, ← Real.rpow_add ha,
@@ -10156,7 +10301,7 @@ theorem ms7_levelset {u : ℝ × ℝ → ℂ} (hu : Measurable u) (hu2 : eLpNorm
       rcases (ENNReal.toReal_eq_zero_iff _).1 h0.symm with h | h
       · exact h
       · exact absurd h hu2
-    rw [eLpNorm_eq_zero_iff hu.aestronglyMeasurable (by norm_num)] at hz
+    rw [eLpNorm_eq_zero_iff (by norm_num)] at hz
     have : {z | ‖u z‖ ≤ Λ * a}ᶜ.indicator u =ᵐ[volume] 0 := by
       filter_upwards [hz] with z hz'
       simp only [indicator_apply, Pi.zero_apply]
@@ -10188,7 +10333,8 @@ theorem ms7_levelset {u : ℝ × ℝ → ℂ} (hu : Measurable u) (hu2 : eLpNorm
       have h2 := congrArg (fun x : ℝ≥0∞ => x ^ (2 : ℝ)) h1
       rw [← ENNReal.rpow_mul, show (1 / 2 : ℝ) * 2 = 1 by norm_num, ENNReal.rpow_one] at h2
       rw [h2, ENNReal.ofReal_rpow_of_nonneg hpos.le (by norm_num)]
-    rw [mimp_eLpNorm_12_7]
+    rw [mimp_eLpNorm_12_7
+      (hu.indicator (measurableSet_le hu.norm measurable_const).compl).aestronglyMeasurable]
     calc (∫⁻ z, ‖{z | ‖u z‖ ≤ Λ * a}ᶜ.indicator u z‖ₑ ^ (12 / 7 : ℝ)) ^ (7 / 12 : ℝ)
         ≤ (∫⁻ z, ENNReal.ofReal ((Λ * a) ^ (-(2 / 7) : ℝ)) * ‖u z‖ₑ ^ (2 : ℝ)) ^ (7 / 12 : ℝ) := by
           gcongr with z; exact hpt z
@@ -10203,8 +10349,10 @@ theorem ms7_levelset {u : ℝ × ℝ → ℂ} (hu : Measurable u) (hu2 : eLpNorm
 /-- Translation invariance of the localized `L^1` norm. -/
 theorem ms7_eLp1_transl (F : ℝ × ℝ → ℂ) (q : ℝ × ℝ) :
     eLpNorm F 1 volume = eLpNorm (fun w => F (w + q)) 1 volume := by
-  rw [eLpNorm_one_eq_lintegral_enorm, eLpNorm_one_eq_lintegral_enorm]
-  exact (lintegral_add_right_eq_self (fun z => ‖F z‖ₑ) q).symm
+  have h := (MeasurableEquiv.addRight q).measurableEmbedding.eLpNorm_map_measure
+    (g := F) (p := 1) (μ := volume)
+  change eLpNorm F 1 (Measure.map (fun x => x + q) volume) = _ at h
+  rwa [(measurePreserving_add_right volume q).map_eq] at h
 
 /-- The hypothesis of (6.1) transported to the cutoff `χ(· - q)`. -/
 theorem ms7_Hinf_transl {r : ℝ} {ψ : ℝ → ℝ} {κ₁ κ₂ : 𝓢(ℝ, ℂ)} {L₁ L₂ M : ℝ}
@@ -10229,13 +10377,12 @@ theorem ms7_Hinf_transl {r : ℝ} {ψ : ℝ → ℝ} {κ₁ κ₂ : 𝓢(ℝ, �
 
 /-- Triangle inequality in `L^1` for an a.e. decomposition into three terms. -/
 theorem ms7_eLp_three {F G₁ G₂ G₃ : ℝ × ℝ → ℂ}
-    (h : F =ᵐ[volume] fun z => G₁ z + G₂ z + G₃ z) (h₁ : AEStronglyMeasurable G₁ volume)
-    (h₂ : AEStronglyMeasurable G₂ volume) (h₃ : AEStronglyMeasurable G₃ volume) :
+    (h : F =ᵐ[volume] fun z => G₁ z + G₂ z + G₃ z) :
     eLpNorm F 1 volume ≤ eLpNorm G₁ 1 volume + eLpNorm G₂ 1 volume + eLpNorm G₃ 1 volume := by
   rw [eLpNorm_congr_ae h]
-  refine (eLpNorm_add_le (h₁.add h₂) h₃ le_rfl).trans ?_
+  refine (eLpNorm_add_le le_rfl).trans ?_
   gcongr
-  exact eLpNorm_add_le h₁ h₂ le_rfl
+  exact eLpNorm_add_le le_rfl
 
 end
 
@@ -10253,7 +10400,6 @@ namespace Auto
 noncomputable section
 
 /-! ### The local `L^2` bound (7.3) by level-set truncation -/
-
 theorem ms7_mul_le_left {b c : ℝ≥0∞} (h : b ≤ c) (a : ℝ≥0∞) : a * b ≤ a * c :=
   mul_le_mul' le_rfl h
 
@@ -10273,17 +10419,20 @@ theorem ms7_three_split {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψ : Measura
     (fun z => c z * monoT r ψ (monoP 0 κ₁ L₁ u₁) (monoP 1 κ₂ L₂ u₂) z) =ᵐ[volume]
       fun z => c z * monoT r ψ (monoP 0 κ₁ L₁ (S₁.indicator u₁)) (monoP 1 κ₂ L₂ (S₂.indicator u₂)) z
         + c z * monoT r ψ (monoP 0 κ₁ L₁ (S₁ᶜ.indicator u₁)) (monoP 1 κ₂ L₂ u₂) z
-        + c z * monoT r ψ (monoP 0 κ₁ L₁ (S₁.indicator u₁)) (monoP 1 κ₂ L₂ (S₂ᶜ.indicator u₂)) z := by
+        + c z * monoT r ψ (monoP 0 κ₁ L₁ (S₁.indicator u₁)) (monoP 1 κ₂ L₂ (S₂ᶜ.indicator u₂)) z
+          := by
   have hv₁ := hu₁.indicator hS₁
   have hw₁ := hu₁.indicator hS₁.compl
   have hv₂ := hu₂.indicator hS₂
   have hw₂ := hu₂.indicator hS₂.compl
-  have nv₁ : eLpNorm (S₁.indicator u₁) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _).trans_lt h₁.lt_top).ne
+  have nv₁ : eLpNorm (S₁.indicator u₁) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _
+    (by measurability)).trans_lt h₁.lt_top).ne
   have nw₁ : eLpNorm (S₁ᶜ.indicator u₁) 2 volume ≠ ⊤ :=
-    ((eLpNorm_indicator_le _).trans_lt h₁.lt_top).ne
-  have nv₂ : eLpNorm (S₂.indicator u₂) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _).trans_lt h₂.lt_top).ne
+    ((eLpNorm_indicator_le _ (by measurability)).trans_lt h₁.lt_top).ne
+  have nv₂ : eLpNorm (S₂.indicator u₂) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _
+    (by measurability)).trans_lt h₂.lt_top).ne
   have nw₂ : eLpNorm (S₂ᶜ.indicator u₂) 2 volume ≠ ⊤ :=
-    ((eLpNorm_indicator_le _).trans_lt h₂.lt_top).ne
+    ((eLpNorm_indicator_le _ (by measurability)).trans_lt h₂.lt_top).ne
   have e1 := ms7_T_split1 hr hψ hψ1 (ms7_measP 0 κ₁ L₁ hv₁) (ms7_measP 0 κ₁ L₁ hw₁)
     (ms7_measP 1 κ₂ L₂ hu₂) (ms7_P_fin 0 κ₁ hL₁ hv₁ nv₁) (ms7_P_fin 0 κ₁ hL₁ hw₁ nw₁)
     (ms7_P_fin 1 κ₂ hL₂ hu₂ h₂) (ms7_P_split0 κ₁ hL₁ hu₁ h₁ hS₁)
@@ -10336,14 +10485,13 @@ theorem ms7_localL2 {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
   have h2r : 1 < (2 : ℝ≥0∞).toReal := by rw [ms7_two_toReal]; norm_num
   have h127 : 1 < (12 / 7 : ℝ≥0∞).toReal := by rw [ms7_toReal_12_7]; norm_num
   have hχc : Continuous fun z : ℝ × ℝ => (ms7Chi (z - q) : ℂ) :=
-    Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp (continuous_id.sub continuous_const))
+    Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp (continuous_id.sub
+      continuous_const))
   have hmT : ∀ {f g : ℝ × ℝ → ℂ}, Measurable f → Measurable g →
       AEStronglyMeasurable (fun z => (ms7Chi (z - q) : ℂ) * monoT r ψ f g z) volume :=
     fun hf hg => (hχc.measurable.mul (ms7_measT hr0 hψm hf hg)).aestronglyMeasurable
   refine (ms7_eLp_three (ms7_three_split hr0 hψm hψ1 hL₁ hL₂ hu₁ hu₂ h₁ h₂ hS₁ hS₂ _)
-    (hmT (ms7_measP 0 κ₁ L₁ hv₁) (ms7_measP 1 κ₂ L₂ hv₂))
-    (hmT (ms7_measP 0 κ₁ L₁ hw₁) (ms7_measP 1 κ₂ L₂ hu₂))
-    (hmT (ms7_measP 0 κ₁ L₁ hv₁) (ms7_measP 1 κ₂ L₂ hw₂))).trans ?_
+    ).trans ?_
   -- the bounded-bounded term
   have hb₁ : ∀ z, ‖S₁.indicator u₁ z‖ ≤ Λ * a₁ := by
     intro z; by_cases hz : z ∈ S₁
@@ -10362,21 +10510,31 @@ theorem ms7_localL2 {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) :
   -- the factor bounds
   have Fw₁ : eLpNorm (D.indicator (monoP 0 κ₁ L₁ (S₁ᶜ.indicator u₁))) (12 / 7 : ℝ≥0∞) volume ≤
       N₁ * (Λ' * eLpNorm u₁ 2 volume) :=
-    (eLpNorm_indicator_le _).trans ((ms7_P_young 0 κ₁ hL₁ h127 hw₁).trans
+    (eLpNorm_indicator_le _
+      (by
+        exact ms7Box_meas _ _)).trans ((ms7_P_young 0 κ₁ hL₁ h127 hw₁).trans
       (ms7_mul_le_left (ms7_levelset hu₁ h₁ hΛ) _))
   have Fw₂ : eLpNorm (D.indicator (monoP 1 κ₂ L₂ (S₂ᶜ.indicator u₂))) (12 / 7 : ℝ≥0∞) volume ≤
       N₂ * (Λ' * eLpNorm u₂ 2 volume) :=
-    (eLpNorm_indicator_le _).trans ((ms7_P_young 1 κ₂ hL₂ h127 hw₂).trans
+    (eLpNorm_indicator_le _
+      (by
+        exact ms7Box_meas _ _)).trans ((ms7_P_young 1 κ₂ hL₂ h127 hw₂).trans
       (ms7_mul_le_left (ms7_levelset hu₂ h₂ hΛ) _))
   have Fv₁ : eLpNorm (D.indicator (monoP 0 κ₁ L₁ (S₁.indicator u₁))) (12 / 7 : ℝ≥0∞) volume ≤
       cD * (N₁ * eLpNorm u₁ 2 volume) :=
     (ms7_holder_box q hR0 (ms7_measP 0 κ₁ L₁ hv₁)).trans (ms7_mul_le_left
-      ((eLpNorm_indicator_le _).trans ((ms7_P_young 0 κ₁ hL₁ h2r hv₁).trans
-        (ms7_mul_le_left (eLpNorm_indicator_le _) _))) _)
+      ((eLpNorm_indicator_le _
+        (by
+          exact ms7Box_meas _ _)).trans ((ms7_P_young 0 κ₁ hL₁ h2r hv₁).trans
+        (ms7_mul_le_left (eLpNorm_indicator_le _
+          (by
+            exact hS₁)) _))) _)
   have Fu₂ : eLpNorm (D.indicator (monoP 1 κ₂ L₂ u₂)) (12 / 7 : ℝ≥0∞) volume ≤
       cD * (N₂ * eLpNorm u₂ 2 volume) :=
     (ms7_holder_box q hR0 (ms7_measP 1 κ₂ L₂ hu₂)).trans (ms7_mul_le_left
-      ((eLpNorm_indicator_le _).trans (ms7_P_young 1 κ₂ hL₂ h2r hu₂)) _)
+      ((eLpNorm_indicator_le _
+        (by
+          exact ms7Box_meas _ _)).trans (ms7_P_young 1 κ₂ hL₂ h2r hu₂)) _)
   have T2 := (hloc ψ hψ hsupp q _ _ (ms7_measP 0 κ₁ L₁ hw₁) (ms7_measP 1 κ₂ L₂ hu₂)).trans
     (mul_le_mul' (ms7_mul_le_left Fw₁ _) Fu₂)
   have T3 := (hloc ψ hψ hsupp q _ _ (ms7_measP 0 κ₁ L₁ hv₁) (ms7_measP 1 κ₂ L₂ hw₂)).trans
@@ -10446,7 +10604,8 @@ theorem ms7_avg {F G : ℝ × ℝ → ℝ≥0∞} (hF : Measurable F) (hG : Meas
       (∫⁻ q, ms7Loc H R q ^ (2 : ℝ)) ^ (1 / 2 : ℝ) =
         ENNReal.ofReal ((2 * R) ^ 2) ^ (1 / 2 : ℝ) * (∫⁻ z, H z ^ (2 : ℝ)) ^ (1 / 2 : ℝ) := by
     intro H hH
-    have e : ∀ q, ms7Loc H R q ^ (2 : ℝ) = ∫⁻ z, (ms7Box q R).indicator (fun z => H z ^ (2 : ℝ)) z := by
+    have e : ∀ q, ms7Loc H R q ^ (2 : ℝ) = ∫⁻ z, (ms7Box q R).indicator (fun z => H z ^ (2 : ℝ)) z
+      := by
       intro q
       rw [ms7Loc, ← ENNReal.rpow_mul]; norm_num
     simp_rw [e]
@@ -10460,9 +10619,10 @@ theorem ms7_avg {F G : ℝ × ℝ → ℝ≥0∞} (hF : Measurable F) (hG : Meas
 
 /-- Domination on a box gives a bound on the localized `L^2` norm. -/
 theorem ms7_eLp_box_le {f : ℝ × ℝ → ℂ} {F : ℝ × ℝ → ℝ≥0∞} {q : ℝ × ℝ} {R : ℝ}
-    (h : ∀ z ∈ ms7Box q R, ‖f z‖ₑ ≤ F z) :
+    (h : ∀ z ∈ ms7Box q R, ‖f z‖ₑ ≤ F z)
+    (hf : AEStronglyMeasurable f volume := by fun_prop) :
     eLpNorm ((ms7Box q R).indicator f) 2 volume ≤ ms7Loc F R q := by
-  rw [eLpNorm_two_eq_lintegral, ms7Loc]
+  rw [eLpNorm_two_eq_lintegral (hf.indicator (ms7Box_meas q R)), ms7Loc]
   gcongr with z
   by_cases hz : z ∈ ms7Box q R
   · rw [indicator_of_mem hz, indicator_of_mem hz]
@@ -10517,7 +10677,7 @@ theorem ms7_far_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) (u : ℝ × ℝ �
       push Not at hlt
       apply hs
       obtain ⟨h1, h2⟩ := ms7_Ej_components j s
-      simp only [ms7Box, mem_setOf_eq, Prod.fst_sub, Prod.snd_sub] at hz ⊢
+      simp only [ms7Box, mem_ofPred_eq, Prod.fst_sub, Prod.snd_sub] at hz ⊢
       constructor
       · calc |z.1 - (monoEj j s).1 - q.1| = |(z.1 - q.1) - (monoEj j s).1| := by ring_nf
           _ ≤ |z.1 - q.1| + |(monoEj j s).1| := abs_sub _ _
@@ -10564,9 +10724,17 @@ noncomputable section
 theorem ms7_cover {T : ℝ × ℝ → ℂ} (hT : Measurable T) :
     ENNReal.ofReal 4 * eLpNorm T 1 volume ≤
       ∫⁻ q, eLpNorm (fun z => (ms7Chi (z - q) : ℂ) * T z) 1 volume := by
-  simp_rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm hT.aestronglyMeasurable]
+  have hnorm (q : ℝ × ℝ) :
+      eLpNorm (fun z => (ms7Chi (z - q) : ℂ) * T z) 1 volume =
+        ∫⁻ z, ‖(ms7Chi (z - q) : ℂ) * T z‖ₑ :=
+    eLpNorm_one_eq_lintegral_enorm
+      (((Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp
+        (continuous_id.sub continuous_const))).measurable.mul hT).aestronglyMeasurable)
+  simp_rw [hnorm]
   have hχc : Continuous fun p : (ℝ × ℝ) × (ℝ × ℝ) => (ms7Chi (p.1 - p.2) : ℂ) :=
-    Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp (continuous_fst.sub continuous_snd))
+    Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp (continuous_fst.sub
+      continuous_snd))
   have hm : Measurable (Function.uncurry fun (z q : ℝ × ℝ) => ‖(ms7Chi (z - q) : ℂ) * T z‖ₑ) :=
     (hχc.measurable.mul (hT.comp measurable_fst)).enorm
   rw [← lintegral_lintegral_swap hm.aemeasurable, ← lintegral_const_mul' _ _ ENNReal.ofReal_ne_top]
@@ -10579,7 +10747,7 @@ theorem ms7_cover {T : ℝ × ℝ → ℂ} (hT : Measurable T) :
         by_cases hq : q ∈ ms7Box z 1
         · rw [indicator_of_mem hq]
           have h1 : ms7Chi (z - q) = 1 := by
-            simp only [ms7Box, mem_setOf_eq] at hq
+            simp only [ms7Box, mem_ofPred_eq] at hq
             unfold ms7Chi
             rw [monoPhi_eq_one (by rw [Prod.fst_sub, abs_sub_comm]; exact hq.1),
               monoPhi_eq_one (by rw [Prod.snd_sub, abs_sub_comm]; exact hq.2), mul_one]
@@ -10626,16 +10794,17 @@ theorem ms7_perq {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C₁ : �
   have hv₂ := hu₂.indicator hB
   have hw₂ := hu₂.indicator hB.compl
   have hχc : Continuous fun z : ℝ × ℝ => (ms7Chi (z - q) : ℂ) :=
-    Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp (continuous_id.sub continuous_const))
+    Complex.continuous_ofReal.comp (ms7Chi_contDiff.continuous.comp (continuous_id.sub
+      continuous_const))
   have hmT : ∀ {f g : ℝ × ℝ → ℂ}, Measurable f → Measurable g →
       AEStronglyMeasurable (fun z => (ms7Chi (z - q) : ℂ) * monoT r ψ f g z) volume :=
     fun hf hg => (hχc.measurable.mul (ms7_measT hr0 hψm hf hg)).aestronglyMeasurable
   refine (ms7_eLp_three (ms7_three_split hr0 hψm hψ1 hL₁ hL₂ hu₁ hu₂ h₁ h₂ hB hB _)
-    (hmT (ms7_measP 0 κ₁ L₁ hv₁) (ms7_measP 1 κ₂ L₂ hv₂))
-    (hmT (ms7_measP 0 κ₁ L₁ hw₁) (ms7_measP 1 κ₂ L₂ hu₂))
-    (hmT (ms7_measP 0 κ₁ L₁ hv₁) (ms7_measP 1 κ₂ L₂ hw₂))).trans ?_
-  have nv₁ : eLpNorm (Bx.indicator u₁) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _).trans_lt h₁.lt_top).ne
-  have nv₂ : eLpNorm (Bx.indicator u₂) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _).trans_lt h₂.lt_top).ne
+    ).trans ?_
+  have nv₁ : eLpNorm (Bx.indicator u₁) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _
+    (by measurability)).trans_lt h₁.lt_top).ne
+  have nv₂ : eLpNorm (Bx.indicator u₂) 2 volume ≠ ⊤ := ((eLpNorm_indicator_le _
+    (by measurability)).trans_lt h₂.lt_top).ne
   have T1 := HL2 q _ _ hv₁ hv₂ nv₁ nv₂
   have L₁b : eLpNorm (Bx.indicator u₁) 2 volume ≤ ms7Loc (fun z => ‖u₁ z‖ₑ) (R₀ + R₁) q :=
     ms7_eLp_box_le fun z _ => le_rfl
@@ -10684,7 +10853,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Globalization: summing (averaging) the per-`q` bounds -/
-
 theorem ms7_G_L2 (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L R₁ : ℝ) {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
     (∫⁻ z, ms7G j κ L R₁ u z ^ (2 : ℝ)) ^ (1 / 2 : ℝ) ≤
       (∫⁻ s, ms7Tail κ L R₁ s) * eLpNorm u 2 volume :=
@@ -10761,7 +10929,8 @@ theorem ms7_glob_bound {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C�
         ms7_cover (ms7_measT hr0 hψm (ms7_measP 0 κ₁ L₁ hu₁) (ms7_measP 1 κ₂ L₂ hu₂))
     _ ≤ ∫⁻ q, (M₂ * (a q * b q) + k * (g₁ q * h₂' q + h₁' q * g₂ q)) := by
         refine lintegral_mono fun q => ?_
-        refine (ms7_perq (R₁ := R₁) hr hA hAB hloc hψ hsupp hL₁ hL₂ HL2 hu₁ hu₂ h₁ h₂ q).trans (le_of_eq ?_)
+        refine (ms7_perq (R₁ := R₁) hr hA hAB hloc hψ hsupp hL₁ hL₂ HL2 hu₁ hu₂ h₁ h₂ q).trans
+          (le_of_eq ?_)
         ring
     _ = M₂ * (∫⁻ q, a q * b q) + k * ((∫⁻ q, g₁ q * h₂' q) + ∫⁻ q, h₁' q * g₂ q) := by
         rw [lintegral_add_left (f := fun q => M₂ * (a q * b q)) (by fun_prop),
@@ -10795,7 +10964,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Choice of parameters: `Λ = L^{6σ/13}`, `R_1 = L^{σ/39}` -/
-
 theorem ms7_rpow_facts {L t : ℝ} (hL : 1 ≤ L) (ht : 0 < t) :
     L ^ (-(13 * t)) * (L ^ (6 * t)) ^ 2 = L ^ (-t) ∧
     (L ^ (6 * t)) ^ (-(1 / 6) : ℝ) = L ^ (-t) ∧
@@ -10864,8 +11032,10 @@ theorem ms7_config {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C σ :
     hL2 ψ hψ hsupp κ₁ κ₂ L₁ L₂ hL₁0 hL₂0 (C * p * L ^ (-σ)) hM H Λ hΛ q u₁ u₂ hu₁ hu₂ h₁ h₂
   have G := ms7_glob_bound hr hA hAB hloc hψ hsupp hL₁0 hL₂0 HL2 (R₁ := R₁) (by positivity)
     hu₁ hu₂ h₁ h₂
-  have hN₁ : (∫⁻ s, ‖κ₁ s‖ₑ) = ENNReal.ofReal n₁ := (ENNReal.ofReal_toReal (ms7_kerL1_lt_top κ₁).ne).symm
-  have hN₂ : (∫⁻ s, ‖κ₂ s‖ₑ) = ENNReal.ofReal n₂ := (ENNReal.ofReal_toReal (ms7_kerL1_lt_top κ₂).ne).symm
+  have hN₁ : (∫⁻ s, ‖κ₁ s‖ₑ) = ENNReal.ofReal n₁ := (ENNReal.ofReal_toReal (ms7_kerL1_lt_top
+    κ₁).ne).symm
+  have hN₂ : (∫⁻ s, ‖κ₂ s‖ₑ) = ENNReal.ofReal n₂ := (ENNReal.ofReal_toReal (ms7_kerL1_lt_top
+    κ₂).ne).symm
   have e1 : C * p * L ^ (-σ) * Λ ^ 2 = C * p * L ^ (-t) := by
     rw [show σ = 13 * t by rw [ht_def]; ring, mul_assoc, f1]
   have b1 : (2 * (R₀ + R₁)) ^ 2 ≤ 4 * (R₀ + 1) ^ 2 * L ^ (2 * t / 3) := by
@@ -10900,7 +11070,8 @@ theorem ms7_config {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C σ :
           · exact b2 κ₂ L₂ hL₂
       _ = ENNReal.ofReal ((C * p * L ^ (-t) + 2 * (C₁ * p) * cd * n₁ * n₂ * L ^ (-t)) *
             (4 * (R₀ + 1) ^ 2 * L ^ (2 * t / 3)) +
-          C₂ * p * cd * cd * v₀ * (2 * m₁ * L ^ (-(t / 3)) * n₂ + n₁ * (2 * m₂ * L ^ (-(t / 3))))) := by
+          C₂ * p * cd * cd * v₀ * (2 * m₁ * L ^ (-(t / 3)) * n₂ + n₁ * (2 * m₂ * L ^ (-(t / 3)))))
+            := by
           simp (disch := positivity) only [ENNReal.ofReal_add, ENNReal.ofReal_mul,
             ENNReal.ofReal_ofNat]
       _ = ENNReal.ofReal (K * p * L ^ (-(σ / 39))) := by
@@ -10909,7 +11080,9 @@ theorem ms7_config {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C σ :
           ring
   calc eLpNorm (monoT r ψ (monoP 0 κ₁ L₁ u₁) (monoP 1 κ₂ L₂ u₂)) 1 volume
       ≤ ENNReal.ofReal 4 * eLpNorm (monoT r ψ (monoP 0 κ₁ L₁ u₁) (monoP 1 κ₂ L₂ u₂)) 1 volume :=
-        le_mul_of_one_le_left bot_le (by rw [← ENNReal.ofReal_one]; exact ENNReal.ofReal_le_ofReal (by norm_num))
+        le_mul_of_one_le_left bot_le (by
+          rw [← ENNReal.ofReal_one];
+          exact ENNReal.ofReal_le_ofReal (by norm_num))
     _ ≤ _ := G
     _ ≤ ENNReal.ofReal (K * p * L ^ (-(σ / 39))) * eLpNorm u₁ 2 volume * eLpNorm u₂ 2 volume := by
         gcongr
@@ -11005,7 +11178,8 @@ theorem ms8_fourier_scaled (κ : 𝓢(ℝ, ℂ)) {L : ℝ} (hL : 0 < L) (ξ : �
   rw [abs_inv, abs_of_pos hL, Complex.real_smul, ← mul_assoc, Complex.ofReal_inv,
     inv_mul_cancel₀ (by exact_mod_cast hL.ne'), one_mul]
 
-theorem ms8_integrable_char_smul {f : ℝ → ℂ} (hf : Integrable f volume) (hc : Continuous f) (s : ℝ) :
+theorem ms8_integrable_char_smul {f : ℝ → ℂ} (hf : Integrable f volume) (hc : Continuous f) (s :
+  ℝ) :
     Integrable (fun v : ℝ => 𝐞 ⟪v, s⟫ • f v) volume := by
   refine hf.norm.mono' ?_ (Eventually.of_forall fun v => ?_)
   · exact (Continuous.aestronglyMeasurable (by fun_prop))
@@ -11022,7 +11196,8 @@ theorem ms8_KPsiA_eq (s : ℝ) :
     ms8_integrable_char_smul (monoMultS monoPhi_contDiff monoPhi_hasCompactSupport).integrable
       (monoMultS monoPhi_contDiff monoPhi_hasCompactSupport).continuous s
   have hc2 : Continuous fun v : ℝ => ((monoPhi (2 * v) : ℝ) : ℂ) :=
-    Complex.continuous_ofReal.comp (monoPhi_contDiff.continuous.comp (continuous_const.mul continuous_id))
+    Complex.continuous_ofReal.comp (monoPhi_contDiff.continuous.comp (continuous_const.mul
+      continuous_id))
   have hI2' : Integrable (fun v : ℝ => ((monoPhi (2 * v) : ℝ) : ℂ)) volume := by
     have := (monoMultS monoPhi_contDiff monoPhi_hasCompactSupport).integrable (μ := volume)
     exact this.comp_mul_left' (by norm_num : (2:ℝ) ≠ 0)
@@ -11035,7 +11210,7 @@ theorem ms8_KPsiA_eq (s : ℝ) :
       = (fun u : ℝ => 𝐞 ⟪u, s / 2⟫ • ((monoPhi u : ℝ) : ℂ)) (2 * v) := by
     intro v
     have : ⟪2 * v, s / 2⟫ = ⟪v, s⟫ := by
-      simp only [real_inner_eq_re_inner, RCLike.inner_apply, conj_trivial]; ring
+      simp only [RCLike.inner_apply, conj_trivial]; ring
     simp only [this]
   simp_rw [e]
   rw [Measure.integral_comp_mul_left (fun u : ℝ => 𝐞 ⟪u, s / 2⟫ • ((monoPhi u : ℝ) : ℂ)) 2]
@@ -11086,7 +11261,8 @@ theorem ms8_lintegral_sq_fourier (j : Fin 2) {u : ℝ × ℝ → ℂ} (hu : Meas
   refine lintegral_congr fun p => ?_
   exact (lintegral_fourier_sq_eq (hfib p) (memLp_two_of_bdd (hfib p) fun a => hM _)).symm
 
-theorem ms8_eLpNorm_two (u : ℝ × ℝ → ℂ) :
+theorem ms8_eLpNorm_two {u : ℝ × ℝ → ℂ}
+    (hu : AEStronglyMeasurable u volume := by fun_prop) :
     eLpNorm u 2 volume = (∫⁻ z, ‖u z‖ₑ ^ 2) ^ (1 / 2 : ℝ) := by
   rw [eLpNorm_two_eq_lintegral]
   congr 1
@@ -11094,17 +11270,21 @@ theorem ms8_eLpNorm_two (u : ℝ × ℝ → ℂ) :
   exact ENNReal.rpow_two _
 
 theorem ms8_eLpNorm_le_of_sq_le {u v : ℝ × ℝ → ℂ}
-    (h : ∫⁻ z, ‖u z‖ₑ ^ 2 ≤ ∫⁻ z, ‖v z‖ₑ ^ 2) : eLpNorm u 2 volume ≤ eLpNorm v 2 volume := by
+    (h : ∫⁻ z, ‖u z‖ₑ ^ 2 ≤ ∫⁻ z, ‖v z‖ₑ ^ 2)
+    (hu : AEStronglyMeasurable u volume := by fun_prop)
+    (hv : AEStronglyMeasurable v volume := by fun_prop) : eLpNorm u 2 volume ≤ eLpNorm v 2 volume
+      := by
   rw [ms8_eLpNorm_two, ms8_eLpNorm_two]
   exact ENNReal.rpow_le_rpow h (by norm_num)
 
-theorem ms8_eLpNorm_eq_zero_of_sq {u : ℝ × ℝ → ℂ} (h : ∫⁻ z, ‖u z‖ₑ ^ 2 = 0) :
+theorem ms8_eLpNorm_eq_zero_of_sq {u : ℝ × ℝ → ℂ} (h : ∫⁻ z, ‖u z‖ₑ ^ 2 = 0)
+    (hu : AEStronglyMeasurable u volume := by fun_prop) :
     eLpNorm u 2 volume = 0 := by
   rw [ms8_eLpNorm_two, h]; norm_num
 
 /-! ### Properties of `monoP` -/
 
-theorem ms8_measurable_monoP (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {u : ℝ × ℝ → ℂ}
+@[fun_prop] theorem ms8_measurable_monoP (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (L : ℝ) {u : ℝ × ℝ → ℂ}
     (hu : Measurable u) : Measurable (monoP j κ L u) :=
   measurable_monoCConv (ms8_continuous_K κ L).measurable hu
 
@@ -11139,7 +11319,7 @@ theorem ms8_sq_monoP_le (j : Fin 2) (κ : 𝓢(ℝ, ℂ)) (hκ : ∀ ξ, ‖𝓕
   refine lintegral_mono fun p => lintegral_mono fun ξ => ?_
   rw [ms8_fourier_monoP_fib j κ hL hfib, enorm_mul]
   have h1 : ‖𝓕 (⇑κ) (ξ / L)‖ₑ ≤ 1 := by
-    rw [← ofReal_norm_eq_enorm]; exact ENNReal.ofReal_le_one.mpr (hκ _)
+    rw [← ofReal_norm]; exact ENNReal.ofReal_le_one.mpr (hκ _)
   calc (‖𝓕 (⇑κ) (ξ / L)‖ₑ * ‖𝓕 (monoFib j u p) ξ‖ₑ) ^ 2
       ≤ (1 * ‖𝓕 (monoFib j u p) ξ‖ₑ) ^ 2 := by gcongr
     _ = _ := by rw [one_mul]
@@ -11166,7 +11346,7 @@ theorem ms8_eLpNorm_monoP_Phi_eq_zero (j : Fin 2) {L Λ : ℝ} (hL : 0 < L) (hL�
     (hfib : ∀ p, Integrable (monoFib j u p) volume) {M : ℝ} (hM : ∀ z, ‖u z‖ ≤ M)
     (hF : ∀ p ξ, |ξ| < Λ → 𝓕 (monoFib j u p) ξ = 0) :
     eLpNorm (monoP j monoKPhi L u) 2 volume = 0 := by
-  apply ms8_eLpNorm_eq_zero_of_sq
+  refine ms8_eLpNorm_eq_zero_of_sq ?_ (by fun_prop)
   rw [ms8_lintegral_sq_fourier j (ms8_measurable_monoP j _ L hu) (ms8_monoP_fib_int j _ hL hfib)
     (ms8_monoP_bdd j _ hL hM)]
   have : ∀ p ξ, 𝓕 (monoFib j (monoP j monoKPhi L u) p) ξ = 0 := by
@@ -11195,7 +11375,6 @@ namespace Auto
 noncomputable section
 
 /-! ### `L^2` convergence `φ(D_j/L) u → u` as `L → ∞` -/
-
 theorem ms8_measurable_fibsq (j : Fin 2) {v : ℝ × ℝ → ℂ} (hv : Measurable v) :
     Measurable fun p => ∫⁻ a, ‖monoFib j v p a‖ₑ ^ 2 := by
   have h : Measurable fun q : ℝ × ℝ => ‖v (monoPt j q.2 q.1)‖ₑ ^ 2 :=
@@ -11209,7 +11388,8 @@ theorem ms8_tendsto_sq_sub_monoP (j : Fin 2) {u : ℝ × ℝ → ℂ} (hu : Meas
   have key : ∀ L : ℝ, 0 < L → ∫⁻ z, ‖u z - monoP j monoKPhi L u z‖ₑ ^ 2 =
       ∫⁻ p, ∫⁻ a, ‖monoFib j (fun z => u z - monoP j monoKPhi L u z) p a‖ₑ ^ 2 :=
     fun L _ => ms8_lintegral_sq_fib j (hu.sub (ms8_measurable_monoP j _ L hu))
-  have hfour : ∀ L : ℝ, 0 < L → ∀ p, ∫⁻ a, ‖monoFib j (fun z => u z - monoP j monoKPhi L u z) p a‖ₑ ^ 2
+  have hfour : ∀ L : ℝ, 0 < L → ∀ p, ∫⁻ a, ‖monoFib j (fun z => u z - monoP j monoKPhi L u z) p
+    a‖ₑ ^ 2
       = ∫⁻ ξ, ‖((1 : ℂ) - (monoPhi (ξ / L) : ℂ)) * 𝓕 (monoFib j u p) ξ‖ₑ ^ 2 := by
     intro L hL p
     have hi : Integrable (monoFib j (fun z => u z - monoP j monoKPhi L u z) p) volume :=
@@ -11292,7 +11472,8 @@ theorem ms8_tendsto_eLpNorm_sub_monoP (j : Fin 2) {u : ℝ × ℝ → ℂ} (hu :
   have := hc.comp h
   rw [ENNReal.zero_rpow_of_pos (by norm_num)] at this
   refine this.congr fun L => ?_
-  simp only [Function.comp_apply, ms8_eLpNorm_two]
+  simp only [Function.comp_apply]
+  exact (ms8_eLpNorm_two ((hu.sub (ms8_measurable_monoP j _ L hu)).aestronglyMeasurable)).symm
 
 end
 
@@ -11310,7 +11491,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Algebra of the operator `T_ψ` and of the multipliers -/
-
 theorem ms8_aesm_shift1 {u : ℝ × ℝ → ℂ} (hu : Measurable u) (z : ℝ × ℝ) :
     AEStronglyMeasurable (fun t : ℝ => u (z.1 + t, z.2)) volume :=
   (hu.comp ((measurable_const.add measurable_id).prodMk measurable_const)).aestronglyMeasurable
@@ -11385,7 +11565,8 @@ theorem ms8_monoP_PsiA (j : Fin 2) {L : ℝ} (hL : 0 < L) {u : ℝ × ℝ → �
   have hs : Measurable fun s : ℝ => z - monoEj j s := by
     unfold monoEj
     exact measurable_const.sub ((measurable_monoPt j).comp (measurable_id.prodMk measurable_const))
-  have hI : ∀ L' : ℝ, 0 < L' → Integrable (fun s => ms8K monoKPhi L' s * u (z - monoEj j s)) volume :=
+  have hI : ∀ L' : ℝ, 0 < L' → Integrable (fun s => ms8K monoKPhi L' s * u (z - monoEj j s))
+    volume :=
     fun L' hL' => (ms8_integrable_K _ hL').mul_bdd (c := M) (hu.comp hs).aestronglyMeasurable
       (Eventually.of_forall fun s => hM _)
   rw [← integral_sub (hI L hL) (hI (L / 2) (by positivity))]
@@ -11413,7 +11594,7 @@ def ms8Phi (r : ℝ) (ψ : ℝ → ℝ) (f₁ f₂ : ℝ × ℝ → ℂ) (L : �
   monoT r ψ (monoP 0 monoKPhi L f₁) (monoP 1 monoKPhi L f₂)
 
 theorem ms8_monoC20_nonneg (ψ : ℝ → ℝ) : 0 ≤ monoC20 ψ :=
-  Finset.sum_nonneg fun k _ => Real.iSup_nonneg fun t => abs_nonneg _
+  Finset.sum_nonneg fun _ _ => Real.iSup_nonneg fun _ => abs_nonneg _
 
 /-- The telescoping step `Φ(L) - Φ(L/2) = T(Δ_L f₁, S_L f₂) + T(S_{L/2} f₁, Δ_L f₂)`, estimated by
 the global annular estimate (7.7). -/
@@ -11424,7 +11605,8 @@ theorem ms8_step {r A B C s : ℝ} (hr : 1 < r) (hG : MonoGlobal77 r A B C s)
     (h2₁ : eLpNorm f₁ 2 volume ≠ ⊤) (h2₂ : eLpNorm f₂ 2 volume ≠ ⊤) {L : ℝ} (hL : 1 ≤ L) :
     eLpNorm (fun z => ms8Phi r ψ f₁ f₂ L z - ms8Phi r ψ f₁ f₂ (L / 2) z) 1 volume
       ≤ ENNReal.ofReal (C * monoC20 ψ * L ^ (-s)) * (eLpNorm f₁ 2 volume * eLpNorm f₂ 2 volume) +
-        ENNReal.ofReal (C * monoC20 ψ * L ^ (-s)) * (eLpNorm f₁ 2 volume * eLpNorm f₂ 2 volume) := by
+        ENNReal.ofReal (C * monoC20 ψ * L ^ (-s)) * (eLpNorm f₁ 2 volume * eLpNorm f₂ 2 volume) :=
+          by
   have hr0 : 0 < r := by linarith
   have hL0 : 0 < L := by linarith
   have hL2 : 0 < L / 2 := by linarith
@@ -11456,13 +11638,10 @@ theorem ms8_step {r A B C s : ℝ} (hr : 1 < r) (hG : MonoGlobal77 r A B C s)
         monoT r ψ (monoP 0 monoKPhi (L / 2) f₁) (monoP 1 monoKPsiA L f₂) := by
     rw [e1, e2]; funext z; simp only [ms8Phi, Pi.add_apply]; ring
   rw [e]
-  refine (eLpNorm_add_le ?_ ?_ le_rfl).trans (add_le_add h1 h2)
-  · exact (ms8_measurable_monoT hr0 hψm (ms8_measurable_monoP 0 _ L hf₁)
-      (ms8_measurable_monoP 1 _ L hf₂)).aestronglyMeasurable
-  · exact (ms8_measurable_monoT hr0 hψm (ms8_measurable_monoP 0 _ _ hf₁)
-      (ms8_measurable_monoP 1 _ L hf₂)).aestronglyMeasurable
+  refine (eLpNorm_add_le le_rfl).trans (add_le_add h1 h2)
 
-/-- The geometric series bound: `∑_{i<I} (2^N 2^i)^{-s} ≤ 2^s/(1-2^{-s}) Λ^{-s}` when `Λ < 2^{N+1}`. -/
+/-- The geometric series bound: `∑_{i<I} (2^N 2^i)^{-s} ≤ 2^s/(1-2^{-s}) Λ^{-s}` when `Λ <
+  2^{N+1}`. -/
 theorem ms8_geom {s Λ : ℝ} (hs : 0 < s) (N I : ℕ) (hΛ : Λ < 2 ^ (N + 1)) (hΛ1 : 1 ≤ Λ) :
     ∑ i ∈ Finset.range I, ((2 : ℝ) ^ N * 2 ^ i) ^ (-s)
       ≤ 2 ^ s / (1 - 2 ^ (-s)) * Λ ^ (-s) := by
@@ -11511,7 +11690,8 @@ noncomputable section
 
 theorem ms8_sq_ne_top {u : ℝ × ℝ → ℂ} (h : eLpNorm u 2 volume ≠ ⊤) : ∫⁻ z, ‖u z‖ₑ ^ 2 ≠ ⊤ := by
   intro h'
-  rw [ms8_eLpNorm_two, h', ENNReal.top_rpow_of_pos (by norm_num)] at h
+  rw [ms8_eLpNorm_two (aestronglyMeasurable_of_eLpNorm_ne_top h), h', ENNReal.top_rpow_of_pos
+    (by norm_num)] at h
   exact h rfl
 
 /-- The upper end of the telescoping sum: `‖T(f₁,f₂) - Φ(L)‖₁ ≤ e(L)`. -/
@@ -11535,9 +11715,7 @@ theorem ms8_upper {r : ℝ} (hr : 0 < r) {ψ : ℝ → ℝ} (hψI : Integrable �
         monoT r ψ (monoP 0 monoKPhi L f₁) (fun z => f₂ z - monoP 1 monoKPhi L f₂ z) := by
     rw [e1, e2]; funext z; simp only [ms8Phi, Pi.add_apply]; ring
   rw [e]
-  refine (eLpNorm_add_le ?_ ?_ le_rfl).trans (add_le_add ?_ ?_)
-  · exact (ms8_measurable_monoT hr hψm (hf₁.sub mS0) hf₂).aestronglyMeasurable
-  · exact (ms8_measurable_monoT hr hψm mS0 (hf₂.sub mS1)).aestronglyMeasurable
+  refine (eLpNorm_add_le le_rfl).trans (add_le_add ?_ ?_)
   · exact eLpNorm_monoT_le hr hψm (hf₁.sub mS0) hf₂
   · refine (eLpNorm_monoT_le hr hψm mS0 (hf₂.sub mS1)).trans ?_
     gcongr
@@ -11583,12 +11761,7 @@ theorem ms8_smooth_tail {r A B C s : ℝ} (hr : 1 < r) (hC : 0 ≤ C) (hs : 0 < 
           fun z => ms8Phi r ψ f₁ f₂ L z - ms8Phi r ψ f₁ f₂ (L / 2) z := by
         funext z; simp
       rw [hsplit]
-      refine (eLpNorm_add_le ?_ ?_ le_rfl).trans (add_le_add ih ?_)
-      · exact (ms8_measurable_monoT hr0 hψm (ms8_measurable_monoP 0 _ _ hf₁)
-          (ms8_measurable_monoP 1 _ _ hf₂)).aestronglyMeasurable
-      · exact ((ms8_measurable_monoT hr0 hψm (ms8_measurable_monoP 0 _ _ hf₁)
-          (ms8_measurable_monoP 1 _ _ hf₂)).sub (ms8_measurable_monoT hr0 hψm
-          (ms8_measurable_monoP 0 _ _ hf₁) (ms8_measurable_monoP 1 _ _ hf₂))).aestronglyMeasurable
+      refine (eLpNorm_add_le le_rfl).trans (add_le_add ih ?_)
       · exact ms8_step hr hG hψ hsupp hf₁ hf₂ hM₁ hM₂ h2₁ h2₂ (hpos I)
   -- the lower end vanishes
   have hzero : eLpNorm (ms8Phi r ψ f₁ f₂ ((2 : ℝ) ^ N / 2)) 1 volume = 0 := by
@@ -11636,11 +11809,7 @@ theorem ms8_smooth_tail {r A B C s : ℝ} (hr : 1 < r) (hC : 0 ≤ C) (hs : 0 < 
     have hsplit : monoT r ψ f₁ f₂ = (fun z => monoT r ψ f₁ f₂ z - ms8Phi r ψ f₁ f₂ L z) +
         ms8Phi r ψ f₁ f₂ L := by funext z; simp
     rw [hsplit]
-    refine (eLpNorm_add_le ?_ ?_ le_rfl).trans (add_le_add ?_ ?_)
-    · exact ((ms8_measurable_monoT hr0 hψm hf₁ hf₂).sub (ms8_measurable_monoT hr0 hψm
-        (ms8_measurable_monoP 0 _ _ hf₁) (ms8_measurable_monoP 1 _ _ hf₂))).aestronglyMeasurable
-    · exact (ms8_measurable_monoT hr0 hψm (ms8_measurable_monoP 0 _ _ hf₁)
-          (ms8_measurable_monoP 1 _ _ hf₂)).aestronglyMeasurable
+    refine (eLpNorm_add_le le_rfl).trans (add_le_add ?_ ?_)
     · exact ms8_upper hr0 hψI hψm hf₁ hf₂ hM₁ hM₂ hfib₁ hL
     · refine (tel I).trans ?_
       rw [hzero, zero_add]
@@ -11751,7 +11920,8 @@ theorem ms8_hcs_iteratedDeriv {g : ℝ → ℝ} (hg : HasCompactSupport g) (k : 
 
 theorem ms8_iteratedDeriv_zeta_integrable (k : ℕ) :
     Integrable (iteratedDeriv k ms8Zeta) volume :=
-  (ms8_zeta_contDiff.continuous_iteratedDeriv k (by exact_mod_cast le_top)).integrable_of_hasCompactSupport
+  (ms8_zeta_contDiff.continuous_iteratedDeriv k
+    (by exact_mod_cast le_top)).integrable_of_hasCompactSupport
     (ms8_hcs_iteratedDeriv ms8_zeta_hasCompactSupport k)
 
 theorem ms8_integral_iteratedDeriv_zetaH (k : ℕ) {h : ℝ} (hh : 0 < h) :
@@ -11773,7 +11943,9 @@ theorem ms8_iteratedDeriv_conv {ψ : ℝ → ℝ} (hψ : LocallyIntegrable ψ vo
     rw [iteratedDeriv_succ, ih, iteratedDeriv_succ]
     funext x
     exact ((ms8_hcs_iteratedDeriv hgc k).hasDerivAt_convolution_right _ hψ
-      (by rw [iteratedDeriv_eq_iterate]; exact (hg.iterate_deriv k).of_le (by exact_mod_cast le_top)) x).deriv
+      (by
+        rw [iteratedDeriv_eq_iterate];
+        exact (hg.iterate_deriv k).of_le (by exact_mod_cast le_top)) x).deriv
 
 theorem ms8_abs_conv_le {ψ : ℝ → ℝ} {M : ℝ} (hM : ∀ t, |ψ t| ≤ M) {G : ℝ → ℝ}
     (hG : Integrable G volume) (x : ℝ) :
@@ -11799,7 +11971,7 @@ theorem ms8_abs_conv_le {ψ : ℝ → ℝ} {M : ℝ} (hM : ∀ t, |ψ t| ≤ M) 
 def ms8CZ : ℝ := ∑ k ∈ Finset.range 21, ∫ s, |iteratedDeriv k ms8Zeta s|
 
 theorem ms8_CZ_nonneg : 0 ≤ ms8CZ :=
-  Finset.sum_nonneg fun k _ => integral_nonneg fun s => abs_nonneg _
+  Finset.sum_nonneg fun _ _ => integral_nonneg fun _ => abs_nonneg _
 
 /-- **(8.3)**: `‖ψ_h‖_{C^20} ≤ C h^{-20} ‖ψ‖_∞` for `0 < h ≤ 1`. -/
 theorem ms8_monoC20_moll_le {ψ : ℝ → ℝ} (hψ : Continuous ψ) {M : ℝ} (hM : ∀ t, |ψ t| ≤ M)
@@ -11858,7 +12030,6 @@ namespace Auto
 noncomputable section
 
 /-! ### (8.4): the mollification error -/
-
 theorem ms8_ftc {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ) (x s : ℝ) :
     ‖ψ x - ψ (x - s)‖ₑ ≤ ‖s‖ₑ * ∫⁻ θ in Ioc (0 : ℝ) 1, ‖deriv ψ (x - s + θ * s)‖ₑ := by
   have hD : Continuous (deriv ψ) := hψ.continuous_deriv le_rfl
@@ -11949,7 +12120,8 @@ theorem ms8_moll_err {ψ : ℝ → ℝ} (hψ : ContDiff ℝ 1 ψ) {M : ℝ} (hM 
         refine lintegral_congr fun s => ?_
         have hGs : Measurable fun x => ∫⁻ θ in Ioc (0 : ℝ) 1, ‖deriv ψ (x - s + θ * s)‖ₑ :=
           hGm.comp (measurable_id.prodMk measurable_const)
-        rw [lintegral_const_mul _ (hGs.const_mul _), lintegral_const_mul _ hGs, ms8_lintegral_G hψ s]
+        rw [lintegral_const_mul _ (hGs.const_mul _), lintegral_const_mul _ hGs, ms8_lintegral_G hψ
+          s]
     _ ≤ ∫⁻ s, ‖ms8ZetaH h s‖ₑ * (ENNReal.ofReal h * V) := by
         refine lintegral_mono fun s => ?_
         by_cases hs : h ≤ |s|
@@ -11977,7 +12149,6 @@ namespace Auto
 noncomputable section
 
 /-! ### (8.5): the `C^1` cutoff -/
-
 theorem ms8_rpow_arith {Λ s h₀ : ℝ} (hΛ : 0 < Λ) :
     (h₀ * Λ ^ (-s / 21))⁻¹ ^ 20 * Λ ^ (-s) = h₀⁻¹ ^ 20 * Λ ^ (-s / 21) := by
   rw [mul_inv, mul_pow, mul_assoc]
@@ -12060,9 +12231,7 @@ theorem ms8_c1_tail
   have hsplit : monoT r ψ f₁ f₂ = monoT r ψh f₁ f₂ + monoT r (fun t => ψ t - ψh t) f₁ f₂ := by
     rw [ms8_monoT_sub_psi hr0 hψI hψhI hf₁ hf₂ hM₁ hM₂]; funext z; simp
   rw [hsplit]
-  refine (eLpNorm_add_le (ms8_measurable_monoT hr0 hψh.continuous.measurable hf₁ hf₂).aestronglyMeasurable
-    (ms8_measurable_monoT hr0 (hcont.measurable.sub hψh.continuous.measurable) hf₁
-      hf₂).aestronglyMeasurable le_rfl).trans ?_
+  refine (eLpNorm_add_le le_rfl).trans ?_
   set X := eLpNorm f₁ 2 volume * eLpNorm f₂ 2 volume
   have h1 : eLpNorm (monoT r ψh f₁ f₂) 1 volume ≤
       ENNReal.ofReal (C' * ms8CZ * h₀⁻¹ ^ 20 * M * Λ ^ (-(s / 21))) * X := by
@@ -12216,7 +12385,7 @@ theorem ms8_integral_sub {m : ℕ} (hm : 0 < m) {a b : ℝ} (ha : 0 < a) {ψ : �
   rw [e1, e2, ← hcv]
   refine setIntegral_congr_fun measurableSet_Ioi fun u (hu : 0 < u) => ?_
   have hmpos : (0 : ℝ) < m := by exact_mod_cast hm
-  simp only [ms8Sub, hu, if_true, ms8W, ms8Rho]
+  simp only [ms8Sub, hu, ite_true, ms8W, ms8Rho]
   rw [hHG _ (Real.rpow_pos_of_pos hu _)]
   have := ms8_rho_pow hm hu
   unfold ms8Rho at this
@@ -12239,7 +12408,6 @@ namespace Auto
 noncomputable section
 
 /-! ### (8.8): `‖ψ̃‖_∞ + ‖ψ̃'‖_1 ≤ C (‖ψ‖_∞ + ‖ψ'‖_1)` -/
-
 theorem ms8_W_nonneg (m : ℕ) {u : ℝ} (hu : 0 ≤ u) : 0 ≤ ms8W m u := by
   unfold ms8W; positivity
 
@@ -12371,7 +12539,8 @@ theorem ms8_sub_bound {m : ℕ} (hm : 0 < m) {a b : ℝ} (ha : 0 < a) (hab : a <
         positivity
       have hcv := integral_comp_rpow_Ioi (fun t => |deriv ψ t|) hp
       have e2 : ∫ u in Ioi (0 : ℝ), F2 u =
-          ∫ x in Ioi (0 : ℝ), (|(1 : ℝ) / m| * x ^ ((1 : ℝ) / m - 1)) • |deriv ψ (x ^ ((1 : ℝ) / m))| := by
+          ∫ x in Ioi (0 : ℝ), (|(1 : ℝ) / m| * x ^ ((1 : ℝ) / m - 1)) • |deriv ψ (x ^ ((1 : ℝ) /
+            m))| := by
         refine setIntegral_congr_fun measurableSet_Ioi fun u _ => ?_
         simp only [F2, ms8W, ms8Rho, smul_eq_mul]
         have hm0 : (0 : ℝ) < m := by exact_mod_cast hm
@@ -12491,7 +12660,9 @@ theorem ms8_continuous_E_symm : Continuous ms8E.symm := by
     fin_cases i <;> rfl
   rw [this]
   exact (EuclideanSpace.equiv (Fin 2) ℝ).symm.continuous.comp
-    (continuous_pi fun i => by fin_cases i <;> simp <;> fun_prop)
+    (continuous_pi fun i => by fin_cases i <;> simp only [Nat.succ_eq_add_one, Nat.reduceAdd,
+      Fin.zero_eta, Fin.isValue, Matrix.cons_val_zero, Fin.mk_one, Matrix.cons_val_one,
+      Matrix.cons_val_fin_one] <;> fun_prop)
 
 /-- Schwartz decay `‖g x‖ ≤ C (1+‖x‖)^{-k}`. -/
 theorem ms8_decay {V : Type*} [NormedAddCommGroup V] [NormedSpace ℝ V] (g : 𝓢(V, ℂ)) (k : ℕ) :
@@ -12580,12 +12751,11 @@ namespace Auto
 noncomputable section
 
 /-! ### The two-dimensional Fourier support hypothesis implies the fiber condition -/
-
 theorem ms8_integral_pt (n : Fin 2) (G : EuclideanSpace ℝ (Fin 2) → ℂ) :
     ∫ q : ℝ × ℝ, G (ms8E.symm (monoPt n q.2 q.1)) = ∫ x, G x := by
   rw [← ms8_E_symm_mp.integral_comp' G]
   fin_cases n
-  · simp only [monoPt, Fin.zero_eta, if_true]
+  · simp only [monoPt, Fin.zero_eta, ite_true]
     exact (Measure.measurePreserving_swap (μ := (volume : Measure ℝ)) (ν := volume)).integral_comp'
       (f := MeasurableEquiv.prodComm) (fun q => G (ms8E.symm q))
   · simp [monoPt]
@@ -12594,7 +12764,8 @@ theorem ms8_inner_pt (n : Fin 2) (a p η ζ : ℝ) :
     ⟪ms8E.symm (monoPt n a p), ms8E.symm (monoPt n η ζ)⟫ = a * η + p * ζ := by
   rw [PiLp.inner_apply, Fin.sum_univ_two]
   fin_cases n <;>
-  simp [monoPt, ms8_E_symm_apply0, ms8_E_symm_apply1, real_inner_eq_re_inner, mul_comm] <;> ring
+    simp [monoPt, ms8_E_symm_apply0, ms8_E_symm_apply1, mul_comm]
+  ring
 
 theorem ms8_fiber_fourier_zero (g : 𝓢(EuclideanSpace ℝ (Fin 2), ℂ)) (n : Fin 2) {lam : ℝ}
     (hg : ∀ ξ, 𝓕 (g : EuclideanSpace ℝ (Fin 2) → ℂ) ξ ≠ 0 → lam ≤ |ξ n|) {η : ℝ}
@@ -12611,7 +12782,8 @@ theorem ms8_fiber_fourier_zero (g : 𝓢(EuclideanSpace ℝ (Fin 2), ℂ)) (n : 
     rfl
   have hI0 := ms8_integrable_inv_sq
   set I0 := ∫ a : ℝ, 1 / (1 + |a|) ^ 2
-  have hbd : ∀ p a, ‖(𝐞 (-(a * η)) : ℂ) * F p a‖ ≤ C * (1 / (1 + |a|) ^ 2 * (1 / (1 + |p|) ^ 2)) := by
+  have hbd : ∀ p a, ‖(𝐞 (-(a * η)) : ℂ) * F p a‖ ≤ C * (1 / (1 + |a|) ^ 2 * (1 / (1 + |p|) ^ 2))
+    := by
     intro p a
     rw [norm_mul, Circle.norm_coe, one_mul]
     exact hd n a p
@@ -12783,9 +12955,11 @@ theorem ms8_target
       (ms8_measurable_avgP (hα 1) hgt ha hψ hsupp m1 m0).aestronglyMeasurable hsw,
       mul_comm (eLpNorm (⇑(g 0)) 2 volume) (eLpNorm (⇑(g 1)) 2 volume),
       ← e0', ← e1']
-    have fb1 : ∀ p, monoFib 0 (⇑(g 1) ∘ ms8E.symm ∘ Prod.swap) p = monoFib 1 (⇑(g 1) ∘ ms8E.symm) p :=
+    have fb1 : ∀ p, monoFib 0 (⇑(g 1) ∘ ms8E.symm ∘ Prod.swap) p = monoFib 1 (⇑(g 1) ∘ ms8E.symm)
+      p :=
       fun p => by rw [← Function.comp_assoc, ms8_fib_swap]; rfl
-    have fb0 : ∀ p, monoFib 1 (⇑(g 0) ∘ ms8E.symm ∘ Prod.swap) p = monoFib 0 (⇑(g 0) ∘ ms8E.symm) p :=
+    have fb0 : ∀ p, monoFib 1 (⇑(g 0) ∘ ms8E.symm ∘ Prod.swap) p = monoFib 0 (⇑(g 0) ∘ ms8E.symm)
+      p :=
       fun p => by rw [← Function.comp_assoc, ms8_fib_swap]; rfl
     refine hP ψ hψ hsupp lam hlam _ _ m1 m0 M1 M0 (fun z => hM1 _) (fun z => hM0 _)
       (fun p => by rw [fb1]; exact fib1 1 p) (fun p => by rw [fb0]; exact fib0 0 p)
@@ -12819,7 +12993,7 @@ theorem mfk_phase_eq (x ξ : ℝ) :
       Complex.exp (-(2 * Real.pi * Complex.I * (x * ξ))) := by
   rw [Real.fourierChar_apply]
   congr 1
-  simp only [real_inner_eq_re_inner, RCLike.inner_apply, conj_trivial]
+  simp only [RCLike.inner_apply, conj_trivial]
   push_cast
   ring
 
@@ -12832,11 +13006,11 @@ theorem mfkF1_eq_fourier (h : ℝ → ℂ) (ξ : ℝ) : mfkF1 h ξ = 𝓕 h ξ :
 theorem mfk_lintegral_sq_eq_ofReal {α : Type*} [MeasurableSpace α] {μ : Measure α}
     {f : α → ℂ} (hf : MemLp f 2 μ) :
     ∫⁻ x, ‖f x‖ₑ ^ 2 ∂μ = ENNReal.ofReal (∫ x, ‖f x‖ ^ 2 ∂μ) := by
-  have hi := (memLp_two_iff_integrable_sq_norm hf.1).mp hf
+  have hi := (memLp_two_iff_integrable_sq_norm hf.aestronglyMeasurable).mp hf
   rw [ofReal_integral_eq_lintegral_ofReal hi (Eventually.of_forall (fun x => by positivity))]
   congr 1
   ext x
-  rw [ENNReal.ofReal_pow (norm_nonneg _), ofReal_norm_eq_enorm]
+  rw [ENNReal.ofReal_pow (norm_nonneg _), ofReal_norm]
 
 theorem mfk_plancherel1 {h : ℝ → ℂ} (h1 : Integrable h volume) (h2 : MemLp h 2 volume) :
     ∫⁻ ξ, ‖mfkF1 h ξ‖ₑ ^ 2 = ∫⁻ x, ‖h x‖ₑ ^ 2 := by
@@ -12937,8 +13111,9 @@ theorem mfk_memLp_of_lintegral {f : ℝ → ℂ} (hf : AEStronglyMeasurable f vo
 
 theorem mfk_slice_ae {F : ℝ × ℝ → ℂ} (h1 : Integrable F volume) (h2 : MemLp F 2 volume) :
     ∀ᵐ y : ℝ, Integrable (fun x => F (x, y)) ∧ MemLp (fun x => F (x, y)) 2 volume := by
-  have h1' : Integrable F (volume.prod volume) := by simpa only [Measure.volume_eq_prod] using h1
-  have hsq := (memLp_two_iff_integrable_sq_norm h2.1).mp h2
+  have h1' : Integrable F (volume.prod volume) :=
+    by simpa only [Measure.volume_eq_prod] using h1
+  have hsq := (memLp_two_iff_integrable_sq_norm h2.aestronglyMeasurable).mp h2
   have hsq' : Integrable (fun z => ‖F z‖ ^ 2) (volume.prod volume) := by
     simpa only [Measure.volume_eq_prod] using hsq
   filter_upwards [h1'.prod_left_ae, hsq'.prod_left_ae] with y hy hy2
@@ -13004,7 +13179,7 @@ namespace Auto
 noncomputable section
 
 theorem mfk_setLIntegral_strip {F : ℝ × ℝ → ℂ} (hF : Measurable F) (S : Set ℝ)
-    (hS : MeasurableSet S) :
+     :
     ∫⁻ ξ in S ×ˢ univ, ‖mfkF2 F ξ‖ₑ ^ 2 = ∫⁻ ξ₁ in S, ∫⁻ ξ₂, ‖mfkF2 F (ξ₁, ξ₂)‖ₑ ^ 2 := by
   rw [Measure.volume_eq_prod, ← Measure.prod_restrict, Measure.restrict_univ, lintegral_prod]
   exact ((mfkF2_measurable_of F hF).enorm.pow_const 2).aemeasurable
@@ -13012,7 +13187,7 @@ theorem mfk_setLIntegral_strip {F : ℝ × ℝ → ℂ} (hF : Measurable F) (S :
 theorem mfk_plancherel_meas {F : ℝ × ℝ → ℂ} (hF : Measurable F) (h1 : Integrable F volume)
     (h2 : MemLp F 2 volume) :
     ∫⁻ ξ, ‖mfkF2 F ξ‖ₑ ^ 2 = ∫⁻ z, ‖F z‖ₑ ^ 2 := by
-  have h := mfk_setLIntegral_strip hF univ MeasurableSet.univ
+  have h := mfk_setLIntegral_strip hF univ
   rw [univ_prod_univ, Measure.restrict_univ, Measure.restrict_univ] at h
   rw [h]
   have h' := mfk_strip_identity hF h1 h2 univ
@@ -13026,7 +13201,7 @@ theorem mfk_partial_fst_meas {F : ℝ × ℝ → ℂ} (hF : Measurable F) (h1 : 
           ‖∫ x : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (x * ξ₁))) * F (x, y)‖ₑ ^ 2 := by
   have hset : {ξ : ℝ × ℝ | |ξ.1| ≤ R} = Set.Icc (-R) R ×ˢ univ := by
     ext ξ; simp [abs_le]
-  rw [hset, mfk_setLIntegral_strip hF _ measurableSet_Icc, mfk_strip_identity hF h1 h2]
+  rw [hset, mfk_setLIntegral_strip hF _ , mfk_strip_identity hF h1 h2]
   rfl
 
 end
@@ -13068,7 +13243,8 @@ theorem mfk_plancherel {F : ℝ × ℝ → ℂ} (h1 : Integrable F volume) (h2 :
   filter_upwards [hae] with z hz
   rw [hz]
 
-theorem mfk_partial_plancherel_fst {F : ℝ × ℝ → ℂ} (h1 : Integrable F volume) (h2 : MemLp F 2 volume)
+theorem mfk_partial_plancherel_fst {F : ℝ × ℝ → ℂ} (h1 : Integrable F volume) (h2 : MemLp F 2
+  volume)
     (R : ℝ) :
     ∫⁻ ξ in {ξ : ℝ × ℝ | |ξ.1| ≤ R}, ‖mfkF2 F ξ‖ₑ ^ 2
       = ∫⁻ y : ℝ, ∫⁻ ξ₁ in Set.Icc (-R) R,
@@ -13097,7 +13273,8 @@ theorem mfkF2_swap (F : ℝ × ℝ → ℂ) (ξ : ℝ × ℝ) :
   congr 3
   ring
 
-theorem mfk_partial_plancherel_snd {F : ℝ × ℝ → ℂ} (h1 : Integrable F volume) (h2 : MemLp F 2 volume)
+theorem mfk_partial_plancherel_snd {F : ℝ × ℝ → ℂ} (h1 : Integrable F volume) (h2 : MemLp F 2
+  volume)
     (R : ℝ) :
     ∫⁻ ξ in {ξ : ℝ × ℝ | |ξ.2| ≤ R}, ‖mfkF2 F ξ‖ₑ ^ 2
       = ∫⁻ x : ℝ, ∫⁻ ξ₂ in Set.Icc (-R) R,
@@ -13149,8 +13326,7 @@ theorem mfk_hasCompactSupport_of {g : ℝ → ℂ} {a b : ℝ}
   HasCompactSupport.of_support_subset_isCompact isCompact_Icc (fun x hx => hs x hx)
 
 theorem mfk_integral_norm_iteratedDeriv_le {g : ℝ → ℂ} {a b M : ℝ} (hab : a ≤ b)
-    (hg : ContDiff ℝ 12 g) (hs : ∀ x, g x ≠ 0 → x ∈ Icc a b) {k : ℕ} (hk : k ≤ 12)
-    (hM : ∀ x, ‖iteratedDeriv k g x‖ ≤ M) :
+     (hs : ∀ x, g x ≠ 0 → x ∈ Icc a b) {k : ℕ} (hM : ∀ x, ‖iteratedDeriv k g x‖ ≤ M) :
     ∫ x, ‖iteratedDeriv k g x‖ ≤ M * (b - a) := by
   have h0 : ∀ x, x ∉ Icc a b → ‖iteratedDeriv k g x‖ = 0 := by
     intro x hx; rw [mfk_iteratedDeriv_zero_outside hs k hx, norm_zero]
@@ -13229,7 +13405,7 @@ theorem mfk_1d_decay {Λ h x0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {g : ℝ → �
   have hlen : x0 + Λ * h - (x0 - Λ * h) = 2 * Λ * h := by ring
   -- zeroth order bound
   have B0 : ‖E‖ ≤ 2 * Λ ^ 2 * h := by
-    have h0 := mfk_integral_norm_iteratedDeriv_le hab hg hs' (k := 0) (by norm_num)
+    have h0 := mfk_integral_norm_iteratedDeriv_le hab hs' (k := 0)
       (M := Λ) (fun x => by simpa using hd 0 (by norm_num) x)
     simp only [iteratedDeriv_zero] at h0
     have : ‖E‖ ≤ ∫ x, ‖g x‖ := by
@@ -13241,7 +13417,7 @@ theorem mfk_1d_decay {Λ h x0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {g : ℝ → �
   have B12 : ‖E‖ * (2 * Real.pi * |τ|) ^ 12 ≤ 2 * Λ ^ 2 * h * h ^ (-(12 : ℝ)) := by
     have h1 := mfk_fourier_mul_pow_le hg hs' (-τ)
     rw [abs_neg] at h1
-    have h2 := mfk_integral_norm_iteratedDeriv_le hab hg hs' (k := 12) le_rfl
+    have h2 := mfk_integral_norm_iteratedDeriv_le hab hs' (k := 12)
       (M := Λ * h ^ (-((12 : ℕ) : ℝ))) (fun x => hd 12 le_rfl x)
     rw [hlen] at h2
     simp only [Nat.cast_ofNat] at h2
@@ -13530,8 +13706,8 @@ namespace Auto
 
 noncomputable section
 
-theorem mfk_mul_pow_le_of_le_div {N u M V : ℝ} (hu : 0 < u) (hV : 0 ≤ V)
-    (h : N ≤ M / u ^ 12 * V) : N * u ^ 12 ≤ M * V := by
+theorem mfk_mul_pow_le_of_le_div {N u M V : ℝ} (hu : 0 < u) (h : N ≤ M / u ^ 12 * V) : N * u ^
+    12 ≤ M * V := by
   have hu12 : 0 < u ^ 12 := by positivity
   calc N * u ^ 12 ≤ M / u ^ 12 * V * u ^ 12 := mul_le_mul_of_nonneg_right h hu12.le
     _ = M * V := by field_simp
@@ -13548,9 +13724,9 @@ theorem mfk_phi_bound {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {A : (�
   have hu2 : 0 < u2 := by positivity
   have hu3 : 0 < u3 := by positivity
   have hM : 2 ^ 13 * Λ ^ 2 * h * (2 * (Λ * h)) ^ 2 = 2 ^ 15 * Λ ^ 4 * h ^ 3 := by ring
-  have b1 := mfk_mul_pow_le_of_le_div hu1 (by positivity) (mfk_phi_bound_x hΛ hh hA c q ξ η)
-  have b2 := mfk_mul_pow_le_of_le_div hu2 (by positivity) (mfk_phi_bound_y hΛ hh hA c q ξ η)
-  have b3 := mfk_mul_pow_le_of_le_div hu3 (by positivity) (mfk_phi_bound_t hΛ hh hA c q ξ η)
+  have b1 := mfk_mul_pow_le_of_le_div hu1 (mfk_phi_bound_x hΛ hh hA c q ξ η)
+  have b2 := mfk_mul_pow_le_of_le_div hu2 (mfk_phi_bound_y hΛ hh hA c q ξ η)
+  have b3 := mfk_mul_pow_le_of_le_div hu3 (mfk_phi_bound_t hΛ hh hA c q ξ η)
   rw [hM] at b1 b2 b3
   set m := max u1 (max u2 u3)
   have hm : N * m ^ 12 ≤ 2 ^ 15 * Λ ^ 4 * h ^ 3 := by
@@ -13625,7 +13801,8 @@ theorem mfk_lint_2d {h : ℝ} (hh : 0 < h) :
   simp_rw [hsplit]
   rw [Measure.volume_eq_prod]
   rw [lintegral_prod_mul (f := fun s : ℝ => ENNReal.ofReal (((1 + h * |s|) ^ 2)⁻¹))
-    (g := fun s : ℝ => ENNReal.ofReal (((1 + h * |s|) ^ 2)⁻¹)) (by fun_prop) (by fun_prop), mfk_lint_1d hh, ← ENNReal.ofReal_mul
+    (g := fun s : ℝ => ENNReal.ofReal (((1 + h * |s|) ^ 2)⁻¹)) (by fun_prop) (by fun_prop),
+      mfk_lint_1d hh, ← ENNReal.ofReal_mul
     (by positivity), sq]
 
 theorem mfk_pointwise {a b v U M : ℝ} (ha : 0 ≤ a) (hb : 0 ≤ b) (hv : 0 ≤ v) (hM : 1 ≤ M)
@@ -13786,14 +13963,16 @@ theorem mfk_schur {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite �
     apply lintegral_mono
     intro ξ
     dsimp only
-    rw [lintegral_const_mul _ (show Measurable (fun η => K ξ η) from hK'.comp measurable_prodMk_left)]
+    rw [lintegral_const_mul _ (show Measurable (fun η => K ξ η) from hK'.comp
+      measurable_prodMk_left)]
     gcongr; exact hR ξ
   · rw [lintegral_prod_symm (fun z : α × α => b z.2 ^ 2 * K z.1 z.2)
       (((hb.comp measurable_snd).pow_const 2).mul hK').aemeasurable]
     apply lintegral_mono
     intro η
     dsimp only
-    rw [lintegral_const_mul _ (show Measurable (fun ξ => K ξ η) from hK'.comp measurable_prodMk_right)]
+    rw [lintegral_const_mul _ (show Measurable (fun ξ => K ξ η) from hK'.comp
+      measurable_prodMk_right)]
     gcongr; exact hS η
 
 end
@@ -13829,7 +14008,9 @@ theorem mfkF2_eq_fourier (G : ℝ × ℝ → ℂ) (ξ : ℝ × ℝ) :
   rw [Real.fourier_eq]
   rw [mfkF2, ← mfk_plane_mp.integral_comp']
   congr 1; ext x
-  change Complex.exp (-(2 * Real.pi * Complex.I * (((smoothingPlaneEquiv x).1 : ℂ) * ξ.1 + ((smoothingPlaneEquiv x).2 : ℂ) * ξ.2))) * G (smoothingPlaneEquiv x) = Real.fourierChar (-(inner ℝ x (smoothingPlaneEquiv.symm ξ))) • G (smoothingPlaneEquiv x)
+  change Complex.exp (-(2 * Real.pi * Complex.I * (((smoothingPlaneEquiv x).1 : ℂ) * ξ.1 +
+    ((smoothingPlaneEquiv x).2 : ℂ) * ξ.2))) * G (smoothingPlaneEquiv x) = Real.fourierChar
+    (-(inner ℝ x (smoothingPlaneEquiv.symm ξ))) • G (smoothingPlaneEquiv x)
   rw [Circle.smul_def, smul_eq_mul, Real.fourierChar_apply]
   have hx : x = smoothingPlaneEquiv.symm (smoothingPlaneEquiv x) := by simp
   conv_rhs => rw [hx, mfk_inner_plane]
@@ -13863,7 +14044,8 @@ variable {G : ℝ × ℝ → ℂ}
 
 theorem continuous (hG : MfkNice G) : Continuous G := hG.smooth.continuous
 
-theorem integrable (hG : MfkNice G) : Integrable G := hG.continuous.integrable_of_hasCompactSupport hG.cpt
+theorem integrable (hG : MfkNice G) : Integrable G :=
+  hG.continuous.integrable_of_hasCompactSupport hG.cpt
 
 theorem memLp (hG : MfkNice G) : MemLp G 2 volume := hG.continuous.memLp_of_hasCompactSupport hG.cpt
 
@@ -13894,11 +14076,13 @@ theorem mfkF2_integrable (hG : MfkNice G) : Integrable (mfkF2 G) := by
   rfl
 
 theorem inversion (hG : MfkNice G) (z : ℝ × ℝ) :
-    G z = ∫ ξ : ℝ × ℝ, Complex.exp (2 * Real.pi * Complex.I * (z.1 * ξ.1 + z.2 * ξ.2)) * mfkF2 G ξ := by
-
+    G z = ∫ ξ : ℝ × ℝ, Complex.exp (2 * Real.pi * Complex.I * (z.1 * ξ.1 + z.2 * ξ.2)) * mfkF2 G ξ
+      := by
   have hinv := (hG.euclid_smooth.continuous).fourierInv_fourier_eq
-    (hG.euclid_smooth.continuous.integrable_of_hasCompactSupport hG.euclid_cpt) hG.fourier_integrable
-  have h1 : G z = (fun x => G (smoothingPlaneEquiv x)) (smoothingPlaneEquiv.symm z) := by simp
+    (hG.euclid_smooth.continuous.integrable_of_hasCompactSupport hG.euclid_cpt)
+      hG.fourier_integrable
+  have h1 : G z = (fun x => G (smoothingPlaneEquiv x)) (smoothingPlaneEquiv.symm z) :=
+    by simp
   rw [h1, ← hinv, Real.fourierInv_eq]
   rw [← mfk_plane_mp.symm.integral_comp']
   congr 1; ext ξ
@@ -13946,7 +14130,8 @@ theorem mfk_tri_fourier {Λ h x0 y0 t0 : ℝ} {A : (ℝ × ℝ) × ℝ → ℂ}
     simp only [H, Function.uncurry_def]
     fun_prop
   have hHi : Integrable (Function.uncurry H) (volume.prod volume) := by
-    have hdom := hA.integrable.norm.mul_prod (h1.mfkF2_integrable.norm.mul_prod h2.mfkF2_integrable.norm)
+    have hdom := hA.integrable.norm.mul_prod (h1.mfkF2_integrable.norm.mul_prod
+      h2.mfkF2_integrable.norm)
     refine hdom.mono' hHm.aestronglyMeasurable (Eventually.of_forall (fun z => ?_))
     simp only [H, Function.uncurry_def, norm_mul, e, mfk_norm_exp, one_mul]
     exact le_of_eq (by ring)
@@ -13973,8 +14158,10 @@ theorem mfk_tri_fourier {Λ h x0 y0 t0 : ℝ} {A : (ℝ × ℝ) × ℝ → ℂ}
     intro p
     simp only [H, e, mfkPh]
     have : Complex.exp (2 * Real.pi * Complex.I *
-        ((((p.1.1 + p.2) * w.1.1 + p.1.2 * w.1.2) + (p.1.1 * w.2.1 + (p.1.2 + c + q * p.2) * w.2.2) : ℝ) : ℂ))
-        = Complex.exp (2 * Real.pi * Complex.I * ((((p.1.1 + p.2) * w.1.1 + p.1.2 * w.1.2) : ℝ) : ℂ)) *
+        ((((p.1.1 + p.2) * w.1.1 + p.1.2 * w.1.2) + (p.1.1 * w.2.1 + (p.1.2 + c + q * p.2) *
+          w.2.2) : ℝ) : ℂ))
+        = Complex.exp (2 * Real.pi * Complex.I * ((((p.1.1 + p.2) * w.1.1 + p.1.2 * w.1.2) : ℝ) :
+          ℂ)) *
           Complex.exp (2 * Real.pi * Complex.I *
             (((p.1.1 * w.2.1 + (p.1.2 + c + q * p.2) * w.2.2) : ℝ) : ℂ)) := by
       rw [← Complex.exp_add]; congr 1; push_cast; ring
@@ -14082,7 +14269,7 @@ theorem mfk_col_full {Λ h q qhi : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) (hq : 0 ≤ 
   unfold mfkC
   field_simp
 
-theorem mfk_const_split (c X Y : ℝ≥0∞) (hc : c ≠ ⊤) :
+theorem mfk_const_split (c X Y : ℝ≥0∞) :
     (c * X) ^ (1 / 2 : ℝ) * (c * Y) ^ (1 / 2 : ℝ) = c * X ^ (1 / 2 : ℝ) * Y ^ (1 / 2 : ℝ) := by
   rw [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num), ENNReal.mul_rpow_of_nonneg _ _ (by norm_num)]
   have : c ^ (1 / 2 : ℝ) * c ^ (1 / 2 : ℝ) = c := by
@@ -14099,7 +14286,8 @@ theorem mfk_nice_bound {Λ h q qhi x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) (
   have hm1 := mfkF2_measurable_of G₁ h1.measurable
   have hm2 := mfkF2_measurable_of G₂ h2.measurable
   have hKm := mfk_K_measurable h q K0
-  have hKm' : Measurable (fun w : (ℝ × ℝ) × (ℝ × ℝ) => ENNReal.ofReal (K0 * mfkK h q w.1 w.2)) := hKm
+  have hKm' : Measurable (fun w : (ℝ × ℝ) × (ℝ × ℝ) => ENNReal.ofReal (K0 * mfkK h q w.1 w.2)) :=
+    hKm
   rw [mfk_tri_fourier hA c q h1 h2]
   calc _ ≤ ∫⁻ w : (ℝ × ℝ) × (ℝ × ℝ), ‖mfkF2 G₁ w.1 * mfkF2 G₂ w.2 * mfkPhi A c q w.1 w.2‖ₑ :=
         enorm_integral_le_lintegral_enorm _
@@ -14124,7 +14312,7 @@ theorem mfk_nice_bound {Λ h q qhi x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) (
         simp_rw [mul_left_comm (‖_‖ₑ ^ 2) (ENNReal.ofReal (mfkC Λ qhi * h))]
         rw [lintegral_const_mul' _ _ ENNReal.ofReal_ne_top,
           lintegral_const_mul' _ _ ENNReal.ofReal_ne_top,
-          mfk_const_split _ _ _ ENNReal.ofReal_ne_top]
+          mfk_const_split _ _ _ ]
         rfl
 
 end
@@ -14142,12 +14330,14 @@ namespace Auto
 
 noncomputable section
 
-theorem mfk_eLpNorm_two (f : ℝ × ℝ → ℂ) :
+theorem mfk_eLpNorm_two {f : ℝ × ℝ → ℂ}
+    (hf : AEStronglyMeasurable f volume := by fun_prop) :
     eLpNorm f 2 volume = (∫⁻ z, ‖f z‖ₑ ^ (2 : ℝ)) ^ (1 / 2 : ℝ) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) (by fun_prop)]
   norm_num
 
-theorem mfk_translate_sq (f : ℝ × ℝ → ℂ) (v : ℝ × ℝ) :
+theorem mfk_translate_sq (f : ℝ × ℝ → ℂ) (v : ℝ × ℝ)
+    (hf : AEStronglyMeasurable f volume := by fun_prop) :
     (∫⁻ z, ‖f (z + v)‖ₑ ^ (2 : ℝ)) ^ (1 / 2 : ℝ) = eLpNorm f 2 volume := by
   rw [mfk_eLpNorm_two, lintegral_add_right_eq_self (fun z => ‖f z‖ₑ ^ (2 : ℝ)) v]
 
@@ -14164,8 +14354,9 @@ theorem MfkAmp.norm_le {Λ h x0 y0 t0 : ℝ} {A : (ℝ × ℝ) × ℝ → ℂ}
   simpa using this
 
 /-- `L²` bound for the trilinear integrand. -/
-theorem mfk_tri_lint_bound {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {A : (ℝ × ℝ) × ℝ → ℂ}
-    (hA : MfkAmp Λ h x0 y0 t0 A) (c q : ℝ) {f g : ℝ × ℝ → ℂ} (hf : Measurable f) (hg : Measurable g) :
+theorem mfk_tri_lint_bound {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) {A : (ℝ × ℝ) × ℝ → ℂ}
+    (hA : MfkAmp Λ h x0 y0 t0 A) (c q : ℝ) {f g : ℝ × ℝ → ℂ} (hf : Measurable f) (hg : Measurable
+      g) :
     ∫⁻ p : (ℝ × ℝ) × ℝ, ‖f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + c + q * p.2) * A p‖ₑ
       ≤ ENNReal.ofReal (Λ * (2 * (Λ * h))) * eLpNorm f 2 volume * eLpNorm g 2 volume := by
   have hAm := hA.cont.measurable
@@ -14223,34 +14414,39 @@ namespace Auto
 
 noncomputable section
 
-theorem mfk_tri_integrable {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {A : (ℝ × ℝ) × ℝ → ℂ}
+theorem mfk_tri_integrable {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) {A : (ℝ × ℝ) × ℝ → ℂ}
     (hA : MfkAmp Λ h x0 y0 t0 A) (c q : ℝ) {f g : ℝ × ℝ → ℂ} (hf : Measurable f) (hg : Measurable g)
     (hf2 : MemLp f 2 volume) (hg2 : MemLp g 2 volume) :
-    Integrable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + c + q * p.2) * A p) := by
+    Integrable (fun p : (ℝ × ℝ) × ℝ => f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + c + q * p.2) * A
+      p) := by
   have hAm := hA.cont.measurable
   refine ⟨(by fun_prop : Measurable (fun p : (ℝ × ℝ) × ℝ =>
       f (p.1.1 + p.2, p.1.2) * g (p.1.1, p.1.2 + c + q * p.2) * A p)).aestronglyMeasurable, ?_⟩
   rw [hasFiniteIntegral_iff_enorm]
-  refine lt_of_le_of_lt (mfk_tri_lint_bound hΛ hh hA c q hf hg) ?_
+  refine lt_of_le_of_lt (mfk_tri_lint_bound hΛ hA c q hf hg) ?_
   exact ENNReal.mul_lt_top (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hf2.eLpNorm_lt_top)
     hg2.eLpNorm_lt_top
 
-theorem mfk_tri_enorm_le {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {A : (ℝ × ℝ) × ℝ → ℂ}
-    (hA : MfkAmp Λ h x0 y0 t0 A) (c q : ℝ) {f g : ℝ × ℝ → ℂ} (hf : Measurable f) (hg : Measurable g) :
-    ‖mfkTri A c q f g‖ₑ ≤ ENNReal.ofReal (Λ * (2 * (Λ * h))) * eLpNorm f 2 volume * eLpNorm g 2 volume :=
-  (enorm_integral_le_lintegral_enorm _).trans (mfk_tri_lint_bound hΛ hh hA c q hf hg)
+theorem mfk_tri_enorm_le {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) {A : (ℝ × ℝ) × ℝ → ℂ}
+    (hA : MfkAmp Λ h x0 y0 t0 A) (c q : ℝ) {f g : ℝ × ℝ → ℂ} (hf : Measurable f) (hg : Measurable
+      g) :
+    ‖mfkTri A c q f g‖ₑ ≤ ENNReal.ofReal (Λ * (2 * (Λ * h))) * eLpNorm f 2 volume * eLpNorm g 2
+      volume :=
+  (enorm_integral_le_lintegral_enorm _).trans (mfk_tri_lint_bound hΛ hA c q hf hg)
 
-theorem mfk_tri_decomp {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) {A : (ℝ × ℝ) × ℝ → ℂ}
+theorem mfk_tri_decomp {Λ h x0 y0 t0 : ℝ} (hΛ : 0 < Λ) {A : (ℝ × ℝ) × ℝ → ℂ}
     (hA : MfkAmp Λ h x0 y0 t0 A) (c q : ℝ) {F₁ F₂ G₁ G₂ : ℝ × ℝ → ℂ}
     (hF₁ : Measurable F₁) (hF₂ : Measurable F₂) (hG₁ : Measurable G₁) (hG₂ : Measurable G₂)
     (hF₁2 : MemLp F₁ 2 volume) (hF₂2 : MemLp F₂ 2 volume) (hG₁2 : MemLp G₁ 2 volume)
     (hG₂2 : MemLp G₂ 2 volume) :
-    mfkTri A c q F₁ F₂ = mfkTri A c q G₁ G₂ + mfkTri A c q (F₁ - G₁) F₂ + mfkTri A c q G₁ (F₂ - G₂) := by
-  have i1 := mfk_tri_integrable hΛ hh hA c q hG₁ hG₂ hG₁2 hG₂2
-  have i2 := mfk_tri_integrable hΛ hh hA c q (hF₁.sub hG₁) hF₂ (hF₁2.sub hG₁2) hF₂2
-  have i3 := mfk_tri_integrable hΛ hh hA c q hG₁ (hF₂.sub hG₂) hG₁2 (hF₂2.sub hG₂2)
+    mfkTri A c q F₁ F₂ = mfkTri A c q G₁ G₂ + mfkTri A c q (F₁ - G₁) F₂ + mfkTri A c q G₁ (F₂ -
+      G₂) := by
+  have i1 := mfk_tri_integrable hΛ hA c q hG₁ hG₂ hG₁2 hG₂2
+  have i2 := mfk_tri_integrable hΛ hA c q (hF₁.sub hG₁) hF₂ (hF₁2.sub hG₁2) hF₂2
+  have i3 := mfk_tri_integrable hΛ hA c q hG₁ (hF₂.sub hG₂) hG₁2 (hF₂2.sub hG₂2)
   unfold mfkTri
-  have hfun : (fun p : (ℝ × ℝ) × ℝ => F₁ (p.1.1 + p.2, p.1.2) * F₂ (p.1.1, p.1.2 + c + q * p.2) * A p)
+  have hfun : (fun p : (ℝ × ℝ) × ℝ => F₁ (p.1.1 + p.2, p.1.2) * F₂ (p.1.1, p.1.2 + c + q * p.2) *
+    A p)
       = fun p => (G₁ (p.1.1 + p.2, p.1.2) * G₂ (p.1.1, p.1.2 + c + q * p.2) * A p +
           (F₁ - G₁) (p.1.1 + p.2, p.1.2) * F₂ (p.1.1, p.1.2 + c + q * p.2) * A p) +
           G₁ (p.1.1 + p.2, p.1.2) * (F₂ - G₂) (p.1.1, p.1.2 + c + q * p.2) * A p := by
@@ -14273,7 +14469,7 @@ theorem mfkF2_sub {F G : ℝ × ℝ → ℂ} (hF : Integrable F) (hG : Integrabl
   congr 1; ext z
   simp only [Pi.sub_apply]; ring
 
-theorem mfkF2_aemeasurable {F : ℝ × ℝ → ℂ} (hF : Integrable F) :
+@[fun_prop] theorem mfkF2_aemeasurable {F : ℝ × ℝ → ℂ} (hF : Integrable F) :
     AEStronglyMeasurable (mfkF2 F) := by
   rw [mfkF2_congr_ae hF.1.ae_eq_mk]
   exact (mfkF2_measurable_of _ hF.1.stronglyMeasurable_mk.measurable).aestronglyMeasurable
@@ -14308,13 +14504,14 @@ theorem mfkSq_le_one (h q : ℝ) (ξ : ℝ × ℝ) : mfkSq h q ξ ≤ 1 := by
   exact Real.rpow_le_one_of_one_le_of_nonpos (by linarith [abs_nonneg (h * (ξ.1 - q * ξ.2))])
     (by norm_num)
 
-theorem mfkSq_continuous (h q : ℝ) : Continuous (mfkSq h q) := by
+@[fun_prop] theorem mfkSq_continuous (h q : ℝ) : Continuous (mfkSq h q) := by
   unfold mfkSq
   apply Continuous.sqrt
   apply Continuous.rpow_const (by fun_prop)
   intro ξ; left; positivity
 
-theorem mfkX_eq_eLpNorm (h q : ℝ) (F : ℝ × ℝ → ℂ) :
+theorem mfkX_eq_eLpNorm (h q : ℝ) (F : ℝ × ℝ → ℂ)
+    (hF : Integrable F) :
     mfkX h q F = eLpNorm (fun ξ => (mfkSq h q ξ : ℂ) * mfkF2 F ξ) 2 volume := by
   rw [mfk_eLpNorm_two, mfkX]
   congr 1
@@ -14329,28 +14526,31 @@ theorem mfkX_eq_eLpNorm (h q : ℝ) (F : ℝ × ℝ → ℂ) :
 theorem mfkX_le_add {h q : ℝ} {F G : ℝ × ℝ → ℂ} (hF : Integrable F) (hG : Integrable G)
     (hF2 : MemLp F 2 volume) (hG2 : MemLp G 2 volume) :
     mfkX h q G ≤ mfkX h q F + eLpNorm (F - G) 2 volume := by
-  rw [mfkX_eq_eLpNorm, mfkX_eq_eLpNorm]
-  have hsq := (Complex.continuous_ofReal.comp (mfkSq_continuous h q)).aestronglyMeasurable (μ := volume)
+  rw [mfkX_eq_eLpNorm _ _ _ hG, mfkX_eq_eLpNorm _ _ _ hF]
+  have hsq := (Complex.continuous_ofReal.comp (mfkSq_continuous h q)).aestronglyMeasurable (μ :=
+    volume)
   have hv : (fun ξ => (mfkSq h q ξ : ℂ) * mfkF2 G ξ) =
-      (fun ξ => (mfkSq h q ξ : ℂ) * mfkF2 F ξ) - (fun ξ => (mfkSq h q ξ : ℂ) * mfkF2 (F - G) ξ) := by
+      (fun ξ => (mfkSq h q ξ : ℂ) * mfkF2 F ξ) - (fun ξ => (mfkSq h q ξ : ℂ) * mfkF2 (F - G) ξ) :=
+        by
     funext ξ
     simp only [Pi.sub_apply, mfkF2_sub hF hG]
     ring
   rw [hv]
-  refine (eLpNorm_sub_le (hsq.mul (mfkF2_aemeasurable hF))
-    (hsq.mul (mfkF2_aemeasurable (hF.sub hG))) (by norm_num)).trans ?_
+  refine (eLpNorm_sub_le (by norm_num)).trans ?_
   refine add_le_add le_rfl ?_
   rw [← mfk_eLpNorm_mfkF2 (hF.sub hG) (hF2.sub hG2)]
-  apply eLpNorm_mono
+  apply eLpNorm_mono (by fun_prop)
   intro ξ
-  rw [Pi.mul_apply, Function.comp_apply, norm_mul, Complex.norm_real, Real.norm_of_nonneg (show 0 ≤ mfkSq h q ξ from Real.sqrt_nonneg _)]
+  rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg (show 0 ≤ mfkSq h q ξ from Real.sqrt_nonneg
+    _)]
   exact mul_le_of_le_one_left (norm_nonneg _) (mfkSq_le_one h q ξ)
 
 theorem mfkX_lt_top {h q : ℝ} {F : ℝ × ℝ → ℂ} (hF : Integrable F) (hF2 : MemLp F 2 volume) :
     mfkX h q F < ⊤ := by
-  rw [mfkX_eq_eLpNorm]
-  refine lt_of_le_of_lt (eLpNorm_mono (g := mfkF2 F) (fun ξ => ?_)) ?_
-  · rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg (show 0 ≤ mfkSq h q ξ from Real.sqrt_nonneg _)]
+  rw [mfkX_eq_eLpNorm _ _ _ hF]
+  refine lt_of_le_of_lt (eLpNorm_mono (g := mfkF2 F) (by fun_prop) (fun ξ => ?_)) ?_
+  · rw [norm_mul, Complex.norm_real, Real.norm_of_nonneg (show 0 ≤ mfkSq h q ξ from
+      Real.sqrt_nonneg _)]
     exact mul_le_of_le_one_left (norm_nonneg _) (mfkSq_le_one h q ξ)
   · rw [mfk_eLpNorm_mfkF2 hF hF2]; exact hF2.eLpNorm_lt_top
 
@@ -14395,16 +14595,16 @@ theorem mfk_one_step {Λ h q qhi x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h) (hq
   have hN : eLpNorm G₁ 2 volume ≤ N₁ + δ := by
     have e : G₁ = F₁ - (F₁ - G₁) := by funext z; simp
     rw [e]
-    exact (eLpNorm_sub_le m₁.1 (m₁.sub g₁.memLp).1 (by norm_num)).trans (add_le_add le_rfl d₁)
-  rw [mfk_tri_decomp hΛ hh hA c q hF₁ hF₂ g₁.measurable g₂.measurable m₁ m₂ g₁.memLp g₂.memLp]
+    exact (eLpNorm_sub_le (by norm_num)).trans (add_le_add le_rfl d₁)
+  rw [mfk_tri_decomp hΛ hA c q hF₁ hF₂ g₁.measurable g₂.measurable m₁ m₂ g₁.memLp g₂.memLp]
   calc _ ≤ ‖mfkTri A c q G₁ G₂‖ₑ + ‖mfkTri A c q (F₁ - G₁) F₂‖ₑ + ‖mfkTri A c q G₁ (F₂ - G₂)‖ₑ :=
         (enorm_add_le _ _).trans (add_le_add (enorm_add_le _ _) le_rfl)
     _ ≤ Ch * mfkX h q G₁ * mfkX h q G₂ + L * eLpNorm (F₁ - G₁) 2 volume * N₂ +
           L * eLpNorm G₁ 2 volume * eLpNorm (F₂ - G₂) 2 volume := by
         gcongr
         · exact mfk_nice_bound hΛ hh hq hqq hA c g₁ g₂
-        · exact mfk_tri_enorm_le hΛ hh hA c q (hF₁.sub g₁.measurable) hF₂
-        · exact mfk_tri_enorm_le hΛ hh hA c q g₁.measurable (hF₂.sub g₂.measurable)
+        · exact mfk_tri_enorm_le hΛ hA c q (hF₁.sub g₁.measurable) hF₂
+        · exact mfk_tri_enorm_le hΛ hA c q g₁.measurable (hF₂.sub g₂.measurable)
     _ ≤ Ch * (X₁ + δ) * (X₂ + δ) + L * δ * N₂ + L * (N₁ + δ) * δ := by gcongr
     _ = Ch * X₁ * X₂ + δ * (Ch * X₂ + Ch * X₁ + L * N₂ + L * N₁) + δ * δ * (Ch + L) := by ring
     _ ≤ Ch * X₁ * X₂ + δ * (Ch * X₂ + Ch * X₁ + L * N₂ + L * N₁) + δ * 1 * (Ch + L) := by gcongr
@@ -14433,7 +14633,8 @@ theorem mfk_bilinear_core {Λ h q qhi x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h
     have a2 := (mfkX_lt_top (h := h) (q := q) i₂ m₂).ne
     have a3 := m₁.eLpNorm_lt_top.ne
     have a4 := m₂.eLpNorm_lt_top.ne
-    simp only [Z, ne_eq, ENNReal.add_eq_top, ENNReal.mul_eq_top, ENNReal.ofReal_ne_top, a1, a2, a3,
+    simp only [Z, ne_eq, ENNReal.add_eq_top, ENNReal.mul_eq_top, ENNReal.ofReal_ne_top,
+      a1, a2, a3,
       a4, and_false, false_and, or_self, not_false_eq_true]
   have hbound : ∀ n : ℕ, ‖mfkTri A c q F₁ F₂‖ₑ ≤
       ENNReal.ofReal (mfkC Λ qhi * h) * mfkX h q F₁ * mfkX h q F₂ +
@@ -14454,7 +14655,7 @@ theorem mfk_bilinear_core {Λ h q qhi x0 y0 t0 : ℝ} (hΛ : 0 < Λ) (hh : 0 < h
   rw [zero_mul, add_zero] at hlim
   exact ge_of_tendsto' hlim hbound
 
-theorem mfk_bilinear (Λ qlo qhi : ℝ) (hΛ : 0 < Λ) (hq : 0 < qlo) (hqq : qlo ≤ qhi) :
+theorem mfk_bilinear (Λ qlo qhi : ℝ) (hΛ : 0 < Λ) (hq : 0 < qlo) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (h q c x0 y0 t0 : ℝ), 0 < h → h ≤ 1 → q ∈ Set.Icc qlo qhi →
     ∀ A : (ℝ × ℝ) × ℝ → ℂ, Continuous A →
       (∀ p, A p ≠ 0 → |p.1.1 - x0| ≤ Λ * h ∧ |p.1.2 - y0| ≤ Λ * h ∧ |p.2 - t0| ≤ Λ * h) →
@@ -14464,12 +14665,15 @@ theorem mfk_bilinear (Λ qlo qhi : ℝ) (hΛ : 0 < Λ) (hq : 0 < qlo) (hqq : qlo
           ‖iteratedDeriv k (fun y => A ((x, y), t)) y‖ ≤ Λ * h ^ (-(k : ℝ))) →
       (∀ x y, ContDiff ℝ 12 (fun t => A ((x, y), t)) ∧ ∀ k ≤ 12, ∀ t,
           ‖iteratedDeriv k (fun t => A ((x, y), t)) t‖ ≤ Λ * h ^ (-(k : ℝ))) →
-      ∀ F₁ F₂ : ℝ × ℝ → ℂ, Measurable F₁ → Measurable F₂ → Integrable F₁ volume → Integrable F₂ volume →
+      ∀ F₁ F₂ : ℝ × ℝ → ℂ, Measurable F₁ → Measurable F₂ → Integrable F₁ volume → Integrable F₂
+        volume →
         MemLp F₁ 2 volume → MemLp F₂ 2 volume →
         ‖∫ p : (ℝ × ℝ) × ℝ, F₁ (p.1.1 + p.2, p.1.2) * F₂ (p.1.1, p.1.2 + c + q * p.2) * A p‖ₑ
           ≤ ENNReal.ofReal (C * h) *
-            (∫⁻ ξ, ‖mfkF2 F₁ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^ (1/2 : ℝ) *
-            (∫⁻ ξ, ‖mfkF2 F₂ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^ (1/2 : ℝ) := by
+            (∫⁻ ξ, ‖mfkF2 F₁ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^
+              (1/2 : ℝ) *
+            (∫⁻ ξ, ‖mfkF2 F₂ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^
+              (1/2 : ℝ) := by
   refine ⟨mfkC Λ qhi, mfkC_nonneg Λ qhi, ?_⟩
   intro h q c x0 y0 t0 hh _ hqI A hAc hAs hAx hAy hAt F₁ F₂ hF₁ hF₂ i₁ i₂ m₁ m₂
   have hA : MfkAmp Λ h x0 y0 t0 A := ⟨hAc, hAs, hAx, hAy, hAt⟩
@@ -14508,7 +14712,8 @@ def mlcCq (r A B : ℝ) : ℝ := r * ((r - 1) * min (A ^ (r - 2)) (B ^ (r - 2)))
 def mlcMq (r A B : ℝ) : ℝ := r * ((r - 1) * max (A ^ (r - 2)) (B ^ (r - 2)))
 
 theorem mlc_rpow_bounds {r A B t : ℝ} (hA : 0 < A) (ht : t ∈ Icc A B) :
-    min (A ^ (r - 2)) (B ^ (r - 2)) ≤ t ^ (r - 2) ∧ t ^ (r - 2) ≤ max (A ^ (r - 2)) (B ^ (r - 2)) := by
+    min (A ^ (r - 2)) (B ^ (r - 2)) ≤ t ^ (r - 2) ∧ t ^ (r - 2) ≤ max (A ^ (r - 2)) (B ^ (r - 2))
+      := by
   rcases le_total 0 (r - 2) with h | h
   · exact ⟨(min_le_left _ _).trans (Real.rpow_le_rpow hA.le ht.1 h),
       (Real.rpow_le_rpow (hA.le.trans ht.1) ht.2 h).trans (le_max_right _ _)⟩
@@ -14638,7 +14843,8 @@ theorem mlc_taylor {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {τ tb 
     have h1 := (convex_Icc lo hi).image_sub_le_mul_sub_of_deriv_le hc hdo
       (C := mlcMq r A B * (hi - lo)) (fun x hx => by
         rw [(hdd x (interior_subset hx)).deriv]
-        exact (le_abs_self _).trans (hb x (interior_subset hx))) lo ⟨le_rfl, hlh⟩ hi ⟨hlh, le_rfl⟩ hlh
+        exact (le_abs_self _).trans (hb x (interior_subset hx))) lo ⟨le_rfl, hlh⟩ hi ⟨hlh, le_rfl⟩
+          hlh
     have h2 := (convex_Icc lo hi).mul_sub_le_image_sub_of_le_deriv hc hdo
       (C := -(mlcMq r A B * (hi - lo))) (fun x hx => by
         rw [(hdd x (interior_subset hx)).deriv]
@@ -14677,12 +14883,12 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc02: derivative bounds at scale `h` (Leibniz rule for the amplitudes) -/
-
 theorem mlc_iteratedDeriv_bdd {f : ℝ → ℝ} (hf : ContDiff ℝ ∞ f) (hc : HasCompactSupport f)
     (N : ℕ) : ∃ M : ℝ, 0 ≤ M ∧ ∀ k ≤ N, ∀ x, |iteratedDeriv k f x| ≤ M := by
   have one : ∀ k : ℕ, ∃ M : ℝ, ∀ x, |iteratedDeriv k f x| ≤ M := by
     intro k
-    obtain ⟨M, hM⟩ := (hf.continuous_iteratedFDeriv (m := k) (by exact_mod_cast le_top)).bounded_above_of_compact_support
+    obtain ⟨M, hM⟩ := (hf.continuous_iteratedFDeriv (m := k)
+      (by exact_mod_cast le_top)).bounded_above_of_compact_support
       (hc.iteratedFDeriv k)
     refine ⟨M, fun x => ?_⟩
     rw [← Real.norm_eq_abs, ← norm_iteratedFDeriv_eq_norm_iteratedDeriv]
@@ -14722,11 +14928,15 @@ theorem MlcReg.mul {N : ℕ} {f g : ℝ → ℝ} {α β ε : ℝ} (hf : MlcReg N
   have hα := hf.alpha_nonneg
   have hβ := hg.alpha_nonneg
   have e := iteratedDeriv_mul (n := k) (f := f) (g := g) (x := x)
-    ((hf.1.of_le (by exact_mod_cast hk)).contDiffAt) ((hg.1.of_le (by exact_mod_cast hk)).contDiffAt)
+    ((hf.1.of_le (by exact_mod_cast hk)).contDiffAt) ((hg.1.of_le
+      (by exact_mod_cast hk)).contDiffAt)
   have e' : iteratedDeriv k (fun x => f x * g x) x = iteratedDeriv k (f * g) x := rfl
   rw [e', e]
-  calc |∑ i ∈ Finset.range (k + 1), (k.choose i : ℝ) * iteratedDeriv i f x * iteratedDeriv (k - i) g x|
-      ≤ ∑ i ∈ Finset.range (k + 1), |(k.choose i : ℝ) * iteratedDeriv i f x * iteratedDeriv (k - i) g x| :=
+  calc
+    |∑ i ∈ Finset.range (k + 1), (k.choose i : ℝ) * iteratedDeriv i f x *
+        iteratedDeriv (k - i) g x|
+      ≤ ∑ i ∈ Finset.range (k + 1), |(k.choose i : ℝ) * iteratedDeriv i f x * iteratedDeriv (k -
+        i) g x| :=
         Finset.abs_sum_le_sum_abs _ _
     _ ≤ ∑ i ∈ Finset.range (k + 1), (k.choose i : ℝ) * (α * ε ^ i) * (β * ε ^ (k - i)) := by
         refine Finset.sum_le_sum fun i hi => ?_
@@ -14754,7 +14964,7 @@ theorem mlcReg_const (N : ℕ) (c : ℝ) {ε : ℝ} (hε : 0 ≤ ε) : MlcReg N 
   rcases Nat.eq_zero_or_pos k with h | h
   · subst h; simp
   · rw [iteratedDeriv_const]
-    simp only [show k ≠ 0 by omega, if_false, abs_zero]
+    simp only [show k ≠ 0 by omega, ite_false, abs_zero]
     positivity
 
 theorem MlcReg.comp_add {N : ℕ} {f : ℝ → ℝ} {α ε : ℝ} (hf : MlcReg N f α ε) (s : ℝ) :
@@ -14826,7 +15036,6 @@ noncomputable section
 
 /-! ### Lc03: the localized amplitude `ψ(t+s) ψ(t) ζ(x,y,t)` satisfies the hypotheses of
 `mfk_bilinear` -/
-
 theorem mlc_phi_nonneg (x : ℝ) : 0 ≤ monoPhi x := Real.smoothTransition.nonneg _
 theorem mlc_phi_le_one (x : ℝ) : monoPhi x ≤ 1 := Real.smoothTransition.le_one _
 theorem mlc_abs_phi_le (x : ℝ) : |monoPhi x| ≤ 1 := by
@@ -14841,7 +15050,8 @@ def mlcAmp (ψ : ℝ → ℝ) (C0 h x0 y0 t0 s : ℝ) (p : (ℝ × ℝ) × ℝ) 
     (monoPhi ((p.1.1 - x0) / (C0 * h)) * monoPhi ((p.1.2 - y0) / (C0 * h))) : ℝ) : ℂ)
 
 /-- A uniform bound for the first twelve derivatives of `φ`. -/
-def mlcMphi : ℝ := Classical.choose (mlc_iteratedDeriv_bdd monoPhi_contDiff monoPhi_hasCompactSupport 12)
+def mlcMphi : ℝ := Classical.choose (mlc_iteratedDeriv_bdd monoPhi_contDiff
+  monoPhi_hasCompactSupport 12)
 
 theorem mlcMphi_spec : 0 ≤ mlcMphi ∧ ∀ k ≤ 12, ∀ x, |iteratedDeriv k monoPhi x| ≤ mlcMphi :=
   Classical.choose_spec (mlc_iteratedDeriv_bdd monoPhi_contDiff monoPhi_hasCompactSupport 12)
@@ -14904,16 +15114,19 @@ theorem mlc_amp_hyp {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) {A B : ℝ} (
     have hx' := mlc_phi_ne_zero hx
     have hy' := mlc_phi_ne_zero hy
     have ht' := mlc_phi_ne_zero ht
-    rw [abs_div, abs_of_pos (by positivity : (0:ℝ) < C0 * h), div_lt_iff₀ (by positivity)] at hx' hy'
-    rw [abs_div, abs_of_pos (by positivity : (0:ℝ) < 2 * C0 * h), div_lt_iff₀ (by positivity)] at ht'
+    rw [abs_div, abs_of_pos (by positivity : (0:ℝ) < C0 * h), div_lt_iff₀ (by positivity)]
+      at hx' hy'
+    rw [abs_div, abs_of_pos (by
+      positivity : (0:ℝ) < 2 * C0 * h), div_lt_iff₀ (by positivity)] at ht'
     unfold mlcLam
     refine ⟨?_, ?_, ?_⟩ <;> nlinarith
   · intro y t
     set c := ψ (t + s) * ψ t * monoPhi ((t - t0) / (2 * C0 * h)) * monoPhi ((y - y0) / (C0 * h))
     have hc : |c| ≤ 1 := by
       simp only [c, abs_mul]
-      exact mul_le_one₀ (mul_le_one₀ (mul_le_one₀ (hψ1 (t + s)) (abs_nonneg _) (hψ1 t)) (abs_nonneg _)
-        (mlc_abs_phi_le _)) (abs_nonneg _) (mlc_abs_phi_le _)
+      exact ((mul_le_of_le_one_left (abs_nonneg _) (((mul_le_of_le_one_left (abs_nonneg _)
+        (((mul_le_of_le_one_left (abs_nonneg _) (hψ1 (t + s))).trans (hψ1 t)))).trans
+        (mlc_abs_phi_le _)))).trans (mlc_abs_phi_le _))
     have e : (fun x => mlcAmp ψ C0 h x0 y0 t0 s ((x, y), t)) =
         fun x => (((fun _ => c) x * (fun x => monoPhi ((x - x0) / (C0 * h))) x : ℝ) : ℂ) := by
       funext x; unfold mlcAmp; simp only [c]; push_cast; ring
@@ -14924,8 +15137,9 @@ theorem mlc_amp_hyp {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) {A B : ℝ} (
     set c := ψ (t + s) * ψ t * monoPhi ((t - t0) / (2 * C0 * h)) * monoPhi ((x - x0) / (C0 * h))
     have hc : |c| ≤ 1 := by
       simp only [c, abs_mul]
-      exact mul_le_one₀ (mul_le_one₀ (mul_le_one₀ (hψ1 (t + s)) (abs_nonneg _) (hψ1 t)) (abs_nonneg _)
-        (mlc_abs_phi_le _)) (abs_nonneg _) (mlc_abs_phi_le _)
+      exact ((mul_le_of_le_one_left (abs_nonneg _) (((mul_le_of_le_one_left (abs_nonneg _)
+        (((mul_le_of_le_one_left (abs_nonneg _) (hψ1 (t + s))).trans (hψ1 t)))).trans
+        (mlc_abs_phi_le _)))).trans (mlc_abs_phi_le _))
     have e : (fun y => mlcAmp ψ C0 h x0 y0 t0 s ((x, y), t)) =
         fun y => (((fun _ => c) y * (fun y => monoPhi ((y - y0) / (C0 * h))) y : ℝ) : ℂ) := by
       funext y; unfold mlcAmp; simp only [c]; push_cast; ring
@@ -14936,7 +15150,7 @@ theorem mlc_amp_hyp {ψ : ℝ → ℝ} (hψ : ContDiff ℝ ∞ ψ) {A B : ℝ} (
     set c := monoPhi ((x - x0) / (C0 * h)) * monoPhi ((y - y0) / (C0 * h))
     have hc : |c| ≤ 1 := by
       simp only [c, abs_mul]
-      exact mul_le_one₀ (mlc_abs_phi_le _) (abs_nonneg _) (mlc_abs_phi_le _)
+      exact ((mul_le_of_le_one_left (abs_nonneg _) (mlc_abs_phi_le _)).trans (mlc_abs_phi_le _))
     have e : (fun t => mlcAmp ψ C0 h x0 y0 t0 s ((x, y), t)) =
         fun t => ((((fun t => ψ (t + s)) t * ψ t) * monoPhi ((t - t0) / ((2 * C0) * h)) *
           (fun _ => c) t : ℝ) : ℂ) := by
@@ -14999,7 +15213,8 @@ theorem mlcBox_measurable (a b R : ℝ) : MeasurableSet (mlcBox a b R) :=
 theorem mlcBox_lt_top (a b R : ℝ) : volume (mlcBox a b R) < ⊤ :=
   (isCompact_Icc.prod isCompact_Icc).measure_lt_top
 
-theorem mem_mlcBox {a b R : ℝ} {z : ℝ × ℝ} (h : |z.1 - a| ≤ R ∧ |z.2 - b| ≤ R) : z ∈ mlcBox a b R := by
+theorem mem_mlcBox {a b R : ℝ} {z : ℝ × ℝ} (h : |z.1 - a| ≤ R ∧ |z.2 - b| ≤ R) : z ∈ mlcBox a b R
+  := by
   rw [abs_le, abs_le] at h
   exact ⟨⟨by linarith, by linarith⟩, ⟨by linarith, by linarith⟩⟩
 
@@ -15013,7 +15228,7 @@ theorem MlcLoc.eq_indicator {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLo
 theorem MlcLoc.memLp {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a b R) (p : ℝ≥0∞) :
     MemLp u p volume := by
   rw [← hu.eq_indicator, memLp_indicator_iff_restrict (mlcBox_measurable a b R)]
-  haveI : IsFiniteMeasure (volume.restrict (mlcBox a b R)) :=
+  have : IsFiniteMeasure (volume.restrict (mlcBox a b R)) :=
     isFiniteMeasure_restrict.mpr (mlcBox_lt_top a b R).ne
   exact MemLp.of_bound hu.1.aestronglyMeasurable B (Eventually.of_forall hu.2.1)
 
@@ -15025,7 +15240,8 @@ theorem MlcLoc.D1 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a b 
     MlcLoc (mlcD1 u s) (B * B) a b R := by
   refine ⟨?_, fun z => ?_, fun z hz => ?_⟩
   · unfold mlcD1
-    exact (hu.1.comp ((measurable_fst.add_const s).prodMk measurable_snd)).mul (continuous_star.measurable.comp hu.1)
+    exact (hu.1.comp ((measurable_fst.add_const s).prodMk measurable_snd)).mul
+      (continuous_star.measurable.comp hu.1)
   · unfold mlcD1
     rw [norm_mul, norm_star]
     exact mul_le_mul (hu.2.1 _) (hu.2.1 _) (norm_nonneg _) ((norm_nonneg _).trans (hu.2.1 z))
@@ -15037,7 +15253,8 @@ theorem MlcLoc.D2 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a b 
     MlcLoc (mlcD2 u s) (B * B) a b R := by
   refine ⟨?_, fun z => ?_, fun z hz => ?_⟩
   · unfold mlcD2
-    exact (hu.1.comp (measurable_fst.prodMk (measurable_snd.add_const s))).mul (continuous_star.measurable.comp hu.1)
+    exact (hu.1.comp (measurable_fst.prodMk (measurable_snd.add_const s))).mul
+      (continuous_star.measurable.comp hu.1)
   · unfold mlcD2
     rw [norm_mul, norm_star]
     exact mul_le_mul (hu.2.1 _) (hu.2.1 _) (norm_nonneg _) ((norm_nonneg _).trans (hu.2.1 z))
@@ -15053,7 +15270,8 @@ theorem mlc_meas_F2D1 {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
         (u (q.2.1 + q.1.1, q.2.2) * star (u q.2))) := by
     refine Measurable.mul (by fun_prop) ?_
     exact (hu.comp ((measurable_fst.comp measurable_snd |>.add (measurable_fst.comp
-      measurable_fst)).prodMk (measurable_snd.comp measurable_snd))).mul (continuous_star.measurable.comp (hu.comp measurable_snd))
+      measurable_fst)).prodMk (measurable_snd.comp measurable_snd))).mul
+        (continuous_star.measurable.comp (hu.comp measurable_snd))
   exact (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure (ℝ × ℝ)))).measurable
 
 theorem mlc_meas_F2D2 {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
@@ -15064,7 +15282,8 @@ theorem mlc_meas_F2D2 {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
         (u (q.2.1, q.2.2 + q.1.1) * star (u q.2))) := by
     refine Measurable.mul (by fun_prop) ?_
     exact (hu.comp ((measurable_fst.comp measurable_snd).prodMk ((measurable_snd.comp
-      measurable_snd).add (measurable_fst.comp measurable_fst)))).mul (continuous_star.measurable.comp (hu.comp measurable_snd))
+      measurable_snd).add (measurable_fst.comp measurable_fst)))).mul
+        (continuous_star.measurable.comp (hu.comp measurable_snd))
   exact (hm.stronglyMeasurable.integral_prod_right' (ν := (volume : Measure (ℝ × ℝ)))).measurable
 
 theorem mlcW_measurable (h q : ℝ) : Measurable (mlcW h q) := by
@@ -15093,20 +15312,21 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc05: total and low-frequency correlation energies ((5.12), (5.15)) -/
-
 theorem mlc_meas_D1_sq {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
     Measurable (fun q : (ℝ × ℝ) × ℝ => ‖u (q.2 + q.1.1, q.1.2) * star (u (q.2, q.1.2))‖ₑ ^ 2) := by
   refine (Measurable.enorm ?_).pow_const 2
   exact (hu.comp ((measurable_snd.add (measurable_fst.comp measurable_fst)).prodMk
     (measurable_snd.comp measurable_fst))).mul
-    (continuous_star.measurable.comp (hu.comp (measurable_snd.prodMk (measurable_snd.comp measurable_fst))))
+    (continuous_star.measurable.comp (hu.comp (measurable_snd.prodMk (measurable_snd.comp
+      measurable_fst))))
 
 theorem mlc_meas_D2_sq {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
     Measurable (fun q : (ℝ × ℝ) × ℝ => ‖u (q.1.2, q.2 + q.1.1) * star (u (q.1.2, q.2))‖ₑ ^ 2) := by
   refine (Measurable.enorm ?_).pow_const 2
   exact (hu.comp ((measurable_snd.comp measurable_fst).prodMk
     (measurable_snd.add (measurable_fst.comp measurable_fst)))).mul
-    (continuous_star.measurable.comp (hu.comp ((measurable_snd.comp measurable_fst).prodMk measurable_snd)))
+    (continuous_star.measurable.comp (hu.comp ((measurable_snd.comp measurable_fst).prodMk
+      measurable_snd)))
 
 /-- **(5.12)** for the first family: Plancherel and (1.8). -/
 theorem mlc_energy1 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a b R) :
@@ -15124,7 +15344,8 @@ theorem mlc_energy1 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a 
         exact ((mlc_meas_D1_sq hu.1).lintegral_prod_right').aemeasurable
     _ = ∫⁻ y, (∫⁻ x, ‖u (x, y)‖ₑ ^ 2) ^ 2 := by
         refine lintegral_congr fun y => ?_
-        exact lintegral_multDiff_sq (G := fun x => u (x, y)) (hu.1.comp (measurable_id.prodMk measurable_const))
+        exact lintegral_multDiff_sq (G := fun x => u (x, y)) (hu.1.comp (measurable_id.prodMk
+          measurable_const))
 
 /-- **(5.12)** for the second family. -/
 theorem mlc_energy2 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a b R) :
@@ -15142,7 +15363,8 @@ theorem mlc_energy2 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a 
         exact ((mlc_meas_D2_sq hu.1).lintegral_prod_right').aemeasurable
     _ = ∫⁻ x, (∫⁻ y, ‖u (x, y)‖ₑ ^ 2) ^ 2 := by
         refine lintegral_congr fun x => ?_
-        exact lintegral_multDiff_sq (G := fun y => u (x, y)) (hu.1.comp (measurable_const.prodMk measurable_id))
+        exact lintegral_multDiff_sq (G := fun y => u (x, y)) (hu.1.comp (measurable_const.prodMk
+          measurable_id))
 
 theorem mlc_meas_partial1 {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
     Measurable (fun q : (ℝ × ℝ) × ℝ =>
@@ -15153,7 +15375,8 @@ theorem mlc_meas_partial1 {u : ℝ × ℝ → ℂ} (hu : Measurable u) :
       Complex.exp (-(2 * Real.pi * Complex.I * (w.2 * w.1.2))) *
         (u (w.2 + w.1.1.1, w.1.1.2) * star (u (w.2, w.1.1.2)))) := by
     refine Measurable.mul (by fun_prop) ?_
-    exact (hu.comp ((measurable_snd.add (measurable_fst.comp (measurable_fst.comp measurable_fst))).prodMk
+    exact (hu.comp ((measurable_snd.add (measurable_fst.comp (measurable_fst.comp
+      measurable_fst))).prodMk
       (measurable_snd.comp (measurable_fst.comp measurable_fst)))).mul
       (continuous_star.measurable.comp (hu.comp (measurable_snd.prodMk
         (measurable_snd.comp (measurable_fst.comp measurable_fst)))))
@@ -15179,10 +15402,13 @@ theorem mlc_penergy1 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a
     ∫⁻ s, ∫⁻ ξ in {ξ : ℝ × ℝ | |ξ.1| ≤ R'}, ‖mfkF2 (mlcD1 u s) ξ‖ₑ ^ 2
       = ∫⁻ y, monoU R' (fun x => u (x, y)) := by
   calc ∫⁻ s, ∫⁻ ξ in {ξ : ℝ × ℝ | |ξ.1| ≤ R'}, ‖mfkF2 (mlcD1 u s) ξ‖ₑ ^ 2
-      = ∫⁻ s, ∫⁻ y, ∫⁻ ξ₁ in Icc (-R') R', ‖∫ x : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (x * ξ₁))) *
+      = ∫⁻ s, ∫⁻ y, ∫⁻ ξ₁ in Icc (-R') R', ‖∫ x : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (x *
+        ξ₁))) *
           (u (x + s, y) * star (u (x, y)))‖ₑ ^ 2 :=
-        lintegral_congr fun s => mfk_partial_plancherel_fst (hu.D1 s).integrable ((hu.D1 s).memLp 2) R'
-    _ = ∫⁻ y, ∫⁻ s, ∫⁻ ξ₁ in Icc (-R') R', ‖∫ x : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (x * ξ₁))) *
+        lintegral_congr fun s => mfk_partial_plancherel_fst (hu.D1 s).integrable ((hu.D1 s).memLp
+          2) R'
+    _ = ∫⁻ y, ∫⁻ s, ∫⁻ ξ₁ in Icc (-R') R', ‖∫ x : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (x *
+      ξ₁))) *
           (u (x + s, y) * star (u (x, y)))‖ₑ ^ 2 := by
         refine lintegral_lintegral_swap ?_
         exact ((mlc_meas_partial1 hu.1).lintegral_prod_right').aemeasurable
@@ -15198,10 +15424,13 @@ theorem mlc_penergy2 {u : ℝ × ℝ → ℂ} {B a b R : ℝ} (hu : MlcLoc u B a
     ∫⁻ s, ∫⁻ ξ in {ξ : ℝ × ℝ | |ξ.2| ≤ R'}, ‖mfkF2 (mlcD2 u s) ξ‖ₑ ^ 2
       = ∫⁻ x, monoU R' (fun y => u (x, y)) := by
   calc ∫⁻ s, ∫⁻ ξ in {ξ : ℝ × ℝ | |ξ.2| ≤ R'}, ‖mfkF2 (mlcD2 u s) ξ‖ₑ ^ 2
-      = ∫⁻ s, ∫⁻ x, ∫⁻ ξ₂ in Icc (-R') R', ‖∫ y : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (y * ξ₂))) *
+      = ∫⁻ s, ∫⁻ x, ∫⁻ ξ₂ in Icc (-R') R', ‖∫ y : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (y *
+        ξ₂))) *
           (u (x, y + s) * star (u (x, y)))‖ₑ ^ 2 :=
-        lintegral_congr fun s => mfk_partial_plancherel_snd (hu.D2 s).integrable ((hu.D2 s).memLp 2) R'
-    _ = ∫⁻ x, ∫⁻ s, ∫⁻ ξ₂ in Icc (-R') R', ‖∫ y : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (y * ξ₂))) *
+        lintegral_congr fun s => mfk_partial_plancherel_snd (hu.D2 s).integrable ((hu.D2 s).memLp
+          2) R'
+    _ = ∫⁻ x, ∫⁻ s, ∫⁻ ξ₂ in Icc (-R') R', ‖∫ y : ℝ, Complex.exp (-(2 * Real.pi * Complex.I * (y *
+      ξ₂))) *
           (u (x, y + s) * star (u (x, y)))‖ₑ ^ 2 := by
         refine lintegral_lintegral_swap ?_
         exact ((mlc_meas_partial2 hu.1).lintegral_prod_right').aemeasurable
@@ -15228,7 +15457,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc06: a single compatible pair — setup and Cauchy-Schwarz in `(x,y)` -/
-
 theorem mlc_integrable_of_bdd {α : Type*} [MeasurableSpace α] {μ : Measure α} {f : α → ℂ}
     {S : Set α} (hS : MeasurableSet S) (hSμ : μ S ≠ ⊤) (hf : AEStronglyMeasurable f μ) {M : ℝ}
     (hM : ∀ x, ‖f x‖ ≤ M) (hsupp : ∀ x, f x ≠ 0 → x ∈ S) : Integrable f μ := by
@@ -15337,14 +15565,16 @@ theorem loc_T (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
       · rw [indicator_of_mem (P.F_ne_zero ht).1]
         exact P.norm_F_le z t
     refine (norm_integral_le_of_norm_le ((integrable_indicator_iff measurableSet_Icc).mpr
-      (integrableOn_const (measure_Icc_lt_top (a := A) (b := B)).ne)) (Eventually.of_forall hb)).trans (le_of_eq ?_)
-    rw [integral_indicator measurableSet_Icc, setIntegral_const, Real.volume_real_Icc_of_le P.hAB.le,
+      (integrableOn_const (measure_Icc_lt_top (a := A) (b := B)).ne)) (Eventually.of_forall
+        hb)).trans (le_of_eq ?_)
+    rw [integral_indicator measurableSet_Icc, setIntegral_const, Real.volume_real_Icc_of_le
+      P.hAB.le,
       smul_eq_mul]
     ring
   · rw [monoT_eq_mlcF] at hz
     obtain ⟨t, ht⟩ : ∃ t, mlcF r ψ u₁ u₂ z t ≠ 0 := by
       by_contra hne
-      push_neg at hne
+      push Not at hne
       apply hz
       simp [hne]
     obtain ⟨-, h1, h2, -⟩ := P.F_ne_zero ht
@@ -15374,7 +15604,7 @@ theorem _root_.Auto.mlc_lintegral_le_sq {α : Type*} [MeasurableSpace α] {μ : 
       · simp [indicator_of_notMem hx]
     rw [this, lintegral_indicator_one hS]
 
-theorem volume_mlcBox (a b R : ℝ) (hR : 0 ≤ R) :
+theorem volume_mlcBox (a b R : ℝ) :
     volume (mlcBox a b R) = ENNReal.ofReal (2 * R) * ENNReal.ofReal (2 * R) := by
   unfold mlcBox
   rw [Measure.volume_eq_prod, Measure.prod_prod, Real.volume_Icc, Real.volume_Icc]
@@ -15388,7 +15618,7 @@ theorem step1 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
   have h1 := mlc_lintegral_le_sq (μ := volume) (P.meas_T.enorm.aemeasurable)
     (mlcBox_measurable a₂ b₁ (C0 * h)) (fun z hz => mem_mlcBox (P.loc_T.2.2 z (by
       intro h0; apply hz; rw [h0, enorm_zero])))
-  rw [volume_mlcBox _ _ _ hR, ← ENNReal.ofReal_mul (by positivity),
+  rw [volume_mlcBox _ _ _ , ← ENNReal.ofReal_mul (by positivity),
     ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num)] at h1
   rw [mul_comm]
   refine h1.trans (le_of_eq ?_)
@@ -15451,7 +15681,7 @@ theorem integrable_Phi (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ t
     · linarith [e1.2, e2.1]
 
 /-- `T(z) \bar{T(z)} = ∫∫ Φ`. -/
-theorem T_mul_star (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁ u₂) (z : ℝ × ℝ) :
+theorem T_mul_star (z : ℝ × ℝ) :
     monoT r ψ u₁ u₂ z * star (monoT r ψ u₁ u₂ z) = ∫ t, ∫ s, mlcPhi r ψ u₁ u₂ ((z, t), s) := by
   rw [monoT_eq_mlcF]
   have hc : star (∫ t, mlcF r ψ u₁ u₂ z t) = ∫ t, star (mlcF r ψ u₁ u₂ z t) :=
@@ -15460,7 +15690,8 @@ theorem T_mul_star (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ
   refine integral_congr_ae (Eventually.of_forall fun t => ?_)
   simp only [mlcPhi]
   rw [← integral_mul_const]
-  exact (integral_add_left_eq_self (fun t' => mlcF r ψ u₁ u₂ z t' * star (mlcF r ψ u₁ u₂ z t)) t).symm
+  exact (integral_add_left_eq_self (fun t' => mlcF r ψ u₁ u₂ z t' * star (mlcF r ψ u₁ u₂ z t))
+    t).symm
 
 /-- **Step 2**: `‖T‖_2^2 = |∫ Φ|`. -/
 theorem step2 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁ u₂) :
@@ -15471,14 +15702,16 @@ theorem step2 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
     rw [Measure.volume_eq_prod, integral_prod]
     rw [← Measure.volume_eq_prod]
     exact hΦ.integral_prod_left
-  have hT : ∀ z, monoT r ψ u₁ u₂ z * star (monoT r ψ u₁ u₂ z) = ((‖monoT r ψ u₁ u₂ z‖ ^ 2 : ℝ) : ℂ) := by
+  have hT : ∀ z, monoT r ψ u₁ u₂ z * star (monoT r ψ u₁ u₂ z) = ((‖monoT r ψ u₁ u₂ z‖ ^ 2 : ℝ) :
+    ℂ) := by
     intro z
     have := Complex.mul_conj (monoT r ψ u₁ u₂ z)
     rw [Complex.normSq_eq_norm_sq] at this
     exact this
   rw [hF]
-  simp_rw [← P.T_mul_star, hT]
-  rw [integral_complex_ofReal, monoEnorm_ofReal, Real.enorm_of_nonneg (integral_nonneg fun z => by positivity)]
+  simp_rw [← T_mul_star, hT]
+  rw [integral_complex_ofReal, monoEnorm_ofReal, Real.enorm_of_nonneg (integral_nonneg fun z =>
+    by positivity)]
   rw [mfk_lintegral_sq_eq_ofReal (P.loc_T.memLp 2)]
 
 end MlcPair
@@ -15523,7 +15756,8 @@ variable {r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb : ℝ} {ψ : ℝ → ℝ
 theorem lip₂' (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁ u₂) (x w w' : ℝ) :
     ‖u₂ (x, w) - u₂ (x, w')‖ ≤ B₂ * L * |w - w'| := by
   have := P.lip₂ (x, w') (w - w')
-  rwa [show (x, w') + ((0 : ℝ), w - w') = (x, w) from Prod.ext (by simp) (by simp)] at this
+  rwa [show (x, w') + ((0 : ℝ), w - w') = (x, w) from Prod.ext (by simp)
+    (by simp)] at this
 
 theorem u₂_eq_zero (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁ u₂) {x : ℝ}
     (hx : ¬ |x - a₂| ≤ C0 * h) (w : ℝ) : u₂ (x, w) = 0 := by
@@ -15574,7 +15808,8 @@ theorem err_pointwise (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb
     set Y := y + (Qb - qb * tb) + qb * t
     set E := u₂ (x, y + monoQ r (t + s)) * star (u₂ (x, y + monoQ r t)) -
       u₂ (x, Y + qb * s) * star (u₂ (x, Y))
-    have key : mlcPhi r ψ u₁ u₂ (((x, y), t), s) - mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ (((x, y), t), s)
+    have key : mlcPhi r ψ u₁ u₂ (((x, y), t), s) - mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ (((x, y),
+      t), s)
         = ((ψ (t + s) * ψ t : ℝ) : ℂ) * (u₁ (x + (t + s), y) * star (u₁ (x + t, y))) * E := by
       simp only [mlcPhi, mlcPhiM, mlcF, mlcD1, mlcD2, mlcAmp, E, Y, hφ1, hφ2, hφ3, hass]
       simp only [star_mul', Complex.star_def, Complex.conj_ofReal]
@@ -15596,7 +15831,8 @@ theorem err_pointwise (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb
     have sq2 : (t + s - tb) ^ 2 ≤ (6 * (C0 * h)) ^ 2 := by
       rw [← sq_abs]; exact pow_le_pow_left₀ (abs_nonneg _) d2 2
     have hE : ‖E‖ ≤ B₂ ^ 2 * L * (mlcMq r A B * (52 * (C0 * h) ^ 2)) := by
-      have eE : E = (u₂ (x, y + monoQ r (t + s)) - u₂ (x, Y + qb * s)) * star (u₂ (x, y + monoQ r t))
+      have eE : E = (u₂ (x, y + monoQ r (t + s)) - u₂ (x, Y + qb * s)) * star (u₂ (x, y + monoQ r
+        t))
           + u₂ (x, Y + qb * s) * star (u₂ (x, y + monoQ r t) - u₂ (x, Y)) := by
         simp only [E, star_sub]; ring
       rw [eE]
@@ -15627,7 +15863,7 @@ theorem err_pointwise (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb
             · exact l2.trans (mul_le_mul_of_nonneg_left w2 hBL)
         _ = B₂ ^ 2 * L * (mlcMq r A B * (52 * (C0 * h) ^ 2)) := by ring
     have hψ2 : |ψ (t + s)| * |ψ t| ≤ 1 :=
-      mul_le_one₀ (P.psi_le _) (abs_nonneg _) (P.psi_le _)
+      ((mul_le_of_le_one_left (abs_nonneg _) (P.psi_le _)).trans (P.psi_le _))
     have hu1 : ‖u₁ (x + (t + s), y)‖ * ‖u₁ (x + t, y)‖ ≤ B₁ ^ 2 := by
       rw [sq]; exact mul_le_mul (P.hu₁.2.1 _) (P.hu₁.2.1 _) (norm_nonneg _) P.B₁_nonneg
     unfold mlcKe
@@ -15654,7 +15890,7 @@ theorem volume_mlcSerr (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ t
   have hR : 0 ≤ C0 * h := mul_nonneg (by linarith [P.hC0]) P.hh.le
   unfold mlcSerr
   rw [Measure.volume_eq_prod, Measure.prod_prod, Measure.volume_eq_prod, Measure.prod_prod,
-    volume_mlcBox _ _ _ hR, Real.volume_Icc, Real.volume_Icc,
+    volume_mlcBox _ _ _ , Real.volume_Icc, Real.volume_Icc,
     show a₁ - a₂ + 2 * (C0 * h) - (a₁ - a₂ - 2 * (C0 * h)) = 4 * (C0 * h) by ring,
     show 2 * (C0 * h) - -(2 * (C0 * h)) = 4 * (C0 * h) by ring,
     ← ENNReal.ofReal_mul (by linarith), ← ENNReal.ofReal_mul (by nlinarith),
@@ -15673,7 +15909,8 @@ theorem step3 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
   have hmS : MeasurableSet (mlcSerr C0 h a₁ b₁ a₂) :=
     ((mlcBox_measurable _ _ _).prod measurableSet_Icc).prod measurableSet_Icc
   calc ∫⁻ p, ‖mlcPhi r ψ u₁ u₂ p - mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ p‖ₑ
-      ≤ ∫⁻ p, (mlcSerr C0 h a₁ b₁ a₂).indicator (fun _ => ENNReal.ofReal (mlcKe r A B C0 h L B₁ B₂)) p := by
+      ≤ ∫⁻ p, (mlcSerr C0 h a₁ b₁ a₂).indicator (fun _ => ENNReal.ofReal (mlcKe r A B C0 h L B₁
+        B₂)) p := by
         refine lintegral_mono fun p => ?_
         have := P.err_pointwise p
         by_cases hp : p ∈ mlcSerr C0 h a₁ b₁ a₂
@@ -15707,11 +15944,11 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc09: the main term via the Fourier kernel bound (5.9)-(5.10) -/
-
 theorem mlc_lintegral_comp_mul {a : ℝ} (ha : 0 < a) (f : ℝ → ℝ≥0∞) :
     ∫⁻ s, f (a * s) = ENNReal.ofReal a⁻¹ * ∫⁻ s, f s := by
   have := lintegral_map_equiv f (Homeomorph.mulLeft₀ a ha.ne').toMeasurableEquiv (μ := volume)
-  rw [show (∫⁻ s, f (a * s)) = ∫⁻ s, f ((Homeomorph.mulLeft₀ a ha.ne').toMeasurableEquiv s) from rfl,
+  rw [show (∫⁻ s, f (a * s)) = ∫⁻ s, f ((Homeomorph.mulLeft₀ a ha.ne').toMeasurableEquiv s) from
+    rfl,
     ← this]
   have e2 : ⇑(Homeomorph.mulLeft₀ a ha.ne').toMeasurableEquiv = (a * ·) := rfl
   rw [e2, Real.map_volume_mul_left ha.ne', lintegral_smul_measure, abs_of_pos (inv_pos.mpr ha),
@@ -15719,11 +15956,13 @@ theorem mlc_lintegral_comp_mul {a : ℝ} (ha : 0 < a) (f : ℝ → ℝ≥0∞) :
 
 theorem mlc_meas_X1 {u : ℝ × ℝ → ℂ} (hu : Measurable u) (h q : ℝ) :
     Measurable (fun s => ∫⁻ ξ, ‖mfkF2 (mlcD1 u s) ξ‖ₑ ^ 2 * mlcW h q ξ) :=
-  (((mlc_meas_F2D1 hu).enorm.pow_const 2).mul ((mlcW_measurable h q).comp measurable_snd)).lintegral_prod_right'
+  (((mlc_meas_F2D1 hu).enorm.pow_const 2).mul ((mlcW_measurable h q).comp
+    measurable_snd)).lintegral_prod_right'
 
 theorem mlc_meas_X2 {u : ℝ × ℝ → ℂ} (hu : Measurable u) (h q : ℝ) :
     Measurable (fun s => ∫⁻ ξ, ‖mfkF2 (mlcD2 u s) ξ‖ₑ ^ 2 * mlcW h q ξ) :=
-  (((mlc_meas_F2D2 hu).enorm.pow_const 2).mul ((mlcW_measurable h q).comp measurable_snd)).lintegral_prod_right'
+  (((mlc_meas_F2D2 hu).enorm.pow_const 2).mul ((mlcW_measurable h q).comp
+    measurable_snd)).lintegral_prod_right'
 
 /-- Cauchy-Schwarz with square roots. -/
 theorem mlc_lintegral_sqrt_mul_le {f g : ℝ → ℝ≥0∞} (hf : Measurable f) (hg : Measurable g) :
@@ -15744,9 +15983,10 @@ theorem amp_le (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u�
     (p : (ℝ × ℝ) × ℝ) : ‖mlcAmp ψ C0 h x0 y0 t0 s p‖ ≤ 1 := by
   unfold mlcAmp
   rw [Complex.norm_real, Real.norm_eq_abs, abs_mul, abs_mul, abs_mul, abs_mul]
-  exact mul_le_one₀ (mul_le_one₀ (mul_le_one₀ (P.psi_le _) (abs_nonneg _) (P.psi_le _))
-    (abs_nonneg _) (mlc_abs_phi_le _)) (by positivity)
-    (mul_le_one₀ (mlc_abs_phi_le _) (abs_nonneg _) (mlc_abs_phi_le _))
+  exact ((mul_le_of_le_one_left (by positivity) (((mul_le_of_le_one_left (abs_nonneg _)
+    (((mul_le_of_le_one_left (abs_nonneg _) (P.psi_le _)).trans (P.psi_le _)))).trans
+    (mlc_abs_phi_le _)))).trans (((mul_le_of_le_one_left (abs_nonneg _) (mlc_abs_phi_le _)).trans
+    (mlc_abs_phi_le _))))
 
 theorem meas_PhiM (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁ u₂) :
     Measurable (mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂) := by
@@ -15807,8 +16047,10 @@ theorem step4 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
         Integrable F₂ volume → MemLp F₁ 2 volume → MemLp F₂ 2 volume →
         ‖∫ p : (ℝ × ℝ) × ℝ, F₁ (p.1.1 + p.2, p.1.2) * F₂ (p.1.1, p.1.2 + c + q * p.2) * A p‖ₑ
           ≤ ENNReal.ofReal (Cm * h) *
-            (∫⁻ ξ, ‖mfkF2 F₁ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^ (1/2 : ℝ) *
-            (∫⁻ ξ, ‖mfkF2 F₂ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^ (1/2 : ℝ)) :
+            (∫⁻ ξ, ‖mfkF2 F₁ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^
+              (1/2 : ℝ) *
+            (∫⁻ ξ, ‖mfkF2 F₂ ξ‖ₑ ^ 2 * ENNReal.ofReal ((1 + |h * (ξ.1 - q * ξ.2)|) ^ (-8 : ℝ))) ^
+              (1/2 : ℝ)) :
     ‖∫ p, mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ p‖ₑ ≤
       ENNReal.ofReal (Cm * h) * (mlcX1 h (monoq r tb) u₁) ^ (1 / 2 : ℝ) *
         (ENNReal.ofReal (monoq r tb)⁻¹ * mlcX2 h (monoq r tb) u₂) ^ (1 / 2 : ℝ) := by
@@ -15826,7 +16068,8 @@ theorem step4 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
   have hG : ∀ s, ‖∫ p', mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ (p', s)‖ₑ ≤
       ENNReal.ofReal (Cm * h) * (X s ^ (1 / 2 : ℝ) * Y (qb * s) ^ (1 / 2 : ℝ)) := by
     intro s
-    obtain ⟨a1, a2, a3, a4, a5⟩ := mlc_amp_hyp P.hψ P.hsupp P.hC20 P.hC0 P.hh P.hh1 a₂ b₁ (a₁ - a₂) s
+    obtain ⟨a1, a2, a3, a4, a5⟩ := mlc_amp_hyp P.hψ P.hsupp P.hC20 P.hC0 P.hh P.hh1 a₂ b₁ (a₁ -
+      a₂) s
     have := hCm h qb (monoQ r tb - qb * tb) a₂ b₁ (a₁ - a₂) P.hh P.hh1 hqI _ a1 a2 a3 a4 a5
       (mlcD1 u₁ s) (mlcD2 u₂ (qb * s)) (P.hu₁.D1 s).1 (P.hu₂.D2 _).1 (P.hu₁.D1 s).integrable
       (P.hu₂.D2 _).integrable ((P.hu₁.D1 s).memLp 2) ((P.hu₂.D2 _).memLp 2)
@@ -15836,12 +16079,14 @@ theorem step4 (P : MlcPair r A B C0 h L B₁ B₂ a₁ b₁ a₂ b₂ tb ψ u₁
   have hY := (mlc_meas_X2 P.hu₂.1 h qb).comp (measurable_const_mul qb)
   rw [hsplit]
   calc ‖∫ s, ∫ p', mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ (p', s)‖ₑ
-      ≤ ∫⁻ s, ‖∫ p', mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ (p', s)‖ₑ := enorm_integral_le_lintegral_enorm _
+      ≤ ∫⁻ s, ‖∫ p', mlcPhiM r ψ C0 h a₁ b₁ a₂ tb u₁ u₂ (p', s)‖ₑ :=
+        enorm_integral_le_lintegral_enorm _
     _ ≤ ∫⁻ s, ENNReal.ofReal (Cm * h) * (X s ^ (1 / 2 : ℝ) * Y (qb * s) ^ (1 / 2 : ℝ)) :=
         lintegral_mono hG
     _ = ENNReal.ofReal (Cm * h) * ∫⁻ s, X s ^ (1 / 2 : ℝ) * Y (qb * s) ^ (1 / 2 : ℝ) :=
         lintegral_const_mul' _ _ ENNReal.ofReal_ne_top
-    _ ≤ ENNReal.ofReal (Cm * h) * ((∫⁻ s, X s) ^ (1 / 2 : ℝ) * (∫⁻ s, Y (qb * s)) ^ (1 / 2 : ℝ)) := by
+    _ ≤ ENNReal.ofReal (Cm * h) * ((∫⁻ s, X s) ^ (1 / 2 : ℝ) * (∫⁻ s, Y (qb * s)) ^ (1 / 2 : ℝ))
+      := by
         gcongr
         exact mlc_lintegral_sqrt_mul_le hX hY
     _ = _ := by
@@ -15866,7 +16111,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc10: the bound for a single compatible pair -/
-
 theorem mlc_sqrt_add_le (a b : ℝ≥0∞) : (a + b) ^ (1 / 2 : ℝ) ≤ a ^ (1 / 2 : ℝ) + b ^ (1 / 2 : ℝ) :=
   ENNReal.rpow_add_le_add_rpow a b (by norm_num) (by norm_num)
 
@@ -15890,7 +16134,7 @@ theorem mlc_pair_bound {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C0
         ENNReal.ofReal (K₂ * (B₁ * B₂ * L ^ (1 / 2 : ℝ) * h ^ 4)) := by
   have hqA : 0 < monoq r A := mlc_q_pos (by linarith) hA
   have hqAB : monoq r A ≤ monoq r B := mlc_q_mono hr hA hAB ⟨le_rfl, hAB.le⟩ ⟨hAB.le, le_rfl⟩ hAB.le
-  obtain ⟨Cm, hCm0, hCm⟩ := mfk_bilinear (mlcLam C0) (monoq r A) (monoq r B) (mlcLam_pos hC0) hqA hqAB
+  obtain ⟨Cm, hCm0, hCm⟩ := mfk_bilinear (mlcLam C0) (monoq r A) (monoq r B) (mlcLam_pos hC0) hqA
   have hMq := mlcMq_nonneg hr hA hAB
   refine ⟨2 * C0 * Cm ^ (1 / 2 : ℝ) * (monoq r A)⁻¹ ^ (1 / 4 : ℝ),
     2 * C0 ^ 4 * (3328 * mlcMq r A B) ^ (1 / 2 : ℝ), by positivity, by positivity, ?_⟩
@@ -15917,11 +16161,13 @@ theorem mlc_pair_bound {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C0
   have alg : ∀ a b X Y : ℝ≥0∞, (a * X ^ (1 / 2 : ℝ) * (b * Y) ^ (1 / 2 : ℝ)) ^ (1 / 2 : ℝ) =
       a ^ (1 / 2 : ℝ) * b ^ (1 / 4 : ℝ) * X ^ (1 / 4 : ℝ) * Y ^ (1 / 4 : ℝ) := by
     intro a b X Y
-    simp only [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0:ℝ) ≤ 1 / 2), ← ENNReal.rpow_mul]
+    simp only [ENNReal.mul_rpow_of_nonneg _ _ (by norm_num : (0:ℝ) ≤ 1 / 2), ←
+      ENNReal.rpow_mul]
     norm_num
     ring
   have hmain : ENNReal.ofReal (2 * (C0 * h)) *
-      (ENNReal.ofReal (Cm * h) * X ^ (1 / 2 : ℝ) * (ENNReal.ofReal qb⁻¹ * Y) ^ (1 / 2 : ℝ)) ^ (1 / 2 : ℝ)
+      (ENNReal.ofReal (Cm * h) * X ^ (1 / 2 : ℝ) * (ENNReal.ofReal qb⁻¹ * Y) ^ (1 / 2 : ℝ)) ^ (1 /
+        2 : ℝ)
       ≤ ENNReal.ofReal (2 * C0 * Cm ^ (1 / 2 : ℝ) * (monoq r A)⁻¹ ^ (1 / 4 : ℝ) * h ^ (3 / 2 : ℝ)) *
         X ^ (1 / 4 : ℝ) * Y ^ (1 / 4 : ℝ) := by
     rw [alg, ENNReal.ofReal_rpow_of_nonneg (by positivity) (by norm_num),
@@ -15952,12 +16198,14 @@ theorem mlc_pair_bound {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {C0
   calc ∫⁻ z, ‖monoT r ψ u₁ u₂ z‖ₑ
       ≤ ENNReal.ofReal (2 * (C0 * h)) * (∫⁻ z, ‖monoT r ψ u₁ u₂ z‖ₑ ^ 2) ^ (1 / 2 : ℝ) := P.step1
     _ ≤ ENNReal.ofReal (2 * (C0 * h)) *
-          ((ENNReal.ofReal (Cm * h) * X ^ (1 / 2 : ℝ) * (ENNReal.ofReal qb⁻¹ * Y) ^ (1 / 2 : ℝ)) ^ (1 / 2 : ℝ)
+          ((ENNReal.ofReal (Cm * h) * X ^ (1 / 2 : ℝ) * (ENNReal.ofReal qb⁻¹ * Y) ^ (1 / 2 : ℝ)) ^
+            (1 / 2 : ℝ)
             + E ^ (1 / 2 : ℝ)) := by
         gcongr
         exact (ENNReal.rpow_le_rpow hsq (by norm_num)).trans (mlc_sqrt_add_le _ _)
     _ = ENNReal.ofReal (2 * (C0 * h)) *
-          (ENNReal.ofReal (Cm * h) * X ^ (1 / 2 : ℝ) * (ENNReal.ofReal qb⁻¹ * Y) ^ (1 / 2 : ℝ)) ^ (1 / 2 : ℝ)
+          (ENNReal.ofReal (Cm * h) * X ^ (1 / 2 : ℝ) * (ENNReal.ofReal qb⁻¹ * Y) ^ (1 / 2 : ℝ)) ^
+            (1 / 2 : ℝ)
           + ENNReal.ofReal (2 * (C0 * h)) * E ^ (1 / 2 : ℝ) := mul_add _ _ _
     _ ≤ _ := by
         rw [herr]
@@ -15979,7 +16227,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc11: counting lattice points -/
-
 theorem mlc_card_Icc_int (c : ℤ) {ρ : ℝ} (hρ : 0 ≤ ρ) :
     ((Finset.Icc (c - ⌊ρ⌋) (c + ⌊ρ⌋)).card : ℝ) ≤ 2 * ρ + 1 := by
   rw [Int.card_Icc]
@@ -16038,7 +16285,7 @@ theorem mlc_card_le_diam (S : Finset (ℤ × ℤ)) {h D : ℝ} (hh : 0 < h) (hD 
     (hS : ∀ m ∈ S, ∀ m' ∈ S, |h * m.1 - h * m'.1| ≤ D * h ∧ |h * m.2 - h * m'.2| ≤ D * h) :
     (S.card : ℝ) ≤ (2 * D + 1) ^ 2 := by
   rcases S.eq_empty_or_nonempty with he | ⟨m₀, hm₀⟩
-  · rw [he]; simp; positivity
+  · rw [he]; simp only [Finset.card_empty, CharP.cast_eq_zero]; positivity
   refine mlc_card_le_square S m₀ hD fun m hm => ?_
   obtain ⟨h1, h2⟩ := hS m hm m₀ hm₀
   rw [← mul_sub, abs_mul, abs_of_pos hh, mul_comm] at h1 h2
@@ -16063,11 +16310,13 @@ noncomputable section
 
 /-- A reference parameter exists: `h n = h m + Γ(t) + O(h)`. -/
 def mlcTW (r A B C0 h : ℝ) (m n : ℤ × ℤ) : Prop :=
-  ∃ t ∈ Icc A B, |t - (h * m.1 - h * n.1)| ≤ 2 * C0 * h ∧ |monoQ r t - (h * n.2 - h * m.2)| ≤ 2 * C0 * h
+  ∃ t ∈ Icc A B, |t - (h * m.1 - h * n.1)| ≤ 2 * C0 * h ∧ |monoQ r t - (h * n.2 - h * m.2)| ≤ 2 *
+    C0 * h
 
 /-- Compatibility of `(m,n)`: the cubes meet `supp χ` and are joined by the curve. -/
 def mlcCompat (r A B C0 h : ℝ) (χ : ℝ × ℝ → ℝ) (m n : ℤ × ℤ) : Prop :=
-  (∃ z : ℝ × ℝ, χ z ≠ 0 ∧ |z.1 - h * n.1| ≤ C0 * h ∧ |z.2 - h * m.2| ≤ C0 * h) ∧ mlcTW r A B C0 h m n
+  (∃ z : ℝ × ℝ, χ z ≠ 0 ∧ |z.1 - h * n.1| ≤ C0 * h ∧ |z.2 - h * m.2| ≤ C0 * h) ∧ mlcTW r A B C0 h
+    m n
 
 open Classical in
 /-- The reference parameter `t̄_{mn}`. -/
@@ -16078,7 +16327,7 @@ theorem mlcTb_spec {r A B C0 h : ℝ} {m n : ℤ × ℤ} (H : mlcTW r A B C0 h m
       |mlcTb r A B C0 h m n - (h * m.1 - h * n.1)| ≤ 2 * C0 * h ∧
       |monoQ r (mlcTb r A B C0 h m n) - (h * n.2 - h * m.2)| ≤ 2 * C0 * h := by
   unfold mlcTb
-  rw [dif_pos H]
+  rw [dite_eq_left H]
   exact H.choose_spec
 
 open Classical in
@@ -16149,7 +16398,7 @@ theorem mlc_Q_le {r A B t : ℝ} (hr : 0 < r) (hA : 0 < A) (ht : t ∈ Icc A B) 
 def mlcR0 (r B C0 Rχ : ℝ) : ℝ := Rχ + 3 * C0 + B + monoQ r B
 
 theorem mlc_compat_bdd {r A B C0 h Rχ : ℝ} {χ : ℝ × ℝ → ℝ} (hr : 1 < r) (hA : 0 < A)
-    (hC0 : 1 ≤ C0) (hh : 0 < h) (hh1 : h ≤ 1) (hRχ : ∀ z, χ z ≠ 0 → |z.1| ≤ Rχ ∧ |z.2| ≤ Rχ)
+    (hC0 : 1 ≤ C0) (hh1 : h ≤ 1) (hRχ : ∀ z, χ z ≠ 0 → |z.1| ≤ Rχ ∧ |z.2| ≤ Rχ)
     {m n : ℤ × ℤ} (H : mlcCompat r A B C0 h χ m n) :
     (|h * m.1| ≤ mlcR0 r B C0 Rχ ∧ |h * m.2| ≤ mlcR0 r B C0 Rχ) ∧
       (|h * n.1| ≤ mlcR0 r B C0 Rχ ∧ |h * n.2| ≤ mlcR0 r B C0 Rχ) := by
@@ -16291,7 +16540,8 @@ theorem mlcw_le_inv {h q : ℝ} {ξ : ℝ × ℝ} {x : ℝ} (hx : 0 < x) (hle : 
 
 /-- The constant of the slope count. -/
 def mlcCw (r A B C0 : ℝ) : ℝ :=
-  2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) + 2 * mlcM0 r B C0 * (B - A + 2)
+  2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) + 2 * mlcM0 r B C0 * (B - A
+    + 2)
 
 theorem mlc_slope {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Type*} (T : Finset ι)
     (t : ι → ℝ) (htI : ∀ i ∈ T, t i ∈ Icc A B) {h M₀ : ℝ} (hh : 0 < h)
@@ -16300,7 +16550,8 @@ theorem mlc_slope {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Ty
     ∑ i ∈ T, mlcw h (monoq r (t i)) ξ ≤
       2 ^ 12 * (1 + 1 / mlcCq r A B) * M₀ * (1 + 1 / (h * |h * ξ.2|)) := by
   have hc : 0 < mlcCq r A B := mlcCq_pos hr hA hAB
-  have e : ∀ i, mlcw h (monoq r (t i)) ξ = (1 + |h * ξ.1 - monoq r (t i) * (h * ξ.2)|) ^ (-8 : ℝ) := by
+  have e : ∀ i, mlcw h (monoq r (t i)) ξ = (1 + |h * ξ.1 - monoq r (t i) * (h * ξ.2)|) ^ (-8 : ℝ)
+    := by
     intro i; unfold mlcw; congr 3; ring
   simp_rw [e]
   exact slope_sum_le T t hc (mlc_q_expand hr hA) htI hh hmult (mul_ne_zero hh.ne' hξ)
@@ -16338,10 +16589,11 @@ theorem mlc_W1 {r A B C0 : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Ty
   by_cases hlow : |ξ.1| ≤ K / h
   · rw [indicator_of_mem (show ξ ∈ {ξ : ℝ × ℝ | |ξ.1| ≤ K / h} from hlow)]
     refine (mlc_sum_w_le_card T _ h ξ).trans (hcard.trans ?_)
-    have : mlcM0 r B C0 * (B - A + 2) / h ≤ mlcCw r A B C0 / h := div_le_div_of_nonneg_right hC1 hh.le
+    have : mlcM0 r B C0 * (B - A + 2) / h ≤ mlcCw r A B C0 / h := div_le_div_of_nonneg_right hC1
+      hh.le
     linarith
   · rw [indicator_of_notMem (show ξ ∉ {ξ : ℝ × ℝ | |ξ.1| ≤ K / h} from hlow), zero_add]
-    push_neg at hlow
+    push Not at hlow
     have hξ1 : K < h * |ξ.1| := by rwa [div_lt_iff₀ hh, mul_comm] at hlow
     by_cases hsl : |ξ.1| / (2 * monoq r B) ≤ |ξ.2|
     · -- steep: the slope count
@@ -16368,13 +16620,15 @@ theorem mlc_W1 {r A B C0 : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Ty
       have hc := mlcCq_pos hr hA hAB
       have h8 : 0 ≤ 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 := by positivity
       calc 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 1 / (h * |h * ξ.2|))
-          ≤ 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * ((1 + 2 * monoq r B) * (1 + 1 / (h * K))) :=
+          ≤ 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * ((1 + 2 * monoq r B) * (1 + 1 / (h *
+            K))) :=
             mul_le_mul_of_nonneg_left h4 h8
-        _ = 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) * (1 + 1 / (h * K)) := by
+        _ = 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) * (1 + 1 / (h *
+          K)) := by
             ring
         _ ≤ _ := by gcongr
     · -- flat: every weight is small
-      push_neg at hsl
+      push Not at hsl
       have hw : ∀ i ∈ T, mlcw h (monoq r (t i)) ξ ≤ 2 / K := by
         intro i hi
         have hq0 : 0 < monoq r (t i) := mlc_q_pos (by linarith) (hA.trans_le (htI i hi).1)
@@ -16404,7 +16658,8 @@ theorem mlc_W1 {r A B C0 : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Ty
             have h7 : 0 ≤ 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) := by
               have := mlcCq_pos hr hA hAB
               positivity
-            nlinarith [mul_nonneg h7 this, mul_nonneg (mul_nonneg hM (by linarith : (0:ℝ) ≤ B - A + 2)) this]
+            nlinarith [mul_nonneg h7 this, mul_nonneg (mul_nonneg hM
+              (by linarith : (0:ℝ) ≤ B - A + 2)) this]
 
 /-- **(5.14)** for the second family (sum over the partners `m` of `n`). -/
 theorem mlc_W2 {r A B C0 : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Type*} (T : Finset ι)
@@ -16422,10 +16677,11 @@ theorem mlc_W2 {r A B C0 : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Ty
   by_cases hlow : |ξ.2| ≤ K / h
   · rw [indicator_of_mem (show ξ ∈ {ξ : ℝ × ℝ | |ξ.2| ≤ K / h} from hlow)]
     refine (mlc_sum_w_le_card T _ h ξ).trans (hcard.trans ?_)
-    have : mlcM0 r B C0 * (B - A + 2) / h ≤ mlcCw r A B C0 / h := div_le_div_of_nonneg_right hC1 hh.le
+    have : mlcM0 r B C0 * (B - A + 2) / h ≤ mlcCw r A B C0 / h := div_le_div_of_nonneg_right hC1
+      hh.le
     linarith
   · rw [indicator_of_notMem (show ξ ∉ {ξ : ℝ × ℝ | |ξ.2| ≤ K / h} from hlow), zero_add]
-    push_neg at hlow
+    push Not at hlow
     have hξ2b : K < h * |ξ.2| := by rwa [div_lt_iff₀ hh, mul_comm] at hlow
     have hξ2 : ξ.2 ≠ 0 := by
       intro h0; rw [h0, abs_zero, mul_zero] at hξ2b; linarith
@@ -16441,7 +16697,8 @@ theorem mlc_W2 {r A B C0 : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) {ι : Ty
     calc 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 1 / (h * |h * ξ.2|))
         ≤ 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 *
             ((1 + 2 * monoq r B) * (1 + 1 / (h * K))) := mul_le_mul_of_nonneg_left h9 h8
-      _ = 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) * (1 + 1 / (h * K)) := by
+      _ = 2 ^ 12 * (1 + 1 / mlcCq r A B) * mlcM0 r B C0 * (1 + 2 * monoq r B) * (1 + 1 / (h * K))
+        := by
           ring
       _ ≤ _ := by gcongr
 
@@ -16461,7 +16718,6 @@ namespace Auto
 noncomputable section
 
 /-! ### Lc14: summing the weighted energies over the partners -/
-
 theorem mlc_sum_X1_le {u : ℝ × ℝ → ℂ} (hu : Measurable u) {ι : Type*} (T : Finset ι) (q : ι → ℝ)
     (h : ℝ) {G : ℝ × ℝ → ℝ} (hG : ∀ ξ, ∑ i ∈ T, mlcw h (q i) ξ ≤ G ξ) :
     ∑ i ∈ T, mlcX1 h (q i) u ≤
@@ -16471,7 +16727,8 @@ theorem mlc_sum_X1_le {u : ℝ × ℝ → ℂ} (hu : Measurable u) {ι : Type*} 
   refine lintegral_mono fun s => ?_
   have hmξ : Measurable fun ξ => ‖mfkF2 (mlcD1 u s) ξ‖ₑ ^ 2 :=
     ((mlc_meas_F2D1 hu).comp (measurable_const.prodMk measurable_id)).enorm.pow_const 2
-  rw [← lintegral_finsetSum _ (fun i _ => (show Measurable fun ξ => ‖mfkF2 _ ξ‖ₑ ^ 2 * mlcW h (q i) ξ from hmξ.mul (mlcW_measurable h (q i))))]
+  rw [← lintegral_finsetSum _ (fun i _ => (show Measurable fun ξ => ‖mfkF2 _ ξ‖ₑ ^ 2 * mlcW h (q
+    i) ξ from hmξ.mul (mlcW_measurable h (q i))))]
   refine lintegral_mono fun ξ => ?_
   rw [← Finset.mul_sum]
   gcongr
@@ -16488,7 +16745,8 @@ theorem mlc_sum_X2_le {u : ℝ × ℝ → ℂ} (hu : Measurable u) {ι : Type*} 
   refine lintegral_mono fun s => ?_
   have hmξ : Measurable fun ξ => ‖mfkF2 (mlcD2 u s) ξ‖ₑ ^ 2 :=
     ((mlc_meas_F2D2 hu).comp (measurable_const.prodMk measurable_id)).enorm.pow_const 2
-  rw [← lintegral_finsetSum _ (fun i _ => (show Measurable fun ξ => ‖mfkF2 _ ξ‖ₑ ^ 2 * mlcW h (q i) ξ from hmξ.mul (mlcW_measurable h (q i))))]
+  rw [← lintegral_finsetSum _ (fun i _ => (show Measurable fun ξ => ‖mfkF2 _ ξ‖ₑ ^ 2 * mlcW h (q
+    i) ξ from hmξ.mul (mlcW_measurable h (q i))))]
   refine lintegral_mono fun ξ => ?_
   rw [← Finset.mul_sum]
   gcongr
@@ -16509,7 +16767,8 @@ theorem mlc_split_weight {F : ℝ → ℝ × ℝ → ℂ} (hF : Measurable fun p
       ENNReal.ofReal c₁ * (∫⁻ ξ in S, ‖F s ξ‖ₑ ^ 2) + ENNReal.ofReal c₂ * ∫⁻ ξ, ‖F s ξ‖ₑ ^ 2 := by
     intro s
     have e : ∀ ξ, ‖F s ξ‖ₑ ^ 2 * ENNReal.ofReal (S.indicator (fun _ => c₁) ξ + c₂) =
-        S.indicator (fun ξ => ENNReal.ofReal c₁ * ‖F s ξ‖ₑ ^ 2) ξ + ENNReal.ofReal c₂ * ‖F s ξ‖ₑ ^ 2 := by
+        S.indicator (fun ξ => ENNReal.ofReal c₁ * ‖F s ξ‖ₑ ^ 2) ξ + ENNReal.ofReal c₂ * ‖F s ξ‖ₑ ^
+          2 := by
       intro ξ
       by_cases hξ : ξ ∈ S
       · rw [indicator_of_mem hξ, indicator_of_mem hξ, ENNReal.ofReal_add hc₁ hc₂]; ring
@@ -16520,7 +16779,8 @@ theorem mlc_split_weight {F : ℝ → ℝ × ℝ → ℂ} (hF : Measurable fun p
   simp_rw [e1]
   have hm1 : Measurable fun s => ENNReal.ofReal c₁ * ∫⁻ ξ in S, ‖F s ξ‖ₑ ^ 2 :=
     (hm.lintegral_prod_right' (ν := volume.restrict S)).const_mul _
-  rw [lintegral_add_left hm1 (fun s => ENNReal.ofReal c₂ * ∫⁻ ξ, ‖F s ξ‖ₑ ^ 2), lintegral_const_mul _ (hm.lintegral_prod_right' (ν := volume.restrict S)),
+  rw [lintegral_add_left hm1 (fun s => ENNReal.ofReal c₂ * ∫⁻ ξ, ‖F s ξ‖ₑ ^ 2),
+    lintegral_const_mul _ (hm.lintegral_prod_right' (ν := volume.restrict S)),
     lintegral_const_mul _ (hm.lintegral_prod_right' (ν := volume))]
 
 theorem mlc_const_weight {F : ℝ → ℝ × ℝ → ℂ} (c : ℝ) :
@@ -16590,16 +16850,18 @@ theorem sum_relevant_fst (G : MlcGlob r A B C0 h K Rχ χ v₁ v₂ B₁ B₂) (
   have hcard : (M₁'.card : ℝ) ≤ (2 * mlcR0 r B C0 Rχ + 1) ^ 2 / h ^ 2 := by
     refine mlc_card_relevant G.hh G.hh1 G.R0_nonneg M₁' fun m hm => ?_
     obtain ⟨n, hn⟩ := (Finset.mem_filter.mp hm).2
-    exact (mlc_compat_bdd G.hr G.hA G.hC0 G.hh G.hh1 G.hRχ (mem_mlcNm.mp hn).2).1
+    exact (mlc_compat_bdd G.hr G.hA G.hC0 G.hh1 G.hRχ (mem_mlcNm.mp hn).2).1
   rw [hsplit]
   calc ∑ m ∈ M₁', f m ≤ ∑ m ∈ M₁', ENNReal.ofReal (c * h ^ 2) := Finset.sum_le_sum fun m hm =>
         hf m (Finset.mem_filter.mp hm).1 (Finset.mem_filter.mp hm).2
     _ = ENNReal.ofReal (M₁'.card * (c * h ^ 2)) := by
-        rw [Finset.sum_const, nsmul_eq_mul, ENNReal.ofReal_mul (Nat.cast_nonneg _), ENNReal.ofReal_natCast]
+        rw [Finset.sum_const, nsmul_eq_mul, ENNReal.ofReal_mul (Nat.cast_nonneg _),
+          ENNReal.ofReal_natCast]
     _ ≤ _ := by
         apply ENNReal.ofReal_le_ofReal
         have hh2 : 0 < h ^ 2 := by have := G.hh; positivity
-        calc (M₁'.card : ℝ) * (c * h ^ 2) ≤ (2 * mlcR0 r B C0 Rχ + 1) ^ 2 / h ^ 2 * (c * h ^ 2) := by
+        calc (M₁'.card : ℝ) * (c * h ^ 2) ≤ (2 * mlcR0 r B C0 Rχ + 1) ^ 2 / h ^ 2 * (c * h ^ 2) :=
+          by
               gcongr
           _ = _ := by have := G.hh.ne'; field_simp
 
@@ -16619,16 +16881,18 @@ theorem sum_relevant_snd (G : MlcGlob r A B C0 h K Rχ χ v₁ v₂ B₁ B₂) (
   have hcard : (M₂'.card : ℝ) ≤ (2 * mlcR0 r B C0 Rχ + 1) ^ 2 / h ^ 2 := by
     refine mlc_card_relevant G.hh G.hh1 G.R0_nonneg M₂' fun n hn => ?_
     obtain ⟨m, hm⟩ := (Finset.mem_filter.mp hn).2
-    exact (mlc_compat_bdd G.hr G.hA G.hC0 G.hh G.hh1 G.hRχ (mem_mlcMn.mp hm).2).2
+    exact (mlc_compat_bdd G.hr G.hA G.hC0 G.hh1 G.hRχ (mem_mlcMn.mp hm).2).2
   rw [hsplit]
   calc ∑ n ∈ M₂', f n ≤ ∑ n ∈ M₂', ENNReal.ofReal (c * h ^ 2) := Finset.sum_le_sum fun n hn =>
         hf n (Finset.mem_filter.mp hn).1 (Finset.mem_filter.mp hn).2
     _ = ENNReal.ofReal (M₂'.card * (c * h ^ 2)) := by
-        rw [Finset.sum_const, nsmul_eq_mul, ENNReal.ofReal_mul (Nat.cast_nonneg _), ENNReal.ofReal_natCast]
+        rw [Finset.sum_const, nsmul_eq_mul, ENNReal.ofReal_mul (Nat.cast_nonneg _),
+          ENNReal.ofReal_natCast]
     _ ≤ _ := by
         apply ENNReal.ofReal_le_ofReal
         have hh2 : 0 < h ^ 2 := by have := G.hh; positivity
-        calc (M₂'.card : ℝ) * (c * h ^ 2) ≤ (2 * mlcR0 r B C0 Rχ + 1) ^ 2 / h ^ 2 * (c * h ^ 2) := by
+        calc (M₂'.card : ℝ) * (c * h ^ 2) ≤ (2 * mlcR0 r B C0 Rχ + 1) ^ 2 / h ^ 2 * (c * h ^ 2) :=
+          by
               gcongr
           _ = _ := by have := G.hh.ne'; field_simp
 
@@ -16660,7 +16924,8 @@ theorem sumX1_unif (G : MlcGlob r A B C0 h K Rχ χ v₁ v₂ B₁ B₂) (M₁ M
       (mlc_card_Nm G.hr G.hA G.hAB G.hC0 G.hh G.hh1 M₂ m)
     refine (mlc_sum_X1_le (G.loc₁ m).1 _ _ h hW).trans ?_
     rw [mlc_split_weight (mlc_meas_F2D1 (G.loc₁ m).1) (by
-      exact measurableSet_le (continuous_abs.measurable.comp measurable_fst) measurable_const) (by positivity) (by positivity)]
+      exact measurableSet_le (continuous_abs.measurable.comp measurable_fst) measurable_const)
+        (by positivity) (by positivity)]
     rw [mlc_penergy1 (G.loc₁ m), mlc_energy1 (G.loc₁ m)]
     calc ENNReal.ofReal (mlcCw r A B C0 / h) * (∫⁻ y, monoU (K / h) (fun x => v₁ m (x, y))) +
           ENNReal.ofReal (mlcCw r A B C0 * (1 + 1 / (h * K))) *
@@ -16707,7 +16972,8 @@ theorem sumX2_unif (G : MlcGlob r A B C0 h K Rχ χ v₁ v₂ B₁ B₂) (M₁ M
       (mlc_card_Mn G.hr G.hA G.hAB G.hC0 G.hh G.hh1 M₁ n)
     refine (mlc_sum_X2_le (G.loc₂ n).1 _ _ h hW).trans ?_
     rw [mlc_split_weight (mlc_meas_F2D2 (G.loc₂ n).1) (by
-      exact measurableSet_le (continuous_abs.measurable.comp measurable_snd) measurable_const) (by positivity) (by positivity)]
+      exact measurableSet_le (continuous_abs.measurable.comp measurable_snd) measurable_const)
+        (by positivity) (by positivity)]
     rw [mlc_penergy2 (G.loc₂ n), mlc_energy2 (G.loc₂ n)]
     calc ENNReal.ofReal (mlcCw r A B C0 / h) * (∫⁻ x, monoU (K / h) (fun y => v₂ n (x, y))) +
           ENNReal.ofReal (mlcCw r A B C0 * (1 + 1 / (h * K))) *
@@ -16810,7 +17076,8 @@ variable {r A B : ℝ} {ψ : ℝ → ℝ}
 
 theorem mlc_meas_integrand (hr : 0 < r) (hψm : Measurable ψ) {u₁ u₂ : ℝ × ℝ → ℂ}
     (hu₁ : Measurable u₁) (hu₂ : Measurable u₂) :
-    Measurable (fun p : (ℝ × ℝ) × ℝ => (ψ p.2 : ℂ) * (u₁ (p.1.1 + p.2, p.1.2) * u₂ (p.1.1, p.1.2 + monoQ r p.2))) :=
+    Measurable (fun p : (ℝ × ℝ) × ℝ => (ψ p.2 : ℂ) * (u₁ (p.1.1 + p.2, p.1.2) * u₂ (p.1.1, p.1.2 +
+      monoQ r p.2))) :=
   (Complex.measurable_ofReal.comp (hψm.comp measurable_snd)).mul
     ((hu₁.comp measurable_monoShift1).mul (hu₂.comp (measurable_monoShift2 hr)))
 
@@ -16826,7 +17093,8 @@ theorem mlc_integrable_integrand (hr : 0 < r) (hψm : Measurable ψ) (hψ1 : ∀
     Integrable (fun t => (ψ t : ℂ) * (u₁ (z.1 + t, z.2) * u₂ (z.1, z.2 + monoQ r t))) := by
   have hB₁ : 0 ≤ B₁ := (norm_nonneg _).trans (hb₁ 0)
   refine mlc_integrable_of_bdd measurableSet_Icc (measure_Icc_lt_top (a := A) (b := B)).ne
-    ((mlc_meas_integrand hr hψm hu₁ hu₂).comp (measurable_const.prodMk measurable_id)).aestronglyMeasurable
+    ((mlc_meas_integrand hr hψm hu₁ hu₂).comp (measurable_const.prodMk
+      measurable_id)).aestronglyMeasurable
     (M := B₁ * B₂) (fun t => ?_) (fun t ht => ?_)
   · rw [norm_mul, norm_mul, Complex.norm_real, Real.norm_eq_abs]
     calc |ψ t| * (‖u₁ (z.1 + t, z.2)‖ * ‖u₂ (z.1, z.2 + monoQ r t)‖) ≤ 1 * (B₁ * B₂) := by
@@ -16846,17 +17114,18 @@ theorem mlc_monoT_sum (hr : 0 < r) (hψm : Measurable ψ) (hψ1 : ∀ t, |ψ t| 
     monoT r ψ (fun w => ∑ m ∈ M₁, v₁ m w) (fun w => ∑ n ∈ M₂, v₂ n w) z =
       ∑ m ∈ M₁, ∑ n ∈ M₂, monoT r ψ (v₁ m) (v₂ n) z := by
   unfold monoT
-  have e : ∀ t, (ψ t : ℂ) * ((∑ m ∈ M₁, v₁ m (z.1 + t, z.2)) * (∑ n ∈ M₂, v₂ n (z.1, z.2 + monoQ r t)))
+  have e : ∀ t, (ψ t : ℂ) * ((∑ m ∈ M₁, v₁ m (z.1 + t, z.2)) * (∑ n ∈ M₂, v₂ n (z.1, z.2 + monoQ r
+    t)))
       = ∑ m ∈ M₁, ∑ n ∈ M₂, (ψ t : ℂ) * (v₁ m (z.1 + t, z.2) * v₂ n (z.1, z.2 + monoQ r t)) := by
     intro t
     rw [Finset.sum_mul_sum, Finset.mul_sum]
     refine Finset.sum_congr rfl fun m _ => ?_
     rw [Finset.mul_sum]
   simp_rw [e]
-  rw [integral_finset_sum _ (fun m _ => integrable_finset_sum _ (fun n _ =>
+  rw [integral_finsetSum _ (fun m _ => integrable_finsetSum _ (fun n _ =>
     mlc_integrable_integrand hr hψm hψ1 hψs (hv₁ m) (hv₂ n) (hb₁ m) (hb₂ n) z))]
   refine Finset.sum_congr rfl fun m _ => ?_
-  rw [integral_finset_sum _ (fun n _ =>
+  rw [integral_finsetSum _ (fun n _ =>
     mlc_integrable_integrand hr hψm hψ1 hψs (hv₁ m) (hv₂ n) (hb₁ m) (hb₂ n) z)]
 
 end
@@ -16874,7 +17143,7 @@ theorem mlc_noncompat_zero {r A B C0 h : ℝ} {χ : ℝ × ℝ → ℝ} {ψ : �
   have hT : monoT r ψ u₁ u₂ z ≠ 0 := right_ne_zero_of_mul hne
   obtain ⟨t, ht⟩ : ∃ t, (ψ t : ℂ) * (u₁ (z.1 + t, z.2) * u₂ (z.1, z.2 + monoQ r t)) ≠ 0 := by
     by_contra hall
-    push_neg at hall
+    push Not at hall
     apply hT
     unfold monoT
     simp [hall]
@@ -16902,7 +17171,7 @@ theorem mlc_expand {r A B C0 h Mχ : ℝ} (hr : 0 < r) {χ : ℝ × ℝ → ℝ}
       ∑ p ∈ mlcP r A B C0 h χ M₁ M₂,
         ENNReal.ofReal Mχ * ∫⁻ z, ‖monoT r ψ (v₁ p.1) (v₂ p.2) z‖ₑ := by
   classical
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop)]
   have hmT : ∀ m n, Measurable (monoT r ψ (v₁ m) (v₂ n)) := fun m n =>
     mlc_meas_monoT hr hψm (hv₁ m) (hv₂ n)
   have hmχT : ∀ m n, Measurable fun z => ‖(χ z : ℂ) * monoT r ψ (v₁ m) (v₂ n) z‖ₑ := fun m n =>
@@ -16955,7 +17224,8 @@ noncomputable section
 /-- Hölder with exponents `(2,4,4)` over a finite set. -/
 theorem mlc_holder {ι : Type*} (s : Finset ι) (X Y : ι → ℝ≥0∞) :
     ∑ i ∈ s, X i ^ (1 / 4 : ℝ) * Y i ^ (1 / 4 : ℝ) ≤
-      (s.card : ℝ≥0∞) ^ (1 / 2 : ℝ) * ((∑ i ∈ s, X i) ^ (1 / 4 : ℝ) * (∑ i ∈ s, Y i) ^ (1 / 4 : ℝ)) := by
+      (s.card : ℝ≥0∞) ^ (1 / 2 : ℝ) * ((∑ i ∈ s, X i) ^ (1 / 4 : ℝ) * (∑ i ∈ s, Y i) ^ (1 / 4 :
+        ℝ)) := by
   have h1 := ENNReal.inner_le_Lp_mul_Lq s (fun _ => (1 : ℝ≥0∞))
     (fun i => X i ^ (1 / 4 : ℝ) * Y i ^ (1 / 4 : ℝ)) Real.HolderConjugate.two_two
   have h2 := ENNReal.inner_le_Lp_mul_Lq s (fun i => X i ^ (1 / 2 : ℝ)) (fun i => Y i ^ (1 / 2 : ℝ))
@@ -16997,21 +17267,27 @@ theorem mlc_card_P {r A B C0 h K Rχ : ℝ} {χ : ℝ × ℝ → ℝ} {v₁ v₂
 theorem mlc_final_ennreal {ι : Type*} (P : Finset ι) (X Y F : ι → ℝ≥0∞) {Mχ K₁ K₂ h Nr Z E : ℝ}
     (hMχ : 0 ≤ Mχ) (hK₁ : 0 ≤ K₁) (hK₂ : 0 ≤ K₂) (hh : 0 < h) (hNr : 0 ≤ Nr) (hZ : 0 ≤ Z)
     (hE : 0 ≤ E)
-    (hF : ∀ p ∈ P, F p ≤ ENNReal.ofReal (K₁ * h ^ (3 / 2 : ℝ)) * (X p ^ (1 / 4 : ℝ) * Y p ^ (1 / 4 : ℝ)) +
+    (hF : ∀ p ∈ P, F p ≤ ENNReal.ofReal (K₁ * h ^ (3 / 2 : ℝ)) * (X p ^ (1 / 4 : ℝ) * Y p ^ (1 / 4
+      : ℝ)) +
       ENNReal.ofReal (K₂ * E))
     (hN : (P.card : ℝ≥0∞) ≤ ENNReal.ofReal Nr)
-    (hXY : (∑ p ∈ P, X p) ^ (1 / 4 : ℝ) * (∑ p ∈ P, Y p) ^ (1 / 4 : ℝ) ≤ ENNReal.ofReal (Z ^ (1 / 4 : ℝ))) :
+    (hXY : (∑ p ∈ P, X p) ^ (1 / 4 : ℝ) * (∑ p ∈ P, Y p) ^ (1 / 4 : ℝ) ≤ ENNReal.ofReal (Z ^ (1 /
+      4 : ℝ))) :
     ∑ p ∈ P, ENNReal.ofReal Mχ * F p ≤
-      ENNReal.ofReal (Mχ * (K₁ * h ^ (3 / 2 : ℝ) * (Nr ^ (1 / 2 : ℝ) * Z ^ (1 / 4 : ℝ)) + Nr * (K₂ * E))) := by
+      ENNReal.ofReal (Mχ * (K₁ * h ^ (3 / 2 : ℝ) * (Nr ^ (1 / 2 : ℝ) * Z ^ (1 / 4 : ℝ)) + Nr * (K₂
+        * E))) := by
   set a := ENNReal.ofReal (K₁ * h ^ (3 / 2 : ℝ))
   set b := ENNReal.ofReal (K₂ * E)
   have hS := mlc_holder P X Y
   calc ∑ p ∈ P, ENNReal.ofReal Mχ * F p
       ≤ ∑ p ∈ P, ENNReal.ofReal Mχ * (a * (X p ^ (1 / 4 : ℝ) * Y p ^ (1 / 4 : ℝ)) + b) :=
         Finset.sum_le_sum fun p hpP => mul_le_mul' le_rfl (hF p hpP)
-    _ = ENNReal.ofReal Mχ * (a * ∑ p ∈ P, X p ^ (1 / 4 : ℝ) * Y p ^ (1 / 4 : ℝ) + (P.card : ℝ≥0∞) * b) := by
-        rw [← Finset.mul_sum, Finset.sum_add_distrib, ← Finset.mul_sum, Finset.sum_const, nsmul_eq_mul]
-    _ ≤ ENNReal.ofReal Mχ * (a * ((ENNReal.ofReal Nr) ^ (1 / 2 : ℝ) * ENNReal.ofReal (Z ^ (1 / 4 : ℝ))) +
+    _ = ENNReal.ofReal Mχ * (a * ∑ p ∈ P, X p ^ (1 / 4 : ℝ) * Y p ^ (1 / 4 : ℝ) + (P.card : ℝ≥0∞)
+      * b) := by
+        rw [← Finset.mul_sum, Finset.sum_add_distrib, ← Finset.mul_sum, Finset.sum_const,
+          nsmul_eq_mul]
+    _ ≤ ENNReal.ofReal Mχ * (a * ((ENNReal.ofReal Nr) ^ (1 / 2 : ℝ) * ENNReal.ofReal (Z ^ (1 / 4 :
+      ℝ))) +
           ENNReal.ofReal Nr * b) := by
         gcongr
         exact hS.trans (mul_le_mul' (ENNReal.rpow_le_rpow hN (by norm_num)) hXY)
@@ -17080,9 +17356,12 @@ theorem mlc_HH {r A B C0 h K Rχ ρ : ℝ} {χ : ℝ × ℝ → ℝ} {v₁ v₂ 
     (G : MlcGlob r A B C0 h K Rχ χ v₁ v₂ B₁ B₂) (M₁ M₂ : Finset (ℤ × ℤ)) (hρ : 0 < ρ)
     (hunif : (∀ m, ∫⁻ y, monoU (K / h) (fun x => v₁ m (x, y)) ≤ ENNReal.ofReal (C0 * ρ * h ^ 3)) ∨
       (∀ m, ∫⁻ x, monoU (K / h) (fun y => v₂ m (x, y)) ≤ ENNReal.ofReal (C0 * ρ * h ^ 3))) :
-    (∑ p ∈ mlcP r A B C0 h χ M₁ M₂, mlcX1 h (monoq r (mlcTb r A B C0 h p.1 p.2)) (v₁ p.1)) ^ (1 / 4 : ℝ) *
-      (∑ p ∈ mlcP r A B C0 h χ M₁ M₂, mlcX2 h (monoq r (mlcTb r A B C0 h p.1 p.2)) (v₂ p.2)) ^ (1 / 4 : ℝ)
-      ≤ ENNReal.ofReal ((((2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (2 * mlcCw r A B C0 * C0)) * (ρ + h + 1 / K) *
+    (∑ p ∈ mlcP r A B C0 h χ M₁ M₂, mlcX1 h (monoq r (mlcTb r A B C0 h p.1 p.2)) (v₁ p.1)) ^ (1 /
+      4 : ℝ) *
+      (∑ p ∈ mlcP r A B C0 h χ M₁ M₂, mlcX2 h (monoq r (mlcTb r A B C0 h p.1 p.2)) (v₂ p.2)) ^ (1
+        / 4 : ℝ)
+      ≤ ENNReal.ofReal ((((2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (2 * mlcCw r A B C0 * C0)) * (ρ + h + 1
+        / K) *
           ((2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (mlcM0 r B C0 * (B - A + 2) * C0))) ^ (1 / 4 : ℝ)) := by
   have hC00 : 0 ≤ C0 := by linarith [G.hC0]
   have hBA : 0 ≤ B - A + 2 := by linarith [G.hAB]
@@ -17098,7 +17377,8 @@ theorem mlc_HH {r A B C0 h K Rχ ρ : ℝ} {χ : ℝ × ℝ → ℝ} {v₁ v₂ 
       ((2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (2 * mlcCw r A B C0 * C0 * (ρ + h + 1 / K))) *
       ((2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (mlcM0 r B C0 * (B - A + 2) * C0)) := by ring
   rw [e, Real.mul_rpow hU0 hT0, ENNReal.ofReal_mul (by positivity),
-    ← ENNReal.ofReal_rpow_of_nonneg hU0 (by norm_num), ← ENNReal.ofReal_rpow_of_nonneg hT0 (by norm_num)]
+    ← ENNReal.ofReal_rpow_of_nonneg hU0 (by norm_num), ← ENNReal.ofReal_rpow_of_nonneg hT0
+      (by norm_num)]
   have hTriv1 := G.sumX1_triv M₁ M₂
   have hTriv2 := G.sumX2_triv M₁ M₂
   rcases hunif with hU | hU
@@ -17124,10 +17404,13 @@ theorem mlc_locCorr {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) : Mono
     unfold mlcR0; linarith
   have hM₀ : 0 ≤ mlcM0 r B C0 := mlcM0_nonneg r B C0
   have hCw : 0 ≤ mlcCw r A B C0 := (mul_nonneg hM₀ hBA).trans (mlcCw_ge hr hA hAB).1
-  obtain ⟨Np, hNpd⟩ : ∃ Np, Np = (2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (mlcM0 r B C0 * (B - A + 2)) := ⟨_, rfl⟩
-  obtain ⟨Tc, hTcd⟩ : ∃ Tc, Tc = (2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (mlcM0 r B C0 * (B - A + 2) * C0) :=
+  obtain ⟨Np, hNpd⟩ : ∃ Np, Np = (2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (mlcM0 r B C0 * (B - A + 2)) :=
     ⟨_, rfl⟩
-  obtain ⟨cu, hcud⟩ : ∃ cu, cu = (2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (2 * mlcCw r A B C0 * C0) := ⟨_, rfl⟩
+  obtain ⟨Tc, hTcd⟩ : ∃ Tc, Tc = (2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (mlcM0 r B C0 * (B - A + 2) * C0)
+    :=
+    ⟨_, rfl⟩
+  obtain ⟨cu, hcud⟩ : ∃ cu, cu = (2 * mlcR0 r B C0 Rχ + 1) ^ 2 * (2 * mlcCw r A B C0 * C0) := ⟨_,
+    rfl⟩
   have hNp : 0 ≤ Np := by rw [hNpd]; positivity
   have hTc : 0 ≤ Tc := by rw [hTcd]; positivity
   have hcu : 0 ≤ cu := by rw [hcud]; positivity
@@ -17139,7 +17422,7 @@ theorem mlc_locCorr {r A B : ℝ} (hr : 1 < r) (hA : 0 < A) (hAB : A < B) : Mono
     simpa using mlc_psi_deriv_le hψ hsupp hC20 (k := 0) (by norm_num) t
   have hψs : ∀ t, ψ t ≠ 0 → t ∈ Icc A B := fun t ht => hsupp (subset_tsupport ψ ht)
   have hL0 : 0 ≤ L := by
-    by_contra hneg; push_neg at hneg; nlinarith
+    by_contra hneg; push Not at hneg; nlinarith
   have hB₁ : 0 ≤ B₁ := (norm_nonneg _).trans (hb₁ 0 0)
   have hB₂ : 0 ≤ B₂ := (norm_nonneg _).trans (hb₂ 0 0)
   have hK0 : 0 < K := by linarith
@@ -17189,11 +17472,13 @@ theorem monomial_smoothing
     (α : Fin 2 → ℕ) (hα : ∀ n, 0 < α n) (hα' : α 0 ≠ α 1) (a b : ℝ) (ha : 0 < a) (hab : a < b) :
     ∃ C δ : ℝ, 0 < C ∧ 0 < δ ∧ ∀ ψ : ℝ → ℝ, ContDiff ℝ 1 ψ → tsupport ψ ⊆ Set.Icc a b →
       ∀ lam : ℝ, 1 ≤ lam → ∀ g : Fin 2 → SchwartzMap (EuclideanSpace ℝ (Fin 2)) ℂ,
-        (∃ n, ∀ ξ, FourierTransform.fourier (g n : EuclideanSpace ℝ (Fin 2) → ℂ) ξ ≠ 0 → lam ≤ |ξ n|) →
+        (∃ n, ∀ ξ, FourierTransform.fourier (g n : EuclideanSpace ℝ (Fin 2) → ℂ) ξ ≠ 0 → lam ≤ |ξ
+          n|) →
         eLpNorm (ms8Average α ψ fun n => ⇑(g n)) 1 volume
           ≤ ENNReal.ofReal (C * ((⨆ t, |ψ t|) + ∫ t, |deriv ψ t|) * lam ^ (-δ)) *
             (eLpNorm (g 0) 2 volume * eLpNorm (g 1) 2 volume) :=
-  ms8_target (fun _ _ _ hr hA hAB => ms7_global hr hA hAB (mono_local61 hr hA hAB (mlc_locCorr hr hA hAB)))
+  ms8_target (fun _ _ _ hr hA hAB => ms7_global hr hA hAB (mono_local61 hr hA hAB (mlc_locCorr hr
+    hA hAB)))
     α hα hα' a b ha hab
 
 end Auto

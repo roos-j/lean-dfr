@@ -98,3 +98,10 @@ status | exact source location | brief mathematical step | ISO 8601 timestamp wi
 complete | lines 1311-1340, (8.1)-(8.2) | telescoping and the high-frequency tail | 2026-09-26T10:39:43-04:00
 complete | lines 1344-1386, (8.3)-(8.6) | mollification of the cutoff, (8.5) | 2026-09-26T10:39:43-04:00
 complete | lines 1389-1419, (8.7)-(8.8) | substitution `u = t^m`, (T) | 2026-09-26T10:39:43-04:00
+
+## Palomar toolchain revalidation
+
+Source target | Exported declaration and module | Verification | Local verification time
+--- | --- | --- | ---
+arXiv:2008.10140v2, Theorem 5 | `Auto.smoothing_theorem5` in `DFR.Auto.SmoothingIneq2D.Smoothing2D` | Lean v4.35.0-rc3; direct checks and full builds pass; zero repository warnings; axioms: propext, Classical.choice, Quot.sound | 2026-10-12T21:54:24-04:00
+task_1_smoothing_inequality_2.tex, target theorem (T), lines 30-61 | `Auto.monomial_smoothing` in `DFR.Auto.MonomialSmoothing` | Lean v4.35.0-rc3; direct checks and full builds pass; zero repository warnings; axioms: propext, Classical.choice, Quot.sound | 2026-10-12T21:54:24-04:00

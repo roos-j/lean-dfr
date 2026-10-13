@@ -14,40 +14,37 @@ This file proves **Stein's interpolation theorem for an analytic family of funct
 form in which the output exponents are allowed to be smaller than one.
 
 Let `(α, μ)` be a measure space and let
-
   `H : ℂ → α → ℂ`
 
 be a family of functions on `α`, indexed by the closed vertical strip `0 ≤ re z ≤ 1`, which is
 continuous on the closed strip and analytic in the open strip for each fixed point of `α`, and
-uniformly bounded there.  Assume the two edge estimates
-
-  `‖H (i t)‖_{L^{q₀}(μ)} ≤ M₀`,   `‖H (1 + i t)‖_{L^{q₁}(μ)} ≤ M₁`   for every `t ∈ ℝ`.
+uniformly bounded there. Assume the two edge estimates
+  `‖H (i t)‖_{L^{q₀}(μ)} ≤ M₀`, `‖H (1 + i t)‖_{L^{q₁}(μ)} ≤ M₁` for every `t ∈ ℝ`.
 
 Then for `0 < θ < 1` and `1 / q = (1 - θ) / q₀ + θ / q₁`,
-
   `‖H θ‖_{L^q(μ)} ≤ M₀ ^ (1 - θ) * M₁ ^ θ`.
 
 The exponents `q₀`, `q₁`, `q` are arbitrary positive reals; in particular they may be **less than
 one**, where `eLpNorm` is only a quasi-norm and the usual Banach-space interpolation machinery
-does not apply.  This is the case that makes the theorem useful for multilinear averaging
+does not apply. This is the case that makes the theorem useful for multilinear averaging
 operators, whose natural output exponents are subunit.
 
 ## Method
 
-The proof is the classical one.  For each fixed `x : α` the scalar function `z ↦ H z x` obeys
+The proof is the classical one. For each fixed `x : α` the scalar function `z ↦ H z x` obeys
 Hirschman's lemma `Auto.norm_le_geom_mean_strip_zero`: its modulus at the interior real point `θ`
 is at most the geometric mean, with weights `1 - θ` and `θ`, of the `s`-th power means of its
-modulus on the two edges against the normalized harmonic measures of the strip.  Here
-`0 < s < min q₀ q₁` is fixed once and for all.  Writing `G₀`, `G₁` for the two power means, the
+modulus on the two edges against the normalized harmonic measures of the strip. Here
+`0 < s < min q₀ q₁` is fixed once and for all. Writing `G₀`, `G₁` for the two power means, the
 pointwise bound `‖H θ x‖ ≤ G₀ x ^ (1 - θ) * G₁ x ^ θ` is then integrated:
 
 * Hölder's inequality with the exponents `q (1 - θ) / q₀` and `q θ / q₁`, which sum to one by the
   exponent relation, bounds `‖G₀ ^ (1 - θ) G₁ ^ θ‖_{L^q}` by `‖G₀‖_{L^{q₀}} ^ (1 - θ)
-  ‖G₁‖_{L^{q₁}} ^ θ`.  This step is valid for `q < 1` as well, because it is applied to the
+  ‖G₁‖_{L^{q₁}} ^ θ`. This step is valid for `q < 1` as well, because it is applied to the
   `q`-th powers.
 * Since the harmonic measures are *probability* measures and `q_ℓ / s > 1`, Jensen's inequality
   for `u ↦ u ^ (q_ℓ / s)` followed by Tonelli's theorem bounds `‖G_ℓ‖_{L^{q_ℓ}} ^ q_ℓ` by
-  `∫ ‖H (ℓ + i t)‖_{L^{q_ℓ}} ^ q_ℓ dν_ℓ(t) ≤ M_ℓ ^ q_ℓ`.  The blueprint invokes Minkowski's
+  `∫ ‖H (ℓ + i t)‖_{L^{q_ℓ}} ^ q_ℓ dν_ℓ(t) ≤ M_ℓ ^ q_ℓ`. The blueprint invokes Minkowski's
   integral inequality at this point; because the measure is a probability measure, the weaker
   Jensen inequality is enough, and it is available directly from Hölder's inequality for the
   Lebesgue integral in `ℝ≥0∞`.
@@ -74,7 +71,7 @@ open scoped ENNReal Real
 
 /-! ### The scalar inequality under a uniform bound -/
 
-/-- Hirschman's lemma for a function that is merely **bounded** on the closed strip.  All four
+/-- Hirschman's lemma for a function that is merely **bounded** on the closed strip. All four
 integrability hypotheses of `Auto.norm_le_geom_mean_strip_zero` and its growth hypothesis follow
 from the bound, the former because the harmonic densities and `1 / cosh (π t)` are integrable. -/
 theorem norm_le_geom_mean_strip_bdd {H : ℂ → ℂ} {θ s C : ℝ}
@@ -307,7 +304,7 @@ theorem enorm_le_geom_mean_strip {H : ℂ → ℂ} {θ s C : ℝ}
 /-! ### Jensen's inequality against a probability density -/
 
 /-- For a probability density `w` and an exponent `r ≥ 1`, the `r`-th power of the `w`-average is
-at most the `w`-average of the `r`-th power.  This replaces Minkowski's integral inequality in the
+at most the `w`-average of the `r`-th power. This replaces Minkowski's integral inequality in the
 interpolation argument, and unlike it is available directly from Hölder's inequality. -/
 theorem rpow_lintegral_mul_le {β : Type*} [MeasurableSpace β] {ν : Measure β}
     {g w : β → ℝ≥0∞} (hg : AEMeasurable g ν) (hw : AEMeasurable w ν)
@@ -340,7 +337,7 @@ theorem rpow_lintegral_mul_le {β : Type*} [MeasurableSpace β] {ν : Measure β
 
 open scoped ENNReal in
 /-- The `L^{q_ℓ}` norm of the `s`-th power mean of an edge family is controlled by the uniform
-edge bound.  This is the step for which the blueprint invokes Minkowski's integral inequality;
+edge bound. This is the step for which the blueprint invokes Minkowski's integral inequality;
 here it is Jensen's inequality for `u ↦ u ^ (r / s)` followed by Tonelli's theorem. -/
 theorem lintegral_edge_mean_le {α : Type*} [MeasurableSpace α] {μ : Measure α} [SFinite μ]
     {G : ℝ → α → ℂ} {w : ℝ → ℝ≥0∞} {s r : ℝ} {M : ℝ≥0∞} (hs : 0 < s) (hsr : s ≤ r) (hr : 0 < r)
@@ -369,11 +366,12 @@ theorem lintegral_edge_mean_le {α : Type*} [MeasurableSpace α] {μ : Measure �
     _ ≤ ∫⁻ t : ℝ, M ^ r * w t := by
         refine lintegral_mono fun t => mul_le_mul' ?_ le_rfl
         rw [lintegral_rpow_enorm_eq_rpow_eLpNorm' hr]
-        have hconv : eLpNorm' (G t) r μ = eLpNorm (G t) (ENNReal.ofReal r) μ := by
-          rw [eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hr).ne' ENNReal.ofReal_ne_top,
-            ENNReal.toReal_ofReal hr.le]
-        rw [hconv]
-        exact ENNReal.rpow_le_rpow (hM t) hr.le
+        have hconv : eLpNorm' (G t) r μ ≤ eLpNorm (G t) (ENNReal.ofReal r) μ := by
+          by_cases hm : AEStronglyMeasurable (G t) μ
+          · rw [eLpNorm_eq_eLpNorm' (ENNReal.ofReal_pos.mpr hr).ne'
+              ENNReal.ofReal_ne_top hm, ENNReal.toReal_ofReal hr.le]
+          · simp [eLpNorm_of_not_aestronglyMeasurable hm]
+        exact ENNReal.rpow_le_rpow (hconv.trans (hM t)) hr.le
     _ = M ^ r := by
         rw [lintegral_const_mul'' _ hw.aemeasurable, hw1, mul_one]
 
@@ -381,11 +379,11 @@ theorem lintegral_edge_mean_le {α : Type*} [MeasurableSpace α] {μ : Measure �
 
 open scoped ENNReal in
 /-- **Stein interpolation for an analytic family of functions, with possibly subunit output
-exponents.**  Let `H z` be a family of functions on a measure space, indexed by the closed strip
+exponents.** Let `H z` be a family of functions on a measure space, indexed by the closed strip
 `0 ≤ re z ≤ 1`, continuous on the closed strip and analytic in the open strip at every point of
-the space, and uniformly bounded there.  If `‖H (i t)‖_{L^{q₀}} ≤ M₀` and
+the space, and uniformly bounded there. If `‖H (i t)‖_{L^{q₀}} ≤ M₀` and
 `‖H (1 + i t)‖_{L^{q₁}} ≤ M₁` for every `t`, then `‖H θ‖_{L^q} ≤ M₀ ^ (1 - θ) M₁ ^ θ` whenever
-`0 < θ < 1` and `1/q = (1-θ)/q₀ + θ/q₁`.  No exponent is required to be at least one.  The two
+`0 < θ < 1` and `1/q = (1-θ)/q₀ + θ/q₁`. No exponent is required to be at least one. The two
 edge bounds are extended nonnegative reals, so that the theorem may be applied with bounds that
 carry the norms of the data and are not known in advance to be finite or nonzero. -/
 theorem eLpNorm_le_of_analyticFamily
@@ -394,6 +392,7 @@ theorem eLpNorm_le_of_analyticFamily
     (hθ : θ ∈ Ioo (0 : ℝ) 1)
     (hq₀ : 0 < q₀) (hq₁ : 0 < q₁) (hq : 0 < q)
     (hqrel : q⁻¹ = (1 - θ) * q₀⁻¹ + θ * q₁⁻¹)
+    (hmeas : AEStronglyMeasurable (H (θ : ℂ)) μ)
     (hmeas₀ : AEStronglyMeasurable
       (fun p : α × ℝ => H ((p.2 : ℂ) * Complex.I) p.1) (μ.prod volume))
     (hmeas₁ : AEStronglyMeasurable
@@ -492,7 +491,7 @@ theorem eLpNorm_le_of_analyticFamily
           simp only [← ENNReal.rpow_mul]
           rw [e₂, e₃]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (ENNReal.ofReal_pos.mpr hq).ne'
-    ENNReal.ofReal_ne_top, ENNReal.toReal_ofReal hq.le]
+    ENNReal.ofReal_ne_top hmeas, ENNReal.toReal_ofReal hq.le]
   calc (∫⁻ x : α, ‖H (θ : ℂ) x‖ₑ ^ q ∂μ) ^ (1 / q)
       ≤ ((M₀ ^ (1 - θ) * M₁ ^ θ) ^ q) ^ (1 / q) :=
         ENNReal.rpow_le_rpow hmain (by positivity)

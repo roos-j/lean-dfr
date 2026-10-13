@@ -27,7 +27,7 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
@@ -35,10 +35,9 @@ import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
 import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
 import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
 import DFR.Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
-import DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
+import
+  DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
 import DFR.Auto.Twisted.FiberwiseCalderonZygmundDecomposition.FiberwiseCalderonZygmundDecomposition
-
-universe u
 
 /-!
 # Cone decomposition and the multiplier theorem
@@ -47,9 +46,11 @@ Section 8 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -57,7 +58,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -76,7 +78,7 @@ def dilateLinear (α : Anisotropy) (t : ℝ) : E3 →ₗ[ℝ] E3 :=
 theorem dilateLinear_apply (α : Anisotropy) (t : ℝ) (x : E3) :
     α.dilateLinear t x = α.dilate t x := by
   ext i
-  simp [dilateLinear, dilate, Matrix.toLpLin_apply]
+  simp only [dilateLinear, Matrix.toLpLin_apply, dilate]
   exact Matrix.mulVec_diagonal _ _ _
 
 theorem det_dilateLinear (α : Anisotropy) (t : ℝ) :
@@ -212,7 +214,7 @@ def ExtendedModelRegion (β0 β1 β2 β3 : ℝ) : Prop :=
     β1 + β2 > 1 / 4 ∧ β1 + β3 > 1 / 2 ∧ β2 + β3 > 1 / 2
 
 /-- The final theorem's reciprocal inequalities imply the extended-model
-region after choosing any active coordinate.  This is the arithmetic used in
+region after choosing any active coordinate. This is the arithmetic used in
 the last paragraph of the blueprint. -/
 theorem extendedModelRegion_of_mainInequalities
     {β0 β1 β2 β3 : ℝ}
@@ -415,7 +417,7 @@ theorem exists_exponentSimplex
     hb3pos, hb3lt, hb3quarter, hb3half, hsum_b0, h0, hsum⟩⟩
 
 /-- The four strictly positive barycentric weights associated to an interior
-simplex point.  The displayed identities are exactly the four interpolation
+simplex point. The displayed identities are exactly the four interpolation
 vertices `b`, `b + b₀ e₁`, `b + b₀ e₂`, and `b + b₀ e₃`. -/
 theorem exponentSimplex_has_barycentricWeights
     {β0 β1 β2 β3 : ℝ} (b : ExponentSimplex β0 β1 β2 β3) :
@@ -525,7 +527,7 @@ theorem mainExponentRegion_permuted
 
 
 /-- The one-dimensional Calderón mass of the source-normalized Gaussian
-derivative.  This is the scalar constant behind the factor `π / α₃` in the
+derivative. This is the scalar constant behind the factor `π / α₃` in the
 fiber square-function identity. -/
 theorem integral_gaussianDeriv_sq_div_Ioi :
     ∫ x : ℝ in Set.Ioi (0 : ℝ), gaussianDeriv x ^ 2 / x = Real.pi := by
@@ -617,7 +619,7 @@ theorem integral_gaussianDeriv_sq_div_mul_Ioi
         exact integral_gaussianDeriv_sq_div_Ioi]
       field_simp
 
-/-- The power-change-of-variables form of the Calderón identity.  It is the
+/-- The power-change-of-variables form of the Calderón identity. It is the
 exact scalar formula before rewriting the Jacobian as the scale density
 `dt / t`. -/
 theorem integral_gaussianDeriv_sq_rpow_weighted_Ioi
@@ -720,7 +722,7 @@ theorem ae_integral_gaussianDeriv_sq_nat_scale_Ioi
     simp [ae_iff, measure_singleton]] with ξ hξ
   exact integral_gaussianDeriv_sq_nat_scale_Ioi_of_ne_zero n hn ξ hξ
 
-/-- Abstract Fubini contraction for the scalar Calderón multiplier.  The
+/-- Abstract Fubini contraction for the scalar Calderón multiplier. The
 only analytic input is joint integrability; the Fourier calculation supplies
 the almost-everywhere inner scale identity separately. -/
 theorem calderon_fubini_of_ae_scale_mass
@@ -800,7 +802,7 @@ theorem fiberSquare_identity_of_fixedScalePlancherel_nat
 
 
 /-- The exact Fourier multiplier of a positive normalized Gaussian-derivative
-dilation.  This is the physical-to-frequency bridge at one fixed scale. -/
+dilation. This is the physical-to-frequency bridge at one fixed scale. -/
 theorem fourier_gaussianDerivAt_zero
     (s : ℝ) (hs : 0 < s) :
     (𝓕 fun x : ℝ ↦ (gaussianDerivAt s 0 x : ℂ)) =
@@ -1018,7 +1020,7 @@ theorem expandedModelLocalForm_union_of_integrable
   ring
 
 /-- Fixed-scale Plancherel for a Schwartz fiber convolved with the centered
-Gaussian derivative.  The right-hand side is the exact multiplier square
+Gaussian derivative. The right-hand side is the exact multiplier square
 needed before integrating over scales. -/
 theorem integral_norm_sq_gaussianDeriv_convolution
     (F : SchwartzMap ℝ ℂ) (s : ℝ) (hs : 0 < s) :
@@ -1130,7 +1132,7 @@ theorem schwartz_fiber_square_function_of_jointIntegrable
         hschwartz_plancherel]
 
 /-- The nonnegative Calderón kernel is jointly integrable whenever its
-frequency weight is nonnegative and integrable.  This supplies the Fubini
+frequency weight is nonnegative and integrable. This supplies the Fubini
 hypothesis in the Schwartz square-function calculation without an `L²`
 extension argument. -/
 theorem integrable_calderon_joint_of_integrable
@@ -1315,7 +1317,7 @@ theorem modelEnergyTwoOn_le_global_of_integrable
     (α : Anisotropy) (V : Set (E3 × ℝ)) (u : E3) (f : E3 → ℝ)
     (hV : V ⊆ Set.univ ×ˢ Set.Ioi (0 : ℝ))
     (hglobal : Integrable (modelEnergyTwoOuter α u f)
-      (cubeScaleMeasure.restrict (Set.univ ×ˢ Set.Ioi (0 : ℝ))) ) :
+      (cubeScaleMeasure.restrict (Set.univ ×ˢ Set.Ioi (0 : ℝ)))) :
     modelEnergyTwoOn α V u f ≤
       modelEnergyTwoOn α (Set.univ ×ˢ Set.Ioi (0 : ℝ)) u f := by
   apply modelEnergyTwoOn_mono_of_integrable α V
@@ -1387,7 +1389,7 @@ theorem integral_modelPhiAt_gaussian_pair_const {s : ℝ} (hs : 0 < s)
           rw [integral_modelPhiAt_gaussian_pair hs c x]
 
 /-- The two independent low-frequency/Gaussian pairs contribute the square
-of the absolute `φ` mass.  The nesting is chosen to match the scalar order
+of the absolute `φ` mass. The nesting is chosen to match the scalar order
 after the global-energy coordinate reordering. -/
 theorem integral_two_modelPhi_gaussian_pairs
     {s₀ s₁ : ℝ} (hs₀ : 0 < s₀) (hs₁ : 0 < s₁)
@@ -1509,7 +1511,7 @@ theorem integral_two_modelPhi_gaussian_pairs_source_order
 
 /-- Integrating the translated center variable removes the `r t^{α₃}`
 shift from a square function; the remaining annular mass is exactly
-`‖ψ‖₁`.  This is the last scalar step in the global second-energy reduction. -/
+`‖ψ‖₁`. This is the last scalar step in the global second-energy reduction. -/
 theorem integral_shifted_square_with_conePsi
     (B : ℝ → ℝ) (s u : ℝ) :
     (∫ r : ℝ, |conePsiPhysicalReal (r + u)| *
@@ -1559,7 +1561,7 @@ theorem permutedAnisotropy_radius
   change (∑ i : Fin 3, |x (σ i)| ^ ((α.weight (σ i) : ℝ)⁻¹)) = _
   exact Equiv.sum_comp σ (fun i ↦ |x i| ^ ((α.weight i : ℝ)⁻¹))
 
-/-- The `p₂,r` scalar calculation in the source order.  Joint integrability
+/-- The `p₂,r` scalar calculation in the source order. Joint integrability
 is exactly the Fubini condition needed to exchange these two variables. -/
 theorem integral_square_shifted_with_conePsi_of_integrable
     (B : ℝ → ℝ) (s u : ℝ)
@@ -1589,7 +1591,7 @@ theorem integral_square_shifted_with_conePsi_of_integrable
       integral_shifted_square_with_conePsi B s u
 
 /-- The four scalar `φ`/Gaussian variables can be integrated while retaining
-an arbitrary innermost scalar tail.  This is the literal `p₀,p₁,y₁,y₂,r`
+an arbitrary innermost scalar tail. This is the literal `p₀,p₁,y₁,y₂,r`
 order of the reordered model energy. -/
 theorem integral_two_modelPhi_gaussian_pairs_source_order_with_tail
     {s₀ s₁ : ℝ} (hs₀ : 0 < s₀) (hs₁ : 0 < s₁)
@@ -1809,7 +1811,7 @@ theorem integral_ScratchModelEnergyOuter_eq_nested
         H ((x₁, x₂), (p₂, t)) ∂ν := by rfl
 
 /-- Joint integrability transports the global second energy to the literal
-nine scalar coordinates.  This is the exact Tonelli bridge before the
+nine scalar coordinates. This is the exact Tonelli bridge before the
 scalar mass and one-dimensional square-function reductions. -/
 theorem modelEnergyTwoOn_eq_reordered_nested
     (α : Anisotropy) (u : E3) (f : E3 → ℝ)
@@ -2122,7 +2124,7 @@ theorem reordered_scalar_energy_eq_global_L2
           rfl
 
 /-- Conditional full form of the blueprint's global second-energy identity
-for a real Schwartz input.  The hypotheses are exactly the two unresolved
+for a real Schwartz input. The hypotheses are exactly the two unresolved
 global integrability discharges: the original joint density and the scalar
 post-Tonelli `(x₁,x₂,p₂,t)` density. -/
 theorem modelEnergyTwoOn_global_eq_of_real_schwartz
@@ -2177,7 +2179,7 @@ theorem modelEnergyTwoOn_global_eq_of_real_schwartz
       reordered_scalar_energy_eq_global_L2 α u f hscalar hpr
 
 /-- The post-scalar outer density is integrable whenever the original global
-joint energy density is integrable.  Thus the only genuinely new analytic
+joint energy density is integrable. Thus the only genuinely new analytic
 condition in the terminal square-function calculation is the fixed-fiber
 translation integrability. -/
 theorem integrable_reordered_scalar_of_joint
@@ -2266,7 +2268,7 @@ theorem integrable_reordered_scalar_of_joint
             exact modelEnergy_reordered_inner_scalar_reduction
               α u f x₁ x₂ p₂ t ht
   simpa only [H, ν] using hK.congr hKH
-/-- Source-facing conditional global second-energy identity.  All Tonelli
+/-- Source-facing conditional global second-energy identity. All Tonelli
 and scalar-mass side conditions are discharged from `hjoint`; only the
 fixed-fiber translation integrability remains as an explicit analytic
 hypothesis. -/
@@ -2336,7 +2338,7 @@ theorem summable_standardMode_one_add_norm_inv :
     by_cases hz : z = 0
     · subst z
       simp
-    · rw [if_neg hz]
+    · rw [ite_eq_right hz]
       have hnorm : 0 < ‖(z : E3)‖ := by
         apply norm_pos_iff.mpr
         intro hzero
@@ -2469,7 +2471,7 @@ theorem neg_mul_deriv_conePhi_nat_scale
     _ = _ := by rw [hpow']
 
 /-- A translated square times an integrable absolute tail is integrable on
-the two-variable product space.  This is the analytic Fubini fact needed to
+the two-variable product space. This is the analytic Fubini fact needed to
 discharge the fixed `(p₂,r)` condition in the global-energy identity. -/
 theorem integrable_square_shifted_mul_abs
     (B ψ : ℝ → ℝ) (s u : ℝ)
@@ -2843,7 +2845,7 @@ theorem neg_mul_deriv_coneProduct
             ring
     _ = _ := by rw [h0, h1, h2]
 
-/-- Finite-scale telescoping for the three-cone product.  It is valid without
+/-- Finite-scale telescoping for the three-cone product. It is valid without
 excluding coordinate planes, because the smooth cone weight fills the
 removable zero identically. -/
 theorem calderon_coneProduct_interval
@@ -3951,7 +3953,7 @@ theorem integrable_reordered_scalar_of_real_schwartz
   filter_upwards [] with r
   ring
 
-/-- The literal three-cone Calderón density.  Naming it makes the passage
+/-- The literal three-cone Calderón density. Naming it makes the passage
 from a scalar identity to a complex multiplier identity explicit. -/
 noncomputable def coneProductCalderonIntegrand
     (α : Anisotropy) (ξ : E3) (t : ℝ) : ℝ :=
@@ -4276,7 +4278,7 @@ theorem integral_norm_reordered_inner_of_tail
           ring
 
 /-- The global positive-scale second-energy density of a real Schwartz input
-is jointly integrable.  This discharges the final Fubini hypothesis in the
+is jointly integrable. This discharges the final Fubini hypothesis in the
 global second-energy identity. -/
 theorem integrable_modelEnergyTwoIntegrand_global_of_real_schwartz
     (α : Anisotropy) (u : E3) (f : SchwartzMap E3 ℝ) :
@@ -4491,7 +4493,7 @@ noncomputable def activeModelScaleTruncation
     c t * (∫ x : E3, activeModelSpatialIntegrand α i u F t x)
       ∂((volume : Measure ℝ).withDensity cubeScaleDensity)
 
-/-- The literal full-scale form with arbitrary active coordinate.  This is
+/-- The literal full-scale form with arbitrary active coordinate. This is
 the integral version of the source limit once the usual model convergence
 theorem has identified the limit with the full scale integral. -/
 noncomputable def activeModelFullForm
@@ -4657,7 +4659,7 @@ theorem activeModelFullForm_permute_to_third
   exact activeModelSpatialProfile_permute_to_two α σ i u F hσ t
 
 /-- The strict real initial range holds uniformly for every choice of the
-active annular coordinate.  The hypotheses use fourth-power thresholds for
+active annular coordinate. The hypotheses use fourth-power thresholds for
 the outer and passive inputs and the second-power threshold for the active
 convolved input. -/
 theorem activeModelFullForm_bound_weight100
@@ -4761,7 +4763,7 @@ theorem exists_uniform_activeModelFullForm_bound_weight100
     prod_lpNorm_permutedModelInput σ F q] at hbound'
   simpa only [q'] using hbound'
 
-/-- The translation parameter attached to a Fourier mode.  The source uses
+/-- The translation parameter attached to a Fourier mode. The source uses
 `ν / 8`; scalar multiplication keeps the standard lattice embedding available
 to the summability package. -/
 noncomputable def standardModeTranslate (z : standardModeLattice) : E3 :=
@@ -4800,7 +4802,7 @@ theorem sourceWeight_standardModeTranslate_pow_le
     (sourceWeight_standardModeTranslate_le z) _
 
 /-- The degree-110 coefficient decay and degree-100 active-model bound are
-summable after the source mode translation `ν ↦ ν / 8`.  This is the literal
+summable after the source mode translation `ν ↦ ν / 8`. This is the literal
 lattice-summation consumer used after the cone/Fourier expansion identifies
 its individual terms. -/
 theorem summable_activeModelFullForm_modeTerms_of_decay
@@ -5488,10 +5490,10 @@ theorem localizedCutoff_eq_passiveGaussianInv
   intro j _
   by_cases hji : j = i
   · simp [hji]
-  · rw [if_neg hji]
+  · rw [ite_eq_right hji]
     rw [localConePhi_eq_one_of_conePhi_ne_zero (hphi j hji)]
     rw [one_div]
-    simp only [if_neg hji]
+    simp only [ite_eq_right hji]
 
 /-- Each coordinate outside the auxiliary box kills the localized cutoff.
 The active coordinate has the slightly smaller annular support, while a
@@ -5549,7 +5551,7 @@ theorem localizedCutoff_contDiff (i : Fin 3) :
       simpa using
         (contDiff_const : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞)
           (fun _ : E3 ↦ (1 : ℝ)))
-    · simp only [if_neg hji]
+    · simp only [ite_eq_right hji]
       exact
         (localConePhi_contDiff.comp (coordinateProjection j).contDiff).div
           (gaussian_contDiff.comp (coordinateProjection j).contDiff)
@@ -5651,7 +5653,7 @@ theorem coordinateDirection_sum_repr (v : E3) :
     (EuclideanSpace.basisFun (Fin 3) ℝ).sum_repr v
 
 /-- A coordinatewise bound for a continuous multilinear map controls its
-operator norm.  This is the finite-dimensional bridge from the blueprint's
+operator norm. This is the finite-dimensional bridge from the blueprint's
 multi-index estimates to Mathlib's Fréchet-derivative norm estimates. -/
 theorem continuousMultilinearMap_norm_le_coordinateBound
     (k : ℕ) (F : ContinuousMultilinearMap ℝ (fun _ : Fin k ↦ E3) ℂ)
@@ -5689,7 +5691,7 @@ theorem continuousMultilinearMap_norm_le_coordinateBound
       rw [norm_smul, Real.norm_eq_abs]
       have hcoeff : |∏ r : Fin k, v r (σ r)| ≤ ∏ r : Fin k, ‖v r‖ := by
         rw [Finset.abs_prod]
-        apply Finset.prod_le_prod
+        apply Finset.prod_le_prod₀
         · intro r _
           exact abs_nonneg _
         · intro r _
@@ -5707,7 +5709,7 @@ theorem continuousMultilinearMap_norm_le_coordinateBound
       ring
 
 /-- The coordinate-form multiplier hypothesis supplies an explicit full
-Fréchet-derivative norm bound after anisotropic rescaling.  The finite sum is
+Fréchet-derivative norm bound after anisotropic rescaling. The finite sum is
 deliberately retained, avoiding any hidden norm-equivalence constant. -/
 theorem dilate_iteratedFDeriv_norm_le_coordinateSum
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -5731,7 +5733,7 @@ theorem dilate_iteratedFDeriv_norm_le_coordinateSum
   exact Finset.single_le_sum (fun τ _ ↦ hterm_nonneg τ) (Finset.mem_univ σ)
 
 /-- Every point outside the fixed half-ball used by the localized cutoff has
-anisotropic radius at least `1/6`.  This deliberately crude constant is
+anisotropic radius at least `1/6`. This deliberately crude constant is
 uniform in the anisotropy. -/
 theorem radius_ge_one_sixth_of_norm_ge_half
     (α : Anisotropy) (η : E3) (hη : 1 / 2 ≤ ‖η‖) :
@@ -6000,7 +6002,7 @@ theorem exists_complexLocalizedCutoff_derivative_bound
 
 /-- For every derivative order used in the multiplier hypothesis, the
 localized symbol has a scale-uniform bound with the required linear factor
-`M`.  The constant may depend on the order and the fixed cone. -/
+`M`. The constant may depend on the order and the fixed cone. -/
 theorem exists_localizedSymbol_derivative_bound
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
     (hm : Anisotropy.IsAnisotropicMultiplier α M m)
@@ -6602,7 +6604,7 @@ theorem unitTorusLocalizedSymbol_coe_div
 /-! ## Fourier multipliers of the literal mode kernels
 
 This scratch isolates the physical-to-frequency calculation behind the
-Fourier-mode step in the cone decomposition.  In particular, the real model
+Fourier-mode step in the cone decomposition. In particular, the real model
 kernels are first complexified and then identified with translated
 convolutions, so the signs are exposed rather than absorbed into a
 coefficient. -/
@@ -6726,7 +6728,7 @@ theorem complex_ModelLowKernel_eq_convolution_translate
   congr 1
   ring_nf
 
-/-- Exact Fourier multiplier of the translated low model kernel.  At a
+/-- Exact Fourier multiplier of the translated low model kernel. At a
 negative frequency this will become the positive Fourier-series phase from
 the source mode calculation. -/
 theorem fourier_ModelLowKernel (u : ℝ) :
@@ -6807,7 +6809,7 @@ theorem complex_ModelThirdKernel_eq_convolution_translate
   funext z
   exact ofReal_convolution gaussianDeriv conePsiPhysicalReal z
 
-/-- Exact Fourier multiplier of the translated third model kernel.  The minus
+/-- Exact Fourier multiplier of the translated third model kernel. The minus
 sign is the product of the two `-I` Gaussian-derivative multipliers. -/
 theorem fourier_ModelThirdKernel (u : ℝ) :
     (𝓕 fun w : ℝ ↦ (ModelThirdKernel u w : ℂ)) =
@@ -6964,7 +6966,7 @@ theorem fourierChar_three (a b c : ℝ) :
     _ = (Real.fourierChar (a + b + c) : ℂ) := by
       simp only [Real.fourierChar.map_add_eq_mul, Circle.coe_mul]
 
-/-- The literal product multiplier for the third active coordinate.  This is
+/-- The literal product multiplier for the third active coordinate. This is
 the frequency-side model kernel at arbitrary positive coordinate scales,
 before specializing `s_j = t^{α_j}` and `u = ν / 8`. -/
 theorem fourier_ModelKernelProduct_third_neg
@@ -6992,7 +6994,7 @@ theorem fourier_ModelKernelProduct_third_neg
   ring
 
 /-- The literal three-coordinate mode product at the source translation
-`ν / 8`.  This is the exact kernel-multiplier/sign calculation needed before
+`ν / 8`. This is the exact kernel-multiplier/sign calculation needed before
 the localized-symbol Fourier coefficients are inserted. -/
 theorem fourier_ModelKernelProduct_third_standardMode_neg
     (ν : standardModeLattice) (s η : E3) (hs : ∀ j : Fin 3, 0 < s j) :
@@ -7018,7 +7020,7 @@ theorem fourier_ModelKernelProduct_third_standardMode_neg
       (standardModeTranslate ν) s η hs
 
 /-- The finite-scale third-active-coordinate kernel product, evaluated at the
-three diagonal frequencies in the literal `E9` formula.  The vector
+three diagonal frequencies in the literal `E9` formula. The vector
 `-frequencyDiagonal ζ` is precisely the source variable
 `ξ_j = -ζ^{(j)}_j`; consequently the Fourier transforms on the left are
 evaluated at the three input-frequency coordinates themselves. -/
@@ -7048,7 +7050,7 @@ theorem fourier_ModelKernelProduct_third_standardMode_frequencyDiagonal
     ν s (-frequencyDiagonal ζ) hs
 
 /-- The source anisotropic vector of positive one-dimensional model scales at
-time `t`.  It records the three factors `t^{α_j}` without choosing a
+time `t`. It records the three factors `t^{α_j}` without choosing a
 coordinate-dependent notation outside the ambient Euclidean carrier. -/
 noncomputable def modelScaleVector (α : Anisotropy) (t : ℝ) : E3 :=
   WithLp.toLp 2 fun j ↦ t ^ α.weight j
@@ -7059,7 +7061,7 @@ noncomputable def modelScaleVector (α : Anisotropy) (t : ℝ) : E3 :=
   simp [modelScaleVector]
 
 /-- The literal source finite-scale, third-active-coordinate Fourier
-multiplier at an `E9` frequency point.  This is the exact pointwise kernel
+multiplier at an `E9` frequency point. This is the exact pointwise kernel
 calculation used after inserting a Fourier mode into the `t`-scale integrand
 of the frequency representation; its sole sign is the active derivative
 multiplier. -/
@@ -7112,7 +7114,7 @@ noncomputable def thirdModeKernelFourierProduct
         (t ^ α.weight 2) w : ℝ) : ℂ)) (frequencyDiagonal ζ 2)
 
 /-- The positive cone-cutoff multiplier carried by one Fourier mode in the
-third active coordinate.  Its argument is the source diagonal variable
+third active coordinate. Its argument is the source diagonal variable
 `ξ=-frequencyDiagonal ζ`, and the leading negative sign from the physical
 third kernel is deliberately absent: it is absorbed by the model coefficient
 in the source proof. -/
@@ -7131,7 +7133,7 @@ noncomputable def thirdModeFrequencySymbol
 
 /-- At an `E9` frequency point, the product of the literal third-active
 spatial kernel multipliers is the negative of the corresponding localized
-Fourier-mode symbol.  This is the exact sign bridge used in
+Fourier-mode symbol. This is the exact sign bridge used in
 `thm:cone`, lines 2998--3015. -/
 theorem thirdModeKernelFourierProduct_eq_neg_frequencySymbol
     (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ht : 0 < t)
@@ -7145,7 +7147,7 @@ theorem thirdModeKernelFourierProduct_eq_neg_frequencySymbol
   ring
 
 /-- The finite-scale `E9` frequency integral associated with one third-active
-Fourier mode.  This is intentionally expressed through the existing
+Fourier mode. This is intentionally expressed through the existing
 `frequencyForm`, so its relationship with `multiplierForm` is available once
 the localized symbol's multiplier hypotheses are supplied. -/
 noncomputable def thirdModeFrequencyForm
@@ -7156,7 +7158,7 @@ noncomputable def thirdModeFrequencyForm
 
 /-- The `E9` frequency form of one finite-scale third-active mode equals the
 frequency integral obtained by placing the literal spatial kernel product
-beside the four-input frequency kernel.  This is an exact pointwise-to-
+beside the four-input frequency kernel. This is an exact pointwise-to-
 integral bridge; no Fubini interchange is hidden in the statement. -/
 theorem thirdModeFrequencyForm_eq_kernelProductIntegral
     (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ht : 0 < t)
@@ -7173,7 +7175,7 @@ theorem thirdModeFrequencyForm_eq_kernelProductIntegral
     α ν t ht ζ]
   ring
 
-/-- Conditional `multiplierForm` version of the finite-scale bridge.  The
+/-- Conditional `multiplierForm` version of the finite-scale bridge. The
 only remaining analytic premise is the already standard multiplier condition
 for the compact localized mode symbol; under it, the existing
 `multiplierForm_eq_frequencyForm` theorem turns the literal multiplier form
@@ -7232,7 +7234,7 @@ theorem frequencyPhase_neg_coordinate_expand
 
 /-- Integrating a product of three one-dimensional kernels against the
 negative translated-product phase gives the product of their scalar Fourier
-multipliers at the three diagonal frequency coordinates.  This is the kernel
+multipliers at the three diagonal frequency coordinates. This is the kernel
 half of the spatial/Fourier Fubini bridge, with no integrability side
 condition because all integrals use Lean's totalized convention. -/
 theorem threeKernel_phaseIntegral_eq_fourierProduct
@@ -7323,7 +7325,7 @@ theorem threeKernel_phaseIntegral_eq_fourierProduct
             rw [hC]
 
 /-- Products of three integrable one-dimensional kernels are integrable on
-the `E3` kernel-variable space.  The coordinate transport is explicit so
+the `E3` kernel-variable space. The coordinate transport is explicit so
 that this can be reused in the subsequent Fubini step. -/
 theorem threeKernel_integrable
     (k₀ k₁ k₂ : ℝ → ℂ)
@@ -7367,9 +7369,9 @@ theorem jointKernelFrequency_integrable
       ((k₀ (r 0) * k₁ (r 1)) * k₂ (r 2) *
         frequencyPhase (frequencyDiagonal ζ) (-r)) *
           frequencyKernel f₀ f₁ f₂ f₃ ζ)) := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   let K : E3 → ℂ := fun r ↦ (k₀ (r 0) * k₁ (r 1)) * k₂ (r 2)
   let H : Frequency9 → ℂ := frequencyKernel f₀ f₁ f₂ f₃
@@ -7395,7 +7397,7 @@ theorem jointKernelFrequency_integrable
   ring
 
 /-- The exact Fubini interface between a joint spatial kernel integral and
-the source `E9` frequency integral.  The sole analytic hypothesis is stated
+the source `E9` frequency integral. The sole analytic hypothesis is stated
 at the one place where Fubini is used; the phase/product calculation itself
 is supplied by `threeKernel_phaseIntegral_eq_fourierProduct`.
 
@@ -7460,7 +7462,7 @@ theorem jointKernelIntegral_eq_frequencyKernelIntegral
         threeKernel_phaseIntegral_eq_fourierProduct]
 
 /-- The joint spatial kernel integral and the source frequency integral agree
-for any three integrable one-dimensional complex kernels.  This packages the
+for any three integrable one-dimensional complex kernels. This packages the
 fully justified Fubini step, so later model-kernel specializations only need
 to provide their scalar integrability. -/
 theorem jointKernelIntegral_eq_frequencyKernelIntegral_of_integrable
@@ -7480,7 +7482,7 @@ theorem jointKernelIntegral_eq_frequencyKernelIntegral_of_integrable
     f₀ f₁ f₂ f₃ k₀ k₁ k₂ hk₀ hk₁ hk₂
 
 /-- Opening the three independent coordinate kernel integrals is exactly an
-integral over the Euclidean kernel-vector `r : E3`.  This is a pointwise
+integral over the Euclidean kernel-vector `r : E3`. This is a pointwise
 product-measure identity and therefore needs no convergence assumption. -/
 theorem threeCoordinateKernelIntegral_eq_productIntegrals
     (f₁ f₂ f₃ : E3 → ℂ) (k₀ k₁ k₂ : ℝ → ℂ) (x : E3) :
@@ -7551,7 +7553,7 @@ theorem threeCoordinateKernelIntegral_eq_productIntegrals
 
 /-- Subject only to the displayed joint-integrability hypothesis, the literal
 three-coordinate spatial convolution integral is the joint kernel integral
-against `twistedProduct`.  This is the spatial half of the model/Fourier
+against `twistedProduct`. This is the spatial half of the model/Fourier
 bridge; the previous theorem supplies the product-measure opening of the
 three coordinate convolutions. -/
 theorem threeCoordinateSpatialIntegral_eq_jointKernelIntegral
@@ -7601,7 +7603,7 @@ theorem threeCoordinateSpatialIntegral_eq_jointKernelIntegral
       ring
 
 /-- The spatial joint integrand is integrable for Schwartz inputs and three
-integrable scalar kernels.  The proof uses one integrable Schwartz factor,
+integrable scalar kernels. The proof uses one integrable Schwartz factor,
 the integrable kernel triple, and uniform bounds for the other three
 Schwartz factors. -/
 theorem threeCoordinateSpatialJoint_integrable
@@ -7649,7 +7651,7 @@ theorem threeCoordinateSpatialJoint_integrable
   ring
 
 /-- Fully justified spatial-to-frequency bridge for three coordinate
-convolutions with integrable scalar kernels.  The left side is the literal
+convolutions with integrable scalar kernels. The left side is the literal
 fixed-scale spatial model pattern; the right side is precisely the source
 `E9` frequency kernel with the three scalar Fourier multipliers inserted. -/
 theorem threeCoordinateSpatialIntegral_eq_frequencyKernelIntegral
@@ -7723,7 +7725,7 @@ theorem integrable_complexDilatedModelThirdKernel
 
 /-- At a fixed positive scale, the literal complex source spatial profile is
 exactly the `E9` frequency integral carrying the three actual scalar Fourier
-kernel multipliers.  This is the spatial/Fubini interface needed before the
+kernel multipliers. This is the spatial/Fubini interface needed before the
 mode multiplier identities substitute their explicit cone symbols. -/
 theorem LiteralModelSpatialProfile_eq_frequencyKernelIntegral
     (α : Anisotropy) (u : E3) (F : ModelComplexSchwartzInput)
@@ -7809,7 +7811,7 @@ theorem literalModelScaleKernelSymbol_neg_frequencyDiagonal
   simp only [PiLp.neg_apply, neg_neg]
 
 /-- Fixed-scale literal spatial profile as the project's existing
-`frequencyForm`.  This eliminates the remaining notational gap between the
+`frequencyForm`. This eliminates the remaining notational gap between the
 literal convolution formula and the source's `E9` multiplier representation. -/
 theorem LiteralModelSpatialProfile_eq_frequencyForm
     (α : Anisotropy) (u : E3) (F : ModelComplexSchwartzInput)
@@ -7849,7 +7851,7 @@ theorem LiteralModelSpatialProfile_eq_frequencyForm
       rw [literalModelScaleKernelSymbol_neg_frequencyDiagonal]
 
 /-- Conditional `multiplierForm` version of the fixed-scale literal spatial
-identity.  The only external premise is the standard anisotropic-multiplier
+identity. The only external premise is the standard anisotropic-multiplier
 certificate for the compact fixed-scale kernel symbol. -/
 theorem LiteralModelSpatialProfile_eq_multiplierForm
     (α : Anisotropy) (M : ℝ) (u : E3) (F : ModelComplexSchwartzInput)
@@ -8074,7 +8076,7 @@ theorem frequencyForm_neg
 
 /-- For the source translation `ν / 8`, the literal spatial kernel symbol
 is the negative of the positive localized third-coordinate Fourier-mode
-symbol.  The one physical minus sign comes from the third kernel. -/
+symbol. The one physical minus sign comes from the third kernel. -/
 theorem literalModelScaleKernelSymbol_standardMode_eq_neg_thirdModeFrequencySymbol
     (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ht : 0 < t) :
     literalModelScaleKernelSymbol α (standardModeTranslate ν) t =
@@ -8143,7 +8145,7 @@ theorem thirdModeFrequencyForm_eq_neg_LiteralActiveModelSpatialProfile_permuted
       simp
 
 /-- One localized positive Fourier mode with coefficient `a` is exactly the
-literal third-active spatial mode with coefficient `-a`.  This is the sign
+literal third-active spatial mode with coefficient `-a`. This is the sign
 absorption in the coefficient `c_{i,ν}` of the source proof. -/
 theorem thirdModeFrequencyMode_eq_LiteralActiveSpatialMode
     (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ht : 0 < t)
@@ -8163,7 +8165,7 @@ noncomputable def thirdModeFrequencyFullForm
     ∂((volume : Measure ℝ).withDensity cubeScaleDensity)
 
 /-- A complete localized positive Fourier mode is exactly a literal
-third-active model form with the negated coefficient.  Thus the source
+third-active model form with the negated coefficient. Thus the source
 coefficient `c_{i,ν}` is obtained from a Fourier coefficient by precisely
 this sign change (and its stated positive normalization). -/
 theorem thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm
@@ -8180,7 +8182,7 @@ theorem thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm
   simpa only [Pi.neg_apply] using
     thirdModeFrequencyMode_eq_LiteralActiveSpatialMode α ν t ht (a t) F
 
-/-- The scale-integrated one-mode bridge in any active coordinate.  The mode
+/-- The scale-integrated one-mode bridge in any active coordinate. The mode
 is written in the permuted coordinates in which that active coordinate is
 the third coordinate. -/
 theorem thirdModeFrequencyFullForm_eq_LiteralActiveModelFullForm_permuted
@@ -8289,7 +8291,6 @@ theorem thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm_permuted
 This package is the source-facing bridge from the periodized localized symbol
 to its literal compact raw cube, followed by coordinatewise Fourier decay.
 The internal one-dimensional estimate is stated first. -/
-
 theorem scratch_fourierCoeffOn_of_hasDerivAt_zeroBoundary
     {a b : ℝ} (hab : a < b) {f f' : ℝ → ℂ} {n : ℤ} (hn : n ≠ 0)
     (hf : ∀ x ∈ Set.uIcc a b, HasDerivAt f (f' x) x)
@@ -8319,7 +8320,7 @@ theorem scratch_norm_fourierCoeffOn_le_of_norm_le
     (hf : ∀ x ∈ Set.uIoc a b, ‖f x‖ ≤ C) :
     ‖fourierCoeffOn hab f n‖ ≤ C := by
   have hperiod : Fact (0 < b - a) := ⟨by linarith⟩
-  letI : Fact (0 < b - a) := hperiod
+  let : Fact (0 < b - a) := hperiod
   rw [fourierCoeffOn_eq_integral]
   have hint : ‖∫ x in a..b,
       fourier (-n) (x : AddCircle (b - a)) • f x‖ ≤ C * |b - a| := by
@@ -8525,7 +8526,7 @@ theorem scratch_iteratedDeriv_eq_zero_on_open
   | succ n hn =>
       intro x hx
       rw [iteratedDeriv_succ]
-      apply deriv_zero_of_frequently_const
+      apply deriv_zero_of_frequently_const (c := 0)
       have hmem : ∀ᶠ y in 𝓝 x, y ∈ U := hU.mem_nhds hx
       have hmem' : ∀ᶠ y in 𝓝[≠] x, y ∈ U :=
         hmem.filter_mono nhdsWithin_le_nhds
@@ -9160,7 +9161,7 @@ theorem exists_mFourierCoeff_unitTorusLocalizedSymbol_first_fourth_decay
     α M m hm i ht
 
 /-- Repeated one-dimensional integration by parts, stated at arbitrary finite
-order.  The endpoint equalities are deliberately explicit so compact support
+order. The endpoint equalities are deliberately explicit so compact support
 of a torus representative can supply them without an unproved periodicity
 shortcut. -/
 theorem scratch_norm_fourierCoeffOn_le_of_iteratedDeriv_bound
@@ -10156,7 +10157,7 @@ theorem scratch_LiteralActiveModelFullForm_norm_le_of_coefficient_bound
     exact mul_le_mul_of_nonneg_left (hunit d hdmeas hdunit) hB
 
 /-- The strict active-model estimate accepts a Fourier coefficient with an
-arbitrary explicit scalar envelope.  The coefficient is normalized before
+arbitrary explicit scalar envelope. The coefficient is normalized before
 using the unit-coefficient model estimate, so no untracked mode factor is
 absorbed into its constant. -/
 theorem scratch_exists_uniform_thirdModeFrequencyFullForm_bound_of_coefficient_bound
@@ -10187,7 +10188,7 @@ theorem scratch_exists_uniform_thirdModeFrequencyFullForm_bound_of_coefficient_b
 
 /-- Degree-110 Fourier coefficient decay is summable after the degree-100
 strict active-model growth, already at the literal complex frequency-mode
-level.  This is the one-cone version of the final mode summation. -/
+level. This is the one-cone version of the final mode summation. -/
 theorem scratch_summable_thirdModeFrequencyFullForm_of_decay
     (α : Anisotropy) (q : Fin 4 → ℝ)
     (hq : ∀ j : Fin 4, 0 < q j)
@@ -10250,7 +10251,7 @@ theorem scratch_summable_thirdModeFrequencyFullForm_of_decay
     _ = (A * D) * (sourceWeight (ν : E3))⁻¹ ^ (10 : ℕ) := by rfl
 
 /-- The source Fourier-mode index embedded in the lattice used by the spatial
-model package.  Its coercion is the coordinatewise real cast. -/
+model package. Its coercion is the coordinatewise real cast. -/
 noncomputable def scratch_standardModeOfInt (ν : Fin 3 → ℤ) :
     standardModeLattice :=
   ⟨WithLp.toLp 2 (fun j ↦ (ν j : ℝ)), by
@@ -10287,7 +10288,7 @@ theorem scratch_standardModeOfInt_injective :
   exact_mod_cast hcoord'
 
 /-- The localized-symbol derivative constant can be chosen before the positive
-scale.  This is the quantifier order required by the Fourier coefficient
+scale. This is the quantifier order required by the Fourier coefficient
 family in the cone expansion. -/
 theorem scratch_exists_uniform_localizedSymbol_derivative_bound
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -10643,7 +10644,7 @@ theorem scratch_frequencyFactor110_le_sourceWeight_decay
       rw [mul_pow]
 
 /-- Combine a largest-coordinate degree-110 coefficient estimate with the
-common source-weight decay.  The constant `D` may dominate the coordinate
+common source-weight decay. The constant `D` may dominate the coordinate
 constant `C`. -/
 theorem scratch_le_sourceWeight_decay_of_coordinate_bound
     {X a W C D M : ℝ}
@@ -10667,7 +10668,7 @@ theorem scratch_le_sourceWeight_decay_of_coordinate_bound
         W⁻¹ ^ (110 : ℕ) := by ring
 
 /-- The actual localized torus Fourier coefficients have a scale-uniform
-degree-110 source-weight envelope.  The literal integer mode is embedded in
+degree-110 source-weight envelope. The literal integer mode is embedded in
 the spatial model lattice only in the displayed weight, keeping the Fourier
 index and the source `ν/8` convention explicit. -/
 theorem scratch_exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_sourceWeight_110_decay
@@ -10861,7 +10862,7 @@ theorem scratch_summable_mFourierCoeff_unitTorusLocalizedSymbol
     (mul_le_mul_of_nonneg_left htail (mul_nonneg hA hm.nonneg))
 
 /-- Conditional strict-range summability of the literal third-mode full forms
-with the actual torus Fourier coefficients.  The only additional hypothesis is
+with the actual torus Fourier coefficients. The only additional hypothesis is
 measurability in the scale variable; coefficients are extended by zero off the
 positive scale half-line, which leaves the source form unchanged. -/
 theorem scratch_summable_thirdModeFrequencyFullForm_of_torusCoefficient
@@ -10917,7 +10918,7 @@ theorem scratch_summable_thirdModeFrequencyFullForm_of_torusCoefficient
   have hBpoint : ∀ t : ℝ, ‖a t‖ ≤ B := by
     intro t
     by_cases ht : 0 < t
-    · simpa only [a, if_pos ht] using hcoeff t ht ν
+    · simpa only [a, ite_eq_left ht] using hcoeff t ht ν
     · rw [show a t = 0 by simp [a, ht], norm_zero]
       exact hB
   have hraw := hmode z B a F hB hameas hBpoint
@@ -10953,7 +10954,6 @@ This scratch file isolates the joint scale--frequency measurability needed to
 remove the scale-measurability hypothesis from the Fourier-mode summability
 consumer.
 -/
-
 theorem scratch_measurable_dilate_inv_joint (α : Anisotropy) :
     Measurable (fun p : ℝ × E3 ↦ α.dilate p.1⁻¹ p.2) := by
   unfold Anisotropy.dilate
@@ -10994,7 +10994,7 @@ theorem scratch_measurable_rawUnitFourierIntegrand_joint
     change Measurable (WithLp.toLp 2 ∘ fun p : ℝ × (Fin 3 → ℝ) ↦
       ![8 * p.2 0, 8 * p.2 1, 8 * p.2 2])
     apply (PiLp.continuous_toLp 2 fun _ : Fin 3 ↦ ℝ).measurable.comp
-    apply measurable_pi_lambda
+    apply Measurable.of_eval
     intro j
     fin_cases j <;> fun_prop
   have hraw : Measurable (fun p : ℝ × (Fin 3 → ℝ) ↦
@@ -11657,7 +11657,7 @@ theorem hasSum_thirdModeFrequencyForms_eq_thirdConeFrequencyForm
   exact hFubini
 
 /-- The fixed-scale third-cone Fourier series may be interchanged with the
-`Frequency9` integral without any extra analytic premise.  Domination is the
+`Frequency9` integral without any extra analytic premise. Domination is the
 product of summable torus coefficients, a uniform mode envelope, and the
 integrable Schwartz frequency kernel. -/
 theorem hasSum_thirdModeFrequencyForms_eq_thirdConeFrequencyForm_of_multiplier
@@ -11670,9 +11670,9 @@ theorem hasSum_thirdModeFrequencyForms_eq_thirdConeFrequencyForm_of_multiplier
       (frequencyForm (thirdConeFrequencySymbol α m t)
         (F 0) (F 1) (F 2) (F 3)) := by
   rcases exists_bound_thirdModeFrequencySymbol with ⟨B, hB, hBbound⟩
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   let a : (Fin 3 → ℤ) → ℂ := fun ν ↦
     UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν
@@ -11842,7 +11842,7 @@ theorem continuous_thirdConeScaleMajorant_joint
       ((continuous_gaussianDeriv.comp (harg 2)).pow 2))
 
 /-- On every positive finite scale interval, the third cone has the exact
-uniform scalar majorant needed for the mode/Fourier interchange.  It is the
+uniform scalar majorant needed for the mode/Fourier interchange. It is the
 one-coordinate Calderón identity times two passive cutoff bounds. -/
 theorem integral_thirdConeScaleEnvelope_Ioc_le
     (α : Anisotropy) (ξ : E3) (a b : ℝ)
@@ -12054,7 +12054,7 @@ theorem exists_small_scale_zero_thirdConeScaleMajorant
   ring
 
 /-- The positive third-cone scalar envelope is integrable on all source
-scales as soon as its active frequency is nonzero.  The proof uses its
+scales as soon as its active frequency is nonzero. The proof uses its
 small-scale annular vanishing and the finite-scale Calderón bound. -/
 theorem integrableOn_thirdConeScaleEnvelope_Ioi
     (α : Anisotropy) (ξ : E3) (hξ : ξ 2 ≠ 0) :
@@ -12138,7 +12138,7 @@ theorem integrableOn_thirdConeScaleEnvelope_Ioi
     (cPsi ^ 3 / (α.weight 2 : ℝ)) 0 hfinite hbTendsto
     (Filter.Eventually.of_forall hbound)
 
-/-- A source-scale exhaustion principle.  A continuous nonnegative density
+/-- A source-scale exhaustion principle. A continuous nonnegative density
 that vanishes below one positive scale and has a uniform finite-interval
 bound is integrable on all positive scales, with the same global bound. -/
 theorem integrableOn_and_integral_Ioi_of_small_zero_Ioc_bound
@@ -12270,13 +12270,13 @@ theorem integrableOn_and_integral_thirdConeScaleMajorant_Ioi_all
     rw [hfun]
     constructor
     · exact integrableOn_zero
-    · simp
+    · simp only [Pi.zero_apply, integral_zero, Fin.isValue]
       exact div_nonneg (pow_nonneg cPsi_pos.le _)
         (Nat.cast_nonneg _)
   · exact integrableOn_and_integral_thirdConeScaleMajorant_Ioi α ξ hξ
 
 /-- The degree-110 coefficient estimate has a scale-uniform absolutely
-summable norm envelope.  The displayed constant is independent of the scale
+summable norm envelope. The displayed constant is independent of the scale
 and is the coefficient factor in the joint Fubini majorant. -/
 theorem exists_uniform_tsum_norm_mFourierCoeff
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -12503,7 +12503,7 @@ theorem measurable_thirdModeFrequencyJointIntegrand
   exact (hcoeff.mul hsymbol).mul hkernel
 
 /-- Uniform pointwise domination of the entire Fourier-mode family by the
-integrable active scale majorant.  This is the exact coefficient-sum input
+integrable active scale majorant. This is the exact coefficient-sum input
 for the remaining joint scale/frequency Fubini step. -/
 theorem exists_uniform_tsum_norm_coefficient_mul_thirdModeFrequencySymbol
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -12556,7 +12556,7 @@ theorem exists_uniform_tsum_norm_coefficient_mul_thirdModeFrequencySymbol
     _ = B * thirdConeScaleMajorant α ξ t := by rfl
 
 /-- The post-summation cone majorant times the Schwartz frequency kernel is
-integrable jointly in positive scale and the nine frequency variables.  The
+integrable jointly in positive scale and the nine frequency variables. The
 proof uses Fubini in the scale variable and the uniform Calderón mass bound. -/
 theorem integrable_thirdConeScaleMajorant_times_frequencyKernel
     (α : Anisotropy) (F : ModelComplexSchwartzInput) :
@@ -12572,9 +12572,9 @@ theorem integrable_thirdConeScaleMajorant_times_frequencyKernel
     thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1
   let H : ℝ × Frequency9 → ℝ := fun p ↦ D p * ‖K p.2‖
   let C : ℝ := cPsi ^ 3 / (α.weight 2 : ℝ)
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   have hC : 0 ≤ C := by
     dsimp [C]
@@ -12642,7 +12642,7 @@ theorem integrable_thirdConeScaleMajorant_times_frequencyKernel
     ⟨Filter.Eventually.of_forall hHsection, hJ⟩
 
 /-- The literal joint scale--frequency integrals of the individual Fourier
-modes have summable norms.  This is the precise Fubini hypothesis required
+modes have summable norms. This is the precise Fubini hypothesis required
 to exchange the mode series with both scale and frequency integration. -/
 theorem summable_integral_norm_thirdModeFrequencyJointIntegrand
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -12697,7 +12697,7 @@ theorem summable_integral_norm_thirdModeFrequencyJointIntegrand
         norm_thirdModeFrequencySymbol_le_scaleMajorant α ν p.1
           (-frequencyDiagonal p.2)
       unfold thirdModeFrequencyJointIntegrand
-      rw [if_pos ht, norm_mul, norm_mul]
+      rw [ite_eq_left ht, norm_mul, norm_mul]
       calc
         ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν‖ *
             ‖thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
@@ -12712,7 +12712,7 @@ theorem summable_integral_norm_thirdModeFrequencyJointIntegrand
           dsimp [H]
           ring
     · unfold thirdModeFrequencyJointIntegrand
-      rw [if_neg ht]
+      rw [ite_eq_right ht]
       simp only [zero_mul, norm_zero]
       exact mul_nonneg (hg_nonneg ν) (hHnonneg p)
   have hGint (ν : Fin 3 → ℤ) :
@@ -12780,7 +12780,7 @@ theorem integrable_thirdModeFrequencyJointIntegrand
       norm_thirdModeFrequencySymbol_le_scaleMajorant α ν p.1
         (-frequencyDiagonal p.2)
     unfold thirdModeFrequencyJointIntegrand
-    rw [if_pos ht, norm_mul, norm_mul]
+    rw [ite_eq_left ht, norm_mul, norm_mul]
     calc
       ‖UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 p.1) ν‖ *
           ‖thirdModeFrequencySymbol α (standardModeOfInt ν) p.1
@@ -12794,14 +12794,14 @@ theorem integrable_thirdModeFrequencyJointIntegrand
         dsimp [H]
         ring
   · unfold thirdModeFrequencyJointIntegrand
-    rw [if_neg ht]
+    rw [ite_eq_right ht]
     simp only [zero_mul, norm_zero]
     exact mul_nonneg hg
       (mul_nonneg
         (thirdConeScaleMajorant_nonneg α (-frequencyDiagonal p.2) p.1)
         (norm_nonneg _))
 
-/-- Fubini for the fully literal joint third-cone Fourier modes.  The theorem
+/-- Fubini for the fully literal joint third-cone Fourier modes. The theorem
 does not yet identify the pointwise sum with the cone integrand; that exact
 identification is supplied by the following reconstruction bridge. -/
 theorem hasSum_integral_thirdModeFrequencyJointIntegrand
@@ -12872,10 +12872,10 @@ theorem integral_thirdModeFrequencyJointIntegrand_eq_fullForm
           apply integral_congr_ae
           filter_upwards [] with ζ
           unfold thirdModeFrequencyJointIntegrand
-          simp only [if_pos htpos]
+          simp only [ite_eq_left htpos]
           ring,
       integral_const_mul]
-    rw [if_pos htpos]
+    rw [ite_eq_left htpos]
     unfold thirdModeFrequencyForm frequencyForm
     rfl
   exact hinner
@@ -12908,10 +12908,10 @@ theorem hasSum_thirdModeFrequencyJointIntegrand
         (thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2)) := by
       simpa only [thirdConeFrequencySymbol] using hmode
     simpa only [thirdModeFrequencyJointIntegrand,
-      thirdConeFrequencyJointIntegrand, if_pos ht] using
+      thirdConeFrequencyJointIntegrand, ite_eq_left ht] using
       hmode'.mul_right (frequencyKernel (F 0) (F 1) (F 2) (F 3) p.2)
   · simp only [thirdModeFrequencyJointIntegrand,
-      thirdConeFrequencyJointIntegrand, if_neg ht, zero_mul]
+      thirdConeFrequencyJointIntegrand, ite_eq_right ht, zero_mul]
     exact hasSum_zero
 
 /-- Joint scale--frequency Fubini plus pointwise Fourier reconstruction gives
@@ -12941,7 +12941,7 @@ theorem hasSum_integral_thirdModeFrequencyJointIntegrand_eq_thirdCone
   exact hFubini
 
 /-- The exact all-scale third-cone reconstruction in the existing
-`thirdModeFrequencyFullForm` interface.  This is the direct bridge from the
+`thirdModeFrequencyFullForm` interface. This is the direct bridge from the
 summable model forms to the literal localized cone integral. -/
 theorem hasSum_thirdModeFrequencyFullForms_eq_thirdConeJointIntegral
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -13032,7 +13032,7 @@ theorem norm_thirdConeFrequencySymbol_le_scaleMajorant
           gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2)) := by ring
 
 /-- Measurability of the literal reconstructed third-cone scale--frequency
-integrand.  Unlike the mode integrands, this uses only measurability of the
+integrand. Unlike the mode integrands, this uses only measurability of the
 original multiplier and continuity of the fixed cutoff factors. -/
 theorem measurable_thirdConeFrequencyJointIntegrand
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -13107,7 +13107,7 @@ theorem integrable_thirdConeFrequencyJointIntegrand
   filter_upwards [] with p
   by_cases ht : 0 < p.1
   · unfold thirdConeFrequencyJointIntegrand
-    rw [if_pos ht, norm_mul]
+    rw [ite_eq_left ht, norm_mul]
     calc
       ‖thirdConeFrequencySymbol α m p.1 (-frequencyDiagonal p.2)‖ * ‖K p.2‖ ≤
           (M * thirdConeScaleMajorant α (-frequencyDiagonal p.2) p.1) *
@@ -13121,7 +13121,7 @@ theorem integrable_thirdConeFrequencyJointIntegrand
         dsimp [H]
         ring
   · unfold thirdConeFrequencyJointIntegrand
-    rw [if_neg ht]
+    rw [ite_eq_right ht]
     simp only [zero_mul, norm_zero]
     exact mul_nonneg hm.nonneg (norm_nonneg _)
 
@@ -13166,7 +13166,7 @@ theorem thirdConeJointIntegral_eq_frequencyFullForm
         (F 0) (F 1) (F 2) (F 3)
   have htpos : 0 < t := ht
   unfold thirdConeFrequencyJointIntegrand frequencyForm
-  simp only [if_pos htpos]
+  simp only [ite_eq_left htpos]
 
 /-- Full all-scale reconstruction of the third localized cone as the
 absolutely summable series of literal Fourier-mode full forms. -/
@@ -13184,7 +13184,7 @@ theorem hasSum_thirdModeFrequencyFullForms_eq_thirdConeFrequencyFullForm
     α M m hm F
 
 /-- The same literal third cone written in the source's physical
-`multiplierForm` notation.  This definition is deliberately separate from
+`multiplierForm` notation. This definition is deliberately separate from
 the Fourier-side one: identifying them requires a multiplier certificate for
 the scale-dependent cone symbol. -/
 noncomputable def thirdConeMultiplierFullForm
@@ -13196,7 +13196,7 @@ noncomputable def thirdConeMultiplierFullForm
     ∂((volume : Measure ℝ).withDensity cubeScaleDensity)
 
 /-- Conditional source-facing conversion of the reconstructed cone from its
-frequency representation to `multiplierForm`.  The displayed hypothesis is
+frequency representation to `multiplierForm`. The displayed hypothesis is
 the exact missing infrastructure: a uniform anisotropic multiplier
 certificate for the scale-dependent cone symbol at every positive scale. -/
 theorem thirdConeFrequencyFullForm_eq_multiplierFullForm
@@ -13217,7 +13217,7 @@ theorem thirdConeFrequencyFullForm_eq_multiplierFullForm
 /-! ## The exponent simplex
 
 Source: `lem:exponent_simplex` and `eq:extended_region`, `eq:capped_sum`,
-`eq:weights`.  The extended exponent region is exhausted by open tetrahedra
+`eq:weights`. The extended exponent region is exhausted by open tetrahedra
 whose vertices are a base point `b` and the three shifted points `b + b₀ eₘ`;
 this lemma produces such a base point together with the convex weights.
 -/
@@ -13237,10 +13237,10 @@ theorem three_quarters_lt_cappedSum
       rcases le_total β₃ (1 / 2 : ℝ) with h₃ | h₃ <;>
         simp only [min_eq_left, min_eq_right, h₁, h₂, h₃] <;> linarith
 
-/-- **Exponent simplex, base point.**  On the extended region
+/-- **Exponent simplex, base point.** On the extended region
 `eq:extended_region` there is a base point `b = (b₁, b₂, b₃)` strictly below
 `(β₁, β₂, β₃)` and strictly inside the constraint box, whose coordinate sum
-lies in `(3/4, 1)`.  Writing `b₀ = 1 - (b₁ + b₂ + b₃)` one gets
+lies in `(3/4, 1)`. Writing `b₀ = 1 - (b₁ + b₂ + b₃)` one gets
 `0 < β₀ < b₀ < 1/4` and `b₃ > 1/4`. -/
 theorem exists_exponentSimplex_base
     {β₀ β₁ β₂ β₃ : ℝ}
@@ -13296,7 +13296,7 @@ theorem exists_exponentSimplex_base
     by linarith, by linarith, by linarith, by linarith, by linarith,
     by linarith, by linarith, by linarith, by linarith, by linarith, by linarith⟩
 
-/-- **Exponent simplex, weights.**  The weights `eq:weights` attached to a base
+/-- **Exponent simplex, weights.** The weights `eq:weights` attached to a base
 point are positive, sum to one, and exhibit `(β₁, β₂, β₃)` as the corresponding
 convex combination of `b` and `b + b₀ eₘ`; the output reciprocal matches. -/
 theorem exponentSimplex_weights
@@ -13330,7 +13330,7 @@ theorem exponentSimplex_weights
   · linear_combination hsum1 - hϑ₀b
 
 
-/-- **`eq:extended_region` from the hypotheses of `thm:main`.**  The five
+/-- **`eq:extended_region` from the hypotheses of `thm:main`.** The five
 constraints follow from `beta_0 < 1/4` together with each of the other three
 reciprocals exceeding `1/4`. -/
 theorem extendedRegion_of_main_bounds {β₀ β₁ β₂ β₃ : ℝ}
@@ -13424,7 +13424,7 @@ theorem lintegral_triple_prod_mul
     _ = (∫⁻ x, f x ∂μ) * ((∫⁻ y, g y ∂ν) * ∫⁻ z, h z ∂ρ) := by
         rw [lintegral_prod_mul hg hh]
 
-/-- **The frequency majorant.**  A uniformly bounded zeroth factor against
+/-- **The frequency majorant.** A uniformly bounded zeroth factor against
 three separated factors integrates to the product of the bound and the three
 individual integrals. -/
 theorem lintegral_bounded_triple_prod_le
@@ -13464,13 +13464,13 @@ theorem lintegral_bounded_triple_prod_le
 
 /-! ## The anisotropic scale substitution
 
-Source: `thm:cone`, absolute-convergence paragraph.  The scale integral is
+Source: `thm:cone`, absolute-convergence paragraph. The scale integral is
 taken against `dt/t`, which is invariant up to the factor `1/alpha` under the
-anisotropic substitution `s = t^alpha`.  That factor is the `1/alpha_i` in the
+anisotropic substitution `s = t^alpha`. That factor is the `1/alpha_i` in the
 bound `c_Psi^3 / alpha_i`.
 -/
 
-/-- **The log-scale measure under an anisotropic substitution.**  Replacing the
+/-- **The log-scale measure under an anisotropic substitution.** Replacing the
 scale variable by `t^a` rescales the logarithmic scale integral by `1/a`. -/
 theorem integral_logScale_comp_rpow (F : ℝ → ℝ) {a : ℝ} (ha : 0 < a) :
     (∫ x in Ioi (0 : ℝ), F (x ^ a) / x)
@@ -13497,14 +13497,14 @@ theorem integral_logScale_comp_rpow (F : ℝ → ℝ) {a : ℝ} (ha : 0 < a) :
 
 /-! ## Dilation invariance of the logarithmic scale integral
 
-Source: `thm:cone`.  The scale integral is taken against `dt/t`, which is
+Source: `thm:cone`. The scale integral is taken against `dt/t`, which is
 invariant under dilation of the scale variable; this is what makes the active
 coordinate's factor independent of the frequency `xi_i` whenever `xi_i` is
 nonzero, and it is why the source's bound depends only on `c_Psi` and
 `alpha_i`.
 -/
 
-/-- **Dilation invariance.**  The logarithmic scale integral is unchanged by
+/-- **Dilation invariance.** The logarithmic scale integral is unchanged by
 rescaling the variable. -/
 theorem integral_logScale_comp_mul (F : ℝ → ℝ) {b : ℝ} (hb : 0 < b) :
     (∫ x in Ioi (0 : ℝ), F (b * x) / x) = ∫ y in Ioi (0 : ℝ), F y / y := by
@@ -13527,7 +13527,7 @@ theorem integral_logScale_comp_mul (F : ℝ → ℝ) {b : ℝ} (hb : 0 < b) :
 
 /-! ## The active coordinate contributes exactly `c_Psi`
 
-Source: `thm:cone`.  The active coordinate's scale factor is the full
+Source: `thm:cone`. The active coordinate's scale factor is the full
 logarithmic integral of the cone bump, which is the normalization `c_Psi`
 itself: the bump vanishes outside `[1,2]`, so the integral over the whole
 positive half-line is the defining integral over `[0,2]`.
@@ -13539,7 +13539,7 @@ theorem coneWeight_eq_zero_of_two_lt {x : ℝ} (hx : 2 < x) : coneWeight x = 0 :
   rw [abs_of_pos (by linarith : (0 : ℝ) < x)]
   linarith
 
-/-- **The active factor is `c_Psi`.**  The logarithmic scale integral of the
+/-- **The active factor is `c_Psi`.** The logarithmic scale integral of the
 cone bump over the whole positive half-line is the normalization constant. -/
 theorem integral_Ioi_coneWeight : (∫ x in Ioi (0 : ℝ), coneWeight x) = cPsi := by
   have hrepl : ∀ x : ℝ, x ∈ Ioi (0 : ℝ) →
@@ -13564,7 +13564,7 @@ theorem integral_Ioi_coneWeight : (∫ x in Ioi (0 : ℝ), coneWeight x) = cPsi 
 
 /-! ## The active coordinate's scale integral
 
-Source: `thm:cone`, absolute-convergence paragraph.  Combining the anisotropic
+Source: `thm:cone`, absolute-convergence paragraph. Combining the anisotropic
 substitution, the dilation invariance of `dt/t`, and the identification of the
 cone bump's total logarithmic mass with `c_Psi`, the active coordinate's scale
 integral is exactly `c_Psi / alpha_i` whenever the active frequency is
@@ -13578,7 +13578,7 @@ theorem coneActiveProfile_div (x : ℝ) (hx : x ≠ 0) :
     coneActiveProfile x / x = coneWeight x := by
   rw [coneActiveProfile, coneWeight_eq_source_integrand hx]
 
-/-- **The active scale integral.**  It equals `c_Psi / alpha` for every
+/-- **The active scale integral.** It equals `c_Psi / alpha` for every
 positive active frequency. -/
 theorem integral_coneActiveScale {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) :
     (∫ t in Ioi (0 : ℝ), coneActiveProfile (xi * t ^ a) / t) = a⁻¹ * cPsi := by
@@ -13622,13 +13622,12 @@ theorem integral_coneActiveScale_of_zero (a : ℝ) :
 
 /-! ## The active profile is supported in one dyadic annulus
 
-Source: `thm:cone`.  The cone cutoff vanishes on the unit interval and beyond
+Source: `thm:cone`. The cone cutoff vanishes on the unit interval and beyond
 `2`, so the active scale integrand is nonzero only while the scaled frequency
-lies strictly between `1` and `2`.  In the scale variable this confines the
+lies strictly between `1` and `2`. In the scale variable this confines the
 integrand to a compact subinterval of the positive half-line, which is what
 makes the scale integral absolutely convergent.
 -/
-
 theorem coneActiveProfile_eq_zero_of_abs_le_one {x : ℝ} (hx : |x| ≤ 1) :
     coneActiveProfile x = 0 := by
   rw [coneActiveProfile, conePsi_eq_zero_of_abs_le_one hx, zero_mul]
@@ -13637,7 +13636,7 @@ theorem coneActiveProfile_eq_zero_of_two_le_abs {x : ℝ} (hx : 2 ≤ |x|) :
     coneActiveProfile x = 0 := by
   rw [coneActiveProfile, conePsi_eq_zero_of_two_le_abs hx, zero_mul]
 
-/-- **The scaled support.**  At a positive frequency and a positive scale, the
+/-- **The scaled support.** At a positive frequency and a positive scale, the
 active integrand vanishes unless the scaled frequency lies strictly between
 `1` and `2`. -/
 theorem coneActiveProfile_scaled_eq_zero {xi a t : ℝ} (hxi : 0 < xi) (ht : 0 < t)
@@ -13662,12 +13661,11 @@ theorem coneActiveProfile_scaled_ne_zero {xi a t : ℝ} (hxi : 0 < xi) (ht : 0 <
 
 /-! ## Absolute convergence of the active scale integral
 
-Source: `thm:cone`, absolute-convergence paragraph.  The active scale
+Source: `thm:cone`, absolute-convergence paragraph. The active scale
 integrand is continuous on the positive half-line and supported in a compact
-subinterval of it, so it is integrable there.  This is what makes the scale
+subinterval of it, so it is integrable there. This is what makes the scale
 integral absolutely convergent and licenses the Fubini interchange.
 -/
-
 theorem coneActiveProfile_continuous : Continuous coneActiveProfile := by
   unfold coneActiveProfile
   exact conePsi_contDiff.continuous.mul
@@ -13704,7 +13702,7 @@ theorem coneActiveScale_mem_Ioo {xi a t : ℝ} (hxi : 0 < xi) (ha : 0 < a)
     calc t = (t ^ a) ^ a⁻¹ := hback.symm
       _ < (2 / xi) ^ a⁻¹ := Real.rpow_lt_rpow hta.le hlt hainv
 
-/-- **Absolute convergence.**  The active scale integrand is integrable on the
+/-- **Absolute convergence.** The active scale integrand is integrable on the
 positive half-line. -/
 theorem integrableOn_coneActiveScale {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) :
     IntegrableOn (fun t : ℝ ↦ coneActiveProfile (xi * t ^ a) / t) (Ioi 0) := by
@@ -13726,7 +13724,7 @@ theorem integrableOn_coneActiveScale {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) :
     · rw [Set.indicator_of_mem hmem]
     · rw [Set.indicator_of_notMem hmem, hf]
       by_cases hz : coneActiveProfile (xi * t ^ a) = 0
-      · show coneActiveProfile (xi * t ^ a) / t = 0
+      · change coneActiveProfile (xi * t ^ a) / t = 0
         rw [hz, zero_div]
       · exact absurd (coneActiveScale_mem_Ioo hxi ha ht hz) hmem
   -- continuity on the closed support interval gives integrability there
@@ -13759,7 +13757,7 @@ theorem coneActiveScale_nonneg {xi a t : ℝ} (ht : 0 < t) :
     0 ≤ coneActiveProfile (xi * t ^ a) / t :=
   div_nonneg (coneActiveProfile_nonneg _) ht.le
 
-/-- **The cone scale bound.**  A transverse factor bounded by `c_Psi^2`
+/-- **The cone scale bound.** A transverse factor bounded by `c_Psi^2`
 against the active scale integrand integrates to at most `c_Psi^3 / alpha`. -/
 theorem integral_coneScale_le
     {xi a : ℝ} (hxi : 0 < xi) (ha : 0 < a) (T : ℝ → ℝ)
@@ -13815,7 +13813,7 @@ regularity are preserved, as are the corresponding `L^p` norms and
 linear isometry of the underlying space, hence measure preserving.
 -/
 
-/-- **The `L^p` norms are preserved.**  Relabeling coordinates is measure
+/-- **The `L^p` norms are preserved.** Relabeling coordinates is measure
 preserving, so it leaves every `L^p` seminorm unchanged. -/
 theorem eLpNorm_comp_coordinatePermutation
     (σ : Equiv.Perm (Fin 3)) (g : E3 → ℝ) (p : ℝ≥0∞)
@@ -13826,8 +13824,8 @@ theorem eLpNorm_comp_coordinatePermutation
 
 /-! ## From the integration-by-parts estimate to `eq:coefficient_decay`
 
-Source: `lem:fourier_series`.  Integrating by parts with `(1-Delta)^{55}`
-produces a bound of the shape `(1 + c|nu|^2)^{55} |a| <= K`.  The stated decay
+Source: `lem:fourier_series`. Integrating by parts with `(1-Delta)^{55}`
+produces a bound of the shape `(1 + c|nu|^2)^{55} |a| <= K`. The stated decay
 `eq:coefficient_decay` is in terms of `(1+|nu|)^{-110}`; the two are equivalent
 up to a constant, because `(1+r)^2` and `1 + c r^2` are comparable.
 -/
@@ -13836,7 +13834,7 @@ up to a constant, because `(1+r)^2` and `1 + c r^2` are comparable.
 theorem one_add_sq_le_two_mul (r : ℝ) : (1 + r) ^ 2 ≤ 2 * (1 + r ^ 2) := by
   nlinarith [sq_nonneg (r - 1)]
 
-/-- **`eq:coefficient_decay` from the weighted estimate.**  A bound with the
+/-- **`eq:coefficient_decay` from the weighted estimate.** A bound with the
 quadratic weight `(1 + c r^2)^{55}` yields the stated decay of order `110`. -/
 theorem coefficient_decay_of_weighted_bound
     {a K r c : ℝ} (hr : 0 ≤ r) (hc : 0 < c)
@@ -13880,10 +13878,10 @@ theorem coefficient_decay_of_weighted_bound
 
 /-! ## The mode symbol's modulus factors into transverse and active parts
 
-Source: `thm:cone`, absolute-convergence paragraph.  The Fourier character has
+Source: `thm:cone`, absolute-convergence paragraph. The Fourier character has
 modulus one, so the mode symbol's modulus is exactly the product of the two
 inactive coordinates' factors `g(.) Phi(.)` and the active coordinate's
-`Psi(.) h(.)^2`.  This is the identity that lets the scale bound proved for
+`Psi(.) h(.)^2`. This is the identity that lets the scale bound proved for
 those factors be applied to the symbol itself.
 -/
 
@@ -13909,7 +13907,7 @@ theorem norm_thirdModeFrequencySymbol_eq
 
 /-! ## The cone scale bound applied to the mode symbol
 
-Source: `thm:cone`, absolute-convergence paragraph.  Combining the
+Source: `thm:cone`, absolute-convergence paragraph. Combining the
 factorization of the symbol's modulus with the scale bound for its two kinds of
 factors gives the source's estimate `c_Psi^3 / alpha_i` for the symbol's own
 logarithmic scale integral.
@@ -13962,14 +13960,14 @@ theorem integral_norm_thirdModeFrequencySymbol_le
 
 /-! ## Combining the uniform scale bound with the frequency majorant
 
-Source: `thm:cone`, absolute-convergence paragraph.  The scale bound
+Source: `thm:cone`, absolute-convergence paragraph. The scale bound
 `c_Psi^3 / alpha_i` holds uniformly in the frequency variable, so the joint
 frequency-scale integral is bounded by that constant times the frequency
-integral alone.  Together with the frequency majorant this is what justifies
+integral alone. Together with the frequency majorant this is what justifies
 the Fubini interchange.
 -/
 
-/-- **Uniform inner bound.**  If the inner integral is bounded uniformly in the
+/-- **Uniform inner bound.** If the inner integral is bounded uniformly in the
 outer variable, the joint integral factors through that bound. -/
 theorem lintegral_mul_le_of_uniform_inner_bound
     {X T : Type*} [MeasurableSpace X] [MeasurableSpace T]
@@ -13993,7 +13991,7 @@ theorem lintegral_mul_le_of_uniform_inner_bound
 
 Source: `def:multiplier`, which requires `m(0) = 0`, and `thm:cone`, whose
 one-mode bridge asks for an anisotropic multiplier certificate for the
-scale-dependent symbol.  The cone cutoff `Psi` vanishes on the unit interval,
+scale-dependent symbol. The cone cutoff `Psi` vanishes on the unit interval,
 so in particular at the origin, and it divides the active factor of the mode
 symbol.
 -/
@@ -14022,10 +14020,10 @@ theorem measurable_thirdModeFrequencySymbol
 
 /-! ## The mode symbol is supported where every dilated coordinate is small
 
-Source: `thm:cone` and `lem:symbol_derivatives`.  Both cutoffs carried by the
+Source: `thm:cone` and `lem:symbol_derivatives`. Both cutoffs carried by the
 mode symbol vanish once their argument reaches modulus two: the transverse
 cutoff `Phi` because its primitive has already saturated, and the active
-cutoff `Psi` by its own support.  So the symbol is nonzero only where every
+cutoff `Psi` by its own support. So the symbol is nonzero only where every
 anisotropically dilated coordinate has modulus below two — the confinement
 that makes the anisotropic gauge comparable to the inverse scale, which is
 what a scale-uniform multiplier certificate needs.
@@ -14062,7 +14060,7 @@ theorem abs_dilated_lt_two_of_thirdModeFrequencySymbol_ne_zero
 
 Source: `lem:symbol_derivatives`, which uses
 `rho(D_t^{-1} eta) = t^{-1} rho(eta)` to trade scale powers against gauge
-powers.  Here the trade is made in the direction the certificate needs: the
+powers. Here the trade is made in the direction the certificate needs: the
 support confinement bounds every dilated coordinate by two, and the
 gauge–dilation identity turns that into a bound on `t * rho(xi)`.
 -/
@@ -14082,7 +14080,7 @@ theorem rpow_inv_lt_two {a : ℝ} (ha : 0 ≤ a) (h : a < 2) {w : ℕ} (hw : 0 <
         Real.rpow_le_rpow_of_exponent_le (by norm_num) hinvle
     _ = 2 := Real.rpow_one 2
 
-/-- **The gauge bound on the support.**  Where the mode symbol is nonzero, the
+/-- **The gauge bound on the support.** Where the mode symbol is nonzero, the
 scale times the anisotropic gauge is bounded by an absolute constant. -/
 theorem scale_mul_radius_lt_of_thirdModeFrequencySymbol_ne_zero
     (α : Anisotropy) (ν : standardModeLattice) {t : ℝ} (ht : 0 < t) (ξ : E3)
@@ -14114,7 +14112,7 @@ Source: `lem:symbol_derivatives`, "In a neighborhood of `eta = 0` the cutoff
 and the zero-extended symbol vanish identically, so every derivative there is
 zero".  The same argument applies at the outer edge: the region where some
 dilated coordinate exceeds two in modulus is open and the symbol vanishes on
-it, so all its iterated derivatives vanish there as well.  This is what lets
+it, so all its iterated derivatives vanish there as well. This is what lets
 the anisotropic derivative bound be checked only on the support.
 -/
 
@@ -14128,7 +14126,7 @@ theorem thirdModeFrequencySymbol_eq_zero_of_two_le
     (abs_dilated_lt_two_of_thirdModeFrequencySymbol_ne_zero α ν t ξ hne j)
     (not_lt.mpr h)
 
-/-- **Infinite-order vanishing off the support.**  Where some dilated
+/-- **Infinite-order vanishing off the support.** Where some dilated
 coordinate strictly exceeds two, every iterated derivative of the symbol
 vanishes. -/
 theorem iteratedFDeriv_thirdModeFrequencySymbol_eq_zero_of_two_lt
@@ -14154,10 +14152,10 @@ theorem iteratedFDeriv_thirdModeFrequencySymbol_eq_zero_of_two_lt
 /-! ## The mode symbol is a fixed profile precomposed with the dilation
 
 Source: `lem:symbol_derivatives`, whose derivative expansion is organized
-around the rescaled symbol `m(D_t^{-1} eta)`.  The mode symbol has the same
+around the rescaled symbol `m(D_t^{-1} eta)`. The mode symbol has the same
 shape and in a sharper form: every occurrence of the frequency in it is
 through the dilated coordinate `t^{alpha_j} xi_j`, so the symbol is a single
-scale-independent profile precomposed with the anisotropic dilation.  All the
+scale-independent profile precomposed with the anisotropic dilation. All the
 scale dependence therefore sits in the linear map, where the chain rule turns
 it into the exact factor `t^{alpha . beta}` the derivative bound needs.
 -/
@@ -14172,7 +14170,7 @@ def coneModeProfile (ν : standardModeLattice) (η : E3) : ℂ :=
         (8 : ℝ)⁻¹ * (ν : E3) 1 * η 1 +
         (8 : ℝ)⁻¹ * (ν : E3) 2 * η 2 : ℝ) : ℂ)
 
-/-- **The factorization.**  The mode symbol is the profile precomposed with
+/-- **The factorization.** The mode symbol is the profile precomposed with
 the anisotropic dilation. -/
 theorem thirdModeFrequencySymbol_eq_coneModeProfile_dilate
     (α : Anisotropy) (ν : standardModeLattice) (t : ℝ) (ξ : E3) :
@@ -14348,14 +14346,14 @@ theorem exists_bound_iteratedFDeriv_coneModeProfile
 /-! ## The mode symbol's coordinate derivatives carry exactly the scale power
 
 Source: `lem:symbol_derivatives`, whose derivative expansion produces the
-factor `t^{-alpha . gamma}` from the anisotropic chain rule.  Here the symbol
+factor `t^{-alpha . gamma}` from the anisotropic chain rule. Here the symbol
 is a fixed profile precomposed with the dilation, so the chain rule is exact
 rather than an expansion: an ordered coordinate derivative of the symbol is
 the same derivative of the profile, evaluated at the dilated frequency, times
 precisely `t^{alpha . beta}`.
 -/
 
-/-- **The exact scale factor.**  An ordered coordinate derivative of the mode
+/-- **The exact scale factor.** An ordered coordinate derivative of the mode
 symbol is `t^{alpha . beta}` times the corresponding derivative of the
 profile. -/
 theorem iteratedFDeriv_thirdModeFrequencySymbol_coordinate
@@ -14390,11 +14388,10 @@ theorem iteratedFDeriv_thirdModeFrequencySymbol_coordinate
 
 /-! ## The gauge bound on the closed box
 
-Source: `lem:symbol_derivatives`.  The derivative bound has to be checked
+Source: `lem:symbol_derivatives`. The derivative bound has to be checked
 wherever a derivative can be nonzero, which is the *closed* box rather than the
 open one, so the gauge bound is recorded there too.
 -/
-
 theorem rpow_inv_le_two {a : ℝ} (ha : 0 ≤ a) (h : a ≤ 2) {w : ℕ} (hw : 0 < w) :
     a ^ ((w : ℝ))⁻¹ ≤ 2 := by
   have hwpos : (0 : ℝ) < (w : ℝ) := by exact_mod_cast hw
@@ -14432,7 +14429,7 @@ theorem norm_coordinateDirection (i : Fin 3) :
   unfold Anisotropy.coordinateDirection
   simp [EuclideanSpace.basisFun]
 
-/-- **The anisotropic derivative bound for the mode symbol.**  Combining the
+/-- **The anisotropic derivative bound for the mode symbol.** Combining the
 exact scale factor, the uniform profile bound and the gauge bound on the
 closed box gives `eq:symbol` for the mode symbol, with a constant independent
 of the scale. -/
@@ -14535,9 +14532,9 @@ theorem derivativeWeight_le (α : Anisotropy) {k : ℕ} (σ : Fin k → Fin 3) :
     _ = k * (α.weight 0 + α.weight 1 + α.weight 2) := by
         rw [Finset.sum_const, Finset.card_univ, Fintype.card_fin, smul_eq_mul]
 
-/-- **The scale-uniform multiplier certificate.**  There is a constant,
+/-- **The scale-uniform multiplier certificate.** There is a constant,
 depending only on the anisotropy and the mode, for which the mode symbol is an
-anisotropic multiplier at every positive scale.  This is the hypothesis the
+anisotropic multiplier at every positive scale. This is the hypothesis the
 one-mode and cone bridges of `thm:cone` were left conditional on. -/
 theorem exists_isAnisotropicMultiplier_thirdModeFrequencySymbol
     (α : Anisotropy) (ν : Fin 3 → ℤ) :
@@ -14577,9 +14574,9 @@ theorem exists_isAnisotropicMultiplier_thirdModeFrequencySymbol
 
 /-! ## The one-mode bridge, unconditionally
 
-Source: `thm:cone`, lines 2998--3015.  The bridge from the one-mode multiplier
+Source: `thm:cone`, lines 2998--3015. The bridge from the one-mode multiplier
 form to the literal active model form was proved conditionally on a
-scale-uniform anisotropic multiplier certificate for the mode symbol.  That
+scale-uniform anisotropic multiplier certificate for the mode symbol. That
 certificate is now available, so the bridge holds outright.
 -/
 
@@ -14598,10 +14595,10 @@ theorem thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm_of_int
 
 /-! ## Support and vanishing for the reconstructed cone symbol
 
-Source: `thm:cone`.  The cone symbol is the multiplier itself times the same
+Source: `thm:cone`. The cone symbol is the multiplier itself times the same
 cone cutoffs at dilated coordinates, so its support is confined exactly as the
 mode symbol's is, and it vanishes at the origin for the same reason — the
-active cutoff is zero there.  Unlike the mode symbol it does not factor
+active cutoff is zero there. Unlike the mode symbol it does not factor
 through a scale-independent profile, since the multiplier is not precomposed
 with the dilation; the derivative bound therefore needs the source's Leibniz
 expansion rather than a chain rule.
@@ -14662,9 +14659,9 @@ theorem thirdConeFrequencySymbol_eq_zero_of_two_le
 
 /-! ## Infinite-order vanishing of the cone symbol off its support
 
-Source: `lem:symbol_derivatives`.  As for the mode symbol, the region where
+Source: `lem:symbol_derivatives`. As for the mode symbol, the region where
 some dilated coordinate strictly exceeds two is open and the cone symbol
-vanishes on it, so every iterated derivative vanishes there.  This holds
+vanishes on it, so every iterated derivative vanishes there. This holds
 regardless of any regularity of the multiplier, since only the openness of the
 region and the vanishing of the cutoffs are used.
 -/
@@ -14694,7 +14691,7 @@ theorem iteratedFDeriv_thirdConeFrequencySymbol_eq_zero_of_two_lt
 /-! ## The cone symbol as a precomposition
 
 Source: `lem:symbol_derivatives`, whose rescaled symbol is
-`m(D_t^{-1} eta) chi_i(eta)`.  The reconstructed cone symbol has exactly that
+`m(D_t^{-1} eta) chi_i(eta)`. The reconstructed cone symbol has exactly that
 shape after the substitution `eta = D_t xi`, since `m(D_t^{-1}(D_t xi)) = m(xi)`.
 Naming the rescaled object makes the cone symbol a precomposition with the
 dilation, so the chain rule supplies the direction sensitivity and only a
@@ -14718,10 +14715,10 @@ theorem thirdConeFrequencySymbol_eq_coneScaleProfile_dilate
 
 /-! ## The rescaled cone symbol in terms of the localized symbol
 
-Source: `lem:symbol_derivatives`.  The cancellation identity already proved for
+Source: `lem:symbol_derivatives`. The cancellation identity already proved for
 the localized symbol says that multiplying it by the active cone factor and the
 passive Gaussian-times-cutoff factors reproduces the rescaled multiplier times
-the bare cone factors.  At the third active coordinate that right-hand side is
+the bare cone factors. At the third active coordinate that right-hand side is
 exactly the rescaled cone symbol, so the rescaled cone symbol is the localized
 symbol times a fixed smooth factor — and the localized symbol's derivatives are
 already bounded uniformly.
@@ -14737,20 +14734,19 @@ theorem coneScaleProfile_eq_localizedSymbol_mul
   rw [localizedSymbol_cone_factor_identity α m 2 t η]
   unfold coneScaleProfile
   rw [Fin.prod_univ_three]
-  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
-    if_neg (by decide : ¬((1 : Fin 3) = 2)),
-    if_true, mul_one]
+  simp only [ite_eq_right (by decide : ¬((0 : Fin 3) = 2)),
+    ite_eq_right (by decide : ¬((1 : Fin 3) = 2)),
+    ite_true, mul_one]
 
 
 /-! ## The cone symbol's extra factor is the zero mode profile
 
-Source: `thm:cone`.  The factor accompanying the localized symbol in the
+Source: `thm:cone`. The factor accompanying the localized symbol in the
 rescaled cone symbol is the product of the active cone factor and the two
 transverse Gaussian-times-cutoff factors — which is exactly the mode profile at
-the zero mode, since the Fourier character is then constant.  Its derivative
+the zero mode, since the Fourier character is then constant. Its derivative
 bounds and smoothness are therefore already available.
 -/
-
 theorem coneModeProfile_zero_mode (η : E3) :
     coneModeProfile 0 η =
       (gaussian (η 0) * conePhi (η 0) : ℂ) *
@@ -14771,15 +14767,15 @@ theorem coneScaleProfile_eq_localizedSymbol_mul_zeroProfile
       localizedSymbol α m 2 t η * coneModeProfile 0 η := by
   rw [coneScaleProfile_eq_localizedSymbol_mul α m t η, coneModeProfile_zero_mode,
     Fin.prod_univ_three]
-  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
-    if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one]
+  simp only [ite_eq_right (by decide : ¬((0 : Fin 3) = 2)),
+    ite_eq_right (by decide : ¬((1 : Fin 3) = 2)), ite_true, mul_one]
   ring
 
 
 /-! ## Uniform derivative bounds for the rescaled cone symbol
 
-Source: `lem:symbol_derivatives`.  The rescaled cone symbol is the localized
-symbol times the zero mode profile.  Both factors are smooth with uniformly
+Source: `lem:symbol_derivatives`. The rescaled cone symbol is the localized
+symbol times the zero mode profile. Both factors are smooth with uniformly
 bounded iterated derivatives — the first by the source's own Leibniz argument,
 the second by compact support — so the product's derivatives are bounded by the
 norm-based product inequality, uniformly in the frequency.
@@ -14852,7 +14848,7 @@ theorem exists_bound_iteratedFDeriv_coneScaleProfile
 
 /-! ## Transporting the cone bound through the dilation
 
-Source: `lem:symbol_derivatives`.  The cone symbol is the rescaled symbol
+Source: `lem:symbol_derivatives`. The cone symbol is the rescaled symbol
 precomposed with the dilation, so an ordered coordinate derivative of it is
 exactly `t^{alpha . beta}` times the same derivative of the rescaled symbol,
 just as for the mode symbol.
@@ -14893,7 +14889,7 @@ theorem iteratedFDeriv_thirdConeFrequencySymbol_coordinate
 
 /-! ## `eq:symbol` for the reconstructed cone symbol
 
-Source: `lem:symbol_derivatives`.  On the closed box the exact scale factor
+Source: `lem:symbol_derivatives`. On the closed box the exact scale factor
 from the dilation chain rule is absorbed against the gauge bound raised to the
 same power, leaving the rescaled symbol's uniform derivative bound times a
 fixed power of six; off the closed box every derivative vanishes.
@@ -14953,7 +14949,7 @@ theorem norm_iteratedFDeriv_thirdConeFrequencySymbol_coordinate_le
 Source: `thm:cone`, whose conversion of the reconstructed cone from its
 frequency representation to `multiplierForm` was stated conditionally on a
 uniform anisotropic multiplier certificate for the scale-dependent cone
-symbol.  All four components are now available.
+symbol. All four components are now available.
 -/
 
 /-- The cone symbol is smooth to order 110. -/
@@ -15013,7 +15009,7 @@ theorem exists_isAnisotropicMultiplier_thirdConeFrequencySymbol
     pow_le_pow_right₀ (by norm_num) hdle
   exact mul_le_mul hCkle hpowle (by positivity) hCsum0
 
-/-- **The cone bridge with no remaining hypothesis.**  The reconstructed cone's
+/-- **The cone bridge with no remaining hypothesis.** The reconstructed cone's
 frequency form equals its multiplier form outright. -/
 theorem thirdConeFrequencyFullForm_eq_multiplierFullForm_of_multiplier
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -15034,7 +15030,7 @@ theorem thirdConeFrequencyFullForm_eq_multiplierFullForm_of_multiplier
 
 /-! ## The remaining one-mode bridges, unconditionally
 
-Source: `thm:cone`.  The certificate discharges the multiplier premise of the
+Source: `thm:cone`. The certificate discharges the multiplier premise of the
 finite-scale kernel-product bridge and of the any-active-coordinate one-mode
 bridge, the latter being the form `thm:main` uses after fixing an active
 coordinate and permuting it into the third slot.
@@ -15073,7 +15069,7 @@ theorem thirdModeMultiplierFullForm_eq_LiteralActiveModelFullForm_permuted_of_in
 
 /-! ## The one-mode spatial bridge, unconditionally
 
-Source: `thm:cone`.  The docstring accompanying the conditional form notes that
+Source: `thm:cone`. The docstring accompanying the conditional form notes that
 "Section 8's derivative package is intended to supply this certificate"; the
 certificate is now available, so the bridge holds outright.
 -/
@@ -15094,9 +15090,9 @@ theorem thirdModeMultiplier_eq_LiteralActiveSpatialMode_of_int
 
 /-! ## The certificate transfers to the literal model scale kernel symbol
 
-Source: `thm:cone`.  At a standard mode translate the literal model scale
+Source: `thm:cone`. At a standard mode translate the literal model scale
 kernel symbol is the negation of the mode symbol, an identity already proved in
-this branch.  A multiplier certificate is invariant under negation, so the mode
+this branch. A multiplier certificate is invariant under negation, so the mode
 certificate supplies one for the literal symbol too.
 -/
 
@@ -15133,7 +15129,7 @@ theorem exists_isAnisotropicMultiplier_literalModelScaleKernelSymbol
 
 /-! ## The literal spatial identity at a mode translate, unconditionally
 
-Source: `thm:cone`.  The fixed-scale literal spatial identity was conditional
+Source: `thm:cone`. The fixed-scale literal spatial identity was conditional
 on a multiplier certificate for the literal kernel symbol; at a standard mode
 translate — which is the only case the cone decomposition uses — that
 certificate now follows from the mode certificate by negation.
@@ -15157,10 +15153,10 @@ theorem LiteralModelSpatialProfile_eq_multiplierForm_of_int
 
 /-! ## Absolute integrability of each mode's frequency integrand
 
-Source: `thm:cone`, absolute-convergence paragraph.  Each mode contributes a
+Source: `thm:cone`, absolute-convergence paragraph. Each mode contributes a
 bounded multiple of the frequency kernel: the coefficient is a constant, the
 mode symbol is bounded uniformly in every parameter, and the frequency kernel
-is integrable.  This is the first of the two premises the frequency-side Fubini
+is integrable. This is the first of the two premises the frequency-side Fubini
 bridge is stated against.
 -/
 
@@ -15175,9 +15171,9 @@ theorem integrable_modeFrequencyIntegrand
             (-frequencyDiagonal ζ)) *
           frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
       frequencyMeasure := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   obtain ⟨B, hB0, hB⟩ := exists_bound_thirdModeFrequencySymbol
   set c : ℂ := UnitAddTorus.mFourierCoeff (unitTorusLocalizedSymbol α m 2 t) ν
@@ -15207,11 +15203,11 @@ theorem integrable_modeFrequencyIntegrand
 
 /-! ## Summability of the mode frequency integrals
 
-Source: `thm:cone`, absolute-convergence paragraph.  Each mode's frequency
+Source: `thm:cone`, absolute-convergence paragraph. Each mode's frequency
 integral of absolute values is at most the modulus of its Fourier coefficient
 times a fixed constant — the uniform bound on the mode symbol times the
-kernel's total mass.  The coefficients are absolutely summable by the
-order-110 decay, so the mode sum converges.  This is the second premise the
+kernel's total mass. The coefficients are absolutely summable by the
+order-110 decay, so the mode sum converges. This is the second premise the
 frequency-side Fubini bridge is stated against.
 -/
 
@@ -15227,9 +15223,9 @@ theorem summable_modeFrequencyIntegralNorm
               (-frequencyDiagonal ζ)) *
             frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖
         ∂frequencyMeasure) := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   obtain ⟨B, hB0, hB⟩ := exists_bound_thirdModeFrequencySymbol
   set K : Frequency9 → ℂ :=
@@ -15275,7 +15271,7 @@ theorem summable_modeFrequencyIntegralNorm
 
 Source: `lem:calderon`, `eq:cone_identity`, whose right-hand side is a sum over
 the three active coordinates of the active cone factor against the two
-transverse cutoffs.  The integrand is written out termwise in this development;
+transverse cutoffs. The integrand is written out termwise in this development;
 recording it as an indexed sum is what lets the three-cone assembly be stated
 as a sum rather than three separate displays.
 -/
@@ -15296,24 +15292,24 @@ theorem coneProductCalderonIntegrand_eq_sum
   unfold coneProductCalderonIntegrand coneActiveTerm
   rw [Fin.sum_univ_three]
   simp only [Fin.prod_univ_three,
-    if_neg (by decide : ¬((0 : Fin 3) = 1)),
-    if_neg (by decide : ¬((0 : Fin 3) = 2)),
-    if_neg (by decide : ¬((1 : Fin 3) = 0)),
-    if_neg (by decide : ¬((1 : Fin 3) = 2)),
-    if_neg (by decide : ¬((2 : Fin 3) = 0)),
-    if_neg (by decide : ¬((2 : Fin 3) = 1)),
-    if_true, one_mul, mul_one]
+    ite_eq_right (by decide : ¬((0 : Fin 3) = 1)),
+    ite_eq_right (by decide : ¬((0 : Fin 3) = 2)),
+    ite_eq_right (by decide : ¬((1 : Fin 3) = 0)),
+    ite_eq_right (by decide : ¬((1 : Fin 3) = 2)),
+    ite_eq_right (by decide : ¬((2 : Fin 3) = 0)),
+    ite_eq_right (by decide : ¬((2 : Fin 3) = 1)),
+    ite_true, one_mul, mul_one]
   ring
 
 
 /-! ## The three-cone decomposition of the multiplier
 
-Source: `eq:cone_identity`.  Splitting the Calderón integrand into its three
+Source: `eq:cone_identity`. Splitting the Calderón integrand into its three
 active terms and exchanging the finite sum with the scale integral writes the
 multiplier at each frequency as the sum of three cone contributions.
 -/
 
-/-- **The three-cone decomposition at a frequency.**  On a finite scale
+/-- **The three-cone decomposition at a frequency.** On a finite scale
 interval carrying the Calderón endpoints, the multiplier is the sum of its
 three cone contributions. -/
 theorem multiplier_coneProduct_interval_sum
@@ -15332,7 +15328,7 @@ theorem multiplier_coneProduct_interval_sum
     rw [← intervalIntegral.integral_finsetSum (fun i _ ↦ hint i)]
     refine intervalIntegral.integral_congr ?_
     intro t _
-    show m ξ * (coneProductCalderonIntegrand α ξ t : ℂ)
+    change m ξ * (coneProductCalderonIntegrand α ξ t : ℂ)
       = ∑ i : Fin 3, m ξ * ((coneActiveTerm α ξ t i / t : ℝ) : ℂ)
     rw [coneProductCalderonIntegrand_eq_sum α ξ t, ← Finset.mul_sum]
     congr 1
@@ -15346,12 +15342,11 @@ theorem multiplier_coneProduct_interval_sum
 
 /-! ## Interval integrability of the cone terms
 
-Source: `eq:cone_identity`.  Each active term is a product of continuous
+Source: `eq:cone_identity`. Each active term is a product of continuous
 functions of the scale, so dividing by the scale leaves something continuous on
-any compact interval bounded away from zero, hence interval integrable.  This
+any compact interval bounded away from zero, hence interval integrable. This
 discharges the premise carried by the three-cone decomposition.
 -/
-
 theorem continuous_coneActiveTerm
     (α : Anisotropy) (ξ : E3) (i : Fin 3) :
     Continuous (fun t : ℝ ↦ coneActiveTerm α ξ t i) := by
@@ -15365,9 +15360,9 @@ theorem continuous_coneActiveTerm
     ((contDiff_gaussianDeriv.continuous.comp (harg i)).pow 2)).mul ?_
   refine continuous_finsetProd _ fun j _ ↦ ?_
   by_cases hj : j = i
-  · simp only [if_pos hj]
+  · simp only [ite_eq_left hj]
     exact continuous_const
-  · simp only [if_neg hj]
+  · simp only [ite_eq_right hj]
     exact conePhi_contDiff.continuous.comp (harg j)
 
 /-- **Each cone term is interval integrable** on a compact scale interval
@@ -15405,13 +15400,13 @@ theorem multiplier_coneProduct_interval_sum_of_endpoints
 
 /-! ## The three-cone decomposition at every nonzero frequency
 
-Source: `eq:cone_identity`, which is stated for every `xi` nonzero.  Suitable
+Source: `eq:cone_identity`, which is stated for every `xi` nonzero. Suitable
 Calderón endpoints exist at each such frequency — the cone product saturates at
 small scales and vanishes at large ones — so the decomposition holds there with
 no hypothesis beyond `xi` being nonzero.
 -/
 
-/-- **`eq:cone_identity` at a nonzero frequency.**  The multiplier is the sum of
+/-- **`eq:cone_identity` at a nonzero frequency.** The multiplier is the sum of
 its three cone contributions over some finite scale interval. -/
 theorem exists_multiplier_coneDecomposition
     (α : Anisotropy) (m : E3 → ℂ) {ξ : E3} (hξ : ξ ≠ 0) :
@@ -15427,9 +15422,9 @@ theorem exists_multiplier_coneDecomposition
 
 /-! ## The cone terms have compact scale support
 
-Source: `lem:calderon`.  Each active term carries the cone cutoff `Psi` at its
+Source: `lem:calderon`. Each active term carries the cone cutoff `Psi` at its
 own coordinate, so it vanishes unless that dilated coordinate lies strictly
-between one and two.  In the scale variable this confines each term to a
+between one and two. In the scale variable this confines each term to a
 compact subinterval of the positive half-line, which is what will let the
 finite-interval Calderón identity be read as a full-scale one.
 -/
@@ -15458,7 +15453,7 @@ theorem coneActiveTerm_eq_zero_of_not_mem
 
 /-! ## Locating the cone term's scale support
 
-Source: `lem:calderon`.  The active term is nonzero only while its dilated
+Source: `lem:calderon`. The active term is nonzero only while its dilated
 coordinate lies strictly between one and two, which pins the scale to an
 explicit bounded interval whenever that coordinate of the frequency is nonzero.
 -/
@@ -15511,10 +15506,10 @@ theorem coneActiveTerm_scale_mem_Ioo
 
 /-! ## Calderón endpoints enclosing every cone term's support
 
-Source: `lem:calderon`, `eq:cone_identity`.  The finite-interval form of the
+Source: `lem:calderon`, `eq:cone_identity`. The finite-interval form of the
 cone identity holds at whatever endpoints saturate and kill the cone product;
 to read it as a full-scale identity the endpoints must in addition enclose the
-scale supports of all three active terms.  Endpoints chosen from the explicit
+scale supports of all three active terms. Endpoints chosen from the explicit
 coordinate criteria do both at once.
 -/
 
@@ -15547,7 +15542,7 @@ theorem exists_coneActiveTerm_enclosing_endpoints (α : Anisotropy) (ξ : E3) :
     refine Finset.sum_nonneg fun j _ ↦ ?_
     by_cases hj : ξ j = 0
     · simp [hj]
-    · simp only [if_neg hj]
+    · simp only [ite_eq_right hj]
       positivity
   set b : ℝ := 2 * (1 + D) with hb'
   have hb2 : (2 : ℝ) ≤ b := by rw [hb']; linarith
@@ -15634,7 +15629,7 @@ theorem exists_coneActiveTerm_enclosing_endpoints (α : Anisotropy) (ξ : E3) :
 /-! ## The three-cone identity over the full scale half-line
 
 Source: `lem:calderon`, `eq:cone_identity`, whose scale integral runs over the
-whole positive half-line.  Each active term has compact scale support, so with
+whole positive half-line. Each active term has compact scale support, so with
 endpoints chosen to enclose all three supports the finite-interval identity and
 the full-scale one have the same value.
 -/
@@ -15684,7 +15679,7 @@ theorem multiplier_coneDecomposition_fullScale
 
 Source: the proof of `thm:cone`, which bounds the nonnegative scale integral of
 the `i`th cone integrand by `c_Psi^3` over the active weight, and notes that it
-vanishes when the active coordinate does.  The transverse cutoffs contribute at
+vanishes when the active coordinate does. The transverse cutoffs contribute at
 most `c_Psi` each and the active factor integrates to exactly `c_Psi` by the
 one-dimensional Calderón identity, so the product of the three is the bound.
 -/
@@ -15695,7 +15690,7 @@ theorem coneTransverseProduct_nonneg (α : Anisotropy) (ξ : E3) (t : ℝ) (i : 
   refine Finset.prod_nonneg fun j _ ↦ ?_
   by_cases hj : j = i
   · simp [hj]
-  · simp only [if_neg hj]
+  · simp only [ite_eq_right hj]
     exact conePhi_nonneg _
 
 /-- The two transverse cutoffs contribute at most `c_Psi` each. -/
@@ -15704,13 +15699,13 @@ theorem coneTransverseProduct_le (α : Anisotropy) (ξ : E3) (t : ℝ) (i : Fin 
       ≤ cPsi ^ 2 := by
   classical
   rw [← Finset.prod_erase_mul _ _ (Finset.mem_univ i)]
-  simp only [if_true, mul_one]
+  simp only [ite_true, mul_one]
   calc (∏ j ∈ Finset.univ.erase i,
         (if j = i then (1 : ℝ) else conePhi (t ^ α.weight j * ξ j)))
       = ∏ j ∈ Finset.univ.erase i, conePhi (t ^ α.weight j * ξ j) :=
-        Finset.prod_congr rfl fun j hj ↦ if_neg (Finset.ne_of_mem_erase hj)
+        Finset.prod_congr rfl fun j hj ↦ ite_eq_right (Finset.ne_of_mem_erase hj)
     _ ≤ ∏ _j ∈ Finset.univ.erase i, cPsi :=
-        Finset.prod_le_prod (fun j _ ↦ conePhi_nonneg _)
+        Finset.prod_le_prod₀ (fun j _ ↦ conePhi_nonneg _)
           (fun j _ ↦ conePhi_le_cPsi _)
     _ = cPsi ^ 2 := by
         rw [Finset.prod_const]
@@ -15816,7 +15811,7 @@ theorem intervalIntegral_coneActiveTerm_div_le
 
 Source: the proof of `thm:cone`, whose scale integrals run over the whole
 positive half-line while every bound available for them is proved on a compact
-interval.  A function vanishing off a compact subinterval has the same integral
+interval. A function vanishing off a compact subinterval has the same integral
 and the same integrability over the half-line as over that interval, which is
 what transfers the interval bounds.
 -/
@@ -15860,7 +15855,7 @@ theorem integrableOn_Ioi_of_vanishing
 
 /-! ## The cone term's scale integral over the half-line
 
-Source: the proof of `thm:cone`.  The cone term is integrable against the
+Source: the proof of `thm:cone`. The cone term is integrable against the
 multiplicative measure on the whole half-line and its integral is at most
 `c_Psi^3`; it is zero outright when the active coordinate vanishes.
 -/
@@ -15923,7 +15918,7 @@ theorem integral_coneActiveTerm_div_Ioi_nonneg
 /-! ## Exchanging the mode sum with the frequency integral
 
 Source: `thm:cone`, absolute-convergence paragraph, which justifies Fubini
-between frequencies and modes.  Both premises are available — each mode's
+between frequencies and modes. Both premises are available — each mode's
 integrand is integrable and the integrals of the norms are summable — so the
 interchange follows, and the mode sum may be moved inside the frequency
 integral and back.
@@ -15955,7 +15950,7 @@ theorem integral_tsum_modeFrequencyIntegrand
 /-! ## The cone form at one scale is the sum of its mode forms
 
 Source: `thm:cone`, whose proof inserts the Fourier series of the localized
-symbol into the cone integrand and integrates term by term.  The mode sum
+symbol into the cone integrand and integrates term by term. The mode sum
 reconstructs the cone symbol at every frequency, and the mode sum exchanges
 with the frequency integral, so the cone form at a fixed scale is the
 coefficient-weighted sum of the mode forms.
@@ -16011,7 +16006,7 @@ theorem frequencyForm_thirdConeFrequencySymbol_eq_tsum
 
 /-! ## The same decomposition on the multiplier side
 
-Source: `thm:cone`.  Both the cone symbol and each mode symbol carry their own
+Source: `thm:cone`. Both the cone symbol and each mode symbol carry their own
 anisotropic certificate, so the frequency-side identity transfers to the
 multiplier form, which is the shape `eq:form_decomposition` is stated in.
 -/
@@ -16037,7 +16032,7 @@ theorem multiplierForm_thirdConeFrequencySymbol_eq_tsum
 
 /-! ## The cone identity's integrand is the cone symbol
 
-Source: `eq:cone_identity`.  The third summand of the Calderón integrand is,
+Source: `eq:cone_identity`. The third summand of the Calderón integrand is,
 factor for factor, the third cone symbol times the active weight: the active
 cutoff and the squared Gaussian derivative sit at the third coordinate and the
 two transverse cutoffs at the others, each evaluated at the dilated frequency.
@@ -16057,8 +16052,8 @@ theorem multiplier_mul_coneActiveTerm_two
       = (α.weight 2 : ℂ) * thirdConeFrequencySymbol α m t ξ := by
   unfold coneActiveTerm thirdConeFrequencySymbol
   rw [Fin.prod_univ_three]
-  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
-    if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one,
+  simp only [ite_eq_right (by decide : ¬((0 : Fin 3) = 2)),
+    ite_eq_right (by decide : ¬((1 : Fin 3) = 2)), ite_true, mul_one,
     dilate_coord]
   push_cast
   ring
@@ -16066,7 +16061,7 @@ theorem multiplier_mul_coneActiveTerm_two
 /-! ## The cone symbol at an arbitrary active coordinate
 
 Source: `eq:cone_identity`, whose three summands are the same expression with
-the active coordinate moved.  Naming the general one puts the identity in the
+the active coordinate moved. Naming the general one puts the identity in the
 blueprint's own display form, with the anisotropy exponents pulled out front
 and the scale integral running over the half-line.
 -/
@@ -16085,8 +16080,8 @@ theorem coneFrequencySymbol_two (α : Anisotropy) (m : E3 → ℂ) (t : ℝ) (ξ
     coneFrequencySymbol α m 2 t ξ = thirdConeFrequencySymbol α m t ξ := by
   unfold coneFrequencySymbol thirdConeFrequencySymbol
   rw [Fin.prod_univ_three]
-  simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
-    if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one]
+  simp only [ite_eq_right (by decide : ¬((0 : Fin 3) = 2)),
+    ite_eq_right (by decide : ¬((1 : Fin 3) = 2)), ite_true, mul_one]
 
 /-- **Each summand of the Calderón integrand is the corresponding cone
 symbol**, weighted by that coordinate's anisotropy exponent. -/
@@ -16102,7 +16097,7 @@ theorem multiplier_mul_coneActiveTerm
 
 /-! ## `eq:cone_identity` in the blueprint's display form
 
-Source: `lem:calderon`, `eq:cone_identity`.  With the summands named as cone
+Source: `lem:calderon`, `eq:cone_identity`. With the summands named as cone
 symbols and the anisotropy exponents pulled out front, the full-scale identity
 reads exactly as displayed: the multiplier is the normalized sum over the three
 active coordinates of the scale integral of the corresponding cone symbol
@@ -16136,7 +16131,7 @@ theorem multiplier_coneSymbol_fullScale
 /-! ## Permuting a cone symbol into the third slot
 
 Source: `lem:permutation`, which moves any active coordinate into the third by
-relabeling the anisotropy, the frequency and the inputs together.  At the level
+relabeling the anisotropy, the frequency and the inputs together. At the level
 of the cone symbol this is exactly a reindexing of the transverse product: the
 permuted dilation at a slot is the original dilation at the image slot, and the
 slot excluded from the product moves with the permutation.
@@ -16182,7 +16177,7 @@ theorem coneFrequencySymbol_permute_to_two
 
 /-! ## Every cone symbol is a third cone symbol
 
-Source: `lem:permutation`.  Transposing the active coordinate with the third
+Source: `lem:permutation`. Transposing the active coordinate with the third
 one is a permutation carrying the third slot to it, so every cone symbol is the
 third cone symbol of the transposed anisotropy at the transposed frequency.
 This is what makes the third-cone development apply to all three cones.
@@ -16206,7 +16201,7 @@ theorem coneFrequencySymbol_eq_thirdConeFrequencySymbol_permuted
 /-! ## Relabeling an anisotropic multiplier certificate
 
 Source: `lem:permutation`, which relabels the anisotropy and the frequency
-together.  A multiplier certificate survives that relabeling with the same
+together. A multiplier certificate survives that relabeling with the same
 constant: the iterated derivative of the relabeled symbol in the standard
 directions is the original derivative in the permuted directions, the
 anisotropic weight of a direction tuple is permuted along with it, and the
@@ -16288,7 +16283,7 @@ theorem IsAnisotropicMultiplier_permute
 
 /-! ## The mode expansion at every cone
 
-Source: `thm:cone` together with `lem:permutation`.  The mode reconstruction was
+Source: `thm:cone` together with `lem:permutation`. The mode reconstruction was
 proved at the third cone; transposing the active coordinate into the third slot
 carries both the cone symbol and its certificate, so the same reconstruction
 holds at each of the three cones, in the correspondingly relabeled frame.
@@ -16332,7 +16327,7 @@ theorem hasSum_coneFrequencySymbol_modes
 
 Source: the absolute-convergence paragraph of `thm:cone`, whose mode sum runs
 over integer triples while the development's lattice summability is indexed by
-the lattice itself.  The two are connected by the injection sending a triple to
+the lattice itself. The two are connected by the injection sending a triple to
 its lattice point: summability pulls back along an injection, so the majorant
 transfers without needing the injection to be onto.
 -/
@@ -16363,7 +16358,7 @@ theorem summable_intModeProducts_of_decay
   have hwpos : 0 < w := sourceWeight_pos _
   have hwne : w ≠ 0 := hwpos.ne'
   have hpow : w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ) = g ν := by
-    show w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ) = w⁻¹ ^ (10 : ℕ)
+    change w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ) = w⁻¹ ^ (10 : ℕ)
     field_simp [hwne]
   have hterm : ∀ i : Fin 3, ‖a i ν * b i ν‖ ≤ C * D * g ν := by
     intro i
@@ -16389,17 +16384,14 @@ Source: `thm:cone`, "The expansion is absolutely convergent."  The two budgets
 it needs are both available without hypotheses beyond the multiplier
 certificate and the exponent region: the mode coefficients decay at order one
 hundred and ten in the translation weight, and the model forms grow at order
-one hundred in it.  Their product is summable over the lattice, hence over the
+one hundred in it. Their product is summable over the lattice, hence over the
 integer triples indexing the modes.
 -/
 
 /-- An `L^p` norm is nonnegative. -/
 theorem lpNorm_nonneg' {X : Type*} [MeasurableSpace X]
     (f : X → ℝ) (p : ℝ≥0∞) (μ : Measure X) : 0 ≤ lpNorm f p μ := by
-  unfold lpNorm
-  split
-  · exact ENNReal.toReal_nonneg
-  · exact le_rfl
+  exact ENNReal.toReal_nonneg
 
 /-- **Absolute convergence of the three-cone mode expansion.** -/
 theorem summable_coneModeExpansion
@@ -16490,7 +16482,7 @@ theorem summable_coneModeExpansion
 /-! ## The explicit majorant for the mode expansion
 
 Source: the closing paragraph of the proof of `thm:main`, which bounds each
-term of `eq:form_decomposition` by the order-ten decay and then sums.  Stated
+term of `eq:form_decomposition` by the order-ten decay and then sums. Stated
 over the integer triples that index the modes, this is the final summation the
 main theorem performs.
 -/
@@ -16531,7 +16523,7 @@ theorem norm_tsum_intModeProducts_le_of_decay
             exact mul_nonneg hC (pow_nonneg (inv_nonneg.mpr hwpos.le) _)
         _ = C * D * (w⁻¹ ^ (110 : ℕ) * w ^ (100 : ℕ)) := by ring
         _ = C * D * w⁻¹ ^ (10 : ℕ) := by rw [hpow]
-    show ‖∑ i : Fin 3, a i ν * b i ν‖ ≤ (3 * C * D) * w⁻¹ ^ (10 : ℕ)
+    change ‖∑ i : Fin 3, a i ν * b i ν‖ ≤ (3 * C * D) * w⁻¹ ^ (10 : ℕ)
     calc ‖∑ i : Fin 3, a i ν * b i ν‖
         ≤ ∑ i : Fin 3, ‖a i ν * b i ν‖ := by
           simpa using
@@ -16548,7 +16540,7 @@ theorem norm_tsum_intModeProducts_le_of_decay
 
 /-! ## The cone expansion obeys the source bound
 
-Source: the closing paragraph of the proof of `thm:main`.  The mode expansion
+Source: the closing paragraph of the proof of `thm:main`. The mode expansion
 is bounded by the multiplier constant times the product of the input norms,
 with a constant depending only on the anisotropy and the exponents — uniformly
 in the scale, the scale coefficient and the inputs.
@@ -16651,7 +16643,7 @@ theorem exists_norm_tsum_coneModeExpansion_le
 
 Source: the closing paragraph of the proof of `thm:main`, which quotes a
 uniform model-form bound at weight one hundred and then sums against the
-order-one-hundred-and-ten coefficient decay.  Stating the summation against an
+order-one-hundred-and-ten coefficient decay. Stating the summation against an
 arbitrary such bound separates the two ingredients: the summation is
 unconditional, and whichever exponent region the model estimate is available in
 is the region the expansion bound holds in.
@@ -16827,7 +16819,7 @@ theorem summable_coneModeExpansion_of_modelBound
 
 Source: the absolute-convergence paragraph of `thm:cone`, which majorizes the
 scale integral of the cone integrand by the multiplier bound against the
-Calderón constant over the active exponent.  In symbol form this is immediate
+Calderón constant over the active exponent. In symbol form this is immediate
 from the scale majorant for the Calderón integrand, since the two differ only
 by the multiplier value and that exponent.
 -/
@@ -16900,7 +16892,7 @@ theorem integrableOn_norm_coneFrequencySymbol_div
 /-! ## Joint measurability in scale and frequency
 
 Source: the absolute-convergence paragraph of `thm:cone`, which justifies
-Fubini between frequencies and scales.  The cone symbol is the multiplier —
+Fubini between frequencies and scales. The cone symbol is the multiplier —
 measurable in the frequency alone — against a cutoff product that is jointly
 continuous, so the pair is jointly measurable, which is the measurability half
 of that interchange.
@@ -16930,9 +16922,9 @@ theorem continuous_coneCutoffFactor (α : Anisotropy) (i : Fin 3) :
   refine hact.mul ?_
   refine continuous_finsetProd _ fun j _ ↦ ?_
   by_cases hj : j = i
-  · simp only [if_pos hj]
+  · simp only [ite_eq_left hj]
     exact continuous_const
-  · simp only [if_neg hj]
+  · simp only [ite_eq_right hj]
     exact Complex.continuous_ofReal.comp
       (conePhi_contDiff.continuous.comp (continuous_dilate_coord α j))
 
@@ -16962,7 +16954,7 @@ theorem measurable_coneFrequencySymbol_uncurry
 
 /-! ## The cone symbol is scale integrable
 
-Source: the absolute-convergence paragraph of `thm:cone`.  The cone symbol's
+Source: the absolute-convergence paragraph of `thm:cone`. The cone symbol's
 scale integrand is a fixed complex multiple of the Calderón integrand, which is
 already known to be integrable on the half-line, so the symbol is too.
 -/
@@ -17003,7 +16995,7 @@ theorem integrableOn_coneFrequencySymbol_div
 /-! ## Joint integrability in frequency and scale
 
 Source: the absolute-convergence paragraph of `thm:cone`, which justifies
-Fubini between frequencies and scales.  Sliced in the scale the integrand is
+Fubini between frequencies and scales. Sliced in the scale the integrand is
 integrable for every frequency, and the resulting scale mass is bounded by the
 multiplier constant against the Calderón constant, so the frequency integral of
 that mass is controlled by the Schwartz factor alone.
@@ -17067,7 +17059,7 @@ theorem integrable_coneFrequencySymbol_prod
 /-! ## Exchanging the frequency and scale integrals
 
 Source: the absolute-convergence paragraph of `thm:cone`, which justifies
-Fubini between frequencies and scales.  With joint integrability established
+Fubini between frequencies and scales. With joint integrability established
 the exchange is immediate, and the frequency integral of the scale-integrated
 cone integrand is itself integrable in the frequency.
 -/
@@ -17101,7 +17093,7 @@ theorem integrable_frequencyIntegrated_coneFrequencySymbol
 
 /-! ## The multiplier form as a scale integral of cone forms
 
-Source: `thm:cone`.  Substituting the cone identity under the frequency
+Source: `thm:cone`. Substituting the cone identity under the frequency
 integral — legitimate almost everywhere, since the identity needs the frequency
 to be nonzero and the origin is a single point — and exchanging the frequency
 and scale integrals presents the multiplier form as the normalized sum over the
@@ -17167,10 +17159,10 @@ theorem multiplierForm_eq_scaleIntegral_coneMultiplierForm
 
 /-! ## The third cone's scale integral, mode expanded
 
-Source: `thm:cone`.  The scale integral of the cone form and the mode expansion
+Source: `thm:cone`. The scale integral of the cone form and the mode expansion
 of the cone form at a fixed scale meet here: at every positive scale the third
 cone form is the coefficient-weighted sum of the mode forms, so the scale
-integral may be taken of that sum.  This is the composition point of the two
+integral may be taken of that sum. This is the composition point of the two
 halves of the theorem's proof.
 -/
 
@@ -17195,10 +17187,10 @@ theorem integral_coneMultiplierForm_two_eq_tsum
 
 /-! ## The mode interchange for an arbitrary bounded symbol family
 
-Source: `thm:cone`, absolute-convergence paragraph.  The interchange between
+Source: `thm:cone`, absolute-convergence paragraph. The interchange between
 modes and frequencies was established for the third cone's mode symbols;
 nothing in it uses more than that the symbols are continuous and uniformly
-bounded and that the coefficients are absolutely summable.  Stating it that way
+bounded and that the coefficients are absolutely summable. Stating it that way
 makes it available at every cone, where the symbols are the same third-cone
 ones evaluated at a relabeled frequency.
 -/
@@ -17214,9 +17206,9 @@ theorem integrable_boundedSymbol_frequencyIntegrand
         (c * S (-frequencyDiagonal ζ)) *
           frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ)
       frequencyMeasure := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   have hcont : Continuous (fun ζ : Frequency9 ↦ S (-frequencyDiagonal ζ)) :=
     hScont.comp frequencyDiagonal.continuous.neg
@@ -17246,9 +17238,9 @@ theorem summable_boundedSymbol_frequencyIntegralNorm
         ‖(a n * S n (-frequencyDiagonal ζ)) *
           frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖
         ∂frequencyMeasure) := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   set K : Frequency9 → ℂ :=
     fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hK
@@ -17303,7 +17295,7 @@ theorem integral_tsum_boundedSymbol_frequencyIntegrand
 
 /-! ## Every cone form is the sum of its mode forms
 
-Source: `thm:cone`.  With the mode interchange stated for an arbitrary bounded
+Source: `thm:cone`. With the mode interchange stated for an arbitrary bounded
 symbol family, the fixed-scale expansion of the cone form holds at each of the
 three cones: the symbols there are the third cone's mode symbols evaluated at a
 relabeled frequency, which are continuous and carry the same uniform bound, and
@@ -17372,7 +17364,7 @@ theorem frequencyForm_coneFrequencySymbol_eq_tsum
 
 /-! ## The mode symbol's scale majorant, at every frequency
 
-Source: the absolute-convergence paragraph of `thm:cone`.  The mode symbol
+Source: the absolute-convergence paragraph of `thm:cone`. The mode symbol
 carries Gaussians on the two transverse coordinates where the Calderón weight
 carries only the plateau cutoffs, and the Gaussian is at most one, so the mode
 symbol is dominated pointwise by the Calderón weight over the active exponent.
@@ -17392,8 +17384,8 @@ theorem norm_thirdModeFrequencySymbol_le_coneActiveTerm
             coneActiveProfile (t ^ α.weight 2 * ξ 2)) := by
     unfold coneActiveTerm coneActiveProfile
     rw [Fin.prod_univ_three]
-    simp only [if_neg (by decide : ¬((0 : Fin 3) = 2)),
-      if_neg (by decide : ¬((1 : Fin 3) = 2)), if_true, mul_one]
+    simp only [ite_eq_right (by decide : ¬((0 : Fin 3) = 2)),
+      ite_eq_right (by decide : ¬((1 : Fin 3) = 2)), ite_true, mul_one]
     ring
   rw [norm_thirdModeFrequencySymbol_eq, hterm,
     mul_div_cancel_left₀ _ (ne_of_gt hw)]
@@ -17454,7 +17446,7 @@ theorem integral_norm_thirdModeFrequencySymbol_div_Ioi_le
 /-! ## Joint continuity of the dilation and the mode symbol
 
 Source: the absolute-convergence paragraph of `thm:cone`, which integrates in
-the scale and the frequency together.  The mode symbol is a fixed profile
+the scale and the frequency together. The mode symbol is a fixed profile
 precomposed with the anisotropic dilation, so its joint continuity reduces to
 that of the dilation, which acts coordinatewise by a power of the scale.
 -/
@@ -17479,7 +17471,7 @@ theorem continuous_thirdModeFrequencySymbol_uncurry
 
 /-! ## The mode symbol is scale integrable
 
-Source: the absolute-convergence paragraph of `thm:cone`.  The mode symbol is
+Source: the absolute-convergence paragraph of `thm:cone`. The mode symbol is
 dominated in the scale by the Calderón integrand, which is integrable on the
 half-line, so the mode symbol is too — at every frequency.
 -/
@@ -17521,7 +17513,7 @@ theorem integrableOn_thirdModeFrequencySymbol_div
 /-! ## Joint integrability of a mode against the frequency kernel
 
 Source: the absolute-convergence paragraph of `thm:cone`, which justifies
-Fubini between scales and modes.  For each mode the integrand is integrable in
+Fubini between scales and modes. For each mode the integrand is integrable in
 the scale at every frequency, and its scale mass is bounded by the Calderón
 constant over the active exponent uniformly in the frequency, so the frequency
 integral of that mass is controlled by the kernel alone.
@@ -17562,9 +17554,9 @@ theorem integrable_thirdModeFrequencySymbol_kernel_prod
           frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1)
       ((frequencyMeasure : Measure Frequency9).prod
         ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   have hw : (0 : ℝ) < ((α.weight 2 : ℕ) : ℝ) := by exact_mod_cast α.weight_pos 2
   set K : Frequency9 → ℂ :=
@@ -17610,7 +17602,7 @@ theorem integrable_thirdModeFrequencySymbol_kernel_prod
 
 /-! ## The mode form is scale integrable
 
-Source: `thm:cone`.  Joint integrability makes the mode's frequency integral
+Source: `thm:cone`. Joint integrability makes the mode's frequency integral
 integrable in the scale, which is the premise the scale/mode interchange needs
 term by term.
 -/
@@ -17640,7 +17632,7 @@ theorem integral_integral_swap_thirdModeFrequencySymbol
 
 /-! ## The mode form's scale mass
 
-Source: the absolute-convergence paragraph of `thm:cone`.  The scale mass of a
+Source: the absolute-convergence paragraph of `thm:cone`. The scale mass of a
 mode form is at most the Calderón constant over the active exponent against the
 kernel's total mass — the same bound at every mode, which is what makes the
 mode sum converge once the coefficients decay.
@@ -17656,9 +17648,9 @@ theorem integral_norm_modeFrequencyForm_div_le
       ≤ (cPsi ^ 3 / ((α.weight 2 : ℕ) : ℝ)) *
           ∫ ζ : Frequency9,
             ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   set K : Frequency9 → ℂ :=
     fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
@@ -17710,7 +17702,7 @@ theorem integral_norm_modeFrequencyForm_div_le
 
 /-! ## Preparing the scale/mode interchange
 
-Source: the absolute-convergence paragraph of `thm:cone`.  The mode form's
+Source: the absolute-convergence paragraph of `thm:cone`. The mode form's
 scale integrand is the frequency integral of the mode integrand, the
 translation weight is at least one so its high negative powers are summable
 along with the low ones, and both facts are what the interchange's two premises
@@ -17783,9 +17775,9 @@ theorem integral_norm_thirdModeFrequencyForm_div_le
 /-! ## Exchanging the scale integral with the mode sum
 
 Source: the absolute-convergence paragraph of `thm:cone`, which justifies
-Fubini between scales and modes.  Each mode's scale integrand is integrable,
+Fubini between scales and modes. Each mode's scale integrand is integrable,
 and its scale mass is the coefficient bound times a constant independent of the
-mode, so the order-110 decay makes the masses summable.  Those are the two
+mode, so the order-110 decay makes the masses summable. Those are the two
 premises of the interchange.
 -/
 
@@ -17871,7 +17863,7 @@ theorem integral_tsum_modeScaleIntegrand
 
 /-! ## The third cone's contribution, mode by mode
 
-Source: `thm:cone`.  The third cone's scale integral of cone forms and the
+Source: `thm:cone`. The third cone's scale integral of cone forms and the
 mode sum are now both available, and the interchange between them is proved, so
 the cone's contribution is the sum over modes of the scale integrals of the
 coefficient-weighted mode forms — which is the third summand of
@@ -17918,7 +17910,7 @@ theorem integral_coneMultiplierForm_two_eq_tsum_scale
 
 /-! ## The multiplicative measure written out
 
-Source: the scale integrals of `thm:cone`, which run against `dt/t`.  The
+Source: the scale integrals of `thm:cone`, which run against `dt/t`. The
 development carries that as a density on the half-line; writing it out turns
 the full forms into ordinary scale integrals of the divided integrand, which is
 the shape every bound proved here is stated in.
@@ -17974,7 +17966,7 @@ theorem integral_coneMultiplierForm_two_eq_tsum_fullForm
 /-! ## The third cone's contribution as model forms
 
 Source: `eq:form_decomposition`, whose summands are model forms at the mode
-translates with the negated normalized coefficients.  The third cone's
+translates with the negated normalized coefficients. The third cone's
 contribution is now exactly that sum, the sign being the one the blueprint
 absorbs into its coefficient.
 -/
@@ -17998,7 +17990,7 @@ theorem integral_coneMultiplierForm_two_eq_tsum_modelForm
 
 /-! ## The mode/kernel product against an arbitrary frequency map
 
-Source: the absolute-convergence paragraph of `thm:cone`.  At the first two
+Source: the absolute-convergence paragraph of `thm:cone`. At the first two
 cones the mode symbols are third-cone symbols evaluated at a relabeled
 frequency, so the diagonal map is composed with a coordinate relabeling.
 Nothing in the product argument uses more than that the map is continuous and
@@ -18042,9 +18034,9 @@ theorem integrable_modeSymbol_kernel_prod
           frequencyKernel (F 0) (F 1) (F 2) (F 3) p.1)
       ((frequencyMeasure : Measure Frequency9).prod
         ((volume : Measure ℝ).restrict (Ioi (0 : ℝ)))) := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   set K : Frequency9 → ℂ :=
     fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
@@ -18088,7 +18080,7 @@ theorem integrable_modeSymbol_kernel_prod
 
 /-! ## The mode form against an arbitrary frequency map
 
-Source: the absolute-convergence paragraph of `thm:cone`.  Integrability in the
+Source: the absolute-convergence paragraph of `thm:cone`. Integrability in the
 scale and the uniform scale mass, both stated for an arbitrary frequency map,
 are the two premises the scale/mode interchange needs at each cone.
 -/
@@ -18135,9 +18127,9 @@ theorem integral_norm_modeSymbolForm_div_le
       ≤ (cPsi ^ 3 / ((β.weight 2 : ℕ) : ℝ)) *
           ∫ ζ : Frequency9,
             ‖frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ‖ ∂frequencyMeasure := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   set K : Frequency9 → ℂ :=
     fun ζ ↦ frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ with hKdef
@@ -18195,7 +18187,7 @@ theorem integral_norm_modeSymbolForm_div_le
 
 /-! ## The scale/mode interchange against an arbitrary frequency map
 
-Source: the absolute-convergence paragraph of `thm:cone`.  Stated against an
+Source: the absolute-convergence paragraph of `thm:cone`. Stated against an
 arbitrary continuous linear frequency map, the interchange between the scale
 integral and the mode sum covers all three cones at once, since the first two
 cones differ from the third only by composing the diagonal with a coordinate
@@ -18288,9 +18280,9 @@ theorem integral_tsum_modeSymbolScaleIntegrand
 
 /-! ## The cone relabeling is an involution
 
-Source: `lem:permutation`.  The relabeling that moves an active coordinate into
+Source: `lem:permutation`. The relabeling that moves an active coordinate into
 the third slot is a transposition, so applying it twice restores the original
-anisotropy, frequency and multiplier.  That is what turns the certificate
+anisotropy, frequency and multiplier. That is what turns the certificate
 transport, which moves data forward, into one that also moves it back.
 -/
 
@@ -18322,7 +18314,7 @@ theorem coordinatePermutation_swap_symm_apply (i : Fin 3) (x : E3) :
 theorem conePermutedMultiplier_involutive (m : E3 → ℂ) (i : Fin 3) :
     conePermutedMultiplier (conePermutedMultiplier m i) i = m := by
   funext x
-  show m ((coordinatePermutation (Equiv.swap 2 i)).symm
+  change m ((coordinatePermutation (Equiv.swap 2 i)).symm
     ((coordinatePermutation (Equiv.swap 2 i)).symm x)) = m x
   rw [coordinatePermutation_swap_symm_apply,
     coordinatePermutation_swap_symm_apply,
@@ -18330,7 +18322,7 @@ theorem conePermutedMultiplier_involutive (m : E3 → ℂ) (i : Fin 3) :
 
 /-! ## The cone symbol carries a certificate at every cone
 
-Source: `thm:cone` with `lem:permutation`.  The certificate for the third cone
+Source: `thm:cone` with `lem:permutation`. The certificate for the third cone
 symbol transports forward to the relabeled frame, and since the relabeling is a
 transposition it transports back, which gives the certificate at the original
 anisotropy for each of the three cone symbols.
@@ -18369,7 +18361,7 @@ theorem multiplierForm_coneFrequencySymbol_eq_frequencyForm
 
 /-! ## Every cone's contribution, mode by mode
 
-Source: `thm:cone`.  At each cone the mode symbols are third-cone symbols
+Source: `thm:cone`. At each cone the mode symbols are third-cone symbols
 evaluated at the diagonal composed with the coordinate relabeling — itself a
 continuous linear map of the frequency — so the interchange stated against an
 arbitrary such map applies, and each cone's contribution is the sum over modes
@@ -18450,9 +18442,9 @@ theorem integral_coneMultiplierForm_eq_tsum_scale
 
 /-! ## `eq:form_decomposition`
 
-Source: `thm:cone`.  The multiplier form is the normalized sum over the three
+Source: `thm:cone`. The multiplier form is the normalized sum over the three
 active coordinates and over all integer modes of the scale integrals of the
-coefficient-weighted mode forms.  The scale half comes from the cone identity
+coefficient-weighted mode forms. The scale half comes from the cone identity
 under the frequency integral, the mode half from the Fourier series of the
 localized symbol, and the three interchanges join them.
 -/
@@ -18517,7 +18509,7 @@ theorem nonneg_coneModeWeight (α : Anisotropy) (i : Fin 3) {A0 : ℝ} (hA0 : 0 
 def coneModeCoefficient (A0 : ℝ) (ν : Fin 3 → ℤ) (a : ℂ) : ℂ :=
   -a / ((modeEnvelope A0 ν : ℝ) : ℂ)
 
-/-- **The normalization identity.**  The cone prefactor against a raw
+/-- **The normalization identity.** The cone prefactor against a raw
 coefficient is the weight against the contracted coefficient, up to the sign
 the blueprint absorbs. -/
 theorem coneMode_normalization
@@ -18554,7 +18546,7 @@ theorem norm_coneModeCoefficient_le_one
 /-! ## The decomposition with the weights written out
 
 Source: `thm:cone`, whose statement carries the weight outside the scale
-integral and the contracted coefficient inside it.  Moving the cone prefactor
+integral and the contracted coefficient inside it. Moving the cone prefactor
 through the mode sum and the scale integral puts the decomposition in exactly
 that shape.
 -/
@@ -18587,7 +18579,7 @@ theorem coneModeTerm_normalized
 
 /-! ## `eq:form_decomposition` in the blueprint's normalization
 
-Source: `thm:cone`.  The decomposition, with the nonnegative mode weights
+Source: `thm:cone`. The decomposition, with the nonnegative mode weights
 outside and the contracted coefficients inside, is the equation the theorem
 states.
 -/
@@ -18683,7 +18675,7 @@ theorem measurable_coneModeCoefficient
 
 /-! ## `thm:cone`
 
-Source: `thm:cone`, the cone decomposition of the form.  The pieces are named
+Source: `thm:cone`, the cone decomposition of the form. The pieces are named
 here so the statement reads as the blueprint writes it: a nonnegative weight
 per cone and mode, a contracted coefficient, and the form as their sum against
 the mode forms over the scale half-line.
@@ -18705,7 +18697,7 @@ def coneModeForm
         (-(conePermutedDiagonal i ζ)) *
       frequencyKernel (F 0) (F 1) (F 2) (F 3) ζ ∂frequencyMeasure
 
-/-- **`thm:cone`.**  With the envelope constant chosen above the decay budget,
+/-- **`thm:cone`.** With the envelope constant chosen above the decay budget,
 the weights are nonnegative, the coefficients are contractions, and the form is
 their weighted mode sum over the scale half-line. -/
 theorem coneDecompositionOfForm
@@ -18727,7 +18719,7 @@ theorem coneDecompositionOfForm
   refine ⟨A0, hA0, fun i ν ↦ nonneg_coneModeWeight α i hA0 ν, hcoef, fun F ↦ ?_⟩
   exact multiplierForm_eq_coneModeDecomposition_normalized α M m hm hA0 F
 
-/-- **The degenerate clause of `thm:cone`.**  A multiplier with vanishing
+/-- **The degenerate clause of `thm:cone`.** A multiplier with vanishing
 constant has vanishing form. -/
 theorem coneDecompositionOfForm_zero
     (α : Anisotropy) (m : E3 → ℂ)
@@ -18738,7 +18730,7 @@ theorem coneDecompositionOfForm_zero
 
 /-! ## The cone mode full form
 
-Source: `thm:cone` and `thm:main`.  Naming the scale integral of a
+Source: `thm:cone` and `thm:main`. Naming the scale integral of a
 coefficient-weighted mode form puts the decomposition in the shape the main
 theorem quotes it in: a weighted sum of forms each of which the extended model
 estimate bounds.
@@ -18765,7 +18757,7 @@ theorem multiplierForm_eq_coneModeFullForm_sum
   multiplierForm_eq_coneModeDecomposition_normalized α M m hm hA0 F
 
 /-- A uniform weight-one-hundred bound for the cone mode full forms at the
-exponents `q`.  This is what `thm:extended_model` supplies, through
+exponents `q`. This is what `thm:extended_model` supplies, through
 `lem:permutation`. -/
 def UniformConeModeFormBound (α : Anisotropy) (q : Fin 4 → ℝ) : Prop :=
   ∃ C : ℝ, 0 ≤ C ∧ ∀ (i : Fin 3) (ν : Fin 3 → ℤ) (c : ℝ → ℂ),
@@ -18776,7 +18768,7 @@ def UniformConeModeFormBound (α : Anisotropy) (q : Fin 4 → ℝ) : Prop :=
 
 /-! ## One cone's weighted mode sum is bounded
 
-Source: the closing paragraph of the proof of `thm:main`.  The weight carries
+Source: the closing paragraph of the proof of `thm:main`. The weight carries
 the order-110 decay and the model estimate contributes order-100 growth, so
 each term carries order ten, which the lattice sums.
 -/
@@ -18832,10 +18824,10 @@ theorem norm_coneModeTermSum_le
 
 /-! ## The form bound from the cone decomposition
 
-Source: the closing paragraph of the proof of `thm:main`.  Each term of the
+Source: the closing paragraph of the proof of `thm:main`. Each term of the
 decomposition is a nonnegative weight against a mode form the extended model
 estimate bounds at weight one hundred; the weight carries the order-110 decay,
-leaving order ten for the lattice to sum.  The degenerate case of a vanishing
+leaving order ten for the lattice to sum. The degenerate case of a vanishing
 multiplier constant is handled separately, as the blueprint does.
 -/
 
@@ -18913,7 +18905,7 @@ theorem exists_norm_multiplierForm_le_of_coneModeFormBound
     intro i ν t
     rw [hc]
     by_cases ht : 0 < t
-    · simp only [if_pos ht]
+    · simp only [ite_eq_left ht]
       refine norm_coneModeCoefficient_le_one hA0 ?_ ν (hAfb i t ht ν)
       rw [hA0def]
       exact mul_le_mul_of_nonneg_right (hAfle i) hM0
@@ -18927,7 +18919,7 @@ theorem exists_norm_multiplierForm_le_of_coneModeFormBound
     intro i ν
     rw [coneModeFullForm_congr_of_eqOn α i ν
       (c := fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t))
-      (c' := c i ν) (fun t ht ↦ by rw [hc]; simp only [if_pos ht]) F]
+      (c' := c i ν) (fun t ht ↦ by rw [hc]; simp only [ite_eq_left ht]) F]
     exact hCmb i ν (c i ν) (hcmeas i ν) (hcbnd i ν) F
   rw [multiplierForm_eq_coneModeFullForm_sum α M m hm hA0 F, norm_neg]
   refine (norm_sum_le _ _).trans ?_
@@ -18946,10 +18938,10 @@ theorem exists_norm_multiplierForm_le_of_coneModeFormBound
 
 /-! ## The localized symbol's derivative constant does not see the multiplier
 
-Source: `lem:symbol_derivatives`.  The constant in the localized symbol's
+Source: `lem:symbol_derivatives`. The constant in the localized symbol's
 derivative bound is assembled from the cutoff's own derivative budget and the
 anisotropic weights of the direction tuples — nothing in it depends on the
-multiplier.  Stating it with the constant quantified first is what makes every
+multiplier. Stating it with the constant quantified first is what makes every
 bound built on it uniform over multipliers, which is what `thm:main` asks for.
 -/
 
@@ -18990,11 +18982,10 @@ theorem exists_uniform_localizedSymbol_derivative_bound_of_anisotropy
 
 /-! ## The raw derivative envelopes, with the constant hoisted
 
-Source: `lem:symbol_derivatives`.  Each raw envelope passes the localized
+Source: `lem:symbol_derivatives`. Each raw envelope passes the localized
 symbol's derivative constant through a fixed coordinate rescaling, so hoisting
 the constant there hoists it here too.
 -/
-
 theorem exists_uniform_raw_first_scaled_110_deriv_bound_of_anisotropy
     (α : Anisotropy) (i : Fin 3) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
@@ -19060,11 +19051,10 @@ theorem exists_uniform_raw_scaled_uniform_bound_of_anisotropy
 
 /-! ## The torus coefficient bounds, with the constant hoisted
 
-Source: `lem:fourier_series`.  Each coefficient bound passes a raw derivative
+Source: `lem:fourier_series`. Each coefficient bound passes a raw derivative
 envelope through the integration-by-parts estimate, so hoisting the constant in
 those envelopes hoists it here as well.
 -/
-
 theorem exists_uniform_mFourierCoeff_unitTorusLocalizedSymbol_bound_of_anisotropy
     (α : Anisotropy) (i : Fin 3) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (M : ℝ) (m : E3 → ℂ),
@@ -19133,11 +19123,10 @@ theorem exists_uniform_mFourierCoeff_last_110_decay_of_anisotropy
 
 /-! ## The assembled order-110 decay, with the constant hoisted
 
-Source: `lem:fourier_series`, `eq:coefficient_decay`.  The constant combines
+Source: `lem:fourier_series`, `eq:coefficient_decay`. The constant combines
 the four coefficient budgets with a fixed geometric factor, so hoisting those
 budgets hoists the assembled constant, which is what the main theorem needs.
 -/
-
 theorem exists_uniform_mFourierCoeff_sourceWeight_110_decay_of_anisotropy
     (α : Anisotropy) (i : Fin 3) :
     ∃ A : ℝ, 0 ≤ A ∧ ∀ (M : ℝ) (m : E3 → ℂ),
@@ -19280,7 +19269,7 @@ theorem exists_uniform_mFourierCoeff_sourceWeight_110_decay_of_anisotropy
 /-! ## The form bound with a constant depending only on the data
 
 Source: `thm:main`, whose constant depends on the anisotropy and the exponents
-alone.  With the coefficient decay's constant hoisted above the multiplier, the
+alone. With the coefficient decay's constant hoisted above the multiplier, the
 constant assembled from it is hoisted too, which is what the theorem asks for.
 -/
 
@@ -19352,7 +19341,7 @@ theorem exists_uniform_norm_multiplierForm_le_of_coneModeFormBound
     intro i ν t
     rw [hc]
     by_cases ht : 0 < t
-    · simp only [if_pos ht]
+    · simp only [ite_eq_left ht]
       refine norm_coneModeCoefficient_le_one hA0 ?_ ν (hAfb i M m hm t ht ν)
       rw [hA0def]
       exact mul_le_mul_of_nonneg_right (hAfle i) hM0
@@ -19366,7 +19355,7 @@ theorem exists_uniform_norm_multiplierForm_le_of_coneModeFormBound
     intro i ν
     rw [coneModeFullForm_congr_of_eqOn α i ν
       (c := fun t ↦ coneModeCoefficient A0 ν (coneModeRawCoefficient α m i ν t))
-      (c' := c i ν) (fun t ht ↦ by rw [hc]; simp only [if_pos ht]) F]
+      (c' := c i ν) (fun t ht ↦ by rw [hc]; simp only [ite_eq_left ht]) F]
     exact hCmb i ν (c i ν) (hcmeas i ν) (hcbnd i ν) F
   rw [multiplierForm_eq_coneModeFullForm_sum α M m hm hA0 F, norm_neg]
   refine (norm_sum_le _ _).trans ?_
@@ -19424,15 +19413,15 @@ theorem extendedModelRegion_of_mainExponents
 
 /-! ## `thm:main`
 
-Source: `thm:main`, the anisotropic paraproduct bound.  The exponent
+Source: `thm:main`, the anisotropic paraproduct bound. The exponent
 hypotheses are exactly those of the blueprint; they place the reciprocals in
 the extended model region, which is the region over which the model estimate
-quoted here is stated.  That estimate is `thm:extended_model`, carried as a
+quoted here is stated. That estimate is `thm:extended_model`, carried as a
 hypothesis because the blueprint proves it from an external interpolation
 result it does not itself supply.
 -/
 
-/-- **`thm:main`.**  Under the blueprint's exponent hypotheses the reciprocals
+/-- **`thm:main`.** Under the blueprint's exponent hypotheses the reciprocals
 lie in the extended model region, and — given the model estimate available
 there — every anisotropic multiplier's form is bounded by its constant against
 the product of the four input norms, with a constant depending only on the
@@ -19459,10 +19448,10 @@ theorem anisotropicParaproduct
 /-! ## The model-form bound as a hypothesis, and its complex bridges
 
 Source: `thm:extended_model` together with the closing paragraph of
-`thm:main`.  The passage from the real full-scale model form to the complex
+`thm:main`. The passage from the real full-scale model form to the complex
 active-coordinate form is exponent-blind: it uses the `2^5` real/imaginary
 expansion and the coordinate relabeling and nothing about which exponent
-region the real bound holds in.  Isolating the real bound as a hypothesis lets
+region the real bound holds in. Isolating the real bound as a hypothesis lets
 the same passage serve the initial range and the extended range.
 -/
 
@@ -19475,7 +19464,7 @@ def UniformRealModelFormBound (α : Anisotropy) (q : Fin 4 → ℝ) : Prop :=
       ∏ j : Fin 4, lpNorm (F j : E3 → ℝ)
         (ENNReal.ofReal (q j)) (volume : Measure E3)
 
-/-- **The complex model form from the real one.**  The `2^5` real/imaginary
+/-- **The complex model form from the real one.** The `2^5` real/imaginary
 expansion costs a factor `32`. -/
 theorem exists_uniform_LiteralModelFullForm_bound_of_real
     (α : Anisotropy) (q : Fin 4 → ℝ) (hreal : UniformRealModelFormBound α q) :
@@ -19491,7 +19480,7 @@ theorem exists_uniform_LiteralModelFullForm_bound_of_real
   exact norm_LiteralModelFullForm_le_weight100 α u c C hC0 q hcmeas hc
     (fun d hd hd1 G ↦ hbound u d G hd hd1) F
 
-/-- **The complex active-coordinate model form from the real one.**  The real
+/-- **The complex active-coordinate model form from the real one.** The real
 bound is needed for the permuted anisotropy at the permuted exponents, which is
 what the coordinate relabeling of `lem:permutation` produces. -/
 theorem exists_uniform_LiteralActiveModelFullForm_bound_of_real
@@ -19520,7 +19509,7 @@ theorem exists_uniform_LiteralActiveModelFullForm_bound_of_real
 
 /-! ## The Fourier transform under a coordinate relabeling
 
-Source: `lem:permutation`.  The frequency-side transport of the model form
+Source: `lem:permutation`. The frequency-side transport of the model form
 needs the Fourier transform to commute with the coordinate relabeling; the
 relabeling is an isometry, so its adjoint is its inverse and the character is
 carried across unchanged.
@@ -19564,9 +19553,9 @@ theorem aux_schwartzFourier_comp_isometry (P : E3 ≃ₗᵢ[ℝ] E3) (f g : Schw
 
 /-! ## The twisted product under a coordinate relabeling
 
-Source: `lem:permutation`.  Relabeling the three spatial coordinates and the
+Source: `lem:permutation`. Relabeling the three spatial coordinates and the
 three active inputs together leaves the translated product `P_f` unchanged, up
-to the same relabeling of its argument.  This is what transports the model
+to the same relabeling of its argument. This is what transports the model
 estimate between active coordinates on the multiplier side.
 -/
 
@@ -19642,7 +19631,7 @@ theorem twistedProduct_complexPermutedModelInput
 
 /-! ## The multiplier form under a coordinate relabeling
 
-Source: `lem:permutation`.  Composing the symbol with the coordinate
+Source: `lem:permutation`. Composing the symbol with the coordinate
 relabeling is the same as relabeling the four inputs; this is the identity that
 moves the model estimate between the three active coordinates on the
 multiplier side.
@@ -19698,7 +19687,7 @@ theorem multiplierForm_comp_coordinatePermutation
 
 /-! ## The cone mode form is a third-coordinate mode form
 
-Source: `lem:permutation`.  The `i`th cone's mode symbol is the third-cone
+Source: `lem:permutation`. The `i`th cone's mode symbol is the third-cone
 symbol evaluated at a relabeled frequency, so by the relabeling identity for the
 multiplier form the `i`th cone's mode form is the third-coordinate mode form of
 the relabeled input tuple.
@@ -19758,10 +19747,10 @@ theorem coneModeForm_eq_thirdModeFrequencyForm_permuted
 
 /-! ## The cone mode full form, and the uniform cone bound
 
-Source: the closing paragraph of `thm:main`.  Integrating the one-mode
+Source: the closing paragraph of `thm:main`. Integrating the one-mode
 identification in the scale identifies the `i`th cone's mode full form with a
 literal complex active-coordinate model form, at the translation attached to the
-mode.  The model bound then gives the uniform cone estimate the multiplier
+mode. The model bound then gives the uniform cone estimate the multiplier
 theorem consumes.
 -/
 
@@ -19849,7 +19838,7 @@ theorem uniformConeModeFormBound_of_real
 Source: the opening line of the proof of `thm:extended_model`, "Choose `b` by
 Lemma `lem:exponent_simplex`", together with the observation in the proof of
 `thm:main` that the extended region holds for every choice of active
-coordinate.  The base point depends on which coordinate is active, which is why
+coordinate. The base point depends on which coordinate is active, which is why
 the bound has to be produced separately for every relabeling.
 -/
 
@@ -19942,7 +19931,7 @@ theorem uniformRealModelFormBound_permuted_of_main_bounds
 
 /-! ## `thm:main`, conditional only on `ext:interpolation`
 
-Source: `thm:main`.  Every hypothesis of the Lean statement other than the
+Source: `thm:main`. Every hypothesis of the Lean statement other than the
 external interpolation theorem is now discharged: the exponent simplex supplies
 a base point for each active coordinate, the extended model range supplies the
 real full-scale model bound there, the complexification and relabeling bridges
@@ -20020,7 +20009,7 @@ theorem anisotropicParaproduct_unconditional
 /-- **`lem:permutation`** (Coordinate permutation).
 
 Choose a permutation `σ` with `σ(3) = i` and put `P_σ x = (x_{σ(1)},
-x_{σ(2)}, x_{σ(3)})`, `α̃_j = α_{σ(j)}`, `ũ_j = u_{σ(j)}`.  The permuted symbol
+x_{σ(2)}, x_{σ(3)})`, `α̃_j = α_{σ(j)}`, `ũ_j = u_{σ(j)}`. The permuted symbol
 is again an anisotropic multiplier. -/
 theorem lem_permutation
     (α : Anisotropy) (M : ℝ) (m : E3 → ℂ)
@@ -20070,7 +20059,7 @@ theorem lem_fourier_series_coefficient_decay
 
 If `M > 0`, choose `A₀ = C_α M > 0` large enough for `eq:coefficient_decay`,
 and put `w_i(ν) = c_Ψ^{-3} α_i A₀ (1+|ν|)^{-110}` and
-`c_{i,ν}(t) = -a_i(t,ν) / (A₀ (1+|ν|)^{-110})`.  Then the coefficients
+`c_{i,ν}(t) = -a_i(t,ν) / (A₀ (1+|ν|)^{-110})`. Then the coefficients
 `c_{i,ν}` are measurable with modulus at most one, and for Schwartz tuples
 `Λ_m(f) = ∑_{i=1}^3 ∑_{ν ∈ ℤ³} w_i(ν) Λ^{(i)}_{ν/8, c_{i,ν}}(f)`.
 The expansion is absolutely convergent. -/

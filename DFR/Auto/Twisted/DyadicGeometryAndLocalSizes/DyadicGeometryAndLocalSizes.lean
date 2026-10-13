@@ -27,13 +27,11 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
 import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
-
-universe u
 
 /-!
 # Dyadic geometry and local sizes
@@ -42,9 +40,11 @@ Section 3 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -52,7 +52,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -162,7 +163,7 @@ theorem integral_bracketKernelAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
   rw [Measure.integral_comp_div]
   simp [abs_of_pos hs, integral_bracketKernel, hs.ne']
 
-/-- A one-coordinate comparison of bracket kernels.  It is the elementary
+/-- A one-coordinate comparison of bracket kernels. It is the elementary
 scale-and-center estimate behind the local-size comparison: `s` is no larger
 than `L`, is at least `L / b`, and the two centers are within `L / 2`. -/
 theorem bracketKernelAt_le_of_scale_center
@@ -231,7 +232,7 @@ theorem bracketKernelAt_le_of_scale_center
 
 /-! ## Anisotropic dyadic boxes
 
-This is the literal integer-level grid from `def:tree`.  In particular,
+This is the literal integer-level grid from `def:tree`. In particular,
 parents use Euclidean division on `ℤ`; this is the floor operation stipulated
 by the source even for negative coordinate indices.
 -/
@@ -339,7 +340,7 @@ theorem measurableSet_boxSet (α : Anisotropy) (q : AnisoBox α) :
   exact measurableSet_Ico
 
 /-- Integer division reconstructs every child digit, including at negative
-indices.  This is the converse to `boxParent_child`. -/
+indices. This is the converse to `boxParent_child`. -/
 theorem exists_boxChild_eq_of_boxParent_eq
     (α : Anisotropy) (q r : AnisoBox α)
     (h : boxParent α r = q) :
@@ -659,7 +660,7 @@ theorem boxSet_eq_children_union (α : Anisotropy) (q : AnisoBox α) :
 
 /-! ### Finite convex trees and scale regions
 
-This is the finite combinatorial form of `def:tree`.  It intentionally keeps
+This is the finite combinatorial form of `def:tree`. It intentionally keeps
 the tree as a `Finset` of literal grid boxes, so every union and boundary sum
 in the source remains finite and exact.
 -/
@@ -871,7 +872,7 @@ theorem volume_root_eq_sum_volume_leaves {α : Anisotropy} (T : FiniteConvexTree
 
 /-! ### Oriented grid faces
 
-The face layer retains the source's incident-box encoding.  This makes the
+The face layer retains the source's incident-box encoding. This makes the
 surviving-face cancellation later a finite equality of explicitly indexed
 objects rather than an informal boundary convention.
 -/
@@ -925,7 +926,7 @@ noncomputable def boxFaceSet (α : Anisotropy) (q : AnisoBox α) (i : Fin 3)
       p j ∈ Set.Icc ((q.index j : ℝ) * boxSide α q j)
         (((q.index j + 1 : ℤ) : ℝ) * boxSide α q j)}
 
-/-- The closed coordinate interval used on a face.  The spatial boxes remain
+/-- The closed coordinate interval used on a face. The spatial boxes remain
 half-open; this closed version is only for the face containment argument in
 the boundary packing proof. -/
 noncomputable def boxClosedInterval (α : Anisotropy) (q : AnisoBox α)
@@ -934,7 +935,7 @@ noncomputable def boxClosedInterval (α : Anisotropy) (q : AnisoBox α)
     (((q.index i + 1 : ℤ) : ℝ) * boxSide α q i)
 
 /-- The transverse half-open rectangle used as the integration domain of a
-face.  It is embedded in ambient coordinates only to keep its indices literal. -/
+face. It is embedded in ambient coordinates only to keep its indices literal. -/
 noncomputable def boxTransverseSet (α : Anisotropy) (q : AnisoBox α)
     (i : Fin 3) : Set E3 :=
   {p | ∀ j : Fin 3, j ≠ i → p j ∈ boxInterval α q j}
@@ -954,7 +955,7 @@ noncomputable def anisotropicBracketKernel (α : Anisotropy) (t : ℝ)
     (p y : E3) : ℝ :=
   ∏ i : Fin 3, bracketKernelAt (t ^ α.weight i) (p i) (y i)
 
-/-- Positivity of every factor in the comparison kernel.  The scale is kept
+/-- Positivity of every factor in the comparison kernel. The scale is kept
 nonnegative here because later tree scales are positive by construction. -/
 theorem bracketKernelAt_nonneg {s a x : ℝ} (hs : 0 ≤ s) :
     0 ≤ bracketKernelAt s a x := by
@@ -969,7 +970,7 @@ theorem anisotropicBracketKernel_nonneg (α : Anisotropy) {t : ℝ}
   intro i _
   exact bracketKernelAt_nonneg (pow_nonneg ht _)
 
-/-- Exact mass of the three-dimensional comparison kernel.  Its value is
+/-- Exact mass of the three-dimensional comparison kernel. Its value is
 less than one, as required in the cube and edge Brascamp--Lieb estimates. -/
 theorem integral_anisotropicBracketKernel (α : Anisotropy) {t : ℝ}
     (ht : 0 < t) (p : E3) :
@@ -995,7 +996,7 @@ theorem boxCenter_apply (α : Anisotropy) (q : AnisoBox α) (i : Fin 3) :
   simp [boxCenter]
 
 /-- The indicated center really is an interior point of its half-open grid
-box.  This is the coordinate fact needed when the local kernel is compared
+box. This is the coordinate fact needed when the local kernel is compared
 on a box closure. -/
 theorem boxCenter_mem_boxSet (α : Anisotropy) (q : AnisoBox α) :
     boxCenter α q ∈ boxSet α q := by
@@ -1044,7 +1045,7 @@ theorem boxLocalSize_le_collectionLocalSize {α : Anisotropy}
 
 /-! ### Cubical coordinates for the local Brascamp--Lieb forms
 
-The source uses two copies of each spatial coordinate.  Keeping this as an
+The source uses two copies of each spatial coordinate. Keeping this as an
 actual six-dimensional Euclidean space, rather than an informal tuple,
 makes the product measure and every projection below literal.
 -/
@@ -1243,7 +1244,7 @@ noncomputable def cubeBracketAverage (α : Anisotropy) (t : ℝ) (p : E3)
   ∫ x : E6, cubeInputProduct F x * cubeBracketWeight α t p x
 
 /-- The source local cube size over the closure of a finite box-scale
-region.  The set-theoretic supremum is intentionally literal; finiteness is
+region. The set-theoretic supremum is intentionally literal; finiteness is
 proved later from the Brascamp--Lieb bound for bounded inputs. -/
 noncomputable def collectionCubeSize (α : Anisotropy) (S : BoxCollection α)
     (F : CubeVertex → E3 → ℝ) : ℝ :=
@@ -1255,7 +1256,7 @@ noncomputable def treeCubeSize {α : Anisotropy} (T : FiniteConvexTree α)
   collectionCubeSize α T.boxes F
 
 /-- The nonnegative real Cauchy--Schwarz inequality in the exact integral
-form used twice in the proof of `lem:bl`.  Isolating it here keeps the later
+form used twice in the proof of `lem:bl`. Isolating it here keeps the later
 cube proof about the coordinate factorization rather than `L²` coercions. -/
 theorem integral_mul_le_sqrt_integral_sq
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (f g : X → ℝ)
@@ -1278,11 +1279,10 @@ theorem integral_mul_le_sqrt_integral_sq
 /-! ### Measurability of the local comparison measures
 
 The two Cauchy--Schwarz applications in `lem:bl` are most naturally made
-with respect to the finite product density occurring in the source.  The
+with respect to the finite product density occurring in the source. The
 following elementary continuity facts make that density an actual measure,
 rather than a formal notation for a weighted integral.
 -/
-
 theorem continuous_bracketKernel : Continuous bracketKernel := by
   unfold bracketKernel
   rw [continuous_iff_continuousAt]
@@ -1341,7 +1341,7 @@ theorem isFiniteMeasure_cubeBracketMeasure (α : Anisotropy) {t : ℝ}
     (integrable_cubeBracketWeight α ht p).hasFiniteIntegral
 
 /-- The two Cauchy--Schwarz steps from the full-cube estimate, isolated in a
-four-function form.  Keeping the nested square roots is intentional: it is
+four-function form. Keeping the nested square roots is intentional: it is
 the literal output of the two steps and avoids hiding any integrability
 assumption in a fourth-root notation. -/
 theorem integral_mul_mul_mul_le_two_cs
@@ -1484,7 +1484,6 @@ theorem cubeInputProduct_eq_four_pairFactors (F : CubeVertex → E3 → ℝ)
       ring
 
 /-! ### Exact fourth moments of the four cube pairs -/
-
 theorem cubePairFactor_nonneg (F : CubeVertex → E3 → ℝ)
     (b c : Bool) (x : E6) : 0 ≤ cubePairFactor F b c x := by
   unfold cubePairFactor
@@ -1529,7 +1528,7 @@ theorem integral_cubePairFactor_pow_four
       _ = _ := h)
 
 /-- A bounded measurable nonnegative source input, in the precise form used
-by `lem:bl`.  The explicit bound avoids silently replacing the source's
+by `lem:bl`. The explicit bound avoids silently replacing the source's
 pointwise bounded representatives by equivalence classes. -/
 def IsBoundedMeasurableNonneg (f : E3 → ℝ) : Prop :=
   Measurable f ∧ ∃ C : ℝ, 0 ≤ C ∧ ∀ y, 0 ≤ f y ∧ f y ≤ C
@@ -1542,7 +1541,7 @@ theorem integrable_cubePairFactor_pow_of_bounded
     (b c : Bool) (n : ℕ) :
     Integrable (fun x ↦ cubePairFactor F b c x ^ n)
       (cubeBracketMeasure α t p) := by
-  letI : IsFiniteMeasure (cubeBracketMeasure α t p) :=
+  let : IsFiniteMeasure (cubeBracketMeasure α t p) :=
     isFiniteMeasure_cubeBracketMeasure α ht p
   change Integrable ((cubePairFactor F b c) ^ n) (cubeBracketMeasure α t p)
   rcases hFbound (cubePairVertex b c) with ⟨C₀, hC₀, hbound₀⟩
@@ -1566,7 +1565,7 @@ theorem integrable_mul_cubePairFactor_pow_of_bounded
     Integrable (fun x ↦
       (cubePairFactor F b₀ c₀ x * cubePairFactor F b₁ c₁ x) ^ n)
       (cubeBracketMeasure α t p) := by
-  letI : IsFiniteMeasure (cubeBracketMeasure α t p) :=
+  let : IsFiniteMeasure (cubeBracketMeasure α t p) :=
     isFiniteMeasure_cubeBracketMeasure α ht p
   change Integrable ((cubePairFactor F b₀ c₀ * cubePairFactor F b₁ c₁) ^ n)
     (cubeBracketMeasure α t p)
@@ -1638,7 +1637,7 @@ theorem cubeFourthMoment_product_at_box_le_treeLocalSize_product
     (∏ j : CubeVertex,
       cubeFourthMoment α (boxLength q) (boxCenter α q) F j ^ ((4 : ℝ)⁻¹)) ≤
       ∏ j : CubeVertex, treeLocalSize T 4 (F j) := by
-  apply Finset.prod_le_prod
+  apply Finset.prod_le_prod₀
   · intro j _
     exact Real.rpow_nonneg
       (cubeFourthMoment_nonneg α (boxLength_pos q).le (boxCenter α q) F j) _
@@ -1684,7 +1683,7 @@ theorem cubeFourthMoment_nested_roots_eq_product
   ring
 
 /-- The full-cube Brascamp--Lieb estimate in the literal four-pair form
-obtained by the two Cauchy--Schwarz steps.  The next algebraic lemma turns
+obtained by the two Cauchy--Schwarz steps. The next algebraic lemma turns
 this into the usual product over all eight vertices. -/
 theorem cubeBracketAverage_le_two_cs
     (α : Anisotropy) {t : ℝ} (ht : 0 < t) (p : E3)
@@ -1830,7 +1829,7 @@ theorem integrable_cubeVertexFactor_pow_of_bounded
     (j : CubeVertex) (n : ℕ) :
     Integrable (fun x ↦ cubeVertexFactor F j x ^ n)
       (cubeBracketMeasure α t p) := by
-  letI : IsFiniteMeasure (cubeBracketMeasure α t p) :=
+  let : IsFiniteMeasure (cubeBracketMeasure α t p) :=
     isFiniteMeasure_cubeBracketMeasure α ht p
   change Integrable ((cubeVertexFactor F j) ^ n) (cubeBracketMeasure α t p)
   rcases hFbound with ⟨C, hC, hbound⟩
@@ -1957,7 +1956,7 @@ def cubeSignedInputProduct (F : CubeVertex → E3 → ℝ) (x : E6) : ℝ :=
 /-! ### Compact local-integrability package
 
 The source local-integrability lemma first fixes a positive scale and the six
-spatial variables.  Literal boxes and transverse rectangles are half-open, so
+spatial variables. Literal boxes and transverse rectangles are half-open, so
 we place each in its compact coordinatewise closure and apply continuity there.
 -/
 
@@ -2000,7 +1999,7 @@ theorem exists_bound_cubeSignedInputProduct
   refine ⟨∏ j : CubeVertex, B j, Finset.prod_nonneg (fun j _ ↦ (hB j).1), ?_⟩
   intro x
   rw [cubeSignedInputProduct, Finset.abs_prod]
-  exact Finset.prod_le_prod (fun j _ ↦ abs_nonneg _) (fun j _ ↦ (hB j).2 _)
+  exact Finset.prod_le_prod₀ (fun j _ ↦ abs_nonneg _) (fun j _ ↦ (hB j).2 _)
 
 /-! ### Spatial bracket-average bounds -/
 
@@ -2151,7 +2150,7 @@ theorem cubeBracketWeight_le_boxCenterWeight
           ((2 : ℝ) ^ α.weight u.1 * (3 / 2 : ℝ) ^ 10) *
             bracketKernelAt (boxLength q ^ α.weight u.1)
               (boxCenter α q u.1) (x u) := by
-      apply Finset.prod_le_prod
+      apply Finset.prod_le_prod₀
       · intro u hu
         exact bracketKernelAt_nonneg (pow_pos ht _).le
       · intro u hu
@@ -2219,7 +2218,7 @@ theorem cubeBracketAverage_le_boxCenterAverage
 
 /-- The local Brascamp--Lieb average on the closure of a finite tree region
 is bounded by an anisotropy-only constant times the product of the tree's
-eight fourth local sizes.  This is the source `lem:size`/`lem:bl` bridge used
+eight fourth local sizes. This is the source `lem:size`/`lem:bl` bridge used
 in the remainder estimate. -/
 theorem cubeBracketAverage_le_treeLocalSize_product_of_mem_closure
     {α : Anisotropy} (T : FiniteConvexTree α) (F : CubeVertex → E3 → ℝ)
@@ -2249,7 +2248,7 @@ local instance : Fact (0 < (8 : ℝ)) := ⟨by norm_num⟩
 
 /-- **`lem:geometry`** (Dyadic facts and boundary packing).
 
-Intersecting boxes are nested.  A box has `2^A` children, which partition it,
+Intersecting boxes are nested. A box has `2^A` children, which partition it,
 and the leaves of a finite convex tree partition its root.
 
 This is the count of children. -/

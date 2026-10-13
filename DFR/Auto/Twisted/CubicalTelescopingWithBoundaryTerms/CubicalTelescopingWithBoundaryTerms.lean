@@ -27,14 +27,12 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
 import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
 import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
-
-universe u
 
 /-!
 # Cubical telescoping with boundary terms
@@ -43,9 +41,11 @@ Section 4 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -53,7 +53,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -236,7 +237,7 @@ theorem integral_gaussianDerivAt {s : ℝ} (hs : 0 < s) (a : ℝ) :
   simp [abs_of_pos hs, integral_gaussianDeriv]
 
 /-- The source derivative kernel is the logarithmic spatial derivative of
-the mass-normalized Gaussian.  This explicit formula is the algebraic input
+the mass-normalized Gaussian. This explicit formula is the algebraic input
 for the center and scale differentiation identities in Section 4. -/
 theorem gaussianDerivAt_eq_logarithmic_deriv {s a x : ℝ} (hs : s ≠ 0) :
     gaussianDerivAt s a x =
@@ -259,7 +260,7 @@ theorem hasDerivAt_gaussianAt_center {s a x : ℝ} (_hs : s ≠ 0) :
   simpa [Function.comp_def, mul_assoc, mul_left_comm, mul_comm] using
     houter.const_mul s⁻¹
 
-/-- Differentiating the scale parameter of a mass-normalized Gaussian.  The
+/-- Differentiating the scale parameter of a mass-normalized Gaussian. The
 formula is kept in terms of `gaussianDerivAt`, which is the form that later
 combines with the center derivative by integration by parts. -/
 theorem hasDerivAt_gaussianAt_scale {s a x : ℝ} (hs : s ≠ 0) :
@@ -287,11 +288,10 @@ theorem hasDerivAt_gaussianAt_scale {s a x : ℝ} (hs : s ≠ 0) :
 
 /-! ### Scalar kernels for the one-dimensional telescope
 
-These names isolate one active coordinate of the cubical form.  They match
+These names isolate one active coordinate of the cubical form. They match
 the source notation `G_i,H_i,D_i,P_i,W_i,E_i` and let the differential and
 integration-by-parts calculations be proved once before being applied in the
 three coordinate directions. -/
-
 def scalarG (mu sig : ℝ) (n : ℕ) (t p u : ℝ) : ℝ :=
   gaussianAt (mu * t ^ n) (p + sig * t ^ n) u
 
@@ -330,7 +330,7 @@ theorem hasDerivAt_scalarG_center {mu sig : ℝ} {n : ℕ} {t p u : ℝ}
   convert! hbase.comp p hcenter using 1
   simp [scalarH]
 
-/-- Raw scale differentiation of the scalar Gaussian factor.  Introducing
+/-- Raw scale differentiation of the scalar Gaussian factor. Introducing
 the scale and center tangents explicitly keeps the later source identity
 algebraic rather than hiding a parameter interchange. -/
 theorem hasDerivAt_scalarG_scale_raw {mu sig : ℝ} {n : ℕ} {t p u : ℝ}
@@ -367,7 +367,7 @@ theorem hasDerivAt_scalarG_scale_raw {mu sig : ℝ} {n : ℕ} {t p u : ℝ}
   simp only [Function.comp_apply, Pi.div_apply, Pi.inv_apply]
   ring
 
-/-- The clean logarithmic scale derivative of one scalar Gaussian.  This is
+/-- The clean logarithmic scale derivative of one scalar Gaussian. This is
 the scalar version of the source's scale derivative before the two endpoint
 variables are multiplied together. -/
 theorem hasDerivAt_scalarG_scale {mu sig : ℝ} {n : ℕ} {t p u : ℝ}
@@ -1079,7 +1079,7 @@ theorem int_ediv_sub_one_or (a R : ℤ) (hR : 0 < R) :
     omega
 
 /-- Parent boxes of two adjacent grid boxes either coincide or remain
-adjacent.  This integer-dichotomy is the alignment mechanism in the finite
+adjacent. This integer-dichotomy is the alignment mechanism in the finite
 surviving-face packing proof. -/
 theorem boxParent_neighbor_eq_or_neighbor (α : Anisotropy) (q : AnisoBox α)
     (i : Fin 3) (ε : FaceOrientation) :
@@ -1399,7 +1399,7 @@ theorem measurableSet_transverseRectangle (α : Anisotropy) (q : AnisoBox α)
   exact measurableSet_Ico
 
 /-- The ordered two-element index set obtained by deleting the active
-coordinate.  It is used only to transport the standard finite-product
+coordinate. It is used only to transport the standard finite-product
 Lebesgue measure to the literal transverse coordinate type. -/
 def transverseIndexEquiv (i : Fin 3) : Fin 2 ≃ {j : Fin 3 // j ≠ i} :=
   Equiv.ofBijective (fun k ↦ ⟨i.succAbove k, Fin.succAbove_ne i k⟩) ⟨
@@ -1495,7 +1495,7 @@ private theorem coordinateSplitAux_eq (i : Fin 3) :
         (WithLp.ofLp p)).2 (e.symm j) = p (i.succAbove (e.symm j)) := rfl
     simpa [he] using hz
 
-/-- The coordinate split preserves Lebesgue measure.  The proof is the
+/-- The coordinate split preserves Lebesgue measure. The proof is the
 standard finite-product decomposition, with the final reindexing expressed
 through `transverseIndexEquiv`. -/
 theorem coordinateSplit_measurePreserving (i : Fin 3) :
@@ -1521,8 +1521,7 @@ theorem coordinateSplit_measurePreserving (i : Fin 3) :
   have h := h3.comp (h2.comp (h1.comp h0))
   rw [Measure.volume_eq_prod]
   convert h using 1
-  · rfl
-  · exact (coordinateSplitAux_eq i).symm
+  exact (coordinateSplitAux_eq i).symm
 
 theorem coordinateJoin_continuous (i : Fin 3) :
     Continuous (coordinateJoin i) := by
@@ -1669,7 +1668,7 @@ theorem integral_boxSet_eq_integral_transverse_interval
       simp only [g, coordinateSplitEquiv_symm_apply, coordinateJoin]
 
 /-- The Fubini section of an integrable box function is integrable on the
-transverse rectangle.  This is the hypothesis needed when the one-dimensional
+transverse rectangle. This is the hypothesis needed when the one-dimensional
 telescoping identity is integrated across the inactive coordinates. -/
 theorem integrable_outer_integral_boxInterval_of_integrableOn
     (α : Anisotropy) (q : AnisoBox α) (i : Fin 3) (f : E3 → ℝ)
@@ -1742,7 +1741,7 @@ theorem volume_transverseRectangle_toReal (α : Anisotropy) (q : AnisoBox α)
   rfl
 
 /-- The pushed-forward face measure gives the half-open transverse rectangle
-exactly its coordinate area.  This is the measure convention stipulated in
+exactly its coordinate area. This is the measure convention stipulated in
 `def:faces`, not ambient three-dimensional volume. -/
 theorem faceCoordinateMeasure_transverseRectangle (α : Anisotropy)
     (q : AnisoBox α) (i : Fin 3) (c : ℝ) :
@@ -1763,7 +1762,7 @@ theorem faceCoordinateMeasure_transverseArea (α : Anisotropy)
   exact volume_transverseRectangle_toReal α q i
 
 /-- The half-open coordinate rectangle is contained in the source's closed
-ambient face.  Thus the pushforward measure above realizes precisely the
+ambient face. Thus the pushforward measure above realizes precisely the
 face integral convention while the closed face remains available for boundary
 containment statements. -/
 theorem faceInsert_transverseRectangle_subset_boxFaceSet (α : Anisotropy)
@@ -1779,7 +1778,7 @@ theorem faceInsert_transverseRectangle_subset_boxFaceSet (α : Anisotropy)
     rw [transverseRectangle, Set.mem_preimage, Set.mem_pi] at hy
     have hyj := hy ⟨j, hji⟩ (Set.mem_univ _)
     rw [boxInterval] at hyj
-    simp only [faceInsert_apply, dif_neg hji]
+    simp only [faceInsert_apply, dite_eq_right hji]
     exact ⟨hyj.1, le_of_lt hyj.2⟩
 
 def transverseDimension (α : Anisotropy) (i : Fin 3) : ℤ :=
@@ -1886,7 +1885,7 @@ theorem mem_treeOrientedFaces_iff {α : Anisotropy} (T : FiniteConvexTree α)
       (mem_orientedFacesOfBox_iff S.box S).mpr rfl⟩
 
 /-- All surviving faces, represented by one finite collection rather than an
-infinite sum over integer levels.  This is precisely the finite support of
+infinite sum over integer levels. This is precisely the finite support of
 the source packing sum. -/
 def survivingFacesAll {α : Anisotropy} (T : FiniteConvexTree α)
     (i : Fin 3) : Finset (OrientedFace α) :=
@@ -2006,7 +2005,7 @@ theorem mem_survivingFacesAll_iff {α : Anisotropy} (T : FiniteConvexTree α)
     exact Finset.mem_filter.mpr ⟨(mem_orientedFacesOfBox_iff S.box S).mpr rfl,
       hneighbor⟩
 
-/-- The finite version of the source's weighted boundary count.  The equality
+/-- The finite version of the source's weighted boundary count. The equality
 `boxMass = 2^(k A)` proved above makes this definition literally the displayed
 packing sum after grouping by levels. -/
 noncomputable def facePackingMass {α : Anisotropy} (T : FiniteConvexTree α)
@@ -2237,7 +2236,7 @@ theorem integrable_cubeBracketWeight_center_space
     (α : Anisotropy) (q : AnisoBox α) {t : ℝ} (ht : 0 < t) :
     Integrable (fun z : E3 × E6 ↦ cubeBracketWeight α t z.1 z.2)
       ((volume.restrict (boxSet α q)).prod volume) := by
-  letI : IsFiniteMeasure (volume.restrict (boxSet α q)) := by
+  let : IsFiniteMeasure (volume.restrict (boxSet α q)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     rw [volume_boxSet]
@@ -2266,10 +2265,9 @@ theorem integrable_cubeBracketWeight_center_space
 /-! ### Ancestor transport of surviving faces
 
 These finite-grid facts implement the first charge in the source packing
-argument.  In particular, the apparent ``first ancestor'' is an actual
+argument. In particular, the apparent ``first ancestor'' is an actual
 finite selection from the tree rather than an implicit infinite chain.
 -/
-
 theorem boxAncestor_succ (α : Anisotropy) (n : ℕ) (q : AnisoBox α) :
     boxAncestor α (n + 1) q = boxParent α (boxAncestor α n q) := by
   simp [boxAncestor, Function.iterate_succ_apply']
@@ -2300,7 +2298,7 @@ theorem boxFaceSet_neighbor_opposite (α : Anisotropy) (q : AnisoBox α)
     boxFaceSet α q i ε =
       boxFaceSet α (boxNeighbor α q i ε) i ε.opposite := by
   ext p
-  simp only [boxFaceSet, Set.mem_setOf_eq]
+  simp only [boxFaceSet, Set.mem_ofPred_eq]
   rw [boxFaceCoordinate_neighbor_opposite]
   constructor
   · rintro ⟨hp, ht⟩
@@ -2492,7 +2490,6 @@ theorem exists_leaf_face_charge
 This is the exact finite endpoint cancellation used in the telescoping
 identity: every non-root tree box occurs once as a child, and the remaining
 children are precisely the leaves. -/
-
 def treeChildrenAll {α : Anisotropy} (T : FiniteConvexTree α) :
     Finset (AnisoBox α) :=
   T.boxes.biUnion (boxChildren α)
@@ -2584,9 +2581,8 @@ theorem sum_treeChildrenAll_sub_sum_treeBoxes {α : Anisotropy}
 /-! ### Boundary-frontier mass contraction
 
 The following finite descendants are the numerical core of the boundary
-packing argument.  At one subdivision step they tile a fixed oriented face;
+packing argument. At one subdivision step they tile a fixed oriented face;
 their total box mass contracts by the normal-coordinate radix. -/
-
 def boundaryDigit (α : Anisotropy) (i : Fin 3) :
     FaceOrientation → Fin (anisoRadix α i)
   | .lower => ⟨0, anisoRadix_pos α i⟩
@@ -2618,7 +2614,7 @@ theorem card_boundaryDigits_mul_radix (α : Anisotropy) (i : Fin 3)
   calc
     (∏ j ∈ Finset.univ.erase i, (s j).card) * anisoRadix α i =
         ∏ j, anisoRadix α j := by
-          simp [s]
+          simp only [Finset.card_univ, Fintype.card_fin, s]
           exact Finset.prod_erase_mul _ _ (Finset.mem_univ _)
     _ = 2 ^ α.homogeneousDimension := by
       unfold anisoRadix Anisotropy.homogeneousDimension
@@ -2794,7 +2790,7 @@ theorem sum_boundaryFrontierMass_range_le_two (α : Anisotropy) (i : Fin 3)
     (boundaryFrontierMass_succ_le_half α i q ε) N
   simpa [boundaryFrontierMass, boundaryFrontier] using h
 
-/-- Finite reindexing form of the source boundary-packing conclusion.  A
+/-- Finite reindexing form of the source boundary-packing conclusion. A
 geometric charge sends every surviving face to a leaf or to the root, with a
 bounded frontier depth; the three hypotheses below state exactly that the
 charge is defined, that each fibre is dominated by its frontier, and that a
@@ -2847,10 +2843,9 @@ theorem facePackingMass_le_eight_of_charge
 /-! ### Finite frontier realization of boundary packing
 
 The preceding conditional reindexing theorem records the abstract finite
-charge.  We now construct it concretely from the grid: a surviving face is
+charge. We now construct it concretely from the grid: a surviving face is
 covered either by a root frontier or by the exterior frontier of a leaf.
 -/
-
 noncomputable def facePackingFrontierCover {α : Anisotropy}
     (T : FiniteConvexTree α) (i : Fin 3) (N : ℕ) : Finset (OrientedFace α) := by
   classical
@@ -2927,7 +2922,8 @@ theorem test_boxParent_neighbor_child_eq_neighbor_iff (α : Anisotropy)
       constructor
       · intro h
         have hi := congrFun (congrArg AnisoBox.index h) i
-        simp [boxParent, boxNeighbor, boxChild, FaceOrientation.sign] at hi
+        simp only [boxParent, boxNeighbor, boxChild, FaceOrientation.sign, Int.reduceNeg,
+          sub_add_cancel, ↓reduceIte] at hi
         have hR : (0 : ℤ) < (anisoRadix α i : ℤ) := by
           exact_mod_cast anisoRadix_pos α i
         have hd0 : (0 : ℤ) ≤ (v i : ℤ) := by
@@ -2951,11 +2947,11 @@ theorem test_boxParent_neighbor_child_eq_neighbor_iff (α : Anisotropy)
         · funext j
           by_cases hji : j = i
           · subst j
-            simp only [if_pos]
+            simp only [ite_eq_left]
             simpa [hval, FaceOrientation.sign, sub_eq_add_neg] using
               boundaryLower_div (anisoRadix α i : ℤ) (index i) (by
                 exact_mod_cast anisoRadix_pos α i)
-          · simp only [if_neg hji]
+          · simp only [ite_eq_right hji]
             rw [Int.mul_add_ediv_left]
             · rw [Int.ediv_eq_zero_of_lt]
               · simp
@@ -2966,7 +2962,8 @@ theorem test_boxParent_neighbor_child_eq_neighbor_iff (α : Anisotropy)
       constructor
       · intro h
         have hi := congrFun (congrArg AnisoBox.index h) i
-        simp [boxParent, boxNeighbor, boxChild, FaceOrientation.sign] at hi
+        simp only [boxParent, boxNeighbor, boxChild, FaceOrientation.sign,
+          sub_add_cancel, ↓reduceIte] at hi
         have hR : (0 : ℤ) < (anisoRadix α i : ℤ) := by
           exact_mod_cast anisoRadix_pos α i
         have hd0 : (0 : ℤ) ≤ (v i : ℤ) := by
@@ -3005,11 +3002,11 @@ theorem test_boxParent_neighbor_child_eq_neighbor_iff (α : Anisotropy)
         · funext j
           by_cases hji : j = i
           · subst j
-            simp only [if_pos]
+            simp only [ite_eq_left]
             simpa [hval, FaceOrientation.sign] using
               boundaryUpper_div (anisoRadix α i : ℤ) (index i) (by
                 exact_mod_cast anisoRadix_pos α i)
-          · simp only [if_neg hji]
+          · simp only [ite_eq_right hji]
             rw [Int.mul_add_ediv_left]
             · rw [Int.ediv_eq_zero_of_lt]
               · simp
@@ -3248,7 +3245,7 @@ theorem test_sum_union_le_of_nonneg {β : Type*} [DecidableEq β]
   exact le_add_of_nonneg_right (Finset.sum_nonneg fun x _ ↦ hw x)
 
 theorem test_sum_biUnion_le_of_nonneg {β γ : Type*} [DecidableEq β]
-    [DecidableEq γ] (w : β → ℝ) (s : Finset γ) (t : γ → Finset β)
+    (w : β → ℝ) (s : Finset γ) (t : γ → Finset β)
     (hw : ∀ x, 0 ≤ w x) :
     (∑ x ∈ s.biUnion t, w x) ≤ ∑ a ∈ s, ∑ x ∈ t a, w x := by
   classical
@@ -3458,7 +3455,7 @@ theorem facePackingMass_le_eight
 /-! ### Local cubical forms and coordinate copies
 
 These definitions are the literal signed local forms from Section 4 of the
-blueprint.  They are kept separate from the positive bracket-kernel averages
+blueprint. They are kept separate from the positive bracket-kernel averages
 above: the latter supply local sizes, while these forms carry the Gaussian
 telescoping identity. -/
 
@@ -3490,7 +3487,7 @@ theorem cubeGaussianScale_ne_zero (α : Anisotropy) (i : Fin 3)
   (cubeGaussianScale_pos α i hlam ht).ne'
 
 /-- Replace one center coordinate while retaining the ambient Euclidean
-representation.  This packages the one-dimensional center variable used in
+representation. This packages the one-dimensional center variable used in
 the scalar divergence identity. -/
 noncomputable def cubeCenterReplace (p : E3) (i : Fin 3) (a : ℝ) : E3 :=
   WithLp.toLp 2 (Function.update (WithLp.ofLp p) i a)
@@ -3566,7 +3563,7 @@ theorem cubeScaleMeasure_eq_withDensity :
 
 /-- On one source box--scale cell, the center--scale measure is exactly the
 product of the restricted center measure and the restricted logarithmic scale
-measure.  This is the Fubini measure identity used below. -/
+measure. This is the Fubini measure identity used below. -/
 theorem cubeScaleMeasure_restrict_boxScaleRegion (α : Anisotropy)
     (q : AnisoBox α) :
     cubeScaleMeasure.restrict (boxScaleRegion α q) =
@@ -3736,7 +3733,7 @@ noncomputable def cubeEndpointForm (α : Anisotropy) (S : BoxCollection α)
           cubeSignedInputProduct F x *
           cubeEndpointKernel α lam r (boxLength q) p x
 
-/-- The finite endpoint reindexing in the tree telescope.  It is separated
+/-- The finite endpoint reindexing in the tree telescope. It is separated
 from the analytic single-box scale identity: the equality is only the exact
 children/boxes/leaves bookkeeping of a finite convex tree. -/
 theorem cubeEndpointForm_tree_children_sub_tree_boxes
@@ -3759,7 +3756,7 @@ theorem cubeEndpointForm_tree_children_sub_tree_boxes
   rw [← mul_sub, ← mul_sub, hsum]
   simp
 
-/-- The surviving-face expansion of the source boundary form.  Its equality
+/-- The surviving-face expansion of the source boundary form. Its equality
 with the original box-endpoint expansion is the interior-face cancellation
 lemma proved after the single-box telescoping identity. -/
 noncomputable def cubeBoundaryFaceForm (α : Anisotropy) (T : FiniteConvexTree α)
@@ -3799,7 +3796,7 @@ theorem cubeBoundaryKernel_eq_scalarE (α : Anisotropy) (i : Fin 3)
         (x (i, false)) (x (i, true)) := rfl
 
 /-- The six-variable local kernel splits into the active derivative pair and
-the two passive Gaussian pairs.  This is the literal kernel factorization
+the two passive Gaussian pairs. This is the literal kernel factorization
 used when the scalar telescope is integrated in the other coordinates. -/
 theorem localCubeKernel_eq_coordinateP_mul (α : Anisotropy) (i : Fin 3)
     (lam r t : ℝ) (p : E3) (x : E6) :
@@ -3828,7 +3825,7 @@ theorem localCubeKernel_eq_coordinateP_mul (α : Anisotropy) (i : Fin 3)
     apply Finset.prod_congr rfl
     intro m hm
     have hmi : m ≠ i := (Finset.mem_erase.mp hm).1
-    simp only [A, B, if_neg hmi]
+    simp only [A, B, ite_eq_right hmi]
     ring
   calc
     (∏ m, A m) = A i * ∏ m ∈ Finset.univ.erase i, A m :=
@@ -3837,11 +3834,11 @@ theorem localCubeKernel_eq_coordinateP_mul (α : Anisotropy) (i : Fin 3)
           cubeGaussianDerivKernel α lam r t p i (x (i, true)) *
             ∏ m ∈ Finset.univ.erase i, B m := by
       rw [hAerase]
-      simp only [A, if_pos]
+      simp only [A, ite_eq_left]
       ring
 
 /-- The scalar divergence identity expressed in the active coordinate of a
-cubical kernel.  The remaining coordinates are deliberately inert, so this
+cubical kernel. The remaining coordinates are deliberately inert, so this
 is the exact bridge used before Fubini lifts the identity over a box. -/
 theorem cubeCoordinate_pointwise_divergence
     (α : Anisotropy) (i : Fin 3) {lam t : ℝ} (r : ℝ) (p : E3) (x : E6)
@@ -3872,7 +3869,7 @@ theorem cubeCoordinate_pointwise_divergence
   rw [hboundary]
   simpa only [cubeCoordinateD_eq_scalarD, cubeCoordinateP_eq_scalarP] using hscalar
 
-/-- The interval telescope in an actual cubical coordinate.  Its hypotheses
+/-- The interval telescope in an actual cubical coordinate. Its hypotheses
 are precisely the compact-parameter regularity facts subsequently supplied
 by the local-integrability development. -/
 theorem cubeCoordinate_oneDim_telescoping
@@ -3981,7 +3978,7 @@ theorem cubeCenterReplace_faceInsert (i : Fin 3) (c q : ℝ)
 
 /-- At a fixed transverse point, the positive-scale one-dimensional telescope
 over a box is exactly the interval telescope between that box's two active
-coordinate endpoints.  No Fubini or integrability assertion is used here. -/
+coordinate endpoints. No Fubini or integrability assertion is used here. -/
 theorem cubeCoordinate_oneDim_telescoping_faceInsert_box
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) {lam t : ℝ}
     (r c : ℝ) (y : TransverseSpace i) (x : E6)
@@ -4006,7 +4003,7 @@ theorem cubeCoordinate_oneDim_telescoping_faceInsert_box
       r (faceInsert i c y) x hlam ht)
 
 /-- A passive coordinate pair is constant along the active coordinate
-fibres.  This is the elementary affine fact that turns the other two Gaussian
+fibres. This is the elementary affine fact that turns the other two Gaussian
 pairs into the transverse weight of the box telescope. -/
 theorem cubeCoordinateD_faceInsert_ne
     (α : Anisotropy) (i j : Fin 3) (lam r t u : ℝ)
@@ -4215,7 +4212,7 @@ theorem integral_cubeCoordinateP_boxSet_eq_transverse_interval
     (integrableOn_cubeCoordinateP_boxSet α q i lam r t x)
 
 /-- The one-dimensional source telescope, integrated through a literal box
-with an arbitrary passive transverse weight.  This is the Fubini step in
+with an arbitrary passive transverse weight. This is the Fubini step in
 `lem:telescoping_identity`: the hypotheses retain precisely the local
 integrability obligations which the Gaussian majorant later discharges. -/
 theorem cubeCoordinate_box_telescoping_weighted
@@ -4338,7 +4335,7 @@ theorem cubeCoordinate_box_telescoping_weighted
       simp only [c, d, P, Ehi, Elo, R, hi, lo]
 
 /-- The half-open active interval of a box has the same integral as its
-oriented interval integral.  This is the endpoint-null-set bridge between
+oriented interval integral. This is the endpoint-null-set bridge between
 the literal box decomposition and the one-dimensional FTC identity. -/
 theorem integral_boxInterval_eq_intervalIntegral
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) (f : ℝ → ℝ) :
@@ -4353,7 +4350,7 @@ theorem integral_boxInterval_eq_intervalIntegral
   exact (intervalIntegral.integral_of_le hab).symm
 
 /-- Fubini lift of the active-coordinate telescope at a fixed six-variable
-point and arbitrary transverse weight.  Keeping the transverse sum bundled
+point and arbitrary transverse weight. Keeping the transverse sum bundled
 means that the one source local-integrability hypothesis is sufficient here. -/
 theorem weighted_cubeCoordinate_box_telescoping
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) {lam t : ℝ}
@@ -4549,9 +4546,9 @@ theorem cubeCoordinate_box_telescoping_of_pos
   cubeCoordinate_box_telescoping α Q i r x hlam ht
     (integrableOn_cubeCoordinateTelescopeIntegrand_boxSet α Q i r x hlam ht)
 
-/-- The fully split fixed-`x` box telescope.  The interior term is the
+/-- The fully split fixed-`x` box telescope. The interior term is the
 literal local cube kernel, while the two remaining terms are the two oriented
-face kernels.  Every Fubini condition follows from compact-domain continuity. -/
+face kernels. Every Fubini condition follows from compact-domain continuity. -/
 theorem cubeCoordinate_box_telescoping_split_of_pos
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) {lam t : ℝ}
     (r : ℝ) (x : E6) (hlam : 1 ≤ lam) (ht : 0 < t) :
@@ -4652,7 +4649,7 @@ theorem cubeCoordinate_box_telescoping_split_of_pos
     hface FaceOrientation.lower]
 
 /-- The exact product rule for the three coordinate pairs in the endpoint
-kernel.  It is the first equality in the source box-derivative calculation. -/
+kernel. It is the first equality in the source box-derivative calculation. -/
 theorem cubeEndpointKernel_scale_derivative
     (α : Anisotropy) (lam r t : ℝ) (p : E3) (x : E6)
     (hlam : 1 ≤ lam) (ht : 0 < t) :
@@ -4702,9 +4699,7 @@ theorem continuousAt_scalarG_scale {mu sig : ℝ} {n : ℕ} {t p u : ℝ}
       (fun q : ℝ ↦ (u - (p + sig * q ^ n)) / (mu * q ^ n)) t := by
     change ContinuousAt
       (fun q : ℝ ↦ (u - (p + sig * q ^ n)) * (mu * q ^ n)⁻¹) t
-    convert hnum.mul hinv using 1
-    funext q
-    rfl
+    exact hnum.mul hinv
   have hexp : ContinuousAt
       (fun q : ℝ ↦ Real.exp (-Real.pi *
         ((u - (p + sig * q ^ n)) / (mu * q ^ n)) ^ 2)) t :=
@@ -5300,7 +5295,7 @@ theorem gaussian_pair_translate_bracket_dilate :
   simpa [mul_add, mul_assoc, mul_left_comm, mul_comm] using hmul
 
 /-- A source-facing one-coordinate bound for either the Gaussian or its
-derivative.  The first two coordinates carry the `λ^9` loss, while the third
+derivative. The first two coordinates carry the `λ^9` loss, while the third
 carries the translated `R(r)^10` loss. -/
 theorem cubeGaussian_pair_domination (α : Anisotropy) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (j : Fin 3) (lam r t : ℝ) (p : E3) (v : ℝ),
@@ -5397,9 +5392,9 @@ theorem localCubeKernel_factor_domination (α : Anisotropy) :
   intro i j lam r t p v hlam ht
   have h := hpair j lam r t p v hlam ht
   by_cases hji : j = i
-  · rw [if_pos hji]
+  · rw [ite_eq_left hji]
     exact (le_add_of_nonneg_left (abs_nonneg _)).trans h
-  · rw [if_neg hji]
+  · rw [ite_eq_right hji]
     exact (le_add_of_nonneg_right (abs_nonneg _)).trans h
 
 /-- The same source exponents control every choice of one Gaussian or one
@@ -5433,7 +5428,7 @@ theorem cubeGaussian_sixfold_domination (α : Anisotropy) :
         ∏ q : Fin 3 × Bool,
           C * (if q.1 = 2 then translationWeight r ^ 10 else lam ^ 9) *
             bracketKernelAt (t ^ α.weight q.1) (p q.1) (x q) := by
-      apply Finset.prod_le_prod
+      apply Finset.prod_le_prod₀
       · intro q hq
         exact abs_nonneg _
       · intro q hq
@@ -5467,7 +5462,7 @@ theorem localCubeKernel_abs_domination (α : Anisotropy) :
       ∏ q : Fin 3 × Bool,
         C * (if q.1 = 2 then translationWeight r ^ 10 else lam ^ 9) *
           bracketKernelAt (t ^ α.weight q.1) (p q.1) (x q) := by
-    apply Finset.prod_le_prod
+    apply Finset.prod_le_prod₀
     · intro q hq
       exact abs_nonneg _
     · intro q hq
@@ -5599,7 +5594,7 @@ private theorem cubeFaceKernel_eq_threeGaussianProducts (α : Anisotropy)
     cubeGaussianProduct_deriv_true_eq,
     ← cubeEndpointKernel_eq_gaussianProduct,
     cubeEndpointKernel_eq_coordinate_mul_erase]
-  unfold cubeFaceKernel cubeBoundaryKernel cubeCoordinateD
+  on_goal 1 => unfold cubeFaceKernel cubeBoundaryKernel cubeCoordinateD
   ring
 
 /-- The endpoint kernel is bounded by the sixfold bracket weight, with the
@@ -6134,7 +6129,7 @@ theorem integrable_cubeBracketWeight_face_space
     Integrable (fun z : TransverseSpace i × E6 ↦
       cubeBracketWeight α t (faceInsert i c z.1) z.2)
       ((volume.restrict (transverseRectangle α q i)).prod volume) := by
-  letI : IsFiniteMeasure (volume.restrict (transverseRectangle α q i)) := by
+  let : IsFiniteMeasure (volume.restrict (transverseRectangle α q i)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_top_iff_ne_top.mpr (volume_transverseRectangle_ne_top α q i)
@@ -6478,7 +6473,7 @@ theorem integral_boxSet_eq_sum_integral_boxSet_children
     exact hG.mono_set hsub
 
 /-- The endpoint form of all children is the parent-box endpoint integral at
-half the parent scale.  The sole analytic hypothesis is integrability of that
+half the parent scale. The sole analytic hypothesis is integrability of that
 fixed-scale parent integrand; the equality itself is the finite geometric
 child partition. -/
 theorem cubeEndpointForm_children_eq_parent_half
@@ -7262,7 +7257,7 @@ theorem abs_integral_cubeFaceKernel_le_treeLocalSize_product_of_mem_closure
 /-! ### One-cell product-integrability bridge
 
 The remaining source Fubini steps need genuinely joint center--scale--space
-integrability.  We first record the elementary Borel measurability of the
+integrability. We first record the elementary Borel measurability of the
 variable-scale Gaussian factors; unlike the fixed-scale continuity lemmas,
 these statements are valid at the totalized value `t = 0` as well. -/
 
@@ -7456,11 +7451,11 @@ theorem isFiniteMeasure_boxScaleCell (α : Anisotropy) (q : AnisoBox α) :
     IsFiniteMeasure
       ((volume.restrict (boxSet α q)).prod
         ((volume.withDensity cubeScaleDensity).restrict (boxScaleBand q))) := by
-  letI : IsFiniteMeasure (volume.restrict (boxSet α q)) := by
+  let : IsFiniteMeasure (volume.restrict (boxSet α q)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_top_iff_ne_top.mpr (volume_boxSet_ne_top α q)
-  letI : IsFiniteMeasure
+  let : IsFiniteMeasure
       ((volume.withDensity cubeScaleDensity).restrict (boxScaleBand q)) :=
     isFiniteMeasure_boxScaleBand q
   infer_instance
@@ -7476,7 +7471,7 @@ theorem integrable_boxCenterBracketWeight_boxScaleCell
   let μ : Measure (E3 × ℝ) :=
     (volume.restrict (boxSet α q)).prod
       ((volume.withDensity cubeScaleDensity).restrict (boxScaleBand q))
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     exact isFiniteMeasure_boxScaleCell α q
   have hbase : Integrable (cubeBracketWeight α (boxLength q) (boxCenter α q)) :=
@@ -7504,7 +7499,7 @@ theorem integrable_boxCenterBracketWeight_boxScaleCell
     exact integrable_const _
 
 /-- A bracket-dominated kernel is jointly integrable in center, logarithmic
-scale, and all spatial variables on one source box--scale cell.  The only
+scale, and all spatial variables on one source box--scale cell. The only
 geometric input is the closed-cell comparison of the bracket weight to the
 box's designated center and scale. -/
 theorem integrable_boxScaleCell_of_bracket_domination
@@ -7679,7 +7674,7 @@ theorem integrable_cubeSignedInputProduct_mul_cubeFaceKernel_boxScaleCell
     exact hdom i lam r t p x hlam ht
 
 /-- The explicit scalar expression for the scale derivative of one endpoint
-coordinate factor.  Keeping it as a function of both scale and center makes
+coordinate factor. Keeping it as a function of both scale and center makes
 the compact positive-band continuity argument below literal. -/
 noncomputable def cubeCoordinateDdotFormula
     (α : Anisotropy) (i : Fin 3) (lam r t : ℝ) (p : E3) (x : E6) : ℝ :=
@@ -7889,7 +7884,7 @@ theorem singleBox_endpointScaleFTC_integrability
     integrable_endpointScaleDerivative_boxScaleBand α Q lam r x hlam⟩
 
 /-- An integrable bracket weight stays integrable after adjoining any finite
-passive parameter measure.  This is the common majorant for both box and
+passive parameter measure. This is the common majorant for both box and
 face scale cells. -/
 theorem integrable_lift_right_cubeBracketWeight
     {X : Type*} [MeasurableSpace X] (μ : Measure X)
@@ -7954,7 +7949,7 @@ theorem faceInsert_mem_boxClosedSet
   exact ⟨y, hy, rfl⟩
 
 /-- The literal half-open source box is dense in its coordinatewise closed
-box.  This supplies the reverse containment missing from the compactness-only
+box. This supplies the reverse containment missing from the compactness-only
 local-integrability interface. -/
 theorem boxClosedSet_subset_closure_boxSet
     (α : Anisotropy) (q : AnisoBox α) :
@@ -8052,11 +8047,11 @@ theorem integrable_cubeFaceScaleIntegrand
   let μ : Measure (ℝ × TransverseSpace i) :=
     (volume.restrict (Set.Ioc (boxLength Q / 2) (boxLength Q))).prod
       (volume.restrict (transverseRectangle α Q i))
-  letI : IsFiniteMeasure (volume.restrict (transverseRectangle α Q i)) := by
+  let : IsFiniteMeasure (volume.restrict (transverseRectangle α Q i)) := by
     constructor
     rw [Measure.restrict_apply_univ]
     exact lt_top_iff_ne_top.mpr (volume_transverseRectangle_ne_top α Q i)
-  letI : IsFiniteMeasure μ := by
+  let : IsFiniteMeasure μ := by
     dsimp only [μ]
     infer_instance
   let c : ℝ := boxFaceCoordinate α Q i o
@@ -8220,7 +8215,7 @@ theorem integrableOn_cubeFaceIntegral_scale
     MeasureTheory.integral_const_mul]
 
 /-- The one-cell local-kernel integrability package with the spatial input
-removed.  This is useful for a.e. fixed-spatial-point Fubini sections. -/
+removed. This is useful for a.e. fixed-spatial-point Fubini sections. -/
 theorem integrable_localCubeKernel_boxScaleCell
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) (lam r : ℝ)
     (hlam : 1 ≤ lam) :
@@ -8318,7 +8313,7 @@ theorem integral_boxSet_cubeEndpointKernel_scale_derivative_split
       intro i hi
       exact cubeCoordinate_box_telescoping_split_of_pos α Q i r x hlam ht
 
-/-- Scale FTC after integrating in the literal center box.  The sole
+/-- Scale FTC after integrating in the literal center box. The sole
 assumptions are the product-integrability conditions needed for the one
 Fubini interchange; the pointwise FTC is the source identity already proved
 for the endpoint kernel. -/
@@ -8387,7 +8382,7 @@ theorem integral_boxSet_cubeEndpointKernel_scale_FTC
     _ = _ := hswap.symm
 
 /-- The single-box center/scale telescope before multiplying by the eight
-inputs and interchanging spatial integration.  It combines the endpoint FTC
+inputs and interchanging spatial integration. It combines the endpoint FTC
 with the fully split source box-derivative identity. -/
 theorem singleBox_center_scale_telescope
     (α : Anisotropy) (Q : AnisoBox α) (lam r : ℝ) (x : E6)
@@ -8437,7 +8432,7 @@ theorem singleBox_center_scale_telescope
   rw [Finset.sum_div]
 
 /-- Multiplying the exact center/scale telescope by an arbitrary spatial
-weight and integrating preserves the identity.  The hypotheses are precisely
+weight and integrating preserves the identity. The hypotheses are precisely
 the center/scale Fubini hypotheses at each spatial point. -/
 theorem singleBox_center_scale_telescope_spatial
     (α : Anisotropy) (Q : AnisoBox α) (lam r : ℝ) (f : E6 → ℝ)
@@ -8507,7 +8502,7 @@ theorem cubeEndpointForm_singleton_eq_spatial_outer
     (fun p x ↦ cubeEndpointKernel α lam r (boxLength Q) p x) h]
 
 /-- The endpoint form of all children has the same spatially outer form at
-half the parent scale.  This combines the literal child partition with spatial
+half the parent scale. This combines the literal child partition with spatial
 Fubini, leaving no geometric bookkeeping in the scale telescope. -/
 theorem cubeEndpointForm_children_eq_spatial_outer
     (α : Anisotropy) (Q : AnisoBox α) (lam r : ℝ)
@@ -8533,7 +8528,7 @@ theorem cubeEndpointForm_children_eq_spatial_outer
     (fun p x ↦ cubeEndpointKernel α lam r (boxLength Q / 2) p x) h]
 
 /-- Exact Fubini and logarithmic-density expansion of one singleton local
-cube form.  The explicit three-variable integrability hypothesis is the
+cube form. The explicit three-variable integrability hypothesis is the
 analytic content supplied by the source local-integrability lemma. -/
 theorem localCubeForm_singleton_eq_spatial_outer
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) (lam r : ℝ)
@@ -8841,7 +8836,7 @@ theorem box_scale_integrand_split_one
   ring
 
 /-- Integration of the split fixed-spatial-point derivative over one source
-scale band.  Its hypotheses are exactly the three scalar integrabilities
+scale band. Its hypotheses are exactly the three scalar integrabilities
 needed to distribute the finite sum and the two boundary differences. -/
 theorem integral_box_scale_integrand_split
     (α : Anisotropy) (Q : AnisoBox α) (lam r : ℝ) (x : E6)
@@ -8963,7 +8958,7 @@ theorem localCubeForm_singleton_eq_spatial_interiorScale
 
 /-- The joint center--scale--space integrability of a local kernel supplies
 the outer spatial integrability needed after the logarithmic scale and center
-integrals are performed.  This is the actual Fubini discharge for the
+integrals are performed. This is the actual Fubini discharge for the
 interior terms in the one-box telescope. -/
 theorem integrable_spatial_interiorScale_of_localTriple
     (α : Anisotropy) (Q : AnisoBox α) (i : Fin 3) (lam r : ℝ)
@@ -9261,7 +9256,7 @@ theorem ae_integrable_faceScale_of_unweightedTriple
   dsimp only [g, c]
   rw [MeasureTheory.integral_const_mul]
 
-/-- The last finite Fubini/algebra step in the one-box telescope.  Once the
+/-- The last finite Fubini/algebra step in the one-box telescope. Once the
 three spatial scale integrals are integrable, the integral of the split
 derivative is the corresponding finite sum of interior and oriented-face
 terms. -/
@@ -9373,7 +9368,7 @@ theorem integral_spatial_scale_sum_expand
             MeasureTheory.integral_sub (hU' i) (hV' i)]
 
 /-- The center/scale FTC in the same finite-sum normal form as the local and
-face forms.  This only uses the pointwise scale integrability needed to
+face forms. This only uses the pointwise scale integrability needed to
 integrate the already-proved fixed-scale split. -/
 theorem singleBox_center_scale_telescope_spatial_split
     (α : Anisotropy) (Q : AnisoBox α) (lam r : ℝ)
@@ -9576,7 +9571,7 @@ theorem singleBox_finite_telescoping_assembly
           rw [hfaces]
 
 /-- The source one-box finite telescoping identity, with every Fubini and
-scale-integrability requirement exposed as an explicit hypothesis.  The
+scale-integrability requirement exposed as an explicit hypothesis. The
 bounded-continuous wrappers in the main development discharge these hypotheses
 from the Gaussian majorants. -/
 theorem singleBox_finite_telescoping_of_integrable
@@ -9737,7 +9732,7 @@ theorem singleBox_finite_telescoping_of_integrable
     hChild' hParent' hLocal' hUpper' hLower' hScale
 
 /-- The same one-box identity with all scale Fubini hypotheses discharged
-except for the four natural joint product-integrability inputs.  The
+except for the four natural joint product-integrability inputs. The
 fixed-spatial-point conditions are only needed almost everywhere and are
 therefore obtained from the corresponding bare-kernel triples. -/
 theorem singleBox_finite_telescoping_of_integrable_ae
@@ -9891,7 +9886,7 @@ theorem singleBox_finite_telescoping_of_integrable_ae
     hChild' hParent' hLocal' hUpper' hLower' hScale
 
 /-- Fully unconditional one-box source telescope for bounded continuous cube
-data.  All analytic side conditions are supplied by the established compact
+data. All analytic side conditions are supplied by the established compact
 cell Gaussian majorants and the endpoint scale-FTC package. -/
 theorem singleBox_finite_telescoping_of_boundedContinuous
     (α : Anisotropy) (Q : AnisoBox α) (lam r : ℝ)
@@ -10007,7 +10002,7 @@ theorem treeLocalSize_product_four_nonneg
   exact Finset.prod_nonneg fun j _ ↦ treeLocalSize_four_nonneg T (F j)
 
 
-/-- The bounded-continuous finite-tree remainder estimate.  The constant
+/-- The bounded-continuous finite-tree remainder estimate. The constant
 depends only on the anisotropy; the analytic powers are the exact endpoint
 and face losses `λ^36 R^20` and `λ^37 R^21`, absorbed into the latter. -/
 theorem cubeTreeRemainder_bound_of_boundedContinuous
@@ -10179,7 +10174,7 @@ theorem cubeTreeTelescope_bound_of_boundedContinuous
 
 
 /-- On the three-coordinate cube, deleting one coordinate leaves exactly two
-summands.  This is the finite counting input in the Section 4 iteration. -/
+summands. This is the finite counting input in the Section 4 iteration. -/
 theorem sum_erase_fin_three_le
     (i : Fin 3) (f : Fin 3 → ℝ) (C : ℝ)
     (h : ∀ q ∈ Finset.univ.erase i, f q ≤ C) :
@@ -10296,7 +10291,7 @@ theorem cubeCoordinateCopy_fixed_three_third
   rw [cubeCoordinateCopy_idempotent]
 
 /-- The finite three-step Cauchy--Schwarz iteration in the proof of
-`prop:cube_tree`.  Its hypotheses are exactly the analytic cube-CS,
+`prop:cube_tree`. Its hypotheses are exactly the analytic cube-CS,
 positivity, telescoping, and copied-remainder inputs; the conclusion is the
 normalized `5D/α_i` tree bound. -/
 theorem cubeTree_cs_iteration_of_hypotheses
@@ -10495,7 +10490,7 @@ theorem cubeTree_cs_iteration_of_hypotheses
 
 
 /-- The local cube integrand is genuinely jointly integrable over any finite
-collection of box--scale cells.  This is the product-space input for the
+collection of box--scale cells. This is the product-space input for the
 active/passive Fubini proof of cubical Cauchy--Schwarz. -/
 theorem integrable_cubeSignedInputProduct_mul_localCubeKernel_collection
     (α : Anisotropy) (S : BoxCollection α) (i : Fin 3) (lam r : ℝ)
@@ -10515,7 +10510,7 @@ theorem integrable_cubeSignedInputProduct_mul_localCubeKernel_collection
     rw [cubeScaleMeasure_restrict_boxScaleRegion]
     exact integrable_cubeSignedInputProduct_mul_localCubeKernel_boxScaleCell
       α q i lam r F hFcont hFbound hlam
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -10577,8 +10572,7 @@ theorem boxLocalSize_four_smul_of_nonneg
       (anisotropicBracketKernel_nonneg α (boxLength_pos q).le (boxCenter α q) y)
   rw [Real.mul_rpow (pow_nonneg hc _) hpower]
   have hcroot : (c ^ 4) ^ ((4 : ℝ)⁻¹) = c := by
-    convert Real.pow_rpow_inv_natCast hc (by norm_num : (4 : ℕ) ≠ 0) using 1 ;
-      norm_num
+    exact Real.pow_rpow_inv_natCast hc (by norm_num : (4 : ℕ) ≠ 0)
   rw [hcroot]
 
 /-- The finite supremum defining a fourth local size preserves nonnegative
@@ -10620,8 +10614,7 @@ theorem boxLocalSize_four_smul
       (anisotropicBracketKernel_nonneg α (boxLength_pos q).le (boxCenter α q) y)
   rw [Real.mul_rpow (pow_nonneg (abs_nonneg c) _) hpower]
   have hcroot : (|c| ^ 4) ^ ((4 : ℝ)⁻¹) = |c| := by
-    convert Real.pow_rpow_inv_natCast (abs_nonneg c) (by norm_num : (4 : ℕ) ≠ 0)
-      using 1 ; norm_num
+    exact Real.pow_rpow_inv_natCast (abs_nonneg c) (by norm_num : (4 : ℕ) ≠ 0)
   rw [hcroot]
 
 /-- The collection fourth local size is absolutely homogeneous. -/
@@ -10767,7 +10760,7 @@ theorem boxLocalSize_four_pos_of_continuous_nonzero
   exact Real.rpow_pos_of_pos hpower _
 
 /-- A zero fourth tree local size forces a bounded continuous input to vanish
-pointwise.  This supplies the zero-size branch of the source normalization. -/
+pointwise. This supplies the zero-size branch of the source normalization. -/
 theorem eq_zero_of_treeLocalSize_four_eq_zero
     {α : Anisotropy} (T : FiniteConvexTree α) (f : E3 → ℝ)
     (hcont : Continuous f)
@@ -10911,7 +10904,7 @@ theorem fullCubeTreeEstimate_of_normalized
       _ = B * P := by ring
 
 
-/-- The signed real Cauchy--Schwarz estimate in squared form.  This is the
+/-- The signed real Cauchy--Schwarz estimate in squared form. This is the
 analytic inequality used after the active-coordinate Fubini factorization in
 the cubical Cauchy--Schwarz argument. -/
 theorem abs_integral_mul_sq_le_integral_sq_mul
@@ -10973,7 +10966,7 @@ theorem bounded_cubeCoordinateCopy
 
 /-- The source cubical Cauchy--Schwarz conclusion, once Fubini has split the
 two active variables and identified the two square integrals with coordinate
-copies.  The subsequent local-coordinate argument supplies the three displayed
+copies. The subsequent local-coordinate argument supplies the three displayed
 factorization equalities. -/
 theorem localCubeForm_cauchySchwarz_of_fubini
     (α : Anisotropy) (S : BoxCollection α) (i : Fin 3) (lam r : ℝ)
@@ -11013,7 +11006,7 @@ theorem localCubeForm_coordinateCopy_nonneg_of_fubini
   exact integral_nonneg fun x ↦ sq_nonneg (A x)
 
 /-- The established bounded-continuous local-integrability package applies
-unchanged to either coordinate copy.  This is the analytic input needed to
+unchanged to either coordinate copy. This is the analytic input needed to
 derive the three Fubini factorization identities in the next step. -/
 theorem integrableOn_localCube_outer_collectionRegion_coordinateCopy
     (α : Anisotropy) (S : BoxCollection α) (i : Fin 3) (lam r : ℝ)
@@ -11032,7 +11025,7 @@ theorem integrableOn_localCube_outer_collectionRegion_coordinateCopy
 /-! ### Active/passive coordinate bookkeeping
 
 The next declarations isolate the measure-preserving permutation underlying
-the Fubini part of the source proof.  They are kept in the scratch file while
+the Fubini part of the source proof. They are kept in the scratch file while
 the corresponding local-form factorization is developed. -/
 
 /-- Reorder two active/transverse pairs so that the two active real variables
@@ -11212,7 +11205,7 @@ theorem cubeProjection_cubeActivePassiveSplit_symm
     · simpa [hji] using cubeActivePassiveSplit_symm_active_false i ((v0, v1), y)
     · simpa [hji] using cubeActivePassiveSplit_symm_active_true i ((v0, v1), y)
   · rw [cubeProjection_apply]
-    simp only [faceInsert_apply, dif_neg hmi, cubePassiveProjection_apply]
+    simp only [faceInsert_apply, dite_eq_right hmi, cubePassiveProjection_apply]
     simpa using cubeActivePassiveSplit_symm_passive i m hmi (j m) ((v0, v1), y)
 
 /-- The four passive Gaussian factors in a local cube kernel, expressed in
@@ -11439,7 +11432,7 @@ theorem cubeSignedInputProduct_coordinateCopy_cubeActivePassiveSplit_symm
         cubeActiveInputSlice_coordinateCopy i true b F y v1]
 
 /-- Move an outer parameter and a passive variable ahead of an active
-variable block.  This is the last permutation needed before Fubini integrates
+variable block. This is the last permutation needed before Fubini integrates
 the two active scalars. -/
 noncomputable def centerActivePassiveShuffle
     (Z V Y : Type*) [MeasurableSpace Z] [MeasurableSpace V] [MeasurableSpace Y] :
@@ -12007,7 +12000,7 @@ theorem integrable_cubeActiveCSWeightedAverage_sq
       (cubeActiveCSWeightedAverage α i lam r F b w) ^ 2)
       ((cubeScaleMeasure.restrict (collectionRegion α S)).prod
         ((volume : Measure (TransverseSpace i)).prod volume)) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -12054,7 +12047,7 @@ theorem localCubeForm_eq_weightedIntegral
         ∂((cubeScaleMeasure.restrict (collectionRegion α S)).prod
           ((volume : Measure (TransverseSpace i)).prod
             (volume : Measure (TransverseSpace i)))) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -12117,7 +12110,7 @@ theorem localCubeForm_coordinateCopy_eq_weightedSq
         ∂((cubeScaleMeasure.restrict (collectionRegion α S)).prod
           ((volume : Measure (TransverseSpace i)).prod
             (volume : Measure (TransverseSpace i)))) := by
-  letI : SFinite cubeScaleMeasure := by
+  let : SFinite cubeScaleMeasure := by
     change SFinite ((volume : Measure E3).prod
       ((volume : Measure ℝ).withDensity cubeScaleDensity))
     infer_instance
@@ -12232,7 +12225,7 @@ theorem localCubeForm_cauchySchwarz
 
 
 /-- The finite three-step cube Cauchy--Schwarz iteration, localized to a
-class of tuples closed under coordinate copies.  This is the source-ready
+class of tuples closed under coordinate copies. This is the source-ready
 version needed when the analytic cube-CS and positivity facts are available
 only for bounded continuous tuples. -/
 theorem cubeTree_cs_iteration_of_descendant_hypotheses
@@ -12473,7 +12466,7 @@ theorem cubeTree_cs_iteration_of_descendant_hypotheses
   simpa [θ, w] using hfinal
 
 /-- The final finite-tree assembly from the bounded-continuous cubical
-Cauchy--Schwarz and copied-form positivity conclusions.  The constant is
+Cauchy--Schwarz and copied-form positivity conclusions. The constant is
 uniform in the active coordinate, as required by `prop:cube_tree`. -/
 theorem fullCubeTreeEstimate_of_boundedContinuousCubeCS
     (α : Anisotropy)
@@ -12653,7 +12646,7 @@ theorem fullCubeTreeEstimate_of_boundedContinuousCubeCS
       mul_le_mul_of_nonneg_left hwiW hcoef
     _ = 5 * C₀ * W * L := by ring
 
-/-- The full finite-tree cube estimate for bounded continuous inputs.  This
+/-- The full finite-tree cube estimate for bounded continuous inputs. This
 is the direct formal counterpart of `prop:cube_tree`; its constant depends
 only on the fixed anisotropy and is uniform over all three active directions. -/
 theorem fullCubeTreeEstimate_of_boundedContinuous
@@ -12675,7 +12668,7 @@ theorem fullCubeTreeEstimate_of_boundedContinuous
 
 
 /-- The edge tuple used in the Section 4 specialization: precisely the
-vertices `000` and `001` carry `f`.  Defining it through its first two bits
+vertices `000` and `001` carry `f`. Defining it through its first two bits
 makes its invariance under the third-coordinate copies definitional. -/
 noncomputable def edgeCubeTuple (f : E3 → ℝ) : CubeVertex → E3 → ℝ :=
   fun j ↦ if j 0 = false ∧ j 1 = false then f else fun _ ↦ 1
@@ -12780,7 +12773,7 @@ theorem cubeBracketAverage_edgeCubeTuple_eq_edgeBracketAverage
   rw [cubeInputProduct_edgeCubeTuple]
 
 /-- A local form vanishes as soon as its fixed center--scale spatial
-integral vanishes.  This isolates the outer `dp dt/t` bookkeeping from the
+integral vanishes. This isolates the outer `dp dt/t` bookkeeping from the
 one-dimensional cancellation used by the edge specialization. -/
 theorem localCubeForm_eq_zero_of_spatial_zero
     (α : Anisotropy) (S : BoxCollection α) (i : Fin 3) (lam r : ℝ)
@@ -12794,7 +12787,7 @@ theorem localCubeForm_eq_zero_of_spatial_zero
   filter_upwards [] with z
   exact hzero z
 
-/-- The exact outer-form interface for the first edge cancellation.  Its
+/-- The exact outer-form interface for the first edge cancellation. Its
 hypothesis is precisely the fixed-`(p,t)` Fubini conclusion obtained by
 integrating the unused `x₁¹` derivative Gaussian. -/
 theorem edge_localCubeForm_zero_zero_of_spatial_cancellation
@@ -12806,7 +12799,7 @@ theorem edge_localCubeForm_zero_zero_of_spatial_cancellation
   localCubeForm_eq_zero_of_spatial_zero α S 0 lam r
     (edgeCubeTuple f) hzero
 
-/-- The exact outer-form interface for the second edge cancellation.  Its
+/-- The exact outer-form interface for the second edge cancellation. Its
 hypothesis is the corresponding Fubini conclusion for `x₂¹`. -/
 theorem edge_localCubeForm_zero_one_of_spatial_cancellation
     (α : Anisotropy) (S : BoxCollection α) (lam r : ℝ) (f : E3 → ℝ)
@@ -12818,7 +12811,7 @@ theorem edge_localCubeForm_zero_one_of_spatial_cancellation
     (edgeCubeTuple f) hzero
 
 /-- The third-coordinate edge form is nonnegative once its Fubini square
-representation is available.  The equality uses the actual edge tuple;
+representation is available. The equality uses the actual edge tuple;
 `cubeCoordinateCopy_two_edgeCubeTuple` is the slot-level bridge to
 the general cubical-copy positivity statement. -/
 theorem edge_localCubeForm_two_nonneg_of_square
@@ -12831,7 +12824,7 @@ theorem edge_localCubeForm_two_nonneg_of_square
   exact integral_nonneg fun x ↦ sq_nonneg (A x)
 
 /-- Slot-level conversion of copied-form positivity into positivity of the
-edge form itself.  This is the exact one-line consumer of the generic
+edge form itself. This is the exact one-line consumer of the generic
 cube-Cauchy--Schwarz positivity lemma. -/
 theorem edge_localCubeForm_two_nonneg_of_copy
     (α : Anisotropy) (S : BoxCollection α) (lam r : ℝ) (f : E3 → ℝ)
@@ -12865,8 +12858,7 @@ theorem boxLocalSize_two_sq_eq_boxLocalPower
     exact mul_nonneg (Real.rpow_nonneg (abs_nonneg (f y)) _)
       (anisotropicBracketKernel_nonneg α (boxLength_pos q).le (boxCenter α q) y)
   unfold boxLocalSize
-  convert Real.rpow_inv_natCast_pow hpower (by norm_num : (2 : ℕ) ≠ 0) using 1 ;
-    norm_num
+  exact Real.rpow_inv_natCast_pow hpower (by norm_num : (2 : ℕ) ≠ 0)
 
 /-- Therefore the edge second moment at a tree box is the square of its
 exponent-two local size. -/
@@ -12992,7 +12984,7 @@ theorem anisotropicBracketKernel_le_boxCenterKernel
           ((2 : ℝ) ^ α.weight i * (3 / 2 : ℝ) ^ 10) *
             bracketKernelAt (boxLength q ^ α.weight i)
               (boxCenter α q i) (y i) := by
-      apply Finset.prod_le_prod
+      apply Finset.prod_le_prod₀
       · intro i _
         exact bracketKernelAt_nonneg (pow_pos ht _).le
       · intro i _
@@ -13260,7 +13252,7 @@ theorem abs_integral_cubeFaceKernel_edge_le_treeLocalSize_two_sq_of_mem_closure
         treeLocalSize T 2 f ^ 2 := by ring
 
 /-- The finite-tree remainder estimate specialized to the two-slot edge
-tuple.  Its size is exactly `treeLocalSize T 2 f ^ 2`; no fourth-size
+tuple. Its size is exactly `treeLocalSize T 2 f ^ 2`; no fourth-size
 product remains. -/
 theorem cubeTreeRemainder_edge_bound_of_boundedContinuous
     (α : Anisotropy) :
@@ -13430,7 +13422,7 @@ theorem edge_weighted_localCubeForm_sum_eq_third
   simp [Fin.sum_univ_succ, hzero0, hzero1]
 
 /-- The complete finite-tree edge conclusion from the two one-dimensional
-cancellations and third-coordinate positivity.  The three analytic inputs
+cancellations and third-coordinate positivity. The three analytic inputs
 are stated separately so this theorem can consume the direct Fubini/square
 identities without any further tree algebra. -/
 theorem edgeTreeEstimate_of_cancellation_and_nonneg
@@ -13483,7 +13475,7 @@ theorem edgeTreeEstimate_of_cancellation_and_nonneg
     _ = (C / w) * lam ^ 37 * translationWeight r ^ 21 *
           treeLocalSize T 2 f ^ 2 * boxMass α T.root := by field_simp
 
-/-- Coordinates of the inverse false/true vertex split.  This is the
+/-- Coordinates of the inverse false/true vertex split. This is the
 concrete six-variable chart used to integrate an unused true coordinate. -/
 theorem cubeFalseTrueSplit_symm_coordinate
     (y z : E3) (i : Fin 3) (b : Bool) :
@@ -13953,7 +13945,7 @@ theorem edge_localCubeForm_zero_one_of_boundedContinuous
     (pos_of_mem_collectionRegion α S hz)
 
 /-- The edge tree conclusion, reduced only to the standard cubical-copy
-positivity statement.  The two cancellations are supplied by the literal
+positivity statement. The two cancellations are supplied by the literal
 active/passive Fubini calculation above, and the exact `37,21,2` exponents
 come from the already checked edge remainder and tree telescope. -/
 theorem edgeTreeEstimate_of_boundedContinuous_and_copy_nonneg
@@ -13988,7 +13980,7 @@ theorem edgeTreeEstimate_of_boundedContinuous_and_copy_nonneg
   exact ⟨hzero0, hzero1, hnonneg,
     hbound T lam r f hfcont hfbound hlam hzero0 hzero1 hnonneg⟩
 
-/-- The literal Section 4 edge tree estimate.  The two active coordinates
+/-- The literal Section 4 edge tree estimate. The two active coordinates
 cancel by the fixed-scale Fubini calculation, while the third is nonnegative
 by the bounded-continuous cubical-copy square theorem. -/
 theorem edgeTreeEstimate_of_boundedContinuous
@@ -14087,7 +14079,7 @@ theorem lem_face_cancellation
 
 /-- **`cor:remainder_norms`** (Two remainder norms).
 
-Write `D_{λ,r} = C_α λ^{37} R(r)^{21}`.  Then
+Write `D_{λ,r} = C_α λ^{37} R(r)^{21}`. Then
 `|R_T(F)| ≤ D_{λ,r} |Q_T| ∏_{j ∈ J} M_{T,4}(F_j)`. -/
 theorem cor_remainder_norms (α : Anisotropy) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (T : FiniteConvexTree α) (lam r : ℝ)

@@ -27,7 +27,7 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
@@ -35,9 +35,8 @@ import DFR.Auto.Twisted.ConventionsAndMainStatement.ConventionsAndMainStatement
 import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
 import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
 import DFR.Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
-import DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
-
-universe u
+import
+  DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
 
 /-!
 # Fiberwise Calderón--Zygmund decomposition
@@ -46,9 +45,11 @@ Section 7 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -56,11 +57,14 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
 namespace Twisted
+
+attribute [local fun_prop] coordinateDyadicBallMaximal_measurable
 
 local instance : (volume : Measure (E3 × FrequencyRemainder)).IsAddHaarMeasure :=
   Measure.prod.instIsAddHaarMeasure volume volume
@@ -217,7 +221,7 @@ theorem modelScaleIntervalTruncation_bound_of_uniform_coefficient_bound
     (abs_restrictScaleCoefficient_le_one c (Set.Ioc a b) hc)
 
 /-- Cutting the coefficient to the dyadic scale band converts the full
-profile form exactly into its finite scale truncation.  No expanded-fiber
+profile form exactly into its finite scale truncation. No expanded-fiber
 global integrability is used here. -/
 theorem modelScaleTruncation_eq_modelFullForm_restrict
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
@@ -231,7 +235,7 @@ theorem modelScaleTruncation_eq_modelFullForm_restrict
     (truncationScaleSet_subset_positive N)
 
 /-- A uniform finite-forest bound for all bounded coefficients transfers
-unchanged to each literal finite dyadic scale truncation.  The conclusion is
+unchanged to each literal finite dyadic scale truncation. The conclusion is
 the bound transfer in `lem:model_convergence`; the analytic profile estimate
 is only needed separately to pass to the full-scale limit. -/
 theorem modelScaleTruncation_bound_of_uniform_coefficient_bound
@@ -246,7 +250,7 @@ theorem modelScaleTruncation_bound_of_uniform_coefficient_bound
     (abs_restrictScaleCoefficient_le_one c (truncationScaleSet N) hc)
 
 /-- The scale-profile convergence turns a uniform family of finite
-truncation bounds into the full-scale model bound.  This is the limiting step
+truncation bounds into the full-scale model bound. This is the limiting step
 in `lem:model_convergence`, and it never asks for absolute integrability of
 the fully expanded auxiliary-fiber expression. -/
 theorem modelFullForm_bound_of_profile_and_uniform_truncation_bound
@@ -294,7 +298,7 @@ theorem modelFullForm_bound_of_profile_and_uniform_forest_bound
     α u c F B N hc hforest
 
 /-- The exact bridge from finite active-forest estimates to the literal
-full-scale model form.  Its `hlocalization` hypothesis is deliberately only
+full-scale model form. Its `hlocalization` hypothesis is deliberately only
 the finite-scale identification: the global expanded six-variable expression
 is never required to be absolutely integrable. -/
 theorem modelFullForm_bound_of_profile_and_truncationForest_bound
@@ -508,7 +512,7 @@ theorem coordinatePermutation_sub_smul_coordinateDirection
     coordinatePermutation_coordinateDirection]
 
 /-- A literal one-coordinate convolution commutes with relabeling its
-spatial coordinate.  The kernel and its scale parameter remain unchanged. -/
+spatial coordinate. The kernel and its scale parameter remain unchanged. -/
 theorem ModelCoordinateConvolution_coordinatePermutation
     (σ : Equiv.Perm (Fin 3)) (j : Fin 3)
     (f : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3) :
@@ -553,7 +557,7 @@ theorem permutedModelInput_zero_coordinatePermutation
     (σ : Equiv.Perm (Fin 3)) (F : ModelSchwartzInput) (x : E3) :
     permutedModelInput σ F 0 (coordinatePermutation σ x) = F 0 x := by
   rw [permutedModelInput_apply]
-  simp
+  simp only [Fin.isValue, modelInputIndex_zero, LinearIsometryEquiv.symm_apply_apply]
 
 /-- One convolved factor of the active-third model after relabeling is the
 factor in the corresponding original spatial coordinate. -/
@@ -596,7 +600,7 @@ theorem memLp_coordinatePullback
     (coordinatePermutation_symm_measurePreserving σ)
 
 /-- The `L^p` seminorm of a measurable function is unchanged by coordinate
-pullback.  This is the norm-preservation interface for the permutation
+pullback. This is the norm-preservation interface for the permutation
 argument. -/
 theorem eLpNorm_coordinatePullback
     (σ : Equiv.Perm (Fin 3)) (f : E3 → ℝ) (p : ℝ≥0∞)
@@ -640,7 +644,7 @@ specified active coordinate is always available. -/
 theorem exists_coordinatePermutation_to_active
     (i : Fin 3) : ∃ σ : Equiv.Perm (Fin 3), σ 2 = i := by
   refine ⟨Equiv.swap 2 i, ?_⟩
-  simp
+  simp only [Fin.isValue, Equiv.swap_apply_left]
 
 /-! ### Blueprint-normalized initial-range weight -/
 
@@ -681,7 +685,7 @@ theorem initialModelFullForm_bound_weight100
         ∏ j : Fin 4, lpNorm (F j : E3 → ℝ) (ENNReal.ofReal (q j)) volume := by
       ring
 
-/-- The three input slots of the fixed truncated model operator.  This is the
+/-- The three input slots of the fixed truncated model operator. This is the
 operator `U^{a,b}_{u,c}` from Section 8 before pairing with the zeroth input.
 -/
 abbrev ModelOperatorRealInput := Fin 3 → E3 → ℝ
@@ -708,7 +712,7 @@ noncomputable def modelTruncatedOperatorIntegrand
     ModelCoordinateConvolution 2 (f 2) (ModelThirdKernel (u 2))
       (t ^ α.weight 2) x
 
-/-- The actual real fixed truncated trilinear operator of Section 8.  Its
+/-- The actual real fixed truncated trilinear operator of Section 8. Its
 scale measure is exactly the source measure `1_{t>0} dt/t`. -/
 noncomputable def ModelTruncatedOperator
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -746,12 +750,10 @@ theorem modelTruncatedOperatorPairingIntegrand_eq_modelSpatialIntegrand
   unfold modelTruncatedOperatorPairingIntegrand ModelSpatialIntegrand
     modelTruncatedOperatorIntegrand modelOperatorInput
   norm_num
-  have hthree : Fin.succ (2 : Fin 3) = (3 : Fin 4) := by decide
-  rw [hthree]
   ring
 
 /-- Fubini identifies the pre-existing finite scale form with pairing the
-fixed truncated operator against its zeroth input.  The explicit joint
+fixed truncated operator against its zeroth input. The explicit joint
 integrability premise is precisely the finite-interval Young/Hölder
 obligation discharged before the one-fiber Calderón--Zygmund argument. -/
 theorem modelScaleIntervalTruncation_eq_modelTruncatedOperator_pairing
@@ -877,7 +879,7 @@ theorem integral_modelScaleInterval_withDensity_eq_intervalIntegral
     _ = ∫ t in a..b, f t / t :=
       (intervalIntegral.integral_of_le hab).symm
 
-/-- The elementary `L^∞` Young estimate on one coordinate fiber.  It is the
+/-- The elementary `L^∞` Young estimate on one coordinate fiber. It is the
 finite-scale boundedness input used before the density and good--bad
 identities in Section 8. -/
 theorem abs_ModelCoordinateConvolution_le_of_bounded
@@ -1036,7 +1038,7 @@ theorem real_measure_modelScaleInterval
       integral_inv_of_pos ha (lt_of_lt_of_le ha hab)
 
 /-- The source's elementary finite-interval Young bound for the actual
-truncated operator.  It is uniform in the coefficient except for its
+truncated operator. It is uniform in the coefficient except for its
 `L^∞` bound and has the exact logarithmic interval length. -/
 theorem abs_ModelTruncatedOperator_le_of_bounded
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -1051,7 +1053,7 @@ theorem abs_ModelTruncatedOperator_le_of_bounded
   let I : Set ℝ := Set.Ioc a b
   let Q : ℝ := C * modelTruncatedOperatorFiberBound u B
   have hfinite : ν I < ∞ := by
-    letI : IsFiniteMeasure (ν.restrict I) := by
+    let : IsFiniteMeasure (ν.restrict I) := by
       simpa only [ν, I] using isFiniteMeasure_modelScaleInterval ha
     rw [← Measure.restrict_apply_univ]
     exact IsFiniteMeasure.measure_univ_lt_top
@@ -1083,7 +1085,6 @@ theorem abs_ModelTruncatedOperator_le_of_bounded
         simpa only [ν, I] using real_measure_modelScaleInterval ha hab]
 
 /-! ### Finite-`L^p` fiber Young inequality -/
-
 theorem coordinate_ennreal_weighted_factor_of_holder
     {p r : ℝ} (hpq : r.HolderConjugate p) (a b : ENNReal) :
     a * b = a ^ r⁻¹ * (a * b ^ p) ^ p⁻¹ := by
@@ -1102,7 +1103,7 @@ theorem coordinate_ennreal_weighted_factor_of_holder
     _ = a ^ r⁻¹ * (a ^ p⁻¹ * b) := by ring
 
 /-- The pointwise weighted Hölder step for convolution along one coordinate
-fiber.  Unlike a full-space convolution, only the one-dimensional kernel
+fiber. Unlike a full-space convolution, only the one-dimensional kernel
 variable is integrated; translations in the ambient `E3` are retained
 explicitly for the later Fubini step. -/
 theorem coordinate_lintegral_p_pointwise
@@ -1166,7 +1167,7 @@ theorem coordinate_lintegral_p_pointwise
         inv_mul_cancel₀ hp0.ne', ENNReal.rpow_one]
 
 /-- Young's inequality for the `p`-moment of a positive convolution along a
-single coordinate fiber.  The ambient translation in the Tonelli step is
+single coordinate fiber. The ambient translation in the Tonelli step is
 measure preserving, so the constant is the exact one-dimensional kernel
 mass. -/
 theorem coordinate_lintegral_p_young
@@ -1251,6 +1252,28 @@ theorem coordinate_lintegral_p_young
           congr 2
           ring
 
+/-- A Borel input and Borel kernel give a strongly measurable literal
+coordinate convolution at every positive scale. -/
+@[fun_prop] theorem stronglyMeasurable_ModelCoordinateConvolution_of_measurable
+    (i : Fin 3) (f : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ)
+    (hf : Measurable f) (hk : Measurable k) :
+    StronglyMeasurable (ModelCoordinateConvolution i f k s) := by
+  have hinput : StronglyMeasurable (fun xr : E3 × ℝ ↦
+      f (xr.1 - xr.2 • Anisotropy.coordinateDirection i)) :=
+    (hf.comp (measurable_fst.sub
+      (measurable_snd.smul measurable_const))).stronglyMeasurable
+  have hkernel : StronglyMeasurable (fun xr : E3 × ℝ ↦
+      kernelDilate k s xr.2) := by
+    unfold kernelDilate
+    change StronglyMeasurable (fun xr : E3 × ℝ ↦
+      s⁻¹ * k (xr.2 / s))
+    exact (measurable_const.mul
+      (hk.comp (measurable_snd.div measurable_const))).stronglyMeasurable
+  change StronglyMeasurable (fun x : E3 ↦
+    ∫ r : ℝ, f (x - r • Anisotropy.coordinateDirection i) *
+      kernelDilate k s r)
+  exact (hinput.mul hkernel).integral_prod_right'
+
 /-- The finite-`L^p` Young inequality for `ModelCoordinateConvolution`.
 This is the literal fiberwise Young input invoked in Section 8 before
 Hölder and scale integration. -/
@@ -1305,9 +1328,9 @@ theorem eLpNorm_ModelCoordinateConvolution_le
           (fun y ↦ ‖kernelDilate k s y‖ₑ) (fun x ↦ ‖f x‖ₑ)
           hkd.enorm hf.enorm
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top (by fun_prop)]
   rw [eLpNorm_eq_lintegral_rpow_enorm_toReal
-    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top]
+    (ENNReal.ofReal_ne_zero_iff.mpr hp0) ENNReal.ofReal_ne_top (by fun_prop)]
   simp only [ENNReal.toReal_ofReal hp0.le, one_div]
   have hstep := ENNReal.rpow_le_rpow hmoment
     (by positivity : (0 : ℝ) ≤ p⁻¹)
@@ -1329,28 +1352,6 @@ theorem eLpNorm_ModelCoordinateConvolution_le
       change ENNReal.ofReal (∫ y : ℝ, |kernelDilate k s y|) * _ = _
       rw [integral_abs_kernelDilate k hs]
 
-/-- A Borel input and Borel kernel give a strongly measurable literal
-coordinate convolution at every positive scale. -/
-theorem stronglyMeasurable_ModelCoordinateConvolution_of_measurable
-    (i : Fin 3) (f : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ)
-    (hf : Measurable f) (hk : Measurable k) :
-    StronglyMeasurable (ModelCoordinateConvolution i f k s) := by
-  have hinput : StronglyMeasurable (fun xr : E3 × ℝ ↦
-      f (xr.1 - xr.2 • Anisotropy.coordinateDirection i)) :=
-    (hf.comp (measurable_fst.sub
-      (measurable_snd.smul measurable_const))).stronglyMeasurable
-  have hkernel : StronglyMeasurable (fun xr : E3 × ℝ ↦
-      kernelDilate k s xr.2) := by
-    unfold kernelDilate
-    change StronglyMeasurable (fun xr : E3 × ℝ ↦
-      s⁻¹ * k (xr.2 / s))
-    exact (measurable_const.mul
-      (hk.comp (measurable_snd.div measurable_const))).stronglyMeasurable
-  change StronglyMeasurable (fun x : E3 ↦
-    ∫ r : ℝ, f (x - r • Anisotropy.coordinateDirection i) *
-      kernelDilate k s r)
-  exact (hinput.mul hkernel).integral_prod_right'
-
 /-- The literal coordinate convolution maps Borel `L^p` inputs to `L^p` for
 every finite exponent strictly above one. -/
 theorem memLp_ModelCoordinateConvolution_of_memLp
@@ -1359,13 +1360,11 @@ theorem memLp_ModelCoordinateConvolution_of_memLp
     {s : ℝ} (hs : 0 < s)
     (hfp : MemLp f (ENNReal.ofReal p) volume) :
     MemLp (ModelCoordinateConvolution i f k s) (ENNReal.ofReal p) volume := by
-  refine ⟨(stronglyMeasurable_ModelCoordinateConvolution_of_measurable
-    i f k s hf hk).aestronglyMeasurable, ?_⟩
   exact (eLpNorm_ModelCoordinateConvolution_le i p hp f k hf hk hkint hs).trans_lt
     (ENNReal.mul_lt_top ENNReal.ofReal_lt_top hfp.eLpNorm_lt_top)
 
 /-- A four-factor Hölder package in the association used by the fixed model
-form.  The three `HolderTriple` assumptions make the intermediate output
+form. The three `HolderTriple` assumptions make the intermediate output
 exponents explicit, avoiding any hidden interpolation convention. -/
 theorem eLpNorm_fourfold_product_le
     {p0 p1 p2 p3 r23 r123 : ENNReal}
@@ -1383,7 +1382,7 @@ theorem eLpNorm_fourfold_product_le
       eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
     change eLpNorm (g2 * g3) r23 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg3 hg2)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg2 hg3)
   have hm23 : AEStronglyMeasurable (fun x ↦ g2 x * g3 x) volume :=
     hg2.mul hg3
   have h123 : eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) r123 volume ≤
@@ -1391,7 +1390,7 @@ theorem eLpNorm_fourfold_product_le
         eLpNorm (fun x ↦ g2 x * g3 x) r23 volume := by
     change eLpNorm (g1 * fun x ↦ g2 x * g3 x) r123 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hm23 hg1)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg1 hm23)
   have hm123 : AEStronglyMeasurable (fun x ↦
       g1 x * (g2 x * g3 x)) volume := hg1.mul hm23
   have h0123 : eLpNorm (fun x ↦
@@ -1400,7 +1399,7 @@ theorem eLpNorm_fourfold_product_le
         eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) r123 volume := by
     change eLpNorm (g0 * fun x ↦ g1 x * (g2 x * g3 x)) 1 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hm123 hg0)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg0 hm123)
   calc
     eLpNorm (fun x ↦ g0 x * g1 x * g2 x * g3 x) 1 volume =
         eLpNorm (fun x ↦ g0 x * (g1 x * (g2 x * g3 x))) 1 volume := by
@@ -1648,9 +1647,9 @@ theorem lpNorm_permutedModelInput
     lpNorm (permutedModelInput σ F j : E3 → ℝ) p volume =
       lpNorm (F (modelInputIndex σ j) : E3 → ℝ) p volume := by
   rw [← toReal_eLpNorm
-    (permutedModelInput σ F j).continuous.aestronglyMeasurable,
+    ,
     ← toReal_eLpNorm
-      (F (modelInputIndex σ j)).continuous.aestronglyMeasurable,
+      ,
     eLpNorm_permutedModelInput]
 
 /-- The product of the four input norms is invariant under simultaneous
@@ -1680,7 +1679,7 @@ theorem prod_lpNorm_permutedModelInput
 /-! ### Section 8 kernel majorants -/
 
 /-- An additional tenth-order reciprocal estimate makes a polynomially
-weighted absolute value integrable.  This is the weighted input for the
+weighted absolute value integrable. This is the weighted input for the
 convolutional kernel decay calculation. -/
 theorem integrable_weighted_abs_of_decay
     (n : ℕ) (f : ℝ → ℝ) (hf : AEStronglyMeasurable f volume) {C : ℝ}
@@ -1717,7 +1716,7 @@ theorem integrable_weighted_abs_of_decay
 
 /-- A convolution inherits polynomial decay when one factor has a bounded
 weighted absolute value and the other has an integrable weighted absolute
-value.  The asymmetric form is tailored to the Gaussian--Schwartz kernel
+value. The asymmetric form is tailored to the Gaussian--Schwartz kernel
 convolutions in the source model. -/
 theorem convolution_decay_of_weighted_bound
     (n : ℕ) (f g : ℝ → ℝ) (hf : Measurable f) (hg : Measurable g)
@@ -1833,7 +1832,7 @@ theorem low_convolution_polynomial_decay :
   exact hconv x
 
 /-- The literal low-frequency model kernel obeys a translated bracket
-majorant.  This is the unit-scale source kernel estimate. -/
+majorant. This is the unit-scale source kernel estimate. -/
 theorem ModelLowKernel_translate_bracket_majorant :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (u w : ℝ),
       |ModelLowKernel u w| ≤
@@ -1911,7 +1910,7 @@ theorem integrable_weighted_annular_convolution :
       (gaussianDeriv ⋆[ContinuousLinearMap.mul ℝ ℝ] conePsiPhysicalReal) :=
     integrable_gaussianDeriv.integrable_convolution (ContinuousLinearMap.mul ℝ ℝ)
       conePsiPhysicalReal.integrable
-  apply integrable_weighted_abs_of_decay 10
+  apply integrable_weighted_abs_of_decay (C := C) 10
     (gaussianDeriv ⋆[ContinuousLinearMap.mul ℝ ℝ] conePsiPhysicalReal)
     hconv.aestronglyMeasurable
   intro x
@@ -2076,13 +2075,14 @@ complexification. -/
 theorem scratch_realPartSchwartz_complexifyRealSchwartz (f : SchwartzMap E3 ℝ) :
     scratch_realPartSchwartz (complexifyRealSchwartz f) = f := by
   ext x
-  simp
+  simp only [scratch_realPartSchwartz_apply, complexifyRealSchwartz_apply, Complex.ofReal_re]
 
 /-- Imaginary part vanishes on a standard complexification of real data. -/
 theorem scratch_imagPartSchwartz_complexifyRealSchwartz (f : SchwartzMap E3 ℝ) :
     scratch_imagPartSchwartz (complexifyRealSchwartz f) = 0 := by
   ext x
-  simp
+  simp only [scratch_imagPartSchwartz_apply, complexifyRealSchwartz_apply, Complex.ofReal_im,
+    zero_apply]
 
 /-- Taking the real part cannot increase a finite `L^p` norm. -/
 theorem scratch_lpNorm_realPartSchwartz_le
@@ -2090,10 +2090,10 @@ theorem scratch_lpNorm_realPartSchwartz_le
     lpNorm (scratch_realPartSchwartz f : E3 → ℝ) (ENNReal.ofReal p) volume ≤
       lpNorm (f : E3 → ℂ) (ENNReal.ofReal p) volume := by
   rw [← toReal_eLpNorm
-    (scratch_realPartSchwartz f).continuous.aestronglyMeasurable,
-    ← toReal_eLpNorm f.continuous.aestronglyMeasurable]
+    ,
+    ← toReal_eLpNorm ]
   apply ENNReal.toReal_mono (f.memLp (ENNReal.ofReal p) volume).eLpNorm_ne_top
-  apply eLpNorm_mono
+  apply eLpNorm_mono (by fun_prop)
   intro x
   change |(f x).re| ≤ ‖f x‖
   exact Complex.abs_re_le_norm _
@@ -2104,10 +2104,10 @@ theorem scratch_lpNorm_imagPartSchwartz_le
     lpNorm (scratch_imagPartSchwartz f : E3 → ℝ) (ENNReal.ofReal p) volume ≤
       lpNorm (f : E3 → ℂ) (ENNReal.ofReal p) volume := by
   rw [← toReal_eLpNorm
-    (scratch_imagPartSchwartz f).continuous.aestronglyMeasurable,
-    ← toReal_eLpNorm f.continuous.aestronglyMeasurable]
+    ,
+    ← toReal_eLpNorm ]
   apply ENNReal.toReal_mono (f.memLp (ENNReal.ofReal p) volume).eLpNorm_ne_top
-  apply eLpNorm_mono
+  apply eLpNorm_mono (by fun_prop)
   intro x
   change |(f x).im| ≤ ‖f x‖
   exact Complex.abs_im_le_norm _
@@ -2147,7 +2147,7 @@ theorem scratch_complexComponent_eq_zero_of_choice_true
     (ε : Fin 4 → Bool) (G : ModelSchwartzInput) (j : Fin 4)
     (hε : ε j) :
     scratch_complexComponent ε (fun k ↦ complexifyRealSchwartz (G k)) j = 0 := by
-  rw [scratch_complexComponent, if_pos hε]
+  rw [scratch_complexComponent, ite_eq_left hε]
   exact scratch_imagPartSchwartz_complexifyRealSchwartz (G j)
 
 /-- A Boolean coordinate choice distinct from the all-real selection contains
@@ -2161,7 +2161,7 @@ theorem scratch_exists_choice_true_of_ne_allRealChoices
   funext j
   exact Bool.eq_false_of_not_eq_true (hnone j)
 
-/-- The algebraic complexification of a real four-linear functional.  When
+/-- The algebraic complexification of a real four-linear functional. When
 the functional is four-linear, this is its unique complex multilinear
 extension. -/
 noncomputable def scratch_fourLinearComplexification
@@ -2203,9 +2203,9 @@ theorem scratch_lpNorm_complexComponent_le
     lpNorm (scratch_complexComponent ε F j : E3 → ℝ) (ENNReal.ofReal p) volume ≤
       lpNorm (F j : E3 → ℂ) (ENNReal.ofReal p) volume := by
   by_cases hε : ε j
-  · rw [scratch_complexComponent, if_pos hε]
+  · rw [scratch_complexComponent, ite_eq_left hε]
     exact scratch_lpNorm_imagPartSchwartz_le (F j) p
-  · rw [scratch_complexComponent, if_neg hε]
+  · rw [scratch_complexComponent, ite_eq_right hε]
     exact scratch_lpNorm_realPartSchwartz_le (F j) p
 
 /-- The expansion phases all have unit modulus. -/
@@ -2229,7 +2229,7 @@ theorem scratch_prod_lpNorm_complexComponent_le
       lpNorm (scratch_complexComponent ε F j : E3 → ℝ)
         (ENNReal.ofReal (p j)) volume) ≤
       ∏ j : Fin 4, lpNorm (F j : E3 → ℂ) (ENNReal.ofReal (p j)) volume := by
-  apply Finset.prod_le_prod
+  apply Finset.prod_le_prod₀
   · intro j _
     exact lpNorm_nonneg
   · intro j _
@@ -2321,7 +2321,7 @@ theorem scratch_norm_complexCoefficientPhase (δ : Bool) :
   by_cases hδ : δ <;> simp [scratch_complexCoefficientPhase, hδ]
 
 /-- The algebraic complexification of the model form in its scale coefficient
-as well as in its four inputs.  This is the literal `2^5` expansion used in
+as well as in its four inputs. This is the literal `2^5` expansion used in
 the complex step of blueprint Section 7. -/
 noncomputable def scratch_ModelFullFormComplexCoefficientComplexified
     (α : Anisotropy) (u : E3) (c : ℝ → ℂ)
@@ -2359,7 +2359,7 @@ theorem scratch_ModelFullFormComplexified_zero_coefficient
   apply Finset.sum_eq_zero
   intro ε _
   rw [scratch_ModelFullForm_zero_coefficient]
-  simp
+  simp only [Complex.ofReal_zero, mul_zero]
 
 /-- The five-variable complexification agrees with the real source model form
 when both its coefficient and all four inputs are standard complexifications
@@ -2466,7 +2466,7 @@ theorem scratch_sum_two (A : ℝ) : (∑ _ : Bool, A) = 2 * A := by
 
 /-- If the real initial estimate is uniform over all measurable real
 coefficients bounded by one, it transfers to a complex coefficient and four
-complex inputs.  The factor `32 = 2^5` is exactly the coefficient choice
+complex inputs. The factor `32 = 2^5` is exactly the coefficient choice
 times the four input choices in blueprint Section 7. -/
 theorem scratch_norm_ModelFullFormComplexCoefficientComplexified_le_weight100
     (α : Anisotropy) (u : E3) (c : ℝ → ℂ)
@@ -2680,7 +2680,7 @@ theorem scratch_exists_uniform_ModelFullFormComplexCoefficientComplexified_bound
 /-! ### Literal complex model form -/
 
 /-- The literal complex version of one coordinate convolution in the source
-model.  The kernel remains real-valued and is embedded into `ℂ` in the
+model. The kernel remains real-valued and is embedded into `ℂ` in the
 integrand. -/
 noncomputable def scratch_LiteralModelCoordinateConvolution
     (i : Fin 3) (f : E3 → ℂ) (k : ℝ → ℝ) (s : ℝ) (x : E3) : ℂ :=
@@ -2842,7 +2842,7 @@ theorem scratch_LiteralModelCoordinateIntegrand_expand
       ((scratch_complexInputComponent b f y * k : ℝ) : ℂ) := by
   rw [Fintype.sum_bool]
   simp only [scratch_inputPhase, scratch_complexInputComponent_apply]
-  simp
+  simp only [↓reduceIte, Complex.ofReal_mul, Bool.false_eq_true, one_mul]
   calc
     f y * (k : ℂ) = ((f y).re : ℂ) * (k : ℂ) +
         ((f y).im : ℂ) * Complex.I * (k : ℂ) := by
@@ -2963,7 +2963,7 @@ theorem scratch_complexInput_expand
       (scratch_complexInputComponent b f x : ℂ) := by
   rw [Fintype.sum_bool]
   simp only [scratch_inputPhase, scratch_complexInputComponent_apply]
-  simp
+  simp only [↓reduceIte, Bool.false_eq_true, one_mul]
   calc
     f x = ((f x).re : ℂ) + ((f x).im : ℂ) * Complex.I :=
       (Complex.re_add_im _).symm
@@ -3026,13 +3026,12 @@ theorem scratch_LiteralModelSpatialIntegrand_expand
         (ModelSpatialIntegrand α u (scratch_complexComponent ε F) t x : ℂ) := by
   rw [scratch_LiteralModelSpatialIntegrand_eq_prod_factors]
   rw [scratch_prod_binary_expansion]
-  · apply Finset.sum_congr rfl
-    intro ε _
+  · refine Finset.sum_congr rfl (fun ε _ => ?_)
     rw [scratch_ModelSpatialBinaryFactors_prod_eq_component]
   · exact scratch_LiteralModelSpatialFactors_expand α u F t x ht
 
 /-- The real source spatial integrand is integrable at every positive scale
-for a real Schwartz four-tuple.  This localizes the integrability needed to
+for a real Schwartz four-tuple. This localizes the integrability needed to
 pass the sixteen-term expansion through the spatial integral. -/
 theorem scratch_integrable_ModelSpatialIntegrand
     (α : Anisotropy) (u : E3) (G : ModelSchwartzInput) (t : ℝ) (ht : 0 < t) :
@@ -3169,7 +3168,7 @@ theorem scratch_complexCoefficient_expand
   rw [Fintype.sum_bool]
   simp only [scratch_complexCoefficientPhase,
     scratch_complexCoefficientComponent]
-  simp
+  simp only [↓reduceIte, Bool.false_eq_true, one_mul]
   calc
     c t = ((c t).re : ℂ) + ((c t).im : ℂ) * Complex.I :=
       (Complex.re_add_im _).symm
@@ -3237,7 +3236,7 @@ theorem scratch_integral_LiteralModelFullForm_expansionTerm_eq
 
 /-- Under the source measurability and unit-bound hypotheses, the literal
 complex convolution/integral model form is exactly its algebraic thirty-two
-term real/imaginary expansion.  Thus the Section 7 triangle estimate applies
+term real/imaginary expansion. Thus the Section 7 triangle estimate applies
 to the actual complex model, not merely to an auxiliary extension. -/
 theorem scratch_LiteralModelFullForm_eq_complexCoefficientComplexified
     (α : Anisotropy) (u : E3) (c : ℝ → ℂ)
@@ -3458,7 +3457,7 @@ theorem scratch_complexPermutedModelInput_zero_coordinatePermutation
     scratch_complexPermutedModelInput σ F 0 (coordinatePermutation σ x) =
       F 0 x := by
   rw [scratch_complexPermutedModelInput_apply]
-  simp
+  simp only [Fin.isValue, modelInputIndex_zero, LinearIsometryEquiv.symm_apply_apply]
 
 /-- The literal complex active-coordinate spatial integrand, retaining all
 three source coordinate convolutions. -/
@@ -3647,9 +3646,9 @@ theorem scratch_lpNorm_complexPermutedModelInput
     funext x
     exact scratch_complexPermutedModelInput_apply σ F j x
   rw [← toReal_eLpNorm
-    (scratch_complexPermutedModelInput σ F j).continuous.aestronglyMeasurable,
+    ,
     ← toReal_eLpNorm
-      (F (modelInputIndex σ j)).continuous.aestronglyMeasurable,
+      ,
     hfun,
     eLpNorm_comp_measurePreserving
       (F (modelInputIndex σ j)).continuous.aestronglyMeasurable
@@ -3680,7 +3679,7 @@ theorem scratch_prod_lpNorm_complexPermutedModelInput
     _ = ∏ j : Fin 4, G j := prod_modelInputIndex σ G
 
 /-- The strict literal complex model bound holds uniformly at every active
-coordinate.  The constant is chosen before translation, complex unit
+coordinate. The constant is chosen before translation, complex unit
 coefficient, and complex Schwartz input. -/
 theorem scratch_exists_uniform_LiteralActiveModelFullForm_bound_weight100
     (α : Anisotropy) (i : Fin 3) (q : Fin 4 → ℝ)
@@ -3790,7 +3789,7 @@ theorem kernelDilate_activeModelKernel_sourceWeight_bracket_majorant :
       _ ≤ max Clow Cthird * (sourceWeight u ^ 10 * bracketKernelAt s 0 y) :=
         mul_le_mul_of_nonneg_right (le_max_right _ _) hfactor
       _ = max Clow Cthird * sourceWeight u ^ 10 * bracketKernelAt s 0 y := by ring
-  · simp only [activeModelKernel, if_neg hji]
+  · simp only [activeModelKernel, ite_eq_right hji]
     calc
       |kernelDilate (ModelLowKernel (u j)) s y| ≤
           Clow * sourceWeight u ^ 10 * bracketKernelAt s 0 y :=
@@ -4615,11 +4614,11 @@ theorem hasDerivAt_kernelDilate_activeModelKernel
   · subst j
     simp only [activeModelKernel, activeModelKernelDeriv]
     exact hasDerivAt_kernelDilate_ModelThirdKernel u i s y hs
-  · simp only [activeModelKernel, activeModelKernelDeriv, if_neg hji]
+  · simp only [activeModelKernel, activeModelKernelDeriv, ite_eq_right hji]
     exact hasDerivAt_kernelDilate_ModelLowKernel u j s y hs
 
 /-- Uniform source-weight derivative bracket bound for all three active
-kernels.  This is the literal derivative clause of `lem:fiber_kernel`. -/
+kernels. This is the literal derivative clause of `lem:fiber_kernel`. -/
 theorem deriv_kernelDilate_activeModelKernel_sourceWeight_bracket_majorant :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (i j : Fin 3) (u : E3) (s y : ℝ), 0 < s →
       |s⁻¹ * kernelDilate (activeModelKernelDeriv i j u) s y| ≤
@@ -4648,7 +4647,7 @@ theorem deriv_kernelDilate_activeModelKernel_sourceWeight_bracket_majorant :
         mul_le_mul_of_nonneg_right (le_max_right _ _) hfactor
       _ = max Clow Cthird * sourceWeight u ^ 10 * s⁻¹ *
           bracketKernelAt s 0 y := by ring
-  · simp only [activeModelKernelDeriv, if_neg hji]
+  · simp only [activeModelKernelDeriv, ite_eq_right hji]
     calc
       |s⁻¹ * kernelDilate (ModelLowKernelDeriv (u j)) s y| ≤
           Clow * sourceWeight u ^ 10 * s⁻¹ * bracketKernelAt s 0 y :=
@@ -4775,7 +4774,7 @@ theorem bracketKernelAt_le_two_pow_ten_of_half_distance
         (s⁻¹ * ((1 + |w / s|) ^ 10)⁻¹) := by ring
 
 /-- The literal off-interval cancellation difference for every active model
-kernel.  This is the mean-value estimate used for a bad fiber: the two
+kernel. This is the mean-value estimate used for a bad fiber: the two
 arguments are `x-y` and `x-c`, and the remote hypothesis is exactly the
 source condition needed along their joining segment. -/
 theorem abs_sub_kernelDilate_activeModelKernel_cancellation :
@@ -4927,9 +4926,7 @@ theorem integrable_badFiber_firstMoment_of_interval_radius
         have hsub : Measurable (fun y : ℝ ↦ y - c) :=
           measurable_id.sub measurable_const
         have hnorm : Measurable (fun y : ℝ ↦ ‖y - c‖) := hsub.norm
-        convert hnorm using 1
-        funext y
-        exact (Real.norm_eq_abs (y - c)).symm
+        exact hnorm
     exact (hb.aestronglyMeasurable.norm.mul hdist.aestronglyMeasurable).congr
       (Filter.Eventually.of_forall fun y ↦ by rfl)
   refine (habs.const_mul r).mono' hmeas (Filter.Eventually.of_forall fun y ↦ ?_)
@@ -5107,7 +5104,7 @@ the source bad-fiber argument. -/
 noncomputable def intervalTail (c r x : ℝ) : ℝ :=
   (1 + |(x - c) / r|) ^ (-2 : ℝ)
 
-/-- The fixed, finite mass of the unit interval tail.  The source only uses
+/-- The fixed, finite mass of the unit interval tail. The source only uses
 that this universal constant is finite; its elementary exact value is not
 needed for the finite-tail summation interface. -/
 noncomputable def intervalTailMass : ℝ :=
@@ -5146,7 +5143,7 @@ theorem integral_intervalTail (c r : ℝ) (hr : 0 < r) :
       rfl
 
 /-- A finite sum of interval tails has exactly the sum of their scaled
-universal masses.  No overlap hypothesis is needed at this `L¹` stage. -/
+universal masses. No overlap hypothesis is needed at this `L¹` stage. -/
 theorem integral_finset_intervalTails
     {ι : Type*} (S : Finset ι) (c r : ι → ℝ)
     (hr : ∀ i ∈ S, 0 < r i) :
@@ -5241,7 +5238,7 @@ theorem integral_finset_double_intervalTails
   ring
 
 /-- The finite bad-fiber tail sum is controlled by any available bound on
-the sum of its interval radii.  This is the `p = 1` summation step in the
+the sum of its interval radii. This is the `p = 1` summation step in the
 source interval-tail lemma. -/
 theorem integral_finset_double_intervalTails_le_of_radius_sum
     {ι : Type*} (S : Finset ι) (c r : ι → ℝ) (A : ℝ)
@@ -5355,7 +5352,7 @@ theorem scratch_integral_Ioi_scaled_weighted_one_add_tail (d : ℝ) (hd : 0 < d)
     _ = d⁻¹ * (d⁻¹ * (1 / 72)) := by rw [hcomp']
     _ = d⁻¹ ^ 2 * (1 / 72) := by ring
 
-/-- The exact scalar scale integral in the bad-fiber calculation.  The
+/-- The exact scalar scale integral in the bad-fiber calculation. The
 substitution is `x = t^{-α}` and its Jacobian is kept explicit. -/
 theorem scratch_integral_Ioi_scale_badFiber_tail
     (α d : ℝ) (hα : 0 < α) (hd : 0 < d) :
@@ -5443,7 +5440,7 @@ theorem scratch_integral_Ioi_scale_bracketKernelAt
       scratch_integral_Ioi_scale_badFiber_tail α |d| hα hd
 
 /-- The literal scale bracket majorant is integrable on the positive scale
-half-line.  This removes the remaining scalar side condition from the
+half-line. This removes the remaining scalar side condition from the
 scale-integrated bad-fiber estimate. -/
 theorem scratch_integrableOn_Ioi_scale_bracketKernelAt
     (α d : ℝ) (hα : 0 < α) (hd : 0 < |d|) :
@@ -5517,7 +5514,7 @@ theorem scratch_integrableOn_Ioi_scale_bracketKernelAt
       ring
 
 /-- Integrating the canonical interval-radius cancellation bound across the
-source scale measure gives the exact inverse-square bad-fiber tail.  The
+source scale measure gives the exact inverse-square bad-fiber tail. The
 explicit integrability hypothesis is the only remaining Fubini-facing
 interface at this point. -/
 theorem scratch_integral_badFiber_scaleTail_of_interval_radius_mass_bound :
@@ -5586,7 +5583,7 @@ theorem scratch_integral_badFiber_scaleTail_of_interval_radius_mass_bound :
       rfl
 
 /-- Outside the doubled interval, the scale-integrated cancellation term is
-controlled directly by the source interval tail.  This is the pointwise
+controlled directly by the source interval tail. This is the pointwise
 bad-coordinate input to the subsequent three-factor Hölder step. -/
 theorem scratch_integral_badFiber_scaleTail_le_intervalTail :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (i j : Fin 3) (u : E3) (α x c r A : ℝ)
@@ -5685,7 +5682,7 @@ theorem scratch_integral_badFiber_scaleTail_le_intervalTail_unconditional :
       exact lt_of_lt_of_le (by nlinarith) hfar))
 
 /-- Summing the literal scale-integrated cancellation estimate over a finite
-bad-interval family produces the exact positive interval-tail majorant.  The
+bad-interval family produces the exact positive interval-tail majorant. The
 same mass coefficient `A` is the source `H^(1/p)` factor. -/
 theorem scratch_finset_integral_badFiber_scaleTail_le_intervalTail_sum :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ {ι : Type*} (S : Finset ι)
@@ -5799,7 +5796,7 @@ one-fiber Calderón--Zygmund argument. -/
 noncomputable def scratchLp_fiberTailTwo (z : FiberDyadicLine) : ℝ :=
   (1 + ‖z‖) ^ (-2 : ℝ)
 
-/-- The real interval tail is literally the transported fiber tail.  The
+/-- The real interval tail is literally the transported fiber tail. The
 positive-radius hypothesis is only used to normalize the scalar action. -/
 theorem scratchLp_intervalTail_eq_fiberTailTwo (c r x : ℝ) (hr : 0 < r) :
     scratchLp_intervalTail c r x =
@@ -5807,7 +5804,8 @@ theorem scratchLp_intervalTail_eq_fiberTailTwo (c r x : ℝ) (hr : 0 < r) :
         (r⁻¹ • (realToFiberDyadicLine x - realToFiberDyadicLine c)) := by
   unfold scratchLp_intervalTail scratchLp_fiberTailTwo
   rw [norm_scaled_fiber_sub r c (realToFiberDyadicLine x) hr]
-  simp
+  simp only [Real.rpow_neg_ofNat, Int.reduceNeg, zpow_neg, zpow_ofNat,
+    MeasurableEquiv.symm_apply_apply]
 
 theorem scratchLp_fiberTailTwo_nonneg (z : FiberDyadicLine) :
     0 ≤ scratchLp_fiberTailTwo z := by
@@ -5839,7 +5837,8 @@ theorem scratchLp_integrable_weighted_fiberTailTwo
     unfold scratchLp_fiberTailTwo
     fun_prop
   refine (htail.const_mul a).mono' ?_ ?_
-  · exact ((hG.comp (measurable_const.prodMk measurable_id)).norm.mul htail_meas).aestronglyMeasurable
+  · exact ((hG.comp (measurable_const.prodMk measurable_id)).norm.mul
+      htail_meas).aestronglyMeasurable
   · filter_upwards [] with y
     rw [Real.norm_eq_abs, abs_of_nonneg]
     · exact mul_le_mul_of_nonneg_right (hGa (q.1, y))
@@ -5970,7 +5969,7 @@ private theorem scratchLp_fiber_shell_tail_two_coefficient
   ring
 
 /-- The exponent-two interval tail is controlled, on every bounded measurable
-fiber, by the existing dyadic fiber maximal operator.  This is the annular
+fiber, by the existing dyadic fiber maximal operator. This is the annular
 comparison required in the `1 < p < ∞` interval-tail argument. -/
 theorem scratchLp_fiberTailTwo_weighted_integral_le_dyadic_average_sup
     (G : FiberDyadicBase × FiberDyadicLine → ℂ) (hG : Measurable G)
@@ -6289,7 +6288,7 @@ theorem scratchLp_fiberTailTwo_pairing_le_dyadic_average_sup
 
 /-- If `y` lies in the radius-`r` interval about `c`, pairing the doubled
 interval tail with a bounded fiber is controlled at the point `y` by the
-fiber dyadic maximal function.  This is the pointwise input averaged over
+fiber dyadic maximal function. This is the pointwise input averaged over
 each bad interval in the disjoint-tail argument. -/
 theorem scratchLp_intervalTail_pairing_le_fiberDyadicBallMaximal
     (G : FiberDyadicBase × FiberDyadicLine → ℂ) (hG : Measurable G)
@@ -6470,7 +6469,7 @@ theorem scratchLp_finset_intervalTail_pairing_average_le
 
 /-- For a finite pairwise-disjoint family of radius intervals, the summed
 tail pairings are controlled by one maximal-function integral over their
-union.  This is the finite disjoint-interval terminal used before Hölder. -/
+union. This is the finite disjoint-interval terminal used before Hölder. -/
 theorem scratchLp_finset_pairwiseDisjoint_intervalTail_pairing_le
     {ι : Type*} (S : Finset ι) (c r : ι → ℝ)
     (hr : ∀ i ∈ S, 0 < r i)
@@ -6543,7 +6542,8 @@ theorem scratchLp_line_dyadicBallMaximal_memLp
   have hpENT : ENNReal.ofReal p ≠ ⊤ := ENNReal.ofReal_ne_top
   have hinput : (∫⁻ x : FiberDyadicLine,
       (ENNReal.ofReal ‖g x‖) ^ p) < ∞ := by
-    have h := (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hpEN0 hpENT).mp hgp.2
+    have h := (eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top hpEN0 hpENT
+      hgp.aestronglyMeasurable).mp hgp
     simpa [ENNReal.toReal_ofReal hp0.le, enorm_eq_nnnorm] using h
   have hinv : (ENNReal.ofReal (p - 1))⁻¹ < ∞ := by
     apply ENNReal.inv_lt_top.mpr
@@ -6586,7 +6586,7 @@ theorem scratchLp_real_dyadicBallMaximal_memLp
   exact h.comp_measurePreserving realToFiberDyadicLine_measurePreserving
 
 /-- The finite disjoint-interval testing inequality with a genuinely
-one-dimensional cutoff.  It is the source tail estimate after the passive
+one-dimensional cutoff. It is the source tail estimate after the passive
 fiber coordinate has been eliminated. -/
 theorem scratchLp_finset_pairwiseDisjoint_intervalTail_lineTesting_le
     {ι : Type*} (S : Finset ι) (c r : ι → ℝ)
@@ -6620,7 +6620,7 @@ private theorem scratchLp_measure_union_finset_intervals_lt_top
     _ < ∞ := ENNReal.sum_lt_top.2 fun i hi => measure_Ioo_lt_top
 
 /-- The source's finite-​interval dual test, now closed by the literal
-strong line maximal theorem.  This is deliberately a bounded-cutoff
+strong line maximal theorem. This is deliberately a bounded-cutoff
 statement: it is exactly the input to the standard `L^p` duality passage,
 without relying on an unexposed library theorem identifying the dual norm. -/
 theorem scratchLp_finset_pairwiseDisjoint_intervalTail_holder_cutoff_le
@@ -6644,7 +6644,7 @@ theorem scratchLp_finset_pairwiseDisjoint_intervalTail_holder_cutoff_le
   let V : ℝ := (volume (Metric.ball (0 : FiberDyadicLine) 1)).toReal
   have hUfinite : volume U < ∞ := by
     simpa [U] using scratchLp_measure_union_finset_intervals_lt_top S c r
-  letI : IsFiniteMeasure (volume.restrict U) := ⟨by
+  let : IsFiniteMeasure (volume.restrict U) := ⟨by
     simpa only [Measure.restrict_apply_univ] using hUfinite⟩
   have hMmem : MemLp M (ENNReal.ofReal q) volume := by
     simpa [M] using scratchLp_real_dyadicBallMaximal_memLp
@@ -6720,7 +6720,7 @@ theorem scratchLp_finset_pairwiseDisjoint_intervalTail_holder_cutoff_le
       ring
 
 /-- The same cutoff terminal stated with the canonical interval tail used by
-the scale-integrated bad-fiber estimate.  This is a definitional bridge, but
+the scale-integrated bad-fiber estimate. This is a definitional bridge, but
 keeping it named removes all local-tail rewriting at the scale interface. -/
 theorem scratchLp_finset_pairwiseDisjoint_canonicalIntervalTail_holder_cutoff_le
     {ι : Type*} (S : Finset ι) (c r : ι → ℝ)
@@ -6751,7 +6751,7 @@ open ScaleTailInternal FiberTailCutoffInternal
 /-! ### Assembly of the finite scale-tail and disjoint-pairing terminals -/
 
 /-- A bounded measurable fiber weighted by the canonical doubled interval
-tail is integrable.  This identifies the canonical tail with the exponent-two
+tail is integrable. This identifies the canonical tail with the exponent-two
 tail used in the dyadic maximal comparison. -/
 theorem scratchAssembly_integrable_intervalTail_weighted
     (G : FiberDyadicBase × FiberDyadicLine → ℂ) (hG : Measurable G)
@@ -6781,7 +6781,7 @@ theorem scratchAssembly_integrable_intervalTail_weighted
 
 /-- The finite bad-fiber scale tail, tested on any measurable spatial set
 lying outside all doubled intervals, is controlled by the dyadic maximal
-function over the disjoint interval union.  This is the source's actual
+function over the disjoint interval union. This is the source's actual
 finite dual-testing bridge between cancellation/scale integration and the
 `1 < p < ∞` interval-tail estimate. -/
 theorem scratchAssembly_finset_scaleTail_testing_le_fiberMaximal :
@@ -6934,7 +6934,7 @@ theorem scratchAssembly_finset_scaleTail_testing_le_fiberMaximal :
           (volume (Metric.ball (0 : FiberDyadicLine) 1)).toReal) :=
       mul_le_mul_of_nonneg_left hpair hK
 
-/-- The preceding finite scale-tail test specialized to a single line.  It
+/-- The preceding finite scale-tail test specialized to a single line. It
 uses exactly the line dyadic maximal operator that closes the finite
 `L^p` cutoff-duality calculation. -/
 theorem scratchAssembly_finset_scaleTail_lineTesting_le_dyadicMaximal :
@@ -6982,7 +6982,7 @@ theorem scratchAssembly_finset_scaleTail_lineTesting_le_dyadicMaximal :
 
 /-- Finite scale-integrated bad-fiber cancellation, paired with a bounded
 `L^q` line cutoff, obeys the exact Hölder endpoint used in the source
-interval-tail argument.  This composes the literal scale calculation with
+interval-tail argument. This composes the literal scale calculation with
 the checked disjoint-tail/strong-maximal cutoff theorem. -/
 theorem scratchAssembly_finset_scaleTail_holder_cutoff_le :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ {ι : Type*} (S : Finset ι)
@@ -7709,7 +7709,7 @@ theorem pairwiseDisjoint_fiberDyadicSelectedIntervals
 
 /-- A finite pairwise-disjoint family of selected source fiber intervals has
 total length at most its ambient nonnegative mass divided by the stopping
-height.  This is the fixed-fiber mass estimate used before the countable
+height. This is the fixed-fiber mass estimate used before the countable
 selection exhaustion in the Section 8 weak estimate. -/
 theorem fiberDyadic_selected_length_sum_le_inv_mul_integral
     (F : ℝ → ℝ) (H : ℝ) (S : Finset FiberDyadicInterval)
@@ -7820,7 +7820,7 @@ theorem measure_fiberDyadicInterval (I : FiberDyadicInterval) :
   ring
 
 /-- A finite family of literal stopping rectangles has measure equal to the
-sum of its product measures.  The equality records the global disjointness
+sum of its product measures. The equality records the global disjointness
 of the maximal selection, before its countable exhaustion. -/
 theorem measure_fiberDyadicExceptionalSetFinset_eq
     {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
@@ -7990,7 +7990,7 @@ theorem fiberDyadicSelectedLengthDensity_le_inv_mul_fiberIntegral
       (integral_nonneg fun y => hF_nonneg y)
 
 /-- Fubini turns the finite fiberwise stopping estimate into a global bound
-for the selected-length density.  The fiber-integrability hypothesis is
+for the selected-length density. The fiber-integrability hypothesis is
 restricted only to the selected ambient set `Zf`; this is the form used by
 the finite-mass fiber selection. -/
 theorem integral_fiberDyadicSelectedLengthDensity_le_inv_mul_integral
@@ -8061,7 +8061,7 @@ theorem measureReal_fiberDyadicExceptionalSetFinset_eq_integral
       (measure_ne_top μ (fiberDyadicSelectionSet Zf A H I))
 
 /-- The finite stopping exceptional set satisfies the global weak-one mass
-bound in real measure.  Countable exhaustion can now be applied without
+bound in real measure. Countable exhaustion can now be applied without
 losing the dyadic maximal-selection disjointness. -/
 theorem measureReal_fiberDyadicExceptionalSetFinset_le_inv_mul_integral
     {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [IsFiniteMeasure μ]
@@ -8100,7 +8100,7 @@ theorem mem_fiberFiniteMassSet_integrable
   exact ne_of_lt hz
 
 /-- The globally pairwise-disjoint dyadic stopping rectangles satisfy the
-literal countable exceptional-set weak bound.  This upgrades the finite
+literal countable exceptional-set weak bound. This upgrades the finite
 selected-rectangle estimate through `measure_iUnion`, with no loss from a
 union bound. -/
 theorem measureReal_fiberDyadicExceptionalSet_le_inv_mul_integral
@@ -8207,7 +8207,7 @@ theorem measureReal_fiberDyadicExceptionalSet_le_inv_mul_integral_of_fiberFinite
 
 /-- A countable pairwise-disjoint measurable union has the expected real
 measure bound whenever every member has finite measure and all finite partial
-sums obey the same bound.  This is the `toReal` additivity step needed when
+sums obey the same bound. This is the `toReal` additivity step needed when
 the transverse fiber measure is Lebesgue measure rather than a finite
 localization. -/
 theorem measureReal_iUnion_le_of_pairwise_disjoint
@@ -8476,7 +8476,7 @@ theorem measureReal_fiberDyadicExceptionalSet_le_inv_mul_integral_of_integrable
 /-! ### Section 8 good--bad operator algebra -/
 
 /-- A merely Borel bounded input already gives an integrable literal line
-integrand.  This is the Young-type input needed for measurable selected
+integrand. This is the Young-type input needed for measurable selected
 Calderón--Zygmund pieces. -/
 theorem integrable_modelCoordinateConvolutionIntegrand_of_bounded_measurable
     (i : Fin 3) (f : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
@@ -8822,7 +8822,7 @@ theorem selectedFiber_finset_intervalTail_holder_cutoff_le
 
 /-! ## Measurable linewise bracket domination
 
-Selected Calderón--Zygmund pieces are measurable instead of continuous.  The
+Selected Calderón--Zygmund pieces are measurable instead of continuous. The
 literal convolution comparison therefore records the two line-integrability
 facts which make its integral proof valid, ready for the later Fubini lift. -/
 
@@ -9026,7 +9026,7 @@ theorem integrableOn_modelTruncatedOperatorIntegrand_of_bounded_measurable
   let I : Set ℝ := Set.Ioc a b
   let Q : ℝ := C * modelTruncatedOperatorFiberBound u B
   have hfinite : ν I < ⊤ := by
-    letI : IsFiniteMeasure (ν.restrict I) := by
+    let : IsFiniteMeasure (ν.restrict I) := by
       simpa only [ν, I] using isFiniteMeasure_modelScaleInterval ha
     rw [← Measure.restrict_apply_univ]
     exact IsFiniteMeasure.measure_univ_lt_top
@@ -9108,7 +9108,7 @@ theorem ModelTruncatedOperator_replace_add_on_scaleInterval
 /-! ## Finite measurable good--bad fiber fields
 
 This is the literal algebraic input layer for the Section 8 stopping
-selection.  A selected dyadic rectangle carries the usual input minus its
+selection. A selected dyadic rectangle carries the usual input minus its
 fiber average; a finite family is summed before being pulled back to `E3`.
 -/
 
@@ -9216,7 +9216,7 @@ theorem integral_fiberCZBadAtom_eq_zero
   ring
 
 /-- A finite selected bad field has zero active-coordinate integral on every
-integrable transverse fiber.  This packages the individual cancellation
+integrable transverse fiber. This packages the individual cancellation
 conditions before the finite tail summation. -/
 theorem integral_fiberCZBadField_eq_zero
     {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
@@ -9437,7 +9437,7 @@ theorem modelOperatorReplace_coordinateFiberGoodBad_eq
         coordinateFiberBadField m (f m) T S) hj]
 
 /-- Actual finite-truncation operator decomposition induced by a measurable
-finite fiber good--bad split.  Its four integrability assumptions are the
+finite fiber good--bad split. Its four integrability assumptions are the
 precise remaining analytic obligations: two active line integrals and two
 finite scale integrals for the split outputs. -/
 theorem ModelTruncatedOperator_coordinateFiberGoodBad_split
@@ -9536,7 +9536,7 @@ theorem abs_fiberCZBadAtom_le_of_bound
     nlinarith
 
 /-- A finite selected bad field from a bounded input has a coarse but
-uniform cardinality bound.  The sharper selected-rectangle disjointness can
+uniform cardinality bound. The sharper selected-rectangle disjointness can
 later remove this finite-cardinality loss. -/
 theorem abs_fiberCZBadField_le_of_bound
     {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
@@ -9600,13 +9600,13 @@ theorem abs_coordinateFiberGoodField_le_of_bound
 /-! ## Actual finite selected good--bad operator splitting
 
 This composes the literal finite fiber construction with the bounded
-measurable finite-scale model estimates.  It is the direct input bridge from
+measurable finite-scale model estimates. It is the direct input bridge from
 selected dyadic bad atoms to the actual `ModelTruncatedOperator` weak-endpoint
 assembly.
 -/
 
 /-- A bounded measurable input tuple admits an exact finite selected-fiber
-good--bad split in any chosen coordinate slot.  All line and positive
+good--bad split in any chosen coordinate slot. All line and positive
 finite-scale integrability conditions are discharged internally. -/
 theorem ModelTruncatedOperator_coordinateFiberGoodBad_split_of_bounded_measurable
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -9671,29 +9671,29 @@ theorem ModelTruncatedOperator_coordinateFiberGoodBad_split_of_bounded_measurabl
   have hCG : ∀ j, 0 ≤ CG j := by
     intro j
     by_cases hj : j = m
-    · simp only [CG, if_pos hj]
+    · simp only [CG, ite_eq_left hj]
       exact hBG
-    · simp only [CG, if_neg hj]
+    · simp only [CG, ite_eq_right hj]
       exact hB j
   have hCD : ∀ j, 0 ≤ CD j := by
     intro j
     by_cases hj : j = m
-    · simp only [CD, if_pos hj]
+    · simp only [CD, ite_eq_left hj]
       exact hBD
-    · simp only [CD, if_neg hj]
+    · simp only [CD, ite_eq_right hj]
       exact hB j
   have hfBG : ∀ j, ∀ y : E3, |fG j y| ≤ CG j := by
     intro j y
     by_cases hj : j = m
     · subst j
-      simpa only [fG, CG, modelOperatorReplace_same, if_pos] using hGbound y
-    · simpa only [fG, CG, modelOperatorReplace_ne f m j G hj, if_neg hj] using hfB j y
+      simpa only [fG, CG, modelOperatorReplace_same, ite_eq_left] using hGbound y
+    · simpa only [fG, CG, modelOperatorReplace_ne f m j G hj, ite_eq_right hj] using hfB j y
   have hfBD : ∀ j, ∀ y : E3, |fD j y| ≤ CD j := by
     intro j y
     by_cases hj : j = m
     · subst j
-      simpa only [fD, CD, modelOperatorReplace_same, if_pos] using hDbound y
-    · simpa only [fD, CD, modelOperatorReplace_ne f m j D hj, if_neg hj] using hfB j y
+      simpa only [fD, CD, modelOperatorReplace_same, ite_eq_left] using hDbound y
+    · simpa only [fD, CD, modelOperatorReplace_ne f m j D hj, ite_eq_right hj] using hfB j y
   have hlineG : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
       G (x - r • Anisotropy.coordinateDirection m) *
         kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
@@ -9727,7 +9727,7 @@ theorem ModelTruncatedOperator_coordinateFiberGoodBad_split_of_bounded_measurabl
   simpa only [fG, fD, G, D] using hadd
 
 /-- The preceding actual operator split with the literal source stopping
-selection.  Fixed dyadic averages provide the selection measurability
+selection. Fixed dyadic averages provide the selection measurability
 internally. -/
 theorem ModelTruncatedOperator_coordinateFiberGoodBad_split_of_selection
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -10075,29 +10075,29 @@ theorem ModelTruncatedOperator_coordinateFiberDyadicCountableGoodBad_split_of_bo
   have hCG : ∀ j, 0 ≤ CG j := by
     intro j
     by_cases hj : j = m
-    · simp only [CG, if_pos hj]
+    · simp only [CG, ite_eq_left hj]
       exact hBG
-    · simp only [CG, if_neg hj]
+    · simp only [CG, ite_eq_right hj]
       exact hB j
   have hCD : ∀ j, 0 ≤ CD j := by
     intro j
     by_cases hj : j = m
-    · simp only [CD, if_pos hj]
+    · simp only [CD, ite_eq_left hj]
       exact hBD
-    · simp only [CD, if_neg hj]
+    · simp only [CD, ite_eq_right hj]
       exact hB j
   have hfBG : ∀ j, ∀ y : E3, |fG j y| ≤ CG j := by
     intro j y
     by_cases hj : j = m
     · subst j
-      simpa only [fG, CG, modelOperatorReplace_same, if_pos] using hGbound y
-    · simpa only [fG, CG, modelOperatorReplace_ne f m j G hj, if_neg hj] using hfB j y
+      simpa only [fG, CG, modelOperatorReplace_same, ite_eq_left] using hGbound y
+    · simpa only [fG, CG, modelOperatorReplace_ne f m j G hj, ite_eq_right hj] using hfB j y
   have hfBD : ∀ j, ∀ y : E3, |fD j y| ≤ CD j := by
     intro j y
     by_cases hj : j = m
     · subst j
-      simpa only [fD, CD, modelOperatorReplace_same, if_pos] using hDbound y
-    · simpa only [fD, CD, modelOperatorReplace_ne f m j D hj, if_neg hj] using hfB j y
+      simpa only [fD, CD, modelOperatorReplace_same, ite_eq_left] using hDbound y
+    · simpa only [fD, CD, modelOperatorReplace_ne f m j D hj, ite_eq_right hj] using hfB j y
   have hlineG : ∀ t ∈ Set.Ioc a b, Integrable (fun r : ℝ ↦
       G (x - r • Anisotropy.coordinateDirection m) *
         kernelDilate (activeModelKernel 2 m u) (t ^ α.weight m) r) := by
@@ -10148,7 +10148,7 @@ noncomputable def thirdConeActiveDensity
     gaussianDeriv (t ^ α.weight 2 * ξ 2) ^ 2
 
 /-- The scale majorant after the two passive low-frequency factors have been
-bounded by `cPsi`.  This is the scalar integrand used for the joint
+bounded by `cPsi`. This is the scalar integrand used for the joint
 mode/scale Fubini domination. -/
 noncomputable def thirdConeScaleMajorant
     (α : Anisotropy) (ξ : E3) (t : ℝ) : ℝ :=
@@ -10157,10 +10157,10 @@ noncomputable def thirdConeScaleMajorant
 /-! ## Canonical-promotion candidate: finite selected-fiber tail weak one
 
 This file is intentionally a clean-name, append-only candidate for
-`Twisted.lean`.  It depends only on the current canonical `Twisted` surface.
+`Twisted.lean`. It depends only on the current canonical `Twisted` surface.
 The source-specific analytic obligations remain explicit: the actual model
 good/bad split, its exterior tail domination, the good threshold budget, and
-the fiberwise tail budget.  The literal selected bad-atom tail, Fubini,
+the fiberwise tail budget. The literal selected bad-atom tail, Fubini,
 coordinate transport, Chebyshev, and the weak-one bookkeeping are proved
 here.
 -/
@@ -10307,7 +10307,7 @@ theorem ModelTruncatedOperator_fiberCZ_weakOne_of_good_bad_data
   simpa only [Complex.norm_real, Real.norm_eq_abs] using hweak
 
 /-- Literal finite scale-integrated tail of the selected bad atoms on an
-active/transverse product fiber.  Its atom summands are exactly those of the
+active/transverse product fiber. Its atom summands are exactly those of the
 canonical `fiberCZBadField`. -/
 noncomputable def selectedFiberScaleTail
     {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
@@ -10518,7 +10518,7 @@ theorem coordinateSplit_selectedFiberScaleTail_chebyshev_of_fiber_budget
   · exact hline_budget
 
 /-- Direct finite selected-fiber weak-one assembly for the actual truncated
-model operator.  The supplied `hbad` is the source-specific exterior
+model operator. The supplied `hbad` is the source-specific exterior
 operator tail estimate; it is intentionally not inferred from weak `L¹`
 data alone. -/
 theorem ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_data
@@ -10566,9 +10566,9 @@ theorem ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_data
       m (coordinateFiberInput m (f m)) Zf Astop H T i j u alpha budget E
       hlambda htail_meas hline hbudget hline_budget
 
-/-- Literal selected-field specialization of the preceding terminal.  Both
+/-- Literal selected-field specialization of the preceding terminal. Both
 the good and bad operator terms are the canonical finite
-`coordinateFiberGoodField` and `coordinateFiberBadField` replacements.  The
+`coordinateFiberGoodField` and `coordinateFiberBadField` replacements. The
 single `hdecomp` premise is exactly the finite-scale operator split, while
 `hbad` is the remaining exterior cancellation-tail estimate. -/
 theorem ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_coordinateFiberGoodBad_data
@@ -10635,7 +10635,7 @@ theorem ModelTruncatedOperator_fiberCZ_weakOne_of_selectedFiberScaleTail_coordin
 This clean-name candidate specializes the proved finite cancellation/tail
 theorem to the literal `fiberCZBadAtom` used by the finite selected field.
 It discharges cancellation, support, mass, and disjointness from the stopping
-data.  The remaining kernel-line integrability and exterior/far-region
+data. The remaining kernel-line integrability and exterior/far-region
 hypotheses are intentionally explicit.
 -/
 
@@ -10791,7 +10791,7 @@ theorem coordinateFiberBadField_join_eq_finset_sum
   simp only [coordinateFiberBadField, coordinateSplit_join,
     fiberCZBadField_apply_eq_finset_sum]
 
-/-- Actual finite selected-atom exterior scale-tail bound.  The stopping
+/-- Actual finite selected-atom exterior scale-tail bound. The stopping
 data provides cancellation, support, mass, and interval disjointness; the
 only remaining analytic premises are kernel-line integrability and the
 chosen far region `D`. -/
@@ -10878,14 +10878,14 @@ theorem selectedFiber_finset_fiberCZBadAtom_scaleTail_holder_cutoff_le :
 
 /-! ## Countable summation of one-dimensional interval tails
 
-Source: `lem:interval_tails`, blueprint lines 2358--2381.  The finite
+Source: `lem:interval_tails`, blueprint lines 2358--2381. The finite
 pairwise-disjoint package above is extended here to the countable stopping
-families produced by `lem:fiber_cz`.  This is the `p = 1` clause: each
+families produced by `lem:fiber_cz`. This is the `p = 1` clause: each
 doubled-radius summand has exact mass `2|I|`, so a summable radius family
 gives an integrable tail with the exact total mass.
 -/
 
-/-- The countable sum of canonical doubled-radius interval tails.  This is
+/-- The countable sum of canonical doubled-radius interval tails. This is
 the fiberwise tail function `h_m(\cdot, z)` of the source, written with the
 canonical center/radius data of the selected intervals. -/
 noncomputable def intervalTailTsum
@@ -10955,7 +10955,7 @@ theorem integrable_intervalTailTsum
   change Integrable (fun x : ℝ ↦ ∑' i : ι, F i x)
   exact htsum_integrable
 
-/-- The exact mass of a countably summable doubled-radius tail family.  With
+/-- The exact mass of a countably summable doubled-radius tail family. With
 `r i` the half-length of the `i`th selected interval this is the source's
 `p = 1` interval-tail estimate, with the constant made explicit. -/
 theorem integral_intervalTailTsum
@@ -11070,7 +11070,7 @@ theorem setAverage_closedBall_eq_fiberDyadicAverage
     setIntegral_congr_set (fiberDyadicInterval_ae_eq_closedBall I).symm]
   simp [smul_eq_mul]
 
-/-- **One-dimensional dyadic differentiation.**  If every literal fiber
+/-- **One-dimensional dyadic differentiation.** If every literal fiber
 dyadic interval containing `y` has `g`-average at most `H`, then
 `g y ≤ H` for almost every such `y`. -/
 theorem ae_le_of_forall_fiberDyadicAverage_le
@@ -11102,7 +11102,7 @@ theorem ae_le_of_forall_fiberDyadicAverage_le
       exact fiberDyadicIntervalRadius_pos _
   have hxmem : ∀ᶠ j in atTop, y ∈ closedBall (w j) (1 * δ j) := by
     filter_upwards with j
-    show y ∈ closedBall
+    change y ∈ closedBall
       (fiberDyadicIntervalCenter (fiberDyadicIndexAt (-(j : ℤ)) y))
       (1 * fiberDyadicIntervalRadius (fiberDyadicIndexAt (-(j : ℤ)) y))
     have hmem := mem_fiberDyadicInterval_fiberDyadicIndexAt (-(j : ℤ)) y
@@ -11112,7 +11112,7 @@ theorem ae_le_of_forall_fiberDyadicAverage_le
   have hlim := hy w δ hδlim hxmem
   refine le_of_tendsto hlim ?_
   filter_upwards with j
-  show (⨍ u in closedBall
+  change (⨍ u in closedBall
       (fiberDyadicIntervalCenter (fiberDyadicIndexAt (-(j : ℤ)) y))
       (fiberDyadicIntervalRadius (fiberDyadicIndexAt (-(j : ℤ)) y)), g u) ≤ H
   rw [setAverage_closedBall_eq_fiberDyadicAverage]
@@ -11185,7 +11185,7 @@ theorem fiberDyadicIntervalAverage_le_inv_length_mul_integral
     (inv_nonneg.2 (fiberDyadicIntervalLength_pos I).le)
   exact setIntegral_le_integral hF (Filter.Eventually.of_forall hFnonneg)
 
-/-- **Stopping existence.**  On a fiber of finite mass, a point covered by no
+/-- **Stopping existence.** On a fiber of finite mass, a point covered by no
 selected interval has every dyadic average at most `H`. -/
 theorem fiberDyadicAverage_le_of_forall_not_mem_selected
     {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z) (H : ℝ)
@@ -11274,7 +11274,7 @@ theorem fiberDyadicAverage_le_of_forall_not_mem_selected
       · have : 0 ≤ J.1 - k := by omega
         omega
       · omega
-    show A J z ≤ H
+    change A J z ≤ H
     rw [hJeq, hj.1]
     exact habove _ hj.2
   exact hy I hIsel (mem_fiberDyadicInterval_fiberDyadicIndexAt (k + (M : ℤ)) y)
@@ -11282,7 +11282,7 @@ theorem fiberDyadicAverage_le_of_forall_not_mem_selected
 /-! ### Jensen's inequality for the fiber dyadic average -/
 
 /-- Jensen/Hölder on one dyadic cell: the modulus of the fiber average is at
-most the `p`-th root of the average of the `p`-th power.  This is the source
+most the `p`-th root of the average of the `p`-th power. This is the source
 step `|f_I(z)|^p ≤ A_I(z)` of `lem:fiber_cz`. -/
 theorem abs_fiberDyadicIntervalAverage_le_rpow
     {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ)
@@ -11330,7 +11330,7 @@ theorem abs_fiberDyadicIntervalAverage_le_rpow
       have hFp' : Integrable (fun x : ℝ ↦ |F (x, z)| ^ p)
         (volume.restrict (fiberDyadicInterval I)) := hFp
       simpa only [Real.norm_eq_abs, abs_abs] using hFp'
-    haveI : IsFiniteMeasure (volume.restrict (fiberDyadicInterval I)) := by
+    have : IsFiniteMeasure (volume.restrict (fiberDyadicInterval I)) := by
       constructor
       rw [Measure.restrict_apply_univ, hmeasure]
       exact ENNReal.ofReal_lt_top
@@ -11386,7 +11386,7 @@ theorem fiberDyadicIntervalAverage_nonneg_of_nonneg
   exact mul_nonneg (inv_nonneg.2 (fiberDyadicIntervalLength_pos I).le)
     (integral_nonneg fun u ↦ hF u)
 
-/-- **Good-part bound on one fiber.**  With the source's stopping data at
+/-- **Good-part bound on one fiber.** With the source's stopping data at
 height `H`, the countable good field is bounded by `(2H)^{1/p}` almost
 everywhere on each fiber of finite `p`-mass. -/
 theorem ae_abs_fiberDyadicCountableGoodField_le
@@ -11457,8 +11457,8 @@ theorem ae_abs_fiberDyadicCountableGoodField_le
     refine hfy.trans (Real.rpow_le_rpow hH.le ?_ hpinv)
     linarith
 
-/-- **Good-part `L^p` bound on one fiber.**  Replacing the selected cells by
-their averages never increases the fiber's `p`-mass.  Source: `lem:fiber_cz`,
+/-- **Good-part `L^p` bound on one fiber.** Replacing the selected cells by
+their averages never increases the fiber's `p`-mass. Source: `lem:fiber_cz`,
 `‖g‖_p ≤ ‖f‖_p`. -/
 theorem lintegral_rpow_fiberDyadicCountableGoodField_le
     {Z : Type*} [MeasurableSpace Z] (F : ℝ × Z → ℝ) (Zf : Set Z)
@@ -11501,12 +11501,12 @@ theorem lintegral_rpow_fiberDyadicCountableGoodField_le
       z ∈ fiberDyadicSelectionSet Zf A H I → S I = fiberDyadicInterval I := by
     intro I hsel
     ext y
-    simp only [hS, Set.mem_setOf_eq, Set.mem_prod, hsel, and_true]
+    simp only [hS, Set.mem_ofPred_eq, Set.mem_prod, hsel, and_true]
   have hSnot : ∀ I : FiberDyadicInterval,
       z ∉ fiberDyadicSelectionSet Zf A H I → S I = (∅ : Set ℝ) := by
     intro I hsel
     ext y
-    simp only [hS, Set.mem_setOf_eq, Set.mem_prod, hsel, and_false,
+    simp only [hS, Set.mem_ofPred_eq, Set.mem_prod, hsel, and_false,
       Set.mem_empty_iff_false]
   have hSdisj : Pairwise (Function.onFun Disjoint S) := by
     intro I J hIJ
@@ -11610,7 +11610,7 @@ theorem lintegral_rpow_fiberDyadicCountableGoodField_le
 
 Source: `lem:fiber_cz`, blueprint lines 2258--2357, final display. -/
 
-/-- **Good-part `L^P` bound on one fiber.**  For finite `P ≥ p` the source's
+/-- **Good-part `L^P` bound on one fiber.** For finite `P ≥ p` the source's
 interpolated estimate `‖g‖_P^P ≤ (2H)^{P/p-1}‖f‖_p^p` holds fiberwise.
 Source: `lem:fiber_cz`, final display. -/
 theorem lintegral_rpow_fiberDyadicCountableGoodField_le_exponent
@@ -11682,10 +11682,10 @@ theorem lpNorm_complexifyRealSchwartz
     lpNorm (complexifyRealSchwartz f : E3 → ℂ) p volume =
       lpNorm (f : E3 → ℝ) p volume := by
   rw [← toReal_eLpNorm
-      (complexifyRealSchwartz f).continuous.aestronglyMeasurable,
-    ← toReal_eLpNorm f.continuous.aestronglyMeasurable]
+      ,
+    ← toReal_eLpNorm ]
   apply congrArg ENNReal.toReal
-  apply eLpNorm_congr_norm_ae
+  apply eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop)
   filter_upwards [] with x
   simp [complexifyRealSchwartz_apply]
 
@@ -11701,7 +11701,7 @@ theorem LiteralModelFullForm_complexifyRealSchwartz
       α u d G
 
 /-- The strict complex active-third form estimate supplies the corresponding
-uniform real full-form estimate on real Schwartz data.  The factor `32` is
+uniform real full-form estimate on real Schwartz data. The factor `32` is
 kept explicit because it is the source's real/imaginary expansion factor. -/
 theorem exists_uniform_real_ModelFullForm_bound_from_strict_weight100
     (α : Anisotropy) (q : Fin 4 → ℝ)
@@ -11732,7 +11732,7 @@ theorem exists_uniform_real_ModelFullForm_bound_from_strict_weight100
 
 /-- Cutting a measurable real coefficient to a finite positive scale interval
 turns the preceding strict full-form estimate into the exact finite-scale
-form estimate.  This is the coefficient-cutoff step required before any
+form estimate. This is the coefficient-cutoff step required before any
 density or `Lp` duality argument for the actual operator. -/
 theorem exists_uniform_real_ModelScaleIntervalTruncation_bound_from_strict_weight100
     (α : Anisotropy) (q : Fin 4 → ℝ)
@@ -11756,7 +11756,7 @@ theorem exists_uniform_real_ModelScaleIntervalTruncation_bound_from_strict_weigh
   · exact abs_restrictScaleCoefficient_le_one c (Set.Ioc a b) hc
 
 /-- Interpolating finite `L¹` mass with an `L^∞` bound supplies every
-finite exponent strictly larger than one.  This packages the membership part
+finite exponent strictly larger than one. This packages the membership part
 of the source's preliminary finite-scale Young estimate. -/
 theorem memLp_of_one_and_top
     {p : ℝ} (hp : 1 < p) {y : E3 → ℂ}
@@ -11780,7 +11780,7 @@ theorem memLp_of_one_and_top
     rw [h1, ENNReal.ofReal_inv_of_pos hp0, one_div, inv_inv]
   rw [hfirst, hsecond, add_zero]
 
-/-- A scalar `L^p` function is normed by Schwartz test functions.  This is
+/-- A scalar `L^p` function is normed by Schwartz test functions. This is
 the density/duality step needed to turn a finite-model form estimate into an
 actual output estimate once preliminary finite-scale integrability has given
 the `MemLp` premise. -/
@@ -11791,13 +11791,13 @@ theorem lpNorm_le_of_schwartz_test_pairing_bound
       ‖∫ x : E3, y x * g x‖ ≤
         K * lpNorm (g : E3 → ℂ) (ENNReal.ofReal p.conjExponent) volume) :
     lpNorm y (ENNReal.ofReal p) volume ≤ K := by
-  letI : Fact (1 ≤ ENNReal.ofReal p) :=
+  let : Fact (1 ≤ ENNReal.ofReal p) :=
     ⟨by
       rw [← ENNReal.ofReal_one]
       exact ENNReal.ofReal_le_ofReal hp.le⟩
-  letI : Fact (1 ≤ ENNReal.ofReal p.conjExponent) :=
+  let : Fact (1 ≤ ENNReal.ofReal p.conjExponent) :=
     ⟨Auto.LpSpaceFacts.one_le_ofReal_conjExponent p hp⟩
-  letI : ENNReal.HolderConjugate (ENNReal.ofReal p)
+  let : ENNReal.HolderConjugate (ENNReal.ofReal p)
       (ENNReal.ofReal p.conjExponent) :=
     Auto.LpSpaceFacts.ofReal_holderConjugate p hp
   let Φ : Lp ℂ (ENNReal.ofReal p.conjExponent) volume →L[ℂ] ℂ :=
@@ -11808,7 +11808,7 @@ theorem lpNorm_le_of_schwartz_test_pairing_bound
       ‖g.toLp (ENNReal.ofReal p.conjExponent) volume‖ =
         lpNorm (g : E3 → ℂ) (ENNReal.ofReal p.conjExponent) volume := by
     rw [SchwartzMap.norm_toLp,
-      toReal_eLpNorm g.continuous.aestronglyMeasurable]
+      toReal_eLpNorm ]
   have hPhi_schwartz (g : SchwartzMap E3 ℂ) :
       ‖Φ (g.toLp (ENNReal.ofReal p.conjExponent) volume)‖ ≤
         K * ‖g.toLp (ENNReal.ofReal p.conjExponent) volume‖ := by
@@ -11922,7 +11922,7 @@ theorem norm_integral_ofReal_mul_schwartz_le
           |∫ x : E3, LiteralComplexInternal.scratch_imagPartSchwartz g x * y x| := by
         rw [hre, him]
 
-/-- **Schwartz test pairing bound for the actual truncated operator.**  The
+/-- **Schwartz test pairing bound for the actual truncated operator.** The
 strict real finite-scale form estimate controls every complex Schwartz
 pairing of `U^{a,b}_{u,c}`, uniformly in the truncation and coefficient.
 The explicit Fubini premises are the ones already carried by
@@ -11996,7 +11996,7 @@ theorem norm_integral_ModelTruncatedOperator_mul_schwartz_le
     _ = (64 * C * sourceWeight u ^ 100 * P) *
           lpNorm (g : E3 → ℂ) (ENNReal.ofReal (q 0)) volume := by ring
 
-/-- **The `L^{R_0}` operator bound of the source's duality step.**  For
+/-- **The `L^{R_0}` operator bound of the source's duality step.** For
 Schwartz inputs the actual finite-scale truncated model operator satisfies the
 strict-range output estimate, uniformly in the truncation and coefficient.
 Source: `thm:extended_model`, blueprint lines 2665--2672. -/
@@ -12036,7 +12036,7 @@ theorem lpNorm_ModelTruncatedOperator_le_of_strict_range
   have hR0 : (1 : ℝ) < (q 0).conjExponent := hconj.symm.lt
   have hback : ((q 0).conjExponent).conjExponent = q 0 :=
     hconj.symm.conjExponent_eq
-  letI : ENNReal.HolderConjugate (ENNReal.ofReal (q 0).conjExponent)
+  let : ENNReal.HolderConjugate (ENNReal.ofReal (q 0).conjExponent)
       (ENNReal.ofReal ((q 0).conjExponent).conjExponent) :=
     Auto.LpSpaceFacts.ofReal_holderConjugate _ hR0
   set U : E3 → ℝ := ModelTruncatedOperator α u c (fun j ↦ (G j : E3 → ℝ)) a b
@@ -12054,7 +12054,7 @@ theorem lpNorm_ModelTruncatedOperator_le_of_strict_range
     g.memLp _ volume
   have hint : Integrable (fun x : E3 ↦ (U x : ℂ) * g x) := by
     rw [← memLp_one_iff_integrable]
-    exact MemLp.mul' hgmem hmem
+    exact MemLp.fun_mul hmem hgmem
   have h := hbound u c G a b g ha hcmeas hc hint hjoint
   rw [hback]
   exact h
@@ -12076,9 +12076,9 @@ theorem exists_bound_realSchwartz (f : SchwartzMap E3 ℝ) :
   · intro x
     simpa only [Real.norm_eq_abs] using SchwartzMap.norm_le_seminorm ℝ f x
 
-/-- **The Fubini premise of the duality step.**  On a compact positive scale
+/-- **The Fubini premise of the duality step.** On a compact positive scale
 interval the four-linear pairing integrand is jointly integrable for Schwartz
-data and a bounded measurable coefficient.  This discharges the explicit
+data and a bounded measurable coefficient. This discharges the explicit
 hypothesis of `modelScaleIntervalTruncation_eq_modelTruncatedOperator_pairing`. -/
 theorem integrable_modelTruncatedOperatorPairingIntegrand
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
@@ -12088,7 +12088,7 @@ theorem integrable_modelTruncatedOperatorPairingIntegrand
       ((volume : Measure E3).prod
         (((volume : Measure ℝ).withDensity cubeScaleDensity).restrict
           (Set.Ioc a b))) := by
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   set ν : Measure ℝ :=
     ((volume : Measure ℝ).withDensity cubeScaleDensity).restrict (Set.Ioc a b)
     with hν
@@ -12155,7 +12155,7 @@ theorem integrable_modelTruncatedOperatorPairingIntegrand
 
 /-! ## Coordinate decay of the truncated operator
 
-Source: `lem:model_convergence`, blueprint lines 2116--2174.  Convolving a
+Source: `lem:model_convergence`, blueprint lines 2116--2174. Convolving a
 Schwartz input only in coordinate `i` leaves its decay in the other two
 coordinates untouched, so the three-factor product of `def:model` decays in
 every direction.
@@ -12280,7 +12280,7 @@ the preliminary finite-scale estimate used by the duality step of
 -/
 
 /-- A scale-uniform integrable majorant for the model integrand on Schwartz
-data.  Each of the three factors decays at order ten in the two coordinates
+data. Each of the three factors decays at order ten in the two coordinates
 it does not convolve, so the product decays at order twenty in all three. -/
 theorem exists_integrable_majorant_modelTruncatedOperatorIntegrand
     (α : Anisotropy) (u : E3) (F : ModelSchwartzInput) :
@@ -12377,7 +12377,7 @@ theorem integrable_ModelTruncatedOperator_of_realSchwartz
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
     {a b : ℝ} (ha : 0 < a) (hcm : Measurable c) (hc : ∀ t : ℝ, |c t| ≤ 1) :
     Integrable (ModelTruncatedOperator α u c (modelOperatorInput F) a b) := by
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   set ν0 : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity with hν0
   have hfmeas : ∀ j, Measurable (modelOperatorInput F j) := fun j ↦
     (F j.succ).continuous.measurable
@@ -12407,13 +12407,13 @@ theorem integrable_ModelTruncatedOperator_of_realSchwartz
   filter_upwards with x using hpoint x
 
 /-- The finite-scale truncated operator is uniformly bounded for Schwartz
-inputs.  This is the `L^∞` half of the preliminary finite-scale estimate. -/
+inputs. This is the `L^∞` half of the preliminary finite-scale estimate. -/
 theorem exists_bound_ModelTruncatedOperator_of_realSchwartz
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (F : ModelSchwartzInput)
     {a b : ℝ} (ha : 0 < a) (hc : ∀ t : ℝ, |c t| ≤ 1) :
     ∃ D : ℝ, 0 ≤ D ∧ ∀ x : E3,
       ‖ModelTruncatedOperator α u c (modelOperatorInput F) a b x‖ ≤ D := by
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   set ν0 : Measure ℝ := (volume : Measure ℝ).withDensity cubeScaleDensity with hν0
   have hfmeas : ∀ j, Measurable (modelOperatorInput F j) := fun j ↦
     (F j.succ).continuous.measurable
@@ -12450,7 +12450,7 @@ theorem exists_bound_ModelTruncatedOperator_of_realSchwartz
     α u c (modelOperatorInput F) t x (lt_trans ha ht.1) 1 B (by norm_num)
     (hc t) hfmeas hBnonneg hfB
 
-/-- **The `MemLp` premise of the duality step.**  For Schwartz inputs and a
+/-- **The `MemLp` premise of the duality step.** For Schwartz inputs and a
 compact positive scale truncation the complexified model operator lies in
 every finite `L^p` with `p > 1`. -/
 theorem memLp_complexified_ModelTruncatedOperator_of_realSchwartz
@@ -12485,10 +12485,10 @@ Source: the display following the `L^p` duality step in the proof of
 -/
 
 /-- **The source's strict-range output estimate for the finite-scale model
-operator.**  For Schwartz inputs and a compact positive scale truncation,
+operator.** For Schwartz inputs and a compact positive scale truncation,
 `‖U^{a,b}_{u,c}(f_1,f_2,f_3)‖_{R_0} ≤ C·U(u)^{100}·∏_j‖f_j‖_{P_j}` with `R_0`
 conjugate to the zeroth exponent, uniformly in the truncation and the
-coefficient.  Both analytic premises of the duality step are discharged. -/
+coefficient. Both analytic premises of the duality step are discharged. -/
 theorem lpNorm_ModelTruncatedOperator_le_of_realSchwartz
     (α : Anisotropy) (q : Fin 4 → ℝ)
     (hq : ∀ j : Fin 4, 0 < q j)
@@ -12530,7 +12530,7 @@ theorem lpNorm_ModelTruncatedOperator_le_of_realSchwartz
 
 /-! ## The global good-part bound
 
-Source: `lem:fiber_cz`, blueprint lines 2258--2357.  The fiberwise `L^P`
+Source: `lem:fiber_cz`, blueprint lines 2258--2357. The fiberwise `L^P`
 estimate is integrated over the transverse variables by Tonelli, exactly as
 the source does for `‖h_m‖_p` and the good part.
 -/
@@ -12548,7 +12548,7 @@ theorem measurableSet_sourceFiberFiniteMassSet
   apply measurableSet_fiberFiniteMassSet
   fun_prop
 
-/-- **The global good-part `L^P` bound.**  Tonelli turns the fiberwise
+/-- **The global good-part `L^P` bound.** Tonelli turns the fiberwise
 estimate of `lem:fiber_cz` into the full transverse estimate. -/
 theorem lintegral_prod_rpow_fiberDyadicCountableGoodField_le
     {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
@@ -12614,7 +12614,7 @@ theorem lintegral_prod_rpow_fiberDyadicCountableGoodField_le
 
 /-! ## The good-part bound on the ambient space
 
-Source: `lem:fiber_cz`, blueprint lines 2258--2357.  The global transverse
+Source: `lem:fiber_cz`, blueprint lines 2258--2357. The global transverse
 estimate is transported to `E3` through the measure-preserving coordinate
 split of `def:fiber_maximal`.
 -/
@@ -12631,7 +12631,7 @@ noncomputable def coordinateSourceFiberAverage
     FiberDyadicInterval → TransverseSpace m → ℝ :=
   fiberDyadicIntervalAverage (fun yz ↦ |coordinateFiberInput m f yz| ^ p)
 
-/-- **The good-part `L^P` bound on `E3`.**  This is the source's
+/-- **The good-part `L^P` bound on `E3`.** This is the source's
 `‖g_m‖_P^P ≤ (2H)^{P/p-1}‖f_m‖_p^p` in the ambient variables. -/
 theorem lintegral_rpow_coordinateFiberDyadicCountableGoodField_le
     (m : Fin 3) (f : E3 → ℝ) {p P : ℝ} (hp : 1 ≤ p) (hpP : p ≤ P)
@@ -12738,7 +12738,7 @@ theorem weakOne_good_budget_of_lintegral_le
         mul_le_mul' le_rfl hstep
     _ = ENNReal.ofReal (c * K ^ R0) := (ENNReal.ofReal_mul hcnonneg).symm
 
-/-- **The source's level-independent good budget.**  With stopping height
+/-- **The source's level-independent good budget.** With stopping height
 `H = λ/A` and the exponent identity `δ·R_0 = R_0 - 1` of `lem:one_fiber`, the
 Chebyshev budget collapses to `2^{R_0-1}·A`, independent of the level `λ`. -/
 theorem weakOne_good_budget_normalization
@@ -12780,7 +12780,7 @@ Source: `lem:fiber_kernel`, blueprint lines 2232--2257, third display
 `|f *_j (κ_j)_{s,su_j}(x)| ≤ C U(u)^{10} M^{(j)} f(x)`.
 -/
 
-/-- **`lem:fiber_kernel`, third display.**  A coordinate convolution against
+/-- **`lem:fiber_kernel`, third display.** A coordinate convolution against
 the active model kernel is dominated by the coordinate maximal function, with
 the source's `U(u)^{10}` weight and a constant uniform in the scale. -/
 theorem abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal :
@@ -12850,7 +12850,7 @@ theorem abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal :
 
 /-! ## From the compact truncation to the full scale tail
 
-Source: `lem:one_fiber`, blueprint lines 2388--2540.  The bad part of the
+Source: `lem:one_fiber`, blueprint lines 2388--2540. The bad part of the
 compactly truncated operator is estimated by the source's full positive-scale
 tail, whose value is independent of the truncation.
 -/
@@ -12876,7 +12876,7 @@ theorem setIntegral_modelScaleInterval_eq_mul_inv
     ENNReal.toReal_ofReal (inv_pos.mpr (lt_trans ha ht.1)).le]
   ring
 
-/-- **Truncation-free scale tail.**  The compactly truncated scale integral is
+/-- **Truncation-free scale tail.** The compactly truncated scale integral is
 dominated by the full positive-scale tail of its absolute value, uniformly in
 the truncation. -/
 theorem abs_integral_modelScaleInterval_le_scaleTail
@@ -12898,7 +12898,7 @@ theorem abs_integral_modelScaleInterval_le_scaleTail
     _ = ∫ t in Set.Ioc a b, |g t| * t⁻¹ := by
         apply setIntegral_congr_fun measurableSet_Ioc
         intro t ht
-        show |g t * t⁻¹| = |g t| * t⁻¹
+        change |g t * t⁻¹| = |g t| * t⁻¹
         rw [abs_mul, abs_of_nonneg (inv_nonneg.2 (lt_trans ha ht.1).le)]
     _ ≤ ∫ t : ℝ in Set.Ioi (0 : ℝ), |g t| * t⁻¹ := by
         apply setIntegral_mono_set htail
@@ -12937,7 +12937,7 @@ theorem mul_four_le_of_nonneg {a b c d a' b' c' d' : ℝ}
     mul_le_mul h1 hc hc0 (mul_nonneg ha'0 hb'0)
   exact mul_le_mul h2 hd hd0 (mul_nonneg (mul_nonneg ha'0 hb'0) hc'0)
 
-/-- **Passive-slot factorization.**  Bounds on the two slots other than `m`
+/-- **Passive-slot factorization.** Bounds on the two slots other than `m`
 pull out of the model integrand, leaving the `m`-th coordinate convolution. -/
 theorem abs_modelTruncatedOperatorIntegrand_le_passive
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -13018,11 +13018,11 @@ theorem abs_modelTruncatedOperatorIntegrand_le_passive
 
 /-! ## The scale-integrated passive factorization
 
-Source: `lem:one_fiber`, blueprint lines 2495--2500.  Since the passive bounds
+Source: `lem:one_fiber`, blueprint lines 2495--2500. Since the passive bounds
 are uniform in the scale, they leave the active slot's absolute scale tail.
 -/
 
-/-- **Scale-integrated passive factorization.**  The truncated operator is
+/-- **Scale-integrated passive factorization.** The truncated operator is
 bounded by the two passive constants times the active slot's full
 positive-scale tail, uniformly in the truncation. -/
 theorem abs_ModelTruncatedOperator_le_passive_mul_scaleTail
@@ -13117,7 +13117,7 @@ theorem integral_comp_const_sub (F : ℝ → ℝ) (a : ℝ) :
   rw [h1, integral_sub_right_eq_self (μ := volume) (fun y : ℝ ↦ F (-y)) a,
     integral_neg_eq_self]
 
-/-- **The coordinate convolution as a fiber line integral.**  For a field
+/-- **The coordinate convolution as a fiber line integral.** For a field
 pulled back through the coordinate split, the active convolution is exactly
 the source's fiber-line integral against the dilated kernel. -/
 theorem ModelCoordinateConvolution_coordinateSplit_eq_fiberLine
@@ -13148,12 +13148,12 @@ theorem ModelCoordinateConvolution_coordinateSplit_eq_fiberLine
 
 /-! ## The bad slot's scale tail
 
-Source: `lem:one_fiber`, blueprint lines 2446--2500.  The active convolution
+Source: `lem:one_fiber`, blueprint lines 2446--2500. The active convolution
 of the selected bad field is the finite sum of its atoms' fiber-line
 integrals, so its absolute scale tail is exactly `selectedFiberScaleTail`.
 -/
 
-/-- **The bad slot's scale tail is the source's selected tail.**  Summing the
+/-- **The bad slot's scale tail is the source's selected tail.** Summing the
 finite selected atoms and integrating in the scale identifies the active
 slot's absolute scale tail with `selectedFiberScaleTail`. -/
 theorem integral_scaleTail_coordinateFiberBadField_le_selectedFiberScaleTail
@@ -13255,7 +13255,7 @@ theorem integral_scaleTail_coordinateFiberBadField_le_selectedFiberScaleTail
 Source: `lem:one_fiber`, `eq:cz_bad_pointwise`, blueprint lines 2495--2500.
 -/
 
-/-- **`eq:cz_bad_pointwise`, operator form.**  With the selected bad field in
+/-- **`eq:cz_bad_pointwise`, operator form.** With the selected bad field in
 the Calderón--Zygmund slot, the truncated operator is dominated by the two
 passive constants times the source's selected scale tail, uniformly in the
 truncation. -/
@@ -13371,12 +13371,12 @@ theorem abs_ModelTruncatedOperator_bad_le_passive_mul_selectedFiberScaleTail
 /-! ## Weak-one assembly with the source's weighted bad tail
 
 Source: `lem:one_fiber`, `eq:cz_bad_pointwise` and the three-piece inclusion,
-blueprint lines 2495--2535.  The source's exterior bad bound carries the two
+blueprint lines 2495--2535. The source's exterior bad bound carries the two
 passive maximal functions as an `x`-dependent weight, so the tail consumed by
 the weak-one bookkeeping is the weighted tail `W · h_m`, not the bare one.
 -/
 
-/-- **Weak-one assembly against the source's weighted bad tail.**  This is the
+/-- **Weak-one assembly against the source's weighted bad tail.** This is the
 three-piece inclusion of `lem:one_fiber` with the exterior bad part dominated
 by an `x`-dependent weight times the selected scale tail. -/
 theorem ModelTruncatedOperator_fiberCZ_weakOne_of_weighted_selectedFiberScaleTail
@@ -13435,11 +13435,11 @@ theorem ModelTruncatedOperator_fiberCZ_weakOne_of_weighted_selectedFiberScaleTai
 
 Source: `lem:one_fiber`, blueprint lines 2505--2530, the display
 `‖h_m ∏_{j≠m} M^{(j)}f_j‖_R ≤ ‖h_m‖_p ∏_{j≠m}‖M^{(j)}f_j‖_{P_j}` with
-`R^{-1} = p^{-1} + ∑_{j≠m}P_j^{-1}`.  At the three interpolation vertices of
+`R^{-1} = p^{-1} + ∑_{j≠m}P_j^{-1}`. At the three interpolation vertices of
 `thm:extended_model` the output exponent is `R = 1`.
 -/
 
-/-- A three-factor Hölder package at output exponent one.  The `HolderTriple`
+/-- A three-factor Hölder package at output exponent one. The `HolderTriple`
 assumptions make the intermediate exponent explicit. -/
 theorem eLpNorm_threefold_product_le
     {p1 p2 p3 r23 : ENNReal}
@@ -13454,13 +13454,13 @@ theorem eLpNorm_threefold_product_le
       eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
     change eLpNorm (g2 * g3) r23 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg3 hg2)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg2 hg3)
   have hm23 : AEStronglyMeasurable (fun x ↦ g2 x * g3 x) volume := hg2.mul hg3
   have h123 : eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) 1 volume ≤
       eLpNorm g1 p1 volume * eLpNorm (fun x ↦ g2 x * g3 x) r23 volume := by
     change eLpNorm (g1 * fun x ↦ g2 x * g3 x) 1 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hm23 hg1)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg1 hm23)
   calc eLpNorm (fun x ↦ g1 x * g2 x * g3 x) 1 volume
       = eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) 1 volume := by
         simp only [mul_assoc]
@@ -13470,7 +13470,7 @@ theorem eLpNorm_threefold_product_le
     _ = eLpNorm g1 p1 volume * eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
         rw [mul_assoc]
 
-/-- **The source's weighted-tail budget.**  Chebyshev followed by three-factor
+/-- **The source's weighted-tail budget.** Chebyshev followed by three-factor
 Hölder bounds the exterior weighted tail of `lem:one_fiber` by the product of
 the tail's own `L^p` norm and the two passive maximal `L^{P_j}` norms. -/
 theorem weakOne_weighted_tail_budget
@@ -13504,7 +13504,7 @@ theorem weakOne_weighted_tail_budget
         mul_le_mul' le_rfl (measure_mono hsub)
     _ ≤ ∫⁻ x : E3, ‖g1 x * g2 x * g3 x‖ₑ := hmarkov
     _ = eLpNorm (fun x ↦ g1 x * g2 x * g3 x) 1 volume :=
-        (eLpNorm_one_eq_lintegral_enorm).symm
+        (eLpNorm_one_eq_lintegral_enorm (by fun_prop)).symm
     _ ≤ eLpNorm g1 p1 volume * eLpNorm g2 p2 volume * eLpNorm g3 p3 volume :=
         eLpNorm_threefold_product_le (p1 := p1) (p2 := p2) (p3 := p3)
           (r23 := r23) g1 g2 g3 hg1 hg2 hg3
@@ -13516,7 +13516,7 @@ Source: `lem:one_fiber`, `eq:cz_bad_pointwise`, blueprint lines 2495--2500,
 where the two passive slots contribute `∏_{j≠m} M^{(j)}f_j(x)`.
 -/
 
-/-- **`eq:cz_bad_pointwise` in the source's own form.**  The passive slots
+/-- **`eq:cz_bad_pointwise` in the source's own form.** The passive slots
 contribute their coordinate maximal functions at the same point, so the
 exterior bad bound is the source's `∏_{j≠m}M^{(j)}f_j(x)` times the selected
 scale tail. -/
@@ -13573,7 +13573,7 @@ theorem abs_ModelTruncatedOperator_bad_le_maximalWeight_mul_selectedFiberScaleTa
     intro t ht j hj
     have hs : (0 : ℝ) < t ^ α.weight j := pow_pos ht _
     have h := hmax 2 j u (t ^ α.weight j) x (f j) (B j) hs (hfm j) (hB j) (hfB j)
-    simp only [hK, if_neg hj, hCw]
+    simp only [hK, ite_eq_right hj, hCw]
     calc |ModelCoordinateConvolution j (f j) (activeModelKernel 2 j u)
             (t ^ α.weight j) x|
         ≤ C * dyadicBracketShellConstant * sourceWeight u ^ 10 *
@@ -13583,7 +13583,7 @@ theorem abs_ModelTruncatedOperator_bad_le_maximalWeight_mul_selectedFiberScaleTa
   have hKnonneg : ∀ j : Fin 3, 0 ≤ K j := by
     intro j
     by_cases hj : j = m
-    · simp only [hK, if_pos hj]
+    · simp only [hK, ite_eq_left hj]
       exact le_rfl
     · exact le_trans (abs_nonneg _) (hpassive 1 one_pos j hj)
   have hmain := abs_ModelTruncatedOperator_bad_le_passive_mul_selectedFiberScaleTail
@@ -13595,20 +13595,20 @@ theorem abs_ModelTruncatedOperator_bad_le_maximalWeight_mul_selectedFiberScaleTa
     apply Finset.prod_congr rfl
     intro j hj
     have hjm : j ≠ m := Finset.ne_of_mem_erase hj
-    simp only [hK, if_neg hjm]
+    simp only [hK, ite_eq_right hjm]
   rw [hprod] at hmain
   exact hmain
 
 
 /-! ## `eq:one_fiber`, finite-family form
 
-Source: `lem:one_fiber`, blueprint lines 2388--2540.  The three-piece
+Source: `lem:one_fiber`, blueprint lines 2388--2540. The three-piece
 inclusion with all three budgets in their canonical source forms: the
 exceptional-set measure, the Chebyshev good budget at the base exponent, and
 the Hölder budget for the weighted bad tail.
 -/
 
-/-- **`eq:one_fiber`, finite-family form.**  Assembling the source's three
+/-- **`eq:one_fiber`, finite-family form.** Assembling the source's three
 budgets gives the level-set bound of `lem:one_fiber` for a finite selected
 family. -/
 theorem ModelTruncatedOperator_weakOne_finite_of_canonical_budgets
@@ -13687,7 +13687,7 @@ theorem ModelTruncatedOperator_weakOne_finite_of_canonical_budgets
         Zf Astop H T i j u alpha (coordinateSplit m x)} =
       {x : E3 | lambda / 2 < g1 x * M1 x * M2 x} := by
     ext x
-    simp only [Set.mem_setOf_eq, hpt x]
+    simp only [Set.mem_ofPred_eq, hpt x]
   have hgood := weakOne_good_budget_of_lintegral_le volume
     (ModelTruncatedOperator α u c
       (modelOperatorReplace f m
@@ -13711,7 +13711,7 @@ Source: `lem:one_fiber`, blueprint lines 2435--2445, the display
 `|E| ≤ 2H^{-1}‖f_m‖_p^p = 2 A_u^R τ^{-R}`.
 -/
 
-/-- **The source's level-independent exceptional budget.**  With stopping
+/-- **The source's level-independent exceptional budget.** With stopping
 height `H = λ/A` the selected-length estimate `|E| ≤ 2H^{-1}` makes the
 exceptional budget `2A`, independent of the level `λ`. -/
 theorem weakOne_exception_budget_normalization
@@ -13751,7 +13751,7 @@ abbrev SelectedFiberIndex {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
     (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) (z : Z) : Type :=
   {I : FiberDyadicInterval // z ∈ fiberDyadicSelectionSet Zf A H I}
 
-/-- **The fiberwise `p = 1` tail mass.**  The source's `h_m(\cdot, z)` has
+/-- **The fiberwise `p = 1` tail mass.** The source's `h_m(\cdot, z)` has
 mass exactly `intervalTailMass` times the selected total length. -/
 theorem integral_selectedFiber_intervalTailTsum
     {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
@@ -13821,7 +13821,7 @@ Source: `lem:one_fiber`, blueprint lines 2505--2515, the display
 `‖h_m‖_p^p ≤ C_p ∫_{E_2}∑_{I∈𝓘_z}|I| dz ≤ C_p H^{-1}‖f_m‖_p^p`.
 -/
 
-/-- **The source's global tail mass bound.**  Integrating the fiberwise
+/-- **The source's global tail mass bound.** Integrating the fiberwise
 interval-tail mass against the selected-length estimate gives
 `‖h_m‖_1 ≤ intervalTailMass · H^{-1} ‖f_m‖_1`. -/
 theorem integral_prod_selectedTail_le
@@ -13851,13 +13851,13 @@ theorem integral_prod_selectedTail_le
 
 /-! ## Normalizing the tail budget
 
-Source: `lem:one_fiber`, blueprint lines 2495--2530.  The stopping height
+Source: `lem:one_fiber`, blueprint lines 2495--2530. The stopping height
 appears twice with opposite exponents — as `H^{1/p}` in the bad-atom mass of
 `eq:cz_bad_pointwise` and as `H^{-1/p}` in `‖h_m‖_p` — so the two cancel and
 the tail budget is independent of the level.
 -/
 
-/-- **The stopping height cancels out of the tail budget.**  This is the
+/-- **The stopping height cancels out of the tail budget.** This is the
 source's reason the bad contribution is `C A_u`, independent of `τ`. -/
 theorem weakOne_tail_budget_normalization
     {p H C1 C2 : ℝ} (_hp : 0 < p) (hH : 0 < H) :
@@ -13876,7 +13876,7 @@ theorem weakOne_tail_budget_normalization_inv
   rw [← Real.rpow_neg hH.le]
   exact weakOne_tail_budget_normalization hp hH
 
-/-- **The global tail mass in `eLpNorm` form.**  This is the shape consumed by
+/-- **The global tail mass in `eLpNorm` form.** This is the shape consumed by
 the weighted tail budget at output exponent one. -/
 theorem eLpNorm_one_selectedTail_le
     {Z : Type*} [MeasurableSpace Z] (μ : Measure Z) [SFinite μ]
@@ -13896,7 +13896,7 @@ theorem eLpNorm_one_selectedTail_le
     rw [Real.norm_of_nonneg (htail_nonneg w)]
   calc eLpNorm tail 1 (volume.prod μ)
       = ∫⁻ w : ℝ × Z, ‖tail w‖ₑ ∂(volume.prod μ) :=
-        eLpNorm_one_eq_lintegral_enorm
+        eLpNorm_one_eq_lintegral_enorm (by fun_prop)
     _ = ENNReal.ofReal (∫ w : ℝ × Z, ‖tail w‖ ∂(volume.prod μ)) :=
         (ofReal_integral_norm_eq_lintegral_enorm htail).symm
     _ = ENNReal.ofReal (∫ w : ℝ × Z, tail w ∂(volume.prod μ)) := by
@@ -13910,11 +13910,11 @@ theorem eLpNorm_one_selectedTail_le
 /-! ## The coordinate maximal theorem in `eLpNorm` form
 
 Source: `def:fiber_maximal`, blueprint lines 2216--2231, the clause
-`‖M^{(j)}f‖_p ≤ C_p‖f‖_p`.  This is the shape consumed by the three-factor
+`‖M^{(j)}f‖_p ≤ C_p‖f‖_p`. This is the shape consumed by the three-factor
 Hölder step of `lem:one_fiber`.
 -/
 
-/-- **`‖M^{(j)}f‖_p ≤ C_p‖f‖_p`.**  The ambient coordinate maximal theorem in
+/-- **`‖M^{(j)}f‖_p ≤ C_p‖f‖_p`.** The ambient coordinate maximal theorem in
 the `eLpNorm` form used by the weighted-tail budget. -/
 theorem eLpNorm_coordinateDyadicBallMaximal_le
     (i : Fin 3) (f : E3 → ℂ) (hf : Measurable f)
@@ -13952,13 +13952,13 @@ theorem eLpNorm_coordinateDyadicBallMaximal_le
     exact hbase
   calc eLpNorm (coordinateDyadicBallMaximal i f) (ENNReal.ofReal p) volume
       = (∫⁻ x : E3, ‖coordinateDyadicBallMaximal i f x‖ₑ ^ p) ^ (1 / p) := by
-        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop, hptoReal]
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop (by fun_prop), hptoReal]
     _ ≤ (K * ∫⁻ x : E3, ‖f x‖ₑ ^ p) ^ (1 / p) :=
         ENNReal.rpow_le_rpow hstep (by positivity)
     _ = K ^ (1 / p) * (∫⁻ x : E3, ‖f x‖ₑ ^ p) ^ (1 / p) :=
         ENNReal.mul_rpow_of_nonneg _ _ (by positivity)
     _ = K ^ (1 / p) * eLpNorm f (ENNReal.ofReal p) volume := by
-        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop, hptoReal]
+        rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop (by fun_prop), hptoReal]
 
 
 /-! ## Combining the three normalized budgets
@@ -13967,7 +13967,7 @@ Source: `lem:one_fiber`, blueprint lines 2530--2540, where the three pieces
 combine into `τ|{|U(f)|>τ}|^{1/R} ≤ C 𝒜_u`.
 -/
 
-/-- **Combining the source's three budgets.**  Once each piece is bounded by
+/-- **Combining the source's three budgets.** Once each piece is bounded by
 a multiple of `𝒜_u`, the three-piece inclusion gives a single constant,
 independent of the level. -/
 theorem weakOne_combine_normalized_budgets
@@ -14013,7 +14013,7 @@ Source: `lem:one_fiber`, blueprint lines 2530--2540, the countable passage
 "take a subsequence of the outputs converging almost everywhere".
 -/
 
-/-- **Weak-type bounds survive an almost-everywhere limit.**  A uniform
+/-- **Weak-type bounds survive an almost-everywhere limit.** A uniform
 level-set bound for a sequence transfers to any almost-everywhere limit, with
 no loss in the level: a strict inequality at the limit is already strict along
 the tail of the sequence. -/
@@ -14064,7 +14064,7 @@ Source: `lem:one_fiber`, blueprint lines 2530--2540, "for any enumeration
 everywhere and in `L^p` to `b`: at most one term is nonzero at each point".
 -/
 
-/-- **At most one selected atom is nonzero at each point.**  A finite family
+/-- **At most one selected atom is nonzero at each point.** A finite family
 containing every index supporting the point already reproduces the countable
 bad field there. -/
 theorem fiberCZBadField_eq_countableBadField_of_mem
@@ -14094,7 +14094,7 @@ theorem fiberCZBadField_eq_countableBadField_of_mem
       unfold fiberCZBadAtom
       exact Set.indicator_of_notMem hnot _
     rw [hcount]
-    show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
+    change (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
     refine Finset.sum_eq_single I₀ (fun I _ hI ↦ hvanish I hI) (fun hnot ↦ ?_)
     exact absurd (hT I₀ hI₀) hnot
   · push Not at hex
@@ -14104,13 +14104,13 @@ theorem fiberCZBadField_eq_countableBadField_of_mem
       exact hex I hI
     rw [fiberDyadicCountableBadField_eq_zero_outside_exceptional
       F Zf A H yz hnotex]
-    show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
+    change (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
     apply Finset.sum_eq_zero
     intro I _
     unfold fiberCZBadAtom
     exact Set.indicator_of_notMem (hex I) _
 
-/-- **Pointwise exhaustion.**  Along any exhausting sequence of finite
+/-- **Pointwise exhaustion.** Along any exhausting sequence of finite
 families the finite selected bad fields converge to the countable one; the
 sequence is in fact eventually constant at each point. -/
 theorem tendsto_fiberCZBadField_countableBadField
@@ -14152,7 +14152,7 @@ Source: `lem:one_fiber`, blueprint lines 2530--2540, the passage from finite
 bad sums to the countable bad field inside the operator.
 -/
 
-/-- **Dominated convergence in one coordinate slot.**  Pointwise convergent,
+/-- **Dominated convergence in one coordinate slot.** Pointwise convergent,
 uniformly bounded inputs give convergent coordinate convolutions. -/
 theorem tendsto_ModelCoordinateConvolution_of_tendsto
     (i : Fin 3) (g : ℕ → E3 → ℝ) (glim : E3 → ℝ) (k : ℝ → ℝ) (s : ℝ) (x : E3)
@@ -14191,12 +14191,12 @@ theorem tendsto_ModelCoordinateConvolution_of_tendsto
 
 /-! ## Exact factorization of the model integrand
 
-Source: `def:model`, blueprint lines 1376--1405.  The integrand is linear in
+Source: `def:model`, blueprint lines 1376--1405. The integrand is linear in
 each slot; isolating one slot is what makes the Calderón--Zygmund
 decomposition of `lem:one_fiber` and its limit passages available.
 -/
 
-/-- **Exact passive factorization.**  The model integrand is the product of
+/-- **Exact passive factorization.** The model integrand is the product of
 its two passive convolutions (with the coefficient) and its active one. -/
 theorem modelTruncatedOperatorIntegrand_eq_passive_mul
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -14243,7 +14243,7 @@ theorem modelTruncatedOperatorIntegrand_replace_eq_passive_mul
   intro j hj
   rw [modelOperatorReplace_ne f m j h (Finset.ne_of_mem_erase hj)]
 
-/-- **Dominated convergence for the truncated operator in one slot.**  This is
+/-- **Dominated convergence for the truncated operator in one slot.** This is
 the source's passage from the finite bad sums to the countable bad field
 inside `U^{a,b}_{u,c}`. -/
 theorem tendsto_ModelTruncatedOperator_replace_of_tendsto
@@ -14261,13 +14261,13 @@ theorem tendsto_ModelTruncatedOperator_replace_of_tendsto
         (modelOperatorReplace f m (g n)) a b x) Filter.atTop
       (nhds (ModelTruncatedOperator α u c
         (modelOperatorReplace f m glim) a b x)) := by
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   set Cn : Fin 3 → ℝ := fun j ↦ if j = m then Bm else Bf j with hCn
   have hCnnonneg : ∀ j, 0 ≤ Cn j := by
     intro j
     by_cases hj : j = m
-    · simp only [hCn, if_pos hj]; exact hBm
-    · simp only [hCn, if_neg hj]; exact hBf j
+    · simp only [hCn, ite_eq_left hj]; exact hBm
+    · simp only [hCn, ite_eq_right hj]; exact hBf j
   have hrep : ∀ (h : E3 → ℝ), Measurable h → (∀ y : E3, |h y| ≤ Bm) →
       (∀ j, Measurable (modelOperatorReplace f m h j)) ∧
       (∀ j, ∀ y : E3, |modelOperatorReplace f m h j y| ≤ Cn j) := by
@@ -14280,8 +14280,8 @@ theorem tendsto_ModelTruncatedOperator_replace_of_tendsto
     · intro j y
       by_cases hj : j = m
       · subst hj
-        simpa only [modelOperatorReplace_same, hCn, if_pos rfl] using hhB y
-      · simpa only [modelOperatorReplace_ne f m j h hj, hCn, if_neg hj] using
+        simpa only [modelOperatorReplace_same, hCn, ite_eq_left rfl] using hhB y
+      · simpa only [modelOperatorReplace_ne f m j h hj, hCn, ite_eq_right hj] using
           hfB j y
   have hglimmeas : Measurable glim := by
     have : ∀ n, Measurable (g n) := hgmeas
@@ -14337,7 +14337,7 @@ theorem tendsto_ModelTruncatedOperator_replace_of_tendsto
 Source: `lem:one_fiber`, blueprint lines 2530--2540, the countable passage.
 -/
 
-/-- **The finite selected bad field needs no cardinality loss.**  Global
+/-- **The finite selected bad field needs no cardinality loss.** Global
 disjointness of the selected rectangles leaves at most one nonzero atom at
 each point, so the finite sum obeys the same `2B` bound as a single atom. -/
 theorem abs_fiberCZBadField_selected_le_of_bound
@@ -14363,23 +14363,23 @@ theorem abs_fiberCZBadField_selected_le_of_bound
     have hsum : fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz =
         if I₀ ∈ T then
           fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I₀ yz else 0 := by
-      show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
+      change (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = _
       by_cases hmem : I₀ ∈ T
-      · rw [if_pos hmem]
+      · rw [ite_eq_left hmem]
         exact Finset.sum_eq_single I₀ (fun I _ hI ↦ hvanish I hI)
           (fun hnot ↦ absurd hmem hnot)
-      · rw [if_neg hmem]
+      · rw [ite_eq_right hmem]
         exact Finset.sum_eq_zero fun I hI ↦ hvanish I (fun h ↦ hmem (h ▸ hI))
     rw [hsum]
     by_cases hmem : I₀ ∈ T
-    · rw [if_pos hmem]
+    · rw [ite_eq_left hmem]
       exact abs_fiberCZBadAtom_le_of_bound F
         (fiberDyadicSelectionSet Zf A H) I₀ B hB hbound yz
-    · rw [if_neg hmem, abs_zero]
+    · rw [ite_eq_right hmem, abs_zero]
       positivity
   · push Not at hex
     have hzero : fiberCZBadField F T (fiberDyadicSelectionSet Zf A H) yz = 0 := by
-      show (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
+      change (∑ I ∈ T, fiberCZBadAtom F (fiberDyadicSelectionSet Zf A H) I yz) = 0
       apply Finset.sum_eq_zero
       intro I _
       unfold fiberCZBadAtom
@@ -14400,7 +14400,7 @@ theorem abs_coordinateFiberBadField_selected_le_of_bound
   intro yz
   exact hbound _
 
-/-- **`eq:one_fiber` passes to the countable family.**  A weak bound holding
+/-- **`eq:one_fiber` passes to the countable family.** A weak bound holding
 uniformly for the finite selected families holds for the countable bad field. -/
 theorem ModelTruncatedOperator_weakOne_countable_of_finite
     (α : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
@@ -14499,7 +14499,7 @@ theorem le_weighted_geometric_mean_four_of_le
       (Real.rpow_nonneg hA0 t0) (Real.rpow_nonneg hA1 t1)
       (Real.rpow_nonneg hA2 t2)
 
-/-- **The source's common-weight bookkeeping.**  A factor shared by all four
+/-- **The source's common-weight bookkeeping.** A factor shared by all four
 endpoint constants survives the weighted geometric mean untouched, because the
 weights sum to one. -/
 theorem prod_rpow_four_of_common_factor
@@ -14522,13 +14522,13 @@ theorem prod_rpow_four_of_common_factor
 
 /-! ## Two-sided geometric minima
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  After the dyadic
+Source: `ext:interpolation`, blueprint lines 2538--2558. After the dyadic
 decomposition of the inputs, each multi-index contributes the smallest of the
 four vertex bounds; along each simplex edge this is a two-sided geometric
 minimum, which is summable.
 -/
 
-/-- A two-sided geometric minimum is summable over the integers.  This is the
+/-- A two-sided geometric minimum is summable over the integers. This is the
 decay that makes the dyadic multi-index sum of `ext:interpolation` converge. -/
 theorem summable_min_two_rpow {a b : ℝ} (ha : 0 < a) (hb : 0 < b) :
     Summable (fun k : ℤ ↦
@@ -14565,7 +14565,7 @@ theorem summable_min_two_rpow {a b : ℝ} (ha : 0 < a) (hb : 0 < b) :
 
 /-! ## Dyadic level layers
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  Each input is split
+Source: `ext:interpolation`, blueprint lines 2538--2558. Each input is split
 into dyadic level layers; multilinearity then expands the operator over the
 resulting multi-indices.
 -/
@@ -14577,8 +14577,8 @@ def dyadicLayer {X : Type*} (f : X → ℝ) (k : ℤ) : X → ℝ :=
 
 theorem dyadicLayer_of_ne {X : Type*} (f : X → ℝ) (x : X) (hx : f x ≠ 0) :
     dyadicLayer f (Int.log 2 |f x|) x = f x := by
-  show (if f x ≠ 0 ∧ Int.log 2 |f x| = Int.log 2 |f x| then f x else 0) = f x
-  rw [if_pos ⟨hx, rfl⟩]
+  change (if f x ≠ 0 ∧ Int.log 2 |f x| = Int.log 2 |f x| then f x else 0) = f x
+  rw [ite_eq_left ⟨hx, rfl⟩]
 
 theorem dyadicLayer_eq_zero_of_ne {X : Type*} (f : X → ℝ) (x : X) (k : ℤ)
     (hk : k ≠ Int.log 2 |f x|) : dyadicLayer f k x = 0 := by
@@ -14595,7 +14595,7 @@ theorem tsum_dyadicLayer {X : Type*} (f : X → ℝ) (x : X) :
   · have hzero : ∀ k : ℤ, dyadicLayer f k x = 0 := by
       intro k
       simp only [dyadicLayer, hx, ne_eq, not_true_eq_false, false_and,
-        if_false]
+        ite_false]
     simp only [hzero, tsum_zero, hx]
   · rw [tsum_eq_single (Int.log 2 |f x|)
       (fun k hk ↦ dyadicLayer_eq_zero_of_ne f x k hk)]
@@ -14623,7 +14623,7 @@ theorem le_abs_dyadicLayer {X : Type*} (f : X → ℝ) (k : ℤ) (x : X)
   split at hne
   · next h =>
       obtain ⟨hfne, hlog⟩ := h
-      rw [if_pos ⟨hfne, hlog⟩]
+      rw [ite_eq_left ⟨hfne, hlog⟩]
       have habs : (0 : ℝ) < |f x| := abs_pos.mpr hfne
       have := Int.zpow_log_le_self (b := 2) (by norm_num) habs
       rw [hlog] at this
@@ -14633,7 +14633,7 @@ theorem le_abs_dyadicLayer {X : Type*} (f : X → ℝ) (k : ℤ) (x : X)
 
 /-! ## Finitely many layers on simple functions
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  The theorem is
+Source: `ext:interpolation`, blueprint lines 2538--2558. The theorem is
 stated for simple functions, which take finitely many values; their dyadic
 level decomposition is therefore a finite sum, so the multilinear expansion
 over the layers needs no convergence argument.
@@ -14647,7 +14647,7 @@ theorem finite_dyadicLayer_support {X : Type*} (f : X → ℝ)
   apply Set.Finite.subset (hfin.image (fun v : ℝ ↦ Int.log 2 |v|))
   rintro k ⟨x, hx⟩
   refine ⟨f x, Set.mem_range_self x, ?_⟩
-  show Int.log 2 |f x| = k
+  change Int.log 2 |f x| = k
   by_contra hne
   exact hx (dyadicLayer_eq_zero_of_ne f x k (fun h ↦ hne h.symm))
 
@@ -14660,8 +14660,8 @@ theorem sum_dyadicLayer_of_support_subset {X : Type*} (f : X → ℝ)
   by_cases hx : f x = 0
   · have hzero : ∀ k : ℤ, dyadicLayer f k x = 0 := by
       intro k
-      show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
-      rw [if_neg (by simp [hx])]
+      change (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
+      rw [ite_eq_right (by simp [hx])]
     rw [Finset.sum_congr rfl (fun k _ ↦ hzero k), Finset.sum_const_zero, hx]
   · have hk₀ : dyadicLayer f (Int.log 2 |f x|) x = f x :=
       dyadicLayer_of_ne f x hx
@@ -14695,7 +14695,7 @@ theorem sum_dyadicLayerIndices {X : Type*} (f : X → ℝ)
 
 /-! ## Trilinear expansion over finite decompositions
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  With each input split
+Source: `ext:interpolation`, blueprint lines 2538--2558. With each input split
 into its finitely many dyadic layers, multilinearity expands the operator into
 a finite triple sum over layer multi-indices.
 -/
@@ -14712,7 +14712,7 @@ theorem map_finset_sum_of_additive
   | insert k S hk ih =>
       rw [Finset.sum_insert hk, Finset.sum_insert hk, hadd, ih]
 
-/-- **Trilinear expansion.**  Finite decompositions of the three slots expand
+/-- **Trilinear expansion.** Finite decompositions of the three slots expand
 the operator into the finite triple sum over layer multi-indices. -/
 theorem trilinear_expand_three_finsets
     {X V : Type*} [AddCommMonoid V]
@@ -14747,12 +14747,12 @@ theorem trilinear_expand_three_finsets
 
 /-! ## Combining the four vertex bounds over layer multi-indices
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  Each layer triple is
+Source: `ext:interpolation`, blueprint lines 2538--2558. Each layer triple is
 estimated by all four endpoint bounds; the weighted geometric mean of those
 four is the term that gets summed.
 -/
 
-/-- **Four vertex bounds combine over the whole multi-index sum.**  Applying
+/-- **Four vertex bounds combine over the whole multi-index sum.** Applying
 each endpoint estimate to every layer triple and taking the weighted geometric
 mean bounds the expanded operator. -/
 theorem norm_triple_finset_sum_le_geometric_mean
@@ -14799,7 +14799,7 @@ theorem norm_triple_finset_sum_le_geometric_mean
 
 /-! ## The support of a dyadic layer
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  Each layer is the
+Source: `ext:interpolation`, blueprint lines 2538--2558. Each layer is the
 input restricted to a dyadic annulus of its modulus, which is what turns the
 weak endpoint bounds into explicit powers of `2^k` and of the layer's measure.
 -/
@@ -14814,8 +14814,8 @@ theorem dyadicLayer_ne_zero_iff {X : Type*} (f : X → ℝ) (k : ℤ) (x : X) :
     have hcond : f x ≠ 0 ∧ Int.log 2 |f x| = k := by
       by_contra hc
       exact hne (by
-        show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
-        rw [if_neg hc])
+        change (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
+        rw [ite_eq_right hc])
     obtain ⟨hfne, hlog⟩ := hcond
     have hpos : (0 : ℝ) < |f x| := abs_pos.mpr hfne
     constructor
@@ -14836,8 +14836,8 @@ theorem dyadicLayer_ne_zero_iff {X : Type*} (f : X → ℝ) (k : ℤ) (x : X) :
       rw [← Int.lt_zpow_iff_log_lt hb hpos]
       exact_mod_cast hlt
     have hlog : Int.log 2 |f x| = k := by omega
-    show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) ≠ 0
-    rw [if_pos ⟨hfne, hlog⟩]
+    change (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) ≠ 0
+    rw [ite_eq_left ⟨hfne, hlog⟩]
     exact hfne
 
 /-- The layer is the input restricted to that annulus. -/
@@ -14854,13 +14854,13 @@ theorem dyadicLayer_eq_indicator {X : Type*} (f : X → ℝ) (k : ℤ) :
   · have hmem : x ∈ {x : X | (2 : ℝ) ^ k ≤ |f x| ∧
         |f x| < (2 : ℝ) ^ (k + 1)} := (dyadicLayer_ne_zero_iff f k x).mp hx
     rw [Set.indicator_of_mem hmem]
-    show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = f x
-    rw [if_pos]
+    change (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = f x
+    rw [ite_eq_left]
     refine ⟨?_, ?_⟩
     · intro h
       exact hx (by
-        show (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
-        rw [if_neg (by simp [h])])
+        change (if f x ≠ 0 ∧ Int.log 2 |f x| = k then f x else 0) = 0
+        rw [ite_eq_right (by simp [h])])
     · have h2k : (0 : ℝ) < (2 : ℝ) ^ k := zpow_pos (by norm_num) _
       have hpos : (0 : ℝ) < |f x| := lt_of_lt_of_le h2k hmem.1
       have hb : (1 : ℕ) < 2 := by norm_num
@@ -14873,7 +14873,7 @@ theorem dyadicLayer_eq_indicator {X : Type*} (f : X → ℝ) (k : ℤ) :
       omega
 
 /-- A measurable input has measurable layers. -/
-theorem measurable_dyadicLayer {X : Type*} [MeasurableSpace X]
+@[fun_prop] theorem measurable_dyadicLayer {X : Type*} [MeasurableSpace X]
     (f : X → ℝ) (hf : Measurable f) (k : ℤ) :
     Measurable (dyadicLayer f k) := by
   rw [dyadicLayer_eq_indicator]
@@ -14886,7 +14886,7 @@ theorem measurable_dyadicLayer {X : Type*} [MeasurableSpace X]
 /-! ## The distribution-function form of a strong norm
 
 Source: `ext:interpolation` and `def:weak_norm`, blueprint lines 2381--2387
-and 2538--2558.  Passing from weak endpoint bounds to a strong interior bound
+and 2538--2558. Passing from weak endpoint bounds to a strong interior bound
 goes through the distribution function, since the weak quantities are level-set
 measures rather than norms.
 -/
@@ -14931,13 +14931,13 @@ theorem lintegral_rpow_abs_eq_meas_lt
 
 /-! ## Splitting a level among summands
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  Weak bounds are
+Source: `ext:interpolation`, blueprint lines 2538--2558. Weak bounds are
 level-set statements and are not additive, so a sum is estimated by
 distributing the level across its terms — this is what replaces the triangle
 inequality for the weak endpoints.
 -/
 
-/-- **Level splitting.**  If the levels assigned to the summands do not exceed
+/-- **Level splitting.** If the levels assigned to the summands do not exceed
 the total level, the level set of the sum is covered by those of the terms. -/
 theorem meas_lt_abs_finset_sum_le_sum
     {X ι : Type*} [MeasurableSpace X] (μ : Measure X)
@@ -14955,7 +14955,7 @@ theorem meas_lt_abs_finset_sum_le_sum
       le_trans (Finset.abs_sum_le_sum_abs _ _)
         (Finset.sum_le_sum hall)
     exact absurd hx (by
-      simp only [Set.mem_setOf_eq, not_lt]
+      simp only [Set.mem_ofPred_eq, not_lt]
       exact le_trans habs hs)
   calc μ {x | t < |∑ i ∈ S, w i x|}
       ≤ μ (⋃ i ∈ S, {x | s i < |w i x|}) := measure_mono hsub
@@ -14988,7 +14988,7 @@ theorem meas_lt_abs_triple_sum_le_sum
       = μ {x | t < |∑ p ∈ T, W p.1 p.2.1 p.2.2 x|} := by
         congr 1
         ext x
-        simp only [Set.mem_setOf_eq, hflatFun x]
+        simp only [Set.mem_ofPred_eq, hflatFun x]
     _ ≤ ∑ p ∈ T, μ {x | s p.1 p.2.1 p.2.2 < |W p.1 p.2.1 p.2.2 x|} := hmain
     _ = ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
           μ {x | s k1 k2 k3 < |W k1 k2 k3 x|} := by
@@ -14999,7 +14999,7 @@ theorem meas_lt_abs_triple_sum_le_sum
 
 /-! ## The weak-to-strong passage
 
-Source: `ext:interpolation`.  A weak endpoint bound is a statement about level
+Source: `ext:interpolation`. A weak endpoint bound is a statement about level
 sets, and the interior strong bound is recovered by integrating the two
 competing level-set bounds against `r t^{r-1}`, splitting at the level where
 they agree.
@@ -15032,7 +15032,7 @@ theorem lintegral_Ioi_rpow {a c : ℝ} (ha : a < -1) (hc : 0 < c) :
     exact Real.rpow_nonneg (hc.trans ht).le _
   rw [← ofReal_integral_eq_lintegral_ofReal hint hnn, integral_Ioi_rpow_of_lt ha hc]
 
-/-- **Weak-to-strong passage.**  Two competing level-set bounds with exponents
+/-- **Weak-to-strong passage.** Two competing level-set bounds with exponents
 straddling `r` integrate to a strong `L^r` bound whose constant is the
 corresponding weighted geometric mean of the two weak constants. -/
 theorem lintegral_rpow_le_of_two_sided_distribution
@@ -15172,8 +15172,8 @@ theorem lintegral_rpow_le_of_two_sided_distribution
 
 /-! ## Sizes of the dyadic level layers
 
-Source: `ext:interpolation`.  Each endpoint bound is applied to a layer triple,
-so what enters is the `L^p` size of a single layer.  A layer is a multiple of
+Source: `ext:interpolation`. Each endpoint bound is applied to a layer triple,
+so what enters is the `L^p` size of a single layer. A layer is a multiple of
 the indicator of its annulus up to a factor of two, so its size in every `L^p`
 is `2^k` times a power of the annulus measure; this is what lets one exponent
 vector be traded for another.
@@ -15259,7 +15259,7 @@ theorem tsum_ofReal_rpow_abs_dyadicLayer {X : Type*} (f : X → ℝ) (x : X)
   by_cases hx : f x = 0
   · have hzero : ∀ k : ℤ, dyadicLayer f k x = 0 := by
       intro k
-      simp only [dyadicLayer, hx, ne_eq, not_true_eq_false, false_and, if_false]
+      simp only [dyadicLayer, hx, ne_eq, not_true_eq_false, false_and, ite_false]
     simp only [hzero, hx, abs_zero, Real.zero_rpow hp.ne', ENNReal.ofReal_zero,
       tsum_zero]
   · rw [tsum_eq_single (Int.log 2 |f x|) (fun k hk ↦ by
@@ -15283,7 +15283,7 @@ theorem tsum_lintegral_rpow_abs_dyadicLayer
   rw [← lintegral_tsum hmeas]
   exact lintegral_congr fun x ↦ tsum_ofReal_rpow_abs_dyadicLayer f x hp
 
-/-- **Layer mass summation.**  Summing the lower size bounds over all layers
+/-- **Layer mass summation.** Summing the lower size bounds over all layers
 shows that the dyadic level–measure products are controlled by the input. -/
 theorem tsum_dyadicLevel_meas_le
     {X : Type*} [MeasurableSpace X] (μ : Measure X) {f : X → ℝ}
@@ -15297,7 +15297,7 @@ theorem tsum_dyadicLevel_meas_le
 
 /-! ## Layer sizes in the `L^p` seminorms
 
-Source: `ext:interpolation`.  The endpoint hypotheses are stated with `L^{p}`
+Source: `ext:interpolation`. The endpoint hypotheses are stated with `L^{p}`
 norms of the inputs, so the layer size estimates are recorded again in that
 form: a layer's `L^p` norm is `2^k` times the `1/p`-th power of its annulus
 measure, up to the single factor of two separating the two ends of the annulus.
@@ -15325,9 +15325,9 @@ theorem eLpNorm_dyadicLayer_le
       rw [Set.indicator_of_notMem hx, hzero]
   calc eLpNorm (dyadicLayer f k) p μ
       ≤ eLpNorm ((dyadicLayerSet f k).indicator
-          (fun _ ↦ (2 : ℝ) ^ (k + 1))) p μ := eLpNorm_mono hmono
+          (fun _ ↦ (2 : ℝ) ^ (k + 1))) p μ := eLpNorm_mono (by fun_prop) hmono
     _ = ‖((2 : ℝ) ^ (k + 1))‖ₑ * μ (dyadicLayerSet f k) ^ (1 / p.toReal) :=
-        eLpNorm_indicator_const hS hp hp_top
+        eLpNorm_indicator_const hS.nullMeasurableSet hp hp_top
     _ = ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) *
           μ (dyadicLayerSet f k) ^ (1 / p.toReal) := by
         rw [Real.enorm_eq_ofReal hpos.le]
@@ -15353,13 +15353,13 @@ theorem le_eLpNorm_dyadicLayer
       = ‖((2 : ℝ) ^ k)‖ₑ * μ (dyadicLayerSet f k) ^ (1 / p.toReal) := by
         rw [Real.enorm_eq_ofReal hpos.le]
     _ = eLpNorm ((dyadicLayerSet f k).indicator (fun _ ↦ (2 : ℝ) ^ k)) p μ :=
-        (eLpNorm_indicator_const hS hp hp_top).symm
-    _ ≤ eLpNorm (dyadicLayer f k) p μ := eLpNorm_mono hmono
+        (eLpNorm_indicator_const hS.nullMeasurableSet hp hp_top).symm
+    _ ≤ eLpNorm (dyadicLayer f k) p μ := eLpNorm_mono (by fun_prop) hmono
 
 
 /-! ## The weak norm
 
-Source: `def:weak_norm`, blueprint lines 2381--2387.  The weak norm is the
+Source: `def:weak_norm`, blueprint lines 2381--2387. The weak norm is the
 supremum over levels of the level times the `1/R`-th power of the level-set
 measure, taken as an extended nonnegative number; a finite bound on it is the
 weak-`L^R` membership asserted by `eq:one_fiber` and by the endpoint
@@ -15383,7 +15383,7 @@ theorem weakNorm_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
     weakNorm μ v R ≤ c :=
   iSup₂_le fun τ hτ ↦ h τ hτ
 
-/-- **Chebyshev form of a weak bound.**  A finite weak bound is exactly a
+/-- **Chebyshev form of a weak bound.** A finite weak bound is exactly a
 level-set bound decaying like `τ^{-R}`, which is the form the strong-norm
 passage consumes. -/
 theorem meas_lt_le_of_weakNorm_le
@@ -15411,7 +15411,7 @@ theorem meas_lt_le_of_weakNorm_le
   congr 1
   rw [Real.div_rpow hA hτ.le, Real.rpow_neg hτ.le, div_eq_mul_inv]
 
-/-- **Two weak bounds give a strong interior bound.**  This is the passage
+/-- **Two weak bounds give a strong interior bound.** This is the passage
 `ext:interpolation` performs once the endpoint estimates have been combined:
 weak bounds at two exponents straddling `r` produce the strong `L^r` bound,
 with the geometric-mean constant. -/
@@ -15438,7 +15438,7 @@ theorem lintegral_rpow_le_of_two_weakNorm
 
 /-! ## Trading one endpoint exponent for another
 
-Source: `ext:interpolation` together with `lem:exponent_simplex`.  A layer's
+Source: `ext:interpolation` together with `lem:exponent_simplex`. A layer's
 size at an endpoint exponent `1/p_{a,j}` is its size at the target exponent
 `1/p_j` raised to the ratio of the two, times a pure power of the dyadic level.
 Because the weights of `eq:weights` exhibit the target reciprocal as the convex
@@ -15447,7 +15447,7 @@ cancel exactly in the four-fold weighted geometric mean — this is precisely wh
 the four vertices of the tetrahedron are needed and why no two of them suffice.
 -/
 
-/-- **Exponent exchange.**  Writing `a = 2^k` for the dyadic level and `m` for
+/-- **Exponent exchange.** Writing `a = 2^k` for the dyadic level and `m` for
 the annulus measure, the endpoint size `a * m^{β_a}` is a power of the target
 size `a * m^{β}` times a pure power of the level. -/
 theorem dyadicLevel_measure_rpow_exchange
@@ -15466,7 +15466,7 @@ theorem dyadicLevel_measure_rpow_exchange
   rw [show (1 : ℝ) - βa / β + βa / β = 1 by ring, ENNReal.rpow_one,
     show β * (βa / β) = βa by field_simp]
 
-/-- **The level powers cancel in the four-fold mean.**  If the target
+/-- **The level powers cancel in the four-fold mean.** If the target
 reciprocal is the convex combination of the four endpoint reciprocals with the
 weights of `eq:weights`, the exchange exponents `1 - β_{a}/β` average to zero. -/
 theorem sum_weights_exchange_eq_zero
@@ -15486,7 +15486,7 @@ theorem rpow_four_mul_eq_one {a : ℝ≥0∞} (ha : a ≠ 0) (ha' : a ≠ ∞)
   rw [← ENNReal.rpow_add _ _ ha ha', ← ENNReal.rpow_add _ _ ha ha',
     ← ENNReal.rpow_add _ _ ha ha', h, ENNReal.rpow_zero]
 
-/-- **The four-fold cancellation.**  With the weights of `eq:weights`, the pure
+/-- **The four-fold cancellation.** With the weights of `eq:weights`, the pure
 powers of the dyadic level produced by the four exponent exchanges cancel
 identically, leaving only the target-exponent sizes. -/
 theorem prod_dyadicLevel_exchange_eq_one
@@ -15506,16 +15506,16 @@ theorem prod_dyadicLevel_exchange_eq_one
 
 /-! ## The output exponents of the four vertices
 
-Source: `thm:extended_model` together with `lem:exponent_simplex`.  At the base
+Source: `thm:extended_model` together with `lem:exponent_simplex`. At the base
 vertex the output reciprocal is `1 - b_0`, at each of the three shifted
-vertices it is `1`, and at the target it is `1 - beta_0`.  Since
+vertices it is `1`, and at the target it is `1 - beta_0`. Since
 `0 < beta_0 < b_0 < 1/4`, the target output exponent lies strictly between the
 three weak endpoints' exponent `1` and the base vertex's exponent `1/(1-b_0)`.
 That ordering is what allows the strong interior bound to be recovered from the
 level-set bounds.
 -/
 
-/-- **The target output exponent is straddled.**  The three shifted vertices
+/-- **The target output exponent is straddled.** The three shifted vertices
 have output exponent `1` and the base vertex has output exponent `1/(1-b₀)`;
 the target exponent `1/(1-β₀)` lies strictly between them. -/
 theorem one_lt_outputExponent_lt
@@ -15539,19 +15539,20 @@ theorem outputReciprocal_identities
             + (if m = 2 then b₃ + b₀ else b₃) = 1) := by
   refine ⟨by rw [hb₀]; ring, ?_⟩
   intro m
-  fin_cases m <;> simp <;> rw [hb₀] <;> ring
+  fin_cases m <;> simp only [Fin.zero_eta, Fin.isValue, ↓reduceIte, zero_ne_one, Fin.reduceEq,
+    Fin.mk_one, one_ne_zero, Fin.reduceFinMk] <;> rw [hb₀] <;> ring
 
 
 /-! ## The four-fold geometric mean of the endpoint layer sizes
 
-Source: `ext:interpolation` with the weights `eq:weights`.  Combining the four
+Source: `ext:interpolation` with the weights `eq:weights`. Combining the four
 exponent exchanges with the weights collapses the whole four-fold weighted
 geometric mean back to the single target-exponent size: the pure powers of the
 dyadic level cancel because the weights sum to one, and the target-size powers
 recombine because the endpoint reciprocals average to the target reciprocal.
 -/
 
-/-- **The weighted geometric mean collapses.**  With weights summing to one and
+/-- **The weighted geometric mean collapses.** With weights summing to one and
 exchange ratios averaging to one, the four endpoint sizes have weighted
 geometric mean exactly the target size. -/
 theorem rpow_four_weighted_mean_eq
@@ -15586,13 +15587,13 @@ theorem rpow_four_weighted_mean_eq
 
 /-! ## From the expanded operator to a level-set bound
 
-Source: `ext:interpolation`.  Once the trilinear operator has been expanded over
+Source: `ext:interpolation`. Once the trilinear operator has been expanded over
 the layer multi-indices, a level-set bound for the whole operator follows from
 level-set bounds for the individual terms, provided the levels assigned to the
 terms do not exceed the total level.
 -/
 
-/-- **Assembled level-set bound.**  If the operator is the triple layer sum, the
+/-- **Assembled level-set bound.** If the operator is the triple layer sum, the
 assigned levels are within budget, and each term obeys its own level-set bound,
 then the operator obeys the summed bound. -/
 theorem meas_lt_of_triple_expansion_bounds
@@ -15608,7 +15609,7 @@ theorem meas_lt_of_triple_expansion_bounds
   have hset : {x | t < |V x|}
       = {x | t < |∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3, W k1 k2 k3 x|} := by
     ext x
-    simp only [Set.mem_setOf_eq, hV x]
+    simp only [Set.mem_ofPred_eq, hV x]
   rw [hset]
   refine le_trans (meas_lt_abs_triple_sum_le_sum μ S1 S2 S3 W t s hs) ?_
   refine Finset.sum_le_sum fun k1 hk1 ↦ ?_
@@ -15637,7 +15638,7 @@ theorem sum_weighted_levels_le
 
 /-! ## The closing Hölder step of the extended range
 
-Source: `thm:extended_model`.  Once the operator bound
+Source: `thm:extended_model`. Once the operator bound
 `eq:extended_operator_bound` is available at the output exponent `R` with
 `R^{-1} + p_0^{-1} = 1`, the form is estimated by pairing the zeroth input
 against the operator and applying Hölder.
@@ -15659,16 +15660,18 @@ theorem abs_integral_mul_le_lpNorm_mul_lpNorm
   have hholder := integral_mul_norm_le_Lp_mul_Lq hpq hf hg
   have hfnorm : lpNorm f (ENNReal.ofReal p) μ = (∫ x, ‖f x‖ ^ p ∂μ) ^ (1 / p) := by
     rw [lpNorm_eq_integral_norm_rpow_toReal
-      (by simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hp)) ENNReal.ofReal_ne_top hf.1,
+      (by simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hp)) ENNReal.ofReal_ne_top
+        hf.aestronglyMeasurable,
       ENNReal.toReal_ofReal hp.le, one_div]
   have hgnorm : lpNorm g (ENNReal.ofReal q) μ = (∫ x, ‖g x‖ ^ q ∂μ) ^ (1 / q) := by
     rw [lpNorm_eq_integral_norm_rpow_toReal
-      (by simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hq)) ENNReal.ofReal_ne_top hg.1,
+      (by simpa using ne_of_gt (ENNReal.ofReal_pos.mpr hq)) ENNReal.ofReal_ne_top
+        hg.aestronglyMeasurable,
       ENNReal.toReal_ofReal hq.le, one_div]
   rw [hfnorm, hgnorm]
   exact le_trans habs hholder
 
-/-- **The closing step of `thm:extended_model`.**  The finite-interval form is
+/-- **The closing step of `thm:extended_model`.** The finite-interval form is
 bounded by the zeroth input's `L^{p_0}` norm times the operator's `L^R` norm,
 whenever `p_0` and `R` are conjugate. -/
 theorem abs_ModelScaleIntervalTruncation_le_of_operator_lpNorm
@@ -15693,17 +15696,17 @@ theorem abs_ModelScaleIntervalTruncation_le_of_operator_lpNorm
 
 /-! ## The external four-vertex multilinear interpolation theorem
 
-Source: `ext:interpolation`.  The blueprint states this as an external theorem
-and gives no proof of it.  Two dependency facts bear on formalizing it: the
+Source: `ext:interpolation`. The blueprint states this as an external theorem
+and gives no proof of it. Two dependency facts bear on formalizing it: the
 pinned `lean_spherical` checkout supplies Riesz--Thorin and Stein interpolation,
 both for the complex method with strong endpoints, and a unary Marcinkiewicz
 theorem at the weak-(1,1) and `L^∞` endpoints, but no multilinear real
 interpolation; and iterating a two-point interpolation slot by slot yields
 bounds only at points of a segment joining two vertices, so it cannot reach a
-point interior to the three-dimensional tetrahedron.  It is therefore recorded
+point interior to the three-dimensional tetrahedron. It is therefore recorded
 here as an explicit hypothesis, stated exactly as the source states it, so that
 the one external input to `thm:main` is localized and everything downstream of
-it stays machine checked.  The toolkit for an eventual proof is in this file:
+it stays machine checked. The toolkit for an eventual proof is in this file:
 see the sections `Dyadic level layers`, `Trilinear expansion over finite
 decompositions`, `Combining the four vertex bounds over layer multi-indices`,
 `Splitting a level among summands`, `The weak-to-strong passage` and `Trading
@@ -15724,7 +15727,7 @@ def TrilinearOnSimple {X : Type*} [MeasurableSpace X] (μ : Measure X)
       T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j (k • ⇑g))
         = k • T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j ⇑g)
 
-/-- **`ext:interpolation` as a hypothesis.**  A trilinear operator on simple
+/-- **`ext:interpolation` as a hypothesis.** A trilinear operator on simple
 functions of finite measure support, with weak bounds at four affinely
 independent input reciprocal vectors, satisfies the strong bound at every
 interior point of the simplex, with constant depending only on the exponent
@@ -15770,7 +15773,7 @@ theorem fourVertexMarcinkiewicz_zero
     FourVertexMarcinkiewicz μ (fun _ ↦ (0 : X → ℝ)) := by
   intro P r A ϑ p R _ _ _ _ _ _ _ _ _ _ _ _
   refine ⟨0, le_rfl, fun f _ ↦ ?_⟩
-  simp
+  simp only [lpNorm_zero, zero_mul, Std.le_refl]
 
 /-- The hypothesis in the form it is consumed: given the endpoint data, it
 produces the interior constant and the strong bound. -/
@@ -15803,7 +15806,7 @@ theorem strong_bound_of_fourVertexMarcinkiewicz
 /-! ## The simplex vertices are affinely independent
 
 Source: `lem:exponent_simplex`, whose last line records that the simplex has
-independent edge vectors `b_0 e_1, b_0 e_2, b_0 e_3`.  This is the hypothesis
+independent edge vectors `b_0 e_1, b_0 e_2, b_0 e_3`. This is the hypothesis
 `ext:interpolation` places on the four input reciprocal vectors.
 -/
 
@@ -15870,7 +15873,7 @@ theorem affineIndependent_exponentSimplex_vertices
 /-! ## The four vertex exponent vectors
 
 Source: `thm:extended_model`, which builds the endpoint tuples `P_j` and
-`P_j^{(m)}` out of the base point `b` of `lem:exponent_simplex`.  These are the
+`P_j^{(m)}` out of the base point `b` of `lem:exponent_simplex`. These are the
 `P` and `r` data that `ext:interpolation` consumes.
 -/
 
@@ -15887,7 +15890,7 @@ theorem simplexVertexReciprocal_zero (b : Fin 3 → ℝ) (b₀ : ℝ) (j : Fin 3
     simplexVertexReciprocal b b₀ 0 j = b j := by
   unfold simplexVertexReciprocal
   have : ((0 : Fin 4) : ℕ) ≠ (j : ℕ) + 1 := by simp
-  rw [if_neg this, add_zero]
+  rw [ite_eq_right this, add_zero]
 
 /-- The base vertex's reciprocals sum to `1 - b₀`. -/
 theorem sum_simplexVertexReciprocal_zero (b : Fin 3 → ℝ) {b₀ : ℝ}
@@ -15908,11 +15911,11 @@ theorem sum_simplexVertexReciprocal_succ (b : Fin 3 → ℝ) {b₀ : ℝ}
     congr 1
     by_cases h : m = j
     · subst h; simp
-    · rw [if_neg h, if_neg]
+    · rw [ite_eq_right h, ite_eq_right]
       simpa [Fin.val_succ, Fin.val_eq_val] using h
   rw [Finset.sum_congr rfl fun j _ ↦ hsplit j, Finset.sum_add_distrib,
     Finset.sum_ite_eq Finset.univ m (fun _ ↦ b₀)]
-  simp only [Finset.mem_univ, if_true]
+  simp only [Finset.mem_univ, ite_true]
   rw [hb₀]
   ring
 
@@ -15921,16 +15924,16 @@ theorem simplexVertexReciprocal_pos {b : Fin 3 → ℝ} {b₀ : ℝ}
     0 < simplexVertexReciprocal b b₀ a j := by
   unfold simplexVertexReciprocal
   by_cases h : (a : ℕ) = (j : ℕ) + 1
-  · rw [if_pos h]; linarith [hb j]
-  · rw [if_neg h, add_zero]; exact hb j
+  · rw [ite_eq_left h]; linarith [hb j]
+  · rw [ite_eq_right h, add_zero]; exact hb j
 
 theorem simplexVertexReciprocal_le {b : Fin 3 → ℝ} {b₀ : ℝ}
     (hb₀ : 0 < b₀) (a : Fin 4) (j : Fin 3) :
     simplexVertexReciprocal b b₀ a j ≤ b j + b₀ := by
   unfold simplexVertexReciprocal
   by_cases h : (a : ℕ) = (j : ℕ) + 1
-  · rw [if_pos h]
-  · rw [if_neg h, add_zero]; linarith
+  · rw [ite_eq_left h]
+  · rw [ite_eq_right h, add_zero]; linarith
 
 theorem simplexVertexReciprocal_lt_one {b : Fin 3 → ℝ} {b₀ : ℝ}
     (hb : ∀ j, 0 < b j) (hb₀ : 0 < b₀) (hsum : b₀ = 1 - ∑ j : Fin 3, b j)
@@ -16009,7 +16012,7 @@ theorem simplexVertexOutput_succ (b : Fin 3 → ℝ) {b₀ : ℝ}
 
 /-! ## The interpolation weights in indexed form
 
-Source: `eq:weights` of `lem:exponent_simplex`.  The weights are recorded as a
+Source: `eq:weights` of `lem:exponent_simplex`. The weights are recorded as a
 family indexed by the four vertices, and the convex-combination identities of
 `ext:interpolation` — the target input reciprocals and the target output
 reciprocal — are proved in that indexed form.
@@ -16022,7 +16025,7 @@ theorem simplexVertexReciprocal_succ (b : Fin 3 → ℝ) (b₀ : ℝ) (m j : Fin
   congr 1
   by_cases h : m = j
   · subst h; simp
-  · rw [if_neg h, if_neg]
+  · rw [ite_eq_right h, ite_eq_right]
     simpa [Fin.val_succ, Fin.val_eq_val] using h
 
 /-- The weights `eq:weights`, indexed by the four vertices. -/
@@ -16071,17 +16074,17 @@ theorem sum_simplexWeight_mul_reciprocal {β b : Fin 3 → ℝ} {β₀ b₀ : �
         = (β m - b m) / b₀ * b j + (if m = j then β j - b j else 0) := by
     intro m
     by_cases h : m = j
-    · subst h; rw [if_pos rfl, if_pos rfl]
+    · subst h; rw [ite_eq_left rfl, ite_eq_left rfl]
       field_simp
-    · rw [if_neg h, if_neg h]
+    · rw [ite_eq_right h, ite_eq_right h]
       ring
   rw [Finset.sum_congr rfl fun m _ ↦ hsplit m, Finset.sum_add_distrib]
-  simp only [Finset.sum_ite_eq', Finset.mem_univ, if_true]
+  simp only [Finset.sum_ite_eq', Finset.mem_univ, ite_true]
   simp only [simplexWeight_zero, simplexWeight_succ] at hone
   rw [← Finset.sum_mul]
   linear_combination b j * hone
 
-/-- **The target output reciprocal is the convex combination.**  The base
+/-- **The target output reciprocal is the convex combination.** The base
 vertex contributes `1 - b₀` and each shifted vertex contributes `1`, and the
 weights collapse the total to `1 - β₀`. -/
 theorem sum_simplexWeight_mul_outputReciprocal {β b : Fin 3 → ℝ} {β₀ b₀ : ℝ}
@@ -16114,7 +16117,7 @@ a weak bound at `b`".  This is Chebyshev's inequality in the normalization of
 `ext:interpolation` alongside the three weak vertices.
 -/
 
-/-- **Chebyshev.**  The weak norm never exceeds the strong norm. -/
+/-- **Chebyshev.** The weak norm never exceeds the strong norm. -/
 theorem weakNorm_le_eLpNorm
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ)
     (hv : AEMeasurable v μ) {R : ℝ} (hR : 0 < R) :
@@ -16128,7 +16131,7 @@ theorem weakNorm_le_eLpNorm
       (h1.pow_const R))
   have heq : eLpNorm v (ENNReal.ofReal R) μ
       = (∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ) ^ (1 / R) := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop,
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop (by fun_prop),
       ENNReal.toReal_ofReal hR.le]
     congr 1
     refine lintegral_congr fun x ↦ ?_
@@ -16162,7 +16165,7 @@ theorem weakNorm_le_ofReal_lpNorm
   have hne : eLpNorm v (ENNReal.ofReal R) μ ≠ ∞ := hmem.eLpNorm_ne_top
   have hrw : ENNReal.ofReal (lpNorm v (ENNReal.ofReal R) μ)
       = eLpNorm v (ENNReal.ofReal R) μ := by
-    rw [← toReal_eLpNorm hmem.1, ENNReal.ofReal_toReal hne]
+    rw [← toReal_eLpNorm , ENNReal.ofReal_toReal hne]
   rw [hrw]
   exact weakNorm_le_eLpNorm μ v hv hR
 
@@ -16171,7 +16174,7 @@ theorem weakNorm_le_ofReal_lpNorm
 /-! ## The input class of `ext:interpolation`
 
 Source: `ext:interpolation`, which is stated for complex simple functions of
-finite measure support.  Such functions lie in every `L^q` with `q` finite, so
+finite measure support. Such functions lie in every `L^q` with `q` finite, so
 the endpoint norms appearing in the hypothesis are all finite and the
 statement's quantifiers are over a class on which every norm in sight makes
 sense.
@@ -16202,9 +16205,9 @@ theorem memLp_simplexVertexExponent
 
 /-! ## The completed weak-one estimates in the source's weak-norm language
 
-Source: `def:weak_norm` and `eq:one_fiber`.  The Section 8 one-fiber results
+Source: `def:weak_norm` and `eq:one_fiber`. The Section 8 one-fiber results
 are stated as level-set bounds `τ · |{τ < |v|}| ≤ K`, which is exactly the
-`R = 1` case of the weak norm.  Recording the identification lets those
+`R = 1` case of the weak norm. Recording the identification lets those
 completed estimates be quoted in the form `ext:interpolation` consumes.
 -/
 
@@ -16234,7 +16237,7 @@ theorem weakNorm_one_le_iff {X : Type*} [MeasurableSpace X] (μ : Measure X)
     rw [div_one, ENNReal.rpow_one]
     exact h τ hτ
 
-/-- **The one-fiber weak bound in the source's normalization.**  The Section 8
+/-- **The one-fiber weak bound in the source's normalization.** The Section 8
 level-set estimate, valid at every level, is a weak-`L^1` bound. -/
 theorem weakNorm_one_le_of_forall_level
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) {K : ℝ≥0∞}
@@ -16245,7 +16248,7 @@ theorem weakNorm_one_le_of_forall_level
 
 /-! ## The main theorem's exponents lie in the extended region
 
-Source: the proof of `thm:main`.  Its hypotheses `4 < p_0 < ∞` and
+Source: the proof of `thm:main`. Its hypotheses `4 < p_0 < ∞` and
 `1 < p_1, p_2, p_3 < 4` say exactly that `beta_0 < 1/4` and each of
 `beta_1, beta_2, beta_3` exceeds `1/4`; those five facts imply
 `eq:extended_region` for every choice of active coordinate, since each
@@ -16265,7 +16268,7 @@ theorem main_reciprocal_bounds {p₀ p₁ p₂ p₃ : ℝ}
 /-! ## Weak bounds pass to almost-everywhere limits
 
 Source: `def:weak_norm` together with the density step the source performs at
-the end of `thm:extended_model`.  A weak bound holding uniformly along a
+the end of `thm:extended_model`. A weak bound holding uniformly along a
 sequence survives passage to an almost-everywhere limit, which is the transfer
 needed to move endpoint bounds between the dense classes on which they are
 established and the classes on which they are used.
@@ -16287,7 +16290,7 @@ theorem meas_lt_le_of_ae_tendsto
       (fun n ↦ mul_le_mul' le_rfl (hbound n))
   exact (ENNReal.mul_le_mul_iff_right hne htop).mp hstep
 
-/-- **Weak bounds survive almost-everywhere limits.**  If every member of a
+/-- **Weak bounds survive almost-everywhere limits.** If every member of a
 sequence obeys the same weak-`L^R` bound and the sequence converges almost
 everywhere, the limit obeys it too. -/
 theorem weakNorm_le_of_ae_tendsto
@@ -16323,10 +16326,10 @@ theorem weakNorm_le_of_ae_tendsto
 
 /-! ## Transferring a weak bound across one input slot
 
-Source: the density step closing `thm:extended_model`.  The model operator is
+Source: the density step closing `thm:extended_model`. The model operator is
 continuous in each slot along uniformly bounded pointwise-convergent
 sequences, so a weak bound holding for every member of such a sequence holds
-for its limit.  This is the one-slot form of the transfer between the class on
+for its limit. This is the one-slot form of the transfer between the class on
 which an endpoint bound is established and the class on which it is used.
 -/
 
@@ -16359,14 +16362,14 @@ theorem weakNorm_ModelTruncatedOperator_replace_le_of_tendsto
 
 /-! ## `thm:extended_model` from the interpolated operator bound
 
-Source: `thm:extended_model`, final display.  Once
+Source: `thm:extended_model`, final display. Once
 `eq:extended_operator_bound` is available at the output exponent `R` with
 `R^{-1} + p_0^{-1} = 1`, Hölder against the zeroth input closes the theorem.
 The common factor `U(u)^{100}` passes through untouched, exactly as the source
 notes it does through the weighted geometric mean.
 -/
 
-/-- **The extended-range form bound.**  Given the interpolated operator
+/-- **The extended-range form bound.** Given the interpolated operator
 estimate at the conjugate exponent, the finite-interval form obeys the bound of
 `thm:extended_model` with the same constant and the same `U(u)^{100}`. -/
 theorem abs_ModelScaleIntervalTruncation_le_of_extended_operator_bound
@@ -16415,14 +16418,14 @@ theorem abs_ModelScaleIntervalTruncation_le_of_extended_operator_bound
 
 /-! ## Each cone term carries order-ten decay
 
-Source: the proof of `thm:main`.  The coefficient bound `eq:coefficient_decay`
+Source: the proof of `thm:main`. The coefficient bound `eq:coefficient_decay`
 contributes `(1+|nu|)^{-110}`, the extended model estimate contributes
 `U(nu/8)^{100}` with `U(nu/8) <= C(1+|nu|)`, and the two combine to leave
 `(1+|nu|)^{-10}` — the exponent that makes the lattice sum converge, since
 `10 > 3`.
 -/
 
-/-- **Order-ten decay of a single cone term.**  Coefficient decay of order 110
+/-- **Order-ten decay of a single cone term.** Coefficient decay of order 110
 against model growth of order 100 leaves order-ten decay. -/
 theorem coneTerm_decay_bound
     {w lam M nu C1 C2 C3 Pf : ℝ}
@@ -16449,14 +16452,14 @@ theorem coneTerm_decay_bound
 
 /-! ## The normalized cone coefficients have modulus at most one
 
-Source: `thm:cone`.  The coefficient of the `nu`-th mode is divided by the
+Source: `thm:cone`. The coefficient of the `nu`-th mode is divided by the
 common envelope `A_0 (1+|nu|)^{-110}`, and `A_0` is chosen large enough for
 `eq:coefficient_decay`; the quotient therefore has modulus at most one, which
 is exactly the hypothesis the truncated model forms place on their scale
 coefficients.
 -/
 
-/-- **The normalized coefficient is a contraction.**  Dividing a coefficient
+/-- **The normalized coefficient is a contraction.** Dividing a coefficient
 obeying `eq:coefficient_decay` by the envelope `A_0 (1+|nu|)^{-110}` leaves
 modulus at most one as soon as `A_0` dominates the decay constant. -/
 theorem abs_coneCoefficient_le_one
@@ -16473,7 +16476,7 @@ theorem abs_coneCoefficient_le_one
         exact mul_le_mul_of_nonneg_right hCaM hD.le
 
 /-- The mode envelope weight `w_i(nu)` of `thm:cone` is nonnegative, so the
-decomposition's weights carry no sign.  (Distinct from `coneWeight`, which is
+decomposition's weights carry no sign. (Distinct from `coneWeight`, which is
 the cone bump of the scale integrand.) -/
 theorem coneModeWeight_nonneg {cPsi alphaI A0 nu : ℝ}
     (hcPsi : 0 < cPsi) (halpha : 0 ≤ alphaI) (hA0 : 0 ≤ A0) (hnu : 0 ≤ nu) :
@@ -16487,7 +16490,7 @@ theorem coneModeWeight_nonneg {cPsi alphaI A0 nu : ℝ}
 /-! ## Interpolating at the simplex interior
 
 Source: the step of `thm:extended_model` that applies `ext:interpolation` with
-the weights of `eq:weights`.  Every side condition the external theorem asks
+the weights of `eq:weights`. Every side condition the external theorem asks
 for — the endpoint exponents exceeding one, the output exponents, the affine
 independence of the four reciprocal vectors, the positivity of the weights and
 their summing to one, and the weighted combination reproducing the target — is
@@ -16509,7 +16512,7 @@ theorem one_le_simplexVertexOutput {b : Fin 3 → ℝ} {b₀ : ℝ}
   · intro m
     rw [simplexVertexOutput_succ b hbsum m]
 
-/-- **The interpolation step of `thm:extended_model`.**  Weak bounds at the
+/-- **The interpolation step of `thm:extended_model`.** Weak bounds at the
 four simplex vertices give the strong bound at the interior target. -/
 theorem exists_strong_bound_at_simplex_interior
     {X : Type*} [MeasurableSpace X] {μ : Measure X}
@@ -16556,7 +16559,7 @@ theorem exists_strong_bound_at_simplex_interior
 /-! ## The base vertex's weak bound
 
 Source: the line of `thm:extended_model` recording that the base strong bound
-is also a weak bound at `b`.  That is the fourth of the four endpoints the
+is also a weak bound at `b`. That is the fourth of the four endpoints the
 interpolation consumes; the other three are the one-fiber extensions.
 -/
 
@@ -16569,7 +16572,7 @@ theorem weakNorm_le_of_lpNorm_le
     weakNorm μ v R ≤ ENNReal.ofReal A :=
   (weakNorm_le_ofReal_lpNorm μ v hv hR hmem).trans (ENNReal.ofReal_le_ofReal h)
 
-/-- **The base vertex endpoint.**  The strong bound at the simplex base gives
+/-- **The base vertex endpoint.** The strong bound at the simplex base gives
 the weak bound the interpolation asks for there. -/
 theorem simplexWeakEndpoint_zero_of_strong
     {X : Type*} [MeasurableSpace X] (μ : Measure X)
@@ -16599,7 +16602,7 @@ theorem simplexWeakEndpoint_zero_of_strong
 
 Source: the closing display of `thm:extended_model`, which pairs the zeroth
 input against the operator output at conjugate exponents and then substitutes
-the operator estimate.  This is that display, with the operator estimate left
+the operator estimate. This is that display, with the operator estimate left
 as a hypothesis so it can be supplied by the interpolation step.
 -/
 
@@ -16623,9 +16626,9 @@ theorem holderConjugate_of_inv_add_inv
 
 /-! ## From per-level budgets to the weak bound
 
-Source: `lem:one_fiber`.  The Calderón–Zygmund argument produces, at each
+Source: `lem:one_fiber`. The Calderón–Zygmund argument produces, at each
 level, an exceptional, a good and a tail budget, each normalized to the same
-multiple of the target constant.  Combining them at every level is exactly a
+multiple of the target constant. Combining them at every level is exactly a
 weak-`L^1` bound, which is the lemma's conclusion.
 -/
 
@@ -16648,7 +16651,7 @@ theorem weakNorm_one_le_of_canonical_budgets
 /-! ## The decomposition height chosen from the level
 
 Source: `lem:one_fiber`, which puts the Calderón–Zygmund height at a fixed
-multiple of the level divided by the endpoint constant.  With the inputs
+multiple of the level divided by the endpoint constant. With the inputs
 normalized, the selected-length estimate then lands exactly on the exceptional
 budget.
 -/
@@ -16659,7 +16662,7 @@ theorem inv_selectionHeight {lam A : ℝ} (hlam : 0 < lam) (hA : 0 < A) :
   have h : (0 : ℝ) < lam / A := div_pos hlam hA
   field_simp
 
-/-- **The exceptional budget at the chosen height.**  The selected-length
+/-- **The exceptional budget at the chosen height.** The selected-length
 estimate, against normalized mass, is the exceptional budget. -/
 theorem weakOne_exception_budget_of_inv_height
     {lam A H mass : ℝ} (hlam : 0 < lam) (hA : 0 < A) {E : Set E3}
@@ -16678,12 +16681,12 @@ theorem weakOne_exception_budget_of_inv_height
 /-! ## The good part's constant at the chosen height
 
 Source: `lem:one_fiber`, where the good part's bound reads `H^{1/p-1/P}` and
-the budget normalization consumes it as a power of the level.  At the height
+the budget normalization consumes it as a power of the level. At the height
 chosen from the level the two agree, which is what makes the good budget land
 on the same multiple of the target constant as the other two.
 -/
 
-/-- **The good part's height identity.**  At the chosen height, the
+/-- **The good part's height identity.** At the chosen height, the
 Calderón–Zygmund gain and the budget's constant are the same power of the
 level. -/
 theorem selectionHeight_pow_eq_goodConstant
@@ -16702,9 +16705,9 @@ theorem goodExponent_spec {R0 : ℝ} (hR0 : 0 < R0) :
 
 /-! ## The exceptional set, seen in the ambient space
 
-Source: `lem:fiber_cz` and `lem:one_fiber`.  The selected-length estimate is
+Source: `lem:fiber_cz` and `lem:one_fiber`. The selected-length estimate is
 proved on the fiber product, where the decomposition lives, while the weak
-bound is a statement about the ambient space.  The coordinate split preserves
+bound is a statement about the ambient space. The coordinate split preserves
 measure, so the exceptional set's ambient preimage has the same mass, which is
 what lets the estimate be quoted where the budget needs it.
 -/
@@ -16719,7 +16722,7 @@ theorem measurableSet_coordinateExceptional
   (measurableSet_fiberDyadicExceptionalSetFinset T Z hZ A hA H).preimage
     (coordinateSplit_measurePreserving m).measurable
 
-/-- **The exceptional set's ambient mass.**  The coordinate split carries the
+/-- **The exceptional set's ambient mass.** The coordinate split carries the
 fiber-product estimate to the ambient space unchanged. -/
 theorem measure_coordinateExceptional_eq
     (m : Fin 3) {Z : Set (TransverseSpace m)} (hZ : MeasurableSet Z)
@@ -16744,7 +16747,7 @@ theorem measureReal_coordinateExceptional_eq
 
 /-! ## The exceptional budget in the ambient space
 
-Source: `lem:one_fiber`.  The selected-length estimate lives on the fiber
+Source: `lem:one_fiber`. The selected-length estimate lives on the fiber
 product and the budget is needed in the ambient space; the coordinate split
 carries one to the other, and at the height chosen from the level the estimate
 lands on the budget.
@@ -16775,7 +16778,7 @@ theorem weakOne_exception_budget_coordinate
 /-! ## The good part at normalized mass
 
 Source: `lem:one_fiber`, which normalizes all input norms to one before
-choosing the decomposition height.  With that normalization the good part's
+choosing the decomposition height. With that normalization the good part's
 Calderón–Zygmund estimate is a bare power of the height, which is the form the
 good budget consumes.
 -/
@@ -16821,8 +16824,8 @@ theorem lintegral_rpow_goodField_le_goodConstant
 
 /-! ## The tail's norm, seen in the ambient space
 
-Source: `lem:one_fiber`.  The selected tail's mass is estimated on the fiber
-product; the tail budget needs its norm in the ambient space.  The coordinate
+Source: `lem:one_fiber`. The selected tail's mass is estimated on the fiber
+product; the tail budget needs its norm in the ambient space. The coordinate
 split preserves measure, so the two agree.
 -/
 
@@ -16833,7 +16836,7 @@ theorem eLpNorm_comp_coordinateSplit
     eLpNorm (fun x : E3 ↦ g (coordinateSplit m x)) p volume = eLpNorm g p volume :=
   eLpNorm_comp_measurePreserving hg (coordinateSplit_measurePreserving m)
 
-/-- **The tail budget's first factor.**  The ambient tail's `L^1` norm inherits
+/-- **The tail budget's first factor.** The ambient tail's `L^1` norm inherits
 the fiberwise mass estimate. -/
 theorem eLpNorm_one_coordinateSelectedTail_le
     (m : Fin 3) (tail F : ℝ × TransverseSpace m → ℝ) (H : ℝ)
@@ -16851,7 +16854,7 @@ theorem eLpNorm_one_coordinateSelectedTail_le
 
 /-! ## The one-fiber conclusion for the truncated operator
 
-Source: `eq:one_fiber`.  The lemma's conclusion is a weak bound for the
+Source: `eq:one_fiber`. The lemma's conclusion is a weak bound for the
 truncated operator; stated against the three per-level budgets it is exactly
 what the Calderón–Zygmund argument delivers, and naming it fixes the target the
 remaining budget verifications aim at.
@@ -16878,7 +16881,7 @@ theorem ModelTruncatedOperator_weakNorm_one_le_of_budgets
 
 Source: `lem:one_fiber`, where the starting estimate is applied to a field that
 is merely in the right Lebesgue space by passing through Schwartz
-approximants.  The weak version of this passage is already recorded; the strong
+approximants. The weak version of this passage is already recorded; the strong
 version is Fatou's lemma, and it is what lets the good part's estimate be
 quoted for the limit.
 -/
@@ -16923,7 +16926,7 @@ theorem lintegral_rpow_le_of_ae_tendsto
 
 Source: `lem:one_fiber`, where the starting estimate is applied to a field that
 is not Schwartz by passing through approximants and identifying the limit with
-the preliminary truncated bound.  The operator is continuous along uniformly
+the preliminary truncated bound. The operator is continuous along uniformly
 bounded pointwise-convergent inputs, and strong bounds survive an
 almost-everywhere limit, so the estimate transfers to the limiting field.
 -/
@@ -16956,10 +16959,10 @@ theorem lintegral_rpow_ModelTruncatedOperator_le_of_tendsto
 
 /-! ## A null set meets almost every coordinate line in a null set
 
-Source: `lem:one_fiber`, the approximation step.  Almost-everywhere
+Source: `lem:one_fiber`, the approximation step. Almost-everywhere
 convergence of the inputs says nothing along any single coordinate line, since
 a line is itself null; but the exceptional set is null on almost every line,
-which is all the convolution needs.  This is the Fubini step that lets the
+which is all the convolution needs. This is the Fubini step that lets the
 approximation be run with almost-everywhere convergent approximants.
 -/
 
@@ -17003,7 +17006,7 @@ theorem ae_measure_coordinateLine_null
 
 /-! ## The coordinate convolution under almost-everywhere convergence
 
-Source: `lem:one_fiber`, the approximation step.  The inputs enter the
+Source: `lem:one_fiber`, the approximation step. The inputs enter the
 convolution only through an integral, so almost-everywhere convergence of the
 inputs against a uniform bound suffices — at almost every point, since the
 exceptional set is null on almost every coordinate line.
@@ -17055,7 +17058,7 @@ theorem ae_tendsto_ModelCoordinateConvolution_of_ae_tendsto
 
 /-! ## The convolution at a point whose line is good
 
-Source: `lem:one_fiber`, the approximation step.  What the convolution needs at
+Source: `lem:one_fiber`, the approximation step. What the convolution needs at
 a point is convergence along that point's own coordinate line, not everywhere.
 Phrasing it that way matters, because the condition does not involve the scale:
 a single good point serves every scale at once, which is what the scale
@@ -17117,7 +17120,7 @@ theorem ae_line_tendsto_of_ae_tendsto
 
 /-! ## The truncated operator under a good line
 
-Source: `lem:one_fiber`, the approximation step.  The operator's continuity in
+Source: `lem:one_fiber`, the approximation step. The operator's continuity in
 its replaced input needs only convergence along the point's own coordinate
 line, since that is all the convolution inside it needs.
 -/
@@ -17139,13 +17142,13 @@ theorem tendsto_ModelTruncatedOperator_replace_of_ae_line
         (modelOperatorReplace f m (g n)) a b x) Filter.atTop
       (nhds (ModelTruncatedOperator α u c
         (modelOperatorReplace f m glim) a b x)) := by
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   set Cn : Fin 3 → ℝ := fun j ↦ if j = m then Bm else Bf j with hCn
   have hCnnonneg : ∀ j, 0 ≤ Cn j := by
     intro j
     by_cases hj : j = m
-    · simp only [hCn, if_pos hj]; exact hBm
-    · simp only [hCn, if_neg hj]; exact hBf j
+    · simp only [hCn, ite_eq_left hj]; exact hBm
+    · simp only [hCn, ite_eq_right hj]; exact hBf j
   have hrep : ∀ (h : E3 → ℝ), Measurable h → (∀ y : E3, |h y| ≤ Bm) →
       (∀ j, Measurable (modelOperatorReplace f m h j)) ∧
       (∀ j, ∀ y : E3, |modelOperatorReplace f m h j y| ≤ Cn j) := by
@@ -17158,8 +17161,8 @@ theorem tendsto_ModelTruncatedOperator_replace_of_ae_line
     · intro j y
       by_cases hj : j = m
       · subst hj
-        simpa only [modelOperatorReplace_same, hCn, if_pos rfl] using hhB y
-      · simpa only [modelOperatorReplace_ne f m j h hj, hCn, if_neg hj] using
+        simpa only [modelOperatorReplace_same, hCn, ite_eq_left rfl] using hhB y
+      · simpa only [modelOperatorReplace_ne f m j h hj, hCn, ite_eq_right hj] using
           hfB j y
   set D : ℝ := C * (Cn 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
     (Cn 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
@@ -17204,7 +17207,7 @@ theorem tendsto_ModelTruncatedOperator_replace_of_ae_line
 
 /-! ## The approximation step under almost-everywhere convergence
 
-Source: `lem:one_fiber`, the approximation step.  Uniformly bounded inputs
+Source: `lem:one_fiber`, the approximation step. Uniformly bounded inputs
 converging almost everywhere give outputs converging almost everywhere, and
 strong bounds survive that passage — which is the estimate transfer the good
 budget needs, now available for the approximants that actually exist.
@@ -17264,7 +17267,7 @@ theorem lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto
 
 /-! ## Mollification keeps the bound
 
-Source: `lem:one_fiber`, the approximation step.  The approximants must be
+Source: `lem:one_fiber`, the approximation step. The approximants must be
 uniformly bounded, and mollifying against a normalized bump does not increase
 the supremum, because the bump is nonnegative with unit mass.
 -/
@@ -17309,7 +17312,7 @@ theorem abs_bump_convolution_le
 
 /-! ## An exhausting family of smooth cutoffs
 
-Source: `lem:one_fiber`, the approximation step.  A mollification is smooth and
+Source: `lem:one_fiber`, the approximation step. A mollification is smooth and
 bounded but has no decay; multiplying by a cutoff that is one on a ball growing
 to the whole space restores compact support, hence membership in the Schwartz
 class, without disturbing the bound or the pointwise limit.
@@ -17342,7 +17345,7 @@ theorem cutoffBump_eq_one (n : ℕ) {x : E3} (hx : ‖x‖ ≤ (n : ℝ) + 1) :
   refine (cutoffBump n).one_of_mem_closedBall ?_
   simpa [Metric.mem_closedBall, dist_eq_norm] using hx
 
-/-- **The cutoffs exhaust the space.**  At every point they are eventually
+/-- **The cutoffs exhaust the space.** At every point they are eventually
 one. -/
 theorem tendsto_cutoffBump (x : E3) :
     Filter.Tendsto (fun n : ℕ ↦ cutoffBump n x) Filter.atTop (𝓝 1) := by
@@ -17363,7 +17366,7 @@ theorem cutoffBump_hasCompactSupport (n : ℕ) :
 
 /-! ## The approximants
 
-Source: `lem:one_fiber`, the approximation step.  A bounded measurable field is
+Source: `lem:one_fiber`, the approximation step. A bounded measurable field is
 approximated by mollifying it and cutting it off: the mollification is smooth
 and keeps the bound, the cutoff restores compact support without disturbing
 either, and the product is therefore Schwartz.
@@ -17424,7 +17427,7 @@ theorem hasCompactSupport_mollifiedApprox (g : E3 → ℝ) (n : ℕ) :
 
 /-! ## The approximants converge
 
-Source: `lem:one_fiber`, the approximation step.  The mollification converges
+Source: `lem:one_fiber`, the approximation step. The mollification converges
 to the field at almost every point — this is Lebesgue differentiation, and the
 library supplies it — and the cutoffs are eventually one at every point, so the
 product converges almost everywhere to the field.
@@ -17465,7 +17468,7 @@ theorem ae_tendsto_mollifiedApprox
 /-! ## Schwartz approximants for a bounded field
 
 Source: `lem:one_fiber`, the approximation step, which asks for Schwartz
-approximants to a field that is only bounded and measurable.  Mollifying and
+approximants to a field that is only bounded and measurable. Mollifying and
 cutting off produces them, with the bound preserved and convergence almost
 everywhere — which is exactly what the estimate transfer consumes.
 -/
@@ -17498,7 +17501,7 @@ theorem exists_schwartz_approx
 /-! ## The dual test function
 
 Source: the duality step of `thm:extended_model`, which passes from the form
-bound of `thm:initial_model` to an operator norm bound.  The test function that
+bound of `thm:initial_model` to an operator norm bound. The test function that
 saturates Hölder is the one below; the two identities it satisfies are what the
 duality argument runs on.
 -/
@@ -17540,7 +17543,7 @@ theorem abs_dualTest {X : Type*} (v : X → ℝ) {R : ℝ} (hR : 1 < R) (x : X) 
 
 /-! ## The arithmetic of the duality step
 
-Source: the duality step of `thm:extended_model`.  Two facts carry it: the test
+Source: the duality step of `thm:extended_model`. Two facts carry it: the test
 function's exponent is chosen so that its own power matches the function's, and
 a quantity dominated by the constant times its own power one lower is dominated
 by the constant.
@@ -17583,7 +17586,7 @@ theorem le_of_rpow_le_mul_rpow_sub_one {t A R : ℝ}
 
 /-! ## The test function's norm
 
-Source: the duality step of `thm:extended_model`.  Raised to the conjugate
+Source: the duality step of `thm:extended_model`. Raised to the conjugate
 exponent, the test function is the function raised to its own — so the two
 carry the same mass, which is what makes the cancellation at the end of the
 duality argument possible.
@@ -17616,7 +17619,7 @@ theorem measurable_dualTest
 /-! ## Lebesgue duality
 
 Source: the duality step of `thm:extended_model`, which turns the form bound of
-`thm:initial_model` into an operator norm bound.  Pairing against the test
+`thm:initial_model` into an operator norm bound. Pairing against the test
 function that saturates Hölder recovers the norm, because that function's own
 norm is the function's raised to one power lower.
 -/
@@ -17629,7 +17632,7 @@ theorem lpNorm_ofReal_eq (μ : Measure E3) (v : E3 → ℝ) {R : ℝ} (hR : 0 < 
     ENNReal.toReal_ofReal hR.le]
   simp only [Real.norm_eq_abs]
 
-/-- **Lebesgue duality.**  A function paired against every test function of the
+/-- **Lebesgue duality.** A function paired against every test function of the
 conjugate exponent with a common bound has that bound as its norm. -/
 theorem lpNorm_le_of_forall_integral_mul_le
     {μ : Measure E3} {v : E3 → ℝ} {p₀ R : ℝ}
@@ -17653,8 +17656,9 @@ theorem lpNorm_le_of_forall_integral_mul_le
     integral_congr_ae (Filter.Eventually.of_forall hmass)
   -- the test function lies in the conjugate space
   have hfmem : MemLp f (ENNReal.ofReal p₀) μ := by
-    refine ⟨hfmeas.aestronglyMeasurable, ?_⟩
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hppos]) (by simp),
+    change eLpNorm f _ _ < ⊤
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hppos]) (by simp)
+      (by fun_prop),
       ENNReal.toReal_ofReal hppos.le]
     have hlint : ∫⁻ x, ‖f x‖ₑ ^ p₀ ∂μ = ∫⁻ x, ‖v x‖ₑ ^ R ∂μ := by
       refine lintegral_congr fun x ↦ ?_
@@ -17667,7 +17671,8 @@ theorem lpNorm_le_of_forall_integral_mul_le
       rw [h1, h2, hmass x]
     rw [hlint]
     have hvtop := hv.eLpNorm_lt_top
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hRpos]) (by simp),
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hRpos]) (by simp)
+      (by fun_prop),
       ENNReal.toReal_ofReal hRpos.le] at hvtop
     have hfin : ∫⁻ x, ‖v x‖ₑ ^ R ∂μ ≠ ⊤ := by
       intro hcon
@@ -17681,7 +17686,7 @@ theorem lpNorm_le_of_forall_integral_mul_le
   have hI0 : 0 ≤ I := integral_nonneg fun x ↦ Real.rpow_nonneg (abs_nonneg _) _
   set t : ℝ := lpNorm v (ENNReal.ofReal R) μ with ht
   have ht0 : 0 ≤ t := MeasureTheory.lpNorm_nonneg
-  have hteq : t = I ^ R⁻¹ := lpNorm_ofReal_eq μ v hRpos hv.1
+  have hteq : t = I ^ R⁻¹ := lpNorm_ofReal_eq μ v hRpos hv.aestronglyMeasurable
   have htR : t ^ R = I := by
     rw [hteq, ← Real.rpow_mul hI0, inv_mul_cancel₀ (ne_of_gt hRpos), Real.rpow_one]
   have hfnorm : lpNorm f (ENNReal.ofReal p₀) μ = t ^ (R - 1) := by
@@ -17700,7 +17705,7 @@ theorem lpNorm_le_of_forall_integral_mul_le
 
 /-! ## Truncating a field to a bounded, compactly supported one
 
-Source: the duality step of `thm:extended_model`.  The test function that
+Source: the duality step of `thm:extended_model`. The test function that
 saturates Hölder is neither bounded nor compactly supported, so it cannot be
 reached directly by the approximants; truncating it in both value and support
 gives a sequence that can be, and that returns it in the limit.
@@ -17716,11 +17721,11 @@ theorem abs_truncateSeq_le (f : E3 → ℝ) (n : ℕ) (x : E3) :
   have hn : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
   rw [truncateSeq]
   by_cases hx : ‖x‖ ≤ (n : ℝ)
-  · rw [if_pos hx, abs_le]
+  · rw [ite_eq_left hx, abs_le]
     constructor
     · exact le_max_left _ _
     · exact max_le (by linarith) (min_le_left _ _)
-  · rw [if_neg hx, abs_zero]
+  · rw [ite_eq_right hx, abs_zero]
     exact hn
 
 theorem measurable_truncateSeq {f : E3 → ℝ} (hf : Measurable f) (n : ℕ) :
@@ -17730,7 +17735,7 @@ theorem measurable_truncateSeq {f : E3 → ℝ} (hf : Measurable f) (n : ℕ) :
   · exact measurableSet_le (by fun_prop) measurable_const
   · exact measurable_const.max (measurable_const.min hf)
 
-/-- **The truncations return the field.**  At every point they are eventually
+/-- **The truncations return the field.** At every point they are eventually
 the field itself. -/
 theorem tendsto_truncateSeq (f : E3 → ℝ) (x : E3) :
     Filter.Tendsto (fun n : ℕ ↦ truncateSeq f n x) Filter.atTop (𝓝 (f x)) := by
@@ -17741,16 +17746,16 @@ theorem tendsto_truncateSeq (f : E3 → ℝ) (x : E3) :
   have hx : ‖x‖ ≤ (n : ℝ) := le_trans (le_trans (le_max_left _ _) hN) hNn
   have hfx : |f x| ≤ (n : ℝ) := le_trans (le_trans (le_max_right _ _) hN) hNn
   rw [abs_le] at hfx
-  rw [truncateSeq, if_pos hx, min_eq_right hfx.2, max_eq_right hfx.1]
+  rw [truncateSeq, ite_eq_left hx, min_eq_right hfx.2, max_eq_right hfx.1]
 
 /-- The truncations vanish off a ball. -/
 theorem truncateSeq_eq_zero_of_lt (f : E3 → ℝ) (n : ℕ) {x : E3}
     (hx : (n : ℝ) < ‖x‖) : truncateSeq f n x = 0 := by
-  rw [truncateSeq, if_neg (not_le.mpr hx)]
+  rw [truncateSeq, ite_eq_right (not_le.mpr hx)]
 
 /-! ## The truncation limit in the pairing
 
-Source: the duality step of `thm:extended_model`.  The truncations never
+Source: the duality step of `thm:extended_model`. The truncations never
 exceed the field in size, so the pairing against them is dominated by the
 pairing against the field itself, and the bound they satisfy passes to the
 limit.
@@ -17762,7 +17767,7 @@ theorem abs_truncateSeq_le_abs (f : E3 → ℝ) (n : ℕ) (x : E3) :
   have hn : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
   rw [truncateSeq]
   by_cases hx : ‖x‖ ≤ (n : ℝ)
-  · rw [if_pos hx]
+  · rw [ite_eq_left hx]
     rcases le_total (f x) (-(n : ℝ)) with hlo | hlo
     · have hval : max (-(n : ℝ)) (min (n : ℝ) (f x)) = -(n : ℝ) := by
         rw [min_eq_right (by linarith)]
@@ -17779,7 +17784,7 @@ theorem abs_truncateSeq_le_abs (f : E3 → ℝ) (n : ℕ) (x : E3) :
           exact max_eq_right (by linarith)
         rw [hval, abs_of_nonneg hn, abs_of_nonneg (by linarith)]
         exact hhi
-  · rw [if_neg hx, abs_zero]
+  · rw [ite_eq_right hx, abs_zero]
     exact abs_nonneg _
 
 /-- **The pairing bound passes to the limit of the truncations.** -/
@@ -17812,7 +17817,7 @@ theorem abs_integral_mul_le_of_truncations
 
 /-! ## The pairing is continuous in its first slot
 
-Source: the duality step of `thm:extended_model`.  Pairing against a fixed
+Source: the duality step of `thm:extended_model`. Pairing against a fixed
 function of the conjugate exponent is a continuous functional, by Hölder
 applied to the difference — which is what lets a bound proved on a dense class
 be extended to the whole space.
@@ -17840,7 +17845,7 @@ theorem abs_integral_mul_sub_le
 
 /-! ## Extending a pairing bound from a dense class
 
-Source: the duality step of `thm:extended_model`.  The form bound is proved for
+Source: the duality step of `thm:extended_model`. The form bound is proved for
 Schwartz inputs; the pairing is continuous in that slot, so a sequence
 converging in norm carries the bound to the limit, and no mollification is
 needed for this slot at all.
@@ -17897,11 +17902,10 @@ theorem abs_integral_mul_le_of_approx
 
 /-! ## A Schwartz sequence converging in `L^p`
 
-Source: the duality step of `thm:extended_model`.  Density is stated for the
+Source: the duality step of `thm:extended_model`. Density is stated for the
 map into the `L^p` quotient; this turns it into an honest sequence of Schwartz
 functions whose `L^p` distance to the given function tends to zero.
 -/
-
 theorem exists_schwartz_lpNorm_tendsto_zero {p : ℝ≥0∞} (hp : p ≠ ⊤) [Fact (1 ≤ p)]
     {f : E3 → ℝ} (hf : MemLp f p (volume : Measure E3)) :
     ∃ g : ℕ → SchwartzMap E3 ℝ,
@@ -17929,7 +17933,7 @@ theorem exists_schwartz_lpNorm_tendsto_zero {p : ℝ≥0∞} (hp : p ≠ ⊤) [F
       simp only [Pi.sub_apply] at hy1 ⊢
       rw [hy1, hy2, hy3]
     rw [Lp.norm_def, eLpNorm_congr_ae hae,
-      toReal_eLpNorm (((g n).continuous.aestronglyMeasurable).sub hf.aestronglyMeasurable),
+      toReal_eLpNorm ,
       lpNorm_sub_comm]
   simp only [hkey]
   have := hxtend.sub (tendsto_const_nhds (x := F) (f := Filter.atTop (α := ℕ)))
@@ -17938,7 +17942,7 @@ theorem exists_schwartz_lpNorm_tendsto_zero {p : ℝ≥0∞} (hp : p ≠ ⊤) [F
 
 /-! ## Carrying the pairing bound from Schwartz inputs to all of `L^{p_0}`
 
-Source: the duality step of `thm:extended_model`.  The form bound is available
+Source: the duality step of `thm:extended_model`. The form bound is available
 for Schwartz inputs in the zeroth slot; the pairing against a fixed `L^{R}`
 function is Hölder-continuous there, so density of the Schwartz class in
 `L^{p_0}` carries the bound to every `L^{p_0}` input.
@@ -17952,14 +17956,14 @@ theorem holderTriple_ofReal_one {p₀ R : ℝ} (hpq : Real.HolderConjugate p₀ 
   have hq : 0 < R := hpq.symm.pos
   rw [← ENNReal.ofReal_inv_of_pos hp, ← ENNReal.ofReal_inv_of_pos hq,
     ← ENNReal.ofReal_add (by positivity) (by positivity), hpq.inv_add_inv_eq_one]
-  simp
+  simp only [ENNReal.ofReal_one, inv_one]
 
 /-- Hölder integrability of the pairing. -/
 theorem integrable_mul_of_holderConjugate {μ : Measure E3} {f U : E3 → ℝ} {p₀ R : ℝ}
     (hpq : Real.HolderConjugate p₀ R)
     (hf : MemLp f (ENNReal.ofReal p₀) μ) (hU : MemLp U (ENNReal.ofReal R) μ) :
     Integrable (fun x ↦ f x * U x) μ := by
-  haveI := holderTriple_ofReal_one hpq
+  have := holderTriple_ofReal_one hpq
   exact hf.integrable_mul hU
 
 /-- **The pairing bound extends from the Schwartz class to `L^{p_0}`.** -/
@@ -17971,7 +17975,7 @@ theorem abs_integral_mul_le_of_schwartz_bound
     {f : E3 → ℝ} (hf : MemLp f (ENNReal.ofReal p₀) (volume : Measure E3)) :
     |∫ x, f x * U x| ≤ A * lpNorm f (ENNReal.ofReal p₀) (volume : Measure E3) := by
   classical
-  haveI hfact : Fact ((1 : ℝ≥0∞) ≤ ENNReal.ofReal p₀) := by
+  have hfact : Fact ((1 : ℝ≥0∞) ≤ ENNReal.ofReal p₀) := by
     refine ⟨?_⟩
     rw [show (1 : ℝ≥0∞) = ENNReal.ofReal 1 by simp]
     exact ENNReal.ofReal_le_ofReal hp1
@@ -17985,7 +17989,7 @@ theorem abs_integral_mul_le_of_schwartz_bound
 
 /-! ## Duality against the Schwartz class alone
 
-Source: the duality step of `thm:extended_model`.  The form bound is only ever
+Source: the duality step of `thm:extended_model`. The form bound is only ever
 proved for Schwartz inputs, and this is all duality needs: density carries it to
 the full predual, and the dual norm identification then gives the output bound.
 -/
@@ -18004,9 +18008,9 @@ theorem lpNorm_le_of_forall_schwartz_integral_mul_le
 
 /-! ## The good budget in its canonical lower-integral form
 
-Source: `lem:one_fiber`, the Chebyshev good budget.  The budget is quoted as a
+Source: `lem:one_fiber`, the Chebyshev good budget. The budget is quoted as a
 bound on the lower integral of the `R_0`-th power; what the operator theory
-delivers is a bound on the `L^{R_0}` norm.  This converts one into the other.
+delivers is a bound on the `L^{R_0}` norm. This converts one into the other.
 -/
 
 /-- An `L^{R_0}` bound gives the good budget in the form `lem:one_fiber` quotes
@@ -18040,9 +18044,9 @@ theorem lintegral_ofReal_abs_rpow_le_of_lpNorm_le
   have := Real.rpow_le_rpow (by positivity) hle hR0.le
   rwa [← Real.rpow_mul hIpos, inv_mul_cancel₀ (ne_of_gt hR0), Real.rpow_one] at this
 
-/-- **The good budget from a Schwartz-slot form bound.**  This is the shape the
+/-- **The good budget from a Schwartz-slot form bound.** This is the shape the
 operator theory actually produces: a bound on the pairing of the operator
-against Schwartz functions.  Duality and the conversion above turn it into the
+against Schwartz functions. Duality and the conversion above turn it into the
 budget `lem:one_fiber` quotes. -/
 theorem lintegral_ofReal_abs_rpow_le_of_schwartz_bound
     {v : E3 → ℝ} {p₀ R0 Kgood : ℝ} (hpq : Real.HolderConjugate p₀ R0)
@@ -18056,7 +18060,7 @@ theorem lintegral_ofReal_abs_rpow_le_of_schwartz_bound
 
 /-! ## The seminorm as a lower integral
 
-Source: `lem:one_fiber`.  The good budget is quoted as a bound on the lower
+Source: `lem:one_fiber`. The good budget is quoted as a bound on the lower
 integral of the `R_0`-th power, while the estimates that feed it are stated as
 seminorm bounds; this is the identity that moves between the two
 normalizations.
@@ -18064,12 +18068,13 @@ normalizations.
 
 /-- The `L^R` seminorm as a lower integral of the `R`-th power. -/
 theorem eLpNorm_ofReal_eq_lintegral_rpow
-    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) {R : ℝ} (hR : 0 < R) :
+    {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) {R : ℝ} (hR : 0 < R)
+    (hv : AEStronglyMeasurable v μ := by fun_prop) :
     eLpNorm v (ENNReal.ofReal R) μ
       = (∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ) ^ (1 / R) := by
   have hp0 : ENNReal.ofReal R ≠ 0 := ne_of_gt (ENNReal.ofReal_pos.mpr hR)
   have hptop : ENNReal.ofReal R ≠ ∞ := ENNReal.ofReal_ne_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop, ENNReal.toReal_ofReal hR.le]
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hp0 hptop (by fun_prop), ENNReal.toReal_ofReal hR.le]
   congr 1
   refine lintegral_congr fun x ↦ ?_
   rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) hR.le,
@@ -18080,7 +18085,7 @@ theorem eLpNorm_ofReal_eq_lintegral_rpow
 Source: the display following the `L^p` duality step of `thm:extended_model`.
 The duality step was carried out on the complexified operator, because the
 model form is complex; the budgets of `lem:one_fiber` are about the real
-operator.  Complexification is an isometry on every `L^p`, so the two
+operator. Complexification is an isometry on every `L^p`, so the two
 statements are the same estimate.
 -/
 
@@ -18089,10 +18094,10 @@ theorem lpNorm_complex_ofReal
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) (p : ℝ≥0∞) :
     lpNorm (fun x ↦ (v x : ℂ)) p μ = lpNorm v p μ := by
   by_cases hv : AEStronglyMeasurable v μ
-  · rw [← toReal_eLpNorm (Complex.continuous_ofReal.comp_aestronglyMeasurable hv),
-      ← toReal_eLpNorm hv]
+  · rw [← toReal_eLpNorm ,
+      ← toReal_eLpNorm ]
     apply congrArg ENNReal.toReal
-    apply eLpNorm_congr_norm_ae
+    apply eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop)
     filter_upwards with x
     simp
   · have hc : ¬ AEStronglyMeasurable (fun x ↦ (v x : ℂ)) μ := by
@@ -18123,10 +18128,10 @@ theorem lpNorm_real_ModelTruncatedOperator_le_of_realSchwartz
 
 /-! ## Approximating every slot at once
 
-Source: `lem:one_fiber`, the approximation step.  The Calderon--Zygmund
+Source: `lem:one_fiber`, the approximation step. The Calderon--Zygmund
 argument carries bounded measurable fields in all three slots, while the
 strict-range output estimate is available only for Schwartz ones, so all three
-slots have to be replaced together.  Replacing them one at a time would need a
+slots have to be replaced together. Replacing them one at a time would need a
 diagonal argument; approximating simultaneously does not, because each slot
 enters the integrand through its own convolution factor and the three limits
 multiply.
@@ -18146,7 +18151,7 @@ theorem tendsto_ModelTruncatedOperator_of_ae_line_all
       (𝓝 (glim j (x - r • Anisotropy.coordinateDirection j)))) :
     Filter.Tendsto (fun n ↦ ModelTruncatedOperator α u c (g n) a b x)
       Filter.atTop (𝓝 (ModelTruncatedOperator α u c glim a b x)) := by
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   set D : ℝ := C * (B 0 * ∫ r : ℝ, |ModelLowKernel (u 0) r|) *
     (B 1 * ∫ r : ℝ, |ModelLowKernel (u 1) r|) *
       (B 2 * ∫ r : ℝ, |ModelThirdKernel (u 2) r|) with hD
@@ -18187,7 +18192,7 @@ theorem tendsto_ModelTruncatedOperator_of_ae_line_all
     have h1 := hconv 1
     have h2 := hconv 2
     simp only [activeModelKernel, show ((0 : Fin 3) = 2) = False by simp,
-      show ((1 : Fin 3) = 2) = False by simp, if_false] at h0 h1 h2
+      show ((1 : Fin 3) = 2) = False by simp, ite_false] at h0 h1 h2
     unfold modelTruncatedOperatorIntegrand
     exact (((tendsto_const_nhds.mul h0).mul h1).mul h2)
   exact tendsto_integral_of_dominated_convergence (fun _ : ℝ ↦ D) hmeasF
@@ -18221,7 +18226,7 @@ theorem ae_tendsto_ModelTruncatedOperator_of_ae_tendsto_all
   · exact h1
   · exact h2
 
-/-- **The strong estimate transfers when every slot is approximated.**  This is
+/-- **The strong estimate transfers when every slot is approximated.** This is
 the form the good budget consumes: the bound is known for Schwartz fields in
 all three slots, and the fields it is needed for are only bounded and
 measurable. -/
@@ -18248,9 +18253,9 @@ theorem lintegral_rpow_ModelTruncatedOperator_le_of_ae_tendsto_all
 
 /-! ## The good budget for Schwartz fields
 
-Source: `lem:one_fiber`, the Chebyshev good budget.  The strict-range output
+Source: `lem:one_fiber`, the Chebyshev good budget. The strict-range output
 estimate is an `L^{R_0}` bound; the budget is quoted as a bound on the lower
-integral of the `R_0`-th power.  For Schwartz fields the two are the same
+integral of the `R_0`-th power. For Schwartz fields the two are the same
 statement.
 -/
 
@@ -18258,17 +18263,11 @@ statement.
 theorem memLp_complex_ofReal_iff {v : E3 → ℝ} {p : ℝ≥0∞} :
     MemLp (fun x ↦ (v x : ℂ)) p (volume : Measure E3)
       ↔ MemLp v p (volume : Measure E3) := by
-  have hnorm : eLpNorm (fun x ↦ (v x : ℂ)) p (volume : Measure E3)
-      = eLpNorm v p (volume : Measure E3) :=
-    eLpNorm_congr_norm_ae (by filter_upwards with x; simp)
   constructor
   · intro h
-    refine ⟨?_, ?_⟩
-    · simpa using Complex.reCLM.continuous.comp_aestronglyMeasurable h.1
-    · rw [← hnorm]; exact h.2
-  · intro h
-    exact ⟨Complex.continuous_ofReal.comp_aestronglyMeasurable h.1,
-      by rw [hnorm]; exact h.2⟩
+    simpa only [Function.comp_def, Complex.reCLM_apply, Complex.ofReal_re] using
+      Complex.reCLM.comp_memLp' h
+  · exact fun h => h.ofReal
 
 /-- The real finite-scale truncated operator lies in every finite `L^p` with
 `p > 1`, for Schwartz inputs and a compact positive scale truncation. -/
@@ -18282,7 +18281,7 @@ theorem memLp_real_ModelTruncatedOperator_of_realSchwartz
   exact memLp_complexified_ModelTruncatedOperator_of_realSchwartz
     α u c F ha hcm hc hp
 
-/-- **The good budget for Schwartz fields.**  The strict-range output estimate
+/-- **The good budget for Schwartz fields.** The strict-range output estimate
 of `thm:initial_model`, restated as the lower-integral bound that
 `lem:one_fiber` quotes. -/
 theorem lintegral_rpow_ModelTruncatedOperator_le_of_realSchwartz
@@ -18320,8 +18319,8 @@ theorem lintegral_rpow_ModelTruncatedOperator_le_of_realSchwartz
 /-! ## Convolution is an `L^q` contraction
 
 Source: the approximation step of `lem:one_fiber`, which needs the Schwartz
-approximants' norms controlled.  The approximants are mollifications, and
-mollifying does not increase an `L^q` norm.  Neither Mathlib nor the pinned
+approximants' norms controlled. The approximants are mollifications, and
+mollifying does not increase an `L^q` norm. Neither Mathlib nor the pinned
 `lean_spherical` supplies any `L^p` bound for a convolution, so the contraction
 case is proved here.
 -/
@@ -18329,7 +18328,7 @@ case is proved here.
 /-- Jensen's inequality for a lower integral against a probability measure,
 by Hoelder against the constant function one.
 
-Auxiliary.  Used only to prove `aux_lintegral_enorm_rpow_convolution_le`. -/
+Auxiliary. Used only to prove `aux_lintegral_enorm_rpow_convolution_le`. -/
 theorem aux_lintegral_rpow_le_lintegral_rpow
     {α : Type*} [MeasurableSpace α] (μ : Measure α) [IsProbabilityMeasure μ]
     {G : α → ℝ≥0∞} (hG : AEMeasurable G μ) {q : ℝ} (hq : 1 ≤ q) :
@@ -18356,9 +18355,9 @@ theorem aux_lintegral_rpow_le_lintegral_rpow
 /-- Convolution against a nonnegative kernel of unit mass is an `L^q`
 contraction, `q ≥ 1`, in the lower-integral normalization.
 
-Auxiliary.  This is Young's inequality in the only case the development needs,
+Auxiliary. This is Young's inequality in the only case the development needs,
 and neither Mathlib nor the pinned `lean_spherical` supplies any `L^p` bound
-for a convolution.  It is what keeps the mollified approximants of the
+for a convolution. It is what keeps the mollified approximants of the
 approximation step of `lem:one_fiber` uniformly bounded in `L^q`. -/
 theorem aux_lintegral_enorm_rpow_convolution_le
     {φ : E3 → ℝ} (hφmeas : Measurable φ) (hφ0 : ∀ y, 0 ≤ φ y)
@@ -18370,7 +18369,7 @@ theorem aux_lintegral_enorm_rpow_convolution_le
   set Φ : E3 → ℝ≥0∞ := fun y ↦ ENNReal.ofReal (φ y) with hΦ
   have hΦmeas : Measurable Φ := ENNReal.measurable_ofReal.comp hφmeas
   set μ : Measure E3 := (volume : Measure E3).withDensity Φ with hμ
-  haveI hprob : IsProbabilityMeasure μ := by
+  have hprob : IsProbabilityMeasure μ := by
     constructor
     rw [hμ, withDensity_apply _ MeasurableSet.univ, Measure.restrict_univ, hΦ,
       ← ofReal_integral_eq_lintegral_ofReal hφint
@@ -18423,7 +18422,7 @@ theorem aux_lintegral_enorm_rpow_convolution_le
 
 /-! ## Mollification does not increase an `L^q` norm
 
-Source: the approximation step of `lem:one_fiber`.  The approximants must be
+Source: the approximation step of `lem:one_fiber`. The approximants must be
 uniformly bounded in `L^q` for the estimate transfer, and mollifying then
 cutting off achieves that: the cutoff is bounded by one and the mollification
 is a contraction.
@@ -18432,7 +18431,7 @@ is a contraction.
 /-- Convolution against a nonnegative kernel of unit mass is an `eLpNorm`
 contraction.
 
-Auxiliary.  The `eLpNorm` form of `aux_lintegral_enorm_rpow_convolution_le`. -/
+Auxiliary. The `eLpNorm` form of `aux_lintegral_enorm_rpow_convolution_le`. -/
 theorem aux_eLpNorm_convolution_le
     {φ : E3 → ℝ} (hφmeas : Measurable φ) (hφ0 : ∀ y, 0 ≤ φ y)
     (hφ1 : ∫ y : E3, φ y = 1) (hφint : Integrable φ)
@@ -18443,14 +18442,17 @@ theorem aux_eLpNorm_convolution_le
   have hq0 : (0 : ℝ) < q := lt_of_lt_of_le zero_lt_one hq
   have hne : ENNReal.ofReal q ≠ 0 := by simp [hq0]
   have htop : ENNReal.ofReal q ≠ ⊤ := ENNReal.ofReal_ne_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop
+    (((hφmeas.comp measurable_snd).mul
+      (hgmeas.comp (measurable_fst.sub
+        measurable_snd))).stronglyMeasurable.integral_prod_right.aestronglyMeasurable),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hne htop (by fun_prop),
     ENNReal.toReal_ofReal hq0.le]
   exact ENNReal.rpow_le_rpow
     (aux_lintegral_enorm_rpow_convolution_le hφmeas hφ0 hφ1 hφint hgmeas hq)
     (by positivity)
 
-/-- **Mollifying and cutting off does not increase an `L^q` norm.**  This is
+/-- **Mollifying and cutting off does not increase an `L^q` norm.** This is
 what makes the Schwartz approximants of `exists_schwartz_approx` uniformly
 bounded in `L^q`. -/
 theorem eLpNorm_mollifiedApprox_le
@@ -18482,12 +18484,16 @@ theorem eLpNorm_mollifiedApprox_le
             exact ENNReal.ofReal_le_ofReal hle
           exact mul_le_mul' le_rfl h1
       _ = ‖∫ y : E3, φ y * g (x - y)‖ₑ := mul_one _
-  exact le_trans (eLpNorm_mono_enorm hcut)
+  exact le_trans (eLpNorm_mono_enorm (by
+    unfold mollifiedApprox
+    exact ((mollifierBump n).continuous_normed.aestronglyMeasurable.convolution
+      (ContinuousLinearMap.lsmul ℝ ℝ) hgmeas.aestronglyMeasurable).mul
+        (cutoffBump n).continuous.aestronglyMeasurable) hcut)
     (aux_eLpNorm_convolution_le hφmeas hφ0 hφ1 hφint hgmeas hq)
 
 /-! ## The mollifier contraction in the real normalization
 
-Source: the approximation step of `lem:one_fiber`.  The strict-range output
+Source: the approximation step of `lem:one_fiber`. The strict-range output
 estimate of `thm:initial_model` is stated with the real `lpNorm`, so the
 contraction is needed in that normalization too.
 -/
@@ -18495,7 +18501,7 @@ contraction is needed in that normalization too.
 /-- Mollifying and cutting off does not increase an `L^q` norm, in the real
 normalization.
 
-Auxiliary.  The `lpNorm` form of `eLpNorm_mollifiedApprox_le`. -/
+Auxiliary. The `lpNorm` form of `eLpNorm_mollifiedApprox_le`. -/
 theorem aux_lpNorm_mollifiedApprox_le
     {g : E3 → ℝ} (hgmeas : Measurable g)
     (hgloc : LocallyIntegrable g (volume : Measure E3)) (n : ℕ)
@@ -18505,16 +18511,16 @@ theorem aux_lpNorm_mollifiedApprox_le
       ≤ lpNorm g (ENNReal.ofReal q) (volume : Measure E3) := by
   have hmeas : AEStronglyMeasurable (mollifiedApprox g n) (volume : Measure E3) := by
     exact (contDiff_mollifiedApprox hgloc n).continuous.aestronglyMeasurable
-  rw [← toReal_eLpNorm hmeas, ← toReal_eLpNorm hg.aestronglyMeasurable]
+  rw [← toReal_eLpNorm , ← toReal_eLpNorm ]
   exact ENNReal.toReal_mono hg.eLpNorm_ne_top
     (eLpNorm_mollifiedApprox_le hgmeas n hq)
 
 /-! ## The good budget for bounded measurable fields
 
 Source: `lem:one_fiber`, the Chebyshev good budget together with the
-approximation step.  The strict-range output estimate is available only for
+approximation step. The strict-range output estimate is available only for
 Schwartz fields; the fields the budget is needed for are bounded and
-measurable.  Mollifying supplies Schwartz approximants that converge almost
+measurable. Mollifying supplies Schwartz approximants that converge almost
 everywhere, keep the sup bound, and do not increase the `L^q` norms, so the
 bound passes to the limit with the same constant.
 -/
@@ -18569,7 +18575,7 @@ theorem lintegral_rpow_ModelTruncatedOperator_le_of_boundedMeasurable
       ≤ ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (q j.succ))
           (volume : Measure E3) := by
     intro n
-    refine Finset.prod_le_prod (fun j _ ↦ MeasureTheory.lpNorm_nonneg) ?_
+    refine Finset.prod_le_prod₀ (fun j _ ↦ MeasureTheory.lpNorm_nonneg) ?_
     intro j _
     exact aux_lpNorm_mollifiedApprox_le (hmeas j) (hloc j) n (hq1 j) (hmem j)
   -- the Schwartz budget, uniformly in the approximation index
@@ -18606,8 +18612,8 @@ theorem lintegral_rpow_ModelTruncatedOperator_le_of_boundedMeasurable
 
 /-! ## `L^q` membership of the Calderon--Zygmund pieces
 
-Source: `lem:one_fiber`.  The good budget needs each replaced slot to lie in
-its `L^q` space.  The bad part is bounded and supported on the selected set,
+Source: `lem:one_fiber`. The good budget needs each replaced slot to lie in
+its `L^q` space. The bad part is bounded and supported on the selected set,
 whose fibers have finite measure, so it lies in every `L^q`; the good part is
 then the difference of two such functions.
 -/
@@ -18615,7 +18621,7 @@ then the difference of two such functions.
 /-- A bounded function supported on a set of finite measure lies in every
 `L^p`.
 
-Auxiliary.  Used for the Calderon--Zygmund bad atoms of `lem:one_fiber`. -/
+Auxiliary. Used for the Calderon--Zygmund bad atoms of `lem:one_fiber`. -/
 theorem aux_memLp_of_bounded_of_support
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {f : X → ℝ} {s : Set X}
     (hf : AEStronglyMeasurable f μ) (hs : MeasurableSet s) (hμs : μ s ≠ ∞)
@@ -18691,7 +18697,7 @@ theorem memLp_fiberCZGoodField
 
 /-! ## `L^q` membership of the coordinate good field
 
-Source: `lem:one_fiber`.  The fiberwise statement is transported to `E3` along
+Source: `lem:one_fiber`. The fiberwise statement is transported to `E3` along
 the coordinate split, which is measure preserving.
 -/
 
@@ -18731,7 +18737,7 @@ theorem memLp_coordinateFiberGoodField
 
 /-! ## The good budget at the replaced slot
 
-Source: `lem:one_fiber`.  This is the budget in the exact shape the canonical
+Source: `lem:one_fiber`. This is the budget in the exact shape the canonical
 assembly quotes it: the truncated operator applied to the input with the
 Calderon--Zygmund good field substituted in one slot.
 -/
@@ -18792,14 +18798,14 @@ theorem lintegral_rpow_ModelTruncatedOperator_goodField_le
   have hBnew0 : ∀ j, 0 ≤ Bnew j := by
     intro j
     by_cases hj : j = m
-    · simp only [hBnew, if_pos hj]; exact hBgnn
-    · simp only [hBnew, if_neg hj]; exact hBd0 j
+    · simp only [hBnew, ite_eq_left hj]; exact hBgnn
+    · simp only [hBnew, ite_eq_right hj]; exact hBd0 j
   have hhbd : ∀ j, ∀ y : E3, |h j y| ≤ Bnew j := by
     intro j y
     by_cases hj : j = m
     · subst hj
-      simpa only [hh, modelOperatorReplace_same, hBnew, if_pos rfl] using hGbd y
-    · simpa only [hh, modelOperatorReplace_ne f m j G hj, hBnew, if_neg hj] using
+      simpa only [hh, modelOperatorReplace_same, hBnew, ite_eq_left rfl] using hGbd y
+    · simpa only [hh, modelOperatorReplace_ne f m j G hj, hBnew, ite_eq_right hj] using
         hfbd j y
   have hhmem : ∀ j, MemLp (h j) (ENNReal.ofReal (q j.succ))
       (volume : Measure E3) := by
@@ -18812,7 +18818,7 @@ theorem lintegral_rpow_ModelTruncatedOperator_goodField_le
 /-! ## Measurability of the truncated operator
 
 Source: `lem:one_fiber`, whose canonical assembly asks for the good part of the
-operator to be measurable.  The file has this only inside the Schwartz-input
+operator to be measurable. The file has this only inside the Schwartz-input
 integrability proof; measurability itself needs no boundedness, only joint
 measurability of the integrand.
 -/
@@ -18843,14 +18849,14 @@ theorem measurable_ModelTruncatedOperator_of_measurable
 
 /-! ## Side conditions of the weighted bad tail
 
-Source: `lem:one_fiber`.  The bad-tail estimate carries integrability side
-conditions on each selected atom against the dilated kernel.  Each atom is
+Source: `lem:one_fiber`. The bad-tail estimate carries integrability side
+conditions on each selected atom against the dilated kernel. Each atom is
 bounded, so the products are integrable against the integrable kernel.
 -/
 
 /-- The reflected translate of a dilated kernel is integrable.
 
-Auxiliary.  Used for the side conditions of the bad tail in `lem:one_fiber`. -/
+Auxiliary. Used for the side conditions of the bad tail in `lem:one_fiber`. -/
 theorem aux_integrable_kernelDilate_sub
     {k : ℝ → ℝ} (hk : Integrable k) {s : ℝ} (hs : 0 < s) (w : ℝ) :
     Integrable (fun y : ℝ ↦ kernelDilate k s (w - y)) :=
@@ -18877,8 +18883,8 @@ theorem integrable_fiberCZBadAtom_mul_kernelDilate
 
 /-! ## Measurability of the coordinate convolution in the scale
 
-Source: `lem:one_fiber`.  The bad-tail estimate asks for the bad part's
-convolution to be measurable as a function of the scale at a fixed point.  The
+Source: `lem:one_fiber`. The bad-tail estimate asks for the bad part's
+convolution to be measurable as a function of the scale at a fixed point. The
 file has measurability in the spatial variable at a fixed scale; this is the
 other variable.
 -/
@@ -18909,8 +18915,8 @@ theorem measurable_ModelCoordinateConvolution_scale
 
 /-! ## Convergence of the bad atom's scale tail
 
-Source: `lem:one_fiber`.  The weighted bad-tail estimate assumes each selected
-atom's scale integral against `dt/t` converges.  Away from the atom's own
+Source: `lem:one_fiber`. The weighted bad-tail estimate assumes each selected
+atom's scale integral against `dt/t` converges. Away from the atom's own
 interval the mean-zero cancellation turns the kernel's derivative bound into
 decay at small scales, and the kernel's own decay handles large scales; the
 resulting majorant is integrable.
@@ -18996,7 +19002,7 @@ theorem integrableOn_scaleTail_fiberCZBadAtom
       by_cases hji : j = i
       · simp only [hji]
         exact measurable_ModelThirdKernel _
-      · simp only [if_neg hji]
+      · simp only [ite_eq_right hji]
         exact measurable_ModelLowKernel _
     exact hkm.comp
       ((measurable_const.sub measurable_snd).div (hsc.comp measurable_fst))
@@ -19016,7 +19022,7 @@ theorem integrableOn_scaleTail_fiberCZBadAtom
 
 /-! ## Joint measurability of the atom against the dilated kernel
 
-Source: `lem:one_fiber`.  The scale tail's measurability is stated against a
+Source: `lem:one_fiber`. The scale tail's measurability is stated against a
 joint strong measurability hypothesis in all four variables; this discharges
 it.
 -/
@@ -19036,9 +19042,9 @@ theorem stronglyMeasurable_fiberCZBadAtom_kernelDilate_joint
     unfold activeModelKernel
     by_cases hji : j = i
     · subst hji
-      simp only [if_pos]
+      simp only [ite_eq_left]
       exact measurable_ModelThirdKernel _
-    · simp only [if_neg hji]
+    · simp only [ite_eq_right hji]
       exact measurable_ModelLowKernel _
   have hscale : Measurable fun qty : ((ℝ × Z) × ℝ) × ℝ ↦ qty.1.2 ^ alpha :=
     hsc.comp (measurable_snd.comp measurable_fst)
@@ -19058,7 +19064,7 @@ theorem stronglyMeasurable_fiberCZBadAtom_kernelDilate_joint
 
 /-! ## The weighted scale tail is measurable on `E3`
 
-Source: `lem:one_fiber`.  The canonical assembly asks for the weighted tail,
+Source: `lem:one_fiber`. The canonical assembly asks for the weighted tail,
 read through the coordinate split, to be measurable; the fiberwise
 measurability is transported along the split.
 -/
@@ -19105,12 +19111,12 @@ theorem aestronglyMeasurable_weighted_selectedFiberScaleTail
 
 /-! ## The canonical assembly from structural data
 
-Source: `lem:one_fiber`.  The canonical budget assembly asks for two
+Source: `lem:one_fiber`. The canonical budget assembly asks for two
 measurability conditions belonging to the Calderon--Zygmund construction
 itself; both are now available, so this restates the assembly without them.
 -/
 
-/-- **`eq:one_fiber`, finite-family form, from structural data.**  The
+/-- **`eq:one_fiber`, finite-family form, from structural data.** The
 canonical assembly with the construction's own measurability side conditions
 discharged. -/
 theorem ModelTruncatedOperator_weakOne_finite_of_structural_data
@@ -19184,7 +19190,7 @@ theorem ModelTruncatedOperator_weakOne_finite_of_structural_data
 
 /-! ## The per-level budget witnesses
 
-Source: `lem:one_fiber`.  The weak bound is assembled from three budgets at
+Source: `lem:one_fiber`. The weak bound is assembled from three budgets at
 every level; this produces those three witnesses at a single level from the
 Calderon--Zygmund data and the three normalized estimates.
 -/
@@ -19256,7 +19262,7 @@ theorem exists_canonical_budget_witnesses_of_structural_data
 
 /-! ## `L^P` membership of the countable good field
 
-Source: `lem:one_fiber`.  The source's good part is the countable one, and its
+Source: `lem:one_fiber`. The source's good part is the countable one, and its
 `L^P` estimate is exactly what makes it lie in `L^P`; the finite families enter
 only through the bad part.
 -/
@@ -19282,7 +19288,7 @@ theorem memLp_coordinateFiberDyadicCountableGoodField
       (fun I ↦ measurable_fiberDyadicIntervalAverage _
         (((continuous_abs.measurable.comp
           (measurable_coordinateFiberInput m f hf))).pow_const p) I)
-  refine ⟨hGmeas.aestronglyMeasurable, ?_⟩
+  change eLpNorm G _ _ < ⊤
   rw [eLpNorm_ofReal_eq_lintegral_rpow _ _ hP0]
   -- the lower integral is finite by the Calderon--Zygmund estimate
   have hbound := lintegral_rpow_coordinateFiberDyadicCountableGoodField_le
@@ -19304,7 +19310,7 @@ theorem memLp_coordinateFiberDyadicCountableGoodField
 
 /-! ## The good budget at the countable good field
 
-Source: `lem:one_fiber`.  The source's good part is the countable one, so this
+Source: `lem:one_fiber`. The source's good part is the countable one, so this
 is the form of the good budget its proof uses.
 -/
 
@@ -19369,9 +19375,9 @@ theorem lintegral_rpow_ModelTruncatedOperator_countableGoodField_le
   have hBnew0 : ∀ jj, 0 ≤ Bnew jj := by
     intro jj
     by_cases hjj : jj = m
-    · simp only [hBnew, if_pos hjj]
+    · simp only [hBnew, ite_eq_left hjj]
       have := hBd0 m; positivity
-    · simp only [hBnew, if_neg hjj]; exact hBd0 jj
+    · simp only [hBnew, ite_eq_right hjj]; exact hBd0 jj
   have hhmeas : ∀ jj, Measurable (h jj) := by
     intro jj
     by_cases hjj : jj = m
@@ -19381,8 +19387,8 @@ theorem lintegral_rpow_ModelTruncatedOperator_countableGoodField_le
     intro jj y
     by_cases hjj : jj = m
     · subst hjj
-      simpa only [hh, modelOperatorReplace_same, hBnew, if_pos rfl] using hGbd y
-    · simpa only [hh, modelOperatorReplace_ne f m jj G hjj, hBnew, if_neg hjj]
+      simpa only [hh, modelOperatorReplace_same, hBnew, ite_eq_left rfl] using hGbd y
+    · simpa only [hh, modelOperatorReplace_ne f m jj G hjj, hBnew, ite_eq_right hjj]
         using hfbd jj y
   have hhmem : ∀ jj, MemLp (h jj) (ENNReal.ofReal (q jj.succ))
       (volume : Measure E3) := by
@@ -19394,7 +19400,7 @@ theorem lintegral_rpow_ModelTruncatedOperator_countableGoodField_le
 
 /-! ## The good budget witness at the countable good field
 
-Source: `lem:one_fiber`.  Chebyshev turns the countable good part's `L^{R_0}`
+Source: `lem:one_fiber`. Chebyshev turns the countable good part's `L^{R_0}`
 bound into the level-set budget that the assembly consumes.
 -/
 
@@ -19473,8 +19479,8 @@ theorem weakOne_good_budget_countableGoodField
 
 /-! ## The bad budget witness at the countable bad field
 
-Source: `lem:one_fiber`.  The source passes from finite sums of bad intervals
-to the countable family at exactly this point.  The generic assembly's tail
+Source: `lem:one_fiber`. The source passes from finite sums of bad intervals
+to the countable family at exactly this point. The generic assembly's tail
 majorant may be taken to be the bad part itself, so no countable analogue of
 the finite scale tail is needed: the level bound transported from the finite
 families is already the witness, since intersecting with the complement of the
@@ -19513,7 +19519,7 @@ theorem weakOne_bad_budget_countableBadField_of_finite
 
 /-! ## The level bound at the countable decomposition
 
-Source: `lem:one_fiber`.  The source's decomposition is the countable one, and
+Source: `lem:one_fiber`. The source's decomposition is the countable one, and
 this is its level bound: the three budgets combine through the generic
 assembly, with the bad part serving as its own tail majorant.
 -/
@@ -19564,7 +19570,7 @@ theorem ModelTruncatedOperator_weakOne_countable_of_budgets
 
 /-! ## `eq:one_fiber` from level-wise stopping data
 
-Source: `lem:one_fiber`.  Choosing the stopping height from the level at every
+Source: `lem:one_fiber`. Choosing the stopping height from the level at every
 level and verifying the three budgets there gives the weak bound, which is the
 lemma's conclusion.
 -/
@@ -19621,7 +19627,7 @@ theorem ModelTruncatedOperator_weakNorm_one_le_of_countable_stopping_data
 
 /-! ## The countable exceptional budget in the ambient space
 
-Source: `lem:one_fiber`.  The source's exceptional set is the countable union
+Source: `lem:one_fiber`. The source's exceptional set is the countable union
 of doubled selected rectangles; the ambient budget is the fiber estimate
 carried across the coordinate split, at the height chosen from the level.
 -/
@@ -19671,7 +19677,7 @@ theorem weakOne_exception_budget_coordinateCountable
 
 /-! ## The exceptional budget at the canonical stopping data
 
-Source: `lem:one_fiber`.  With the input normalised so that its `p`-th mass is
+Source: `lem:one_fiber`. With the input normalised so that its `p`-th mass is
 at most one, the canonical stopping data's exceptional set obeys the budget at
 the height chosen from the level.
 -/
@@ -19752,8 +19758,8 @@ theorem weakOne_exception_budget_canonical
 
 /-! ## Finiteness of a disjoint union with bounded partial masses
 
-Source: `lem:one_fiber`.  The exceptional set is a countable disjoint union of
-selected rectangles whose finite partial masses are bounded.  The real-valued
+Source: `lem:one_fiber`. The exceptional set is a countable disjoint union of
+selected rectangles whose finite partial masses are bounded. The real-valued
 estimate already in the file cannot give finiteness, since a real measure is
 zero on a set of infinite measure and the bound then holds vacuously; this
 supplies it.
@@ -19762,7 +19768,7 @@ supplies it.
 /-- A countable disjoint union whose finite partial masses are bounded has
 finite measure.
 
-Auxiliary.  Used for the exceptional set of `lem:one_fiber`. -/
+Auxiliary. Used for the exceptional set of `lem:one_fiber`. -/
 theorem aux_measure_iUnion_ne_top_of_pairwise_disjoint
     {X ι : Type*} [MeasurableSpace X] [Countable ι] (μ : Measure X)
     (R : ι → Set X)
@@ -19790,7 +19796,7 @@ theorem aux_measure_iUnion_ne_top_of_pairwise_disjoint
 
 /-! ## Finiteness of the countable exceptional set
 
-Source: `lem:one_fiber`.  The exceptional set is the disjoint union of the
+Source: `lem:one_fiber`. The exceptional set is the disjoint union of the
 selected rectangles, and the selected-length estimate bounds every finite
 partial mass, so the union is finite.
 -/
@@ -19850,7 +19856,7 @@ theorem measure_fiberDyadicExceptionalSet_ne_top
 
 /-! ## The exceptional budget without side conditions
 
-Source: `lem:one_fiber`.  With the exceptional set's finiteness now available,
+Source: `lem:one_fiber`. With the exceptional set's finiteness now available,
 the canonical exceptional budget needs nothing beyond the normalisation of the
 input and the choice of height.
 -/
@@ -19913,9 +19919,9 @@ theorem weakOne_exception_budget_canonical_unconditional
 
 /-! ## The finite-to-countable passage away from a set
 
-Source: `lem:one_fiber`.  The source bounds the bad part only outside the
+Source: `lem:one_fiber`. The source bounds the bad part only outside the
 exceptional set, so the passage from finite families to the countable one has
-to respect that restriction.  It does: the limit argument is stated for an
+to respect that restriction. It does: the limit argument is stated for an
 arbitrary measure, and restricting the measure to the complement is exactly
 the restriction wanted.
 -/
@@ -19997,7 +20003,7 @@ theorem ModelTruncatedOperator_weakOne_countable_of_finite_restrict
 
 /-! ## The bad budget witness away from the exceptional set
 
-Source: `lem:one_fiber`.  This is the witness the generic assembly consumes,
+Source: `lem:one_fiber`. This is the witness the generic assembly consumes,
 obtained from the finite families by the restricted passage, so that the
 finite input is only ever required outside the exceptional set -- which is
 where the source establishes it.
@@ -20034,7 +20040,7 @@ theorem weakOne_bad_budget_countableBadField_of_finite_outside
 
 /-! ## A level budget from a pointwise bound outside a set
 
-Source: `lem:one_fiber`.  The bad part is dominated outside the exceptional set
+Source: `lem:one_fiber`. The bad part is dominated outside the exceptional set
 by a product of three factors, and Chebyshev with Hoelder on that product is
 the budget; the domination is only needed where it holds.
 -/
@@ -20062,7 +20068,7 @@ theorem weakOne_level_budget_of_pointwise_outside
 
 /-! ## Splitting the passive product into its two factors
 
-Source: `lem:one_fiber`.  The bad part's pointwise bound carries a product over
+Source: `lem:one_fiber`. The bad part's pointwise bound carries a product over
 the two passive coordinates; the level budget consumes three separate factors,
 so the product has to be named as a pair.
 -/
@@ -20070,7 +20076,7 @@ so the product has to be named as a pair.
 /-- The product over the two coordinates other than `m` is the product of its
 two factors.
 
-Auxiliary.  Used to feed the bad part's pointwise bound to the level budget of
+Auxiliary. Used to feed the bad part's pointwise bound to the level budget of
 `lem:one_fiber`. -/
 theorem aux_prod_erase_fin3 (m : Fin 3) (F : Fin 3 → ℝ) :
     ∃ j₁ j₂ : Fin 3, j₁ ≠ m ∧ j₂ ≠ m ∧ j₁ ≠ j₂ ∧
@@ -20078,22 +20084,22 @@ theorem aux_prod_erase_fin3 (m : Fin 3) (F : Fin 3 → ℝ) :
   classical
   fin_cases m
   · refine ⟨1, 2, by decide, by decide, by decide, ?_⟩
-    show (∏ j ∈ Finset.univ.erase (0 : Fin 3), F j) = F 1 * F 2
+    change (∏ j ∈ Finset.univ.erase (0 : Fin 3), F j) = F 1 * F 2
     have h : (Finset.univ.erase (0 : Fin 3)) = {1, 2} := by decide
     rw [h, Finset.prod_pair (by decide : (1 : Fin 3) ≠ 2)]
   · refine ⟨0, 2, by decide, by decide, by decide, ?_⟩
-    show (∏ j ∈ Finset.univ.erase (1 : Fin 3), F j) = F 0 * F 2
+    change (∏ j ∈ Finset.univ.erase (1 : Fin 3), F j) = F 0 * F 2
     have h : (Finset.univ.erase (1 : Fin 3)) = {0, 2} := by decide
     rw [h, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 2)]
   · refine ⟨0, 1, by decide, by decide, by decide, ?_⟩
-    show (∏ j ∈ Finset.univ.erase (2 : Fin 3), F j) = F 0 * F 1
+    change (∏ j ∈ Finset.univ.erase (2 : Fin 3), F j) = F 0 * F 1
     have h : (Finset.univ.erase (2 : Fin 3)) = {0, 1} := by decide
     rw [h, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 1)]
 
 /-! ## The doubled exceptional set
 
 Source: `lem:one_fiber`, equation `eq:cz_exceptional_set`, which sets
-`2I = [c_I - |I|, c_I + |I|)` and `E = ⋃_{I} (2I × S_I)`.  Lying outside this
+`2I = [c_I - |I|, c_I + |I|)` and `E = ⋃_{I} (2I × S_I)`. Lying outside this
 set is what supplies the far-field hypothesis of the cancellation estimates;
 the undoubled union already in the file is too small for that.
 -/
@@ -20104,7 +20110,7 @@ def fiberDyadicDoubledInterval (I : FiberDyadicInterval) : Set ℝ :=
   Set.Ico (fiberDyadicIntervalCenter I - fiberDyadicIntervalLength I)
     (fiberDyadicIntervalCenter I + fiberDyadicIntervalLength I)
 
-/-- **`eq:cz_exceptional_set`.**  The exceptional set `E = ⋃_I (2I × S_I)`. -/
+/-- **`eq:cz_exceptional_set`.** The exceptional set `E = ⋃_I (2I × S_I)`. -/
 def fiberDyadicDoubledExceptionalSet
     {Z : Type*} [MeasurableSpace Z] (Zf : Set Z)
     (A : FiberDyadicInterval → Z → ℝ) (H : ℝ) : Set (ℝ × Z) :=
@@ -20151,8 +20157,8 @@ theorem far_of_notMem_fiberDyadicDoubledExceptionalSet
 
 /-! ## The doubled exceptional set's mass
 
-Source: `lem:one_fiber`.  The source's `|E| ≤ 2H^{-1}` is twice the undoubled
-bound because each doubled interval has twice the length.  The doubled
+Source: `lem:one_fiber`. The source's `|E| ≤ 2H^{-1}` is twice the undoubled
+bound because each doubled interval has twice the length. The doubled
 rectangles overlap, so the comparison is by subadditivity against the disjoint
 undoubled union rather than by an identity.
 -/
@@ -20207,7 +20213,7 @@ theorem measure_fiberDyadicDoubledExceptionalSet_le
 
 /-! ## The doubled exceptional budget
 
-Source: `lem:one_fiber`.  The exceptional budget for the set that actually
+Source: `lem:one_fiber`. The exceptional budget for the set that actually
 supplies the far-field condition is the undoubled one with its constant
 doubled, matching the source's `|E| ≤ 2H^{-1}`.
 -/
@@ -20274,7 +20280,7 @@ theorem weakOne_exception_budget_doubled
 
 /-! ## The doubled exceptional budget at canonical data
 
-Source: `lem:one_fiber`.  This is the exceptional budget in the form the
+Source: `lem:one_fiber`. This is the exceptional budget in the form the
 argument uses it: at the canonical stopping data, for the set whose complement
 supplies the far-field condition, with no side conditions left.
 -/
@@ -20307,9 +20313,9 @@ theorem weakOne_exception_budget_doubled_canonical
 
 /-! ## The bad atom's scale tail outside the exceptional set
 
-Source: `lem:one_fiber`.  Outside the doubled exceptional set the far-field
+Source: `lem:one_fiber`. Outside the doubled exceptional set the far-field
 condition holds on every selected fiber, and off the selection the atom
-vanishes, so the scale tail converges in either case.  This is the form in
+vanishes, so the scale tail converges in either case. This is the form in
 which the side condition is actually available.
 -/
 
@@ -20355,7 +20361,7 @@ theorem integrableOn_scaleTail_fiberCZBadAtom_outside
 
 /-! ## The pointwise bad bound outside the exceptional set
 
-Source: `lem:one_fiber`.  The bad part's pointwise estimate carries three
+Source: `lem:one_fiber`. The bad part's pointwise estimate carries three
 analytic side conditions; outside the doubled exceptional set all three are
 available, so the estimate holds there with no hypotheses beyond the input
 data.
@@ -20408,8 +20414,8 @@ theorem abs_ModelTruncatedOperator_bad_le_outside :
     refine measurable_ModelCoordinateConvolution_scale m _ _ _ x hbadmeas ?_
     unfold activeModelKernel
     by_cases hji : m = 2
-    · subst hji; simp only [if_pos]; exact measurable_ModelThirdKernel _
-    · simp only [if_neg hji]; exact measurable_ModelLowKernel _
+    · subst hji; simp only [ite_eq_left]; exact measurable_ModelThirdKernel _
+    · simp only [ite_eq_right hji]; exact measurable_ModelLowKernel _
   have hFB : ∀ yz : ℝ × TransverseSpace m,
       |coordinateFiberInput m (f m) yz| ≤ B m := fun yz ↦ hfB m _
   exact hmain α u c f m a b x Zf Astop H T B ha hcm hc hfmeas hB0 hfB hrep
@@ -20425,14 +20431,14 @@ theorem abs_ModelTruncatedOperator_bad_le_outside :
 
 /-! ## The passive pair, chosen once for the coordinate
 
-Source: `lem:one_fiber`.  The two passive coordinates depend only on the active
+Source: `lem:one_fiber`. The two passive coordinates depend only on the active
 one, so they must be named before the function being multiplied is fixed;
 otherwise the pair could vary with the point at which the estimate is applied.
 -/
 
 /-- The two coordinates other than `m`, named once and serving every product.
 
-Auxiliary.  The quantifier order matters: the pair is chosen for `m` alone, so
+Auxiliary. The quantifier order matters: the pair is chosen for `m` alone, so
 the same two indices serve at every point. -/
 theorem aux_prod_erase_fin3_uniform (m : Fin 3) :
     ∃ j₁ j₂ : Fin 3, j₁ ≠ m ∧ j₂ ≠ m ∧ j₁ ≠ j₂ ∧
@@ -20440,21 +20446,21 @@ theorem aux_prod_erase_fin3_uniform (m : Fin 3) :
   classical
   fin_cases m
   · refine ⟨1, 2, by decide, by decide, by decide, fun F ↦ ?_⟩
-    show (∏ j ∈ Finset.univ.erase (0 : Fin 3), F j) = F 1 * F 2
+    change (∏ j ∈ Finset.univ.erase (0 : Fin 3), F j) = F 1 * F 2
     have h : (Finset.univ.erase (0 : Fin 3)) = {1, 2} := by decide
     rw [h, Finset.prod_pair (by decide : (1 : Fin 3) ≠ 2)]
   · refine ⟨0, 2, by decide, by decide, by decide, fun F ↦ ?_⟩
-    show (∏ j ∈ Finset.univ.erase (1 : Fin 3), F j) = F 0 * F 2
+    change (∏ j ∈ Finset.univ.erase (1 : Fin 3), F j) = F 0 * F 2
     have h : (Finset.univ.erase (1 : Fin 3)) = {0, 2} := by decide
     rw [h, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 2)]
   · refine ⟨0, 1, by decide, by decide, by decide, fun F ↦ ?_⟩
-    show (∏ j ∈ Finset.univ.erase (2 : Fin 3), F j) = F 0 * F 1
+    change (∏ j ∈ Finset.univ.erase (2 : Fin 3), F j) = F 0 * F 1
     have h : (Finset.univ.erase (2 : Fin 3)) = {0, 1} := by decide
     rw [h, Finset.prod_pair (by decide : (0 : Fin 3) ≠ 1)]
 
 /-! ## The bad level budget at a finite family
 
-Source: `lem:one_fiber`.  Outside the doubled exceptional set the bad part is
+Source: `lem:one_fiber`. Outside the doubled exceptional set the bad part is
 dominated by a product of two maximal factors and the scale tail, and Chebyshev
 with Hoelder on that product is the level budget the passage to the countable
 family consumes.
@@ -20516,9 +20522,9 @@ theorem weakOne_bad_level_budget_finite_outside
 
 /-! ## The scale tail against the interval tails
 
-Source: `lem:one_fiber`.  The scale tail at a finite family is dominated by the
+Source: `lem:one_fiber`. The scale tail at a finite family is dominated by the
 interval-tail sum of `lem:interval_tails`, which is the step that removes the
-family from the estimate.  Intervals whose fiber is not selected contribute
+family from the estimate. Intervals whose fiber is not selected contribute
 nothing, so the far-field condition is needed only on the selected ones.
 -/
 
@@ -20562,7 +20568,7 @@ theorem selectedFiberScaleTail_le_intervalTail_sum :
       exact hnot
     have hb0 : ∀ y : ℝ, bb I y = 0 := by
       intro y
-      show fiberCZBadAtom F S I (y, z) = 0
+      change fiberCZBadAtom F S I (y, z) = 0
       unfold fiberCZBadAtom
       rw [Set.indicator_of_notMem]
       intro hmem
@@ -20602,7 +20608,7 @@ theorem selectedFiberScaleTail_le_intervalTail_sum :
 
 /-! ## The scale tail against the selected interval tails
 
-Source: `lem:one_fiber`.  Bounding the scale tail by the interval tails of the
+Source: `lem:one_fiber`. Bounding the scale tail by the interval tails of the
 *selected* intervals only is what makes the bound independent of the finite
 family: the selected indices form one countable set, and every finite family
 contributes a subsum of the same series.
@@ -20650,7 +20656,7 @@ theorem selectedFiberScaleTail_le_selected_intervalTail_sum :
       exact hnot
     have hb0 : ∀ y : ℝ, bb I y = 0 := by
       intro y
-      show fiberCZBadAtom F S I (y, z) = 0
+      change fiberCZBadAtom F S I (y, z) = 0
       unfold fiberCZBadAtom
       rw [Set.indicator_of_notMem]
       intro hmem
@@ -20682,7 +20688,7 @@ theorem selectedFiberScaleTail_le_selected_intervalTail_sum :
 
 /-! ## The selected interval tails are a subsum of one series
 
-Source: `lem:one_fiber`.  Every finite family contributes a subsum of the
+Source: `lem:one_fiber`. Every finite family contributes a subsum of the
 series indexed by the selected intervals, so the resulting bound no longer
 mentions the family.
 -/
@@ -20719,7 +20725,7 @@ theorem finset_selected_intervalTail_le_intervalTailTsum
 
 /-! ## The scale tail, uniformly in the family
 
-Source: `lem:one_fiber`.  This is the scale tail bounded by a quantity that
+Source: `lem:one_fiber`. This is the scale tail bounded by a quantity that
 does not mention the finite family, which is what the passage to the countable
 decomposition requires.
 -/
@@ -20767,7 +20773,7 @@ theorem selectedFiberScaleTail_le_intervalTailTsum_uniform :
 
 Source: `lem:interval_tails`, the `p = 1` clause: each doubled summand has mass
 twice the interval's length, so the sum's mass is controlled by the total
-length alone.  Stated as an `eLpNorm` bound, this is uniform in the family.
+length alone. Stated as an `eLpNorm` bound, this is uniform in the family.
 -/
 
 /-- **The `L^1` norm of a finite interval-tail sum is controlled by the total
@@ -20789,7 +20795,7 @@ theorem eLpNorm_one_finset_double_intervalTails_le
   have hmeas : AEStronglyMeasurable
       (fun x : ℝ ↦ ∑ i ∈ S, intervalTail (c i) (2 * r i) x)
       (volume : Measure ℝ) := hint.aestronglyMeasurable
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm (by fun_prop)]
   have henorm : ∀ x : ℝ,
       ‖∑ i ∈ S, intervalTail (c i) (2 * r i) x‖ₑ
         = ENNReal.ofReal (∑ i ∈ S, intervalTail (c i) (2 * r i) x) := fun x ↦
@@ -20802,7 +20808,7 @@ theorem eLpNorm_one_finset_double_intervalTails_le
 
 /-! ## The fiberwise interval-tail mass at a transverse point
 
-Source: `lem:one_fiber`.  On one fiber the selected intervals have total length
+Source: `lem:one_fiber`. On one fiber the selected intervals have total length
 the selected-length density at that point, so the tail's mass there is that
 density times the universal tail mass.
 -/
@@ -20822,11 +20828,11 @@ theorem sum_selected_radius_eq_half_lengthDensity
   rw [Finset.sum_filter]
   refine Finset.sum_congr rfl fun I _ ↦ ?_
   by_cases hz : z ∈ fiberDyadicSelectionSet Zf A H I
-  · rw [if_pos hz, Set.indicator_of_mem hz, mul_one]
+  · rw [ite_eq_left hz, Set.indicator_of_mem hz, mul_one]
     have : fiberDyadicIntervalLength I = 2 * fiberDyadicIntervalRadius I :=
       (two_mul_fiberDyadicIntervalRadius I).symm
     rw [this]; ring
-  · rw [if_neg hz, Set.indicator_of_notMem hz, mul_zero, zero_div]
+  · rw [ite_eq_right hz, Set.indicator_of_notMem hz, mul_zero, zero_div]
 
 open Classical in
 /-- **The fiberwise tail mass at a transverse point.** -/
@@ -20855,7 +20861,7 @@ theorem eLpNorm_one_selected_intervalTail_fiber_le
 
 /-! ## Ambient mass as an iterated fiber mass
 
-Source: `lem:one_fiber`.  A quantity read through the coordinate split has the
+Source: `lem:one_fiber`. A quantity read through the coordinate split has the
 same ambient mass as its fiber mass integrated over the transverse variable;
 this is the step that turns the fiberwise tail estimate into an ambient one.
 -/
@@ -20877,7 +20883,7 @@ theorem lintegral_enorm_comp_coordinateSplit_eq_iterated
 
 /-! ## The ambient interval-tail mass
 
-Source: `lem:one_fiber`.  Integrating the fiberwise tail mass over the
+Source: `lem:one_fiber`. Integrating the fiberwise tail mass over the
 transverse variable gives the ambient mass, which the selected-length estimate
 bounds by the inverse height.
 -/
@@ -20886,7 +20892,7 @@ open Classical in
 /-- The selected fiber tail, written so that its joint measurability is
 visible.
 
-Auxiliary.  The filtered sum hides the dependence on the transverse point
+Auxiliary. The filtered sum hides the dependence on the transverse point
 inside the index set; the indicator form exposes it. -/
 noncomputable def aux_selectedFiberIntervalTail
     {Z : Type*} [MeasurableSpace Z] (T : Finset FiberDyadicInterval)
@@ -20909,8 +20915,8 @@ theorem aux_selectedFiberIntervalTail_eq
   rw [Finset.sum_filter]
   refine Finset.sum_congr rfl fun I _ ↦ ?_
   by_cases hz : z ∈ fiberDyadicSelectionSet Zf A H I
-  · rw [Set.indicator_of_mem hz, if_pos hz]
-  · rw [Set.indicator_of_notMem hz, if_neg hz]
+  · rw [Set.indicator_of_mem hz, ite_eq_left hz]
+  · rw [Set.indicator_of_notMem hz, ite_eq_right hz]
 
 open Classical in
 theorem aux_measurable_selectedFiberIntervalTail
@@ -20932,7 +20938,7 @@ theorem aux_measurable_selectedFiberIntervalTail
 
 /-! ## The ambient tail mass from the selected length
 
-Source: `lem:one_fiber`.  The tail's ambient mass is its fiber mass integrated
+Source: `lem:one_fiber`. The tail's ambient mass is its fiber mass integrated
 transversally, and each fiber mass is the selected length there times the
 universal tail mass.
 -/
@@ -20957,7 +20963,9 @@ theorem eLpNorm_one_ambient_selectedFiberIntervalTail_le
     with hG
   have hGmeas : Measurable G :=
     aux_measurable_selectedFiberIntervalTail T Zf hZf A hA H
-  rw [eLpNorm_one_eq_lintegral_enorm,
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (show AEStronglyMeasurable (fun x => G (coordinateSplit m x)) volume from
+      (hGmeas.comp (coordinateSplit_measurePreserving m).measurable).aestronglyMeasurable),
     lintegral_enorm_comp_coordinateSplit_eq_iterated m G hGmeas]
   -- the inner integral is the fiber mass
   have hinner : ∀ z : TransverseSpace m,
@@ -20966,7 +20974,11 @@ theorem eLpNorm_one_ambient_selectedFiberIntervalTail_le
             fiberDyadicSelectedLengthDensity T Zf A H z) := by
     intro z
     have hfib := eLpNorm_one_selected_intervalTail_fiber_le T Zf A H z
-    rw [eLpNorm_one_eq_lintegral_enorm] at hfib
+    rw [eLpNorm_one_eq_lintegral_enorm (by
+      apply Measurable.aestronglyMeasurable
+      exact Finset.measurable_sum _ fun I _ => by
+        unfold intervalTail
+        fun_prop)] at hfib
     refine le_trans (le_of_eq ?_) hfib
     refine lintegral_congr fun q ↦ ?_
     rw [hG, aux_selectedFiberIntervalTail_eq]
@@ -20986,7 +20998,7 @@ theorem eLpNorm_one_ambient_selectedFiberIntervalTail_le
 
 /-! ## Integrability of the selected-length density
 
-Source: `lem:one_fiber`.  The density is a finite sum of constants on the
+Source: `lem:one_fiber`. The density is a finite sum of constants on the
 selected fiber sets, so it is integrable as soon as each of those sets is
 finite, which the stopping construction guarantees.
 -/
@@ -20994,7 +21006,7 @@ finite, which the stopping construction guarantees.
 /-- The selected-length density is integrable when each selected fiber set is
 finite.
 
-Auxiliary.  Supplies the integrability the ambient tail mass bound assumes. -/
+Auxiliary. Supplies the integrability the ambient tail mass bound assumes. -/
 theorem aux_integrable_fiberDyadicSelectedLengthDensity
     {Z : Type*} [MeasurableSpace Z] (μ : Measure Z)
     (T : Finset FiberDyadicInterval)
@@ -21020,7 +21032,7 @@ theorem aux_integrable_fiberDyadicSelectedLengthDensity
 
 /-! ## The ambient tail mass at the stopping height
 
-Source: `lem:one_fiber`.  Combining the ambient tail mass with the
+Source: `lem:one_fiber`. Combining the ambient tail mass with the
 selected-length estimate gives the source's `‖h_m‖_1 ≤ C H^{-1}`, uniformly in
 the finite family.
 -/
@@ -21058,7 +21070,7 @@ theorem eLpNorm_one_ambient_tail_le_inv_height
 
 /-! ## The weighted maximal factor
 
-Source: `lem:one_fiber`.  The bad part's passive factors are the coordinate
+Source: `lem:one_fiber`. The bad part's passive factors are the coordinate
 maximal functions carried with the translation weight; their norms are the
 maximal estimate's with that weight in front.
 -/
@@ -21089,7 +21101,7 @@ theorem eLpNorm_weighted_coordinateDyadicBallMaximal_le
 
 /-! ## The maximal factor over the selected union
 
-Source: the duality step of `lem:one_fiber`.  The cutoff estimate carries the
+Source: the duality step of `lem:one_fiber`. The cutoff estimate carries the
 test function's maximal norm over the selected intervals; restricting the
 domain only decreases it, and the coordinate map on the fiber line is measure
 preserving, so it is at most the maximal norm on the line.
@@ -21131,7 +21143,7 @@ theorem aux_setIntegral_line_maximal_le
 
 /-! ## The cutoff pairing with the maximal factor on the whole line
 
-Source: the duality step of `lem:one_fiber`.  Replacing the maximal factor's
+Source: the duality step of `lem:one_fiber`. Replacing the maximal factor's
 domain by the whole line removes the selected family from that factor, leaving
 the family only in the measure of its union.
 -/
@@ -21207,14 +21219,14 @@ theorem selectedFiber_scaleTail_pairing_le_line_maximal :
 
 /-! ## The maximal factor as a norm
 
-Source: the duality step of `lem:one_fiber`.  The cutoff estimate carries its
+Source: the duality step of `lem:one_fiber`. The cutoff estimate carries its
 maximal factor as a root of an integral of a power; naming it as a norm is what
 lets the maximal estimate be applied to it.
 -/
 
 /-- The line maximal factor is the maximal function's norm.
 
-Auxiliary.  Bridges the cutoff estimate's integral form to the `lpNorm` the
+Auxiliary. Bridges the cutoff estimate's integral form to the `lpNorm` the
 maximal estimate is stated in. -/
 theorem aux_line_maximal_integral_eq_lpNorm
     (g : FiberDyadicLine → ℂ)
@@ -21235,13 +21247,13 @@ theorem aux_line_maximal_integral_eq_lpNorm
 
 /-! ## The line maximal estimate in the real normalization
 
-Source: `ext:maximal`.  The cutoff estimate's factors are real, so the maximal
+Source: `ext:maximal`. The cutoff estimate's factors are real, so the maximal
 estimate is needed in the real normalization as well as the extended one.
 -/
 
 /-- The maximal estimate's constant, as a real number.
 
-Auxiliary.  The extended-valued constant of `eLpNorm_line_dyadicBallMaximal_le`
+Auxiliary. The extended-valued constant of `eLpNorm_line_dyadicBallMaximal_le`
 read as a real. -/
 noncomputable def aux_lineMaximalConst (q : ℝ) : ℝ :=
   ((ENNReal.ofReal q *
@@ -21283,12 +21295,12 @@ theorem lpNorm_line_dyadicBallMaximal_le
     have := FiberTailCutoffInternal.scratchLp_line_dyadicBallMaximal_memLp
       g hg hgb hq hgq
     exact this.aestronglyMeasurable
-  rw [← toReal_eLpNorm hMmeas, ← toReal_eLpNorm hgq.aestronglyMeasurable]
+  rw [← toReal_eLpNorm , ← toReal_eLpNorm ]
   exact htoReal
 
 /-! ## The cutoff pairing in dual form
 
-Source: the duality step of `lem:one_fiber`.  With the maximal factor replaced
+Source: the duality step of `lem:one_fiber`. With the maximal factor replaced
 by the test function's own norm, the pairing bound is exactly the dual
 statement of the tail's norm estimate.
 -/
@@ -21355,7 +21367,7 @@ theorem selectedFiber_scaleTail_pairing_le_norm :
 
 /-! ## Lebesgue duality on an arbitrary space
 
-Source: the duality steps of `lem:one_fiber` and `thm:extended_model`.  The
+Source: the duality steps of `lem:one_fiber` and `thm:extended_model`. The
 duality proved earlier was stated on the ambient space; the fiberwise estimates
 need it on the fiber line, and nothing in the argument is special to either.
 -/
@@ -21390,8 +21402,9 @@ theorem lpNorm_le_of_forall_integral_mul_le_general
   have hIR : ∫ x, |f x| ^ p₀ ∂μ = ∫ x, |v x| ^ R ∂μ :=
     integral_congr_ae (Filter.Eventually.of_forall hmass)
   have hfmem : MemLp f (ENNReal.ofReal p₀) μ := by
-    refine ⟨hfmeas.aestronglyMeasurable, ?_⟩
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hppos]) (by simp),
+    change eLpNorm f _ _ < ⊤
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hppos]) (by simp)
+      (by fun_prop),
       ENNReal.toReal_ofReal hppos.le]
     have hlint : ∫⁻ x, ‖f x‖ₑ ^ p₀ ∂μ = ∫⁻ x, ‖v x‖ₑ ^ R ∂μ := by
       refine lintegral_congr fun x ↦ ?_
@@ -21404,7 +21417,8 @@ theorem lpNorm_le_of_forall_integral_mul_le_general
       rw [h1, h2, hmass x]
     rw [hlint]
     have hvtop := hv.eLpNorm_lt_top
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hRpos]) (by simp),
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hRpos]) (by simp)
+      (by fun_prop),
       ENNReal.toReal_ofReal hRpos.le] at hvtop
     have hfin : ∫⁻ x, ‖v x‖ₑ ^ R ∂μ ≠ ⊤ := by
       intro hcon
@@ -21417,7 +21431,7 @@ theorem lpNorm_le_of_forall_integral_mul_le_general
   have hI0 : 0 ≤ I := integral_nonneg fun x ↦ Real.rpow_nonneg (abs_nonneg _) _
   set t : ℝ := lpNorm v (ENNReal.ofReal R) μ with ht
   have ht0 : 0 ≤ t := MeasureTheory.lpNorm_nonneg
-  have hteq : t = I ^ R⁻¹ := lpNorm_ofReal_eq_general μ v hRpos hv.1
+  have hteq : t = I ^ R⁻¹ := lpNorm_ofReal_eq_general μ v hRpos hv.aestronglyMeasurable
   have htR : t ^ R = I := by
     rw [hteq, ← Real.rpow_mul hI0, inv_mul_cancel₀ (ne_of_gt hRpos), Real.rpow_one]
   have hfnorm : lpNorm f (ENNReal.ofReal p₀) μ = t ^ (R - 1) := by
@@ -21434,7 +21448,7 @@ theorem lpNorm_le_of_forall_integral_mul_le_general
 
 /-! ## Complexification is an isometry on an arbitrary space
 
-Source: the duality steps of `lem:one_fiber`.  The pairing estimates are
+Source: the duality steps of `lem:one_fiber`. The pairing estimates are
 stated for complex test functions while duality supplies real ones, so the two
 normalizations have to be identified; the identification holds on any measure
 space.
@@ -21446,10 +21460,10 @@ theorem lpNorm_complex_ofReal_general
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (v : X → ℝ) (p : ℝ≥0∞) :
     lpNorm (fun x ↦ (v x : ℂ)) p μ = lpNorm v p μ := by
   by_cases hv : AEStronglyMeasurable v μ
-  · rw [← toReal_eLpNorm (Complex.continuous_ofReal.comp_aestronglyMeasurable hv),
-      ← toReal_eLpNorm hv]
+  · rw [← toReal_eLpNorm ,
+      ← toReal_eLpNorm ]
     apply congrArg ENNReal.toReal
-    apply eLpNorm_congr_norm_ae
+    apply eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop)
     filter_upwards with x
     simp
   · have hc : ¬ AEStronglyMeasurable (fun x ↦ (v x : ℂ)) μ := by
@@ -21463,27 +21477,22 @@ space. -/
 theorem memLp_complex_ofReal_iff_general
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {v : X → ℝ} {p : ℝ≥0∞} :
     MemLp (fun x ↦ (v x : ℂ)) p μ ↔ MemLp v p μ := by
-  have hnorm : eLpNorm (fun x ↦ (v x : ℂ)) p μ = eLpNorm v p μ :=
-    eLpNorm_congr_norm_ae (by filter_upwards with x; simp)
   constructor
   · intro h
-    refine ⟨?_, ?_⟩
-    · simpa using Complex.reCLM.continuous.comp_aestronglyMeasurable h.1
-    · rw [← hnorm]; exact h.2
-  · intro h
-    exact ⟨Complex.continuous_ofReal.comp_aestronglyMeasurable h.1,
-      by rw [hnorm]; exact h.2⟩
+    simpa only [Function.comp_def, Complex.reCLM_apply, Complex.ofReal_re] using
+      Complex.reCLM.comp_memLp' h
+  · exact fun h => h.ofReal
 
 /-! ## From bounded test functions to all of `L^{p_0}`
 
-Source: the duality step of `lem:one_fiber`.  The pairing estimate is proved
+Source: the duality step of `lem:one_fiber`. The pairing estimate is proved
 for bounded test functions, while duality quantifies over the whole of
-`L^{p_0}`.  Clamping the values of a test function gives a bounded sequence
+`L^{p_0}`. Clamping the values of a test function gives a bounded sequence
 that never increases the norm and returns the function pointwise, so dominated
 convergence carries the bound across.
 -/
 
-/-- The `n`-th value clamp of a field, cutting its values to `[-n, n]`.  Unlike
+/-- The `n`-th value clamp of a field, cutting its values to `[-n, n]`. Unlike
 `truncateSeq` this leaves the support alone, so it makes sense on any space. -/
 def aux_clampSeq {X : Type*} (f : X → ℝ) (n : ℕ) : X → ℝ :=
   fun x ↦ max (-(n : ℝ)) (min (n : ℝ) (f x))
@@ -21509,7 +21518,7 @@ theorem aux_measurable_clampSeq {X : Type*} [MeasurableSpace X] {f : X → ℝ}
     (hf : Measurable f) (n : ℕ) : Measurable (aux_clampSeq f n) :=
   measurable_const.max (measurable_const.min hf)
 
-/-- **The clamps return the field.**  At every point they are eventually the
+/-- **The clamps return the field.** At every point they are eventually the
 field itself. -/
 theorem aux_tendsto_clampSeq {X : Type*} (f : X → ℝ) (x : X) :
     Filter.Tendsto (fun n : ℕ ↦ aux_clampSeq f n x) Filter.atTop (𝓝 (f x)) := by
@@ -21543,7 +21552,7 @@ theorem aux_integrable_mul_of_holderConjugate_general
     (hpq : Real.HolderConjugate p₀ R)
     (hf : MemLp f (ENNReal.ofReal p₀) μ) (hU : MemLp U (ENNReal.ofReal R) μ) :
     Integrable (fun x ↦ f x * U x) μ := by
-  haveI := holderTriple_ofReal_one hpq
+  have := holderTriple_ofReal_one hpq
   exact hf.integrable_mul hU
 
 /-- **A pairing bound proved for bounded test functions holds for all of
@@ -21564,8 +21573,8 @@ theorem aux_abs_integral_mul_le_of_bounded_test
   have hae : f =ᵐ[μ] f' := hf.aestronglyMeasurable.ae_eq_mk
   have hf' : MemLp f' (ENNReal.ofReal p₀) μ := hf.ae_eq hae
   have hnorm : lpNorm f (ENNReal.ofReal p₀) μ = lpNorm f' (ENNReal.ofReal p₀) μ := by
-    rw [← toReal_eLpNorm hf.aestronglyMeasurable,
-      ← toReal_eLpNorm hf'.aestronglyMeasurable, eLpNorm_congr_ae hae]
+    rw [← toReal_eLpNorm ,
+      ← toReal_eLpNorm , eLpNorm_congr_ae hae]
   have hintchange : (∫ x, f x * v x ∂μ) = ∫ x, f' x * v x ∂μ :=
     integral_congr_ae (hae.mono fun x hx ↦ by simp only [hx])
   rw [hintchange, hnorm]
@@ -21598,7 +21607,7 @@ theorem aux_abs_integral_mul_le_of_bounded_test
 /-- A nonnegative integrable function bounded by one lies in every `L^p` with
 `p ≥ 1`.
 
-Auxiliary.  The interval tails are of this shape, and the general-exponent
+Auxiliary. The interval tails are of this shape, and the general-exponent
 half of `lem:interval_tails` needs them in the exponent it is proving. -/
 theorem aux_memLp_of_le_one_of_integrable
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {f : X → ℝ}
@@ -21659,7 +21668,7 @@ theorem aux_memLp_intervalTail_line {c r : ℝ} (hr : 0 < r) {p : ℝ} (hp : 1 �
 
 /-- The finite tail sum of a family of intervals, read on the fiber line.
 
-Auxiliary.  This is the majorant `h` of `lem:interval_tails`, in the
+Auxiliary. This is the majorant `h` of `lem:interval_tails`, in the
 coordinate the maximal estimate is stated in. -/
 noncomputable def aux_lineIntervalTailSum {ι : Type*} (S : Finset ι) (c r : ι → ℝ) :
     FiberDyadicLine → ℝ := fun x ↦
@@ -21835,7 +21844,7 @@ noncomputable def C_lpNorm_finset_double_intervalTails_le_of_radius_sum (q : ℝ
 /-- **Tails of disjoint intervals.**
 
 For pairwise disjoint bounded intervals of positive length with
-`∑_I |I| < ∞`, put `h(x) = ∑_I (1 + |x - c_I| / |I|)^(-2)`.  For
+`∑_I |I| < ∞`, put `h(x) = ∑_I (1 + |x - c_I| / |I|)^(-2)`. For
 `1 ≤ p < ∞`,
 
 `‖h‖_p ≤ C_p (∑_I |I|)^(1/p)`. -/
@@ -21889,7 +21898,7 @@ theorem aux_lpNorm_lineIntervalTailSum_eq_real
       (volume : Measure FiberDyadicLine) :=
     ((aux_measurable_realIntervalTailSum S c r).comp
       realToFiberDyadicLine.symm.measurable).aestronglyMeasurable
-  rw [← toReal_eLpNorm hcompmeas, ← toReal_eLpNorm hmeas]
+  rw [← toReal_eLpNorm , ← toReal_eLpNorm ]
   congr 1
   exact eLpNorm_comp_measurePreserving (p := p) hmeas hmp
 
@@ -21925,7 +21934,7 @@ theorem aux_pairwiseDisjoint_selected_Ioo
       Set FiberDyadicInterval) ⊆
       {I : FiberDyadicInterval | z ∈ fiberDyadicSelectionSet Zf A H I} := by
     intro I hI
-    simp only [Finset.coe_filter, Set.mem_setOf_eq] at hI
+    simp only [Finset.coe_filter, Set.mem_ofPred_eq] at hI
     exact hI.2
   refine ((pairwiseDisjoint_fiberDyadicSelectedIntervals Zf A H z).subset
     hsub).mono ?_
@@ -22004,7 +22013,7 @@ theorem aux_memLp_selectedFiberIntervalTail_fiber
 /-- **The ambient `p`-th power integral through the split is the iterated fiber
 one.**
 
-Auxiliary.  The general-exponent companion of
+Auxiliary. The general-exponent companion of
 `lintegral_enorm_comp_coordinateSplit_eq_iterated`. -/
 theorem aux_lintegral_rpow_enorm_comp_coordinateSplit_eq_iterated
     (m : Fin 3) (G : ℝ × TransverseSpace m → ℝ) (hG : Measurable G) (p : ℝ) :
@@ -22050,7 +22059,8 @@ theorem aux_lintegral_rpow_selectedFiberIntervalTail_fiber_le
           fiberDyadicSelectedLengthDensity T Zf A H z ^ (1 / p)) := by
     rw [← ofReal_lpNorm hmem]
     exact ENNReal.ofReal_le_ofReal hnorm
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hp0]) (by simp),
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hp0]) (by simp)
+    hmem.aestronglyMeasurable,
     ENNReal.toReal_ofReal hp0.le] at heL
   have hraise := ENNReal.rpow_le_rpow heL hp0.le
   rw [← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hp0.ne', ENNReal.rpow_one] at hraise
@@ -22097,7 +22107,9 @@ theorem eLpNorm_ambient_selectedFiberIntervalTail_le
     with hG
   have hGmeas : Measurable G :=
     aux_measurable_selectedFiberIntervalTail T Zf hZf A hA H
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hp0]) (by simp),
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hp0]) (by simp)
+    (show AEStronglyMeasurable (fun x => G (coordinateSplit m x)) volume from
+      (hGmeas.comp (coordinateSplit_measurePreserving m).measurable).aestronglyMeasurable),
     ENNReal.toReal_ofReal hp0.le,
     aux_lintegral_rpow_enorm_comp_coordinateSplit_eq_iterated m G hGmeas p]
   have hinner : ∀ z : TransverseSpace m,
@@ -22167,7 +22179,7 @@ theorem eLpNorm_ambient_tail_le_inv_height
 /-! ## The weak-`L^R` assembly
 
 Source: `lem:one_fiber`, whose conclusion is a weak-`L^R` bound for the `R`
-determined by `R^{-1} = p^{-1} + Σ_{j≠m} P_j^{-1}`.  The three-set inclusion is
+determined by `R^{-1} = p^{-1} + Σ_{j≠m} P_j^{-1}`. The three-set inclusion is
 the same as at the endpoint; only the passage to the `R`-th root differs, and
 that is the subadditivity of `t ↦ t^{1/R}` for `R ≥ 1`.
 -/
@@ -22251,7 +22263,7 @@ theorem weakNorm_le_of_forall_level
 
 /-- Three budgets normalized to the same constant combine.
 
-Auxiliary.  The exponent plays no part, so the statement is about the level
+Auxiliary. The exponent plays no part, so the statement is about the level
 quantity alone. -/
 theorem aux_combine_normalized_budgets
     {L Aexception Agood Atail : ℝ≥0∞} {A Ce Cg Ct : ℝ}
@@ -22299,12 +22311,12 @@ theorem weakNorm_le_of_canonical_budgets
 /-- **Chebyshev at exponent `R`.** -/
 theorem aux_level_le_eLpNorm
     {X : Type*} [MeasurableSpace X] (μ : Measure X) (w : X → ℝ) {τ R : ℝ}
-    (hR : 0 < R) (hw : AEStronglyMeasurable w μ) :
+    (hR : 0 < R) :
     ENNReal.ofReal τ * μ {x | τ < |w x|} ^ (1 / R)
       ≤ eLpNorm w (ENNReal.ofReal R) μ := by
   have hz : (ENNReal.ofReal R) ≠ 0 := by simp [hR]
   have ht : (ENNReal.ofReal R) ≠ ⊤ := by simp
-  have h := mul_meas_ge_le_pow_eLpNorm' μ hz ht hw (ENNReal.ofReal τ)
+  have h := mul_meas_ge_le_pow_eLpNorm' (f := w) μ hz ht (ENNReal.ofReal τ)
   rw [ENNReal.toReal_ofReal hR.le] at h
   have hsub : {x | τ < |w x|} ⊆ {x | ENNReal.ofReal τ ≤ ‖w x‖ₑ} := by
     intro x hx
@@ -22323,7 +22335,7 @@ theorem aux_level_le_eLpNorm
 
 /-- **Three-factor Hölder at a general output exponent.**
 
-Auxiliary.  The output exponent of `eLpNorm_threefold_product_le` was fixed at
+Auxiliary. The output exponent of `eLpNorm_threefold_product_le` was fixed at
 one; `lem:one_fiber` needs it at the exponent `R` of its conclusion. -/
 theorem aux_eLpNorm_threefold_product_le
     {p1 p2 p3 r23 r123 : ENNReal}
@@ -22338,13 +22350,13 @@ theorem aux_eLpNorm_threefold_product_le
       eLpNorm g2 p2 volume * eLpNorm g3 p3 volume := by
     change eLpNorm (g2 * g3) r23 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg3 hg2)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg2 hg3)
   have hm23 : AEStronglyMeasurable (fun x ↦ g2 x * g3 x) volume := hg2.mul hg3
   have h123 : eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) r123 volume ≤
       eLpNorm g1 p1 volume * eLpNorm (fun x ↦ g2 x * g3 x) r23 volume := by
     change eLpNorm (g1 * fun x ↦ g2 x * g3 x) r123 volume ≤ _
     simpa only [smul_eq_mul] using
-      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hm23 hg1)
+      (eLpNorm_smul_le_mul_eLpNorm (μ := volume) hg1 hm23)
   calc eLpNorm (fun x ↦ g1 x * g2 x * g3 x) r123 volume
       = eLpNorm (fun x ↦ g1 x * (g2 x * g3 x)) r123 volume := by
         simp only [mul_assoc]
@@ -22372,11 +22384,11 @@ theorem weak_weighted_tail_budget
       {x | lam / 2 < |g1 x * g2 x * g3 x|} := by
     intro x hx
     have h1 : lam / 2 < g1 x * g2 x * g3 x := hx.1
-    show lam / 2 < |g1 x * g2 x * g3 x|
+    change lam / 2 < |g1 x * g2 x * g3 x|
     exact lt_of_lt_of_le h1 (le_abs_self _)
   refine le_trans (mul_le_mul' le_rfl
     (ENNReal.rpow_le_rpow (measure_mono hsub) (by positivity))) ?_
-  refine le_trans (aux_level_le_eLpNorm volume _ hR hprod) ?_
+  refine le_trans (aux_level_le_eLpNorm volume _ hR ) ?_
   exact aux_eLpNorm_threefold_product_le (p1 := p1) (p2 := p2) (p3 := p3)
     (r23 := r23) (r123 := ENNReal.ofReal R) g1 g2 g3 hg1 hg2 hg3
 
@@ -22422,7 +22434,7 @@ theorem aux_two_rpow_inv_le_two {R : ℝ} (hR : 1 ≤ R) : (2 : ℝ) ^ (1 / R) �
 
 /-- The chosen height's `R`-th root.
 
-Auxiliary.  At the height `H = (λ/A)^R/2` the level times `H^{-1/R}` is the
+Auxiliary. At the height `H = (λ/A)^R/2` the level times `H^{-1/R}` is the
 `R`-th root of two times `A`. -/
 theorem aux_inv_selectionHeight_rpow
     {lam A H R : ℝ} (hlam : 0 < lam) (hA : 0 < A) (hR : 0 < R)
@@ -22525,7 +22537,6 @@ theorem weak_exception_budget_doubled
         ring
 
 /-! ## The exceptional budget chain at a general output exponent -/
-
 theorem weak_exception_budget_coordinateCountable
     (m : Fin 3) {Z : Set (TransverseSpace m)} (hZ : MeasurableSet Z)
     (A : FiberDyadicInterval → TransverseSpace m → ℝ)
@@ -22705,7 +22716,7 @@ theorem weak_exception_budget_doubled_canonical
 
 /-! ## The good budget at a general output exponent
 
-Source: `lem:one_fiber`.  Chebyshev at the starting exponent `R_0` gives the
+Source: `lem:one_fiber`. Chebyshev at the starting exponent `R_0` gives the
 good part's level bound; at the conclusion's exponent `R` the level quantity
 carries an `R`-th root, and the exponent identity
 `R·R_0·(1/p - 1/P_m) = R_0 - R` is what makes the resulting constant
@@ -22806,7 +22817,7 @@ theorem weak_goodExponent_spec {R R0 : ℝ} (hR : 0 < R) (hR0 : 0 < R0) :
 
 /-- The good budget's exponent, as consumed by `weak_good_budget_normalization`.
 
-Auxiliary.  The height carries `δ`, the budget carries `R·δ`. -/
+Auxiliary. The height carries `δ`, the budget carries `R·δ`. -/
 theorem weak_goodExponent_mul {R R0 delta : ℝ}
     (hdelta : R * R0 * delta = R0 - R) :
     (R * delta) * R0 = R0 - R := by
@@ -22825,7 +22836,6 @@ theorem weak_selectionHeight_pow_eq_goodConstant
   rw [htwo, ← Real.rpow_mul hla.le]
 
 /-! ## The bad budget at a general output exponent -/
-
 theorem weak_bad_level_budget_finite_outside
     {p1 p2 p3 r23 : ENNReal} {R : ℝ} (hR : 0 < R)
     [ENNReal.HolderTriple p2 p3 r23]
@@ -22883,10 +22893,10 @@ theorem weak_bad_level_budget_finite_outside
 
 /-! ## The scale tail against the tail majorant
 
-Source: `lem:one_fiber`.  Outside the doubled exceptional set the far-field
+Source: `lem:one_fiber`. Outside the doubled exceptional set the far-field
 condition holds on every selected interval, so the scale tail is dominated by
 the interval-tail majorant `h_m` -- the function whose norm
-`eLpNorm_ambient_tail_le_inv_height` controls.  This is the step that removes
+`eLpNorm_ambient_tail_le_inv_height` controls. This is the step that removes
 the operator from the bad branch's third Hoelder factor.
 -/
 
@@ -22929,7 +22939,7 @@ theorem selectedFiberScaleTail_le_tail_majorant_outside :
 
 /-! ## The bad part against the tail majorant
 
-Source: `lem:one_fiber`, the display `eq:cz_bad_pointwise`.  Outside the
+Source: `lem:one_fiber`, the display `eq:cz_bad_pointwise`. Outside the
 doubled exceptional set the bad part is at most the two passive maximal
 functions times the interval-tail majorant, which is the form the blueprint's
 Hoelder step consumes.
@@ -22983,7 +22993,7 @@ theorem abs_ModelTruncatedOperator_bad_le_majorant_outside :
 
 /-! ## The bad level budget against the tail majorant
 
-Source: `lem:one_fiber`.  This is the blueprint's Hoelder step for the bad
+Source: `lem:one_fiber`. This is the blueprint's Hoelder step for the bad
 branch: the three factors are the two passive maximal functions and the
 interval-tail majorant, whose norms are the maximal estimate and
 `eLpNorm_ambient_tail_le_inv_height`.
@@ -23048,7 +23058,6 @@ theorem weak_bad_level_budget_majorant_outside
     simpa only [mul_assoc] using hbase
 
 /-! ## The operator-level weak assembly at a general output exponent -/
-
 theorem ModelTruncatedOperator_fiberCZ_weak_of_good_bad_data
     (aniso : Anisotropy) (u : E3) (c : ℝ → ℝ) (f : ModelOperatorRealInput)
     (a b : ℝ) (good bad tail : E3 → ℝ) (E : Set E3)
@@ -23189,9 +23198,9 @@ theorem ModelTruncatedOperator_weakNorm_le_of_countable_stopping_data
 
 /-! ## The finite level assembly at a general output exponent
 
-Source: `lem:one_fiber`.  The three budgets at one level, stated for an
+Source: `lem:one_fiber`. The three budgets at one level, stated for an
 arbitrary good/bad decomposition and an arbitrary three-factor domination of
-the bad part outside the exceptional set.  Nothing here is specific to the
+the bad part outside the exceptional set. Nothing here is specific to the
 Calderon--Zygmund data, so the statement is given in the generic form the
 instantiations need.
 -/
@@ -23230,7 +23239,7 @@ theorem ModelTruncatedOperator_weak_finite_of_generic_data
 
 /-! ## The Calderon--Zygmund level bound at a general output exponent
 
-Source: `lem:one_fiber`.  The generic level assembly instantiated at the
+Source: `lem:one_fiber`. The generic level assembly instantiated at the
 fiberwise Calderon--Zygmund data: the exceptional set is the doubled one, the
 bad part's three factors are the interval-tail majorant and the two passive
 maximal functions.
@@ -23329,7 +23338,7 @@ theorem ModelTruncatedOperator_weak_finite_of_czData
 
 /-! ## Pulling the constants out of the level bound
 
-Source: `lem:one_fiber`.  The level bound produced by the Calderon--Zygmund
+Source: `lem:one_fiber`. The level bound produced by the Calderon--Zygmund
 data carries its constants inside the three norms; the normalisation compares
 them against a single multiple of `A_u`, so they have to come out first.
 -/
@@ -23405,9 +23414,9 @@ theorem aux_eLpNorm_const_mul_coordinateMaximal_le
 
 /-! ## The atom mass from the stopping property
 
-Source: `lem:one_fiber`.  On a selected interval the parent's average of
+Source: `lem:one_fiber`. On a selected interval the parent's average of
 `|f_m|^p` is at most the stopping height, so Hoelder bounds the atom's mass by
-`|I|·(2H)^{1/p}`.  It is this `H^{1/p}` -- not a sup bound on the input -- that
+`|I|·(2H)^{1/p}`. It is this `H^{1/p}` -- not a sup bound on the input -- that
 cancels the tail's `H^{-1/p}` in the bad budget.
 -/
 
@@ -23428,7 +23437,7 @@ theorem aux_setIntegral_le_of_average_rpow_le
   have hp0 : (0 : ℝ) < p := lt_trans zero_lt_one hp
   have hq0 : (0 : ℝ) < q := hpq.symm.pos
   set μ : Measure ℝ := volume.restrict s with hμ
-  haveI hfin : IsFiniteMeasure μ := by
+  have hfin : IsFiniteMeasure μ := by
     refine ⟨?_⟩
     calc μ Set.univ ≤ volume s := Measure.restrict_apply_univ s ▸ le_rfl
       _ = ENNReal.ofReal L := hsvol
@@ -23496,7 +23505,7 @@ theorem aux_volume_fiberDyadicInterval (I : FiberDyadicInterval) :
 /-- **The atom mass on a selected interval.**
 
 On an interval selected at height `H` the mass of the input is at most
-`|I|·(2H)^{1/p}`.  This is the blueprint's bound, and the factor `H^{1/p}` is
+`|I|·(2H)^{1/p}`. This is the blueprint's bound, and the factor `H^{1/p}` is
 what the bad budget needs. -/
 theorem aux_setIntegral_abs_le_of_selected
     {Z : Type*} [MeasurableSpace Z] (Zf : Set Z) (f : ℝ × Z → ℝ)
@@ -23528,8 +23537,8 @@ theorem aux_setIntegral_abs_le_of_selected
 
 /-! ## The bad atom's mass from the input's mass
 
-Source: `lem:one_fiber`.  The atom is the input minus its average on the
-interval, so its mass is at most twice the input's mass there.  Combined with
+Source: `lem:one_fiber`. The atom is the input minus its average on the
+interval, so its mass is at most twice the input's mass there. Combined with
 the stopping bound this is the blueprint's `∫|b_I| ≤ C·|I|·H^{1/p}`.
 -/
 
@@ -23616,7 +23625,7 @@ theorem aux_integral_abs_fiberCZBadAtom_le_of_setIntegral
 
 /-! ## The atom mass at the stopping height
 
-Source: `lem:one_fiber`.  Composing the stopping bound with the centring
+Source: `lem:one_fiber`. Composing the stopping bound with the centring
 estimate gives the blueprint's atom mass `∫|b_I| ≤ C·|I|·H^{1/p}`, in the
 `A · r_I` shape the scale-tail chain consumes.
 -/
@@ -23643,7 +23652,7 @@ theorem aux_integral_abs_fiberCZBadAtom_le_stoppingHeight
 
 /-! ## The scale tail against a given atom mass
 
-Source: `lem:one_fiber`.  The domination of the scale tail by the interval-tail
+Source: `lem:one_fiber`. The domination of the scale tail by the interval-tail
 sum needs only the atoms' mass; taking that mass as a hypothesis lets the
 stopping bound supply it, so the constant carries `H^{1/p}` rather than a sup
 bound on the input.
@@ -23693,7 +23702,7 @@ theorem selectedFiberScaleTail_le_selected_intervalTail_sum_of_mass :
       exact hnot
     have hb0 : ∀ y : ℝ, bb I y = 0 := by
       intro y
-      show fiberCZBadAtom F S I (y, z) = 0
+      change fiberCZBadAtom F S I (y, z) = 0
       unfold fiberCZBadAtom
       rw [Set.indicator_of_notMem]
       intro hmem
@@ -23765,7 +23774,7 @@ theorem selectedFiberScaleTail_le_tail_majorant_outside_of_mass :
 
 /-! ## The bad part against the tail majorant, from a given atom mass
 
-Source: `lem:one_fiber`, the display `eq:cz_bad_pointwise`.  With the atoms'
+Source: `lem:one_fiber`, the display `eq:cz_bad_pointwise`. With the atoms'
 mass supplied by the stopping bound this is the blueprint's pointwise estimate,
 whose constant carries `H^{1/p}`.
 -/
@@ -23888,7 +23897,7 @@ theorem weak_bad_level_budget_majorant_outside_of_mass
 
 /-! ## The stopping height cancels in the bad budget
 
-Source: `lem:one_fiber`.  The atoms' mass carries `H^{1/p}` and the tail's norm
+Source: `lem:one_fiber`. The atoms' mass carries `H^{1/p}` and the tail's norm
 carries `H^{-1/p}`; their product is level-independent, which is what makes the
 bad budget a budget.
 -/
@@ -23976,7 +23985,6 @@ theorem aux_eLpNorm_tail_mul_stoppingMass_le
           C_lpNorm_finset_double_intervalTails_le_of_radius_sum q := by ring
 
 /-! ## The Calderon--Zygmund level bound from a given atom mass -/
-
 theorem ModelTruncatedOperator_weak_finite_of_czData_of_mass
     {R R0 : ℝ} {p1 p2 p3 r23 : ENNReal}
     [ENNReal.HolderTriple p2 p3 r23]
@@ -24075,7 +24083,7 @@ theorem ModelTruncatedOperator_weak_finite_of_czData_of_mass
 
 /-! ## The atom mass at the canonical stopping data
 
-Source: `lem:one_fiber`.  At the canonical data -- fibers of finite `p`-mass,
+Source: `lem:one_fiber`. At the canonical data -- fibers of finite `p`-mass,
 averages of `|f_m|^p` -- the stopping bound gives every selected atom the
 blueprint's mass `4·(2H)^{1/p}·r_I`.
 -/
@@ -24107,7 +24115,7 @@ theorem aux_canonical_atom_mass_le
 
 /-! ## The Calderon--Zygmund level bound at the canonical stopping data
 
-Source: `lem:one_fiber`.  At the canonical data the atoms' mass is supplied by
+Source: `lem:one_fiber`. At the canonical data the atoms' mass is supplied by
 the stopping bound, so the level bound's tail factor carries `4·(2H)^{1/p}`.
 -/
 
@@ -24182,7 +24190,7 @@ theorem ModelTruncatedOperator_weak_finite_of_canonical_czData
 
 /-! ## The bad term of the canonical level bound, as a real constant
 
-Source: `lem:one_fiber`.  With the inputs normalised and the stopping mass in
+Source: `lem:one_fiber`. With the inputs normalised and the stopping mass in
 place, the bad branch's three Hoelder factors are each bounded by a real
 constant, and their product carries `U(u)^{30}` -- the power the blueprint
 absorbs into `A_u = C_1 U(u)^{100}`.
@@ -24349,14 +24357,14 @@ theorem aux_canonical_bad_term_le
 /-! ## Weak bounds pass to an almost-everywhere limit, at a general exponent
 
 Source: `lem:one_fiber`, the passage from finitely many bad intervals to
-countably many.  The endpoint version is `weakBound_of_ae_tendsto`; at a
+countably many. The endpoint version is `weakBound_of_ae_tendsto`; at a
 general exponent the level quantity carries an `R`-th root, and the only new
 ingredient is that the root is continuous.
 -/
 
 /-- The source weight is at least one.
 
-Auxiliary.  It is `1` plus three absolute values. -/
+Auxiliary. It is `1` plus three absolute values. -/
 theorem aux_one_le_sourceWeight (u : E3) : 1 ≤ sourceWeight u := by
   unfold sourceWeight
   have h0 := abs_nonneg (u 0)
@@ -24522,7 +24530,7 @@ theorem lintegral_rpow_goodField_le_goodConstant_rpow
 
 /-- A bound on the `P`-th power integral is a bound on the `L^P` norm.
 
-Auxiliary.  The good part's strong bound consumes the good field's `L^P` norm,
+Auxiliary. The good part's strong bound consumes the good field's `L^P` norm,
 while the Calderon--Zygmund estimate delivers its `P`-th power integral. -/
 theorem aux_lpNorm_le_of_lintegral_rpow_le
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {G : X → ℝ}
@@ -24534,7 +24542,7 @@ theorem aux_lpNorm_le_of_lintegral_rpow_le
     rw [← ofReal_norm, Real.norm_eq_abs,
       ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hP.le]
   have heL : eLpNorm G (ENNReal.ofReal P) μ ≤ ENNReal.ofReal K := by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hP]) (by simp),
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp [hP]) (by simp) (by fun_prop),
       ENNReal.toReal_ofReal hP.le]
     simp_rw [heq]
     calc (∫⁻ x, ENNReal.ofReal (|G x| ^ P) ∂μ) ^ (1 / P)
@@ -24543,7 +24551,7 @@ theorem aux_lpNorm_le_of_lintegral_rpow_le
       _ = ENNReal.ofReal K := by
           rw [ENNReal.ofReal_rpow_of_nonneg (Real.rpow_nonneg hK P) (by positivity),
             ← Real.rpow_mul hK, mul_one_div, div_self hP.ne', Real.rpow_one]
-  rw [← toReal_eLpNorm hG]
+  rw [← toReal_eLpNorm ]
   calc (eLpNorm G (ENNReal.ofReal P) μ).toReal ≤ (ENNReal.ofReal K).toReal :=
         ENNReal.toReal_mono ENNReal.ofReal_ne_top heL
     _ = K := ENNReal.toReal_ofReal hK
@@ -24640,7 +24648,7 @@ theorem weak_good_budget_canonical
       simpa only [hfG, modelOperatorReplace_same] using hGnorm
     have h2 : (∏ jj ∈ Finset.univ.erase m, lpNorm (fG jj)
         (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) ≤ 1 := by
-      refine Finset.prod_le_one (fun jj _ ↦ MeasureTheory.lpNorm_nonneg) ?_
+      refine Finset.prod_le_one₀ (fun jj _ ↦ MeasureTheory.lpNorm_nonneg) ?_
       intro jj hjj
       have hne : jj ≠ m := (Finset.mem_erase.mp hjj).1
       simpa only [hfG, modelOperatorReplace_ne f m jj _ hne] using hnorm jj
@@ -24687,7 +24695,7 @@ theorem weak_good_budget_canonical
 
 /-! ## The bad budget's constant against `A_u`
 
-Source: `lem:one_fiber`.  The bad branch's constant carries `U(u)^{30}`, and
+Source: `lem:one_fiber`. The bad branch's constant carries `U(u)^{30}`, and
 `A_u = C_1U(u)^{100}` dominates it because the source weight is at least one.
 -/
 
@@ -24769,7 +24777,7 @@ theorem aux_canonical_bad_term_le_of_weight
 
 /-! ## The bad budget at the canonical stopping data, for a finite family
 
-Source: `lem:one_fiber`.  The level budget with the stopping atom mass, its
+Source: `lem:one_fiber`. The level budget with the stopping atom mass, its
 three factors bounded by a single real constant, and `A_u` dominating that
 constant: the bad branch's contribution at one level is at most `A_u`.
 -/
@@ -25039,7 +25047,7 @@ theorem aux_canonical_mass_forms
 
 /-! ## The weak-`L^R` bound at the canonical stopping data
 
-Source: `lem:one_fiber`.  The three budgets at the height `H = (τ/A_u)^R/2`,
+Source: `lem:one_fiber`. The three budgets at the height `H = (τ/A_u)^R/2`,
 combined at every level, are the lemma's conclusion.
 -/
 
@@ -25123,9 +25131,9 @@ theorem ModelTruncatedOperator_weakNorm_le_canonical
 
 /-! ## Off the finite-mass set the bad branch vanishes
 
-Source: `lem:one_fiber`.  The selection sets lie in the finite-mass fiber set,
+Source: `lem:one_fiber`. The selection sets lie in the finite-mass fiber set,
 so on a fiber outside it every selected atom is zero and the scale tail
-vanishes.  This is what lets the fiber-integrability hypothesis be asked for
+vanishes. This is what lets the fiber-integrability hypothesis be asked for
 only where the source establishes it.
 -/
 
@@ -25208,7 +25216,7 @@ theorem selectedFiberScaleTail_le_tail_majorant_outside_of_mass_weak :
 
 /-! ## The bad branch with fiber integrability only where it is available
 
-Source: `lem:one_fiber`.  Off the finite-mass fiber set the selected atoms
+Source: `lem:one_fiber`. Off the finite-mass fiber set the selected atoms
 vanish, so the scale tail's integrability is trivial there and the hypothesis
 is only needed on that set.
 -/
@@ -25302,8 +25310,8 @@ theorem abs_ModelTruncatedOperator_bad_le_outside_weak :
     refine measurable_ModelCoordinateConvolution_scale m _ _ _ x hbadmeas ?_
     unfold activeModelKernel
     by_cases hji : m = 2
-    · subst hji; simp only [if_pos]; exact measurable_ModelThirdKernel _
-    · simp only [if_neg hji]; exact measurable_ModelLowKernel _
+    · subst hji; simp only [ite_eq_left]; exact measurable_ModelThirdKernel _
+    · simp only [ite_eq_right hji]; exact measurable_ModelLowKernel _
   have hFB : ∀ yz : ℝ × TransverseSpace m,
       |coordinateFiberInput m (f m) yz| ≤ B m := fun yz ↦ hfB m _
   exact hmain α u c f m a b x Zf Astop H T B ha hcm hc hfmeas hB0 hfB hrep
@@ -25319,7 +25327,6 @@ theorem abs_ModelTruncatedOperator_bad_le_outside_weak :
 
 /-! ## The bad branch's pointwise bound and level budget, with fiber
 integrability only on the finite-mass set -/
-
 theorem abs_ModelTruncatedOperator_bad_le_majorant_outside_of_mass_weak :
     ∃ Cw Ct : ℝ, 0 ≤ Cw ∧ 0 ≤ Ct ∧ ∀ (α : Anisotropy) (u : E3) (c : ℝ → ℝ)
       (f : ModelOperatorRealInput) (m : Fin 3) (a b : ℝ) (x : E3)
@@ -25435,7 +25442,6 @@ theorem weak_bad_level_budget_majorant_outside_of_mass_weak
 
 /-! ## The canonical bad budget and weak bound, asking fiber integrability only
 on the finite-mass set -/
-
 theorem weak_bad_budget_canonical_finite_weak
     {P₁ P₂ p q R : ℝ} {r23 : ENNReal}
     [ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23]
@@ -25693,7 +25699,7 @@ theorem aux_setOf_lt_abs_const_mul
     {X : Type*} (v : X → ℝ) {k τ : ℝ} (hk : 0 < k) :
     {x : X | τ < |k * v x|} = {x : X | τ / k < |v x|} := by
   ext x
-  simp only [Set.mem_setOf_eq, abs_mul, abs_of_pos hk]
+  simp only [Set.mem_ofPred_eq, abs_mul, abs_of_pos hk]
   constructor
   · intro h
     exact (div_lt_iff₀ hk).mpr (by linarith [h])
@@ -25779,9 +25785,9 @@ theorem ModelTruncatedOperator_rescale
 
 /-! ## The weak norm of the truncated operator under rescaling
 
-Source: `lem:one_fiber`.  Combining the operator's trilinearity with the weak
+Source: `lem:one_fiber`. Combining the operator's trilinearity with the weak
 norm's homogeneity: rescaling the inputs rescales the weak bound by the product
-of the factors.  This is what restores the input norms after the manuscript's
+of the factors. This is what restores the input norms after the manuscript's
 normalisation.
 -/
 
@@ -25859,7 +25865,7 @@ theorem aux_lpNorm_const_mul
     (hv : AEStronglyMeasurable v μ) (p : ℝ≥0∞) :
     lpNorm (fun x ↦ k * v x) p μ = |k| * lpNorm v p μ := by
   have hkv : AEStronglyMeasurable (fun x ↦ k * v x) μ := hv.const_mul k
-  rw [← toReal_eLpNorm hkv, ← toReal_eLpNorm hv, aux_eLpNorm_const_mul,
+  rw [← toReal_eLpNorm , ← toReal_eLpNorm , aux_eLpNorm_const_mul,
     ENNReal.toReal_mul, ENNReal.toReal_ofReal (abs_nonneg k)]
 
 /-- The `p`-th mass of a multiple.
@@ -25889,7 +25895,7 @@ theorem aux_integrable_abs_rpow_const_mul
 
 /-- The complexification of a multiple.
 
-Auxiliary.  The maximal factors of the bad budget are stated for the complex
+Auxiliary. The maximal factors of the bad budget are stated for the complex
 inputs, so the rescaling has to be seen there too. -/
 theorem aux_eLpNorm_complex_const_mul
     {X : Type*} [MeasurableSpace X] {μ : Measure X} (k : ℝ) (v : X → ℝ)
@@ -25968,7 +25974,7 @@ theorem weakNorm_zero
   have hτ0 : 0 < τ := Set.mem_Ioi.mp hτ
   have hempty : {x : X | τ < |(0 : ℝ)|} = (∅ : Set X) := by
     ext x
-    simp only [abs_zero, Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false,
+    simp only [abs_zero, Set.mem_ofPred_eq, Set.mem_empty_iff_false, iff_false,
       not_lt]
     exact hτ0.le
   rw [hempty, measure_empty, ENNReal.zero_rpow_of_pos (by positivity), mul_zero]
@@ -25976,11 +25982,10 @@ theorem weakNorm_zero
 /-! ## The good budget and weak bound, normalising only the passive inputs
 
 Source: `lem:one_fiber`, which normalises `‖f_m‖_p = 1` and `‖f_j‖_{P_j} = 1`
-for `j ≠ m`.  The distinguished slot's `L^{P_m}` norm is not normalised, and the
+for `j ≠ m`. The distinguished slot's `L^{P_m}` norm is not normalised, and the
 good budget never used it: the product over the passive slots is the only place
 the normalisation enters.
 -/
-
 theorem weak_good_budget_canonical_passive
     (α : Anisotropy) (q : Fin 4 → ℝ)
     (hq : ∀ j : Fin 4, 0 < q j)
@@ -26064,7 +26069,7 @@ theorem weak_good_budget_canonical_passive
       simpa only [hfG, modelOperatorReplace_same] using hGnorm
     have h2 : (∏ jj ∈ Finset.univ.erase m, lpNorm (fG jj)
         (ENNReal.ofReal (q jj.succ)) (volume : Measure E3)) ≤ 1 := by
-      refine Finset.prod_le_one (fun jj _ ↦ MeasureTheory.lpNorm_nonneg) ?_
+      refine Finset.prod_le_one₀ (fun jj _ ↦ MeasureTheory.lpNorm_nonneg) ?_
       intro jj hjj
       have hne : jj ≠ m := (Finset.mem_erase.mp hjj).1
       simpa only [hfG, modelOperatorReplace_ne f m jj _ hne] using hnorm jj hne
@@ -26191,7 +26196,7 @@ theorem ModelTruncatedOperator_weakNorm_le_canonical_passive
 
 /-! ## Rescaling an input passes through the fiber data
 
-Source: `lem:one_fiber`.  The stopping data is built from `|f_m|^p` on the
+Source: `lem:one_fiber`. The stopping data is built from `|f_m|^p` on the
 fibers; rescaling the input scales the fiber input and leaves the finite-mass
 set unchanged, so the canonical stopping data of the rescaled input is the
 stopping data of the original at a rescaled height.
@@ -26228,7 +26233,7 @@ theorem aux_coordinateSourceFiberFiniteMassSet_const_mul
   have hkp : (0 : ℝ) < |k| ^ p := Real.rpow_pos_of_pos (abs_pos.mpr hk) p
   ext z
   simp only [coordinateSourceFiberFiniteMassSet, sourceFiberFiniteMassSet,
-    fiberFiniteMassSet, Set.mem_setOf_eq]
+    fiberFiniteMassSet, Set.mem_ofPred_eq]
   rw [aux_lintegral_fiber_abs_rpow_const_mul m k f z]
   constructor
   · intro h
@@ -26241,7 +26246,7 @@ theorem aux_coordinateSourceFiberFiniteMassSet_const_mul
 
 /-! ## The one-fiber weak bound with the input norms restored
 
-Source: `lem:one_fiber`, `eq:one_fiber`.  The canonical bound holds under the
+Source: `lem:one_fiber`, `eq:one_fiber`. The canonical bound holds under the
 manuscript's normalisation; rescaling each slot by its own norm restores the
 general statement, with the constant multiplied by the product of the norms.
 -/
@@ -26375,7 +26380,7 @@ theorem ModelTruncatedOperator_weakNorm_le_one_fiber
 
 /-! ## The one-fiber bound at an explicit constant
 
-Source: `lem:one_fiber`.  The manuscript chooses `A_u = C_1U(u)^{100}` with
+Source: `lem:one_fiber`. The manuscript chooses `A_u = C_1U(u)^{100}` with
 `C_1` large enough for the starting estimate and the fixed kernel constants;
 naming that constant discharges the two domination hypotheses.
 -/
@@ -26485,11 +26490,10 @@ Auxiliary. -/
 theorem aux_exists_subseq_ae_of_eLpNorm_tendsto
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {p : ℝ≥0∞} (hp : p ≠ 0)
     {v : ℕ → X → ℝ} {w : X → ℝ}
-    (hv : ∀ n, AEStronglyMeasurable (v n) μ) (hw : AEStronglyMeasurable w μ)
     (htend : Filter.Tendsto (fun n ↦ eLpNorm (v n - w) p μ) Filter.atTop (𝓝 0)) :
     ∃ ns : ℕ → ℕ, StrictMono ns ∧
       ∀ᵐ x ∂μ, Filter.Tendsto (fun i ↦ v (ns i) x) Filter.atTop (𝓝 (w x)) :=
-  (tendstoInMeasure_of_tendsto_eLpNorm hp hv hw htend).exists_seq_tendsto_ae
+  (tendstoInMeasure_of_tendsto_eLpNorm hp htend).exists_seq_tendsto_ae
 
 /-- **A weak-`L^R` bound passes to a limit in norm.**
 
@@ -26499,11 +26503,10 @@ theorem weakNorm_le_of_eLpNorm_tendsto
     {X : Type*} [MeasurableSpace X] {μ : Measure X} {p : ℝ≥0∞} (hp : p ≠ 0)
     {R : ℝ} (hR : 0 < R) {K : ℝ≥0∞}
     {v : ℕ → X → ℝ} {w : X → ℝ}
-    (hv : ∀ n, AEStronglyMeasurable (v n) μ) (hw : AEStronglyMeasurable w μ)
     (htend : Filter.Tendsto (fun n ↦ eLpNorm (v n - w) p μ) Filter.atTop (𝓝 0))
     (hbound : ∀ n, weakNorm μ (v n) R ≤ K) :
     weakNorm μ w R ≤ K := by
-  obtain ⟨ns, hns, hae⟩ := aux_exists_subseq_ae_of_eLpNorm_tendsto hp hv hw htend
+  obtain ⟨ns, hns, hae⟩ := aux_exists_subseq_ae_of_eLpNorm_tendsto hp htend
   refine weakNorm_le_of_forall_level μ w R fun τ hτ ↦ ?_
   refine weakBound_rpow_of_ae_tendsto μ (fun i ↦ v (ns i)) w K hR hae
     (fun i ↦ ?_)
@@ -26511,7 +26514,7 @@ theorem weakNorm_le_of_eLpNorm_tendsto
 
 /-! ## The truncated operator's slotwise difference
 
-Source: `lem:one_fiber`, the approximation step.  Comparing the operator at an
+Source: `lem:one_fiber`, the approximation step. Comparing the operator at an
 input and at its approximant needs the difference expressed through the slot,
 which is additivity read backwards.
 -/
@@ -26550,7 +26553,7 @@ theorem ModelTruncatedOperator_replace_sub
 /-! ## Fibers of a simple input
 
 Source: `thm:extended_model`, which feeds `lem:one_fiber` into the
-interpolation on simple functions of finite-measure support.  For such an
+interpolation on simple functions of finite-measure support. For such an
 input a fiber of finite `p`-mass is integrable, because the nonzero values are
 bounded away from zero.
 -/
@@ -26567,7 +26570,7 @@ theorem aux_integrable_of_uniform_lower_bound
   have hSmeas : MeasurableSet S := by
     have : S = (g ⁻¹' {0})ᶜ := by
       ext y
-      simp [hS, Set.mem_setOf_eq]
+      simp [hS, Set.mem_ofPred_eq]
     rw [this]
     exact (hgmeas (measurableSet_singleton 0)).compl
   have hcp : (0 : ℝ) < c ^ p := Real.rpow_pos_of_pos hc p
@@ -26605,13 +26608,13 @@ theorem aux_integrable_of_uniform_lower_bound
       abs_of_nonneg (le_trans (abs_nonneg (g y)) (hB y))]
     exact hB y
   · have hz : g y = 0 := by
-      simpa [hS, Set.mem_setOf_eq] using hy
+      simpa [hS, Set.mem_ofPred_eq] using hy
     rw [Set.indicator_of_notMem hy, hz]
 
 /-! ## Simple inputs are bounded, with nonzero values bounded away from zero
 
 Source: `thm:extended_model`, whose interpolation consumes weak endpoints on
-simple functions of finite-measure support.  These are the two facts that let
+simple functions of finite-measure support. These are the two facts that let
 `lem:one_fiber`'s side conditions be discharged there.
 -/
 
@@ -26699,9 +26702,9 @@ theorem weakNorm_le_of_lpNorm_bound
 
 /-! ## The shifted vertices' exponent data
 
-Source: `thm:extended_model`.  At the vertex `b + b₀e_m` the input exponents
+Source: `thm:extended_model`. At the vertex `b + b₀e_m` the input exponents
 are `P_j^{(m)} = (b_m+b₀)^{-1}` at the distinguished slot and `P_j = b_j^{-1}`
-elsewhere, and the output exponent is `1`.  These are the identities that match
+elsewhere, and the output exponent is `1`. These are the identities that match
 `lem:one_fiber`'s hypotheses to the simplex data.
 -/
 
@@ -26711,7 +26714,7 @@ theorem aux_simplexVertexExponent_succ_self
     simplexVertexExponent b b₀ m.succ m = (b m + b₀)⁻¹ := by
   unfold simplexVertexExponent simplexVertexReciprocal
   congr 1
-  simp
+  simp only [Fin.val_succ, ↓reduceIte]
 
 /-- The shifted vertex's passive exponents are the base ones. -/
 theorem aux_simplexVertexExponent_succ_ne
@@ -26723,7 +26726,7 @@ theorem aux_simplexVertexExponent_succ_ne
     simp only [Fin.val_succ]
     intro h
     exact hj (Fin.ext (Nat.succ_injective h).symm)
-  rw [if_neg hne, add_zero]
+  rw [ite_eq_right hne, add_zero]
 
 /-- **The shifted vertex satisfies `lem:one_fiber`'s scaling identity.**
 
@@ -26739,7 +26742,7 @@ theorem aux_shifted_vertex_scaling {b₀ R₀ : ℝ} (hb₀ : b₀ ≠ 1)
 
 /-- The shifted vertex's reciprocals sum to one.
 
-Auxiliary.  This is the Hoelder relation `1/P_1 + 1/P_2 + 1/p = 1` that the
+Auxiliary. This is the Hoelder relation `1/P_1 + 1/P_2 + 1/p = 1` that the
 triple instances encode. -/
 theorem aux_shifted_vertex_reciprocal_sum
     (b : Fin 3 → ℝ) {b₀ : ℝ} (hb₀ : b₀ = 1 - ∑ j : Fin 3, b j) (m : Fin 3) :
@@ -26750,9 +26753,9 @@ theorem aux_shifted_vertex_reciprocal_sum
 
 /-! ## Removing a positivity margin in the limit
 
-Source: `thm:extended_model`.  `lem:one_fiber` is stated with strictly positive
+Source: `thm:extended_model`. `lem:one_fiber` is stated with strictly positive
 norm bounds; the interpolation's endpoints are stated with the norms
-themselves, which may vanish.  Proving the bound with a margin and letting the
+themselves, which may vanish. Proving the bound with a margin and letting the
 margin tend to zero avoids a separate zero-input analysis.
 -/
 
@@ -26790,7 +26793,7 @@ theorem aux_tendsto_prod_add_const
 /-! ## Simple inputs of finite-measure support lie in every `L^p`
 
 Source: `thm:extended_model`, whose interpolation ranges over simple functions
-of finite-measure support.  `lem:one_fiber` asks for `L^{P_j}` membership and
+of finite-measure support. `lem:one_fiber` asks for `L^{P_j}` membership and
 for the `p`-th power of the distinguished input to be integrable; both follow
 from the support being of finite measure.
 -/
@@ -26818,7 +26821,7 @@ theorem aux_integrable_rpow_of_simpleFunc_finMeasSupp
 /-- The fiber of a simple input of finite-measure support has finite `p`-mass
 exactly on the canonical stopping set, and is integrable there.
 
-Auxiliary.  This is `lem:one_fiber`'s fiber hypothesis in the form the
+Auxiliary. This is `lem:one_fiber`'s fiber hypothesis in the form the
 interpolation supplies it. -/
 theorem aux_fiber_integrable_of_simpleFunc_mem
     (m : Fin 3) (s : SimpleFunc E3 ℝ) {p : ℝ} (hp : 0 < p)
@@ -26916,8 +26919,8 @@ theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
     intro j
     have h := hbq j
     by_cases hj : j = 2
-    · rw [if_pos hj] at h; linarith
-    · rw [if_neg hj] at h; linarith
+    · rw [ite_eq_left hj] at h; linarith
+    · rw [ite_eq_right hj] at h; linarith
   set p : ℝ := (b m + b₀)⁻¹ with hp_def
   set P₁ : ℝ := (b j₁)⁻¹ with hP₁_def
   set P₂ : ℝ := (b j₂)⁻¹ with hP₂_def
@@ -26961,7 +26964,7 @@ theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
     rw [hqc_def, Real.conjExponent, lt_div_iff₀ (by linarith)]
     linarith
   set r23 : ℝ≥0∞ := ((ENNReal.ofReal P₂)⁻¹ + (ENNReal.ofReal p)⁻¹)⁻¹ with hr23
-  haveI hT23 : ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23 :=
+  have hT23 : ENNReal.HolderTriple (ENNReal.ofReal P₂) (ENNReal.ofReal p) r23 :=
     ENNReal.HolderTriple.of _ _
   have e1 : (ENNReal.ofReal P₁)⁻¹ = ENNReal.ofReal (b j₁) := by
     rw [hP₁_def, ← ENNReal.ofReal_inv_of_pos (inv_pos.mpr hbj₁), inv_inv]
@@ -26969,7 +26972,7 @@ theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
     rw [hP₂_def, ← ENNReal.ofReal_inv_of_pos (inv_pos.mpr hbj₂), inv_inv]
   have e3 : (ENNReal.ofReal p)⁻¹ = ENNReal.ofReal (b m + b₀) := by
     rw [hp_def, ← ENNReal.ofReal_inv_of_pos (inv_pos.mpr hbm0), inv_inv]
-  haveI hT1 : ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal 1) := by
+  have hT1 : ENNReal.HolderTriple (ENNReal.ofReal P₁) r23 (ENNReal.ofReal 1) := by
     constructor
     rw [hr23, inv_inv, e1, e2, e3,
       ← ENNReal.ofReal_add hbj₂.le hbm0.le,
@@ -27032,7 +27035,7 @@ theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
       have hcx : eLpNorm (fun y : E3 ↦ (((f j₁) y : ℝ) : ℂ))
           (ENNReal.ofReal P₁) (volume : Measure E3)
           = eLpNorm (⇑(f j₁)) (ENNReal.ofReal P₁) (volume : Measure E3) :=
-        eLpNorm_congr_norm_ae (by filter_upwards with x; simp)
+        eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (by filter_upwards with x; simp)
       rw [hcx, show P₁ = q j₁.succ by rw [hP₁_def, hqsv],
         ← ofReal_lpNorm (aux_memLp_of_simpleFunc_finMeasSupp (hfs j₁) (hq j₁.succ))]
       refine ENNReal.ofReal_le_ofReal ?_
@@ -27043,7 +27046,7 @@ theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
       have hcx : eLpNorm (fun y : E3 ↦ (((f j₂) y : ℝ) : ℂ))
           (ENNReal.ofReal P₂) (volume : Measure E3)
           = eLpNorm (⇑(f j₂)) (ENNReal.ofReal P₂) (volume : Measure E3) :=
-        eLpNorm_congr_norm_ae (by filter_upwards with x; simp)
+        eLpNorm_congr_norm_ae (by fun_prop) (by fun_prop) (by filter_upwards with x; simp)
       rw [hcx, show P₂ = q j₂.succ by rw [hP₂_def, hqsv],
         ← ofReal_lpNorm (aux_memLp_of_simpleFunc_finMeasSupp (hfs j₂) (hq j₂.succ))]
       refine ENNReal.ofReal_le_ofReal ?_
@@ -27065,7 +27068,7 @@ theorem weakNorm_ModelTruncatedOperator_simplexVertex_succ
 
 /-! ## The model truncated operator is trilinear
 
-Source: `ext:interpolation`, which is stated for a *trilinear* operator.  The
+Source: `ext:interpolation`, which is stated for a *trilinear* operator. The
 model truncated operator is trilinear on bounded measurable inputs: each slot
 enters through its own convolution, which is linear, and the scale integral is
 linear once the integrands are integrable, which boundedness supplies.
@@ -27098,7 +27101,7 @@ theorem ModelTruncatedOperator_replace_add_of_bounded
     simp only [modelOperatorReplace]
     by_cases hj : j = m
     · simp only [hj]; exact hw
-    · simp only [if_neg hj]; exact hf j
+    · simp only [ite_eq_right hj]; exact hf j
   have hrepB : ∀ (w : E3 → ℝ) (Bw : ℝ), (∀ y, |w y| ≤ Bw) →
       ∀ j, ∀ y : E3, |modelOperatorReplace f m w j y|
         ≤ (fun i ↦ if i = m then Bw else Bf i) j := by
@@ -27106,13 +27109,13 @@ theorem ModelTruncatedOperator_replace_add_of_bounded
     simp only [modelOperatorReplace]
     by_cases hj : j = m
     · simp only [hj]; exact hwB y
-    · simp only [if_neg hj]; exact hfB j y
+    · simp only [ite_eq_right hj]; exact hfB j y
   have hrepB0 : ∀ (Bw : ℝ), 0 ≤ Bw →
       ∀ j, 0 ≤ (fun i ↦ if i = m then Bw else Bf i) j := by
     intro Bw hBw j
     by_cases hj : j = m
     · simp only [hj]; exact hBw
-    · simp only [if_neg hj]; exact hBf0 j
+    · simp only [ite_eq_right hj]; exact hBf0 j
   have hint : ∀ (w : E3 → ℝ) (Bw : ℝ), Measurable w → 0 ≤ Bw →
       (∀ y, |w y| ≤ Bw) →
       IntegrableOn (fun t : ℝ ↦
@@ -27143,7 +27146,7 @@ theorem ModelTruncatedOperator_replace_smul
     by_cases hj : j = m
     · subst hj
       simp [hkvec]
-    · simp only [hkvec, if_neg hj, one_smul]
+    · simp only [hkvec, ite_eq_right hj, one_smul]
   have hprod : (∏ j : Fin 3, kvec j) = k := by
     rw [hkvec]
     rw [Finset.prod_ite_eq' Finset.univ m (fun _ ↦ k)]
@@ -27156,16 +27159,16 @@ Source: `ext:interpolation`, which supplies an interpolation constant
 "depending only on the exponent vectors and the weights".  The per-operator
 form `FourVertexMarcinkiewicz` records the conclusion for one fixed operator
 and therefore permits its constant to depend on that operator; the source's
-constant does not.  `thm:extended_model` needs the stronger reading, because
+constant does not. `thm:extended_model` needs the stronger reading, because
 its constant must be uniform in the mode `u`, and the only data separating the
 operators `U^{a,b}_{u,c}` is `u` and `c`.
 -/
 
 /-- **`ext:interpolation` as a hypothesis, with the constant uniform in the
-operator.**  Given four affinely independent input reciprocal vectors, their
+operator.** Given four affinely independent input reciprocal vectors, their
 output exponents, the weights and the interior target, there is one constant
 that converts the four weak endpoint bounds of *any* trilinear operator, at
-*any* endpoint constants, into the strong bound at the interior point.  The
+*any* endpoint constants, into the strong bound at the interior point. The
 conclusion records that the output lies in `L^R`, which is part of what the
 source's `‖T f‖_R ≤ C ⋯` asserts and which the norm inequality alone does not
 carry, `lpNorm` being zero off `L^R`. -/
@@ -27199,10 +27202,10 @@ def FourVertexMarcinkiewiczUniform
 have measurable values.**
 
 This is `FourVertexMarcinkiewiczUniform` with one hypothesis added: the
-operator's values on simple triples are measurable.  The hypothesis is
+operator's values on simple triples are measurable. The hypothesis is
 necessary, not merely convenient — the conclusion asserts `MemLp (T f) R μ`,
 which fails for an operator with non-measurable values even though the weak
-endpoint bounds, built from outer measures of level sets, can still hold.  It
+endpoint bounds, built from outer measures of level sets, can still hold. It
 is satisfied by the operators the manuscript applies the theorem to. -/
 def FourVertexMarcinkiewiczUniformMeasurable
     {X : Type*} [MeasurableSpace X] (μ : Measure X) : Prop :=
@@ -27291,10 +27294,10 @@ theorem exists_strong_bound_at_simplex_interior_uniform
 
 /-! ## The extended model range, at the operator level
 
-Source: `thm:extended_model`, equation `eq:extended_operator_bound`.  The base
+Source: `thm:extended_model`, equation `eq:extended_operator_bound`. The base
 vertex supplies the strong bound of `thm:initial_model` read as a weak bound;
 the three shifted vertices supply `lem:one_fiber`; `ext:interpolation` with the
-weights `eq:weights` converts them into the strong bound at the target.  Every
+weights `eq:weights` converts them into the strong bound at the target. Every
 endpoint constant carries the factor `U(u)^{100}`, and since the weights sum to
 one the interpolated constant carries exactly one such factor.
 -/
@@ -27309,7 +27312,7 @@ theorem modelOperatorReplace_eq_update
   unfold modelOperatorReplace
   by_cases hj : j = m
   · subst hj; simp
-  · rw [if_neg hj, Function.update_of_ne hj]
+  · rw [ite_eq_right hj, Function.update_of_ne hj]
 
 /-- **The model truncated operator is trilinear on simple inputs.**
 
@@ -27468,8 +27471,8 @@ theorem aux_memLp_of_lintegral_rpow_lt_top
     intro x
     rw [← ofReal_norm, Real.norm_eq_abs,
       ENNReal.ofReal_rpow_of_nonneg (abs_nonneg _) hP.le]
-  refine ⟨hv, ?_⟩
-  rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top (by simp [hP]) (by simp),
+  change eLpNorm v _ _ < ⊤
+  rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top (by simp [hP]) (by simp) hv,
     ENNReal.toReal_ofReal hP.le]
   simp_rw [heq]
   exact h
@@ -27483,7 +27486,7 @@ fields, so the base vertex of the interpolation simplex is unconditional.
 -/
 
 /-- **The base vertex's strong bound, for simple inputs of finite-measure
-support.**  `‖U^{a,b}_{u,c}(f)‖_{R_0} ≤ C·U(u)^{100}·∏_j‖f_j‖_{P_j}`, together
+support.** `‖U^{a,b}_{u,c}(f)‖_{R_0} ≤ C·U(u)^{100}·∏_j‖f_j‖_{P_j}`, together
 with the `L^{R_0}` membership the interpolation also consumes. -/
 theorem exists_lpNorm_ModelTruncatedOperator_le_of_simpleFunc
     (α : Anisotropy) (q : Fin 4 → ℝ)
@@ -27539,7 +27542,7 @@ theorem exists_lpNorm_ModelTruncatedOperator_le_of_simpleFunc
 
 /-! ## The extended model range, unconditionally
 
-Source: `thm:extended_model`, equation `eq:extended_operator_bound`.  With the
+Source: `thm:extended_model`, equation `eq:extended_operator_bound`. With the
 base vertex now available on the interpolation's own class, the operator-level
 statement carries no hypotheses beyond the exponent conditions and the external
 interpolation theorem.
@@ -27575,8 +27578,8 @@ theorem exists_ModelTruncatedOperator_extended_strong_bound_unconditional
     intro j
     have h := hbq j
     by_cases hj : j = 2
-    · rw [if_pos hj] at h; linarith
-    · rw [if_neg hj] at h; linarith
+    · rw [ite_eq_left hj] at h; linarith
+    · rw [ite_eq_right hj] at h; linarith
   set q : Fin 4 → ℝ := Fin.cons b₀⁻¹ (fun j ↦ (b j)⁻¹) with hq_def
   have hq0v : q 0 = b₀⁻¹ := by rw [hq_def]; simp
   have hqsv : ∀ j : Fin 3, q j.succ = (b j)⁻¹ := by
@@ -27680,9 +27683,9 @@ theorem exists_abs_formPairing_ModelTruncatedOperator_le_extended
 
 /-! ## From simple inputs to bounded measurable ones
 
-Source: `thm:extended_model`.  `ext:interpolation` delivers the strong bound on
+Source: `thm:extended_model`. `ext:interpolation` delivers the strong bound on
 simple functions of finite-measure support; the inputs the model form is stated
-for are not simple.  Approximating each slot by `SimpleFunc.approxOn` keeps the
+for are not simple. Approximating each slot by `SimpleFunc.approxOn` keeps the
 sup bound up to a factor two, converges pointwise, and does not increase the
 `L^{p_j}` norms by more than the same factor, so Fatou carries the bound to the
 limit with a constant enlarged by `2^3`.
@@ -27762,7 +27765,7 @@ theorem exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable
       have hmono : eLpNorm (⇑(SimpleFunc.approxOn (h j) (hmeas j)
             (Set.range (h j) ∪ {0}) 0 (by simp) n)) P (volume : Measure E3)
           ≤ eLpNorm (fun x : E3 ↦ (2 : ℝ) * h j x) P (volume : Measure E3) := by
-        refine eLpNorm_mono (fun x ↦ ?_)
+        refine eLpNorm_mono (by fun_prop) (fun x ↦ ?_)
         have hz := SimpleFunc.norm_approxOn_zero_le (hmeas j)
           (s := Set.range (h j) ∪ {0}) (by simp) x n
         simp only [Real.norm_eq_abs] at hz ⊢
@@ -27771,8 +27774,8 @@ theorem exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable
       have hle : lpNorm (⇑(SimpleFunc.approxOn (h j) (hmeas j)
             (Set.range (h j) ∪ {0}) 0 (by simp) n)) P (volume : Measure E3)
           ≤ lpNorm (fun x : E3 ↦ (2 : ℝ) * h j x) P (volume : Measure E3) := by
-        rw [← toReal_eLpNorm hsmem.aestronglyMeasurable,
-          ← toReal_eLpNorm h2mem.aestronglyMeasurable]
+        rw [← toReal_eLpNorm ,
+          ← toReal_eLpNorm ]
         exact ENNReal.toReal_mono h2mem.eLpNorm_ne_top hmono
       rw [aux_lpNorm_const_mul 2 (h j) (hmem j).aestronglyMeasurable] at hle
       simpa using hle
@@ -27791,7 +27794,7 @@ theorem exists_ModelTruncatedOperator_extended_strong_bound_boundedMeasurable
           (volume : Measure E3))
         ≤ ∏ j : Fin 3, (2 * lpNorm (h j) (ENNReal.ofReal (pp j))
           (volume : Measure E3)) :=
-      Finset.prod_le_prod (fun j _ ↦ lpNorm_nonneg) (fun j _ ↦ hsqnorm j n)
+      Finset.prod_le_prod₀ (fun j _ ↦ lpNorm_nonneg) (fun j _ ↦ hsqnorm j n)
     have h8 : (∏ j : Fin 3, (2 * lpNorm (h j) (ENNReal.ofReal (pp j))
           (volume : Measure E3)))
         = 8 * ∏ j : Fin 3, lpNorm (h j) (ENNReal.ofReal (pp j))
@@ -28020,9 +28023,9 @@ theorem tendsto_ModelCoordinateConvolution_of_ae_line_dominated
 
 /-! ## A scale-uniform majorant for the model kernels
 
-Source: `lem:one_fiber`, the approximation step.  Passing to the limit inside
+Source: `lem:one_fiber`, the approximation step. Passing to the limit inside
 the scale integral over `Ioc a b` with `0 < a` needs a majorant for the
-integrand that does not depend on the scale.  Since the scales run over a
+integrand that does not depend on the scale. Since the scales run over a
 compact interval bounded away from zero, the bracket majorant at the largest
 scale serves, at the cost of the factor `b/a`.
 -/
@@ -28094,7 +28097,7 @@ theorem exists_uniform_scale_majorant_activeModelKernel :
 
 /-! ## Almost every fiber of an `L^p` input has finite mass
 
-Source: `lem:one_fiber`.  The stopping data is built on the set of transverse
+Source: `lem:one_fiber`. The stopping data is built on the set of transverse
 points whose fiber carries finite `p`-mass; for an `L^p` input that set is of
 full measure, by Tonelli through the measure-preserving coordinate split.
 -/
@@ -28111,8 +28114,9 @@ theorem ae_mem_coordinateSourceFiberFiniteMassSet
     intro x
     simp only [coordinateFiberInput, coordinateJoin_split]
   have hfin : (∫⁻ x : E3, ‖f x‖ₑ ^ p) < ∞ := by
-    have h := hmem.2
-    rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top (by simp [hp]) (by simp),
+    have h := hmem.eLpNorm_lt_top
+    rw [eLpNorm_lt_top_iff_lintegral_rpow_enorm_lt_top (by simp [hp]) (by simp)
+      hf.aestronglyMeasurable,
       ENNReal.toReal_ofReal hp.le] at h
     exact h
   have hiter : (∫⁻ z : TransverseSpace m, ∫⁻ q : ℝ,
@@ -28129,7 +28133,7 @@ theorem ae_mem_coordinateSourceFiberFiniteMassSet
     exact this.lintegral_prod_left'
   have hae := ae_lt_top hmeasz (ne_of_lt hiter)
   filter_upwards [hae] with z hz
-  show (∫⁻ q : ℝ, ENNReal.ofReal
+  change (∫⁻ q : ℝ, ENNReal.ofReal
     (|coordinateFiberInput m f (q, z)| ^ p)) < ∞
   refine lt_of_le_of_lt (le_of_eq ?_) hz
   refine lintegral_congr fun q ↦ ?_
@@ -28138,10 +28142,10 @@ theorem ae_mem_coordinateSourceFiberFiniteMassSet
 
 /-! ## A scale-uniform bound for the coordinate convolution
 
-Source: `lem:one_fiber`, the approximation step.  On a compact scale interval
+Source: `lem:one_fiber`, the approximation step. On a compact scale interval
 away from zero the model kernel is dominated by a single integrable profile, so
 Hoelder against the input's line restriction bounds the convolution uniformly in
-the scale.  That bound is the dominating function the scale integral needs.
+the scale. That bound is the dominating function the scale integral needs.
 -/
 
 /-- The bracket profile at a fixed positive scale lies in every `L^q`, `q ≥ 1`.
@@ -28211,8 +28215,8 @@ theorem exists_uniform_scale_bound_ModelCoordinateConvolution :
   have hakmeas : Measurable (activeModelKernel i j u) := by
     unfold activeModelKernel
     by_cases hji : j = i
-    · rw [if_pos hji]; exact measurable_ModelThirdKernel (u j)
-    · rw [if_neg hji]; exact measurable_ModelLowKernel (u j)
+    · rw [ite_eq_left hji]; exact measurable_ModelThirdKernel (u j)
+    · rw [ite_eq_right hji]; exact measurable_ModelLowKernel (u j)
   have hkd : Measurable (fun r : ℝ ↦
       kernelDilate (activeModelKernel i j u) s r) :=
     measurable_kernelDilate _ hakmeas s (fun r : ℝ ↦ r) measurable_id
@@ -28257,7 +28261,7 @@ theorem exists_uniform_scale_bound_ModelCoordinateConvolution :
 
 /-! ## Almost every coordinate line of an `L^P` input carries an `L^P` restriction
 
-Source: `lem:one_fiber`.  The scale-uniform bound for the coordinate
+Source: `lem:one_fiber`. The scale-uniform bound for the coordinate
 convolution consumes the input's restriction to the point's own coordinate
 line; for an `L^P` input that restriction is in `L^P(ℝ)` at almost every point,
 by the same Tonelli argument that gives the finite-mass fibers.
@@ -28356,7 +28360,7 @@ theorem ae_memLp_line_of_memLp (j : Fin 3) (f : E3 → ℝ) (hf : Measurable f)
 
 /-! ## The line restriction against the model kernels
 
-Source: `lem:one_fiber`.  Hoelder pairs the input's line restriction with the
+Source: `lem:one_fiber`. Hoelder pairs the input's line restriction with the
 bracket profile, and the bracket profile dominates every model kernel at every
 scale in the compact range, so the convolution's dominated-convergence step has
 its majorant.
@@ -28406,8 +28410,8 @@ theorem aux_integrable_line_mul_kernelDilate_of_bracket
   have hakmeas : Measurable (activeModelKernel i j u) := by
     unfold activeModelKernel
     by_cases hji : j = i
-    · rw [if_pos hji]; exact measurable_ModelThirdKernel (u j)
-    · rw [if_neg hji]; exact measurable_ModelLowKernel (u j)
+    · rw [ite_eq_left hji]; exact measurable_ModelThirdKernel (u j)
+    · rw [ite_eq_right hji]; exact measurable_ModelLowKernel (u j)
   have hkd : Measurable (fun r : ℝ ↦
       kernelDilate (activeModelKernel i j u) s r) :=
     measurable_kernelDilate _ hakmeas s (fun r : ℝ ↦ r) measurable_id
@@ -28438,7 +28442,7 @@ theorem abs_modelTruncatedOperatorIntegrand_le_of_slot_bounds
   have h1 := hK 1
   have h2 := hK 2
   simp only [activeModelKernel, show ((0 : Fin 3) = 2) = False by simp,
-    show ((1 : Fin 3) = 2) = False by simp, if_false] at h0 h1 h2
+    show ((1 : Fin 3) = 2) = False by simp, ite_false] at h0 h1 h2
   have hk0 := hK0 0
   have hk1 := hK0 1
   have hk2 := hK0 2
@@ -28459,10 +28463,10 @@ theorem abs_modelTruncatedOperatorIntegrand_le_of_slot_bounds
 
 /-! ## The truncated operator converges without a uniform sup bound
 
-Source: `lem:one_fiber`, the approximation step.  The scale integral is over a
+Source: `lem:one_fiber`, the approximation step. The scale integral is over a
 compact range away from zero, so the bracket profile at the largest scale
 dominates every model kernel there, and Hoelder against the input's line
-restriction turns that into a majorant constant in the scale.  This replaces the
+restriction turns that into a majorant constant in the scale. This replaces the
 sup-bound hypothesis of the earlier convergence lemma.
 -/
 
@@ -28483,15 +28487,15 @@ theorem tendsto_ModelTruncatedOperator_of_ae_line_all_dominated
     Filter.Tendsto (fun n ↦ ModelTruncatedOperator α u c (g n) a b x)
       Filter.atTop (𝓝 (ModelTruncatedOperator α u c glim a b x)) := by
   classical
-  haveI hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
+  have hfin := isFiniteMeasure_logScale_Ioc (a := a) (b := b) ha
   have hb : 0 < b := lt_of_lt_of_le ha hab
   obtain ⟨C, hC, hconvbd⟩ := exists_uniform_scale_bound_ModelCoordinateConvolution
   have hakmeas : ∀ j : Fin 3, Measurable (activeModelKernel 2 j u) := by
     intro j
     unfold activeModelKernel
     by_cases hji : j = 2
-    · rw [if_pos hji]; exact measurable_ModelThirdKernel (u j)
-    · rw [if_neg hji]; exact measurable_ModelLowKernel (u j)
+    · rw [ite_eq_left hji]; exact measurable_ModelThirdKernel (u j)
+    · rw [ite_eq_right hji]; exact measurable_ModelLowKernel (u j)
   have hbrnn : ∀ (j : Fin 3) (r : ℝ),
       0 ≤ bracketKernelAt (b ^ α.weight j) 0 r := fun j r ↦
     bracketKernelAt_nonneg (pow_pos hb _).le
@@ -28610,7 +28614,7 @@ theorem tendsto_ModelTruncatedOperator_of_ae_line_all_dominated
     have h1 := hconv 1
     have h2 := hconv 2
     simp only [activeModelKernel, show ((0 : Fin 3) = 2) = False by simp,
-      show ((1 : Fin 3) = 2) = False by simp, if_false] at h0 h1 h2
+      show ((1 : Fin 3) = 2) = False by simp, ite_false] at h0 h1 h2
     unfold modelTruncatedOperatorIntegrand
     exact (((tendsto_const_nhds.mul h0).mul h1).mul h2)
   exact tendsto_integral_of_dominated_convergence (fun _ : ℝ ↦ K 0 * K 1 * K 2)
@@ -28711,7 +28715,7 @@ theorem exists_simpleFunc_approx_of_memLp
           (by simp) n)) (ENNReal.ofReal P) (volume : Measure E3)
         ≤ eLpNorm (fun y : E3 ↦ (2 : ℝ) * f y) (ENNReal.ofReal P)
             (volume : Measure E3) := by
-      refine eLpNorm_mono (fun y ↦ ?_)
+      refine eLpNorm_mono (by fun_prop) (fun y ↦ ?_)
       have hz := SimpleFunc.norm_approxOn_zero_le hf
         (s := Set.range f ∪ {0}) (by simp) y n
       simp only [Real.norm_eq_abs] at hz ⊢
@@ -28721,15 +28725,15 @@ theorem exists_simpleFunc_approx_of_memLp
           (by simp) n)) (ENNReal.ofReal P) (volume : Measure E3)
         ≤ lpNorm (fun y : E3 ↦ (2 : ℝ) * f y) (ENNReal.ofReal P)
             (volume : Measure E3) := by
-      rw [← toReal_eLpNorm hsmem.aestronglyMeasurable,
-        ← toReal_eLpNorm h2mem.aestronglyMeasurable]
+      rw [← toReal_eLpNorm ,
+        ← toReal_eLpNorm ]
       exact ENNReal.toReal_mono h2mem.eLpNorm_ne_top hmono
     rw [aux_lpNorm_const_mul 2 f hmem.aestronglyMeasurable] at hle
     simpa using hle
 
 /-! ## `lem:one_fiber` without the boundedness hypothesis
 
-Source: `lem:one_fiber` as stated.  Approximating all three slots by simple
+Source: `lem:one_fiber` as stated. Approximating all three slots by simple
 functions costs a factor two in each input norm and nothing else; the weak bound
 survives the almost-everywhere limit.
 -/
@@ -28793,8 +28797,8 @@ theorem ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded
     have h := hqs jj.succ
     rw [activeSourceStoppingExponent_succ] at h
     by_cases hjj : jj = 2
-    · rw [if_pos hjj] at h; linarith
-    · rw [if_neg hjj] at h; linarith
+    · rw [ite_eq_left hjj] at h; linarith
+    · rw [ite_eq_right hjj] at h; linarith
   -- simple approximants in every slot
   choose sq hsqfin hsqbd hsqtend hsqmem hsqnorm using fun jj : Fin 3 ↦
     exists_simpleFunc_approx_of_memLp (f jj) (hfmeas jj)
@@ -28843,7 +28847,7 @@ theorem ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded
             (volume : Measure E3)
           ≤ eLpNorm (fun y ↦ (((2 : ℝ) * f jj y : ℝ) : ℂ))
               (ENNReal.ofReal Pj) (volume : Measure E3) := by
-        refine eLpNorm_mono (fun y ↦ ?_)
+        refine eLpNorm_mono (by fun_prop) (fun y ↦ ?_)
         simp only [Complex.norm_real, Real.norm_eq_abs, abs_mul, abs_two]
         exact hGdom n jj y
       rw [aux_eLpNorm_complex_const_mul 2 (f jj) (ENNReal.ofReal Pj)] at hmono
@@ -28901,11 +28905,11 @@ theorem ModelTruncatedOperator_weakNorm_le_one_fiber_unbounded
 
 /-! ## The geometry behind `ext:interpolation`
 
-Source: `ext:interpolation`.  The interpolated point is a strict convex
+Source: `ext:interpolation`. The interpolated point is a strict convex
 combination of four affinely independent vertices, so it lies in the interior of
-their simplex.  The analytic consequence used in the interpolation is that no
+their simplex. The analytic consequence used in the interpolation is that no
 direction is non-positive against every vertex: for every nonzero `w` some
-vertex pairs strictly positively with `w`.  That is what produces geometric
+vertex pairs strictly positively with `w`. That is what produces geometric
 decay in the three-parameter level sum.
 -/
 
@@ -28997,7 +29001,7 @@ theorem eq_zero_of_forall_gapPairing_nonpos
     have hc1 : Fintype.card {a : Fin 4 // a ≠ 0} = 3 := by decide
     have hc2 : Module.finrank ℝ (Fin 3 → ℝ) = 3 := by simp
     rw [hc1, hc2]
-  haveI hne : Nonempty {a : Fin 4 // a ≠ 0} := ⟨⟨1, by decide⟩⟩
+  have hne : Nonempty {a : Fin 4 // a ≠ 0} := ⟨⟨1, by decide⟩⟩
   have hspan : Submodule.span ℝ
       (Set.range (fun i : {a : Fin 4 // a ≠ 0} ↦ v ↑i - v 0)) = ⊤ :=
     hli.span_eq_top_of_card_eq_finrank hcard
@@ -29027,7 +29031,7 @@ theorem eq_zero_of_forall_gapPairing_nonpos
       rw [htop]; exact Submodule.mem_top
     exact hmem
   have hval : φ e = w j := by
-    show (∑ i : Fin 3, w i * e i) = w j
+    change (∑ i : Fin 3, w i * e i) = w j
     rw [Finset.sum_eq_single j]
     · rw [he]; simp
     · intro b _ hb
@@ -29042,7 +29046,7 @@ theorem eq_zero_of_forall_gapPairing_nonpos
 
 For a strict convex combination of four affinely independent vertices there is
 `δ > 0` such that every covector `w` pairs at least `δ‖w‖` with some vertex
-measured from the barycentre.  This is the quantitative form of the fact that
+measured from the barycentre. This is the quantitative form of the fact that
 the barycentre lies in the interior of the simplex. -/
 theorem exists_gap_of_affineIndependent
     {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
@@ -29156,7 +29160,7 @@ theorem exists_gap_of_affineIndependent
 
 /-! ## The dyadic level decomposition
 
-Source: `ext:interpolation`.  The proof splits each input into the pieces on
+Source: `ext:interpolation`. The proof splits each input into the pieces on
 which its modulus lies in a dyadic band, so that the trilinear operator becomes
 a three-parameter sum of pieces to which the vertex bounds apply.
 -/
@@ -29176,7 +29180,7 @@ theorem measurableSet_dyadicLevelSet {X : Type*} [MeasurableSpace X]
   exact (measurableSet_le measurable_const habs).inter
     (measurableSet_lt habs measurable_const)
 
-theorem measurable_dyadicLevelPiece {X : Type*} [MeasurableSpace X]
+@[fun_prop] theorem measurable_dyadicLevelPiece {X : Type*} [MeasurableSpace X]
     {f : X → ℝ} (hf : Measurable f) (k : ℤ) :
     Measurable (dyadicLevelPiece f k) :=
   hf.indicator (measurableSet_dyadicLevelSet hf k)
@@ -29284,7 +29288,7 @@ theorem eLpNorm_dyadicLevelPiece_le {X : Type*} [MeasurableSpace X]
       ≤ ENNReal.ofReal ((2 : ℝ) ^ (k + 1)) * (μ (dyadicLevelSet f k)) ^ (1 / q) := by
   have hqne : (ENNReal.ofReal q) ≠ 0 := by simp [hq]
   have hqtop : (ENNReal.ofReal q) ≠ ∞ := by simp
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop (by fun_prop),
     ENNReal.toReal_ofReal hq.le]
   have hle : (∫⁻ x, ‖dyadicLevelPiece f k x‖ₑ ^ q ∂μ)
       ≤ (ENNReal.ofReal ((2 : ℝ) ^ (k + 1))) ^ q * μ (dyadicLevelSet f k) := by
@@ -29320,7 +29324,7 @@ theorem eLpNorm_dyadicLevelPiece_le {X : Type*} [MeasurableSpace X]
 
 /-! ## Expanding a trilinear operator over a finite decomposition
 
-Source: `ext:interpolation`.  Trilinearity turns the dyadic level decomposition
+Source: `ext:interpolation`. Trilinearity turns the dyadic level decomposition
 of the inputs into a finite sum of pieces, one for each triple of bands, and it
 is those pieces the vertex bounds are applied to.
 -/
@@ -29377,14 +29381,14 @@ theorem trilinearOnSimple_update_zero {X : Type*} [MeasurableSpace X]
   rw [hzero] at h
   rw [h]
   funext x
-  simp
+  simp only [SimpleFunc.coe_zero, Pi.smul_apply, smul_eq_mul, zero_mul, Pi.zero_apply]
 
 /-- **A trilinear operator expands over a finite decomposition of one slot.** -/
 theorem trilinearOnSimple_sum_slot {X : Type*} [MeasurableSpace X]
     {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
     (hT : TrilinearOnSimple μ T) (j : Fin 3) (f : Fin 3 → SimpleFunc X ℝ)
     (hf : ∀ i, (f i).FinMeasSupp μ)
-    {ι : Type*} [DecidableEq ι] (s : Finset ι) (g : ι → SimpleFunc X ℝ)
+    {ι : Type*} (s : Finset ι) (g : ι → SimpleFunc X ℝ)
     (hg : ∀ i ∈ s, (g i).FinMeasSupp μ) :
     T (Function.update (fun i ↦ (⇑(f i) : X → ℝ)) j
         (∑ i ∈ s, (⇑(g i) : X → ℝ)))
@@ -29461,7 +29465,7 @@ theorem trilinearOnSimple_sum_levels {X : Type*} [MeasurableSpace X]
 
 /-! ## The three-slot expansion
 
-Source: `ext:interpolation`.  Expanding each of the three slots over its own
+Source: `ext:interpolation`. Expanding each of the three slots over its own
 dyadic bands turns the operator into a finite three-parameter sum, and it is the
 terms of that sum the four vertex bounds are applied to.
 -/
@@ -29570,7 +29574,7 @@ theorem update_three_apply {X : Type*} [MeasurableSpace X]
 
 /-! ## The vertex bounds on one term of the expansion
 
-Source: `ext:interpolation`.  Each term of the three-parameter expansion obeys
+Source: `ext:interpolation`. Each term of the three-parameter expansion obeys
 all four vertex weak bounds, and the level-piece norm estimate turns those into
 bounds involving only the band heights and the band measures.
 -/
@@ -29607,7 +29611,7 @@ theorem lpNorm_dyadicLevelPiece_le {X : Type*} [MeasurableSpace X]
   have htoReal := ENNReal.toReal_mono hrhs hbase
   rw [ENNReal.toReal_mul, ENNReal.toReal_ofReal (by positivity),
     ← ENNReal.toReal_rpow] at htoReal
-  rw [← toReal_eLpNorm hmeas.aestronglyMeasurable]
+  rw [← toReal_eLpNorm ]
   exact htoReal
 
 /-- **Each term of the expansion obeys every vertex bound.** -/
@@ -29639,16 +29643,16 @@ theorem weakNorm_expansion_term_le {X : Type*} [MeasurableSpace X]
   rw [hgcoe] at hstep
   refine hstep.trans (ENNReal.ofReal_le_ofReal ?_)
   refine mul_le_mul_of_nonneg_left ?_ (hA a)
-  refine Finset.prod_le_prod (fun j _ ↦ lpNorm_nonneg) fun j _ ↦ ?_
+  refine Finset.prod_le_prod₀ (fun j _ ↦ lpNorm_nonneg) fun j _ ↦ ?_
   rw [hg, coe_dyadicLevelPieceSimple]
   exact lpNorm_dyadicLevelPiece_le (hf j) (hP a j) (k j)
 
 /-! ## Geometric decay from the interior gap
 
-Source: `ext:interpolation`.  After the exchange of endpoint exponents, the
+Source: `ext:interpolation`. After the exchange of endpoint exponents, the
 pure power of the dyadic level carried by the `a`-th vertex bound is
 `2^{-⟨w, v_a - x⟩}`, where `x` is the target reciprocal vector and `w` is the
-multi-index rescaled by the target reciprocals.  The interior gap says some
+multi-index rescaled by the target reciprocals. The interior gap says some
 vertex pairs at least `δ‖w‖` with `w`, so for that vertex the factor is at most
 `2^{-δ‖w‖}`: along every direction of the multi-index lattice the smallest of
 the four vertex bounds decays geometrically, which is the two-sided minimum the
@@ -29673,7 +29677,7 @@ theorem exists_vertex_geometric_decay
 
 /-- The exchange exponent of a vertex, as a pairing.
 
-Auxiliary.  With `k` the multi-index and `β` the target reciprocals, the pure
+Auxiliary. With `k` the multi-index and `β` the target reciprocals, the pure
 power of the level carried by the `a`-th bound is `2` to this exponent. -/
 theorem exchange_exponent_eq_neg_gapPairing
     (β : Fin 3 → ℝ) (hβ : ∀ j, 0 < β j) (va : Fin 3 → ℝ) (w : Fin 3 → ℝ) :
@@ -29689,9 +29693,9 @@ theorem exchange_exponent_eq_neg_gapPairing
 
 /-! ## Summability of the geometric decay over the multi-index lattice
 
-Source: `ext:interpolation`, blueprint lines 2538--2558.  The previous section
+Source: `ext:interpolation`, blueprint lines 2538--2558. The previous section
 produces, for every multi-index, a vertex whose bound decays like
-`2^{-δ‖w‖}` with `‖·‖` the supremum norm.  Summing over the three-dimensional
+`2^{-δ‖w‖}` with `‖·‖` the supremum norm. Summing over the three-dimensional
 lattice of multi-indices is then a product of three one-dimensional geometric
 series, because the supremum norm dominates a third of the sum of the
 coordinates.
@@ -29727,7 +29731,7 @@ theorem aux_injective_fin3_coords :
   · exact h.2.1
   · exact h.2.2
 
-/-- **The lattice sum of the vertex decay converges.**  Over the
+/-- **The lattice sum of the vertex decay converges.** Over the
 three-dimensional lattice of dyadic multi-indices, the geometric decay produced
 by the interior gap is summable. -/
 theorem summable_two_rpow_neg_norm {δ : ℝ} (hδ : 0 < δ) :
@@ -29745,7 +29749,7 @@ theorem summable_two_rpow_neg_norm {δ : ℝ} (hδ : 0 < δ) :
   have hcomp := htriple.comp_injective aux_injective_fin3_coords
   refine Summable.of_nonneg_of_le (fun k ↦ Real.rpow_nonneg h2.le _)
     (fun k ↦ ?_) hcomp
-  show (2 : ℝ) ^ (-(δ * ‖(fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ)‖))
+  change (2 : ℝ) ^ (-(δ * ‖(fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ)‖))
       ≤ g (k 0) * (g (k 1) * g (k 2))
   have hcoord : ∀ j : Fin 3,
       |((k j : ℝ))| ≤ ‖(fun j ↦ ((k j : ℝ)) : Fin 3 → ℝ)‖ := by
@@ -29766,10 +29770,10 @@ theorem summable_two_rpow_neg_norm {δ : ℝ} (hδ : 0 < δ) :
 
 /-! ## Combining four weak bounds at the interior exponent
 
-Source: `ext:interpolation`.  Four weak bounds at the endpoint exponents
+Source: `ext:interpolation`. Four weak bounds at the endpoint exponents
 `r_a` combine, by the elementary interpolation of level-set bounds, into a
 single weak bound at the interior exponent `R` with the geometric-mean
-constant.  The combining weights are `ϑ_a R / r_a`, which sum to one exactly
+constant. The combining weights are `ϑ_a R / r_a`, which sum to one exactly
 because `R^{-1} = ∑_a ϑ_a r_a^{-1}`.
 -/
 
@@ -29817,7 +29821,7 @@ theorem meas_lt_rpow_le_of_four_weakNorm
       rw [one_div, hRdef, Fin.sum_univ_four]
       simp only [div_eq_mul_inv]
     rw [hsplit]
-    refine le_trans (Finset.prod_le_prod' fun a _ ↦ hfac a) (le_of_eq ?_)
+    refine le_trans (Finset.prod_le_prod fun a _ ↦ hfac a) (le_of_eq ?_)
     rw [← ENNReal.ofReal_prod_of_nonneg
       (fun a _ ↦ Real.rpow_nonneg (div_nonneg (hΓ a) hτ.le) _)]
     congr 1
@@ -29852,9 +29856,9 @@ theorem weakNorm_le_of_four_weakNorm
 
 /-! ## The interior bound on a single expansion term
 
-Source: `ext:interpolation`.  Each term of the trilinear expansion carries all
+Source: `ext:interpolation`. Each term of the trilinear expansion carries all
 four endpoint bounds, whose sizes differ only in the exponent to which the
-level set's measure is raised.  Combining them with the weights of
+level set's measure is raised. Combining them with the weights of
 `eq:weights` collapses the four sizes into the single target size, because the
 target reciprocal is their convex combination; the weak norms combine by
 `weakNorm_le_of_four_weakNorm`.
@@ -29940,9 +29944,9 @@ theorem weakNorm_expansion_term_interior_le
 
 /-! ## The bands of one input are summable against its norm
 
-Source: `ext:interpolation`.  The dyadic bands of an input are disjoint, so the
+Source: `ext:interpolation`. The dyadic bands of an input are disjoint, so the
 sum over any finite family of bands of the band's level to the power `q` times
-its measure is bounded by the `q`-th power of the input's `L^q` norm.  This is
+its measure is bounded by the `q`-th power of the input's `L^q` norm. This is
 the orthogonality the level-dependent splitting consumes: the target sizes of
 the level pieces of one input are `ℓ^{p_j}`-summable with norm at most the
 input's `L^{p_j}` norm.
@@ -29988,16 +29992,16 @@ theorem sum_measure_dyadicLevelSet_le_eLpNorm {X : Type*} [MeasurableSpace X]
       ≤ (eLpNorm f (ENNReal.ofReal q) μ) ^ q := by
   have hqne : (ENNReal.ofReal q) ≠ 0 := by simp [hq]
   have hqtop : (ENNReal.ofReal q) ≠ ∞ := by simp
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop (by fun_prop),
     ENNReal.toReal_ofReal hq.le, ← ENNReal.rpow_mul, one_div,
     inv_mul_cancel₀ (ne_of_gt hq), ENNReal.rpow_one]
   exact sum_measure_dyadicLevelSet_le hf hq S
 
 /-! ## The band sizes of the three inputs sum against the product of norms
 
-Source: `ext:interpolation`.  The target size of a layer triple factors as a
+Source: `ext:interpolation`. The target size of a layer triple factors as a
 product over the three inputs, and the band-orthogonality of each input makes
-each factor summable against that input's norm.  So the target sizes of the
+each factor summable against that input's norm. So the target sizes of the
 layer triples are summable against the product of the three input norms — the
 `ℓ^1` control the level-dependent argument spends against the geometric decay.
 -/
@@ -30040,7 +30044,7 @@ theorem sum_triple_dyadicLevelSet_le {X : Type*} [MeasurableSpace X]
 
 /-! ## The three-slot expansion in level-piece form
 
-Source: `ext:interpolation`.  The three-slot expansion
+Source: `ext:interpolation`. The three-slot expansion
 `trilinearOnSimple_expand_three` is restated with each term written as the
 operator applied to the tuple of dyadic level pieces indexed by a
 `Fin 3 → ℤ` multi-index, the form the vertex bounds
@@ -30061,21 +30065,21 @@ theorem aux_expansion_tuple_eq {X : Type*} [MeasurableSpace X]
     (dyadicLevelPieceSimple (f 2) k2)
   funext j
   fin_cases j
-  · show (⇑(Function.update
+  · change (⇑(Function.update
       (Function.update
         (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
         1 (dyadicLevelPieceSimple (f 1) k1))
       2 (dyadicLevelPieceSimple (f 2) k2) 0) : X → ℝ)
         = dyadicLevelPiece (⇑(f 0)) k0
     rw [h0, coe_dyadicLevelPieceSimple]
-  · show (⇑(Function.update
+  · change (⇑(Function.update
       (Function.update
         (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
         1 (dyadicLevelPieceSimple (f 1) k1))
       2 (dyadicLevelPieceSimple (f 2) k2) 1) : X → ℝ)
         = dyadicLevelPiece (⇑(f 1)) k1
     rw [h1, coe_dyadicLevelPieceSimple]
-  · show (⇑(Function.update
+  · change (⇑(Function.update
       (Function.update
         (Function.update f 0 (dyadicLevelPieceSimple (f 0) k0))
         1 (dyadicLevelPieceSimple (f 1) k1))
@@ -30098,7 +30102,7 @@ theorem trilinearOnSimple_expand_three_multiIndex {X : Type*} [MeasurableSpace X
   refine Finset.sum_congr rfl fun k2 _ ↦ ?_
   rw [aux_expansion_tuple_eq f k0 k1 k2]
 
-/-- **The operator level set is covered by the term level sets.**  For any budget
+/-- **The operator level set is covered by the term level sets.** For any budget
 family whose split levels sum to the target level, the level set of the whole
 operator is covered by the term level sets, so its measure is bounded by the sum
 of the term bounds. -/
@@ -30128,12 +30132,12 @@ theorem meas_lt_operator_expansion {X : Type*} [MeasurableSpace X]
 
 /-! ## Affine independence straddles the target output exponent
 
-Source: `ext:interpolation`.  The output reciprocal of a vertex is the sum of
+Source: `ext:interpolation`. The output reciprocal of a vertex is the sum of
 its three input reciprocals, so if all four vertices had the same output
 exponent they would lie in a common plane of `ℝ³` and could not be affinely
-independent.  Hence the four output exponents are not all equal, and since the
+independent. Hence the four output exponents are not all equal, and since the
 target output reciprocal is their strict convex combination, some vertex has
-output exponent strictly below the target and some vertex strictly above.  That
+output exponent strictly below the target and some vertex strictly above. That
 is exactly the straddling hypothesis of `lintegral_rpow_le_of_two_weakNorm`.
 -/
 
@@ -30234,10 +30238,10 @@ theorem exists_straddling_output_exponents
 
 /-! ## Restricted weak type at the interior point
 
-Source: `ext:interpolation`.  On inputs that are constant multiples of
+Source: `ext:interpolation`. On inputs that are constant multiples of
 indicators, all four endpoint norms of an input are powers of one number — the
 measure of its set — so their weighted geometric mean is exactly the target
-norm.  Combining the four endpoint weak bounds therefore gives the interior
+norm. Combining the four endpoint weak bounds therefore gives the interior
 weak bound with the constant the theorem asserts, `∏_a A_a^{ϑ_a}`, and with no
 loss: this is the restricted weak type of the interpolated point, and it needs
 neither the level decomposition nor the geometric decay.
@@ -30253,12 +30257,12 @@ theorem aux_lpNorm_indicator_const {X : Type*} [MeasurableSpace X]
     (aestronglyMeasurable_const.indicator hE)
   have hqne : (ENNReal.ofReal q) ≠ 0 := by simp [hq]
   have hqtop : (ENNReal.ofReal q) ≠ ∞ := by simp
-  rw [lpNorm, if_pos hmeas, eLpNorm_indicator_const hE hqne hqtop,
+  rw [lpNorm, eLpNorm_indicator_const hE.nullMeasurableSet hqne hqtop,
     ENNReal.toReal_ofReal hq.le, ENNReal.toReal_mul,
     ← ENNReal.toReal_rpow]
   congr 1
 
-/-- **Restricted weak type at the interior point.**  On multiples of
+/-- **Restricted weak type at the interior point.** On multiples of
 indicators the four endpoint weak bounds combine, with no loss, into the
 interior weak bound with constant `∏_a A_a^{ϑ_a}` times the target norms. -/
 theorem weakNorm_interior_le_of_indicator_inputs {X : Type*} [MeasurableSpace X]
@@ -30313,10 +30317,10 @@ theorem weakNorm_interior_le_of_indicator_inputs {X : Type*} [MeasurableSpace X]
 
 /-! ## A symmetric pair of weights gives the strong bound with no loss
 
-Source: `ext:interpolation`.  Combining the four endpoint weak bounds with a
+Source: `ext:interpolation`. Combining the four endpoint weak bounds with a
 weight vector `ψ` gives a weak bound at the exponent `R_ψ` determined by
 `R_ψ^{-1} = ∑_a ψ_a r_a^{-1}`, with constant the weighted geometric mean
-`∏_a Γ_a^{ψ_a}`.  If two weight vectors `ψ⁺` and `ψ⁻` are placed symmetrically
+`∏_a Γ_a^{ψ_a}`. If two weight vectors `ψ⁺` and `ψ⁻` are placed symmetrically
 about `χ`, that is `ψ⁺ + ψ⁻ = 2χ`, then their exponents `R_ψ⁺` and `R_ψ⁻`
 straddle the exponent `R` of `χ` — because `R^{-1}` is the average of the two —
 and the two-sided passage returns *exactly* the geometric mean at `χ`: the two
@@ -30394,20 +30398,20 @@ theorem lintegral_rpow_le_of_symmetric_weight_pair
 
 /-! ## The three-slot expansion over arbitrary finite decompositions
 
-Source: `ext:interpolation`.  The dyadic expansion
+Source: `ext:interpolation`. The dyadic expansion
 `trilinearOnSimple_expand_three` splits each slot into its individual bands.
 The four vertex hypotheses apply just as well to any grouping of the bands,
 because a group is again a simple function of finite measure support, and it is
 the freedom to choose the grouping that the summation needs: the individual
-bands cannot be summed term by term, while suitable product blocks can.  This
+bands cannot be summed term by term, while suitable product blocks can. This
 is the expansion for an arbitrary finite decomposition of each slot.
 -/
 
 /-- **The three-slot expansion for arbitrary finite decompositions.** -/
 theorem trilinearOnSimple_expand_three_general {X : Type*} [MeasurableSpace X]
     {μ : Measure X} {T : (Fin 3 → (X → ℝ)) → (X → ℝ)}
-    (hT : TrilinearOnSimple μ T) {ι : Type*} [DecidableEq ι]
-    (f : Fin 3 → SimpleFunc X ℝ) (hf : ∀ i, (f i).FinMeasSupp μ)
+    (hT : TrilinearOnSimple μ T) {ι : Type*} (f : Fin 3 → SimpleFunc X ℝ) (hf : ∀ i, (f
+      i).FinMeasSupp μ)
     (S : Fin 3 → Finset ι) (G : Fin 3 → ι → SimpleFunc X ℝ)
     (hG : ∀ j, ∀ b ∈ S j, (G j b).FinMeasSupp μ)
     (hdec : ∀ j, (⇑(f j) : X → ℝ) = ∑ b ∈ S j, (⇑(G j b) : X → ℝ)) :
@@ -30463,10 +30467,10 @@ theorem trilinearOnSimple_expand_three_general {X : Type*} [MeasurableSpace X]
 
 /-! ## Truncating an input above and below a level
 
-Source: `ext:interpolation`.  The classical Marcinkiewicz estimates: the part
+Source: `ext:interpolation`. The classical Marcinkiewicz estimates: the part
 of an input above a level has small norm at any exponent below the target one,
 and the part below the level has small norm at any exponent above it, both
-controlled by the target norm and a power of the level.  These are the
+controlled by the target norm and a power of the level. These are the
 estimates that let a grouping of the bands be used in place of the individual
 bands.
 -/
@@ -30553,8 +30557,8 @@ theorem lintegral_rpow_enorm_low_le {X : Type*} [MeasurableSpace X]
 
 /-! ## The truncation estimates in seminorm form
 
-Source: `ext:interpolation`.  The lintegral truncation bounds, restated for the
-`L^Q` seminorm of the truncated input.  These are the forms a grouping of the
+Source: `ext:interpolation`. The lintegral truncation bounds, restated for the
+`L^Q` seminorm of the truncated input. These are the forms a grouping of the
 bands consumes: a group above a level is controlled at every exponent below the
 target one, a group below a level at every exponent above it.
 -/
@@ -30562,12 +30566,12 @@ target one, a group below a level at every exponent above it.
 /-- The `L^Q` seminorm of an indicator restriction, as a restricted integral. -/
 theorem aux_eLpNorm_indicator_restrict {X : Type*} [MeasurableSpace X]
     {μ : Measure X} (f : X → ℝ) (S : Set X) (hS : MeasurableSet S)
-    {Q : ℝ} (hQ : 0 < Q) :
+    {Q : ℝ} (hQ : 0 < Q) (hf : AEStronglyMeasurable f μ := by fun_prop) :
     eLpNorm (S.indicator f) (ENNReal.ofReal Q) μ
       = (∫⁻ x in S, ‖f x‖ₑ ^ Q ∂μ) ^ (1 / Q) := by
   have hqne : (ENNReal.ofReal Q) ≠ 0 := by simp [hQ]
   have hqtop : (ENNReal.ofReal Q) ≠ ∞ := by simp
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hqne hqtop (by fun_prop),
     ENNReal.toReal_ofReal hQ.le]
   congr 1
   have hpt : ∀ x, ‖S.indicator f x‖ₑ ^ Q
@@ -30592,7 +30596,7 @@ theorem eLpNorm_high_le {X : Type*} [MeasurableSpace X]
   have hS : MeasurableSet {x | lam < |f x|} :=
     measurableSet_lt measurable_const (continuous_abs.measurable.comp hf)
   rw [aux_eLpNorm_indicator_restrict f _ hS hQ,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop (by fun_prop),
     ENNReal.toReal_ofReal hp.le]
   have hQne : Q ≠ 0 := ne_of_gt hQ
   have hpne' : p ≠ 0 := ne_of_gt hp
@@ -30625,7 +30629,7 @@ theorem eLpNorm_low_le {X : Type*} [MeasurableSpace X]
   have hS : MeasurableSet {x | |f x| ≤ lam} :=
     measurableSet_le (continuous_abs.measurable.comp hf) measurable_const
   rw [aux_eLpNorm_indicator_restrict f _ hS hQ,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop,
+    eLpNorm_eq_lintegral_rpow_enorm_toReal hpne hptop (by fun_prop),
     ENNReal.toReal_ofReal hp.le]
   have hQne : Q ≠ 0 := ne_of_gt hQ
   have hpne' : p ≠ 0 := ne_of_gt hp
@@ -30647,47 +30651,47 @@ theorem eLpNorm_low_le {X : Type*} [MeasurableSpace X]
 
 /-! ## A geometric tent sums to a bounded multiple of its peak
 
-Source: `ext:interpolation`.  When the four endpoint bounds are compared at a
+Source: `ext:interpolation`. When the four endpoint bounds are compared at a
 fixed size, the smallest of them is, along each direction of the multi-index
 lattice, a two-sided geometric function of the index — decaying on one side at
-rate `α` and on the other at rate `β`.  Such a tent sums over any finite set of
+rate `α` and on the other at rate `β`. Such a tent sums over any finite set of
 indices to a bounded multiple of its peak, with the bound depending only on the
-two rates and not on where the peak sits.  This is the summation mechanism the
+two rates and not on where the peak sits. This is the summation mechanism the
 argument needs, in the form that is uniform in the location of the peak.
 -/
 
 /-- **A centred geometric tent has bounded sums.** -/
 theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
     ∃ K : ℝ, 0 < K ∧ ∀ (c : ℝ) (S : Finset ℤ),
-      ∑ k ∈ S, min ((2:ℝ) ^ (-(α * ((k:ℝ) - c))))
-        ((2:ℝ) ^ (β * ((k:ℝ) - c))) ≤ K := by
+      ∑ k ∈ S, min ((2 : ℝ) ^ (-(α * ((k:ℝ) - c))))
+        ((2 : ℝ) ^ (β * ((k:ℝ) - c))) ≤ K := by
   classical
   have h2 : (0:ℝ) < 2 := by norm_num
-  have hpos : ∀ x : ℝ, (0:ℝ) < (2:ℝ) ^ x := fun x ↦ Real.rpow_pos_of_pos h2 x
-  have hra : (2:ℝ) ^ (-α) < 1 := by
-    rw [show (1:ℝ) = (2:ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
+  have hpos : ∀ x : ℝ, (0:ℝ) < (2 : ℝ) ^ x := fun x ↦ Real.rpow_pos_of_pos h2 x
+  have hra : (2 : ℝ) ^ (-α) < 1 := by
+    rw [show (1:ℝ) = (2 : ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
     exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by linarith)
-  have hrb : (2:ℝ) ^ (-β) < 1 := by
-    rw [show (1:ℝ) = (2:ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
+  have hrb : (2 : ℝ) ^ (-β) < 1 := by
+    rw [show (1:ℝ) = (2 : ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
     exact Real.rpow_lt_rpow_of_exponent_lt (by norm_num) (by linarith)
-  have hga : Summable (fun n : ℕ ↦ ((2:ℝ) ^ (-α)) ^ n) :=
+  have hga : Summable (fun n : ℕ ↦ ((2 : ℝ) ^ (-α)) ^ n) :=
     summable_geometric_of_lt_one (hpos (-α)).le hra
-  have hgb : Summable (fun n : ℕ ↦ ((2:ℝ) ^ (-β)) ^ n) :=
+  have hgb : Summable (fun n : ℕ ↦ ((2 : ℝ) ^ (-β)) ^ n) :=
     summable_geometric_of_lt_one (hpos (-β)).le hrb
-  set Ka : ℝ := ∑' n : ℕ, ((2:ℝ) ^ (-α)) ^ n with hKa
-  set Kb : ℝ := ∑' n : ℕ, ((2:ℝ) ^ (-β)) ^ n with hKb
+  set Ka : ℝ := ∑' n : ℕ, ((2 : ℝ) ^ (-α)) ^ n with hKa
+  set Kb : ℝ := ∑' n : ℕ, ((2 : ℝ) ^ (-β)) ^ n with hKb
   have hKapos : 0 < Ka := by
     rw [hKa, tsum_geometric_of_lt_one (hpos (-α)).le hra]
-    have : (0:ℝ) < 1 - (2:ℝ) ^ (-α) := by linarith
+    have : (0:ℝ) < 1 - (2 : ℝ) ^ (-α) := by linarith
     positivity
   have hKbpos : 0 < Kb := by
     rw [hKb, tsum_geometric_of_lt_one (hpos (-β)).le hrb]
-    have : (0:ℝ) < 1 - (2:ℝ) ^ (-β) := by linarith
+    have : (0:ℝ) < 1 - (2 : ℝ) ^ (-β) := by linarith
     positivity
   refine ⟨Ka + Kb, by linarith, ?_⟩
   intro c S
-  set F : ℤ → ℝ := fun k ↦ min ((2:ℝ) ^ (-(α * ((k:ℝ) - c))))
-    ((2:ℝ) ^ (β * ((k:ℝ) - c))) with hF
+  set F : ℤ → ℝ := fun k ↦ min ((2 : ℝ) ^ (-(α * ((k:ℝ) - c))))
+    ((2 : ℝ) ^ (β * ((k:ℝ) - c))) with hF
   have hFnn : ∀ k : ℤ, 0 ≤ F k := fun k ↦
     le_min (hpos _).le (hpos _).le
   set A : Finset ℤ := S.filter (fun k ↦ c ≤ (k:ℝ)) with hA
@@ -30697,7 +30701,7 @@ theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
   -- the right half
   set m : ℤ := ⌈c⌉ with hm
   have hAle : ∑ k ∈ A, F k ≤ Ka := by
-    have hstep : ∀ k ∈ A, F k ≤ ((2:ℝ) ^ (-α)) ^ ((k - m).toNat) := by
+    have hstep : ∀ k ∈ A, F k ≤ ((2 : ℝ) ^ (-α)) ^ ((k - m).toNat) := by
       intro k hk
       have hck : c ≤ (k:ℝ) := (Finset.mem_filter.mp hk).2
       have hmk : m ≤ k := Int.ceil_le.mpr hck
@@ -30710,12 +30714,12 @@ theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
         rw [hcast]
         have : (m:ℝ) ≥ c := Int.le_ceil c
         linarith
-      calc F k ≤ (2:ℝ) ^ (-(α * ((k:ℝ) - c))) := min_le_left _ _
-        _ ≤ (2:ℝ) ^ (-(α * ((k - m).toNat : ℝ))) := by
+      calc F k ≤ (2 : ℝ) ^ (-(α * ((k:ℝ) - c))) := min_le_left _ _
+        _ ≤ (2 : ℝ) ^ (-(α * ((k - m).toNat : ℝ))) := by
             refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
             nlinarith [hα, hle]
-        _ = ((2:ℝ) ^ (-α)) ^ ((k - m).toNat) := by
-            rw [← Real.rpow_natCast ((2:ℝ) ^ (-α)), ← Real.rpow_mul h2.le]
+        _ = ((2 : ℝ) ^ (-α)) ^ ((k - m).toNat) := by
+            rw [← Real.rpow_natCast ((2 : ℝ) ^ (-α)), ← Real.rpow_mul h2.le]
             congr 1
             ring
     have hinj : ∀ x ∈ A, ∀ y ∈ A, (x - m).toNat = (y - m).toNat → x = y := by
@@ -30723,15 +30727,15 @@ theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
       have hxm : m ≤ x := Int.ceil_le.mpr (Finset.mem_filter.mp hx).2
       have hym : m ≤ y := Int.ceil_le.mpr (Finset.mem_filter.mp hy).2
       omega
-    calc ∑ k ∈ A, F k ≤ ∑ k ∈ A, ((2:ℝ) ^ (-α)) ^ ((k - m).toNat) :=
+    calc ∑ k ∈ A, F k ≤ ∑ k ∈ A, ((2 : ℝ) ^ (-α)) ^ ((k - m).toNat) :=
           Finset.sum_le_sum hstep
-      _ = ∑ n ∈ A.image (fun k ↦ (k - m).toNat), ((2:ℝ) ^ (-α)) ^ n :=
+      _ = ∑ n ∈ A.image (fun k ↦ (k - m).toNat), ((2 : ℝ) ^ (-α)) ^ n :=
           (Finset.sum_image hinj).symm
       _ ≤ Ka := hga.sum_le_tsum _ (fun n _ ↦ by positivity)
   -- the left half
   set m' : ℤ := ⌊c⌋ with hm'
   have hBle : ∑ k ∈ B, F k ≤ Kb := by
-    have hstep : ∀ k ∈ B, F k ≤ ((2:ℝ) ^ (-β)) ^ ((m' - k).toNat) := by
+    have hstep : ∀ k ∈ B, F k ≤ ((2 : ℝ) ^ (-β)) ^ ((m' - k).toNat) := by
       intro k hk
       have hck : (k:ℝ) < c := lt_of_not_ge (Finset.mem_filter.mp hk).2
       have hkm : k ≤ m' := Int.le_floor.mpr (le_of_lt hck)
@@ -30744,12 +30748,12 @@ theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
         rw [hcast]
         have : (m':ℝ) ≤ c := Int.floor_le c
         linarith
-      calc F k ≤ (2:ℝ) ^ (β * ((k:ℝ) - c)) := min_le_right _ _
-        _ ≤ (2:ℝ) ^ (-(β * ((m' - k).toNat : ℝ))) := by
+      calc F k ≤ (2 : ℝ) ^ (β * ((k:ℝ) - c)) := min_le_right _ _
+        _ ≤ (2 : ℝ) ^ (-(β * ((m' - k).toNat : ℝ))) := by
             refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
             nlinarith [hβ, hle]
-        _ = ((2:ℝ) ^ (-β)) ^ ((m' - k).toNat) := by
-            rw [← Real.rpow_natCast ((2:ℝ) ^ (-β)), ← Real.rpow_mul h2.le]
+        _ = ((2 : ℝ) ^ (-β)) ^ ((m' - k).toNat) := by
+            rw [← Real.rpow_natCast ((2 : ℝ) ^ (-β)), ← Real.rpow_mul h2.le]
             congr 1
             ring
     have hinj : ∀ x ∈ B, ∀ y ∈ B, (m' - x).toNat = (m' - y).toNat → x = y := by
@@ -30759,9 +30763,9 @@ theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
       have hym : y ≤ m' := Int.le_floor.mpr
         (le_of_lt (lt_of_not_ge (Finset.mem_filter.mp hy).2))
       omega
-    calc ∑ k ∈ B, F k ≤ ∑ k ∈ B, ((2:ℝ) ^ (-β)) ^ ((m' - k).toNat) :=
+    calc ∑ k ∈ B, F k ≤ ∑ k ∈ B, ((2 : ℝ) ^ (-β)) ^ ((m' - k).toNat) :=
           Finset.sum_le_sum hstep
-      _ = ∑ n ∈ B.image (fun k ↦ (m' - k).toNat), ((2:ℝ) ^ (-β)) ^ n :=
+      _ = ∑ n ∈ B.image (fun k ↦ (m' - k).toNat), ((2 : ℝ) ^ (-β)) ^ n :=
           (Finset.sum_image hinj).symm
       _ ≤ Kb := hgb.sum_le_tsum _ (fun n _ ↦ by positivity)
   rw [hsplit]
@@ -30769,10 +30773,10 @@ theorem exists_tent_sum_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
 
 /-! ## The minimum of two geometric families is a centred tent
 
-Source: `ext:interpolation`.  Along a direction of the multi-index lattice one
+Source: `ext:interpolation`. Along a direction of the multi-index lattice one
 endpoint size decays geometrically and another grows; their minimum is a tent
 centred where they cross, with peak the weighted geometric mean of the two
-constants — the weights being the two rates, normalized.  Combining this with
+constants — the weights being the two rates, normalized. Combining this with
 `exists_tent_sum_bound` gives the estimate the multi-index sum needs: the sum of
 the two-sided minimum over any finite set of indices is bounded by a constant
 times that geometric mean, with the constant depending only on the two rates.
@@ -30782,10 +30786,10 @@ times that geometric mean, with the constant depending only on the two rates.
 tent. -/
 theorem min_two_geometric_eq_tent {α β C₁ C₂ : ℝ} (hα : 0 < α) (hβ : 0 < β)
     (hC₁ : 0 < C₁) (hC₂ : 0 < C₂) (k : ℝ) :
-    min (C₁ * (2:ℝ) ^ (-(α * k))) (C₂ * (2:ℝ) ^ (β * k))
+    min (C₁ * (2 : ℝ) ^ (-(α * k))) (C₂ * (2 : ℝ) ^ (β * k))
       = (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) *
-          min ((2:ℝ) ^ (-(α * (k - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
-            ((2:ℝ) ^ (β * (k - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) := by
+          min ((2 : ℝ) ^ (-(α * (k - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
+            ((2 : ℝ) ^ (β * (k - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) := by
   have h2 : (0:ℝ) < 2 := by norm_num
   have hαβ : 0 < α + β := by linarith
   have hquot : 0 < C₁ / C₂ := div_pos hC₁ hC₂
@@ -30794,18 +30798,18 @@ theorem min_two_geometric_eq_tent {α β C₁ C₂ : ℝ} (hα : 0 < α) (hβ : 
   have hVnn : 0 ≤ V := by positivity
   have hlog2 : Real.log 2 ≠ 0 := ne_of_gt (Real.log_pos (by norm_num))
   have hαβne : α + β ≠ 0 := ne_of_gt hαβ
-  have hpow : ∀ t : ℝ, (2:ℝ) ^ (t * c) = (C₁ / C₂) ^ (t / (α + β)) := by
+  have hpow : ∀ t : ℝ, (2 : ℝ) ^ (t * c) = (C₁ / C₂) ^ (t / (α + β)) := by
     intro t
     rw [Real.rpow_def_of_pos h2, Real.rpow_def_of_pos hquot, hc]
     congr 1
     field_simp
   have hsum1 : β / (α + β) + α / (α + β) = 1 := by field_simp; ring
-  have hA : V * (2:ℝ) ^ (α * c) = C₁ := by
+  have hA : V * (2 : ℝ) ^ (α * c) = C₁ := by
     rw [hpow α, Real.div_rpow hC₁.le hC₂.le, hV]
     field_simp
     rw [← Real.rpow_add hC₁]
     rw [show β / (α + β) + α / (α + β) = 1 from hsum1, Real.rpow_one]
-  have hB : V * (2:ℝ) ^ (-(β * c)) = C₂ := by
+  have hB : V * (2 : ℝ) ^ (-(β * c)) = C₂ := by
     rw [show -(β * c) = (-β) * c by ring, hpow (-β),
       Real.div_rpow hC₁.le hC₂.le, hV]
     rw [show (-β) / (α + β) = -(β / (α + β)) by ring,
@@ -30814,10 +30818,10 @@ theorem min_two_geometric_eq_tent {α β C₁ C₂ : ℝ} (hα : 0 < α) (hβ : 
     rw [← Real.rpow_add hC₂]
     rw [show α / (α + β) + β / (α + β) = 1 by rw [add_comm]; exact hsum1,
       Real.rpow_one]
-  have hL : V * (2:ℝ) ^ (-(α * (k - c))) = C₁ * (2:ℝ) ^ (-(α * k)) := by
+  have hL : V * (2 : ℝ) ^ (-(α * (k - c))) = C₁ * (2 : ℝ) ^ (-(α * k)) := by
     rw [show -(α * (k - c)) = -(α * k) + α * c by ring, Real.rpow_add h2, ← hA]
     ring
-  have hR : V * (2:ℝ) ^ (β * (k - c)) = C₂ * (2:ℝ) ^ (β * k) := by
+  have hR : V * (2 : ℝ) ^ (β * (k - c)) = C₂ * (2 : ℝ) ^ (β * k) := by
     rw [show β * (k - c) = β * k + -(β * c) by ring, Real.rpow_add h2, ← hB]
     ring
   rw [← hL, ← hR, ← mul_min_of_nonneg _ _ hVnn]
@@ -30825,21 +30829,21 @@ theorem min_two_geometric_eq_tent {α β C₁ C₂ : ℝ} (hα : 0 < α) (hβ : 
 /-- **The two-sided geometric minimum sums to the geometric mean.** -/
 theorem exists_sum_min_two_geometric_bound {α β : ℝ} (hα : 0 < α) (hβ : 0 < β) :
     ∃ K : ℝ, 0 < K ∧ ∀ (C₁ C₂ : ℝ), 0 < C₁ → 0 < C₂ → ∀ S : Finset ℤ,
-      ∑ k ∈ S, min (C₁ * (2:ℝ) ^ (-(α * (k:ℝ)))) (C₂ * (2:ℝ) ^ (β * (k:ℝ)))
+      ∑ k ∈ S, min (C₁ * (2 : ℝ) ^ (-(α * (k:ℝ)))) (C₂ * (2 : ℝ) ^ (β * (k:ℝ)))
         ≤ K * (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) := by
   obtain ⟨K, hKpos, hK⟩ := exists_tent_sum_bound hα hβ
   refine ⟨K, hKpos, fun C₁ C₂ hC₁ hC₂ S ↦ ?_⟩
   have hV : (0:ℝ) ≤ C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β)) := by positivity
-  calc ∑ k ∈ S, min (C₁ * (2:ℝ) ^ (-(α * (k:ℝ)))) (C₂ * (2:ℝ) ^ (β * (k:ℝ)))
+  calc ∑ k ∈ S, min (C₁ * (2 : ℝ) ^ (-(α * (k:ℝ)))) (C₂ * (2 : ℝ) ^ (β * (k:ℝ)))
       = ∑ k ∈ S, (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) *
-          min ((2:ℝ) ^ (-(α * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
-            ((2:ℝ) ^ (β * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) :=
+          min ((2 : ℝ) ^ (-(α * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
+            ((2 : ℝ) ^ (β * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) :=
         Finset.sum_congr rfl fun k _ ↦
           min_two_geometric_eq_tent hα hβ hC₁ hC₂ (k:ℝ)
     _ = (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) *
-          ∑ k ∈ S, min ((2:ℝ) ^ (-(α * ((k:ℝ) -
+          ∑ k ∈ S, min ((2 : ℝ) ^ (-(α * ((k:ℝ) -
               Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))))
-            ((2:ℝ) ^ (β * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) :=
+            ((2 : ℝ) ^ (β * ((k:ℝ) - Real.log (C₁ / C₂) / ((α + β) * Real.log 2)))) :=
         (Finset.mul_sum _ _ _).symm
     _ ≤ (C₁ ^ (β / (α + β)) * C₂ ^ (α / (α + β))) * K :=
         mul_le_mul_of_nonneg_left (hK _ S) hV
@@ -30847,19 +30851,19 @@ theorem exists_sum_min_two_geometric_bound {α β : ℝ} (hα : 0 < α) (hβ : 0
 
 /-! ## A tent-shaped weight family on the multi-index lattice
 
-Source: `ext:interpolation`.  The level assigned to a layer triple by
+Source: `ext:interpolation`. The level assigned to a layer triple by
 `meas_lt_of_triple_expansion_bounds` has to be a share of the output level, the
-shares summing to at most one.  The share that works is a tent centred at the
+shares summing to at most one. The share that works is a tent centred at the
 peak of the endpoint sizes: it gives every term near the peak a share bounded
 below by a constant, so the number of terms never enters the estimate, which is
-what a uniform share `1/M` fails to do.  The bound below is uniform in the
+what a uniform share `1/M` fails to do. The bound below is uniform in the
 centre, as it must be — the peak moves with the data.
 -/
 
 /-- A one-dimensional tent in absolute-value form has bounded sums. -/
 theorem exists_sum_abs_tent_bound {η : ℝ} (hη : 0 < η) :
     ∃ K : ℝ, 0 < K ∧ ∀ (c : ℝ) (S : Finset ℤ),
-      ∑ k ∈ S, (2:ℝ) ^ (-(η * |(k:ℝ) - c|)) ≤ K := by
+      ∑ k ∈ S, (2 : ℝ) ^ (-(η * |(k:ℝ) - c|)) ≤ K := by
   obtain ⟨K, hK, hb⟩ := exists_tent_sum_bound hη hη
   refine ⟨K, hK, fun c S ↦ ?_⟩
   refine le_trans (le_of_eq ?_) (hb c S)
@@ -30889,33 +30893,33 @@ its centre.** -/
 theorem exists_lattice_tent_sum_bound {η : ℝ} (hη : 0 < η) :
     ∃ K : ℝ, 0 < K ∧ ∀ (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ),
       ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
-          ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) * (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
-            (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|))) ≤ K := by
+          ((2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|)) * (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|)) *
+            (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|))) ≤ K := by
   obtain ⟨K₁, hK₁, hb⟩ := exists_sum_abs_tent_bound hη
   refine ⟨K₁ ^ 3, by positivity, fun c S1 S2 S3 ↦ ?_⟩
   rw [sum_triple_product_factor_real
-    (fun k ↦ (2:ℝ) ^ (-(η * |(k:ℝ) - c 0|)))
-    (fun k ↦ (2:ℝ) ^ (-(η * |(k:ℝ) - c 1|)))
-    (fun k ↦ (2:ℝ) ^ (-(η * |(k:ℝ) - c 2|)))]
+    (fun k ↦ (2 : ℝ) ^ (-(η * |(k:ℝ) - c 0|)))
+    (fun k ↦ (2 : ℝ) ^ (-(η * |(k:ℝ) - c 1|)))
+    (fun k ↦ (2 : ℝ) ^ (-(η * |(k:ℝ) - c 2|)))]
   have hnn : ∀ (d : ℝ) (S : Finset ℤ),
-      (0:ℝ) ≤ ∑ k ∈ S, (2:ℝ) ^ (-(η * |(k:ℝ) - d|)) :=
+      (0:ℝ) ≤ ∑ k ∈ S, (2 : ℝ) ^ (-(η * |(k:ℝ) - d|)) :=
     fun d S ↦ Finset.sum_nonneg fun k _ ↦ Real.rpow_nonneg (by norm_num) _
-  have hstep : (∑ k1 ∈ S1, (2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|))) *
-      (∑ k2 ∈ S2, (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|))) *
-      (∑ k3 ∈ S3, (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|))) ≤ K₁ * K₁ * K₁ := by
+  have hstep : (∑ k1 ∈ S1, (2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|))) *
+      (∑ k2 ∈ S2, (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|))) *
+      (∑ k3 ∈ S3, (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|))) ≤ K₁ * K₁ * K₁ := by
     refine mul_le_mul (mul_le_mul (hb _ S1) (hb _ S2) (hnn _ S2) hK₁.le)
       (hb _ S3) (hnn _ S3) (by positivity)
-  calc (∑ k1 ∈ S1, (2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|))) *
-      (∑ k2 ∈ S2, (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|))) *
-      (∑ k3 ∈ S3, (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|))) ≤ K₁ * K₁ * K₁ := hstep
+  calc (∑ k1 ∈ S1, (2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|))) *
+      (∑ k2 ∈ S2, (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|))) *
+      (∑ k3 ∈ S3, (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|))) ≤ K₁ * K₁ * K₁ := hstep
     _ = K₁ ^ 3 := by ring
 
 /-! ## The normalized tent, and the budget it respects
 
-Source: `ext:interpolation`.  Rescaling the lattice tent by the reciprocal of
+Source: `ext:interpolation`. Rescaling the lattice tent by the reciprocal of
 its uniform bound gives a weight family whose total is at most one, which is
 exactly the hypothesis `sum_weighted_levels_le` and
-`meas_lt_of_triple_expansion_bounds` ask of a level split.  So the level assigned
+`meas_lt_of_triple_expansion_bounds` ask of a level split. So the level assigned
 to a layer triple can be taken proportional to the tent, at any centre.
 -/
 
@@ -30933,41 +30937,41 @@ theorem mul_sum_triple {S1 S2 S3 : Finset ℤ} (C : ℝ) (F : ℤ → ℤ → �
 theorem exists_normalized_lattice_tent {η : ℝ} (hη : 0 < η) :
     ∃ C : ℝ, 0 < C ∧ ∀ (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ),
       ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
-        (C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
-          (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
-          (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) ≤ 1 := by
+        (C * ((2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|)) *
+          (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|)) *
+          (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|)))) ≤ 1 := by
   obtain ⟨K, hK, hb⟩ := exists_lattice_tent_sum_bound hη
   refine ⟨K⁻¹, by positivity, fun c S1 S2 S3 ↦ ?_⟩
   rw [mul_sum_triple K⁻¹ (fun k1 k2 k3 ↦
-    (2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) * (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
-      (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))]
+    (2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|)) * (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|)) *
+      (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|)))]
   rw [inv_mul_le_iff₀ hK, mul_one]
   exact hb c S1 S2 S3
 
-/-- **The tent split respects the level budget.**  Assigning each layer triple
+/-- **The tent split respects the level budget.** Assigning each layer triple
 the share of the level given by the normalized tent leaves the shares summing to
 at most the level, which is what the expansion bound consumes. -/
 theorem sum_tent_levels_le {η : ℝ} {C : ℝ}
     (hC : ∀ (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ),
       ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
-        (C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
-          (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
-          (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) ≤ 1)
+        (C * ((2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|)) *
+          (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|)) *
+          (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|)))) ≤ 1)
     (c : Fin 3 → ℝ) (S1 S2 S3 : Finset ℤ) (t : ℝ) (ht : 0 ≤ t) :
     ∑ k1 ∈ S1, ∑ k2 ∈ S2, ∑ k3 ∈ S3,
-        t * (C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
-          (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
-          (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) ≤ t :=
+        t * (C * ((2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|)) *
+          (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|)) *
+          (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|)))) ≤ t :=
   sum_weighted_levels_le S1 S2 S3
-    (fun k1 k2 k3 ↦ C * ((2:ℝ) ^ (-(η * |(k1:ℝ) - c 0|)) *
-      (2:ℝ) ^ (-(η * |(k2:ℝ) - c 1|)) *
-      (2:ℝ) ^ (-(η * |(k3:ℝ) - c 2|)))) t ht (hC c S1 S2 S3)
+    (fun k1 k2 k3 ↦ C * ((2 : ℝ) ^ (-(η * |(k1 : ℝ) - c 0|)) *
+      (2 : ℝ) ^ (-(η * |(k2 : ℝ) - c 1|)) *
+      (2 : ℝ) ^ (-(η * |(k3 : ℝ) - c 2|)))) t ht (hC c S1 S2 S3)
 
 /-! ## Bands aggregate in `ℓ^q`, not in `ℓ^1`
 
-Source: `ext:interpolation`.  The dyadic bands of an input are disjointly
+Source: `ext:interpolation`. The dyadic bands of an input are disjointly
 supported, so the `L^q` norm of a *group* of bands is the `ℓ^q` aggregate of the
-individual band norms, not their sum.  This is the joint constraint the four
+individual band norms, not their sum. This is the joint constraint the four
 endpoint hypotheses place on a grouping: applying a vertex bound to a group of
 bands is strictly stronger than applying it to each band and adding, and the gap
 between `ℓ^q` and `ℓ^1` is exactly the slack the term-by-term route throws away.
@@ -31013,7 +31017,7 @@ theorem lintegral_rpow_enorm_sum_dyadicLevelPiece {X : Type*} [MeasurableSpace X
 
 /-! ## A level-set bound packages as a weak norm
 
-Source: `ext:interpolation`.  `meas_lt_le_of_weakNorm_le` turns a weak norm into
+Source: `ext:interpolation`. `meas_lt_le_of_weakNorm_le` turns a weak norm into
 a level-set bound; this is the converse, which is what the level-splitting
 estimate needs, since that estimate produces a level-set bound decaying like
 `τ^{-R}` and the downstream steps are stated for the weak norm.
@@ -31045,9 +31049,9 @@ theorem weakNorm_le_of_meas_lt_le {X : Type*} [MeasurableSpace X]
 
 /-! ## The weak norm is a quasi-norm
 
-Source: `ext:interpolation`.  The weak `L^r` norm is not subadditive, but it
+Source: `ext:interpolation`. The weak `L^r` norm is not subadditive, but it
 obeys a triangle inequality with a factor two: a point where the sum exceeds a
-level is a point where one of the summands exceeds half of it.  This is what any
+level is a point where one of the summands exceeds half of it. This is what any
 aggregation of the layer pieces in the weak norms has to start from, and the file
 did not have it.
 -/
@@ -31102,7 +31106,7 @@ Source: `ext:interpolation`, and the prerequisite recorded in ErrorReport.md.
 The route that closes the theorem aggregates the layer pieces in the norm of a
 real interpolation space rather than by the triangle inequality, and the first
 object it needs is the `K`-functional of the couple formed by the two weak
-spaces at the straddling exponents.  This section defines it and records the two
+spaces at the straddling exponents. This section defines it and records the two
 estimates that say it is dominated by either endpoint norm, from which the
 `J`-functional bound follows.
 -/
@@ -31129,7 +31133,7 @@ theorem weakK_le_right {X : Type*} [MeasurableSpace X] (μ : Measure X)
   refine le_trans (iInf_le _ v) (le_of_eq ?_)
   rw [sub_self, hz, zero_add]
 
-/-- **The `K`-functional is dominated by the `J`-functional.**  At any scale `s`,
+/-- **The `K`-functional is dominated by the `J`-functional.** At any scale `s`,
 the `K`-functional at scale `t` is at most the `J`-functional at scale `s`, and
 also at most `t/s` times it. -/
 theorem weakK_le_weakJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
@@ -31156,7 +31160,7 @@ theorem weakK_le_weakJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
 
 Source: `ext:interpolation`, and the prerequisite recorded in ErrorReport.md.
 The `K`-functional of a sum is estimated by testing it against the sum of any
-two chosen decompositions.  Because the weak norms are only quasi-norms, the
+two chosen decompositions. Because the weak norms are only quasi-norms, the
 estimate carries the factor two of `weakNorm_add_le` in each slot.
 -/
 
@@ -31188,13 +31192,12 @@ theorem weakK_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## The candidate norm on weak `L^r`
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The `K`-functional has to be genuinely subadditive, and the weak
+ErrorReport.md. The `K`-functional has to be genuinely subadditive, and the weak
 norm is only a quasi-norm; the classical repair is that for `r > 1` the weak
 space is normable, by the quantity
+  sup over sets of finite positive measure of μ(E)^{1/r - 1} ∫_E |v|,
 
-  sup over sets of finite positive measure of  μ(E)^{1/r - 1} ∫_E |v|,
-
-which is a genuine supremum of norms and so subadditive.  This section defines it
+which is a genuine supremum of norms and so subadditive. This section defines it
 and records that it dominates each summand of the weak norm taken over a subset
 of a level set — the elementary half of the equivalence.
 -/
@@ -31214,7 +31217,7 @@ theorem le_weakNormPrime {X : Type*} [MeasurableSpace X] (μ : Measure X)
   le_iSup (fun F : {F : Set X // MeasurableSet F ∧ μ F ≠ 0 ∧ μ F ≠ ∞} ↦
     (μ F.1) ^ (1 / r - 1) * ∫⁻ x in F.1, ‖v x‖ₑ ∂μ) ⟨E, hE, h0, htop⟩
 
-/-- **The candidate norm dominates the weak norm's summands.**  On a subset of a
+/-- **The candidate norm dominates the weak norm's summands.** On a subset of a
 level set of finite positive measure, the level times the `1/r`-th power of the
 measure is below the candidate norm. -/
 theorem ofReal_mul_rpow_le_weakNormPrime {X : Type*} [MeasurableSpace X]
@@ -31246,10 +31249,10 @@ theorem ofReal_mul_rpow_le_weakNormPrime {X : Type*} [MeasurableSpace X]
 /-! ## The layer cake on a set
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The normability of weak `L^r` is proved by writing the integral
+ErrorReport.md. The normability of weak `L^r` is proved by writing the integral
 of `|v|` over a set as the integral of the measures of its level sets met with
 that set, and then bounding those measures in two ways — by the measure of the
-set, and by the weak norm.  This section supplies the first step.
+set, and by the weak norm. This section supplies the first step.
 -/
 
 /-- **The layer cake formula on a set.** -/
@@ -31272,7 +31275,7 @@ theorem lintegral_enorm_restrict_eq_meas_lt {X : Type*} [MeasurableSpace X]
 /-! ## Splitting the level integral between the two available bounds
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  In the normability estimate the measures of the level sets are
+ErrorReport.md. In the normability estimate the measures of the level sets are
 bounded in two ways — by the measure of the set and by the weak norm's
 `A^r t^{-r}` — and the level integral is split where the two are to be traded.
 This is that split, stated for an arbitrary splitting level so the caller may
@@ -31319,7 +31322,7 @@ theorem lintegral_Ioi_le_of_two_bounds {g : ℝ → ℝ≥0∞}
 /-! ## The integral over a set, from the weak norm
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Composing the layer cake on a set with the split of the level
+ErrorReport.md. Composing the layer cake on a set with the split of the level
 integral gives the estimate the normability of weak `L^r` rests on: the integral
 of `|v|` over a set is bounded by the measure of the set times any level, plus
 the tail the weak norm controls.
@@ -31342,7 +31345,7 @@ theorem lintegral_enorm_restrict_le_of_weakNorm {X : Type*} [MeasurableSpace X]
 /-! ## The normalized average, from the weak norm
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Putting the splitting level at the crossing of the two bounds
+ErrorReport.md. Putting the splitting level at the crossing of the two bounds
 turns the previous estimate into the one half of the normability equivalence:
 the normalized average of `|v|` over a set of finite positive measure is at most
 the conjugate exponent times the weak norm.
@@ -31406,7 +31409,7 @@ theorem lintegral_enorm_restrict_le_conj {X : Type*} [MeasurableSpace X]
 /-! ## One half of the normability equivalence
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Taking the supremum of the estimate at the optimal splitting
+ErrorReport.md. Taking the supremum of the estimate at the optimal splitting
 level over sets of finite positive measure gives that the candidate norm is at
 most the conjugate exponent times the weak norm.
 -/
@@ -31445,7 +31448,7 @@ theorem weakNormPrime_le_conj_mul_weakNorm {X : Type*} [MeasurableSpace X]
 /-! ## The other half of the normability equivalence
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The candidate norm dominates the weak norm's summands on
+ErrorReport.md. The candidate norm dominates the weak norm's summands on
 subsets of level sets; on a σ-finite measure every level set is approximated
 from inside by such subsets, so the candidate norm dominates the weak norm
 itself.
@@ -31490,9 +31493,9 @@ theorem weakNorm_le_weakNormPrime {X : Type*} [MeasurableSpace X]
 /-! ## The candidate norm is subadditive
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Unlike the weak quasi-norm, the candidate norm really is
+ErrorReport.md. Unlike the weak quasi-norm, the candidate norm really is
 subadditive: each normalized average is, and a supremum of subadditive
-quantities is subadditive.  This is the property the `K`-functional needs and
+quantities is subadditive. This is the property the `K`-functional needs and
 the reason for passing to the candidate norm at all.
 -/
 
@@ -31525,9 +31528,9 @@ theorem weakNormPrime_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## The `K`-functional on the genuine norm
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  With the candidate norm in hand the `K`-functional can be built
+ErrorReport.md. With the candidate norm in hand the `K`-functional can be built
 on a Banach couple rather than a quasi-normed one, and its estimate on a sum
-carries no constant.  That is what makes an aggregation over infinitely many
+carries no constant. That is what makes an aggregation over infinitely many
 pieces possible.
 -/
 
@@ -31591,15 +31594,15 @@ theorem primeK_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## Aggregating finitely many pieces
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Because the candidate norm is genuinely subadditive, it is
+ErrorReport.md. Because the candidate norm is genuinely subadditive, it is
 subadditive over a finite family with no constant, and so is the `K`-functional
-tested against a family of decompositions.  This is the shape the `J`-method
+tested against a family of decompositions. This is the shape the `J`-method
 estimate consumes.
 -/
 
 /-- **The candidate norm is subadditive over a finite family.** -/
 theorem weakNormPrime_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
-    (r : ℝ) {ι : Type*} [DecidableEq ι] (S : Finset ι) (f : ι → X → ℝ)
+    (r : ℝ) {ι : Type*} (S : Finset ι) (f : ι → X → ℝ)
     (hf : ∀ i, Measurable (f i)) :
     weakNormPrime μ r (∑ i ∈ S, f i)
       ≤ ∑ i ∈ S, weakNormPrime μ r (f i) := by
@@ -31613,12 +31616,13 @@ theorem weakNormPrime_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-- **The `K`-functional of a finite sum, tested against chosen
 decompositions.** -/
 theorem primeK_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
-    (r₁ r₂ t : ℝ) {ι : Type*} [DecidableEq ι] (S : Finset ι)
+    (r₁ r₂ t : ℝ) {ι : Type*} (S : Finset ι)
     (v w : ι → X → ℝ) (hv : ∀ i, Measurable (v i))
     (hw : ∀ i, Measurable (w i)) :
     primeK μ r₁ r₂ t (∑ i ∈ S, v i)
       ≤ ∑ i ∈ S, (weakNormPrime μ r₁ (v i - w i)
           + ENNReal.ofReal t * weakNormPrime μ r₂ (w i)) := by
+  classical
   refine le_trans (iInf_le _ (∑ i ∈ S, w i)) ?_
   have hdiff : (∑ i ∈ S, v i) - (∑ i ∈ S, w i) = ∑ i ∈ S, (v i - w i) :=
     (Finset.sum_sub_distrib v w).symm
@@ -31637,10 +31641,10 @@ theorem primeK_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## The `J`-functional bound on each piece
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Each piece of a decomposition is handled by one of the two
+ErrorReport.md. Each piece of a decomposition is handled by one of the two
 trivial decompositions — keep it in the first space, or move it entirely to the
 second — and which one is better is decided by comparing the level `t` with the
-piece's own scale.  Choosing that way piece by piece turns the tested bound of
+piece's own scale. Choosing that way piece by piece turns the tested bound of
 `primeK_sum_le` into the `J`-functional bound the method needs.
 -/
 
@@ -31651,8 +31655,8 @@ def primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X) (r₁ r₂ s : ℝ)
 
 /-- **The `J`-functional bound on a finite sum.** -/
 theorem primeK_sum_le_primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
-    (r₁ r₂ : ℝ) {t : ℝ} (ht : 0 ≤ t) {ι : Type*} [DecidableEq ι]
-    (S : Finset ι) (v : ι → X → ℝ) (σ : ι → ℝ) (hσ : ∀ i, 0 < σ i)
+    (r₁ r₂ : ℝ) {t : ℝ} (ht : 0 ≤ t) {ι : Type*} (S : Finset ι) (v : ι → X → ℝ) (σ : ι → ℝ) (hσ :
+      ∀ i, 0 < σ i)
     (hv : ∀ i, Measurable (v i)) :
     primeK μ r₁ r₂ t (∑ i ∈ S, v i)
       ≤ ∑ i ∈ S, min (primeJ μ r₁ r₂ (σ i) (v i))
@@ -31661,10 +31665,10 @@ theorem primeK_sum_le_primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
   set w : ι → X → ℝ := fun i ↦ if σ i ≤ t then 0 else v i with hwdef
   have hwmeas : ∀ i, Measurable (w i) := by
     intro i
-    show Measurable (if σ i ≤ t then (0 : X → ℝ) else v i)
+    change Measurable (if σ i ≤ t then (0 : X → ℝ) else v i)
     by_cases h : σ i ≤ t
-    · rw [if_pos h]; exact measurable_const
-    · rw [if_neg h]; exact hv i
+    · rw [ite_eq_left h]; exact measurable_const
+    · rw [ite_eq_right h]; exact hv i
   refine le_trans (primeK_sum_le μ r₁ r₂ t S v w hv hwmeas) ?_
   refine Finset.sum_le_sum fun i _ ↦ ?_
   have hJ1 : weakNormPrime μ r₁ (v i) ≤ primeJ μ r₁ r₂ (σ i) (v i) :=
@@ -31708,8 +31712,8 @@ theorem primeK_sum_le_primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## The level integral of the `J`-method profile
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The `J`-method weights a piece by `min(1, t/σ)` and integrates
-the level against `t^{-θ}` in the multiplicative measure `dt/t`.  After scaling
+ErrorReport.md. The `J`-method weights a piece by `min(1, t/σ)` and integrates
+the level against `t^{-θ}` in the multiplicative measure `dt/t`. After scaling
 out `σ` this is a single elementary integral, finite exactly when `0 < θ < 1`,
 which is where the interior position of the target exponent is used.
 -/
@@ -31775,32 +31779,32 @@ theorem lintegral_min_one_rpow_div {θ s : ℝ} (hθ : 0 < θ) (hθ1 : θ < 1)
 /-! ## The discrete profile of the `J`-method
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Taking the level parameter along the powers of two rather than
+ErrorReport.md. Taking the level parameter along the powers of two rather than
 continuously turns the profile integral into a two-sided geometric sum, which
-the file already knows how to bound uniformly.  That avoids a change of
+the file already knows how to bound uniformly. That avoids a change of
 variables for the multiplicative measure and keeps the whole argument discrete.
 -/
 
 /-- The discrete profile is a two-sided geometric minimum. -/
 theorem aux_discrete_profile_eq_min {θ s : ℝ} (hθ : 0 < θ) (hθ1 : θ < 1)
     (hs : 0 < s) (k : ℤ) :
-    ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ))) ^ s
-      = min ((2:ℝ) ^ (-(θ * s * (k:ℝ)))) ((2:ℝ) ^ ((1 - θ) * s * (k:ℝ))) := by
+    ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ))) ^ s
+      = min ((2 : ℝ) ^ (-(θ * s * (k:ℝ)))) ((2 : ℝ) ^ ((1 - θ) * s * (k:ℝ))) := by
   have h2 : (0:ℝ) < 2 := by norm_num
-  have hpos : ∀ x : ℝ, (0:ℝ) < (2:ℝ) ^ x := fun x ↦ Real.rpow_pos_of_pos h2 x
+  have hpos : ∀ x : ℝ, (0:ℝ) < (2 : ℝ) ^ x := fun x ↦ Real.rpow_pos_of_pos h2 x
   rcases le_or_gt 0 (k:ℝ) with hk | hk
-  · have hone : min 1 ((2:ℝ) ^ (k:ℝ)) = 1 := by
+  · have hone : min 1 ((2 : ℝ) ^ (k:ℝ)) = 1 := by
       refine min_eq_left ?_
-      rw [show (1:ℝ) = (2:ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
+      rw [show (1:ℝ) = (2 : ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
       exact Real.rpow_le_rpow_of_exponent_le (by norm_num) hk
     rw [hone, mul_one, ← Real.rpow_mul h2.le,
       show -(θ * (k:ℝ)) * s = -(θ * s * (k:ℝ)) by ring]
     refine (min_eq_left ?_).symm
     refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
     nlinarith
-  · have hone : min 1 ((2:ℝ) ^ (k:ℝ)) = (2:ℝ) ^ (k:ℝ) := by
+  · have hone : min 1 ((2 : ℝ) ^ (k:ℝ)) = (2 : ℝ) ^ (k:ℝ) := by
       refine min_eq_right ?_
-      rw [show (1:ℝ) = (2:ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
+      rw [show (1:ℝ) = (2 : ℝ) ^ (0:ℝ) by rw [Real.rpow_zero]]
       exact Real.rpow_le_rpow_of_exponent_le (by norm_num) hk.le
     rw [hone, ← Real.rpow_add h2, ← Real.rpow_mul h2.le,
       show (-(θ * (k:ℝ)) + (k:ℝ)) * s = (1 - θ) * s * (k:ℝ) by ring]
@@ -31812,7 +31816,7 @@ theorem aux_discrete_profile_eq_min {θ s : ℝ} (hθ : 0 < θ) (hθ1 : θ < 1)
 theorem exists_discrete_profile_bound {θ s : ℝ} (hθ : 0 < θ) (hθ1 : θ < 1)
     (hs : 0 < s) :
     ∃ K : ℝ, 0 < K ∧ ∀ S : Finset ℤ,
-      ∑ k ∈ S, ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ))) ^ s ≤ K := by
+      ∑ k ∈ S, ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ))) ^ s ≤ K := by
   obtain ⟨K, hK, hb⟩ := exists_tent_sum_bound (α := θ * s) (β := (1 - θ) * s)
     (by positivity) (by nlinarith)
   refine ⟨K, hK, fun S ↦ ?_⟩
@@ -31824,17 +31828,18 @@ theorem exists_discrete_profile_bound {θ s : ℝ} (hθ : 0 < θ) (hθ1 : θ < 1
 /-! ## Minkowski over a finite family
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The `J`-method bounds the level profile of a sum by a
+ErrorReport.md. The `J`-method bounds the level profile of a sum by a
 convolution, and passing from that to the `ℓ^s` norm needs the triangle
-inequality in `ℓ^s` for a finite family, not just for two summands.  Mathlib has
+inequality in `ℓ^s` for a finite family, not just for two summands. Mathlib has
 the two-summand form; this is the iteration.
 -/
 
 /-- **Minkowski's inequality over a finite family.** -/
-theorem Lp_finset_sum_le {ι κ : Type*} [DecidableEq κ] (s : Finset ι)
+theorem Lp_finset_sum_le {ι κ : Type*} (s : Finset ι)
     (T : Finset κ) (F : κ → ι → ℝ≥0∞) {p : ℝ} (hp : 1 ≤ p) :
     (∑ i ∈ s, (∑ k ∈ T, F k i) ^ p) ^ (1 / p)
       ≤ ∑ k ∈ T, (∑ i ∈ s, F k i ^ p) ^ (1 / p) := by
+  classical
   have hppos : (0:ℝ) < p := lt_of_lt_of_le zero_lt_one hp
   classical
   induction T using Finset.induction with
@@ -31861,7 +31866,7 @@ theorem Lp_finset_sum_le {ι κ : Type*} [DecidableEq κ] (s : Finset ι)
 /-! ## The convolution estimate
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The `J`-method bounds the level profile of a sum by a
+ErrorReport.md. The `J`-method bounds the level profile of a sum by a
 convolution of the profile sequence with the sequence of `J`-values, and the
 passage to the `ℓ^s` norm is Young's inequality in the form `ℓ¹ ∗ ℓ^s ⊆ ℓ^s`.
 Summing over the *shift* rather than over the pieces is what makes the `ℓ^s`
@@ -31904,10 +31909,10 @@ theorem Lp_convolution_le {a b : ℤ → ℝ≥0∞} {s : ℝ} (hs : 1 ≤ s) {A
 /-! ## The profile term, in convolution form
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Weighting the `J`-method bound on a piece by `2^{-θn}` and
+ErrorReport.md. Weighting the `J`-method bound on a piece by `2^{-θn}` and
 writing the level and the piece's scale as powers of two exhibits the term as a
 product of a factor depending only on the difference of the two indices and a
-factor depending only on the piece.  That is what makes the level profile of a
+factor depending only on the piece. That is what makes the level profile of a
 sum a convolution, which is where `Lp_convolution_le` applies.
 -/
 
@@ -31921,27 +31926,27 @@ theorem aux_min_mul_right (J c : ℝ≥0∞) : min J (c * J) = min 1 c * J := by
 
 /-- **The weighted `J`-method term is a convolution term.** -/
 theorem aux_profile_term_eq {θ : ℝ} (n i : ℤ) (J : ℝ≥0∞) :
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        min J (ENNReal.ofReal ((2:ℝ) ^ (n:ℝ) / (2:ℝ) ^ (i:ℝ)) * J)
-      = ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
-            min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-          * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) * J) := by
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        min J (ENNReal.ofReal ((2 : ℝ) ^ (n:ℝ) / (2 : ℝ) ^ (i:ℝ)) * J)
+      = ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
+            min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+          * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) * J) := by
   have h2 : (0:ℝ) < 2 := by norm_num
-  have hdiv : (2:ℝ) ^ (n:ℝ) / (2:ℝ) ^ (i:ℝ) = (2:ℝ) ^ ((n:ℝ) - (i:ℝ)) :=
+  have hdiv : (2 : ℝ) ^ (n:ℝ) / (2 : ℝ) ^ (i:ℝ) = (2 : ℝ) ^ ((n:ℝ) - (i:ℝ)) :=
     (Real.rpow_sub h2 _ _).symm
-  have hnn : (0:ℝ) ≤ min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))) :=
+  have hnn : (0:ℝ) ≤ min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))) :=
     le_min zero_le_one (Real.rpow_nonneg h2.le _)
-  have hmin : min (1 : ℝ≥0∞) (ENNReal.ofReal ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-      = ENNReal.ofReal (min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ)))) := by
-    rcases le_total (1:ℝ) ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))) with h | h
+  have hmin : min (1 : ℝ≥0∞) (ENNReal.ofReal ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+      = ENNReal.ofReal (min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ)))) := by
+    rcases le_total (1:ℝ) ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))) with h | h
     · rw [min_eq_left (ENNReal.one_le_ofReal.mpr h), min_eq_left h,
         ENNReal.ofReal_one]
     · rw [min_eq_right (ENNReal.ofReal_le_one.mpr h), min_eq_right h]
-  have hscalar : ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        min 1 (ENNReal.ofReal ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-      = ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
-            min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-        * ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) := by
+  have hscalar : ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        min 1 (ENNReal.ofReal ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+      = ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
+            min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+        * ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) := by
     rw [hmin, ← ENNReal.ofReal_mul (Real.rpow_nonneg h2.le _),
       ← ENNReal.ofReal_mul (mul_nonneg (Real.rpow_nonneg h2.le _) hnn)]
     congr 1
@@ -31953,7 +31958,7 @@ theorem aux_profile_term_eq {θ : ℝ} (n i : ℤ) (J : ℝ≥0∞) :
 /-! ## The weighted level profile of a sum
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  Combining the `J`-method bound on the `K`-functional of a sum
+ErrorReport.md. Combining the `J`-method bound on the `K`-functional of a sum
 with the convolution identity for a single term writes the weighted level
 profile of a sum as a sum of convolution terms, one for each piece.
 -/
@@ -31962,43 +31967,43 @@ profile of a sum as a sum of convolution terms, one for each piece.
 theorem aux_profile_level_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (r₁ r₂ : ℝ) {θ : ℝ} (v : ℤ → X → ℝ) (hv : ∀ i, Measurable (v i))
     (n : ℤ) (T : Finset ℤ) :
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
       ≤ ∑ i ∈ T,
-          ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
-              min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-            * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-                primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) := by
+          ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
+              min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+            * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+                primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) := by
   classical
   have h2 : (0:ℝ) < 2 := by norm_num
-  have hσ : ∀ i : ℤ, (0:ℝ) < (2:ℝ) ^ (i:ℝ) := fun i ↦ Real.rpow_pos_of_pos h2 _
+  have hσ : ∀ i : ℤ, (0:ℝ) < (2 : ℝ) ^ (i:ℝ) := fun i ↦ Real.rpow_pos_of_pos h2 _
   have hstep := primeK_sum_le_primeJ μ r₁ r₂
-    (t := (2:ℝ) ^ (n:ℝ)) (Real.rpow_nonneg h2.le _) T v
-    (fun i ↦ (2:ℝ) ^ (i:ℝ)) hσ hv
-  calc ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          ∑ i ∈ T, min (primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i))
-            (ENNReal.ofReal ((2:ℝ) ^ (n:ℝ) / (2:ℝ) ^ (i:ℝ)) *
-              primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) :=
+    (t := (2 : ℝ) ^ (n:ℝ)) (Real.rpow_nonneg h2.le _) T v
+    (fun i ↦ (2 : ℝ) ^ (i:ℝ)) hσ hv
+  calc ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          ∑ i ∈ T, min (primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i))
+            (ENNReal.ofReal ((2 : ℝ) ^ (n:ℝ) / (2 : ℝ) ^ (i:ℝ)) *
+              primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) :=
         mul_le_mul' le_rfl hstep
-    _ = ∑ i ∈ T, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          min (primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i))
-            (ENNReal.ofReal ((2:ℝ) ^ (n:ℝ) / (2:ℝ) ^ (i:ℝ)) *
-              primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) := Finset.mul_sum _ _ _
+    _ = ∑ i ∈ T, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          min (primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i))
+            (ENNReal.ofReal ((2 : ℝ) ^ (n:ℝ) / (2 : ℝ) ^ (i:ℝ)) *
+              primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) := Finset.mul_sum _ _ _
     _ = ∑ i ∈ T,
-          ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
-              min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-            * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-                primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) :=
+          ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
+              min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+            * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+                primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) :=
         Finset.sum_congr rfl fun i _ ↦
-          aux_profile_term_eq n i (primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i))
+          aux_profile_term_eq n i (primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i))
 
 /-! ## From a sum over pieces to a sum over shifts
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The convolution estimate sums over the shift, while the
-`J`-method bound produces a sum over the pieces.  At a fixed level the two are
+ErrorReport.md. The convolution estimate sums over the shift, while the
+`J`-method bound produces a sum over the pieces. At a fixed level the two are
 related by the injection `i ↦ n - i`; enlarging the shift index set to a fixed
 finite set containing every difference makes the bound uniform in the level,
 which is what the convolution estimate needs.
@@ -32026,12 +32031,12 @@ theorem aux_profile_level_conv_le {X : Type*} [MeasurableSpace X]
     (μ : Measure X) (r₁ r₂ : ℝ) {θ : ℝ} (v : ℤ → X → ℝ)
     (hv : ∀ i, Measurable (v i)) (n : ℤ) (T K : Finset ℤ)
     (hsub : T.image (fun i ↦ n - i) ⊆ K) :
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
       ≤ ∑ k ∈ K,
-          ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ)))
-            * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (k:ℝ))))) *
-                primeJ μ r₁ r₂ ((2:ℝ) ^ ((n:ℝ) - (k:ℝ)))
+          ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ)))
+            * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (k:ℝ))))) *
+                primeJ μ r₁ r₂ ((2 : ℝ) ^ ((n:ℝ) - (k:ℝ)))
                   (v (n - k))) := by
   classical
   refine le_trans (aux_profile_level_le μ r₁ r₂ v hv n T) ?_
@@ -32040,10 +32045,10 @@ theorem aux_profile_level_conv_le {X : Type*} [MeasurableSpace X]
     push_cast
     ring
   have hgoal := sum_shift_le_of_subset
-    (a := fun k : ℤ ↦ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) *
-      min 1 ((2:ℝ) ^ (k:ℝ))))
-    (b := fun i : ℤ ↦ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) n T K hsub
+    (a := fun k : ℤ ↦ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) *
+      min 1 ((2 : ℝ) ^ (k:ℝ))))
+    (b := fun i : ℤ ↦ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) n T K hsub
   refine le_trans (le_of_eq ?_) (le_trans hgoal (le_of_eq ?_))
   · refine Finset.sum_congr rfl fun i _ ↦ ?_
     rw [hcast i]
@@ -32053,9 +32058,9 @@ theorem aux_profile_level_conv_le {X : Type*} [MeasurableSpace X]
 /-! ## The `J`-method estimate
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  This is the third link: the weighted level profile of a sum of
+ErrorReport.md. This is the third link: the weighted level profile of a sum of
 pieces is bounded in `ℓ^s` by the `ℓ¹` norm of the profile times the `ℓ^s` norm
-of the pieces' `J`-values.  It is the inequality that converts the divergent
+of the pieces' `J`-values. It is the inequality that converts the divergent
 `ℓ¹` sum of the layer bounds into a convergent `ℓ^s` one.
 -/
 
@@ -32064,29 +32069,29 @@ theorem primeJ_method {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (r₁ r₂ : ℝ) {θ s : ℝ} (hs : 1 ≤ s) (v : ℤ → X → ℝ)
     (hv : ∀ i, Measurable (v i)) {A B : ℝ≥0∞}
     (hA : ∀ K : Finset ℤ,
-      ∑ k ∈ K, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) *
-        min 1 ((2:ℝ) ^ (k:ℝ))) ≤ A)
+      ∑ k ∈ K, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) *
+        min 1 ((2 : ℝ) ^ (k:ℝ))) ≤ A)
     (hB : ∀ T : Finset ℤ,
-      (∑ i ∈ T, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-        primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ s) ^ (1 / s) ≤ B)
+      (∑ i ∈ T, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+        primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ s) ^ (1 / s) ≤ B)
     (S T : Finset ℤ) :
-    (∑ n ∈ S, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s) ^ (1 / s)
+    (∑ n ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s) ^ (1 / s)
       ≤ A * B := by
   classical
   have hspos : (0:ℝ) < s := lt_of_lt_of_le zero_lt_one hs
   set a : ℤ → ℝ≥0∞ := fun k ↦
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ))) with hadef
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ))) with hadef
   set b : ℤ → ℝ≥0∞ := fun i ↦
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i) with hbdef
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i) with hbdef
   set K : Finset ℤ := (S ×ˢ T).image (fun p ↦ p.1 - p.2) with hKdef
   have hcast : ∀ n k : ℤ, ((n - k : ℤ) : ℝ) = (n:ℝ) - (k:ℝ) := by
     intro n k
     push_cast
     ring
-  have hpt : ∀ n ∈ S, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-      primeK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+  have hpt : ∀ n ∈ S, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+      primeK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
       ≤ ∑ k ∈ K, a k * b (n - k) := by
     intro n hn
     have hsub : T.image (fun i ↦ n - i) ⊆ K := by
@@ -32100,8 +32105,8 @@ theorem primeJ_method {X : Type*} [MeasurableSpace X] (μ : Measure X)
     refine Finset.sum_congr rfl fun k _ ↦ ?_
     simp only [hadef, hbdef]
     rw [hcast n k]
-  have hmono : ∑ n ∈ S, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-      primeK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s
+  have hmono : ∑ n ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+      primeK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s
       ≤ ∑ n ∈ S, (∑ k ∈ K, a k * b (n - k)) ^ s :=
     Finset.sum_le_sum fun n hn ↦ ENNReal.rpow_le_rpow (hpt n hn) hspos.le
   refine le_trans (ENNReal.rpow_le_rpow hmono (by positivity)) ?_
@@ -32110,11 +32115,11 @@ theorem primeJ_method {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## A lower bound for the `K`-functional
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The fourth link needs the `K`-functional bounded from *below*
-by the data it is supposed to control.  A point where `|v|` exceeds `2λ` is a
+ErrorReport.md. The fourth link needs the `K`-functional bounded from *below*
+by the data it is supposed to control. A point where `|v|` exceeds `2λ` is a
 point where one of the two parts of any decomposition exceeds `λ`, so at least
 half of the level set is caught by one part, and whichever part catches it pays
-for it in its own weak norm.  Taking the infimum over decompositions gives the
+for it in its own weak norm. Taking the infimum over decompositions gives the
 bound, with the minimum recording which part paid.
 -/
 
@@ -32174,9 +32179,9 @@ theorem le_weakK {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## Balancing the two entries of the minimum
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The lower bound for the `K`-functional carries a minimum of two
+ErrorReport.md. The lower bound for the `K`-functional carries a minimum of two
 quantities; at the level where they agree the minimum is either of them, and the
-weight `t^{-θ}` then turns the bound into the weak-`R` quantity.  That is where
+weight `t^{-θ}` then turns the bound into the weak-`R` quantity. That is where
 the exponent identity `1/R = (1-θ)/r₁ + θ/r₂` is used.
 -/
 
@@ -32225,11 +32230,11 @@ theorem weakR_le_weighted_weakK {X : Type*} [MeasurableSpace X]
 /-! ## How the `K`-functional varies with the level
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The balanced level produced by `weakR_le_weighted_weakK` is an
+ErrorReport.md. The balanced level produced by `weakR_le_weighted_weakK` is an
 arbitrary positive real, while the level profile is taken along the powers of
-two.  Comparing the two needs the two standard monotonicity facts: the
+two. Comparing the two needs the two standard monotonicity facts: the
 `K`-functional increases with the level, and it increases by at most the ratio
-of the levels.  Together they say the profile at the nearest power of two loses
+of the levels. Together they say the profile at the nearest power of two loses
 only a bounded factor.
 -/
 
@@ -32271,8 +32276,8 @@ theorem weakK_le_ratio_mul {X : Type*} [MeasurableSpace X] (μ : Measure X)
 /-! ## Replacing the balanced level by a power of two
 
 Source: `ext:interpolation`, and the prerequisite chain recorded in
-ErrorReport.md.  The balanced level is an arbitrary positive real; the level
-profile runs along the powers of two.  Between a power of two and the next, the
+ErrorReport.md. The balanced level is an arbitrary positive real; the level
+profile runs along the powers of two. Between a power of two and the next, the
 `K`-functional grows by at most a factor two and the weight only decreases, so
 the profile at the lower power of two dominates the weighted `K`-functional at
 the balanced level, up to that factor.
@@ -32282,53 +32287,53 @@ the balanced level, up to that factor.
 profile.** -/
 theorem weighted_weakK_le_dyadic {X : Type*} [MeasurableSpace X]
     (μ : Measure X) (r₁ r₂ : ℝ) {θ : ℝ} (hθ : 0 < θ) (v : X → ℝ) {t : ℝ}
-    (n : ℤ) (hn : (2:ℝ) ^ (n:ℝ) ≤ t) (hn' : t < (2:ℝ) ^ ((n:ℝ) + 1)) :
+    (n : ℤ) (hn : (2 : ℝ) ^ (n : ℝ) ≤ t) (hn' : t < (2 : ℝ) ^ ((n : ℝ) + 1)) :
     ENNReal.ofReal (t ^ (-θ)) * weakK μ r₁ r₂ t v
       ≤ ENNReal.ofReal 2 *
-          (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-            weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) := by
+          (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+            weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) := by
   have h2 : (0:ℝ) < 2 := by norm_num
-  have hdy : (0:ℝ) < (2:ℝ) ^ (n:ℝ) := Real.rpow_pos_of_pos h2 _
+  have hdy : (0:ℝ) < (2 : ℝ) ^ (n:ℝ) := Real.rpow_pos_of_pos h2 _
   -- the weight only decreases
   have hweight : ENNReal.ofReal (t ^ (-θ))
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) := by
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) := by
     refine ENNReal.ofReal_le_ofReal ?_
-    have hstep : t ^ (-θ) ≤ ((2:ℝ) ^ (n:ℝ)) ^ (-θ) :=
+    have hstep : t ^ (-θ) ≤ ((2 : ℝ) ^ (n:ℝ)) ^ (-θ) :=
       Real.rpow_le_rpow_of_nonpos hdy hn (by linarith)
     refine le_trans hstep (le_of_eq ?_)
     rw [← Real.rpow_mul h2.le]
     congr 1
     ring
   -- the K-functional grows by at most two
-  have hexp : ENNReal.ofReal 2 * weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v
+  have hexp : ENNReal.ofReal 2 * weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v
       = ⨅ w : X → ℝ, ENNReal.ofReal 2 *
           (weakNorm μ (v - w) r₁ +
-            ENNReal.ofReal ((2:ℝ) ^ (n:ℝ)) * weakNorm μ w r₂) :=
+            ENNReal.ofReal ((2 : ℝ) ^ (n:ℝ)) * weakNorm μ w r₂) :=
     ENNReal.mul_iInf_of_ne (by simp) (by simp)
   have hKle : weakK μ r₁ r₂ t v
-      ≤ ENNReal.ofReal 2 * weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v := by
+      ≤ ENNReal.ofReal 2 * weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v := by
     rw [hexp]
     refine le_iInf fun w ↦ ?_
     refine le_trans (weakK_le_ratio_mul μ r₁ r₂ v hdy hn w) ?_
     refine mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl
     rw [div_le_iff₀ hdy]
-    calc t ≤ (2:ℝ) ^ ((n:ℝ) + 1) := hn'.le
-      _ = 2 * (2:ℝ) ^ (n:ℝ) := by
+    calc t ≤ (2 : ℝ) ^ ((n : ℝ) + 1) := hn'.le
+      _ = 2 * (2 : ℝ) ^ (n:ℝ) := by
           rw [Real.rpow_add h2, Real.rpow_one]
           ring
   calc ENNReal.ofReal (t ^ (-θ)) * weakK μ r₁ r₂ t v
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          (ENNReal.ofReal 2 * weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) :=
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          (ENNReal.ofReal 2 * weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) :=
         mul_le_mul' hweight hKle
     _ = ENNReal.ofReal 2 *
-          (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-            weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) := by ring
+          (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+            weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) := by ring
 
 /-- Every positive real lies between two consecutive powers of two. -/
 theorem aux_exists_dyadic_bracket {t : ℝ} (ht : 0 < t) :
-    ∃ n : ℤ, (2:ℝ) ^ (n:ℝ) ≤ t ∧ t < (2:ℝ) ^ ((n:ℝ) + 1) := by
+    ∃ n : ℤ, (2 : ℝ) ^ (n : ℝ) ≤ t ∧ t < (2 : ℝ) ^ ((n : ℝ) + 1) := by
   refine ⟨Int.log 2 t, ?_, ?_⟩
-  · rw [show ((2:ℝ) ^ ((Int.log 2 t : ℤ) : ℝ)) = (2:ℝ) ^ (Int.log 2 t : ℤ) from
+  · rw [show ((2 : ℝ) ^ ((Int.log 2 t : ℤ) : ℝ)) = (2 : ℝ) ^ (Int.log 2 t : ℤ) from
       Real.rpow_intCast 2 _]
     exact_mod_cast Int.zpow_log_le_self (b := 2) (by norm_num) ht
   · have hcast : ((Int.log 2 t : ℤ) : ℝ) + 1 = ((Int.log 2 t + 1 : ℤ) : ℝ) := by
@@ -32344,8 +32349,8 @@ theorem weakR_le_dyadic_weakK {X : Type*} [MeasurableSpace X]
     (hM : μ {x | 2 * lam < |v x|} / 2 = ENNReal.ofReal u) :
     ∃ n : ℤ, ENNReal.ofReal (lam * u ^ (1 / R))
       ≤ ENNReal.ofReal 2 *
-          (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-            weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) := by
+          (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+            weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) := by
   set t : ℝ := u ^ (1 / r₁ - 1 / r₂) with ht_def
   have ht : 0 < t := Real.rpow_pos_of_pos hu _
   obtain ⟨n, hlo, hhi⟩ := aux_exists_dyadic_bracket ht
@@ -32355,7 +32360,7 @@ theorem weakR_le_dyadic_weakK {X : Type*} [MeasurableSpace X]
 
 /-- Every positive real lies between two consecutive powers of a base `c > 1`. -/
 theorem aux_exists_base_bracket {c d : ℝ} (hc : 1 < c) (hd : 0 < d) :
-    ∃ n : ℤ, c ^ (n:ℝ) ≤ d ∧ d < c ^ ((n:ℝ) + 1) := by
+    ∃ n : ℤ, c ^ (n : ℝ) ≤ d ∧ d < c ^ ((n : ℝ) + 1) := by
   have hc0 : (0:ℝ) < c := lt_trans zero_lt_one hc
   have hlogc : 0 < Real.log c := Real.log_pos hc
   set x : ℝ := Real.log d / Real.log c with hx
@@ -32373,22 +32378,22 @@ theorem aux_exists_base_bracket {c d : ℝ} (hc : 1 < c) (hd : 0 < d) :
 up to the factor `c`. -/
 theorem aux_le_base_grid_tsum {c : ℝ} (hc : 1 < c) (D : ℝ≥0∞) :
     D ≤ ENNReal.ofReal c *
-      ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n:ℝ)) ≤ D then
+      ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n : ℝ)) ≤ D then
         ENNReal.ofReal (c ^ (n:ℝ)) else 0) := by
   have hc0 : (0:ℝ) < c := lt_trans zero_lt_one hc
   rcases eq_or_ne D 0 with h0 | h0
   · simp [h0]
   rcases eq_or_ne D ∞ with htop | htop
   · -- every grid point qualifies, and the grid is unbounded
-    have hsum : ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n:ℝ)) ≤ D then
+    have hsum : ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n : ℝ)) ≤ D then
         ENNReal.ofReal (c ^ (n:ℝ)) else 0) = ∞ := by
       by_contra hne
-      set S : ℝ≥0∞ := ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n:ℝ)) ≤ D then
+      set S : ℝ≥0∞ := ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n : ℝ)) ≤ D then
         ENNReal.ofReal (c ^ (n:ℝ)) else 0) with hS
-      have hbd : ∀ n : ℤ, ENNReal.ofReal (c ^ (n:ℝ)) ≤ S := by
+      have hbd : ∀ n : ℤ, ENNReal.ofReal (c ^ (n : ℝ)) ≤ S := by
         intro n
         have := ENNReal.le_tsum (f := fun n : ℤ =>
-          (if ENNReal.ofReal (c ^ (n:ℝ)) ≤ D then
+          (if ENNReal.ofReal (c ^ (n : ℝ)) ≤ D then
             ENNReal.ofReal (c ^ (n:ℝ)) else 0)) n
         simpa [htop, hS] using this
       obtain ⟨m, hm⟩ := pow_unbounded_of_one_lt (S.toReal) hc
@@ -32408,21 +32413,21 @@ theorem aux_le_base_grid_tsum {c : ℝ} (hc : 1 < c) (D : ℝ≥0∞) :
     set d : ℝ := D.toReal with hd_def
     have hd : 0 < d := ENNReal.toReal_pos h0 htop
     obtain ⟨n, hlo, hhi⟩ := aux_exists_base_bracket hc hd
-    have hDn : ENNReal.ofReal (c ^ (n:ℝ)) ≤ D := by
+    have hDn : ENNReal.ofReal (c ^ (n : ℝ)) ≤ D := by
       rw [← ENNReal.ofReal_toReal htop, ← hd_def]
       exact ENNReal.ofReal_le_ofReal hlo
-    have hterm : ENNReal.ofReal (c ^ (n:ℝ))
-        ≤ ∑' k : ℤ, (if ENNReal.ofReal (c ^ (k:ℝ)) ≤ D then
+    have hterm : ENNReal.ofReal (c ^ (n : ℝ)) ≤ ∑' k : ℤ, (if ENNReal.ofReal (c ^ (k:ℝ)) ≤
+      D then
             ENNReal.ofReal (c ^ (k:ℝ)) else 0) := by
       have hle := ENNReal.le_tsum (f := fun k : ℤ =>
         (if ENNReal.ofReal (c ^ (k:ℝ)) ≤ D then
           ENNReal.ofReal (c ^ (k:ℝ)) else 0)) n
-      rw [if_pos hDn] at hle
+      rw [ite_eq_left hDn] at hle
       exact hle
     refine le_trans ?_ (mul_le_mul' le_rfl hterm)
     rw [← ENNReal.ofReal_mul hc0.le, ← ENNReal.ofReal_toReal htop, ← hd_def]
     refine ENNReal.ofReal_le_ofReal ?_
-    calc d ≤ c ^ ((n:ℝ) + 1) := hhi.le
+    calc d ≤ c ^ ((n : ℝ) + 1) := hhi.le
       _ = c * c ^ (n:ℝ) := by rw [Real.rpow_add hc0, Real.rpow_one]; ring
 
 /-- The layer cake of `|v|^R` against a geometric grid of ratio `c > 1`: if every
@@ -32432,7 +32437,7 @@ theorem lintegral_rpow_le_grid_sum {X : Type*} [MeasurableSpace X]
     (μ : Measure X) (v : X → ℝ) (hv : AEMeasurable v μ) {R c : ℝ} (hR : 0 < R)
     (hc : 1 < c) (Λ : ℤ → ℝ)
     (hbd : ∀ (n : ℤ) (t : ℝ), 0 < t →
-      ENNReal.ofReal (c ^ (n:ℝ)) ≤ μ {x | t < |v x|} → t ≤ Λ n) :
+      ENNReal.ofReal (c ^ (n : ℝ)) ≤ μ {x | t < |v x|} → t ≤ Λ n) :
     ∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ
       ≤ ENNReal.ofReal c * ∑' n : ℤ, ENNReal.ofReal (c ^ (n:ℝ) * Λ n ^ R) := by
   classical
@@ -32455,25 +32460,25 @@ theorem lintegral_rpow_le_grid_sum {X : Type*} [MeasurableSpace X]
     have ht0 : 0 < t := ht
     have hgrid := aux_le_base_grid_tsum hc (μ {x | t < |v x|})
     have hterm : ∀ n : ℤ,
-        (if ENNReal.ofReal (c ^ (n:ℝ)) ≤ μ {x | t < |v x|} then
+        (if ENNReal.ofReal (c ^ (n : ℝ)) ≤ μ {x | t < |v x|} then
           ENNReal.ofReal (c ^ (n:ℝ)) else 0) * ENNReal.ofReal (R * t ^ (R - 1))
           ≤ g n t := by
       intro n
-      by_cases hcond : ENNReal.ofReal (c ^ (n:ℝ)) ≤ μ {x | t < |v x|}
+      by_cases hcond : ENNReal.ofReal (c ^ (n : ℝ)) ≤ μ {x | t < |v x|}
       · have hmem : t ∈ Ioc (0:ℝ) (Λ n) := ⟨ht0, hbd n t ht0 hcond⟩
-        rw [if_pos hcond, hg]
+        rw [ite_eq_left hcond, hg]
         simp only
         rw [Set.indicator_of_mem hmem]
-      · rw [if_neg hcond]
+      · rw [ite_eq_right hcond]
         simp
     calc μ {x | t < |v x|} * ENNReal.ofReal (R * t ^ (R - 1))
         ≤ (ENNReal.ofReal c *
-            ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n:ℝ)) ≤ μ {x | t < |v x|} then
+            ∑' n : ℤ, (if ENNReal.ofReal (c ^ (n : ℝ)) ≤ μ {x | t < |v x|} then
               ENNReal.ofReal (c ^ (n:ℝ)) else 0)) *
             ENNReal.ofReal (R * t ^ (R - 1)) := by
           exact mul_le_mul' hgrid le_rfl
       _ = ENNReal.ofReal c *
-            ∑' n : ℤ, ((if ENNReal.ofReal (c ^ (n:ℝ)) ≤ μ {x | t < |v x|} then
+            ∑' n : ℤ, ((if ENNReal.ofReal (c ^ (n : ℝ)) ≤ μ {x | t < |v x|} then
               ENNReal.ofReal (c ^ (n:ℝ)) else 0) *
               ENNReal.ofReal (R * t ^ (R - 1))) := by
           rw [mul_assoc, ENNReal.tsum_mul_right]
@@ -32529,7 +32534,7 @@ theorem lintegral_rpow_le_grid_tsum {X : Type*} [MeasurableSpace X]
     (μ : Measure X) (v : X → ℝ) (hv : AEMeasurable v μ) {R c : ℝ} (hR : 0 < R)
     (hc : 1 < c) (Λ : ℤ → ℝ≥0∞)
     (hbd : ∀ (n : ℤ) (t : ℝ), 0 < t →
-      ENNReal.ofReal (c ^ (n:ℝ)) ≤ μ {x | t < |v x|} → ENNReal.ofReal t ≤ Λ n) :
+      ENNReal.ofReal (c ^ (n : ℝ)) ≤ μ {x | t < |v x|} → ENNReal.ofReal t ≤ Λ n) :
     ∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ
       ≤ ENNReal.ofReal c * ∑' n : ℤ, ENNReal.ofReal (c ^ (n:ℝ)) * Λ n ^ R := by
   classical
@@ -32552,7 +32557,8 @@ theorem lintegral_rpow_le_grid_tsum {X : Type*} [MeasurableSpace X]
       rw [hn₀, ENNReal.top_rpow_of_pos hR]
       exact ENNReal.mul_top (by simpa using Real.rpow_pos_of_pos hc0 (n₀:ℝ))
     have hsum : ∑' n : ℤ, ENNReal.ofReal (c ^ (n:ℝ)) * Λ n ^ R = ∞ :=
-      eq_top_iff.2 (le_trans (le_of_eq hterm.symm) (ENNReal.le_tsum n₀))
+      eq_top_iff.2 (le_trans (le_of_eq hterm.symm) (ENNReal.le_tsum (f := fun n : ℤ =>
+        ENNReal.ofReal (c ^ (n:ℝ)) * Λ n ^ R) n₀))
     rw [hsum, ENNReal.mul_top (by simpa using hc0)]
     exact le_top
 
@@ -32590,7 +32596,7 @@ theorem le_weakK_of_lower {X : Type*} [MeasurableSpace X] (μ : Measure X)
 
 /-- The grid power in base two. -/
 theorem aux_grid_power {kap : ℝ} (hkap : 0 < kap) (n : ℤ) :
-    ((2:ℝ) ^ (1 / kap)) ^ (n:ℝ) = (2:ℝ) ^ ((n:ℝ) / kap) := by
+    ((2 : ℝ) ^ (1 / kap)) ^ (n:ℝ) = (2 : ℝ) ^ ((n:ℝ) / kap) := by
   rw [← Real.rpow_mul (by norm_num)]
   congr 1
   field_simp
@@ -32599,15 +32605,15 @@ theorem aux_grid_power {kap : ℝ} (hkap : 0 < kap) (n : ℤ) :
 theorem grid_level_bound {X : Type*} [MeasurableSpace X] (μ : Measure X)
     {r₁ r₂ : ℝ} (hr₁ : 0 < r₁) (hr₂ : 0 < r₂) (hkap : 0 < 1 / r₁ - 1 / r₂)
     (v : X → ℝ) (n : ℤ) {t : ℝ} (ht : 0 < t)
-    (hmeas : ENNReal.ofReal (((2:ℝ) ^ (1 / (1 / r₁ - 1 / r₂))) ^ (n:ℝ))
-      ≤ μ {x | t < |v x|}) :
+    (hmeas : ENNReal.ofReal (((2 : ℝ) ^ (1 / (1 / r₁ - 1 / r₂))) ^ (n : ℝ)) ≤ μ {x | t < |v
+      x|}) :
     ENNReal.ofReal t
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (1 + 1 / r₁) *
-          (((2:ℝ) ^ (1 / (1 / r₁ - 1 / r₂))) ^ (n:ℝ)) ^ (-(1 / r₁))) *
-        weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v := by
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (1 + 1 / r₁) *
+          (((2 : ℝ) ^ (1 / (1 / r₁ - 1 / r₂))) ^ (n:ℝ)) ^ (-(1 / r₁))) *
+        weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v := by
   have h2 : (0:ℝ) < 2 := by norm_num
   set kap : ℝ := 1 / r₁ - 1 / r₂ with hkap_def
-  set cn : ℝ := ((2:ℝ) ^ (1 / kap)) ^ (n:ℝ) with hcn_def
+  set cn : ℝ := ((2 : ℝ) ^ (1 / kap)) ^ (n:ℝ) with hcn_def
   have hcn : 0 < cn := Real.rpow_pos_of_pos (Real.rpow_pos_of_pos h2 _) _
   set u : ℝ := cn / 2 with hu_def
   have hu : 0 < u := by positivity
@@ -32615,7 +32621,7 @@ theorem grid_level_bound {X : Type*} [MeasurableSpace X] (μ : Measure X)
   have hlam : 0 < lam := by positivity
   have hset : {x | 2 * lam < |v x|} = {x | t < |v x|} := by
     ext x
-    simp [hlam_def]
+    simp only [hlam_def, mem_ofPred_eq]
     constructor
     · intro h; linarith
     · intro h; linarith
@@ -32624,7 +32630,7 @@ theorem grid_level_bound {X : Type*} [MeasurableSpace X] (μ : Measure X)
     refine ENNReal.div_le_div_right hmeas _ |>.trans (le_of_eq ?_)
     congr 1
     simp
-  have hbal : u ^ kap ≤ (2:ℝ) ^ (n:ℝ) := by
+  have hbal : u ^ kap ≤ (2 : ℝ) ^ (n:ℝ) := by
     have hstep : u ^ kap ≤ cn ^ kap := by
       refine Real.rpow_le_rpow hu.le (by rw [hu_def]; linarith) hkap.le
     refine hstep.trans (le_of_eq ?_)
@@ -32632,12 +32638,12 @@ theorem grid_level_bound {X : Type*} [MeasurableSpace X] (μ : Measure X)
     congr 1
     field_simp
   have hkey := le_weakK_of_lower μ hr₁ hr₂ v hlam hu hbal hM
-  set C : ℝ := (2:ℝ) ^ (1 + 1 / r₁) * cn ^ (-(1 / r₁)) with hC_def
+  set C : ℝ := (2 : ℝ) ^ (1 + 1 / r₁) * cn ^ (-(1 / r₁)) with hC_def
   have hC : 0 < C := by
     refine mul_pos (Real.rpow_pos_of_pos h2 _) (Real.rpow_pos_of_pos hcn _)
   have hprod : C * (lam * u ^ (1 / r₁)) = t := by
     rw [hC_def, hu_def, hlam_def, Real.div_rpow hcn.le h2.le]
-    have hsplit : ((2:ℝ) ^ (1 / r₁))⁻¹ = (2:ℝ) ^ (-(1 / r₁)) := by
+    have hsplit : ((2 : ℝ) ^ (1 / r₁))⁻¹ = (2 : ℝ) ^ (-(1 / r₁)) := by
       rw [Real.rpow_neg h2.le]
     field_simp
     have hcncan : cn ^ (-(1 / r₁)) * cn ^ (1 / r₁) = 1 := by
@@ -32649,7 +32655,7 @@ theorem grid_level_bound {X : Type*} [MeasurableSpace X] (μ : Measure X)
   calc ENNReal.ofReal t
       = ENNReal.ofReal C * ENNReal.ofReal (lam * u ^ (1 / r₁)) := by
         rw [← ENNReal.ofReal_mul hC.le, hprod]
-    _ ≤ ENNReal.ofReal C * weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v :=
+    _ ≤ ENNReal.ofReal C * weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v :=
         mul_le_mul' le_rfl hkey
 
 /-- **The `L^R` norm is dominated by the dyadic weighted `K`-profile.** -/
@@ -32658,20 +32664,20 @@ theorem lintegral_rpow_le_dyadic_weakK {X : Type*} [MeasurableSpace X]
     (hr₁ : 0 < r₁) (hr₂ : 0 < r₂) (hkap : 0 < 1 / r₁ - 1 / r₂)
     (hR : 0 < R) (hRid : 1 / R = (1 - θ) / r₁ + θ / r₂) :
     ∫⁻ x, ENNReal.ofReal (|v x| ^ R) ∂μ
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (1 / (1 / r₁ - 1 / r₂)) *
-            (2:ℝ) ^ ((1 + 1 / r₁) * R)) *
-          ∑' n : ℤ, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-            weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) ^ R := by
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (1 / (1 / r₁ - 1 / r₂)) *
+            (2 : ℝ) ^ ((1 + 1 / r₁) * R)) *
+          ∑' n : ℤ, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+            weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) ^ R := by
   have h2 : (0:ℝ) < 2 := by norm_num
   set kap : ℝ := 1 / r₁ - 1 / r₂ with hkap_def
-  set c : ℝ := (2:ℝ) ^ (1 / kap) with hc_def
+  set c : ℝ := (2 : ℝ) ^ (1 / kap) with hc_def
   have hc1 : 1 < c := by
     rw [hc_def]
     exact Real.one_lt_rpow_iff_of_pos h2 |>.2 (Or.inl ⟨by norm_num, by positivity⟩)
   have hc0 : (0:ℝ) < c := lt_trans zero_lt_one hc1
   set Λ : ℤ → ℝ≥0∞ := fun n =>
-    ENNReal.ofReal ((2:ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) *
-      weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v with hΛ_def
+    ENNReal.ofReal ((2 : ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) *
+      weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v with hΛ_def
   have hgrid := lintegral_rpow_le_grid_tsum μ v hv hR hc1 Λ
     (by
       intro n t ht hmeas
@@ -32679,32 +32685,32 @@ theorem lintegral_rpow_le_dyadic_weakK {X : Type*} [MeasurableSpace X]
   refine le_trans hgrid ?_
   -- collapse the exponents term by term
   have hterm : ∀ n : ℤ, ENNReal.ofReal (c ^ (n:ℝ)) * Λ n ^ R
-      = ENNReal.ofReal ((2:ℝ) ^ ((1 + 1 / r₁) * R)) *
-        (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) ^ R := by
+      = ENNReal.ofReal ((2 : ℝ) ^ ((1 + 1 / r₁) * R)) *
+        (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) ^ R := by
     intro n
     have hcn : (0:ℝ) < c ^ (n:ℝ) := Real.rpow_pos_of_pos hc0 _
-    have hA : (0:ℝ) < (2:ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁)) := by
+    have hA : (0:ℝ) < (2 : ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁)) := by
       exact mul_pos (Real.rpow_pos_of_pos h2 _) (Real.rpow_pos_of_pos hcn _)
     have hkey : c ^ (n:ℝ) *
-        ((2:ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) ^ R
-        = (2:ℝ) ^ ((1 + 1 / r₁) * R) * ((2:ℝ) ^ (-(θ * (n:ℝ)))) ^ R := by
-      have hcpow : c ^ (n:ℝ) = (2:ℝ) ^ ((n:ℝ) / kap) := aux_grid_power hkap n
+        ((2 : ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) ^ R
+        = (2 : ℝ) ^ ((1 + 1 / r₁) * R) * ((2 : ℝ) ^ (-(θ * (n:ℝ)))) ^ R := by
+      have hcpow : c ^ (n:ℝ) = (2 : ℝ) ^ ((n:ℝ) / kap) := aux_grid_power hkap n
       set a : ℝ := (n:ℝ) / kap with ha_def
-      have e1 : ((2:ℝ) ^ a) ^ (-(1 / r₁)) = (2:ℝ) ^ (a * -(1 / r₁)) :=
+      have e1 : ((2 : ℝ) ^ a) ^ (-(1 / r₁)) = (2 : ℝ) ^ (a * -(1 / r₁)) :=
         (Real.rpow_mul h2.le a _).symm
-      have e2 : (2:ℝ) ^ (1 + 1 / r₁) * (2:ℝ) ^ (a * -(1 / r₁))
-          = (2:ℝ) ^ ((1 + 1 / r₁) + a * -(1 / r₁)) := (Real.rpow_add h2 _ _).symm
-      have e3 : ((2:ℝ) ^ ((1 + 1 / r₁) + a * -(1 / r₁))) ^ R
-          = (2:ℝ) ^ (((1 + 1 / r₁) + a * -(1 / r₁)) * R) :=
+      have e2 : (2 : ℝ) ^ (1 + 1 / r₁) * (2 : ℝ) ^ (a * -(1 / r₁))
+          = (2 : ℝ) ^ ((1 + 1 / r₁) + a * -(1 / r₁)) := (Real.rpow_add h2 _ _).symm
+      have e3 : ((2 : ℝ) ^ ((1 + 1 / r₁) + a * -(1 / r₁))) ^ R
+          = (2 : ℝ) ^ (((1 + 1 / r₁) + a * -(1 / r₁)) * R) :=
         (Real.rpow_mul h2.le _ _).symm
-      have e4 : (2:ℝ) ^ a * (2:ℝ) ^ (((1 + 1 / r₁) + a * -(1 / r₁)) * R)
-          = (2:ℝ) ^ (a + ((1 + 1 / r₁) + a * -(1 / r₁)) * R) :=
+      have e4 : (2 : ℝ) ^ a * (2 : ℝ) ^ (((1 + 1 / r₁) + a * -(1 / r₁)) * R)
+          = (2 : ℝ) ^ (a + ((1 + 1 / r₁) + a * -(1 / r₁)) * R) :=
         (Real.rpow_add h2 _ _).symm
-      have f1 : ((2:ℝ) ^ (-(θ * (n:ℝ)))) ^ R = (2:ℝ) ^ ((-(θ * (n:ℝ))) * R) :=
+      have f1 : ((2 : ℝ) ^ (-(θ * (n:ℝ)))) ^ R = (2 : ℝ) ^ ((-(θ * (n:ℝ))) * R) :=
         (Real.rpow_mul h2.le _ _).symm
-      have f2 : (2:ℝ) ^ ((1 + 1 / r₁) * R) * (2:ℝ) ^ ((-(θ * (n:ℝ))) * R)
-          = (2:ℝ) ^ ((1 + 1 / r₁) * R + (-(θ * (n:ℝ))) * R) :=
+      have f2 : (2 : ℝ) ^ ((1 + 1 / r₁) * R) * (2 : ℝ) ^ ((-(θ * (n:ℝ))) * R)
+          = (2 : ℝ) ^ ((1 + 1 / r₁) * R + (-(θ * (n:ℝ))) * R) :=
         (Real.rpow_add h2 _ _).symm
       rw [hcpow, e1, e2, e3, e4, f1, f2]
       congr 1
@@ -32722,21 +32728,21 @@ theorem lintegral_rpow_le_dyadic_weakK {X : Type*} [MeasurableSpace X]
       linear_combination hane
     calc ENNReal.ofReal (c ^ (n:ℝ)) * Λ n ^ R
         = ENNReal.ofReal (c ^ (n:ℝ)) *
-            (ENNReal.ofReal ((2:ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) ^ R *
-              weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v ^ R) := by
+            (ENNReal.ofReal ((2 : ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) ^ R *
+              weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v ^ R) := by
           rw [hΛ_def]
           simp only
           rw [ENNReal.mul_rpow_of_nonneg _ _ hR.le]
       _ = ENNReal.ofReal (c ^ (n:ℝ) *
-            ((2:ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) ^ R) *
-            weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v ^ R := by
+            ((2 : ℝ) ^ (1 + 1 / r₁) * (c ^ (n:ℝ)) ^ (-(1 / r₁))) ^ R) *
+            weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v ^ R := by
           rw [← mul_assoc, ENNReal.ofReal_rpow_of_pos hA, ← ENNReal.ofReal_mul hcn.le]
-      _ = ENNReal.ofReal ((2:ℝ) ^ ((1 + 1 / r₁) * R) *
-            ((2:ℝ) ^ (-(θ * (n:ℝ)))) ^ R) *
-            weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v ^ R := by rw [hkey]
-      _ = ENNReal.ofReal ((2:ℝ) ^ ((1 + 1 / r₁) * R)) *
-            (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-              weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) v) ^ R := by
+      _ = ENNReal.ofReal ((2 : ℝ) ^ ((1 + 1 / r₁) * R) *
+            ((2 : ℝ) ^ (-(θ * (n:ℝ)))) ^ R) *
+            weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v ^ R := by rw [hkey]
+      _ = ENNReal.ofReal ((2 : ℝ) ^ ((1 + 1 / r₁) * R)) *
+            (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+              weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) v) ^ R := by
           rw [ENNReal.mul_rpow_of_nonneg _ _ hR.le,
             ENNReal.ofReal_rpow_of_pos (Real.rpow_pos_of_pos h2 (-(θ * (n:ℝ)))),
             ← mul_assoc,
@@ -32804,12 +32810,13 @@ theorem primeKm_add_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
 
 /-- **The restricted `K`-functional of a finite sum.** -/
 theorem primeKm_sum_le {X : Type*} [MeasurableSpace X] (μ : Measure X)
-    (r₁ r₂ t : ℝ) {ι : Type*} [DecidableEq ι] (S : Finset ι)
+    (r₁ r₂ t : ℝ) {ι : Type*} (S : Finset ι)
     (v w : ι → X → ℝ) (hv : ∀ i, Measurable (v i))
     (hw : ∀ i, Measurable (w i)) :
     primeKm μ r₁ r₂ t (∑ i ∈ S, v i)
       ≤ ∑ i ∈ S, (weakNormPrime μ r₁ (v i - w i)
           + ENNReal.ofReal t * weakNormPrime μ r₂ (w i)) := by
+  classical
   have hsumw : Measurable (∑ i ∈ S, w i) := by
     have h := Finset.measurable_sum S fun i (_ : i ∈ S) ↦ hw i
     convert h using 1
@@ -32842,8 +32849,8 @@ theorem weakK_le_primeKm {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (mul_le_mul' le_rfl (weakNorm_le_weakNormPrime μ w.2 hr₂))
 
 theorem primeKm_sum_le_primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
-    (r₁ r₂ : ℝ) {t : ℝ} (ht : 0 ≤ t) {ι : Type*} [DecidableEq ι]
-    (S : Finset ι) (v : ι → X → ℝ) (σ : ι → ℝ) (hσ : ∀ i, 0 < σ i)
+    (r₁ r₂ : ℝ) {t : ℝ} (ht : 0 ≤ t) {ι : Type*} (S : Finset ι) (v : ι → X → ℝ) (σ : ι → ℝ) (hσ :
+      ∀ i, 0 < σ i)
     (hv : ∀ i, Measurable (v i)) :
     primeKm μ r₁ r₂ t (∑ i ∈ S, v i)
       ≤ ∑ i ∈ S, min (primeJ μ r₁ r₂ (σ i) (v i))
@@ -32852,10 +32859,10 @@ theorem primeKm_sum_le_primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
   set w : ι → X → ℝ := fun i ↦ if σ i ≤ t then 0 else v i with hwdef
   have hwmeas : ∀ i, Measurable (w i) := by
     intro i
-    show Measurable (if σ i ≤ t then (0 : X → ℝ) else v i)
+    change Measurable (if σ i ≤ t then (0 : X → ℝ) else v i)
     by_cases h : σ i ≤ t
-    · rw [if_pos h]; exact measurable_const
-    · rw [if_neg h]; exact hv i
+    · rw [ite_eq_left h]; exact measurable_const
+    · rw [ite_eq_right h]; exact hv i
   refine le_trans (primeKm_sum_le μ r₁ r₂ t S v w hv hwmeas) ?_
   refine Finset.sum_le_sum fun i _ ↦ ?_
   have hJ1 : weakNormPrime μ r₁ (v i) ≤ primeJ μ r₁ r₂ (σ i) (v i) :=
@@ -32899,48 +32906,48 @@ theorem primeKm_sum_le_primeJ {X : Type*} [MeasurableSpace X] (μ : Measure X)
 theorem aux_profile_level_le_meas {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (r₁ r₂ : ℝ) {θ : ℝ} (v : ℤ → X → ℝ) (hv : ∀ i, Measurable (v i))
     (n : ℤ) (T : Finset ℤ) :
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
       ≤ ∑ i ∈ T,
-          ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
-              min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-            * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-                primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) := by
+          ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
+              min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+            * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+                primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) := by
   classical
   have h2 : (0:ℝ) < 2 := by norm_num
-  have hσ : ∀ i : ℤ, (0:ℝ) < (2:ℝ) ^ (i:ℝ) := fun i ↦ Real.rpow_pos_of_pos h2 _
+  have hσ : ∀ i : ℤ, (0:ℝ) < (2 : ℝ) ^ (i:ℝ) := fun i ↦ Real.rpow_pos_of_pos h2 _
   have hstep := primeKm_sum_le_primeJ μ r₁ r₂
-    (t := (2:ℝ) ^ (n:ℝ)) (Real.rpow_nonneg h2.le _) T v
-    (fun i ↦ (2:ℝ) ^ (i:ℝ)) hσ hv
-  calc ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          ∑ i ∈ T, min (primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i))
-            (ENNReal.ofReal ((2:ℝ) ^ (n:ℝ) / (2:ℝ) ^ (i:ℝ)) *
-              primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) :=
+    (t := (2 : ℝ) ^ (n:ℝ)) (Real.rpow_nonneg h2.le _) T v
+    (fun i ↦ (2 : ℝ) ^ (i:ℝ)) hσ hv
+  calc ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          ∑ i ∈ T, min (primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i))
+            (ENNReal.ofReal ((2 : ℝ) ^ (n:ℝ) / (2 : ℝ) ^ (i:ℝ)) *
+              primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) :=
         mul_le_mul' le_rfl hstep
-    _ = ∑ i ∈ T, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          min (primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i))
-            (ENNReal.ofReal ((2:ℝ) ^ (n:ℝ) / (2:ℝ) ^ (i:ℝ)) *
-              primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) := Finset.mul_sum _ _ _
+    _ = ∑ i ∈ T, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          min (primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i))
+            (ENNReal.ofReal ((2 : ℝ) ^ (n:ℝ) / (2 : ℝ) ^ (i:ℝ)) *
+              primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) := Finset.mul_sum _ _ _
     _ = ∑ i ∈ T,
-          ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
-              min 1 ((2:ℝ) ^ ((n:ℝ) - (i:ℝ))))
-            * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-                primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) :=
+          ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (i:ℝ)))) *
+              min 1 ((2 : ℝ) ^ ((n:ℝ) - (i:ℝ))))
+            * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+                primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) :=
         Finset.sum_congr rfl fun i _ ↦
-          aux_profile_term_eq n i (primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i))
+          aux_profile_term_eq n i (primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i))
 
 theorem aux_profile_level_conv_le_meas {X : Type*} [MeasurableSpace X]
     (μ : Measure X) (r₁ r₂ : ℝ) {θ : ℝ} (v : ℤ → X → ℝ)
     (hv : ∀ i, Measurable (v i)) (n : ℤ) (T K : Finset ℤ)
     (hsub : T.image (fun i ↦ n - i) ⊆ K) :
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
       ≤ ∑ k ∈ K,
-          ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ)))
-            * (ENNReal.ofReal ((2:ℝ) ^ (-(θ * ((n:ℝ) - (k:ℝ))))) *
-                primeJ μ r₁ r₂ ((2:ℝ) ^ ((n:ℝ) - (k:ℝ)))
+          ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ)))
+            * (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * ((n:ℝ) - (k:ℝ))))) *
+                primeJ μ r₁ r₂ ((2 : ℝ) ^ ((n:ℝ) - (k:ℝ)))
                   (v (n - k))) := by
   classical
   refine le_trans (aux_profile_level_le_meas μ r₁ r₂ v hv n T) ?_
@@ -32949,10 +32956,10 @@ theorem aux_profile_level_conv_le_meas {X : Type*} [MeasurableSpace X]
     push_cast
     ring
   have hgoal := sum_shift_le_of_subset
-    (a := fun k : ℤ ↦ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) *
-      min 1 ((2:ℝ) ^ (k:ℝ))))
-    (b := fun i : ℤ ↦ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) n T K hsub
+    (a := fun k : ℤ ↦ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) *
+      min 1 ((2 : ℝ) ^ (k:ℝ))))
+    (b := fun i : ℤ ↦ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) n T K hsub
   refine le_trans (le_of_eq ?_) (le_trans hgoal (le_of_eq ?_))
   · refine Finset.sum_congr rfl fun i _ ↦ ?_
     rw [hcast i]
@@ -32963,29 +32970,29 @@ theorem primeJm_method {X : Type*} [MeasurableSpace X] (μ : Measure X)
     (r₁ r₂ : ℝ) {θ s : ℝ} (hs : 1 ≤ s) (v : ℤ → X → ℝ)
     (hv : ∀ i, Measurable (v i)) {A B : ℝ≥0∞}
     (hA : ∀ K : Finset ℤ,
-      ∑ k ∈ K, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) *
-        min 1 ((2:ℝ) ^ (k:ℝ))) ≤ A)
+      ∑ k ∈ K, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) *
+        min 1 ((2 : ℝ) ^ (k:ℝ))) ≤ A)
     (hB : ∀ T : Finset ℤ,
-      (∑ i ∈ T, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-        primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ s) ^ (1 / s) ≤ B)
+      (∑ i ∈ T, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+        primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ s) ^ (1 / s) ≤ B)
     (S T : Finset ℤ) :
-    (∑ n ∈ S, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-        primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s) ^ (1 / s)
+    (∑ n ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+        primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s) ^ (1 / s)
       ≤ A * B := by
   classical
   have hspos : (0:ℝ) < s := lt_of_lt_of_le zero_lt_one hs
   set a : ℤ → ℝ≥0∞ := fun k ↦
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ))) with hadef
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ))) with hadef
   set b : ℤ → ℝ≥0∞ := fun i ↦
-    ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i) with hbdef
+    ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i) with hbdef
   set K : Finset ℤ := (S ×ˢ T).image (fun p ↦ p.1 - p.2) with hKdef
   have hcast : ∀ n k : ℤ, ((n - k : ℤ) : ℝ) = (n:ℝ) - (k:ℝ) := by
     intro n k
     push_cast
     ring
-  have hpt : ∀ n ∈ S, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-      primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
+  have hpt : ∀ n ∈ S, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+      primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)
       ≤ ∑ k ∈ K, a k * b (n - k) := by
     intro n hn
     have hsub : T.image (fun i ↦ n - i) ⊆ K := by
@@ -32999,8 +33006,8 @@ theorem primeJm_method {X : Type*} [MeasurableSpace X] (μ : Measure X)
     refine Finset.sum_congr rfl fun k _ ↦ ?_
     simp only [hadef, hbdef]
     rw [hcast n k]
-  have hmono : ∑ n ∈ S, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-      primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s
+  have hmono : ∑ n ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+      primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ s
       ≤ ∑ n ∈ S, (∑ k ∈ K, a k * b (n - k)) ^ s :=
     Finset.sum_le_sum fun n hn ↦ ENNReal.rpow_le_rpow (hpt n hn) hspos.le
   refine le_trans (ENNReal.rpow_le_rpow hmono (by positivity)) ?_
@@ -33013,15 +33020,15 @@ theorem lintegral_rpow_le_J_profile {X : Type*} [MeasurableSpace X]
     (hR : 1 ≤ R) (hRid : 1 / R = (1 - θ) / r₁ + θ / r₂)
     (v : ℤ → X → ℝ) (hv : ∀ i, Measurable (v i)) {A B : ℝ≥0∞}
     (hA : ∀ K : Finset ℤ,
-      ∑ k ∈ K, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) *
-        min 1 ((2:ℝ) ^ (k:ℝ))) ≤ A)
+      ∑ k ∈ K, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) *
+        min 1 ((2 : ℝ) ^ (k:ℝ))) ≤ A)
     (hB : ∀ T : Finset ℤ,
-      (∑ i ∈ T, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-        primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ R) ^ (1 / R) ≤ B)
+      (∑ i ∈ T, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+        primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ R) ^ (1 / R) ≤ B)
     (T : Finset ℤ) :
     ∫⁻ x, ENNReal.ofReal (|(∑ i ∈ T, v i) x| ^ R) ∂μ
-      ≤ ENNReal.ofReal ((2:ℝ) ^ (1 / (1 / r₁ - 1 / r₂)) *
-            (2:ℝ) ^ ((1 + 1 / r₁) * R)) * (A * B) ^ R := by
+      ≤ ENNReal.ofReal ((2 : ℝ) ^ (1 / (1 / r₁ - 1 / r₂)) *
+            (2 : ℝ) ^ ((1 + 1 / r₁) * R)) * (A * B) ^ R := by
   classical
   have hRpos : (0:ℝ) < R := lt_of_lt_of_le zero_lt_one hR
   have hu : Measurable (∑ i ∈ T, v i) := by
@@ -33035,18 +33042,18 @@ theorem lintegral_rpow_le_J_profile {X : Type*} [MeasurableSpace X]
   refine mul_le_mul' le_rfl ?_
   -- replace the quasi-norm functional by the restricted candidate one
   have hswap : ∀ n : ℤ,
-      (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          weakK μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ R
-        ≤ (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-            primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ R := by
+      (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          weakK μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ R
+        ≤ (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+            primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ R := by
     intro n
     refine ENNReal.rpow_le_rpow (mul_le_mul' le_rfl ?_) hRpos.le
     exact weakK_le_primeKm μ hr₁ hr₂ hu _
   refine le_trans (ENNReal.tsum_le_tsum hswap) ?_
   -- every partial sum of the profile is below `(A * B) ^ R`
   have hpartial : ∀ S : Finset ℤ,
-      ∑ n ∈ S, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (n:ℝ)))) *
-          primeKm μ r₁ r₂ ((2:ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ R
+      ∑ n ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (n:ℝ)))) *
+          primeKm μ r₁ r₂ ((2 : ℝ) ^ (n:ℝ)) (∑ i ∈ T, v i)) ^ R
         ≤ (A * B) ^ R := by
     intro S
     have hm := primeJm_method μ r₁ r₂ hR v hv hA hB S T
@@ -33060,16 +33067,16 @@ theorem lintegral_rpow_le_J_profile {X : Type*} [MeasurableSpace X]
 /-- **The interpolation kernel is summable, uniformly in the finite set.** -/
 theorem exists_kernel_sum_bound {θ : ℝ} (hθ : 0 < θ) (hθ1 : θ < 1) :
     ∃ A : ℝ, 0 < A ∧ ∀ K : Finset ℤ,
-      ∑ k ∈ K, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ)))
+      ∑ k ∈ K, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ)))
         ≤ ENNReal.ofReal A := by
   obtain ⟨A, hA, hb⟩ := exists_discrete_profile_bound hθ hθ1 zero_lt_one
   refine ⟨A, hA, fun K ↦ ?_⟩
   have h2 : (0:ℝ) < 2 := by norm_num
   have hnn : ∀ k : ℤ,
-      0 ≤ (2:ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2:ℝ) ^ (k:ℝ)) := by
+      0 ≤ (2 : ℝ) ^ (-(θ * (k:ℝ))) * min 1 ((2 : ℝ) ^ (k:ℝ)) := by
     intro k
-    have h1 : (0:ℝ) < (2:ℝ) ^ (-(θ * (k:ℝ))) := Real.rpow_pos_of_pos h2 _
-    have h3 : (0:ℝ) ≤ min 1 ((2:ℝ) ^ (k:ℝ)) :=
+    have h1 : (0:ℝ) < (2 : ℝ) ^ (-(θ * (k:ℝ))) := Real.rpow_pos_of_pos h2 _
+    have h3 : (0:ℝ) ≤ min 1 ((2 : ℝ) ^ (k:ℝ)) :=
       le_min zero_le_one (Real.rpow_pos_of_pos h2 _).le
     positivity
   rw [← ENNReal.ofReal_sum_of_nonneg fun k _ ↦ hnn k]
@@ -33084,15 +33091,15 @@ theorem exists_lintegral_rpow_le_J_profile {X : Type*} [MeasurableSpace X]
     (hR : 1 ≤ R) (hRid : 1 / R = (1 - θ) / r₁ + θ / r₂) :
     ∃ C : ℝ, 0 < C ∧ ∀ (v : ℤ → X → ℝ), (∀ i, Measurable (v i)) →
       ∀ B : ℝ≥0∞, (∀ T : Finset ℤ,
-        (∑ i ∈ T, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-          primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ R) ^ (1 / R) ≤ B) →
+        (∑ i ∈ T, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+          primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ R) ^ (1 / R) ≤ B) →
       ∀ T : Finset ℤ,
         ∫⁻ x, ENNReal.ofReal (|(∑ i ∈ T, v i) x| ^ R) ∂μ
           ≤ ENNReal.ofReal C * B ^ R := by
   obtain ⟨A, hApos, hA⟩ := exists_kernel_sum_bound hθ hθ1
   have h2 : (0:ℝ) < 2 := by norm_num
   have hRpos : (0:ℝ) < R := lt_of_lt_of_le zero_lt_one hR
-  refine ⟨(2:ℝ) ^ (1 / (1 / r₁ - 1 / r₂)) * (2:ℝ) ^ ((1 + 1 / r₁) * R) * A ^ R,
+  refine ⟨(2 : ℝ) ^ (1 / (1 / r₁ - 1 / r₂)) * (2 : ℝ) ^ ((1 + 1 / r₁) * R) * A ^ R,
     by positivity, ?_⟩
   intro v hv B hB T
   have hmain := lintegral_rpow_le_J_profile μ hr₁ hr₂ hkap hR hRid v hv hA hB T
@@ -33148,35 +33155,35 @@ theorem primeJ_profile_le_of_weak_bounds {X : Type*} [MeasurableSpace X]
     (h2 : ∀ i, weakNorm μ (v i) r₂ ≤ ENNReal.ofReal (Γ₂ i))
     {Bw : ℝ} (hBw : 0 < Bw)
     (hsum : ∀ T : Finset ℤ,
-      ∑ i ∈ T, ((2:ℝ) ^ (-(θ * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ Bw ^ R)
+      ∑ i ∈ T, ((2 : ℝ) ^ (-(θ * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ Bw ^ R)
     (T : Finset ℤ) :
-    (∑ i ∈ T, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ R) ^ (1 / R)
+    (∑ i ∈ T, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ R) ^ (1 / R)
       ≤ ENNReal.ofReal (C_primeJ_le_of_weak_bounds r₁ r₂ * Bw) := by
   have h2pos : (0:ℝ) < 2 := by norm_num
   set c : ℝ := C_primeJ_le_of_weak_bounds r₁ r₂ with hc_def
   have hc : 0 < c := by
     refine lt_max_of_lt_left (div_pos (by linarith) (by linarith))
-  set g : ℤ → ℝ := fun i ↦ (2:ℝ) ^ (-(θ * (i:ℝ))) *
-    max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i) with hg_def
+  set g : ℤ → ℝ := fun i ↦ (2 : ℝ) ^ (-(θ * (i:ℝ))) *
+    max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i) with hg_def
   have hgpos : ∀ i, 0 < g i := by
     intro i
-    have hw : (0:ℝ) < (2:ℝ) ^ (-(θ * (i:ℝ))) := Real.rpow_pos_of_pos h2pos _
-    have hm : 0 < max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i) := lt_max_of_lt_left (hΓ₁ i)
+    have hw : (0:ℝ) < (2 : ℝ) ^ (-(θ * (i:ℝ))) := Real.rpow_pos_of_pos h2pos _
+    have hm : 0 < max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i) := lt_max_of_lt_left (hΓ₁ i)
     exact mul_pos hw hm
-  have hterm : ∀ i : ℤ, ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)
+  have hterm : ∀ i : ℤ, ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)
         ≤ ENNReal.ofReal (c * g i) := by
     intro i
     have hJ := primeJ_le_of_weak_bounds μ hr₁ hr₂ (hv i)
       (Real.rpow_nonneg h2pos.le (i:ℝ)) (hΓ₁ i) (hΓ₂ i) (h1 i) (h2 i)
-    calc ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-          primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)
-        ≤ ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
+    calc ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+          primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)
+        ≤ ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
             (ENNReal.ofReal c *
               max (ENNReal.ofReal (Γ₁ i))
-                (ENNReal.ofReal ((2:ℝ) ^ (i:ℝ) * Γ₂ i))) :=
+                (ENNReal.ofReal ((2 : ℝ) ^ (i:ℝ) * Γ₂ i))) :=
           mul_le_mul' le_rfl hJ
       _ = ENNReal.ofReal (c * g i) := by
           rw [← ENNReal.ofReal_max, hg_def]
@@ -33185,14 +33192,14 @@ theorem primeJ_profile_le_of_weak_bounds {X : Type*} [MeasurableSpace X]
             ← ENNReal.ofReal_mul (Real.rpow_nonneg h2pos.le _)]
           congr 1
           ring
-  have hpow : ∀ i : ℤ, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ R
+  have hpow : ∀ i : ℤ, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ R
         ≤ ENNReal.ofReal ((c * g i) ^ R) := by
     intro i
     refine le_trans (ENNReal.rpow_le_rpow (hterm i) hR.le) (le_of_eq ?_)
     exact ENNReal.ofReal_rpow_of_pos (mul_pos hc (hgpos i))
-  have hsumle : ∑ i ∈ T, (ENNReal.ofReal ((2:ℝ) ^ (-(θ * (i:ℝ)))) *
-      primeJ μ r₁ r₂ ((2:ℝ) ^ (i:ℝ)) (v i)) ^ R
+  have hsumle : ∑ i ∈ T, (ENNReal.ofReal ((2 : ℝ) ^ (-(θ * (i:ℝ)))) *
+      primeJ μ r₁ r₂ ((2 : ℝ) ^ (i:ℝ)) (v i)) ^ R
         ≤ ENNReal.ofReal ((c * Bw) ^ R) := by
     refine le_trans (Finset.sum_le_sum fun i _ ↦ hpow i) ?_
     rw [← ENNReal.ofReal_sum_of_nonneg fun i _ ↦
@@ -33222,8 +33229,8 @@ theorem exists_lintegral_rpow_le_of_weak_pieces {X : Type*} [MeasurableSpace X]
       (∀ i, weakNorm μ (v i) r₁ ≤ ENNReal.ofReal (Γ₁ i)) →
       (∀ i, weakNorm μ (v i) r₂ ≤ ENNReal.ofReal (Γ₂ i)) →
       ∀ Bw : ℝ, 0 < Bw →
-      (∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(θ * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ Bw ^ R) →
+      (∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(θ * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ Bw ^ R) →
       ∀ T : Finset ℤ,
         ∫⁻ x, ENNReal.ofReal (|(∑ i ∈ T, v i) x| ^ R) ∂μ
           ≤ ENNReal.ofReal (C * Bw ^ R) := by
@@ -33251,7 +33258,7 @@ Above exponent one the weak norm is equivalent to the genuine norm
 weak bound on the sum, at the cost of the single factor `r / (r - 1)`. -/
 theorem weakNorm_sum_le_of_weak_bounds {X : Type*} [MeasurableSpace X]
     (μ : Measure X) [SigmaFinite μ] {r : ℝ} (hr : 1 < r)
-    {ι : Type*} [DecidableEq ι] (S : Finset ι) (v : ι → X → ℝ)
+    {ι : Type*} (S : Finset ι) (v : ι → X → ℝ)
     (hv : ∀ i, Measurable (v i)) (Γ : ι → ℝ) (hΓ : ∀ i, 0 < Γ i)
     (h : ∀ i, weakNorm μ (v i) r ≤ ENNReal.ofReal (Γ i)) :
     weakNorm μ (∑ i ∈ S, v i) r
@@ -33276,7 +33283,7 @@ theorem weakNorm_sum_le_of_weak_bounds {X : Type*} [MeasurableSpace X]
           (mul_nonneg hconj.le (hΓ i).le), Finset.mul_sum]
 
 /-- **A weight vector interior to the simplex is the midpoint of two interior
-weight vectors with distinct output exponents.**  This is what lets the target
+weight vectors with distinct output exponents.** This is what lets the target
 be reached as a real interpolation of two interior points whose input exponents
 already interpolate correctly. -/
 theorem exists_straddling_weights {r : Fin 4 → ℝ}
@@ -33308,12 +33315,12 @@ theorem exists_straddling_weights {r : Fin 4 → ℝ}
     simp only
     by_cases h1 : c = a
     · subst h1
-      rw [if_pos rfl, if_neg hab]
+      rw [ite_eq_left rfl, ite_eq_right hab]
       norm_num
-    · rw [if_neg h1]
+    · rw [ite_eq_right h1]
       by_cases h2 : c = b
-      · rw [if_pos h2]; norm_num
-      · rw [if_neg h2]; norm_num
+      · rw [ite_eq_left h2]; norm_num
+      · rw [ite_eq_right h2]; norm_num
   set ε : ℝ := (min (min (ϑ 0) (ϑ 1)) (min (ϑ 2) (ϑ 3))) / 2 with hε_def
   have hε : 0 < ε := by
     refine half_pos ?_
@@ -33401,13 +33408,13 @@ theorem pairWeight_nonneg {r : Fin 4 → ℝ} {R : ℝ} {a b : Fin 4}
   unfold pairWeight
   by_cases hca : c = a
   · subst hca
-    rw [if_pos rfl, if_neg hab]
+    rw [ite_eq_left rfl, ite_eq_right hab]
     simpa using h1
-  · rw [if_neg hca]
+  · rw [ite_eq_right hca]
     by_cases hcb : c = b
-    · rw [if_pos hcb]
+    · rw [ite_eq_left hcb]
       simpa using h2
-    · rw [if_neg hcb]
+    · rw [ite_eq_right hcb]
       simp
 
 /-- The pair weights sum to one. -/
@@ -33425,7 +33432,7 @@ theorem pairWeight_sum {r : Fin 4 → ℝ} {R : ℝ} {a b : Fin 4}
       (fun _ ↦ ((r b)⁻¹ - R⁻¹) / ((r b)⁻¹ - (r a)⁻¹)),
     Finset.sum_ite_eq' Finset.univ b
       (fun _ ↦ (R⁻¹ - (r a)⁻¹) / ((r b)⁻¹ - (r a)⁻¹))]
-  simp only [Finset.mem_univ, if_true]
+  simp only [Finset.mem_univ, ite_true]
   exact key ((r a)⁻¹) ((r b)⁻¹) (R⁻¹) hden
 
 /-- The pair weights reproduce the output exponent. -/
@@ -33444,11 +33451,11 @@ theorem pairWeight_output {r : Fin 4 → ℝ} {R : ℝ} {a b : Fin 4}
       (fun c ↦ ((r b)⁻¹ - R⁻¹) / ((r b)⁻¹ - (r a)⁻¹) * (r c)⁻¹),
     Finset.sum_ite_eq' Finset.univ b
       (fun c ↦ (R⁻¹ - (r a)⁻¹) / ((r b)⁻¹ - (r a)⁻¹) * (r c)⁻¹)]
-  simp only [Finset.mem_univ, if_true]
+  simp only [Finset.mem_univ, ite_true]
   exact key ((r a)⁻¹) ((r b)⁻¹) (R⁻¹) hden
 
 /-- **Mixing a face weight with an interior one stays on the face and becomes
-strictly positive.**  The pair weights have zero entries, which the layer bound
+strictly positive.** The pair weights have zero entries, which the layer bound
 does not allow; mixing in a little of the target weights repairs that without
 leaving the face. -/
 theorem mixWeight_spec {r ϑ σ : Fin 4 → ℝ} {R : ℝ} {η : ℝ}
@@ -33506,7 +33513,7 @@ theorem maxAbs_nonneg (e : Fin 4 → ℝ) : 0 ≤ maxAbs e :=
   le_trans (abs_nonneg (e 0)) (le_maxAbs e 0)
 
 /-- **A linear functional that is nonpositive on the whole face and vanishes at
-an interior point of it vanishes in every direction along the face.**  This is
+an interior point of it vanishes in every direction along the face.** This is
 the algebraic heart of the geometric gain: if some layer configuration admits no
 gain, the deviation it measures is degenerate. -/
 theorem face_functional_zero_of_nonpos {s ϑ g : Fin 4 → ℝ}
@@ -33559,7 +33566,7 @@ theorem face_functional_zero_of_nonpos {s ϑ g : Fin 4 → ℝ}
   nlinarith [h1, h2, hε]
 
 /-- **Every vector is a zero-sum combination of four affinely independent
-points.**  The differences from the base vertex span, so any `z` is
+points.** The differences from the base vertex span, so any `z` is
 `∑ e_a • v_a` with `∑ e_a = 0`. -/
 theorem exists_zero_sum_combination
     {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v) (z : Fin 3 → ℝ) :
@@ -33599,7 +33606,7 @@ theorem exists_zero_sum_combination
     abel
 
 /-- **A covector in the plane of the face that pairs nonpositively with every
-point of the face is zero.**  Compare `eq_zero_of_forall_gapPairing_nonpos`,
+point of the face is zero.** Compare `eq_zero_of_forall_gapPairing_nonpos`,
 which is the same statement for the whole simplex; here the covector is
 required to annihilate `(1,1,1)`, and in exchange only weight vectors keeping
 the output exponent fixed are tested. -/
@@ -33666,10 +33673,10 @@ theorem eq_zero_of_forall_face_nonpos
   funext j
   exact mul_self_eq_zero.mp (hzero j (Finset.mem_univ j))
 
-/-- **The face gain, quantitative and explicit.**  For an interior weight `ϑ`
+/-- **The face gain, quantitative and explicit.** For an interior weight `ϑ`
 there is `δ > 0` such that every covector `w` annihilating `(1,1,1)` pairs at
 least `δ‖w‖` with some point of the face — a strictly positive weight vector
-with the same output exponent — measured from the barycentre.  No compactness
+with the same output exponent — measured from the barycentre. No compactness
 is needed: two tangent directions of the face are realised explicitly as
 `(1,-1,0)` and `(0,1,-1)`, and a zero-sum covector is controlled by its
 pairings with those two. -/
@@ -33858,7 +33865,7 @@ theorem prod_rpow_le_of_weights_close {A ϑ ϑ' : Fin 4 → ℝ} (hA : ∀ a, 0 
     ∏ a : Fin 4, A a ^ ϑ' a ≤ (∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A := by
   unfold C_weights_shift
   rw [← Finset.prod_mul_distrib]
-  refine Finset.prod_le_prod (fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le)
+  refine Finset.prod_le_prod₀ (fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le)
     fun a _ ↦ ?_
   have hsplit : A a ^ ϑ' a = A a ^ ϑ a * A a ^ (ϑ' a - ϑ a) := by
     rw [← Real.rpow_add (hA a)]
@@ -33887,7 +33894,7 @@ theorem layerLogDeviation_sum (m : Fin 3 → ℝ) :
   simp only [nsmul_eq_mul]
   ring
 
-/-- **The layer bound with the face gain.**  For a single layer multi-index,
+/-- **The layer bound with the face gain.** For a single layer multi-index,
 some face weight improves the barycentric bound by `exp(-δ‖w‖)`, where `w` is
 the zero-sum part of the logarithms of the three layer measures and `δ > 0`
 depends only on the exponent vectors and the weights. -/
@@ -34034,7 +34041,7 @@ theorem exists_weakNorm_expansion_term_gain_le
     Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le
   have hm'nn : 0 ≤ ∏ j : Fin 3, m j ^ (1 / p' j) :=
     Finset.prod_nonneg fun j _ ↦ (Real.rpow_pos_of_pos (hm j) _).le
-  show (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p' j))
+  change (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p' j))
     ≤ (∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A * Real.exp (-(δ * ‖w‖)) *
         ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p j))
   rw [hprod', hprod]
@@ -34095,11 +34102,12 @@ theorem sum_rpow_mul_three_le {ι : Type*} (s : Finset ι) {f g h : ι → ℝ}
 
 /-- **Minkowski's inequality for a finite family of nonnegative real
 sequences.** -/
-theorem real_Lp_finset_sum_le {ι κ : Type*} [DecidableEq κ] (s : Finset ι)
+theorem real_Lp_finset_sum_le {ι κ : Type*} (s : Finset ι)
     (T : Finset κ) (F : κ → ι → ℝ) {p : ℝ} (hp : 1 ≤ p)
     (hF : ∀ k i, 0 ≤ F k i) :
     (∑ i ∈ s, (∑ k ∈ T, F k i) ^ p) ^ (1 / p)
       ≤ ∑ k ∈ T, (∑ i ∈ s, F k i ^ p) ^ (1 / p) := by
+  classical
   have hppos : (0:ℝ) < p := lt_of_lt_of_le zero_lt_one hp
   classical
   induction T using Finset.induction with
@@ -34138,7 +34146,7 @@ theorem sum_shift_le_of_forall {B : ℤ → ℝ} {p C : ℝ}
   rw [← Finset.sum_image (f := fun n ↦ B n ^ p) (fun x _ y _ hxy ↦ hinj hxy)]
   exact hB _
 
-/-- **The shifted three-function Hölder bound.**  Three sequences with
+/-- **The shifted three-function Hölder bound.** Three sequences with
 `ℓ^{p_j}` norms at most one, evaluated at three shifts of a common index, have
 `ℓ^R` norm at most one when `1/R = ∑ 1/p_j`. -/
 theorem sum_rpow_shifted_three_le {B₁ B₂ B₃ : ℤ → ℝ} {p₁ p₂ p₃ R : ℝ}
@@ -34188,8 +34196,8 @@ theorem triple_eq_of_sum_diff {n n' : ℤ × ℤ × ℤ} (hs : tripleSum n = tri
   simp only [Prod.mk.injEq] at hd hs ⊢
   omega
 
-/-- **The discrete core.**  Three sequences of `ℓ^{p_j}` norm at most one, a
-summable decay `e`, and `1/R = ∑ 1/p_j` with `R ≥ 1`.  Grouping the products
+/-- **The discrete core.** Three sequences of `ℓ^{p_j}` norm at most one, a
+summable decay `e`, and `1/R = ∑ 1/p_j` with `R ≥ 1`. Grouping the products
 `B₁(n₁)B₂(n₂)B₃(n₃) e(n₁-n₂) e(n₂-n₃)` by the slice `n₁+n₂+n₃ = N`, the `ℓ^R`
 norm in `N` of the slice sums is at most `E²`. -/
 theorem discrete_core_le {B₁ B₂ B₃ e : ℤ → ℝ} {p₁ p₂ p₃ R E : ℝ}
@@ -34333,9 +34341,9 @@ theorem discrete_core_le {B₁ B₂ B₃ e : ℤ → ℝ} {p₁ p₂ p₃ R E : 
 
 /-- **Distinct powers of two sum to at most twice the largest.** -/
 theorem sum_zpow_two_le_two_mul_max {K : Finset ℤ} (hK : K.Nonempty) :
-    ∑ k ∈ K, (2:ℝ) ^ k ≤ 2 * (2:ℝ) ^ (K.max' hK) := by
+    ∑ k ∈ K, (2 : ℝ) ^ k ≤ 2 * (2 : ℝ) ^ (K.max' hK) := by
   set M : ℤ := K.max' hK with hM
-  have hterm : ∀ k ∈ K, (2:ℝ) ^ k = (2:ℝ) ^ M * (1 / 2 : ℝ) ^ ((M - k).toNat) := by
+  have hterm : ∀ k ∈ K, (2 : ℝ) ^ k = (2 : ℝ) ^ M * (1 / 2 : ℝ) ^ ((M - k).toNat) := by
     intro k hk
     have hle : k ≤ M := Finset.le_max' K k hk
     have hcast : (((M - k).toNat : ℕ) : ℤ) = M - k := Int.toNat_of_nonneg (by omega)
@@ -34368,19 +34376,19 @@ theorem sum_zpow_two_le_two_mul_max {K : Finset ℤ} (hK : K.Nonempty) :
           rw [div_le_iff_of_neg (by norm_num)]
           linarith
   rw [Finset.sum_congr rfl hterm, ← Finset.mul_sum]
-  have h2M : (0:ℝ) < (2:ℝ) ^ M := zpow_pos (by norm_num) _
-  calc (2:ℝ) ^ M * ∑ k ∈ K, (1 / 2 : ℝ) ^ ((M - k).toNat)
-      ≤ (2:ℝ) ^ M * 2 := mul_le_mul_of_nonneg_left hgeom h2M.le
-    _ = 2 * (2:ℝ) ^ M := by ring
+  have h2M : (0:ℝ) < (2 : ℝ) ^ M := zpow_pos (by norm_num) _
+  calc (2 : ℝ) ^ M * ∑ k ∈ K, (1 / 2 : ℝ) ^ ((M - k).toNat)
+      ≤ (2 : ℝ) ^ M * 2 := mul_le_mul_of_nonneg_left hgeom h2M.le
+    _ = 2 * (2 : ℝ) ^ M := by ring
 
-/-- **The block estimate.**  Heights whose layer measures all lie in one dyadic
+/-- **The block estimate.** Heights whose layer measures all lie in one dyadic
 range `[2^n, 2^(n+1))` contribute to the target size at most
 `2^(1 + 1/p)` times the `1/p`-th power of their share of the `L^p` budget. -/
 theorem block_estimate {K : Finset ℤ} {m : ℤ → ℝ} {p : ℝ} (hp : 0 < p) {n : ℤ}
     (hm : ∀ k ∈ K, 0 ≤ m k)
-    (hlo : ∀ k ∈ K, (2:ℝ) ^ n ≤ m k) (hhi : ∀ k ∈ K, m k < (2:ℝ) ^ (n + 1)) :
-    ∑ k ∈ K, (2:ℝ) ^ k * m k ^ (1 / p)
-      ≤ (2:ℝ) ^ (1 + 1 / p) * (∑ k ∈ K, ((2:ℝ) ^ k) ^ p * m k) ^ (1 / p) := by
+    (hlo : ∀ k ∈ K, (2 : ℝ) ^ n ≤ m k) (hhi : ∀ k ∈ K, m k < (2 : ℝ) ^ (n + 1)) :
+    ∑ k ∈ K, (2 : ℝ) ^ k * m k ^ (1 / p)
+      ≤ (2 : ℝ) ^ (1 + 1 / p) * (∑ k ∈ K, ((2 : ℝ) ^ k) ^ p * m k) ^ (1 / p) := by
   rcases K.eq_empty_or_nonempty with hK | hK
   · subst hK
     simp only [Finset.sum_empty]
@@ -34388,58 +34396,58 @@ theorem block_estimate {K : Finset ℤ} {m : ℤ → ℝ} {p : ℝ} (hp : 0 < p)
   set M : ℤ := K.max' hK with hM
   have hMmem : M ∈ K := Finset.max'_mem K hK
   have h2 : (0:ℝ) < 2 := by norm_num
-  set b : ℝ := ∑ k ∈ K, ((2:ℝ) ^ k) ^ p * m k with hb
+  set b : ℝ := ∑ k ∈ K, ((2 : ℝ) ^ k) ^ p * m k with hb
   have hbnn : 0 ≤ b :=
     Finset.sum_nonneg fun k hk ↦ mul_nonneg (Real.rpow_nonneg (zpow_pos h2 _).le _) (hm k hk)
   -- the largest height is controlled by the budget
-  have hMpow : ((2:ℝ) ^ M) ^ p * (2:ℝ) ^ n ≤ b := by
-    calc ((2:ℝ) ^ M) ^ p * (2:ℝ) ^ n
-        ≤ ((2:ℝ) ^ M) ^ p * m M :=
+  have hMpow : ((2 : ℝ) ^ M) ^ p * (2 : ℝ) ^ n ≤ b := by
+    calc ((2 : ℝ) ^ M) ^ p * (2 : ℝ) ^ n
+        ≤ ((2 : ℝ) ^ M) ^ p * m M :=
           mul_le_mul_of_nonneg_left (hlo M hMmem) (Real.rpow_nonneg (zpow_pos h2 _).le _)
       _ ≤ b := by
           rw [hb]
-          exact Finset.single_le_sum (f := fun k : ℤ ↦ ((2:ℝ) ^ k) ^ p * m k)
+          exact Finset.single_le_sum (f := fun k : ℤ ↦ ((2 : ℝ) ^ k) ^ p * m k)
             (fun k hk ↦ mul_nonneg (Real.rpow_nonneg (zpow_pos h2 _).le _) (hm k hk)) hMmem
-  have hMle : (2:ℝ) ^ M ≤ (b * (2:ℝ) ^ (-n)) ^ (1 / p) := by
-    have hpos : (0:ℝ) < (2:ℝ) ^ M := zpow_pos h2 _
-    have h1 : ((2:ℝ) ^ M) ^ p ≤ b * (2:ℝ) ^ (-n) := by
+  have hMle : (2 : ℝ) ^ M ≤ (b * (2 : ℝ) ^ (-n)) ^ (1 / p) := by
+    have hpos : (0:ℝ) < (2 : ℝ) ^ M := zpow_pos h2 _
+    have h1 : ((2 : ℝ) ^ M) ^ p ≤ b * (2 : ℝ) ^ (-n) := by
       rw [zpow_neg, ← div_eq_mul_inv, le_div_iff₀ (zpow_pos h2 _)]
       exact hMpow
-    calc (2:ℝ) ^ M = (((2:ℝ) ^ M) ^ p) ^ (1 / p) := by
+    calc (2 : ℝ) ^ M = (((2 : ℝ) ^ M) ^ p) ^ (1 / p) := by
           rw [← Real.rpow_mul hpos.le, mul_one_div, div_self (ne_of_gt hp), Real.rpow_one]
-      _ ≤ (b * (2:ℝ) ^ (-n)) ^ (1 / p) :=
+      _ ≤ (b * (2 : ℝ) ^ (-n)) ^ (1 / p) :=
           Real.rpow_le_rpow (Real.rpow_nonneg hpos.le _) h1 (one_div_pos.2 hp).le
   -- each measure factor is at most the top of the range
-  have hmfac : ∀ k ∈ K, m k ^ (1 / p) ≤ ((2:ℝ) ^ (n + 1)) ^ (1 / p) := fun k hk ↦
+  have hmfac : ∀ k ∈ K, m k ^ (1 / p) ≤ ((2 : ℝ) ^ (n + 1)) ^ (1 / p) := fun k hk ↦
     Real.rpow_le_rpow (hm k hk) (hhi k hk).le (one_div_pos.2 hp).le
-  calc ∑ k ∈ K, (2:ℝ) ^ k * m k ^ (1 / p)
-      ≤ ∑ k ∈ K, (2:ℝ) ^ k * ((2:ℝ) ^ (n + 1)) ^ (1 / p) :=
+  calc ∑ k ∈ K, (2 : ℝ) ^ k * m k ^ (1 / p)
+      ≤ ∑ k ∈ K, (2 : ℝ) ^ k * ((2 : ℝ) ^ (n + 1)) ^ (1 / p) :=
         Finset.sum_le_sum fun k hk ↦
           mul_le_mul_of_nonneg_left (hmfac k hk) (zpow_pos h2 _).le
-    _ = ((2:ℝ) ^ (n + 1)) ^ (1 / p) * ∑ k ∈ K, (2:ℝ) ^ k := by
+    _ = ((2 : ℝ) ^ (n + 1)) ^ (1 / p) * ∑ k ∈ K, (2 : ℝ) ^ k := by
         rw [← Finset.sum_mul, mul_comm]
-    _ ≤ ((2:ℝ) ^ (n + 1)) ^ (1 / p) * (2 * (2:ℝ) ^ M) :=
+    _ ≤ ((2 : ℝ) ^ (n + 1)) ^ (1 / p) * (2 * (2 : ℝ) ^ M) :=
         mul_le_mul_of_nonneg_left (sum_zpow_two_le_two_mul_max hK)
           (Real.rpow_nonneg (zpow_pos h2 _).le _)
-    _ ≤ ((2:ℝ) ^ (n + 1)) ^ (1 / p) * (2 * (b * (2:ℝ) ^ (-n)) ^ (1 / p)) :=
+    _ ≤ ((2 : ℝ) ^ (n + 1)) ^ (1 / p) * (2 * (b * (2 : ℝ) ^ (-n)) ^ (1 / p)) :=
         mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hMle (by norm_num))
           (Real.rpow_nonneg (zpow_pos h2 _).le _)
-    _ = (2:ℝ) ^ (1 + 1 / p) * b ^ (1 / p) := by
+    _ = (2 : ℝ) ^ (1 + 1 / p) * b ^ (1 / p) := by
         rw [Real.mul_rpow hbnn (zpow_pos h2 _).le, Real.rpow_add h2, Real.rpow_one]
-        have hcomb : ((2:ℝ) ^ (n + 1)) ^ (1 / p) * ((2:ℝ) ^ (-n)) ^ (1 / p)
-            = (2:ℝ) ^ (1 / p) := by
+        have hcomb : ((2 : ℝ) ^ (n + 1)) ^ (1 / p) * ((2 : ℝ) ^ (-n)) ^ (1 / p)
+            = (2 : ℝ) ^ (1 / p) := by
           rw [← Real.mul_rpow (zpow_pos h2 _).le (zpow_pos h2 _).le, ← zpow_add₀ h2.ne']
           congr 1
           rw [show n + 1 + -n = (1:ℤ) by ring, zpow_one]
-        calc ((2:ℝ) ^ (n + 1)) ^ (1 / p) * (2 * (b ^ (1 / p) * ((2:ℝ) ^ (-n)) ^ (1 / p)))
-            = 2 * (((2:ℝ) ^ (n + 1)) ^ (1 / p) * ((2:ℝ) ^ (-n)) ^ (1 / p)) * b ^ (1 / p) := by
+        calc ((2 : ℝ) ^ (n + 1)) ^ (1 / p) * (2 * (b ^ (1 / p) * ((2 : ℝ) ^ (-n)) ^ (1 / p)))
+            = 2 * (((2 : ℝ) ^ (n + 1)) ^ (1 / p) * ((2 : ℝ) ^ (-n)) ^ (1 / p)) * b ^ (1 / p) := by
               ring
-          _ = 2 * (2:ℝ) ^ (1 / p) * b ^ (1 / p) := by rw [hcomb]
+          _ = 2 * (2 : ℝ) ^ (1 / p) * b ^ (1 / p) := by rw [hcomb]
 
-/-- **The diagonal perturbation pair.**  An interior weight vector is the
+/-- **The diagonal perturbation pair.** An interior weight vector is the
 midpoint of two interior weight vectors whose input reciprocals differ from
 the target's by the same `ε` in every slot — one shifted up the diagonal, one
-shifted down.  The corresponding output reciprocals then differ by `6ε`. -/
+shifted down. The corresponding output reciprocals then differ by `6ε`. -/
 theorem exists_diagonal_weight_pair
     {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
     {ϑ : Fin 4 → ℝ} (hϑ : ∀ a, 0 < ϑ a) (hsum : ∑ a : Fin 4, ϑ a = 1) :
@@ -34491,13 +34499,13 @@ theorem exists_diagonal_weight_pair
   · rw [hshift (-ε) j]
     ring
 
-/-- **Bounded overlap of the slices with the merged fibres.**  The integers `N`
+/-- **Bounded overlap of the slices with the merged fibres.** The integers `N`
 with `⌊ε N + c⌋ = i` lie in an interval of length `1/ε`, so there are at most
 `1/ε + 1` of them. -/
 theorem card_filter_floor_eq_le {ε c : ℝ} (hε : 0 < ε) (S : Finset ℤ) (i : ℤ) :
     (((S.filter fun N : ℤ ↦ ⌊ε * (N:ℝ) + c⌋ = i).card : ℕ) : ℝ) ≤ 1 / ε + 1 := by
   set lo : ℤ := ⌈((i:ℝ) - c) / ε⌉ with hlo
-  set hi : ℤ := ⌊((i:ℝ) + 1 - c) / ε⌋ with hhi
+  set hi : ℤ := ⌊((i : ℝ) + 1 - c) / ε⌋ with hhi
   have hsub : (S.filter fun N : ℤ ↦ ⌊ε * (N:ℝ) + c⌋ = i) ⊆ Finset.Icc lo hi := by
     intro N hN
     have h := (Finset.mem_filter.1 hN).2
@@ -34511,9 +34519,9 @@ theorem card_filter_floor_eq_le {ε c : ℝ} (hε : 0 < ε) (S : Finset ℤ) (i 
       rw [le_div_iff₀ hε]
       linarith [h.2]
   have hlo_ge : ((i:ℝ) - c) / ε ≤ (lo:ℝ) := Int.le_ceil _
-  have hhi_le : (hi:ℝ) ≤ ((i:ℝ) + 1 - c) / ε := Int.floor_le _
+  have hhi_le : (hi:ℝ) ≤ ((i : ℝ) + 1 - c) / ε := Int.floor_le _
   have hlen : (hi:ℝ) + 1 - lo ≤ 1 / ε + 1 := by
-    have : ((i:ℝ) + 1 - c) / ε - ((i:ℝ) - c) / ε = 1 / ε := by
+    have : ((i : ℝ) + 1 - c) / ε - ((i:ℝ) - c) / ε = 1 / ε := by
       field_simp
       ring
     linarith
@@ -34534,11 +34542,11 @@ theorem card_filter_floor_eq_le {ε c : ℝ} (hε : 0 < ε) (S : Finset ℤ) (i 
 /-- The dyadic block of a positive layer measure. -/
 def blockIndex (m : ℝ) : ℤ := Int.log 2 m
 
-theorem zpow_blockIndex_le {m : ℝ} (hm : 0 < m) : (2:ℝ) ^ blockIndex m ≤ m := by
+theorem zpow_blockIndex_le {m : ℝ} (hm : 0 < m) : (2 : ℝ) ^ blockIndex m ≤ m := by
   unfold blockIndex
   exact_mod_cast Int.zpow_log_le_self (b := 2) (by norm_num) hm
 
-theorem lt_zpow_blockIndex_succ (m : ℝ) : m < (2:ℝ) ^ (blockIndex m + 1) := by
+theorem lt_zpow_blockIndex_succ (m : ℝ) : m < (2 : ℝ) ^ (blockIndex m + 1) := by
   unfold blockIndex
   exact_mod_cast Int.lt_zpow_succ_log_self (b := 2) (by norm_num) m
 
@@ -34559,16 +34567,16 @@ theorem log_sub_blockIndex_mem {m : ℝ} (hm : 0 < m) :
     exact this
   constructor <;> linarith
 
-/-- **The face gain dominates the block decay.**  For layer measures `m_j > 0`
+/-- **The face gain dominates the block decay.** For layer measures `m_j > 0`
 with blocks `n_j` and `N = ∑ n_j`, the gain `exp(-δ‖w‖)` in the zero-sum
 deviation `w` of the logarithms is at most `2^δ` times a product of two
 one-dimensional decays in the block differences. -/
 theorem exp_gain_le_block_decay {m : Fin 3 → ℝ} (hm : ∀ j, 0 < m j) {δ : ℝ}
     (hδ : 0 < δ) :
     Real.exp (-(δ * ‖layerLogDeviation m‖))
-      ≤ (2:ℝ) ^ δ *
-        ((2:ℝ) ^ (-(δ / 4 * |((blockIndex (m 0) - blockIndex (m 1) : ℤ) : ℝ)|)) *
-          (2:ℝ) ^ (-(δ / 4 * |((blockIndex (m 1) - blockIndex (m 2) : ℤ) : ℝ)|))) := by
+      ≤ (2 : ℝ) ^ δ *
+        ((2 : ℝ) ^ (-(δ / 4 * |((blockIndex (m 0) - blockIndex (m 1) : ℤ) : ℝ)|)) *
+          (2 : ℝ) ^ (-(δ / 4 * |((blockIndex (m 1) - blockIndex (m 2) : ℤ) : ℝ)|))) := by
   have h2 : (0:ℝ) < 2 := by norm_num
   have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
   set w : Fin 3 → ℝ := layerLogDeviation m with hw
@@ -34643,7 +34651,7 @@ def blockSet (K : Finset ℤ) (m : ℤ → ℝ) (n : ℤ) : Finset ℤ :=
 
 /-- The `1/p`-th power of the share of the `L^p` budget carried by block `n`. -/
 def blockBudget (K : Finset ℤ) (m : ℤ → ℝ) (p : ℝ) (n : ℤ) : ℝ :=
-  (∑ k ∈ blockSet K m n, ((2:ℝ) ^ k) ^ p * m k) ^ (1 / p)
+  (∑ k ∈ blockSet K m n, ((2 : ℝ) ^ k) ^ p * m k) ^ (1 / p)
 
 theorem blockBudget_nonneg {K : Finset ℤ} {m : ℤ → ℝ} (hm : ∀ k ∈ K, 0 ≤ m k)
     (p : ℝ) (n : ℤ) : 0 ≤ blockBudget K m p n :=
@@ -34654,8 +34662,8 @@ theorem blockBudget_nonneg {K : Finset ℤ} {m : ℤ → ℝ} (hm : ∀ k ∈ K,
 /-- **The block estimate in terms of the block budget.** -/
 theorem blockSet_sum_le {K : Finset ℤ} {m : ℤ → ℝ} (hm : ∀ k ∈ K, 0 < m k) {p : ℝ}
     (hp : 0 < p) (n : ℤ) :
-    ∑ k ∈ blockSet K m n, (2:ℝ) ^ k * m k ^ (1 / p)
-      ≤ (2:ℝ) ^ (1 + 1 / p) * blockBudget K m p n := by
+    ∑ k ∈ blockSet K m n, (2 : ℝ) ^ k * m k ^ (1 / p)
+      ≤ (2 : ℝ) ^ (1 + 1 / p) * blockBudget K m p n := by
   unfold blockBudget
   refine block_estimate hp (n := n) ?_ ?_ ?_
   · intro k hk
@@ -34672,22 +34680,22 @@ theorem blockSet_sum_le {K : Finset ℤ} {m : ℤ → ℝ} (hm : ∀ k ∈ K, 0 
 /-- **The block budgets are dominated by the total budget.** -/
 theorem sum_blockBudget_rpow_le {K : Finset ℤ} {m : ℤ → ℝ} (hm : ∀ k ∈ K, 0 ≤ m k)
     {p : ℝ} (hp : 0 < p)
-    (hbudget : ∑ k ∈ K, ((2:ℝ) ^ k) ^ p * m k ≤ 1) (S : Finset ℤ) :
+    (hbudget : ∑ k ∈ K, ((2 : ℝ) ^ k) ^ p * m k ≤ 1) (S : Finset ℤ) :
     ∑ n ∈ S, blockBudget K m p n ^ p ≤ 1 := by
-  have hterm : ∀ k ∈ K, 0 ≤ ((2:ℝ) ^ k) ^ p * m k := fun k hk ↦
+  have hterm : ∀ k ∈ K, 0 ≤ ((2 : ℝ) ^ k) ^ p * m k := fun k hk ↦
     mul_nonneg (Real.rpow_nonneg (zpow_pos (by norm_num) _).le _) (hm k hk)
   have hpow : ∀ n : ℤ, blockBudget K m p n ^ p
-      = ∑ k ∈ blockSet K m n, ((2:ℝ) ^ k) ^ p * m k := by
+      = ∑ k ∈ blockSet K m n, ((2 : ℝ) ^ k) ^ p * m k := by
     intro n
     unfold blockBudget
-    have hnn : 0 ≤ ∑ k ∈ blockSet K m n, ((2:ℝ) ^ k) ^ p * m k :=
+    have hnn : 0 ≤ ∑ k ∈ blockSet K m n, ((2 : ℝ) ^ k) ^ p * m k :=
       Finset.sum_nonneg fun k hk ↦ hterm k (Finset.mem_filter.1 hk).1
     rw [← Real.rpow_mul hnn, one_div_mul_cancel (ne_of_gt hp), Real.rpow_one]
   simp only [hpow]
   -- the blocks indexed by `S` are disjoint pieces of `K`
   have hmaps : ∀ k ∈ K.filter (fun k ↦ blockIndex (m k) ∈ S), blockIndex (m k) ∈ S :=
     fun k hk ↦ (Finset.mem_filter.1 hk).2
-  have hfib := Finset.sum_fiberwise_of_maps_to hmaps (fun k ↦ ((2:ℝ) ^ k) ^ p * m k)
+  have hfib := Finset.sum_fiberwise_of_maps_to hmaps (fun k ↦ ((2 : ℝ) ^ k) ^ p * m k)
   have hsets : ∀ n ∈ S, (K.filter (fun k ↦ blockIndex (m k) ∈ S)).filter
       (fun k ↦ blockIndex (m k) = n) = blockSet K m n := by
     intro n hn
@@ -34696,9 +34704,9 @@ theorem sum_blockBudget_rpow_le {K : Finset ℤ} {m : ℤ → ℝ} (hm : ∀ k �
     constructor
     · rintro ⟨⟨hk, _⟩, h⟩; exact ⟨hk, h⟩
     · rintro ⟨hk, h⟩; exact ⟨⟨hk, h ▸ hn⟩, h⟩
-  have h1 : ∑ n ∈ S, ∑ k ∈ blockSet K m n, ((2:ℝ) ^ k) ^ p * m k
+  have h1 : ∑ n ∈ S, ∑ k ∈ blockSet K m n, ((2 : ℝ) ^ k) ^ p * m k
       = ∑ n ∈ S, ∑ k ∈ (K.filter (fun k ↦ blockIndex (m k) ∈ S)).filter
-          (fun k ↦ blockIndex (m k) = n), ((2:ℝ) ^ k) ^ p * m k :=
+          (fun k ↦ blockIndex (m k) = n), ((2 : ℝ) ^ k) ^ p * m k :=
     Finset.sum_congr rfl fun n hn ↦ by rw [hsets n hn]
   rw [h1, hfib]
   exact le_trans (Finset.sum_le_sum_of_subset_of_nonneg (Finset.filter_subset _ K)
@@ -34723,8 +34731,8 @@ theorem sum_product_three {A B C : Finset ℤ} (f g h : ℤ → ℝ) :
 
 /-- The target size of a layer multi-index, with the face gain. -/
 def layerSize (m₀ m₁ m₂ : ℤ → ℝ) (p₀ p₁ p₂ δ : ℝ) (k : ℤ × ℤ × ℤ) : ℝ :=
-  (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-    ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) *
+  (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+    ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) *
     Real.exp (-(δ * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖))
 
 /-- The block vector of a layer multi-index. -/
@@ -34736,9 +34744,9 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
     (hm₀ : ∀ k ∈ K₀, 0 < m₀ k) (hm₁ : ∀ k ∈ K₁, 0 < m₁ k) (hm₂ : ∀ k ∈ K₂, 0 < m₂ k)
     {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp₁ : 0 < p₁) (hp₂ : 0 < p₂) (hR : 1 ≤ R)
     (hsum : p₀⁻¹ + p₁⁻¹ + p₂⁻¹ = R⁻¹)
-    (hb₀ : ∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1)
-    (hb₁ : ∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1)
-    (hb₂ : ∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1)
+    (hb₀ : ∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1)
+    (hb₁ : ∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1)
+    (hb₂ : ∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1)
     {δ ε c₀ : ℝ} (hδ : 0 < δ) (hε : 0 < ε) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ I : Finset ℤ,
       ∑ i ∈ I, (∑ k ∈ (K₀ ×ˢ (K₁ ×ˢ K₂)) with
@@ -34754,11 +34762,11 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
   set B₀ : ℤ → ℝ := blockBudget K₀ m₀ p₀ with hB₀
   set B₁ : ℤ → ℝ := blockBudget K₁ m₁ p₁ with hB₁
   set B₂ : ℤ → ℝ := blockBudget K₂ m₂ p₂ with hB₂
-  set e : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ / 4 * |(t:ℝ)|)) with he
+  set e : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ / 4 * |(t:ℝ)|)) with he
   set P : ℤ × ℤ × ℤ → ℝ := fun n ↦
     B₀ n.1 * B₁ n.2.1 * B₂ n.2.2 * (e (tripleDiff n).1 * e (tripleDiff n).2) with hP
-  set Cg : ℝ := (2:ℝ) ^ δ * ((2:ℝ) ^ (1 + 1 / p₀) * (2:ℝ) ^ (1 + 1 / p₁) *
-    (2:ℝ) ^ (1 + 1 / p₂)) with hCg
+  set Cg : ℝ := (2 : ℝ) ^ δ * ((2 : ℝ) ^ (1 + 1 / p₀) * (2 : ℝ) ^ (1 + 1 / p₁) *
+    (2 : ℝ) ^ (1 + 1 / p₂)) with hCg
   have hCg : 0 ≤ Cg := by positivity
   set Λ' : Finset (ℤ × ℤ × ℤ) := Λ.image nv with hΛ'
   set idxn : ℤ × ℤ × ℤ → ℤ := fun n ↦ ⌊ε * (tripleSum n : ℝ) + c₀⌋ with hidxn
@@ -34794,9 +34802,9 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
         Prod.ext_iff]
       tauto
     have hpt : ∀ k ∈ Λ.filter (fun k ↦ nv k = n), G k
-        ≤ ((2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) *
-          ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
+        ≤ ((2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) *
+          ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
       intro k hk
       have hkΛ := (Finset.mem_filter.1 hk).1
       have hkn := (Finset.mem_filter.1 hk).2
@@ -34818,58 +34826,58 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
       obtain ⟨hn1, hn2⟩ := hn12
       simp only at hn0 hn1 hn2
       have hdec : Real.exp (-(δ * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖))
-          ≤ (2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) := by
+          ≤ (2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) := by
         refine le_trans hgain (le_of_eq ?_)
         simp only [he, tripleDiff, hn0, hn1, hn2]
-      have hann : 0 ≤ (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
+      have hann : 0 ≤ (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
         have := (hm₀ _ hkΛ.1).le
         have := (hm₁ _ hkΛ.2.1).le
         have := (hm₂ _ hkΛ.2.2).le
         positivity
       simp only [hG, layerSize]
-      calc _ ≤ ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
-            ((2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) :=
+      calc _ ≤ ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
+            ((2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) :=
             mul_le_mul_of_nonneg_left hdec hann
         _ = _ := by ring
     refine le_trans (Finset.sum_le_sum hpt) ?_
     rw [← Finset.mul_sum, hset]
     have hfac : ∑ k ∈ blockSet K₀ m₀ n.1 ×ˢ (blockSet K₁ m₁ n.2.1 ×ˢ blockSet K₂ m₂ n.2.2),
-        (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
-        = (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
-      sum_product_three (fun x ↦ (2:ℝ) ^ x * m₀ x ^ (1 / p₀))
-        (fun x ↦ (2:ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2:ℝ) ^ x * m₂ x ^ (1 / p₂))
+        (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
+        = (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
+      sum_product_three (fun x ↦ (2 : ℝ) ^ x * m₀ x ^ (1 / p₀))
+        (fun x ↦ (2 : ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2 : ℝ) ^ x * m₂ x ^ (1 / p₂))
     rw [hfac]
     have hs₀ := blockSet_sum_le hm₀ hp₀ n.1
     have hs₁ := blockSet_sum_le hm₁ hp₁ n.2.1
     have hs₂ := blockSet_sum_le hm₂ hp₂ n.2.2
-    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀) :=
+    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₀ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁) :=
+    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₁ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂) :=
+    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₂ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂))
-        ≤ ((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
+    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂))
+        ≤ ((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
       refine mul_le_mul (mul_le_mul hs₀ hs₁ hn₁ (mul_nonneg (by positivity) (hB₀nn _))) hs₂ hn₂
         (mul_nonneg (mul_nonneg (by positivity) (hB₀nn _)) (mul_nonneg (by positivity) (hB₁nn _)))
-    calc (2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
-          ((∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)))
-        ≤ (2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
-          (((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
+    calc (2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
+          ((∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)))
+        ≤ (2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
+          (((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod (by positivity)
       _ = Cg * P n := by
           simp only [hP]
@@ -34882,7 +34890,8 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
         ≤ Cg * ∑ N ∈ (Λ'.image tripleSum).filter (fun N : ℤ ↦ ⌊ε * (N:ℝ) + c₀⌋ = i), S N := by
     intro i
     -- fibrewise over the block vector
-    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i) := by
+    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i)
+      := by
       intro k hk
       have hk' := Finset.mem_filter.1 hk
       exact Finset.mem_filter.2 ⟨Finset.mem_image_of_mem _ hk'.1, hk'.2⟩
@@ -34977,7 +34986,7 @@ theorem fibre_profile_le {K₀ K₁ K₂ : Finset ℤ} {m₀ m₁ m₂ : ℤ →
           fun N _ _ ↦ Real.rpow_nonneg (hSnn N) _
     _ ≤ (E * E) ^ R := hcore
 
-/-- **The balancing step, abstractly.**  Two bounds `x = D₁ G Q^ε` and
+/-- **The balancing step, abstractly.** Two bounds `x = D₁ G Q^ε` and
 `y = D₂ G Q^(-ε)` whose base-two log-ratio `L` lies in `[i, i + 1 + η)` are
 both dominated, after the `J`-method weights `2^(-i/2)` and `2^(i/2)`, by the
 geometric mean `√(D₁D₂) G` up to `2^((1+η)/2)`. -/
@@ -34985,14 +34994,14 @@ theorem balance_le {x y G Q D₁ D₂ ε η L : ℝ} {i : ℤ} (hG : 0 ≤ G) (h
     (hD₁ : 0 < D₁) (hD₂ : 0 < D₂)
     (hx : x = D₁ * G * Q ^ ε) (hy : y = D₂ * G * Q ^ (-ε))
     (hL : L = (Real.log D₁ - Real.log D₂) / Real.log 2 + 2 * ε * (Real.log Q / Real.log 2))
-    (hi : (i:ℝ) ≤ L) (hi' : L < (i:ℝ) + 1 + η) :
-    (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * x ≤ (2:ℝ) ^ ((1 + η) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) ∧
-      (2:ℝ) ^ (1 / 2 * (i:ℝ)) * y ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G := by
+    (hi : (i : ℝ) ≤ L) (hi' : L < (i : ℝ) + 1 + η) :
+    (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * x ≤ (2 : ℝ) ^ ((1 + η) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) ∧
+      (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * y ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G := by
   have h2 : (0:ℝ) < 2 := by norm_num
   have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
   have hlog2ne : Real.log 2 ≠ 0 := ne_of_gt hlog2
   -- the two bounds in exponential form
-  have key1 : D₁ * Q ^ ε = (D₁ * D₂) ^ (1 / 2 : ℝ) * (2:ℝ) ^ (L / 2) := by
+  have key1 : D₁ * Q ^ ε = (D₁ * D₂) ^ (1 / 2 : ℝ) * (2 : ℝ) ^ (L / 2) := by
     rw [Real.rpow_def_of_pos hQ, Real.rpow_def_of_pos (mul_pos hD₁ hD₂),
       Real.rpow_def_of_pos h2, ← Real.exp_add, Real.log_mul hD₁.ne' hD₂.ne',
       ← Real.exp_log hD₁, ← Real.exp_add]
@@ -35000,7 +35009,7 @@ theorem balance_le {x y G Q D₁ D₂ ε η L : ℝ} {i : ℤ} (hG : 0 ≤ G) (h
     rw [Real.log_exp, hL]
     field_simp
     ring
-  have key2 : D₂ * Q ^ (-ε) = (D₁ * D₂) ^ (1 / 2 : ℝ) * (2:ℝ) ^ (-(L / 2)) := by
+  have key2 : D₂ * Q ^ (-ε) = (D₁ * D₂) ^ (1 / 2 : ℝ) * (2 : ℝ) ^ (-(L / 2)) := by
     rw [Real.rpow_def_of_pos hQ, Real.rpow_def_of_pos (mul_pos hD₁ hD₂),
       Real.rpow_def_of_pos h2, ← Real.exp_add, Real.log_mul hD₁.ne' hD₂.ne',
       ← Real.exp_log hD₂, ← Real.exp_add]
@@ -35012,23 +35021,23 @@ theorem balance_le {x y G Q D₁ D₂ ε η L : ℝ} {i : ℤ} (hG : 0 ≤ G) (h
     mul_nonneg (Real.rpow_nonneg (mul_pos hD₁ hD₂).le _) hG
   constructor
   · rw [hx, show D₁ * G * Q ^ ε = G * (D₁ * Q ^ ε) by ring, key1]
-    have hexp : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (L / 2) ≤ (2:ℝ) ^ ((1 + η) / 2) := by
+    have hexp : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (L / 2) ≤ (2 : ℝ) ^ ((1 + η) / 2) := by
       rw [← Real.rpow_add h2]
       exact Real.rpow_le_rpow_of_exponent_le (by norm_num) (by linarith)
-    calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (G * ((D₁ * D₂) ^ (1 / 2 : ℝ) * (2:ℝ) ^ (L / 2)))
-        = ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (L / 2)) := by
+    calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (G * ((D₁ * D₂) ^ (1 / 2 : ℝ) * (2 : ℝ) ^ (L / 2)))
+        = ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (L / 2)) := by
           ring
-      _ ≤ ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * (2:ℝ) ^ ((1 + η) / 2) :=
+      _ ≤ ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * (2 : ℝ) ^ ((1 + η) / 2) :=
           mul_le_mul_of_nonneg_left hexp hM
       _ = _ := by ring
   · rw [hy, show D₂ * G * Q ^ (-ε) = G * (D₂ * Q ^ (-ε)) by ring, key2]
-    have hexp : (2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(L / 2)) ≤ 1 := by
+    have hexp : (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(L / 2)) ≤ 1 := by
       rw [← Real.rpow_add h2]
-      calc (2:ℝ) ^ (1 / 2 * (i:ℝ) + -(L / 2)) ≤ (2:ℝ) ^ (0:ℝ) :=
+      calc (2 : ℝ) ^ (1 / 2 * (i : ℝ) + -(L / 2)) ≤ (2 : ℝ) ^ (0:ℝ) :=
             Real.rpow_le_rpow_of_exponent_le (by norm_num) (by linarith)
         _ = 1 := Real.rpow_zero 2
-    calc (2:ℝ) ^ (1 / 2 * (i:ℝ)) * (G * ((D₁ * D₂) ^ (1 / 2 : ℝ) * (2:ℝ) ^ (-(L / 2))))
-        = ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(L / 2))) := by
+    calc (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (G * ((D₁ * D₂) ^ (1 / 2 : ℝ) * (2 : ℝ) ^ (-(L / 2))))
+        = ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(L / 2))) := by
           ring
       _ ≤ ((D₁ * D₂) ^ (1 / 2 : ℝ) * G) * 1 := mul_le_mul_of_nonneg_left hexp hM
       _ = _ := by ring
@@ -35058,9 +35067,9 @@ theorem fibre_window {m₀ m₁ m₂ : ℝ} (h₀ : 0 < m₀) (h₁ : 0 < m₁) 
   have hfl := Int.floor_le (2 * ε * (N:ℝ) + c₀)
   have hfl' := Int.lt_floor_add_one (2 * ε * (N:ℝ) + c₀)
   constructor
-  · show ((⌊2 * ε * (N:ℝ) + c₀⌋ : ℤ) : ℝ) ≤ c₀ + 2 * ε * (Real.log (m₀ * m₁ * m₂) / Real.log 2)
+  · change ((⌊2 * ε * (N:ℝ) + c₀⌋ : ℤ) : ℝ) ≤ c₀ + 2 * ε * (Real.log (m₀ * m₁ * m₂) / Real.log 2)
     nlinarith [hfl, hlo, hε]
-  · show c₀ + 2 * ε * (Real.log (m₀ * m₁ * m₂) / Real.log 2)
+  · change c₀ + 2 * ε * (Real.log (m₀ * m₁ * m₂) / Real.log 2)
       < ((⌊2 * ε * (N:ℝ) + c₀⌋ : ℤ) : ℝ) + 1 + 6 * ε
     nlinarith [hfl', hhi, hε]
 
@@ -35087,13 +35096,13 @@ theorem exists_diagonal_weight_pair_le
   refine ⟨fun c ↦ ϑ c + t * (ϑ₁ c - ϑ c), fun c ↦ ϑ c - t * (ϑ₁ c - ϑ c), t * ε,
     mul_pos ht0 hε, htε, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro c
-    show 0 < ϑ c + t * (ϑ₁ c - ϑ c)
+    change 0 < ϑ c + t * (ϑ₁ c - ϑ c)
     have : ϑ c + t * (ϑ₁ c - ϑ c) = (1 - t) * ϑ c + t * ϑ₁ c := by ring
     rw [this]
     have := hϑ c; have := h₁ c
     nlinarith
   · intro c
-    show 0 < ϑ c - t * (ϑ₁ c - ϑ c)
+    change 0 < ϑ c - t * (ϑ₁ c - ϑ c)
     have : ϑ c - t * (ϑ₁ c - ϑ c) = (1 - t) * ϑ c + t * ϑ₂ c := by rw [hmid' c]; ring
     rw [this]
     have := hϑ c; have := h₂ c
@@ -35125,7 +35134,7 @@ theorem lpNorm_le_of_lintegral_rpow_le {X : Type*} [MeasurableSpace X] {μ : Mea
   by_cases hg : AEStronglyMeasurable g μ
   · have hRne : ENNReal.ofReal R ≠ 0 := by simp [hR]
     have hRtop : ENNReal.ofReal R ≠ ∞ := ENNReal.ofReal_ne_top
-    rw [← toReal_eLpNorm hg, eLpNorm_eq_lintegral_rpow_enorm_toReal hRne hRtop,
+    rw [← toReal_eLpNorm , eLpNorm_eq_lintegral_rpow_enorm_toReal hRne hRtop (by fun_prop),
       ENNReal.toReal_ofReal hR.le]
     have hint : ∫⁻ x, ‖g x‖ₑ ^ R ∂μ = ∫⁻ x, ENNReal.ofReal (|g x| ^ R) ∂μ := by
       refine lintegral_congr fun x ↦ ?_
@@ -35147,18 +35156,18 @@ theorem lpNorm_le_of_lintegral_rpow_le {X : Type*} [MeasurableSpace X] {μ : Mea
 theorem sum_zpow_rpow_mul_toReal_le {X : Type*} [MeasurableSpace X] {μ : Measure X}
     {f : X → ℝ} (hf : Measurable f) {p : ℝ} (hp : 0 < p)
     (hfin : eLpNorm f (ENNReal.ofReal p) μ ≠ ∞) (S : Finset ℤ) :
-    ∑ k ∈ S, ((2:ℝ) ^ k) ^ p * (μ (dyadicLevelSet f k)).toReal
+    ∑ k ∈ S, ((2 : ℝ) ^ k) ^ p * (μ (dyadicLevelSet f k)).toReal
       ≤ (eLpNorm f (ENNReal.ofReal p) μ).toReal ^ p := by
   have h := sum_measure_dyadicLevelSet_le_eLpNorm (μ := μ) hf hp S
   have hRHS : (eLpNorm f (ENNReal.ofReal p) μ) ^ p ≠ ∞ :=
     ENNReal.rpow_ne_top_of_nonneg hp.le hfin
-  have hterm : ∀ k ∈ S, (ENNReal.ofReal ((2:ℝ) ^ k)) ^ p * μ (dyadicLevelSet f k) ≠ ∞ :=
+  have hterm : ∀ k ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ p * μ (dyadicLevelSet f k) ≠ ∞ :=
     fun k hk ↦ ne_top_of_le_ne_top hRHS
       (le_trans (Finset.single_le_sum
-        (f := fun j : ℤ ↦ (ENNReal.ofReal ((2:ℝ) ^ j)) ^ p * μ (dyadicLevelSet f j))
+        (f := fun j : ℤ ↦ (ENNReal.ofReal ((2 : ℝ) ^ j)) ^ p * μ (dyadicLevelSet f j))
         (fun _ _ ↦ bot_le) hk) h)
-  calc ∑ k ∈ S, ((2:ℝ) ^ k) ^ p * (μ (dyadicLevelSet f k)).toReal
-      = (∑ k ∈ S, (ENNReal.ofReal ((2:ℝ) ^ k)) ^ p * μ (dyadicLevelSet f k)).toReal := by
+  calc ∑ k ∈ S, ((2 : ℝ) ^ k) ^ p * (μ (dyadicLevelSet f k)).toReal
+      = (∑ k ∈ S, (ENNReal.ofReal ((2 : ℝ) ^ k)) ^ p * μ (dyadicLevelSet f k)).toReal := by
         rw [ENNReal.toReal_sum hterm]
         refine Finset.sum_congr rfl fun k _ ↦ ?_
         rw [ENNReal.toReal_mul, ← ENNReal.toReal_rpow,
@@ -35172,9 +35181,9 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
     {δ ε c₀ : ℝ} (hδ : 0 < δ) (hε : 0 < ε) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k ∈ K₀, 0 < m₀ k) → (∀ k ∈ K₁, 0 < m₁ k) → (∀ k ∈ K₂, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ I : Finset ℤ,
       ∑ i ∈ I, (∑ k ∈ (K₀ ×ˢ (K₁ ×ˢ K₂)) with
           ⌊ε * (tripleSum (blockVec m₀ m₁ m₂ k) : ℝ) + c₀⌋ = i,
@@ -35183,8 +35192,8 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
   have hRpos : (0:ℝ) < R := lt_of_lt_of_le zero_lt_one hR
   have h2 : (0:ℝ) < 2 := by norm_num
   obtain ⟨E, hEpos, hE⟩ := exists_sum_abs_tent_bound (η := δ / 4) (by positivity)
-  set Cg : ℝ := (2:ℝ) ^ δ * ((2:ℝ) ^ (1 + 1 / p₀) * (2:ℝ) ^ (1 + 1 / p₁) *
-    (2:ℝ) ^ (1 + 1 / p₂)) with hCg
+  set Cg : ℝ := (2 : ℝ) ^ δ * ((2 : ℝ) ^ (1 + 1 / p₀) * (2 : ℝ) ^ (1 + 1 / p₁) *
+    (2 : ℝ) ^ (1 + 1 / p₂)) with hCg
   have hCg : 0 ≤ Cg := by positivity
   refine ⟨Cg ^ R * (1 / ε + 1) ^ (R - 1) * (E * E) ^ R, by positivity, ?_⟩
   intro K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ I
@@ -35194,7 +35203,7 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
   set B₀ : ℤ → ℝ := blockBudget K₀ m₀ p₀ with hB₀
   set B₁ : ℤ → ℝ := blockBudget K₁ m₁ p₁ with hB₁
   set B₂ : ℤ → ℝ := blockBudget K₂ m₂ p₂ with hB₂
-  set e : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ / 4 * |(t:ℝ)|)) with he
+  set e : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ / 4 * |(t:ℝ)|)) with he
   set P : ℤ × ℤ × ℤ → ℝ := fun n ↦
     B₀ n.1 * B₁ n.2.1 * B₂ n.2.2 * (e (tripleDiff n).1 * e (tripleDiff n).2) with hP
   set Λ' : Finset (ℤ × ℤ × ℤ) := Λ.image nv with hΛ'
@@ -35231,9 +35240,9 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
         Prod.ext_iff]
       tauto
     have hpt : ∀ k ∈ Λ.filter (fun k ↦ nv k = n), G k
-        ≤ ((2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) *
-          ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
+        ≤ ((2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) *
+          ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
       intro k hk
       have hkΛ := (Finset.mem_filter.1 hk).1
       have hkn := (Finset.mem_filter.1 hk).2
@@ -35255,58 +35264,58 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
       obtain ⟨hn1, hn2⟩ := hn12
       simp only at hn0 hn1 hn2
       have hdec : Real.exp (-(δ * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖))
-          ≤ (2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) := by
+          ≤ (2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) := by
         refine le_trans hgain (le_of_eq ?_)
         simp only [he, tripleDiff, hn0, hn1, hn2]
-      have hann : 0 ≤ (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
+      have hann : 0 ≤ (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
         have := (hm₀ _ hkΛ.1).le
         have := (hm₁ _ hkΛ.2.1).le
         have := (hm₂ _ hkΛ.2.2).le
         positivity
       simp only [hG, layerSize]
-      calc _ ≤ ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
-            ((2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) :=
+      calc _ ≤ ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
+            ((2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2)) :=
             mul_le_mul_of_nonneg_left hdec hann
         _ = _ := by ring
     refine le_trans (Finset.sum_le_sum hpt) ?_
     rw [← Finset.mul_sum, hset]
     have hfac : ∑ k ∈ blockSet K₀ m₀ n.1 ×ˢ (blockSet K₁ m₁ n.2.1 ×ˢ blockSet K₂ m₂ n.2.2),
-        (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
-        = (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
-      sum_product_three (fun x ↦ (2:ℝ) ^ x * m₀ x ^ (1 / p₀))
-        (fun x ↦ (2:ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2:ℝ) ^ x * m₂ x ^ (1 / p₂))
+        (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
+        = (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
+      sum_product_three (fun x ↦ (2 : ℝ) ^ x * m₀ x ^ (1 / p₀))
+        (fun x ↦ (2 : ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2 : ℝ) ^ x * m₂ x ^ (1 / p₂))
     rw [hfac]
     have hs₀ := blockSet_sum_le hm₀ hp₀ n.1
     have hs₁ := blockSet_sum_le hm₁ hp₁ n.2.1
     have hs₂ := blockSet_sum_le hm₂ hp₂ n.2.2
-    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀) :=
+    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₀ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁) :=
+    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₁ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂) :=
+    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₂ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂))
-        ≤ ((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
+    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂))
+        ≤ ((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
       refine mul_le_mul (mul_le_mul hs₀ hs₁ hn₁ (mul_nonneg (by positivity) (hB₀nn _))) hs₂ hn₂
         (mul_nonneg (mul_nonneg (by positivity) (hB₀nn _)) (mul_nonneg (by positivity) (hB₁nn _)))
-    calc (2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
-          ((∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)))
-        ≤ (2:ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
-          (((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
+    calc (2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
+          ((∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)))
+        ≤ (2 : ℝ) ^ δ * (e (tripleDiff n).1 * e (tripleDiff n).2) *
+          (((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod (by positivity)
       _ = Cg * P n := by
           simp only [hP]
@@ -35319,7 +35328,8 @@ theorem fibre_profile_le_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
         ≤ Cg * ∑ N ∈ (Λ'.image tripleSum).filter (fun N : ℤ ↦ ⌊ε * (N:ℝ) + c₀⌋ = i), S N := by
     intro i
     -- fibrewise over the block vector
-    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i) := by
+    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i)
+      := by
       intro k hk
       have hk' := Finset.mem_filter.1 hk
       exact Finset.mem_filter.2 ⟨Finset.mem_image_of_mem _ hk'.1, hk'.2⟩
@@ -35438,9 +35448,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
     ∃ C : ℝ, 0 ≤ C ∧
       ∀ (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k, 0 < m₀ k) → (∀ k, 0 < m₁ k) → (∀ k, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ u : ℤ × ℤ × ℤ → X → ℝ, (∀ k, Measurable (u k)) →
       (∀ k ∈ K₀ ×ˢ (K₁ ×ˢ K₂), weakNorm μ (u k) ρ₁ ≤ ENNReal.ofReal
         (D₁ * layerSize m₀ m₁ m₂ p₀ p₁ p₂ δ k * layerProd m₀ m₁ m₂ k ^ ε)) →
@@ -35465,9 +35475,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
   set c₂ : ℝ := ρ₂ / (ρ₂ - 1) with hc₂
   have hc₁pos : 0 < c₁ := div_pos (by linarith) (by linarith)
   have hc₂pos : 0 < c₂ := div_pos (by linarith) (by linarith)
-  set c₃ : ℝ := max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) with hc₃
+  set c₃ : ℝ := max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) with hc₃
   have hc₃ : 0 ≤ c₃ := by positivity
-  set BwR : ℝ := c₃ ^ R * Cfp + (2:ℝ) ^ R * E' with hBwR
+  set BwR : ℝ := c₃ ^ R * Cfp + (2 : ℝ) ^ R * E' with hBwR
   have hBwRpos : 0 < BwR := by positivity
   refine ⟨C₀ * BwR, by positivity, ?_⟩
   intro K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ u hu hw₁ hw₂
@@ -35508,7 +35518,7 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
     intro i
     simp only [hv]
     refine Finset.sum_congr rfl fun k hk ↦ ?_
-    simp only [hu', if_pos (hFsub i hk)]
+    simp only [hu', ite_eq_left (hFsub i hk)]
   have hvmeas : ∀ i, Measurable (v i) := by
     intro i
     simp only [hv]
@@ -35517,9 +35527,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
     funext x; simp [Finset.sum_apply]
   -- weak bounds on the pieces
   set Γ₁ : ℤ → ℝ := fun i ↦ if i ∈ I then c₁ * ∑ k ∈ F i, Γa k
-    else (2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₁
+    else (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₁
   set Γ₂ : ℤ → ℝ := fun i ↦ if i ∈ I then c₂ * ∑ k ∈ F i, Γb k
-    else (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₂
+    else (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₂
   have hFne : ∀ i ∈ I, (F i).Nonempty := by
     intro i hi
     obtain ⟨k, hk, rfl⟩ := Finset.mem_image.1 hi
@@ -35556,12 +35566,14 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
       rw [show (0 : X → ℝ) = fun _ ↦ (0:ℝ) from rfl, weakNorm_zero μ (by linarith)]
       exact bot_le
   -- the balancing on each fibre
-  have hbal : ∀ i ∈ I, (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
+  have hbal : ∀ i ∈ I, (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
       ≤ c₃ * ∑ k ∈ F i, G k := by
     intro i hi
     have hterm : ∀ k ∈ F i,
-        (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)
-        ∧ (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
+        (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 :
+          ℝ) *
+          G k)
+        ∧ (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
       intro k hk
       have hidxk : idx k = i := (Finset.mem_filter.1 hk).2
       have hwin := fibre_window (hm₀ k.1) (hm₁ k.2.1) (hm₂ k.2.2) (ε := ε) (c₀ := c₀) hε
@@ -35573,29 +35585,29 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
       exact balance_le (hGpos k).le (hQpos k) hD₁ hD₂ rfl rfl
         (by simp only [hc₀, hQ, layerProd]) hwin.1 hwin.2
     have hS : 0 ≤ ∑ k ∈ F i, G k := Finset.sum_nonneg fun k _ ↦ (hGpos k).le
-    have hA : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
-        ≤ c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₁, if_pos hi]
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
-          = ∑ k ∈ F i, c₁ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
+    have hA : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
+        ≤ c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₁, ite_eq_left hi]
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
+          = ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ ∑ k ∈ F i, c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
+        _ ≤ ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
             Finset.sum_le_sum fun k hk ↦ mul_le_mul_of_nonneg_left (hterm k hk).1 hc₁pos.le
-        _ = c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ = c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-    have hB : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-        ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₂, if_pos hi]
-      have hpow : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) = (2:ℝ) ^ (1 / 2 * (i:ℝ)) := by
+    have hB : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+        ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₂, ite_eq_left hi]
+      have hpow : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) = (2 : ℝ) ^ (1 / 2 * (i:ℝ)) := by
         rw [← Real.rpow_add h2]; congr 1; ring
-      have hone : (1:ℝ) ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) := by
-        calc (1:ℝ) = (2:ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
-          _ ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) :=
+      have hone : (1:ℝ) ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) := by
+        calc (1:ℝ) = (2 : ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
+          _ ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) :=
               Real.rpow_le_rpow_of_exponent_le (by norm_num) (by positivity)
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
-          = c₂ * ∑ k ∈ F i, (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
+          = c₂ * ∑ k ∈ F i, (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
             rw [Finset.mul_sum, Finset.mul_sum, Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by rw [← hpow]; ring
         _ ≤ c₂ * ∑ k ∈ F i, (D₁ * D₂) ^ (1 / 2 : ℝ) * G k :=
@@ -35603,61 +35615,65 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
         _ = c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             have hDD : 0 ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) := Real.rpow_nonneg (by positivity) _
             have : c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ)
-                ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
+                ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
               refine mul_le_mul_of_nonneg_left ?_ hc₂pos.le
               calc (D₁ * D₂) ^ (1 / 2 : ℝ) = 1 * (D₁ * D₂) ^ (1 / 2 : ℝ) := by ring
                 _ ≤ _ := mul_le_mul_of_nonneg_right hone hDD
             exact mul_le_mul_of_nonneg_right this hS
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le]
     refine max_le (le_trans hA ?_) (le_trans hB ?_)
-    · show _ ≤ max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k
+    · change _ ≤ max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i,
+        G k
       refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (le_max_left _ _)
         (by positivity)) hS
-    · show _ ≤ max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k
+    · change _ ≤ max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i,
+        G k
       refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (le_max_right _ _)
         (by positivity)) hS
   -- the tail pieces
-  have htail : ∀ i, i ∉ I → (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-      ≤ 2 * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+  have htail : ∀ i, i ∉ I → (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+      ≤ 2 * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
     intro i hi
-    simp only [hΓ₁, hΓ₂, if_neg hi]
-    have e1 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))
-        = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+    simp only [hΓ₁, hΓ₂, ite_eq_right hi]
+    have e1 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R *
+      |(i:ℝ)|)))
+        = (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
       rw [← mul_assoc, ← Real.rpow_add h2]; simp
-    have e2 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-          ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))
-          = ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) * (2:ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
-            (2:ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
+    have e2 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = (2 : ℝ) ^ (-(R * |(i:ℝ)|))
+          := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+          ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))
+          = ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) * (2 : ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
+            (2 : ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
         ← Real.rpow_add h2, ← Real.rpow_add h2]
-      have : -(1 / 2 * (i:ℝ)) + (i:ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
+      have : -(1 / 2 * (i:ℝ)) + (i : ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
       rw [this, Real.rpow_zero, one_mul]
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le, e1, e2, max_self]
     have := Real.rpow_pos_of_pos h2 (-(R * |(i:ℝ)|))
     linarith
   -- the profile bound
-  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
+  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
     intro T
-    have hsplit : ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
+    have hsplit : ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
       (Finset.sum_filter_add_sum_filter_not T (fun i ↦ i ∈ I) _).symm
     rw [hsplit]
-    have hnn : ∀ i : ℤ, 0 ≤ (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i) :=
+    have hnn : ∀ i : ℤ, 0 ≤ (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i) :=
       fun i ↦ mul_nonneg (Real.rpow_pos_of_pos h2 _).le
         (le_trans (hΓ₁pos i).le (le_max_left _ _))
-    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
           ≤ ∑ i ∈ T.filter (fun i ↦ i ∈ I), (c₃ * ∑ k ∈ F i, G k) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (hbal i (Finset.mem_filter.1 hi).2) hRpos.le
@@ -35669,29 +35685,29 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds {X : Type*} [MeasurableSpace 
             refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hc₃ _)
             exact hfp K₀ K₁ K₂ m₀ m₁ m₂ (fun k _ ↦ hm₀ k) (fun k _ ↦ hm₁ k) (fun k _ ↦ hm₂ k)
               hb₀ hb₁ hb₂ _
-    have htailR : ∀ i : ℤ, (2 * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
-        ≤ (2:ℝ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+    have htailR : ∀ i : ℤ, (2 * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
+        ≤ (2 : ℝ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
       intro i
       rw [Real.mul_rpow (by norm_num) (Real.rpow_pos_of_pos h2 _).le, ← Real.rpow_mul h2.le,
         sub_zero]
       refine mul_le_mul_of_nonneg_left ?_ (by positivity)
       refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
       nlinarith [mul_nonneg (mul_nonneg hRpos.le (abs_nonneg (i:ℝ))) (sub_nonneg.2 hR.le)]
-    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2:ℝ) ^ R * E' := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
+    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2 : ℝ) ^ R * E' := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (htail i (Finset.mem_filter.1 hi).2) hRpos.le
-        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2:ℝ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
+        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 : ℝ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
             Finset.sum_le_sum fun i _ ↦ htailR i
-        _ = (2:ℝ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+        _ = (2 : ℝ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
             rw [Finset.mul_sum]
-        _ ≤ (2:ℝ) ^ R * E' := mul_le_mul_of_nonneg_left (hE' 0 _) (by positivity)
+        _ ≤ (2 : ℝ) ^ R * E' := mul_le_mul_of_nonneg_left (hE' 0 _) (by positivity)
     linarith [h1, h2', hBwR]
-  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
+  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
     intro T
     rw [← Real.rpow_mul hBwRpos.le, one_div_mul_cancel (ne_of_gt hRpos), Real.rpow_one]
     exact hprofile T
@@ -35715,7 +35731,7 @@ def layerTerm {X : Type*} (T : (Fin 3 → (X → ℝ)) → (X → ℝ)) (f : Fin
     (k : ℤ × ℤ × ℤ) : X → ℝ :=
   T (fun j ↦ dyadicLevelPiece (f j) (![k.1, k.2.1, k.2.2] j))
 
-/-- **The per-layer weak bound in the form the fibre assembly consumes.**  At an
+/-- **The per-layer weak bound in the form the fibre assembly consumes.** At an
 interior weight `ϑ'` whose input reciprocals are those of `p` shifted by `s`,
 the layer term has weak norm at the output exponent `R'` bounded by a constant
 times `layerSize · (m₀m₁m₂)^s`, for every gain parameter `δ'' ≤ δ'`. -/
@@ -35772,10 +35788,10 @@ theorem exists_layer_weak_bound_gain_form
   have hm0 : 0 < m₀ k.1 := h0
   have hm1 : 0 < m₁ k.2.1 := h1
   have hm2 : 0 < m₂ k.2.2 := hk2
-  have hprod : ∏ j : Fin 3, ((2:ℝ) ^ (kf j + 1) *
+  have hprod : ∏ j : Fin 3, ((2 : ℝ) ^ (kf j + 1) *
       (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal ^ (1 / p' j))
-      = 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
+      = 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
         (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     have hm0' : 0 < (μ (dyadicLevelSet (⇑(f 0)) k.1)).toReal := h0
     have hm1' : 0 < (μ (dyadicLevelSet (⇑(f 1)) k.2.1)).toReal := h1
@@ -35796,19 +35812,20 @@ theorem exists_layer_weak_bound_gain_form
     refine mul_nonneg (Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le) ?_
     unfold C_weights_shift
     exact Finset.prod_nonneg fun a _ ↦ le_trans (hA a).le (le_max_left _ _)
-  have hnn2 : 0 ≤ 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-      ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
+  have hnn2 : 0 ≤ 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p
+    1)) *
+      ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     positivity
   rw [hprod]
   simp only [layerSize, layerProd]
   calc (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A *
         Real.exp (-(δ' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
       ≤ (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A *
         Real.exp (-(δ'' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
         mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hgain_le hnn1) hnn2
     _ = _ := by ring
 
@@ -35825,7 +35842,7 @@ theorem ae_eq_zero_of_weakNorm_eq_zero {X : Type*} [MeasurableSpace X] {μ : Mea
     · exact absurd h0 hτ0
     · exact (ENNReal.rpow_eq_zero_iff.1 h0).elim (fun h ↦ h.1)
         (fun h ↦ absurd h.2 (not_lt.2 (one_div_pos.2 hr).le))
-  have hunion : {x | v x ≠ 0} ⊆ ⋃ n : ℕ, {x | (1 / ((n:ℝ) + 1)) < |v x|} := by
+  have hunion : {x | v x ≠ 0} ⊆ ⋃ n : ℕ, {x | (1 / ((n : ℝ) + 1)) < |v x|} := by
     intro x hx
     have hpos : 0 < |v x| := abs_pos.2 hx
     obtain ⟨n, hn⟩ := exists_nat_one_div_lt hpos
@@ -35843,16 +35860,16 @@ theorem lpNorm_dyadicLevelPiece_eq_zero {X : Type*} [MeasurableSpace X] {μ : Me
     refine (ae_iff.2 ?_)
     refine measure_mono_null ?_ h
     intro x hx
-    simp only [dyadicLevelPiece, Set.mem_setOf_eq] at hx
+    simp only [dyadicLevelPiece, Set.mem_ofPred_eq] at hx
     by_contra hmem
     exact hx (Set.indicator_of_notMem hmem f)
   have hmeas : AEStronglyMeasurable (dyadicLevelPiece (⇑f) k) μ := by
     rw [← coe_dyadicLevelPieceSimple]
     exact (dyadicLevelPieceSimple f k).aestronglyMeasurable
-  rw [← toReal_eLpNorm hmeas, eLpNorm_congr_ae hae, eLpNorm_zero']
-  simp
+  rw [← toReal_eLpNorm , eLpNorm_congr_ae hae, eLpNorm_fun_zero]
+  simp only [ENNReal.toReal_zero]
 
-/-- **A layer with a null level set contributes nothing.**  If one of the
+/-- **A layer with a null level set contributes nothing.** If one of the
 three layer pieces is supported on a null set, the corresponding layer term of
 the operator vanishes almost everywhere, by any one of the weak endpoint
 bounds. -/
@@ -35872,7 +35889,8 @@ theorem layerTerm_ae_zero_of_null {X : Type*} [MeasurableSpace X] {μ : Measure 
     fun j ↦ dyadicLevelPieceSimple (f j) (![k.1, k.2.1, k.2.2] j) with hg
   have hgfin : ∀ j, (g j).FinMeasSupp μ := fun j ↦
     finMeasSupp_dyadicLevelPieceSimple (hf j) _
-  have hcoe : (fun j ↦ (⇑(g j) : X → ℝ)) = fun j ↦ dyadicLevelPiece (⇑(f j)) (![k.1, k.2.1, k.2.2] j) := by
+  have hcoe : (fun j ↦ (⇑(g j) : X → ℝ)) = fun j ↦ dyadicLevelPiece (⇑(f j)) (![k.1, k.2.1, k.2.2]
+    j) := by
     funext j
     simp [hg]
   have hb := hweak 0 g hgfin
@@ -35893,7 +35911,7 @@ def positiveLayerIndices {X : Type*} [MeasurableSpace X] (μ : Measure X)
 
 /-- A finite sum of almost-everywhere-zero functions is almost everywhere zero. -/
 theorem ae_sum_eq_zero {X ι : Type*} [MeasurableSpace X] {μ : Measure X}
-    (S : Finset ι) (u : ι → X → ℝ) (h : ∀ k ∈ S, u k =ᵐ[μ] (fun _ ↦ (0:ℝ))) :
+    (S : Finset ι) (u : ι → X → ℝ) (h : ∀ k ∈ S, u k =ᵐ[μ] (fun _ ↦ (0 : ℝ))) :
     (∑ k ∈ S, u k) =ᵐ[μ] (fun _ ↦ (0:ℝ)) := by
   classical
   induction S using Finset.induction with
@@ -35971,9 +35989,9 @@ theorem ae_eq_sum_layerTerm_positive {X : Type*} [MeasurableSpace X] {μ : Measu
     exact layerTerm_ae_zero_of_null hr hweak f hf k j₀ hj₀
   refine (hnull.add (Filter.EventuallyEq.refl _ _)).trans ?_
   refine Filter.Eventually.of_forall fun x ↦ ?_
-  simp
+  simp only [Pi.add_apply, Finset.sum_apply, zero_add]
 
-/-- **The strong interior bound for normalised inputs.**  Under the blueprint
+/-- **The strong interior bound for normalised inputs.** Under the blueprint
 hypotheses (with strictly positive endpoint constants, a σ-finite measure, and
 measurable outputs), there is a constant `C` such that every triple of simple
 functions of finite measure support with `lpNorm ≤ 1` has
@@ -36075,10 +36093,12 @@ theorem exists_lintegral_rpow_le_of_normalized
     exact Finset.prod_pos fun a _ ↦ lt_of_lt_of_le (hA a) (le_max_left _ _)
   have hD₁ : 0 < D₁ := by
     simp only [hD₁def]
-    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a) _)) hCA
+    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a)
+      _)) hCA
   have hD₂ : 0 < D₂ := by
     simp only [hD₂def]
-    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a) _)) hCA
+    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a)
+      _)) hCA
   -- the fibre assembly constant
   obtain ⟨C, hC, hmain⟩ := lintegral_rpow_sum_le_of_layer_weak_bounds μ (hppos 0) (hppos 1)
     (hppos 2) hR1 hsum3 hε hρ₁ hρ₂ hρ hρ' hD₁ hD₂ hδ
@@ -36094,21 +36114,21 @@ theorem exists_lintegral_rpow_le_of_normalized
     · exact (Finset.mem_filter.1 h).2
     · exact zero_lt_one
   have hm'eq : ∀ j n, n ∈ K j → m' j n = m j n := by
-    intro j n hn; simp only [hm', if_pos hn]
+    intro j n hn; simp only [hm', ite_eq_left hn]
   -- budgets
-  have hbudget : ∀ j, ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * m' j k ≤ 1 := by
+  have hbudget : ∀ j, ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * m' j k ≤ 1 := by
     intro j
     have hfin : eLpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ ≠ ∞ := by
       have hmem : MemLp (⇑(f j)) (ENNReal.ofReal (p j)) μ :=
         (SimpleFunc.memLp_iff_finMeasSupp (by simp [hppos j]) ENNReal.ofReal_ne_top).2 (hf j)
       exact hmem.eLpNorm_ne_top
-    calc ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * m' j k
-        = ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * (μ (dyadicLevelSet (⇑(f j)) k)).toReal :=
+    calc ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * m' j k
+        = ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * (μ (dyadicLevelSet (⇑(f j)) k)).toReal :=
           Finset.sum_congr rfl fun k hk ↦ by rw [hm'eq j k hk]; rfl
       _ ≤ (eLpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ).toReal ^ (p j) :=
           sum_zpow_rpow_mul_toReal_le (f j).measurable (hppos j) hfin _
       _ = lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ ^ (p j) := by
-          rw [toReal_eLpNorm (f j).aestronglyMeasurable]
+          rw [toReal_eLpNorm ]
       _ ≤ 1 := Real.rpow_le_one lpNorm_nonneg (hnorm j) (hppos j).le
   -- the layer terms
   set u : ℤ × ℤ × ℤ → X → ℝ := layerTerm T (fun j ↦ ⇑(f j)) with hu
@@ -36243,13 +36263,13 @@ theorem trilinearOnSimple_smul_three {X : Type*} [MeasurableSpace X]
 
 /-- A measurable function with vanishing weak norm has vanishing `lpNorm`. -/
 theorem lpNorm_eq_zero_of_weakNorm_le_zero {X : Type*} [MeasurableSpace X] {μ : Measure X}
-    {v : X → ℝ} (hv : Measurable v) {r : ℝ} (hr : 0 < r) (h : weakNorm μ v r ≤ 0)
+    {v : X → ℝ} {r : ℝ} (hr : 0 < r) (h : weakNorm μ v r ≤ 0)
     (q : ℝ≥0∞) : lpNorm v q μ = 0 := by
   have hae := ae_eq_zero_of_weakNorm_eq_zero hr (le_antisymm h bot_le)
-  rw [← toReal_eLpNorm hv.aestronglyMeasurable, eLpNorm_congr_ae hae, eLpNorm_zero']
-  simp
+  rw [← toReal_eLpNorm , eLpNorm_congr_ae hae, eLpNorm_fun_zero]
+  simp only [ENNReal.toReal_zero]
 
-/-- **`ext:interpolation`, proved.**  A trilinear operator on simple functions of
+/-- **`ext:interpolation`, proved.** A trilinear operator on simple functions of
 finite measure support on a σ-finite measure space, with measurable outputs
 and weak bounds at four affinely independent input reciprocal vectors,
 satisfies the strong bound at every interior point of the simplex, with a
@@ -36279,7 +36299,7 @@ theorem fourVertexMarcinkiewicz_of_measurable {X : Type*} [MeasurableSpace X]
     have hAa : A a = 0 := le_antisymm ha (hA a)
     have hb := hweak a f hf
     rw [hAa, zero_mul, ENNReal.ofReal_zero] at hb
-    rw [lpNorm_eq_zero_of_weakNorm_le_zero (hTmeas f) (hr0 a) hb]
+    rw [lpNorm_eq_zero_of_weakNorm_le_zero (hr0 a) hb]
     simp
   -- the main case
   obtain ⟨C, hC, hmain⟩ := exists_lintegral_rpow_le_of_normalized hT hTmeas hP hr hrsum hindep
@@ -36301,13 +36321,13 @@ theorem fourVertexMarcinkiewicz_of_measurable {X : Type*} [MeasurableSpace X]
     have hae : (⇑(f j₀) : X → ℝ) =ᵐ[μ] 0 :=
       (lpNorm_eq_zero hmem (by simp [hppos j₀])).1 hj₀
     have hzero' : lpNorm (⇑(f j₀)) (ENNReal.ofReal (P 0 j₀)) μ = 0 := by
-      rw [← toReal_eLpNorm (f j₀).aestronglyMeasurable, eLpNorm_congr_ae hae, eLpNorm_zero]
+      rw [← toReal_eLpNorm , eLpNorm_congr_ae hae, eLpNorm_zero]
       simp
     have hprod : ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P 0 j)) μ = 0 :=
       Finset.prod_eq_zero (Finset.mem_univ j₀) hzero'
     have hb := hweak 0 f hf
     rw [hprod, mul_zero, ENNReal.ofReal_zero] at hb
-    rw [lpNorm_eq_zero_of_weakNorm_le_zero (hTmeas f) (hr0 0) hb]
+    rw [lpNorm_eq_zero_of_weakNorm_le_zero (hr0 0) hb]
     exact hRHS
   · push Not at hzero
     have hnpos : ∀ j, 0 < n j := fun j ↦ lt_of_le_of_ne (hnnn j) (Ne.symm (hzero j))
@@ -36485,7 +36505,7 @@ theorem exists_weakNorm_expansion_term_gain_le_uniform
     Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le
   have hm'nn : 0 ≤ ∏ j : Fin 3, m j ^ (1 / p' j) :=
     Finset.prod_nonneg fun j _ ↦ (Real.rpow_pos_of_pos (hm j) _).le
-  show (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p' j))
+  change (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p' j))
     ≤ (∏ a : Fin 4, A a ^ ϑ a) * C_weights_shift A * Real.exp (-(δ * ‖w‖)) *
         ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / p j))
   rw [hprod', hprod]
@@ -36554,10 +36574,10 @@ theorem exists_layer_weak_bound_gain_form_uniform
   have hm0 : 0 < m₀ k.1 := h0
   have hm1 : 0 < m₁ k.2.1 := h1
   have hm2 : 0 < m₂ k.2.2 := hk2
-  have hprod : ∏ j : Fin 3, ((2:ℝ) ^ (kf j + 1) *
+  have hprod : ∏ j : Fin 3, ((2 : ℝ) ^ (kf j + 1) *
       (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal ^ (1 / p' j))
-      = 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
+      = 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
         (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     have hm0' : 0 < (μ (dyadicLevelSet (⇑(f 0)) k.1)).toReal := h0
     have hm1' : 0 < (μ (dyadicLevelSet (⇑(f 1)) k.2.1)).toReal := h1
@@ -36578,19 +36598,20 @@ theorem exists_layer_weak_bound_gain_form_uniform
     refine mul_nonneg (Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le) ?_
     unfold C_weights_shift
     exact Finset.prod_nonneg fun a _ ↦ le_trans (hA a).le (le_max_left _ _)
-  have hnn2 : 0 ≤ 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-      ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
+  have hnn2 : 0 ≤ 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p
+    1)) *
+      ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     positivity
   rw [hprod]
   simp only [layerSize, layerProd]
   calc (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A *
         Real.exp (-(δ' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
       ≤ (∏ a : Fin 4, A a ^ ϑ' a) * C_weights_shift A *
         Real.exp (-(δ'' * ‖layerLogDeviation ![m₀ k.1, m₁ k.2.1, m₂ k.2.2]‖)) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
         mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hgain_le hnn1) hnn2
     _ = _ := by ring
 
@@ -36693,10 +36714,12 @@ theorem exists_lintegral_rpow_le_of_normalized_uniform
     exact Finset.prod_pos fun a _ ↦ lt_of_lt_of_le (hA a) (le_max_left _ _)
   have hD₁ : 0 < D₁ := by
     simp only [hD₁def]
-    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a) _)) hCA
+    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a)
+      _)) hCA
   have hD₂ : 0 < D₂ := by
     simp only [hD₂def]
-    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a) _)) hCA
+    exact mul_pos (mul_pos (by norm_num) (Finset.prod_pos fun a _ ↦ Real.rpow_pos_of_pos (hA a)
+      _)) hCA
   -- the fibre assembly constant
   obtain ⟨C, hC, hmain⟩ := lintegral_rpow_sum_le_of_layer_weak_bounds μ (hppos 0) (hppos 1)
     (hppos 2) hR1 hsum3 hε hρ₁ hρ₂ hρ hρ' hD₁ hD₂ hδ
@@ -36712,21 +36735,21 @@ theorem exists_lintegral_rpow_le_of_normalized_uniform
     · exact (Finset.mem_filter.1 h).2
     · exact zero_lt_one
   have hm'eq : ∀ j n, n ∈ K j → m' j n = m j n := by
-    intro j n hn; simp only [hm', if_pos hn]
+    intro j n hn; simp only [hm', ite_eq_left hn]
   -- budgets
-  have hbudget : ∀ j, ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * m' j k ≤ 1 := by
+  have hbudget : ∀ j, ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * m' j k ≤ 1 := by
     intro j
     have hfin : eLpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ ≠ ∞ := by
       have hmem : MemLp (⇑(f j)) (ENNReal.ofReal (p j)) μ :=
         (SimpleFunc.memLp_iff_finMeasSupp (by simp [hppos j]) ENNReal.ofReal_ne_top).2 (hf j)
       exact hmem.eLpNorm_ne_top
-    calc ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * m' j k
-        = ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * (μ (dyadicLevelSet (⇑(f j)) k)).toReal :=
+    calc ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * m' j k
+        = ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * (μ (dyadicLevelSet (⇑(f j)) k)).toReal :=
           Finset.sum_congr rfl fun k hk ↦ by rw [hm'eq j k hk]; rfl
       _ ≤ (eLpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ).toReal ^ (p j) :=
           sum_zpow_rpow_mul_toReal_le (f j).measurable (hppos j) hfin _
       _ = lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ ^ (p j) := by
-          rw [toReal_eLpNorm (f j).aestronglyMeasurable]
+          rw [toReal_eLpNorm ]
       _ ≤ 1 := Real.rpow_le_one lpNorm_nonneg (hnorm j) (hppos j).le
   -- the layer terms
   set u : ℤ × ℤ × ℤ → X → ℝ := layerTerm T (fun j ↦ ⇑(f j)) with hu
@@ -36928,8 +36951,8 @@ theorem memLp_of_lintegral_rpow_le {X : Type*} [MeasurableSpace X] {μ : Measure
     MemLp g (ENNReal.ofReal R) μ := by
   have hRne : ENNReal.ofReal R ≠ 0 := by simp [hR]
   have hRtop : ENNReal.ofReal R ≠ ∞ := ENNReal.ofReal_ne_top
-  refine ⟨hg.aestronglyMeasurable, ?_⟩
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hRne hRtop, ENNReal.toReal_ofReal hR.le]
+  change eLpNorm g _ _ < ⊤
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal hRne hRtop (by fun_prop), ENNReal.toReal_ofReal hR.le]
   have hint : ∫⁻ x, ‖g x‖ₑ ^ R ∂μ = ∫⁻ x, ENNReal.ofReal (|g x| ^ R) ∂μ := by
     refine lintegral_congr fun x ↦ ?_
     rw [← ofReal_norm, Real.norm_eq_abs,
@@ -36938,11 +36961,11 @@ theorem memLp_of_lintegral_rpow_le {X : Type*} [MeasurableSpace X] {μ : Measure
   exact ENNReal.rpow_lt_top_of_nonneg (one_div_pos.2 hR).le
     (ne_top_of_le_ne_top ENNReal.ofReal_ne_top h)
 
-/-- **The face gain with the endpoint constants folded in.**  For any vector
+/-- **The face gain with the endpoint constants folded in.** For any vector
 `ã` of endpoint logarithms there are a gain `δ > 0` and two centres `c₁, c₂`,
 depending only on the vertices, the weights and `ã`, such that for every
 position vector `ℓ` some face weight beats the barycentric value by
-`δ (|ℓ₀-ℓ₁-c₁| + |ℓ₁-ℓ₂-c₂|)`.  The centres carry all the dependence on `ã`,
+`δ (|ℓ₀-ℓ₁-c₁| + |ℓ₁-ℓ₂-c₂|)`. The centres carry all the dependence on `ã`,
 so no constant of the form `∏ max(A, A⁻¹)` is incurred. -/
 theorem exists_face_gain_shift
     {v : Fin 4 → (Fin 3 → ℝ)} (hv : AffineIndependent ℝ v)
@@ -37095,7 +37118,7 @@ theorem exists_face_gain_shift
 theorem exp_shift_le_block_decay {m₀ m₁ : ℝ} (h₀ : 0 < m₀) (h₁ : 0 < m₁)
     {δ c : ℝ} (hδ : 0 < δ) :
     Real.exp (-(δ * |Real.log m₀ - Real.log m₁ - c|))
-      ≤ (2:ℝ) ^ δ * (2:ℝ) ^ (-(δ *
+      ≤ (2 : ℝ) ^ δ * (2 : ℝ) ^ (-(δ *
           |((blockIndex m₀ - blockIndex m₁ : ℤ) : ℝ) - c / Real.log 2|)) := by
   have h2 : (0:ℝ) < 2 := by norm_num
   have hlog2 : 0 < Real.log 2 := Real.log_pos (by norm_num)
@@ -37115,7 +37138,7 @@ theorem exp_shift_le_block_decay {m₀ m₁ : ℝ} (h₀ : 0 < m₀) (h₁ : 0 <
     have := abs_sub_abs_le_abs_sub (n * Real.log 2 - c) (Real.log m₀ - Real.log m₁ - c)
     linarith
   -- exponentiate
-  have hrw : (2:ℝ) ^ δ * (2:ℝ) ^ (-(δ * |n - c / Real.log 2|))
+  have hrw : (2 : ℝ) ^ δ * (2 : ℝ) ^ (-(δ * |n - c / Real.log 2|))
       = Real.exp (δ * Real.log 2 - δ * |n * Real.log 2 - c|) := by
     rw [Real.rpow_def_of_pos h2, Real.rpow_def_of_pos h2, ← Real.exp_add]
     congr 1
@@ -37187,10 +37210,10 @@ theorem exists_weakNorm_expansion_term_gain_shift
   refine le_trans hbase (ENNReal.ofReal_le_ofReal ?_)
   -- reduce to the measure factors
   have hsplit : ∀ q : Fin 3 → ℝ,
-      ∏ j : Fin 3, ((2:ℝ) ^ (k j + 1) * m j ^ (1 / q j))
-        = (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / q j) :=
+      ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / q j))
+        = (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / q j) :=
     fun q ↦ Finset.prod_mul_distrib
-  have h2nn : 0 ≤ ∏ j : Fin 3, (2:ℝ) ^ (k j + 1) :=
+  have h2nn : 0 ≤ ∏ j : Fin 3, (2 : ℝ) ^ (k j + 1) :=
     Finset.prod_nonneg fun j _ ↦ (zpow_pos (by norm_num) _).le
   -- the key real inequality
   have hkey : (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, m j ^ (1 / p' j)
@@ -37234,16 +37257,16 @@ theorem exists_weakNorm_expansion_term_gain_shift
     linarith [hdiff, hgainle]
   rw [hsplit p', hsplit p]
   calc (∏ a : Fin 4, A a ^ ϑ' a) *
-        ((∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
+        ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
       = ((∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, m j ^ (1 / p' j)) *
-          (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) := by ring
+          (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) := by ring
     _ ≤ ((∏ a : Fin 4, A a ^ ϑ a) *
           Real.exp (-(δ * (|ℓ 0 - ℓ 1 - c₁| + |ℓ 1 - ℓ 2 - c₂|))) *
-          ∏ j : Fin 3, m j ^ (1 / p j)) * (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) :=
+          ∏ j : Fin 3, m j ^ (1 / p j)) * (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) :=
         mul_le_mul_of_nonneg_right hkey h2nn
     _ = (∏ a : Fin 4, A a ^ ϑ a) *
           Real.exp (-(δ * (|ℓ 0 - ℓ 1 - c₁| + |ℓ 1 - ℓ 2 - c₂|))) *
-          ((∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by ring
+          ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by ring
 
 /-- **The face gain with explicit tangent directions**, so that the two decay
 centres are canonical and shared between different base weights. -/
@@ -37454,10 +37477,10 @@ theorem exists_weakNorm_expansion_term_gain_shift_of
   refine le_trans hbase (ENNReal.ofReal_le_ofReal ?_)
   -- reduce to the measure factors
   have hsplit : ∀ q : Fin 3 → ℝ,
-      ∏ j : Fin 3, ((2:ℝ) ^ (k j + 1) * m j ^ (1 / q j))
-        = (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / q j) :=
+      ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / q j))
+        = (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / q j) :=
     fun q ↦ Finset.prod_mul_distrib
-  have h2nn : 0 ≤ ∏ j : Fin 3, (2:ℝ) ^ (k j + 1) :=
+  have h2nn : 0 ≤ ∏ j : Fin 3, (2 : ℝ) ^ (k j + 1) :=
     Finset.prod_nonneg fun j _ ↦ (zpow_pos (by norm_num) _).le
   -- the key real inequality
   have hkey : (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, m j ^ (1 / p' j)
@@ -37501,22 +37524,22 @@ theorem exists_weakNorm_expansion_term_gain_shift_of
     linarith [hdiff, hgainle]
   rw [hsplit p', hsplit p]
   calc (∏ a : Fin 4, A a ^ ϑ' a) *
-        ((∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
+        ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
       = ((∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, m j ^ (1 / p' j)) *
-          (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) := by ring
+          (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) := by ring
     _ ≤ ((∏ a : Fin 4, A a ^ ϑ a) *
           Real.exp (-(δ * (|ℓ 0 - ℓ 1 - c₁| + |ℓ 1 - ℓ 2 - c₂|))) *
-          ∏ j : Fin 3, m j ^ (1 / p j)) * (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) :=
+          ∏ j : Fin 3, m j ^ (1 / p j)) * (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) :=
         mul_le_mul_of_nonneg_right hkey h2nn
     _ = (∏ a : Fin 4, A a ^ ϑ a) *
           Real.exp (-(δ * (|ℓ 0 - ℓ 1 - c₁| + |ℓ 1 - ℓ 2 - c₂|))) *
-          ((∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by ring
+          ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by ring
 
 
 /-- The target size of a layer multi-index, with the centred face gain. -/
 def layerSizeC (m₀ m₁ m₂ : ℤ → ℝ) (p₀ p₁ p₂ δ c₁ c₂ : ℝ) (k : ℤ × ℤ × ℤ) : ℝ :=
-  (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-    ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) *
+  (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+    ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) *
     (Real.exp (-(δ * |Real.log (m₀ k.1) - Real.log (m₁ k.2.1) - c₁|)) *
       Real.exp (-(δ * |Real.log (m₁ k.2.1) - Real.log (m₂ k.2.2) - c₂|)))
 
@@ -37526,9 +37549,9 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
     {δ ε c₀ c₁ c₂ : ℝ} (hδ : 0 < δ) (hε : 0 < ε) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k ∈ K₀, 0 < m₀ k) → (∀ k ∈ K₁, 0 < m₁ k) → (∀ k ∈ K₂, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ I : Finset ℤ,
       ∑ i ∈ I, (∑ k ∈ (K₀ ×ˢ (K₁ ×ˢ K₂)) with
           ⌊ε * (tripleSum (blockVec m₀ m₁ m₂ k) : ℝ) + c₀⌋ = i,
@@ -37537,8 +37560,8 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
   have hRpos : (0:ℝ) < R := lt_of_lt_of_le zero_lt_one hR
   have h2 : (0:ℝ) < 2 := by norm_num
   obtain ⟨E, hEpos, hE⟩ := exists_sum_abs_tent_bound (η := δ) hδ
-  set Cg : ℝ := (2:ℝ) ^ (2 * δ) * ((2:ℝ) ^ (1 + 1 / p₀) * (2:ℝ) ^ (1 + 1 / p₁) *
-    (2:ℝ) ^ (1 + 1 / p₂)) with hCg
+  set Cg : ℝ := (2 : ℝ) ^ (2 * δ) * ((2 : ℝ) ^ (1 + 1 / p₀) * (2 : ℝ) ^ (1 + 1 / p₁) *
+    (2 : ℝ) ^ (1 + 1 / p₂)) with hCg
   have hCg : 0 ≤ Cg := by positivity
   refine ⟨Cg ^ R * (1 / ε + 1) ^ (R - 1) * (E * E) ^ R, by positivity, ?_⟩
   intro K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ I
@@ -37548,8 +37571,8 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
   set B₀ : ℤ → ℝ := blockBudget K₀ m₀ p₀ with hB₀
   set B₁ : ℤ → ℝ := blockBudget K₁ m₁ p₁ with hB₁
   set B₂ : ℤ → ℝ := blockBudget K₂ m₂ p₂ with hB₂
-  set e₁ : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ * |(t:ℝ) - c₁ / Real.log 2|)) with he₁
-  set e₂ : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ * |(t:ℝ) - c₂ / Real.log 2|)) with he₂
+  set e₁ : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ * |(t:ℝ) - c₁ / Real.log 2|)) with he₁
+  set e₂ : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ * |(t:ℝ) - c₂ / Real.log 2|)) with he₂
   set P : ℤ × ℤ × ℤ → ℝ := fun n ↦
     B₀ n.1 * B₁ n.2.1 * B₂ n.2.2 * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) with hP
   set Λ' : Finset (ℤ × ℤ × ℤ) := Λ.image nv with hΛ'
@@ -37584,9 +37607,9 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
         Prod.ext_iff]
       tauto
     have hpt : ∀ k ∈ Λ.filter (fun k ↦ nv k = n), G k
-        ≤ ((2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) *
-          ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
+        ≤ ((2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) *
+          ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
       intro k hk
       have hkΛ := (Finset.mem_filter.1 hk).1
       have hkn := (Finset.mem_filter.1 hk).2
@@ -37602,65 +37625,65 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
       have hd₂ := exp_shift_le_block_decay (hm₁ _ hkΛ.2.1) (hm₂ _ hkΛ.2.2) (δ := δ) (c := c₂) hδ
       have hdec : Real.exp (-(δ * |Real.log (m₀ k.1) - Real.log (m₁ k.2.1) - c₁|)) *
           Real.exp (-(δ * |Real.log (m₁ k.2.1) - Real.log (m₂ k.2.2) - c₂|))
-          ≤ (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) := by
+          ≤ (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) := by
         have hstep := mul_le_mul hd₁ hd₂ (Real.exp_pos _).le
-          (by positivity : (0:ℝ) ≤ (2:ℝ) ^ δ * (2:ℝ) ^
+          (by positivity : (0:ℝ) ≤ (2 : ℝ) ^ δ * (2 : ℝ) ^
             (-(δ * |((blockIndex (m₀ k.1) - blockIndex (m₁ k.2.1) : ℤ) : ℝ)
               - c₁ / Real.log 2|)))
         refine le_trans hstep (le_of_eq ?_)
         simp only [he₁, he₂, tripleDiff, hn0, hn1, hn2]
-        rw [show (2:ℝ) ^ (2 * δ) = (2:ℝ) ^ δ * (2:ℝ) ^ δ by
+        rw [show (2 : ℝ) ^ (2 * δ) = (2 : ℝ) ^ δ * (2 : ℝ) ^ δ by
           rw [← Real.rpow_add h2]; ring_nf]
         ring
-      have hann : 0 ≤ (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
+      have hann : 0 ≤ (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
         have := (hm₀ _ hkΛ.1).le
         have := (hm₁ _ hkΛ.2.1).le
         have := (hm₂ _ hkΛ.2.2).le
         positivity
       simp only [hG, layerSizeC]
-      calc _ ≤ ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
-            ((2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) :=
+      calc _ ≤ ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
+            ((2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) :=
             mul_le_mul_of_nonneg_left hdec hann
         _ = _ := by ring
     refine le_trans (Finset.sum_le_sum hpt) ?_
     rw [← Finset.mul_sum, hset]
     have hfac : ∑ k ∈ blockSet K₀ m₀ n.1 ×ˢ (blockSet K₁ m₁ n.2.1 ×ˢ blockSet K₂ m₂ n.2.2),
-        (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
-        = (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
-      sum_product_three (fun x ↦ (2:ℝ) ^ x * m₀ x ^ (1 / p₀))
-        (fun x ↦ (2:ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2:ℝ) ^ x * m₂ x ^ (1 / p₂))
+        (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
+        = (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
+      sum_product_three (fun x ↦ (2 : ℝ) ^ x * m₀ x ^ (1 / p₀))
+        (fun x ↦ (2 : ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2 : ℝ) ^ x * m₂ x ^ (1 / p₂))
     rw [hfac]
     have hs₀ := blockSet_sum_le hm₀ hp₀ n.1
     have hs₁ := blockSet_sum_le hm₁ hp₁ n.2.1
     have hs₂ := blockSet_sum_le hm₂ hp₂ n.2.2
-    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀) :=
+    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₀ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁) :=
+    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₁ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂) :=
+    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₂ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂))
-        ≤ ((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
+    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂))
+        ≤ ((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
       refine mul_le_mul (mul_le_mul hs₀ hs₁ hn₁ (mul_nonneg (by positivity) (hB₀nn _))) hs₂ hn₂
         (mul_nonneg (mul_nonneg (by positivity) (hB₀nn _)) (mul_nonneg (by positivity) (hB₁nn _)))
-    calc (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
-          ((∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)))
-        ≤ (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
-          (((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
+    calc (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
+          ((∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)))
+        ≤ (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
+          (((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod
             (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
               (mul_nonneg (he₁nn _) (he₂nn _)))
@@ -37675,7 +37698,8 @@ theorem fibre_profile_le_centred {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀) (hp
         ≤ Cg * ∑ N ∈ (Λ'.image tripleSum).filter (fun N : ℤ ↦ ⌊ε * (N:ℝ) + c₀⌋ = i), S N := by
     intro i
     -- fibrewise over the block vector
-    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i) := by
+    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i)
+      := by
       intro k hk
       have hk' := Finset.mem_filter.1 hk
       exact Finset.mem_filter.2 ⟨Finset.mem_image_of_mem _ hk'.1, hk'.2⟩
@@ -37789,9 +37813,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
     ∃ C : ℝ, 0 ≤ C ∧
       ∀ (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k, 0 < m₀ k) → (∀ k, 0 < m₁ k) → (∀ k, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ u : ℤ × ℤ × ℤ → X → ℝ, (∀ k, Measurable (u k)) →
       (∀ k ∈ K₀ ×ˢ (K₁ ×ˢ K₂), weakNorm μ (u k) ρ₁ ≤ ENNReal.ofReal
         (D₁ * layerSizeC m₀ m₁ m₂ p₀ p₁ p₂ δ d₁ d₂ k * layerProd m₀ m₁ m₂ k ^ ε)) →
@@ -37816,9 +37840,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
   set c₂ : ℝ := ρ₂ / (ρ₂ - 1) with hc₂
   have hc₁pos : 0 < c₁ := div_pos (by linarith) (by linarith)
   have hc₂pos : 0 < c₂ := div_pos (by linarith) (by linarith)
-  set c₃ : ℝ := max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) with hc₃
+  set c₃ : ℝ := max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) with hc₃
   have hc₃ : 0 ≤ c₃ := by positivity
-  set BwR : ℝ := c₃ ^ R * Cfp + (2:ℝ) ^ R * E' with hBwR
+  set BwR : ℝ := c₃ ^ R * Cfp + (2 : ℝ) ^ R * E' with hBwR
   have hBwRpos : 0 < BwR := by positivity
   refine ⟨C₀ * BwR, by positivity, ?_⟩
   intro K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ u hu hw₁ hw₂
@@ -37859,7 +37883,7 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
     intro i
     simp only [hv]
     refine Finset.sum_congr rfl fun k hk ↦ ?_
-    simp only [hu', if_pos (hFsub i hk)]
+    simp only [hu', ite_eq_left (hFsub i hk)]
   have hvmeas : ∀ i, Measurable (v i) := by
     intro i
     simp only [hv]
@@ -37868,9 +37892,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
     funext x; simp [Finset.sum_apply]
   -- weak bounds on the pieces
   set Γ₁ : ℤ → ℝ := fun i ↦ if i ∈ I then c₁ * ∑ k ∈ F i, Γa k
-    else (2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₁
+    else (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₁
   set Γ₂ : ℤ → ℝ := fun i ↦ if i ∈ I then c₂ * ∑ k ∈ F i, Γb k
-    else (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₂
+    else (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) with hΓ₂
   have hFne : ∀ i ∈ I, (F i).Nonempty := by
     intro i hi
     obtain ⟨k, hk, rfl⟩ := Finset.mem_image.1 hi
@@ -37907,12 +37931,14 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
       rw [show (0 : X → ℝ) = fun _ ↦ (0:ℝ) from rfl, weakNorm_zero μ (by linarith)]
       exact bot_le
   -- the balancing on each fibre
-  have hbal : ∀ i ∈ I, (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
+  have hbal : ∀ i ∈ I, (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
       ≤ c₃ * ∑ k ∈ F i, G k := by
     intro i hi
     have hterm : ∀ k ∈ F i,
-        (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)
-        ∧ (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
+        (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 :
+          ℝ) *
+          G k)
+        ∧ (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
       intro k hk
       have hidxk : idx k = i := (Finset.mem_filter.1 hk).2
       have hwin := fibre_window (hm₀ k.1) (hm₁ k.2.1) (hm₂ k.2.2) (ε := ε) (c₀ := c₀) hε
@@ -37924,29 +37950,29 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
       exact balance_le (hGpos k).le (hQpos k) hD₁ hD₂ rfl rfl
         (by simp only [hc₀, hQ, layerProd]) hwin.1 hwin.2
     have hS : 0 ≤ ∑ k ∈ F i, G k := Finset.sum_nonneg fun k _ ↦ (hGpos k).le
-    have hA : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
-        ≤ c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₁, if_pos hi]
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
-          = ∑ k ∈ F i, c₁ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
+    have hA : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
+        ≤ c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₁, ite_eq_left hi]
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
+          = ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ ∑ k ∈ F i, c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
+        _ ≤ ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
             Finset.sum_le_sum fun k hk ↦ mul_le_mul_of_nonneg_left (hterm k hk).1 hc₁pos.le
-        _ = c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ = c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-    have hB : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-        ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₂, if_pos hi]
-      have hpow : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) = (2:ℝ) ^ (1 / 2 * (i:ℝ)) := by
+    have hB : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+        ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₂, ite_eq_left hi]
+      have hpow : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) = (2 : ℝ) ^ (1 / 2 * (i:ℝ)) := by
         rw [← Real.rpow_add h2]; congr 1; ring
-      have hone : (1:ℝ) ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) := by
-        calc (1:ℝ) = (2:ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
-          _ ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) :=
+      have hone : (1:ℝ) ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) := by
+        calc (1:ℝ) = (2 : ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
+          _ ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) :=
               Real.rpow_le_rpow_of_exponent_le (by norm_num) (by positivity)
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
-          = c₂ * ∑ k ∈ F i, (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
+          = c₂ * ∑ k ∈ F i, (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
             rw [Finset.mul_sum, Finset.mul_sum, Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by rw [← hpow]; ring
         _ ≤ c₂ * ∑ k ∈ F i, (D₁ * D₂) ^ (1 / 2 : ℝ) * G k :=
@@ -37954,61 +37980,65 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
         _ = c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             have hDD : 0 ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) := Real.rpow_nonneg (by positivity) _
             have : c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ)
-                ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
+                ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
               refine mul_le_mul_of_nonneg_left ?_ hc₂pos.le
               calc (D₁ * D₂) ^ (1 / 2 : ℝ) = 1 * (D₁ * D₂) ^ (1 / 2 : ℝ) := by ring
                 _ ≤ _ := mul_le_mul_of_nonneg_right hone hDD
             exact mul_le_mul_of_nonneg_right this hS
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le]
     refine max_le (le_trans hA ?_) (le_trans hB ?_)
-    · show _ ≤ max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k
+    · change _ ≤ max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i,
+        G k
       refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (le_max_left _ _)
         (by positivity)) hS
-    · show _ ≤ max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k
+    · change _ ≤ max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i,
+        G k
       refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (le_max_right _ _)
         (by positivity)) hS
   -- the tail pieces
-  have htail : ∀ i, i ∉ I → (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-      ≤ 2 * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+  have htail : ∀ i, i ∉ I → (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+      ≤ 2 * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
     intro i hi
-    simp only [hΓ₁, hΓ₂, if_neg hi]
-    have e1 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))
-        = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+    simp only [hΓ₁, hΓ₂, ite_eq_right hi]
+    have e1 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R *
+      |(i:ℝ)|)))
+        = (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
       rw [← mul_assoc, ← Real.rpow_add h2]; simp
-    have e2 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-          ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))
-          = ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) * (2:ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
-            (2:ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
+    have e2 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = (2 : ℝ) ^ (-(R * |(i:ℝ)|))
+          := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+          ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))
+          = ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) * (2 : ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
+            (2 : ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
         ← Real.rpow_add h2, ← Real.rpow_add h2]
-      have : -(1 / 2 * (i:ℝ)) + (i:ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
+      have : -(1 / 2 * (i:ℝ)) + (i : ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
       rw [this, Real.rpow_zero, one_mul]
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le, e1, e2, max_self]
     have := Real.rpow_pos_of_pos h2 (-(R * |(i:ℝ)|))
     linarith
   -- the profile bound
-  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
+  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
     intro T
-    have hsplit : ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
+    have hsplit : ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
       (Finset.sum_filter_add_sum_filter_not T (fun i ↦ i ∈ I) _).symm
     rw [hsplit]
-    have hnn : ∀ i : ℤ, 0 ≤ (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i) :=
+    have hnn : ∀ i : ℤ, 0 ≤ (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i) :=
       fun i ↦ mul_nonneg (Real.rpow_pos_of_pos h2 _).le
         (le_trans (hΓ₁pos i).le (le_max_left _ _))
-    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
           ≤ ∑ i ∈ T.filter (fun i ↦ i ∈ I), (c₃ * ∑ k ∈ F i, G k) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (hbal i (Finset.mem_filter.1 hi).2) hRpos.le
@@ -38020,29 +38050,29 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_centred {X : Type*} [Measurab
             refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hc₃ _)
             exact hfp K₀ K₁ K₂ m₀ m₁ m₂ (fun k _ ↦ hm₀ k) (fun k _ ↦ hm₁ k) (fun k _ ↦ hm₂ k)
               hb₀ hb₁ hb₂ _
-    have htailR : ∀ i : ℤ, (2 * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
-        ≤ (2:ℝ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+    have htailR : ∀ i : ℤ, (2 * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
+        ≤ (2 : ℝ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
       intro i
       rw [Real.mul_rpow (by norm_num) (Real.rpow_pos_of_pos h2 _).le, ← Real.rpow_mul h2.le,
         sub_zero]
       refine mul_le_mul_of_nonneg_left ?_ (by positivity)
       refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
       nlinarith [mul_nonneg (mul_nonneg hRpos.le (abs_nonneg (i:ℝ))) (sub_nonneg.2 hR.le)]
-    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2:ℝ) ^ R * E' := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
+    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2 : ℝ) ^ R * E' := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (htail i (Finset.mem_filter.1 hi).2) hRpos.le
-        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2:ℝ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
+        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 : ℝ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
             Finset.sum_le_sum fun i _ ↦ htailR i
-        _ = (2:ℝ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+        _ = (2 : ℝ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
             rw [Finset.mul_sum]
-        _ ≤ (2:ℝ) ^ R * E' := mul_le_mul_of_nonneg_left (hE' 0 _) (by positivity)
+        _ ≤ (2 : ℝ) ^ R * E' := mul_le_mul_of_nonneg_left (hE' 0 _) (by positivity)
     linarith [h1, h2', hBwR]
-  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
+  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
     intro T
     rw [← Real.rpow_mul hBwRpos.le, one_div_mul_cancel (ne_of_gt hRpos), Real.rpow_one]
     exact hprofile T
@@ -38122,10 +38152,10 @@ theorem exists_layer_weak_bound_gain_shift_form
   have hm0 : 0 < m₀ k.1 := h0
   have hm1 : 0 < m₁ k.2.1 := h1
   have hm2 : 0 < m₂ k.2.2 := hk2
-  have hprod : ∏ j : Fin 3, ((2:ℝ) ^ (kf j + 1) *
+  have hprod : ∏ j : Fin 3, ((2 : ℝ) ^ (kf j + 1) *
       (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal ^ (1 / p' j))
-      = 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
+      = 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
         (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     have hm0' : 0 < (μ (dyadicLevelSet (⇑(f 0)) k.1)).toReal := h0
     have hm1' : 0 < (μ (dyadicLevelSet (⇑(f 1)) k.2.1)).toReal := h1
@@ -38148,18 +38178,19 @@ theorem exists_layer_weak_bound_gain_shift_form
     nlinarith
   have hnn1 : 0 ≤ (∏ a : Fin 4, A a ^ ϑ' a) :=
     Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le
-  have hnn2 : 0 ≤ 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-      ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
+  have hnn2 : 0 ≤ 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p
+    1)) *
+      ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     positivity
   rw [hprod]
   simp only [layerSizeC, layerProd]
   calc (∏ a : Fin 4, A a ^ ϑ' a) * Real.exp (-(δ' * (S₁ + S₂))) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
       ≤ (∏ a : Fin 4, A a ^ ϑ' a) *
         (Real.exp (-(δ'' * S₁)) * Real.exp (-(δ'' * S₂))) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
         mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hgain_le hnn1) hnn2
     _ = _ := by ring
 
@@ -38171,9 +38202,9 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
     {δ ε c₁ c₂ : ℝ} (hδ : 0 < δ) (hε : 0 < ε) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (c₀ : ℝ) (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k ∈ K₀, 0 < m₀ k) → (∀ k ∈ K₁, 0 < m₁ k) → (∀ k ∈ K₂, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ I : Finset ℤ,
       ∑ i ∈ I, (∑ k ∈ (K₀ ×ˢ (K₁ ×ˢ K₂)) with
           ⌊ε * (tripleSum (blockVec m₀ m₁ m₂ k) : ℝ) + c₀⌋ = i,
@@ -38182,8 +38213,8 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
   have hRpos : (0:ℝ) < R := lt_of_lt_of_le zero_lt_one hR
   have h2 : (0:ℝ) < 2 := by norm_num
   obtain ⟨E, hEpos, hE⟩ := exists_sum_abs_tent_bound (η := δ) hδ
-  set Cg : ℝ := (2:ℝ) ^ (2 * δ) * ((2:ℝ) ^ (1 + 1 / p₀) * (2:ℝ) ^ (1 + 1 / p₁) *
-    (2:ℝ) ^ (1 + 1 / p₂)) with hCg
+  set Cg : ℝ := (2 : ℝ) ^ (2 * δ) * ((2 : ℝ) ^ (1 + 1 / p₀) * (2 : ℝ) ^ (1 + 1 / p₁) *
+    (2 : ℝ) ^ (1 + 1 / p₂)) with hCg
   have hCg : 0 ≤ Cg := by positivity
   refine ⟨Cg ^ R * (1 / ε + 1) ^ (R - 1) * (E * E) ^ R, by positivity, ?_⟩
   intro c₀ K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ I
@@ -38193,8 +38224,8 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
   set B₀ : ℤ → ℝ := blockBudget K₀ m₀ p₀ with hB₀
   set B₁ : ℤ → ℝ := blockBudget K₁ m₁ p₁ with hB₁
   set B₂ : ℤ → ℝ := blockBudget K₂ m₂ p₂ with hB₂
-  set e₁ : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ * |(t:ℝ) - c₁ / Real.log 2|)) with he₁
-  set e₂ : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ * |(t:ℝ) - c₂ / Real.log 2|)) with he₂
+  set e₁ : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ * |(t:ℝ) - c₁ / Real.log 2|)) with he₁
+  set e₂ : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ * |(t:ℝ) - c₂ / Real.log 2|)) with he₂
   set P : ℤ × ℤ × ℤ → ℝ := fun n ↦
     B₀ n.1 * B₁ n.2.1 * B₂ n.2.2 * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) with hP
   set Λ' : Finset (ℤ × ℤ × ℤ) := Λ.image nv with hΛ'
@@ -38229,9 +38260,9 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
         Prod.ext_iff]
       tauto
     have hpt : ∀ k ∈ Λ.filter (fun k ↦ nv k = n), G k
-        ≤ ((2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) *
-          ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
+        ≤ ((2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) *
+          ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
       intro k hk
       have hkΛ := (Finset.mem_filter.1 hk).1
       have hkn := (Finset.mem_filter.1 hk).2
@@ -38247,65 +38278,65 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
       have hd₂ := exp_shift_le_block_decay (hm₁ _ hkΛ.2.1) (hm₂ _ hkΛ.2.2) (δ := δ) (c := c₂) hδ
       have hdec : Real.exp (-(δ * |Real.log (m₀ k.1) - Real.log (m₁ k.2.1) - c₁|)) *
           Real.exp (-(δ * |Real.log (m₁ k.2.1) - Real.log (m₂ k.2.2) - c₂|))
-          ≤ (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) := by
+          ≤ (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) := by
         have hstep := mul_le_mul hd₁ hd₂ (Real.exp_pos _).le
-          (by positivity : (0:ℝ) ≤ (2:ℝ) ^ δ * (2:ℝ) ^
+          (by positivity : (0:ℝ) ≤ (2 : ℝ) ^ δ * (2 : ℝ) ^
             (-(δ * |((blockIndex (m₀ k.1) - blockIndex (m₁ k.2.1) : ℤ) : ℝ)
               - c₁ / Real.log 2|)))
         refine le_trans hstep (le_of_eq ?_)
         simp only [he₁, he₂, tripleDiff, hn0, hn1, hn2]
-        rw [show (2:ℝ) ^ (2 * δ) = (2:ℝ) ^ δ * (2:ℝ) ^ δ by
+        rw [show (2 : ℝ) ^ (2 * δ) = (2 : ℝ) ^ δ * (2 : ℝ) ^ δ by
           rw [← Real.rpow_add h2]; ring_nf]
         ring
-      have hann : 0 ≤ (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
+      have hann : 0 ≤ (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
         have := (hm₀ _ hkΛ.1).le
         have := (hm₁ _ hkΛ.2.1).le
         have := (hm₂ _ hkΛ.2.2).le
         positivity
       simp only [hG, layerSizeC]
-      calc _ ≤ ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
-            ((2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) :=
+      calc _ ≤ ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
+            ((2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) :=
             mul_le_mul_of_nonneg_left hdec hann
         _ = _ := by ring
     refine le_trans (Finset.sum_le_sum hpt) ?_
     rw [← Finset.mul_sum, hset]
     have hfac : ∑ k ∈ blockSet K₀ m₀ n.1 ×ˢ (blockSet K₁ m₁ n.2.1 ×ˢ blockSet K₂ m₂ n.2.2),
-        (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
-        = (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
-      sum_product_three (fun x ↦ (2:ℝ) ^ x * m₀ x ^ (1 / p₀))
-        (fun x ↦ (2:ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2:ℝ) ^ x * m₂ x ^ (1 / p₂))
+        (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
+        = (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
+      sum_product_three (fun x ↦ (2 : ℝ) ^ x * m₀ x ^ (1 / p₀))
+        (fun x ↦ (2 : ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2 : ℝ) ^ x * m₂ x ^ (1 / p₂))
     rw [hfac]
     have hs₀ := blockSet_sum_le hm₀ hp₀ n.1
     have hs₁ := blockSet_sum_le hm₁ hp₁ n.2.1
     have hs₂ := blockSet_sum_le hm₂ hp₂ n.2.2
-    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀) :=
+    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₀ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁) :=
+    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₁ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂) :=
+    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₂ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂))
-        ≤ ((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
+    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂))
+        ≤ ((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
       refine mul_le_mul (mul_le_mul hs₀ hs₁ hn₁ (mul_nonneg (by positivity) (hB₀nn _))) hs₂ hn₂
         (mul_nonneg (mul_nonneg (by positivity) (hB₀nn _)) (mul_nonneg (by positivity) (hB₁nn _)))
-    calc (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
-          ((∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)))
-        ≤ (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
-          (((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
+    calc (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
+          ((∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)))
+        ≤ (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
+          (((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod
             (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
               (mul_nonneg (he₁nn _) (he₂nn _)))
@@ -38320,7 +38351,8 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
         ≤ Cg * ∑ N ∈ (Λ'.image tripleSum).filter (fun N : ℤ ↦ ⌊ε * (N:ℝ) + c₀⌋ = i), S N := by
     intro i
     -- fibrewise over the block vector
-    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i) := by
+    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i)
+      := by
       intro k hk
       have hk' := Finset.mem_filter.1 hk
       exact Finset.mem_filter.2 ⟨Finset.mem_image_of_mem _ hk'.1, hk'.2⟩
@@ -38418,6 +38450,7 @@ theorem fibre_profile_le_centred_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p
 
 
 set_option maxHeartbeats 1000000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- **Strong bound from fibre-wise weak bounds, with the endpoint constants
 factored out of the interpolation constant.** -/
 theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [MeasurableSpace X]
@@ -38431,9 +38464,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
       ∀ (D₁ D₂ : ℝ), 0 < D₁ → 0 < D₂ →
       ∀ (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k, 0 < m₀ k) → (∀ k, 0 < m₁ k) → (∀ k, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ u : ℤ × ℤ × ℤ → X → ℝ, (∀ k, Measurable (u k)) →
       (∀ k ∈ K₀ ×ˢ (K₁ ×ˢ K₂), weakNorm μ (u k) ρ₁ ≤ ENNReal.ofReal
         (D₁ * layerSizeC m₀ m₁ m₂ p₀ p₁ p₂ δ d₁ d₂ k * layerProd m₀ m₁ m₂ k ^ ε)) →
@@ -38457,9 +38490,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
   set c₂ : ℝ := ρ₂ / (ρ₂ - 1) with hc₂
   have hc₁pos : 0 < c₁ := div_pos (by linarith) (by linarith)
   have hc₂pos : 0 < c₂ := div_pos (by linarith) (by linarith)
-  set c₃' : ℝ := max c₁ c₂ * (2:ℝ) ^ ((1 + 6 * ε) / 2) with hc₃'
+  set c₃' : ℝ := max c₁ c₂ * (2 : ℝ) ^ ((1 + 6 * ε) / 2) with hc₃'
   have hc₃'nn : 0 ≤ c₃' := by positivity
-  set B₀ : ℝ := c₃' ^ R * Cfp + (2:ℝ) ^ R * E' with hB₀
+  set B₀ : ℝ := c₃' ^ R * Cfp + (2 : ℝ) ^ R * E' with hB₀
   have hB₀pos : 0 < B₀ := by positivity
   refine ⟨C₀ * B₀, by positivity, ?_⟩
   intro D₁ D₂ hD₁ hD₂ K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ u hu hw₁ hw₂
@@ -38507,7 +38540,7 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
     intro i
     simp only [hv]
     refine Finset.sum_congr rfl fun k hk ↦ ?_
-    simp only [hu', if_pos (hFsub i hk)]
+    simp only [hu', ite_eq_left (hFsub i hk)]
   have hvmeas : ∀ i, Measurable (v i) := by
     intro i
     simp only [hv]
@@ -38516,9 +38549,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
     funext x; simp [Finset.sum_apply]
   -- weak bounds on the pieces
   set Γ₁ : ℤ → ℝ := fun i ↦ if i ∈ I then c₁ * ∑ k ∈ F i, Γa k
-    else κ * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₁
+    else κ * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₁
   set Γ₂ : ℤ → ℝ := fun i ↦ if i ∈ I then c₂ * ∑ k ∈ F i, Γb k
-    else κ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₂
+    else κ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₂
   have hFne : ∀ i ∈ I, (F i).Nonempty := by
     intro i hi
     obtain ⟨k, hk, rfl⟩ := Finset.mem_image.1 hi
@@ -38555,12 +38588,14 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
       rw [show (0 : X → ℝ) = fun _ ↦ (0:ℝ) from rfl, weakNorm_zero μ (by linarith)]
       exact bot_le
   -- the balancing on each fibre
-  have hbal : ∀ i ∈ I, (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
+  have hbal : ∀ i ∈ I, (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
       ≤ c₃ * ∑ k ∈ F i, G k := by
     intro i hi
     have hterm : ∀ k ∈ F i,
-        (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)
-        ∧ (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
+        (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 :
+          ℝ) *
+          G k)
+        ∧ (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
       intro k hk
       have hidxk : idx k = i := (Finset.mem_filter.1 hk).2
       have hwin := fibre_window (hm₀ k.1) (hm₁ k.2.1) (hm₂ k.2.2) (ε := ε) (c₀ := c₀) hε
@@ -38572,29 +38607,29 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
       exact balance_le (hGpos k).le (hQpos k) hD₁ hD₂ rfl rfl
         (by simp only [hc₀, hQ, layerProd]) hwin.1 hwin.2
     have hS : 0 ≤ ∑ k ∈ F i, G k := Finset.sum_nonneg fun k _ ↦ (hGpos k).le
-    have hA : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
-        ≤ c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₁, if_pos hi]
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
-          = ∑ k ∈ F i, c₁ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
+    have hA : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
+        ≤ c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₁, ite_eq_left hi]
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
+          = ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ ∑ k ∈ F i, c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
+        _ ≤ ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
             Finset.sum_le_sum fun k hk ↦ mul_le_mul_of_nonneg_left (hterm k hk).1 hc₁pos.le
-        _ = c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ = c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-    have hB : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-        ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₂, if_pos hi]
-      have hpow : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) = (2:ℝ) ^ (1 / 2 * (i:ℝ)) := by
+    have hB : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+        ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₂, ite_eq_left hi]
+      have hpow : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) = (2 : ℝ) ^ (1 / 2 * (i:ℝ)) := by
         rw [← Real.rpow_add h2]; congr 1; ring
-      have hone : (1:ℝ) ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) := by
-        calc (1:ℝ) = (2:ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
-          _ ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) :=
+      have hone : (1:ℝ) ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) := by
+        calc (1:ℝ) = (2 : ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
+          _ ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) :=
               Real.rpow_le_rpow_of_exponent_le (by norm_num) (by positivity)
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
-          = c₂ * ∑ k ∈ F i, (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
+          = c₂ * ∑ k ∈ F i, (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
             rw [Finset.mul_sum, Finset.mul_sum, Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by rw [← hpow]; ring
         _ ≤ c₂ * ∑ k ∈ F i, (D₁ * D₂) ^ (1 / 2 : ℝ) * G k :=
@@ -38602,79 +38637,81 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
         _ = c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             have hDD : 0 ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) := Real.rpow_nonneg (by positivity) _
             have : c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ)
-                ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
+                ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
               refine mul_le_mul_of_nonneg_left ?_ hc₂pos.le
               calc (D₁ * D₂) ^ (1 / 2 : ℝ) = 1 * (D₁ * D₂) ^ (1 / 2 : ℝ) := by ring
                 _ ≤ _ := mul_le_mul_of_nonneg_right hone hDD
             exact mul_le_mul_of_nonneg_right this hS
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le]
-    have hXκ : 0 < (2:ℝ) ^ ((1 + 6 * ε) / 2) * κ :=
+    have hXκ : 0 < (2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ :=
       mul_pos (Real.rpow_pos_of_pos h2 _) hκpos
     have key : ∀ d : ℝ, d ≤ max c₁ c₂ →
-        d * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * κ) ≤ c₃ := by
+        d * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ) ≤ c₃ := by
       intro d hd
       rw [hc₃def, hc₃']
       have hmul := mul_le_mul_of_nonneg_right hd hXκ.le
-      calc d * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * κ)
-          ≤ max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * κ) := hmul
-        _ = max c₁ c₂ * (2:ℝ) ^ ((1 + 6 * ε) / 2) * κ := by ring
+      calc d * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ)
+          ≤ max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ) := hmul
+        _ = max c₁ c₂ * (2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ := by ring
     refine max_le (le_trans hA ?_) (le_trans hB ?_)
     · exact mul_le_mul_of_nonneg_right (key c₁ (le_max_left _ _)) hS
     · exact mul_le_mul_of_nonneg_right (key c₂ (le_max_right _ _)) hS
   -- the tail pieces
-  have htail : ∀ i, i ∉ I → (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-      ≤ 2 * κ * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+  have htail : ∀ i, i ∉ I → (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+      ≤ 2 * κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
     intro i hi
-    simp only [hΓ₁, hΓ₂, if_neg hi]
-    have e1 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))
-        = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+    simp only [hΓ₁, hΓ₂, ite_eq_right hi]
+    have e1 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R *
+      |(i:ℝ)|)))
+        = (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
       rw [← mul_assoc, ← Real.rpow_add h2]; simp
-    have e2 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-          ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))
-          = ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) * (2:ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
-            (2:ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
+    have e2 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = (2 : ℝ) ^ (-(R * |(i:ℝ)|))
+          := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+          ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))
+          = ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) * (2 : ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
+            (2 : ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
         ← Real.rpow_add h2, ← Real.rpow_add h2]
-      have : -(1 / 2 * (i:ℝ)) + (i:ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
+      have : -(1 / 2 * (i:ℝ)) + (i : ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
       rw [this, Real.rpow_zero, one_mul]
-    have q1 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) *
-        (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) *
-        (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))) from by ring, e1]
-    have q2 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (κ *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))))
-        = κ * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (κ *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))) = κ *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))) from by ring, e2]
+    have q1 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) *
+        (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) *
+        (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) from by ring, e1]
+    have q2 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (κ *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))))
+        = κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (κ *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))) = κ *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))) from by ring, e2]
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le, q1, q2, max_self]
     have := Real.rpow_pos_of_pos h2 (-(R * |(i:ℝ)|))
     nlinarith [hκpos]
   -- the profile bound
-  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
+  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
     intro T
-    have hsplit : ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
+    have hsplit : ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
       (Finset.sum_filter_add_sum_filter_not T (fun i ↦ i ∈ I) _).symm
     rw [hsplit]
-    have hnn : ∀ i : ℤ, 0 ≤ (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i) :=
+    have hnn : ∀ i : ℤ, 0 ≤ (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i) :=
       fun i ↦ mul_nonneg (Real.rpow_pos_of_pos h2 _).le
         (le_trans (hΓ₁pos i).le (le_max_left _ _))
-    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
           ≤ ∑ i ∈ T.filter (fun i ↦ i ∈ I), (c₃ * ∑ k ∈ F i, G k) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (hbal i (Finset.mem_filter.1 hi).2) hRpos.le
@@ -38686,30 +38723,30 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_uniform {X : Type*} [Measurab
             refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hc₃ _)
             exact hfp c₀ K₀ K₁ K₂ m₀ m₁ m₂ (fun k _ ↦ hm₀ k) (fun k _ ↦ hm₁ k)
               (fun k _ ↦ hm₂ k) hb₀ hb₁ hb₂ _
-    have htailR : ∀ i : ℤ, (2 * κ * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
-        ≤ (2 * κ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+    have htailR : ∀ i : ℤ, (2 * κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
+        ≤ (2 * κ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
       intro i
       rw [Real.mul_rpow (by positivity) (Real.rpow_pos_of_pos h2 _).le, ← Real.rpow_mul h2.le,
         sub_zero]
       refine mul_le_mul_of_nonneg_left ?_ (by positivity)
       refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
       nlinarith [mul_nonneg (mul_nonneg hRpos.le (abs_nonneg (i:ℝ))) (sub_nonneg.2 hR.le)]
-    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2 * κ) ^ R * E' := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
+    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2 * κ) ^ R * E' := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (htail i (Finset.mem_filter.1 hi).2) hRpos.le
-        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
+        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
             Finset.sum_le_sum fun i _ ↦ htailR i
-        _ = (2 * κ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+        _ = (2 * κ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
             rw [Finset.mul_sum]
         _ ≤ (2 * κ) ^ R * E' := mul_le_mul_of_nonneg_left (hE' 0 _) (by positivity)
     rw [hBwR]
     linarith [h1, h2']
-  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
+  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
     intro T
     rw [← Real.rpow_mul hBwRpos.le, one_div_mul_cancel (ne_of_gt hRpos), Real.rpow_one]
     exact hprofile T
@@ -38941,10 +38978,10 @@ theorem exists_weakNorm_expansion_term_gain_shift_unif
   refine le_trans hbase (ENNReal.ofReal_le_ofReal ?_)
   -- reduce to the measure factors
   have hsplit : ∀ q : Fin 3 → ℝ,
-      ∏ j : Fin 3, ((2:ℝ) ^ (k j + 1) * m j ^ (1 / q j))
-        = (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / q j) :=
+      ∏ j : Fin 3, ((2 : ℝ) ^ (k j + 1) * m j ^ (1 / q j))
+        = (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / q j) :=
     fun q ↦ Finset.prod_mul_distrib
-  have h2nn : 0 ≤ ∏ j : Fin 3, (2:ℝ) ^ (k j + 1) :=
+  have h2nn : 0 ≤ ∏ j : Fin 3, (2 : ℝ) ^ (k j + 1) :=
     Finset.prod_nonneg fun j _ ↦ (zpow_pos (by norm_num) _).le
   -- the key real inequality
   have hkey : (∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, m j ^ (1 / p' j)
@@ -38988,16 +39025,16 @@ theorem exists_weakNorm_expansion_term_gain_shift_unif
     linarith [hdiff, hgainle]
   rw [hsplit p', hsplit p]
   calc (∏ a : Fin 4, A a ^ ϑ' a) *
-        ((∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
+        ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p' j))
       = ((∏ a : Fin 4, A a ^ ϑ' a) * ∏ j : Fin 3, m j ^ (1 / p' j)) *
-          (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) := by ring
+          (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) := by ring
     _ ≤ ((∏ a : Fin 4, A a ^ ϑ a) *
           Real.exp (-(δ * (|ℓ 0 - ℓ 1 - c₁| + |ℓ 1 - ℓ 2 - c₂|))) *
-          ∏ j : Fin 3, m j ^ (1 / p j)) * (∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) :=
+          ∏ j : Fin 3, m j ^ (1 / p j)) * (∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) :=
         mul_le_mul_of_nonneg_right hkey h2nn
     _ = (∏ a : Fin 4, A a ^ ϑ a) *
           Real.exp (-(δ * (|ℓ 0 - ℓ 1 - c₁| + |ℓ 1 - ℓ 2 - c₂|))) *
-          ((∏ j : Fin 3, (2:ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by ring
+          ((∏ j : Fin 3, (2 : ℝ) ^ (k j + 1)) * ∏ j : Fin 3, m j ^ (1 / p j)) := by ring
 
 
 
@@ -39065,10 +39102,10 @@ theorem exists_layer_weak_bound_gain_shift_unif
   have hm0 : 0 < m₀ k.1 := h0
   have hm1 : 0 < m₁ k.2.1 := h1
   have hm2 : 0 < m₂ k.2.2 := hk2
-  have hprod : ∏ j : Fin 3, ((2:ℝ) ^ (kf j + 1) *
+  have hprod : ∏ j : Fin 3, ((2 : ℝ) ^ (kf j + 1) *
       (μ (dyadicLevelSet (⇑(f j)) (kf j))).toReal ^ (1 / p' j))
-      = 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
+      = 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) *
         (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     have hm0' : 0 < (μ (dyadicLevelSet (⇑(f 0)) k.1)).toReal := h0
     have hm1' : 0 < (μ (dyadicLevelSet (⇑(f 1)) k.2.1)).toReal := h1
@@ -39091,18 +39128,19 @@ theorem exists_layer_weak_bound_gain_shift_unif
     nlinarith
   have hnn1 : 0 ≤ (∏ a : Fin 4, A a ^ ϑ' a) :=
     Finset.prod_nonneg fun a _ ↦ (Real.rpow_pos_of_pos (hA a) _).le
-  have hnn2 : 0 ≤ 8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-      ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
+  have hnn2 : 0 ≤ 8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p
+    1)) *
+      ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s := by
     positivity
   rw [hprod]
   simp only [layerSizeC, layerProd]
   calc (∏ a : Fin 4, A a ^ ϑ' a) * Real.exp (-(δ' * (S₁ + S₂))) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s)
       ≤ (∏ a : Fin 4, A a ^ ϑ' a) *
         (Real.exp (-(δ'' * S₁)) * Real.exp (-(δ'' * S₂))) *
-        (8 * ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
+        (8 * ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p 0) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p 1)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p 2))) * (m₀ k.1 * m₁ k.2.1 * m₂ k.2.2) ^ s) :=
         mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hgain_le hnn1) hnn2
     _ = _ := by ring
 
@@ -39115,9 +39153,9 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
     {δ ε : ℝ} (hδ : 0 < δ) (hε : 0 < ε) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (c₀ c₁ c₂ : ℝ) (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k ∈ K₀, 0 < m₀ k) → (∀ k ∈ K₁, 0 < m₁ k) → (∀ k ∈ K₂, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ I : Finset ℤ,
       ∑ i ∈ I, (∑ k ∈ (K₀ ×ˢ (K₁ ×ˢ K₂)) with
           ⌊ε * (tripleSum (blockVec m₀ m₁ m₂ k) : ℝ) + c₀⌋ = i,
@@ -39126,8 +39164,8 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
   have hRpos : (0:ℝ) < R := lt_of_lt_of_le zero_lt_one hR
   have h2 : (0:ℝ) < 2 := by norm_num
   obtain ⟨E, hEpos, hE⟩ := exists_sum_abs_tent_bound (η := δ) hδ
-  set Cg : ℝ := (2:ℝ) ^ (2 * δ) * ((2:ℝ) ^ (1 + 1 / p₀) * (2:ℝ) ^ (1 + 1 / p₁) *
-    (2:ℝ) ^ (1 + 1 / p₂)) with hCg
+  set Cg : ℝ := (2 : ℝ) ^ (2 * δ) * ((2 : ℝ) ^ (1 + 1 / p₀) * (2 : ℝ) ^ (1 + 1 / p₁) *
+    (2 : ℝ) ^ (1 + 1 / p₂)) with hCg
   have hCg : 0 ≤ Cg := by positivity
   refine ⟨Cg ^ R * (1 / ε + 1) ^ (R - 1) * (E * E) ^ R, by positivity, ?_⟩
   intro c₀ c₁ c₂ K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ I
@@ -39137,8 +39175,8 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
   set B₀ : ℤ → ℝ := blockBudget K₀ m₀ p₀ with hB₀
   set B₁ : ℤ → ℝ := blockBudget K₁ m₁ p₁ with hB₁
   set B₂ : ℤ → ℝ := blockBudget K₂ m₂ p₂ with hB₂
-  set e₁ : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ * |(t:ℝ) - c₁ / Real.log 2|)) with he₁
-  set e₂ : ℤ → ℝ := fun t ↦ (2:ℝ) ^ (-(δ * |(t:ℝ) - c₂ / Real.log 2|)) with he₂
+  set e₁ : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ * |(t:ℝ) - c₁ / Real.log 2|)) with he₁
+  set e₂ : ℤ → ℝ := fun t ↦ (2 : ℝ) ^ (-(δ * |(t:ℝ) - c₂ / Real.log 2|)) with he₂
   set P : ℤ × ℤ × ℤ → ℝ := fun n ↦
     B₀ n.1 * B₁ n.2.1 * B₂ n.2.2 * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) with hP
   set Λ' : Finset (ℤ × ℤ × ℤ) := Λ.image nv with hΛ'
@@ -39173,9 +39211,9 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
         Prod.ext_iff]
       tauto
     have hpt : ∀ k ∈ Λ.filter (fun k ↦ nv k = n), G k
-        ≤ ((2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) *
-          ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
+        ≤ ((2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) *
+          ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) := by
       intro k hk
       have hkΛ := (Finset.mem_filter.1 hk).1
       have hkn := (Finset.mem_filter.1 hk).2
@@ -39191,65 +39229,65 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
       have hd₂ := exp_shift_le_block_decay (hm₁ _ hkΛ.2.1) (hm₂ _ hkΛ.2.2) (δ := δ) (c := c₂) hδ
       have hdec : Real.exp (-(δ * |Real.log (m₀ k.1) - Real.log (m₁ k.2.1) - c₁|)) *
           Real.exp (-(δ * |Real.log (m₁ k.2.1) - Real.log (m₂ k.2.2) - c₂|))
-          ≤ (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) := by
+          ≤ (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) := by
         have hstep := mul_le_mul hd₁ hd₂ (Real.exp_pos _).le
-          (by positivity : (0:ℝ) ≤ (2:ℝ) ^ δ * (2:ℝ) ^
+          (by positivity : (0:ℝ) ≤ (2 : ℝ) ^ δ * (2 : ℝ) ^
             (-(δ * |((blockIndex (m₀ k.1) - blockIndex (m₁ k.2.1) : ℤ) : ℝ)
               - c₁ / Real.log 2|)))
         refine le_trans hstep (le_of_eq ?_)
         simp only [he₁, he₂, tripleDiff, hn0, hn1, hn2]
-        rw [show (2:ℝ) ^ (2 * δ) = (2:ℝ) ^ δ * (2:ℝ) ^ δ by
+        rw [show (2 : ℝ) ^ (2 * δ) = (2 : ℝ) ^ δ * (2 : ℝ) ^ δ by
           rw [← Real.rpow_add h2]; ring_nf]
         ring
-      have hann : 0 ≤ (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
+      have hann : 0 ≤ (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂)) := by
         have := (hm₀ _ hkΛ.1).le
         have := (hm₁ _ hkΛ.2.1).le
         have := (hm₂ _ hkΛ.2.2).le
         positivity
       simp only [hG, layerSizeC]
-      calc _ ≤ ((2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-            ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
-            ((2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) :=
+      calc _ ≤ ((2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+            ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))) *
+            ((2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2)) :=
             mul_le_mul_of_nonneg_left hdec hann
         _ = _ := by ring
     refine le_trans (Finset.sum_le_sum hpt) ?_
     rw [← Finset.mul_sum, hset]
     have hfac : ∑ k ∈ blockSet K₀ m₀ n.1 ×ˢ (blockSet K₁ m₁ n.2.1 ×ˢ blockSet K₂ m₂ n.2.2),
-        (2:ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2:ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
-          ((2:ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
-        = (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
-      sum_product_three (fun x ↦ (2:ℝ) ^ x * m₀ x ^ (1 / p₀))
-        (fun x ↦ (2:ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2:ℝ) ^ x * m₂ x ^ (1 / p₂))
+        (2 : ℝ) ^ k.1 * m₀ k.1 ^ (1 / p₀) * ((2 : ℝ) ^ k.2.1 * m₁ k.2.1 ^ (1 / p₁)) *
+          ((2 : ℝ) ^ k.2.2 * m₂ k.2.2 ^ (1 / p₂))
+        = (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)) :=
+      sum_product_three (fun x ↦ (2 : ℝ) ^ x * m₀ x ^ (1 / p₀))
+        (fun x ↦ (2 : ℝ) ^ x * m₁ x ^ (1 / p₁)) (fun x ↦ (2 : ℝ) ^ x * m₂ x ^ (1 / p₂))
     rw [hfac]
     have hs₀ := blockSet_sum_le hm₀ hp₀ n.1
     have hs₁ := blockSet_sum_le hm₁ hp₁ n.2.1
     have hs₂ := blockSet_sum_le hm₂ hp₂ n.2.2
-    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀) :=
+    have hn₀ : 0 ≤ ∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₀ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁) :=
+    have hn₁ : 0 ≤ ∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₁ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂) :=
+    have hn₂ : 0 ≤ ∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂) :=
       Finset.sum_nonneg fun k hk ↦ by
         have := (hm₂ k (Finset.mem_filter.1 hk).1).le; positivity
-    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂))
-        ≤ ((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
+    have hprod : (∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+        (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+        (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂))
+        ≤ ((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2) := by
       refine mul_le_mul (mul_le_mul hs₀ hs₁ hn₁ (mul_nonneg (by positivity) (hB₀nn _))) hs₂ hn₂
         (mul_nonneg (mul_nonneg (by positivity) (hB₀nn _)) (mul_nonneg (by positivity) (hB₁nn _)))
-    calc (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
-          ((∑ k ∈ blockSet K₀ m₀ n.1, (2:ℝ) ^ k * m₀ k ^ (1 / p₀)) *
-          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2:ℝ) ^ k * m₁ k ^ (1 / p₁)) *
-          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2:ℝ) ^ k * m₂ k ^ (1 / p₂)))
-        ≤ (2:ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
-          (((2:ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2:ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
-          ((2:ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
+    calc (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
+          ((∑ k ∈ blockSet K₀ m₀ n.1, (2 : ℝ) ^ k * m₀ k ^ (1 / p₀)) *
+          (∑ k ∈ blockSet K₁ m₁ n.2.1, (2 : ℝ) ^ k * m₁ k ^ (1 / p₁)) *
+          (∑ k ∈ blockSet K₂ m₂ n.2.2, (2 : ℝ) ^ k * m₂ k ^ (1 / p₂)))
+        ≤ (2 : ℝ) ^ (2 * δ) * (e₁ (tripleDiff n).1 * e₂ (tripleDiff n).2) *
+          (((2 : ℝ) ^ (1 + 1 / p₀) * B₀ n.1) * ((2 : ℝ) ^ (1 + 1 / p₁) * B₁ n.2.1) *
+          ((2 : ℝ) ^ (1 + 1 / p₂) * B₂ n.2.2)) :=
           mul_le_mul_of_nonneg_left hprod
             (mul_nonneg (Real.rpow_nonneg (by norm_num) _)
               (mul_nonneg (he₁nn _) (he₂nn _)))
@@ -39264,7 +39302,8 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
         ≤ Cg * ∑ N ∈ (Λ'.image tripleSum).filter (fun N : ℤ ↦ ⌊ε * (N:ℝ) + c₀⌋ = i), S N := by
     intro i
     -- fibrewise over the block vector
-    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i) := by
+    have hmaps : ∀ k ∈ Λ.filter (fun k ↦ idxn (nv k) = i), nv k ∈ Λ'.filter (fun n ↦ idxn n = i)
+      := by
       intro k hk
       have hk' := Finset.mem_filter.1 hk
       exact Finset.mem_filter.2 ⟨Finset.mem_image_of_mem _ hk'.1, hk'.2⟩
@@ -39363,6 +39402,7 @@ theorem fibre_profile_le_full_uniform {p₀ p₁ p₂ R : ℝ} (hp₀ : 0 < p₀
 
 
 set_option maxHeartbeats 1000000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- **The fibre assembly, uniform in the endpoint scales and the centres.** -/
 theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableSpace X]
     (μ : Measure X) [SigmaFinite μ]
@@ -39375,9 +39415,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
       ∀ (D₁ D₂ d₁ d₂ : ℝ), 0 < D₁ → 0 < D₂ →
       ∀ (K₀ K₁ K₂ : Finset ℤ) (m₀ m₁ m₂ : ℤ → ℝ),
       (∀ k, 0 < m₀ k) → (∀ k, 0 < m₁ k) → (∀ k, 0 < m₂ k) →
-      (∑ k ∈ K₀, ((2:ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
-      (∑ k ∈ K₁, ((2:ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
-      (∑ k ∈ K₂, ((2:ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
+      (∑ k ∈ K₀, ((2 : ℝ) ^ k) ^ p₀ * m₀ k ≤ 1) →
+      (∑ k ∈ K₁, ((2 : ℝ) ^ k) ^ p₁ * m₁ k ≤ 1) →
+      (∑ k ∈ K₂, ((2 : ℝ) ^ k) ^ p₂ * m₂ k ≤ 1) →
       ∀ u : ℤ × ℤ × ℤ → X → ℝ, (∀ k, Measurable (u k)) →
       (∀ k ∈ K₀ ×ˢ (K₁ ×ˢ K₂), weakNorm μ (u k) ρ₁ ≤ ENNReal.ofReal
         (D₁ * layerSizeC m₀ m₁ m₂ p₀ p₁ p₂ δ d₁ d₂ k * layerProd m₀ m₁ m₂ k ^ ε)) →
@@ -39401,9 +39441,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
   set c₂ : ℝ := ρ₂ / (ρ₂ - 1) with hc₂
   have hc₁pos : 0 < c₁ := div_pos (by linarith) (by linarith)
   have hc₂pos : 0 < c₂ := div_pos (by linarith) (by linarith)
-  set c₃' : ℝ := max c₁ c₂ * (2:ℝ) ^ ((1 + 6 * ε) / 2) with hc₃'
+  set c₃' : ℝ := max c₁ c₂ * (2 : ℝ) ^ ((1 + 6 * ε) / 2) with hc₃'
   have hc₃'nn : 0 ≤ c₃' := by positivity
-  set B₀ : ℝ := c₃' ^ R * Cfp + (2:ℝ) ^ R * E' with hB₀
+  set B₀ : ℝ := c₃' ^ R * Cfp + (2 : ℝ) ^ R * E' with hB₀
   have hB₀pos : 0 < B₀ := by positivity
   refine ⟨C₀ * B₀, by positivity, ?_⟩
   intro D₁ D₂ d₁ d₂ hD₁ hD₂ K₀ K₁ K₂ m₀ m₁ m₂ hm₀ hm₁ hm₂ hb₀ hb₁ hb₂ u hu hw₁ hw₂
@@ -39451,7 +39491,7 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
     intro i
     simp only [hv]
     refine Finset.sum_congr rfl fun k hk ↦ ?_
-    simp only [hu', if_pos (hFsub i hk)]
+    simp only [hu', ite_eq_left (hFsub i hk)]
   have hvmeas : ∀ i, Measurable (v i) := by
     intro i
     simp only [hv]
@@ -39460,9 +39500,9 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
     funext x; simp [Finset.sum_apply]
   -- weak bounds on the pieces
   set Γ₁ : ℤ → ℝ := fun i ↦ if i ∈ I then c₁ * ∑ k ∈ F i, Γa k
-    else κ * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₁
+    else κ * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₁
   set Γ₂ : ℤ → ℝ := fun i ↦ if i ∈ I then c₂ * ∑ k ∈ F i, Γb k
-    else κ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₂
+    else κ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) with hΓ₂
   have hFne : ∀ i ∈ I, (F i).Nonempty := by
     intro i hi
     obtain ⟨k, hk, rfl⟩ := Finset.mem_image.1 hi
@@ -39499,12 +39539,14 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
       rw [show (0 : X → ℝ) = fun _ ↦ (0:ℝ) from rfl, weakNorm_zero μ (by linarith)]
       exact bot_le
   -- the balancing on each fibre
-  have hbal : ∀ i ∈ I, (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
+  have hbal : ∀ i ∈ I, (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
       ≤ c₃ * ∑ k ∈ F i, G k := by
     intro i hi
     have hterm : ∀ k ∈ F i,
-        (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)
-        ∧ (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
+        (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 :
+          ℝ) *
+          G k)
+        ∧ (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) * G k := by
       intro k hk
       have hidxk : idx k = i := (Finset.mem_filter.1 hk).2
       have hwin := fibre_window (hm₀ k.1) (hm₁ k.2.1) (hm₂ k.2.2) (ε := ε) (c₀ := c₀) hε
@@ -39516,29 +39558,29 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
       exact balance_le (hGpos k).le (hQpos k) hD₁ hD₂ rfl rfl
         (by simp only [hc₀, hQ, layerProd]) hwin.1 hwin.2
     have hS : 0 ≤ ∑ k ∈ F i, G k := Finset.sum_nonneg fun k _ ↦ (hGpos k).le
-    have hA : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
-        ≤ c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₁, if_pos hi]
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
-          = ∑ k ∈ F i, c₁ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
+    have hA : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γ₁ i
+        ≤ c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₁, ite_eq_left hi]
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (c₁ * ∑ k ∈ F i, Γa k)
+          = ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * Γa k) := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ ∑ k ∈ F i, c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
+        _ ≤ ∑ k ∈ F i, c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * ((D₁ * D₂) ^ (1 / 2 : ℝ) * G k)) :=
             Finset.sum_le_sum fun k hk ↦ mul_le_mul_of_nonneg_left (hterm k hk).1 hc₁pos.le
-        _ = c₁ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ = c₁ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-    have hB : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-        ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
-      simp only [hΓ₂, if_pos hi]
-      have hpow : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) = (2:ℝ) ^ (1 / 2 * (i:ℝ)) := by
+    have hB : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+        ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+      simp only [hΓ₂, ite_eq_left hi]
+      have hpow : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) = (2 : ℝ) ^ (1 / 2 * (i:ℝ)) := by
         rw [← Real.rpow_add h2]; congr 1; ring
-      have hone : (1:ℝ) ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) := by
-        calc (1:ℝ) = (2:ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
-          _ ≤ (2:ℝ) ^ ((1 + 6 * ε) / 2) :=
+      have hone : (1:ℝ) ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) := by
+        calc (1:ℝ) = (2 : ℝ) ^ (0:ℝ) := (Real.rpow_zero 2).symm
+          _ ≤ (2 : ℝ) ^ ((1 + 6 * ε) / 2) :=
               Real.rpow_le_rpow_of_exponent_le (by norm_num) (by positivity)
-      calc (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
-          = c₂ * ∑ k ∈ F i, (2:ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
+      calc (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (c₂ * ∑ k ∈ F i, Γb k))
+          = c₂ * ∑ k ∈ F i, (2 : ℝ) ^ (1 / 2 * (i:ℝ)) * Γb k := by
             rw [Finset.mul_sum, Finset.mul_sum, Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by rw [← hpow]; ring
         _ ≤ c₂ * ∑ k ∈ F i, (D₁ * D₂) ^ (1 / 2 : ℝ) * G k :=
@@ -39546,79 +39588,81 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
         _ = c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ) * ∑ k ∈ F i, G k := by
             rw [Finset.mul_sum, Finset.mul_sum]
             exact Finset.sum_congr rfl fun k _ ↦ by ring
-        _ ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
+        _ ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) * ∑ k ∈ F i, G k := by
             have hDD : 0 ≤ (D₁ * D₂) ^ (1 / 2 : ℝ) := Real.rpow_nonneg (by positivity) _
             have : c₂ * (D₁ * D₂) ^ (1 / 2 : ℝ)
-                ≤ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
+                ≤ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * (D₁ * D₂) ^ (1 / 2 : ℝ)) := by
               refine mul_le_mul_of_nonneg_left ?_ hc₂pos.le
               calc (D₁ * D₂) ^ (1 / 2 : ℝ) = 1 * (D₁ * D₂) ^ (1 / 2 : ℝ) := by ring
                 _ ≤ _ := mul_le_mul_of_nonneg_right hone hDD
             exact mul_le_mul_of_nonneg_right this hS
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le]
-    have hXκ : 0 < (2:ℝ) ^ ((1 + 6 * ε) / 2) * κ :=
+    have hXκ : 0 < (2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ :=
       mul_pos (Real.rpow_pos_of_pos h2 _) hκpos
     have key : ∀ d : ℝ, d ≤ max c₁ c₂ →
-        d * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * κ) ≤ c₃ := by
+        d * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ) ≤ c₃ := by
       intro d hd
       rw [hc₃def, hc₃']
       have hmul := mul_le_mul_of_nonneg_right hd hXκ.le
-      calc d * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * κ)
-          ≤ max c₁ c₂ * ((2:ℝ) ^ ((1 + 6 * ε) / 2) * κ) := hmul
-        _ = max c₁ c₂ * (2:ℝ) ^ ((1 + 6 * ε) / 2) * κ := by ring
+      calc d * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ)
+          ≤ max c₁ c₂ * ((2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ) := hmul
+        _ = max c₁ c₂ * (2 : ℝ) ^ ((1 + 6 * ε) / 2) * κ := by ring
     refine max_le (le_trans hA ?_) (le_trans hB ?_)
     · exact mul_le_mul_of_nonneg_right (key c₁ (le_max_left _ _)) hS
     · exact mul_le_mul_of_nonneg_right (key c₂ (le_max_right _ _)) hS
   -- the tail pieces
-  have htail : ∀ i, i ∉ I → (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)
-      ≤ 2 * κ * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+  have htail : ∀ i, i ∉ I → (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)
+      ≤ 2 * κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
     intro i hi
-    simp only [hΓ₁, hΓ₂, if_neg hi]
-    have e1 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))
-        = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
+    simp only [hΓ₁, hΓ₂, ite_eq_right hi]
+    have e1 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R *
+      |(i:ℝ)|)))
+        = (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
       rw [← mul_assoc, ← Real.rpow_add h2]; simp
-    have e2 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-          ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))
-          = ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (i:ℝ) * (2:ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
-            (2:ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
+    have e2 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = (2 : ℝ) ^ (-(R * |(i:ℝ)|))
+          := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+          ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))
+          = ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (i:ℝ) * (2 : ℝ) ^ (-(1 / 2 * (i:ℝ)))) *
+            (2 : ℝ) ^ (-(R * |(i:ℝ)|)) by ring,
         ← Real.rpow_add h2, ← Real.rpow_add h2]
-      have : -(1 / 2 * (i:ℝ)) + (i:ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
+      have : -(1 / 2 * (i:ℝ)) + (i : ℝ) + -(1 / 2 * (i:ℝ)) = 0 := by ring
       rw [this, Real.rpow_zero, one_mul]
-    have q1 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) *
-        (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2:ℝ) ^ (1 / 2 * (i:ℝ)) *
-        (2:ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        ((2:ℝ) ^ (1 / 2 * (i:ℝ)) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))) from by ring, e1]
-    have q2 : (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (κ *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|)))))
-        = κ * (2:ℝ) ^ (-(R * |(i:ℝ)|)) := by
-      rw [show (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) * (κ *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))) = κ *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2:ℝ) ^ (i:ℝ) *
-        ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2:ℝ) ^ (-(R * |(i:ℝ)|))))) from by ring, e2]
+    have q1 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) *
+        (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (κ * ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) *
+        (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) = κ * ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        ((2 : ℝ) ^ (1 / 2 * (i:ℝ)) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))) from by ring, e1]
+    have q2 : (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (κ *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|)))))
+        = κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|)) := by
+      rw [show (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) * (κ *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))) = κ *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * ((2 : ℝ) ^ (i:ℝ) *
+        ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * (2 : ℝ) ^ (-(R * |(i:ℝ)|))))) from by ring, e2]
     rw [mul_max_of_nonneg _ _ (Real.rpow_pos_of_pos h2 _).le, q1, q2, max_self]
     have := Real.rpow_pos_of_pos h2 (-(R * |(i:ℝ)|))
     nlinarith [hκpos]
   -- the profile bound
-  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
+  have hprofile : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ BwR := by
     intro T
-    have hsplit : ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
+    have hsplit : ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+        = ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          + ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R :=
       (Finset.sum_filter_add_sum_filter_not T (fun i ↦ i ∈ I) _).symm
     rw [hsplit]
-    have hnn : ∀ i : ℤ, 0 ≤ (2:ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i) :=
+    have hnn : ∀ i : ℤ, 0 ≤ (2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) * max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i) :=
       fun i ↦ mul_nonneg (Real.rpow_pos_of_pos h2 _).le
         (le_trans (hΓ₁pos i).le (le_max_left _ _))
-    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+    have h1 : ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ c₃ ^ R * Cfp := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∈ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
           ≤ ∑ i ∈ T.filter (fun i ↦ i ∈ I), (c₃ * ∑ k ∈ F i, G k) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (hbal i (Finset.mem_filter.1 hi).2) hRpos.le
@@ -39630,30 +39674,30 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
             refine mul_le_mul_of_nonneg_left ?_ (Real.rpow_nonneg hc₃ _)
             exact hfp c₀ d₁ d₂ K₀ K₁ K₂ m₀ m₁ m₂ (fun k _ ↦ hm₀ k) (fun k _ ↦ hm₁ k)
               (fun k _ ↦ hm₂ k) hb₀ hb₁ hb₂ _
-    have htailR : ∀ i : ℤ, (2 * κ * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
-        ≤ (2 * κ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+    have htailR : ∀ i : ℤ, (2 * κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R
+        ≤ (2 * κ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
       intro i
       rw [Real.mul_rpow (by positivity) (Real.rpow_pos_of_pos h2 _).le, ← Real.rpow_mul h2.le,
         sub_zero]
       refine mul_le_mul_of_nonneg_left ?_ (by positivity)
       refine Real.rpow_le_rpow_of_exponent_le (by norm_num) ?_
       nlinarith [mul_nonneg (mul_nonneg hRpos.le (abs_nonneg (i:ℝ))) (sub_nonneg.2 hR.le)]
-    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-        max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2 * κ) ^ R * E' := by
-      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-            max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
-          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ * (2:ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
+    have h2' : ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+        max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (2 * κ) ^ R * E' := by
+      calc ∑ i ∈ T.filter (fun i ↦ i ∉ I), ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+            max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R
+          ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ * (2 : ℝ) ^ (-(R * |(i:ℝ)|))) ^ R :=
             Finset.sum_le_sum fun i hi ↦
               Real.rpow_le_rpow (hnn i) (htail i (Finset.mem_filter.1 hi).2) hRpos.le
-        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ) ^ R * (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
+        _ ≤ ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 * κ) ^ R * (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) :=
             Finset.sum_le_sum fun i _ ↦ htailR i
-        _ = (2 * κ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2:ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
+        _ = (2 * κ) ^ R * ∑ i ∈ T.filter (fun i ↦ i ∉ I), (2 : ℝ) ^ (-(R * |(i:ℝ) - 0|)) := by
             rw [Finset.mul_sum]
         _ ≤ (2 * κ) ^ R * E' := mul_le_mul_of_nonneg_left (hE' 0 _) (by positivity)
     rw [hBwR]
     linarith [h1, h2']
-  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2:ℝ) ^ (-(1 / 2 * (i:ℝ))) *
-      max (Γ₁ i) ((2:ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
+  have hprofile' : ∀ T : Finset ℤ, ∑ i ∈ T, ((2 : ℝ) ^ (-(1 / 2 * (i:ℝ))) *
+      max (Γ₁ i) ((2 : ℝ) ^ (i:ℝ) * Γ₂ i)) ^ R ≤ (BwR ^ (1 / R)) ^ R := by
     intro T
     rw [← Real.rpow_mul hBwRpos.le, one_div_mul_cancel (ne_of_gt hRpos), Real.rpow_one]
     exact hprofile T
@@ -39679,6 +39723,7 @@ theorem lintegral_rpow_sum_le_of_layer_weak_bounds_full {X : Type*} [MeasurableS
 
 
 set_option maxHeartbeats 1000000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- **The normalised strong bound, uniform in the operator and the endpoint
 constants.** -/
 theorem exists_lintegral_rpow_le_of_normalized_full
@@ -39799,21 +39844,21 @@ theorem exists_lintegral_rpow_le_of_normalized_full
     · exact (Finset.mem_filter.1 h).2
     · exact zero_lt_one
   have hm'eq : ∀ j n, n ∈ K j → m' j n = m j n := by
-    intro j n hn; simp only [hm', if_pos hn]
+    intro j n hn; simp only [hm', ite_eq_left hn]
   -- budgets
-  have hbudget : ∀ j, ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * m' j k ≤ 1 := by
+  have hbudget : ∀ j, ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * m' j k ≤ 1 := by
     intro j
     have hfin : eLpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ ≠ ∞ := by
       have hmem : MemLp (⇑(f j)) (ENNReal.ofReal (p j)) μ :=
         (SimpleFunc.memLp_iff_finMeasSupp (by simp [hppos j]) ENNReal.ofReal_ne_top).2 (hf j)
       exact hmem.eLpNorm_ne_top
-    calc ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * m' j k
-        = ∑ k ∈ K j, ((2:ℝ) ^ k) ^ (p j) * (μ (dyadicLevelSet (⇑(f j)) k)).toReal :=
+    calc ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * m' j k
+        = ∑ k ∈ K j, ((2 : ℝ) ^ k) ^ (p j) * (μ (dyadicLevelSet (⇑(f j)) k)).toReal :=
           Finset.sum_congr rfl fun k hk ↦ by rw [hm'eq j k hk]; rfl
       _ ≤ (eLpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ).toReal ^ (p j) :=
           sum_zpow_rpow_mul_toReal_le (f j).measurable (hppos j) hfin _
       _ = lpNorm (⇑(f j)) (ENNReal.ofReal (p j)) μ ^ (p j) := by
-          rw [toReal_eLpNorm (f j).aestronglyMeasurable]
+          rw [toReal_eLpNorm ]
       _ ≤ 1 := Real.rpow_le_one lpNorm_nonneg (hnorm j) (hppos j).le
   -- the layer terms
   set u : ℤ × ℤ × ℤ → X → ℝ := layerTerm T (fun j ↦ ⇑(f j)) with hu
@@ -39885,7 +39930,7 @@ theorem exists_lintegral_rpow_le_of_normalized_full
 
 
 /-- **`ext:interpolation` in its uniform reading, for operators with measurable
-outputs.**  One constant, depending only on the exponent vectors and the
+outputs.** One constant, depending only on the exponent vectors and the
 weights, converts the four weak endpoint bounds of any trilinear operator on
 simple functions — at any endpoint constants — into the strong bound at the
 interior point, together with membership of the output in `L^R`. -/
@@ -39948,7 +39993,7 @@ theorem exists_fourVertex_uniform_bound_of_measurable
     have hae : (⇑(f j₀) : X → ℝ) =ᵐ[μ] 0 :=
       (lpNorm_eq_zero hmem (by simp [hppos j₀])).1 hj₀
     have hzero' : lpNorm (⇑(f j₀)) (ENNReal.ofReal (P 0 j₀)) μ = 0 := by
-      rw [← toReal_eLpNorm (f j₀).aestronglyMeasurable, eLpNorm_congr_ae hae, eLpNorm_zero]
+      rw [← toReal_eLpNorm , eLpNorm_congr_ae hae, eLpNorm_zero]
       simp
     have hprod : ∏ j : Fin 3, lpNorm (⇑(f j)) (ENNReal.ofReal (P 0 j)) μ = 0 :=
       Finset.prod_eq_zero (Finset.mem_univ j₀) hzero'
@@ -39964,8 +40009,8 @@ theorem exists_fourVertex_uniform_bound_of_measurable
       simp
     refine ⟨(memLp_congr_ae hae).2 hzeroLp, ?_⟩
     have hnorm0 : lpNorm (T (fun j ↦ ⇑(f j))) (ENNReal.ofReal R) μ = 0 := by
-      rw [← toReal_eLpNorm (hTmeas f).aestronglyMeasurable, eLpNorm_congr_ae hae,
-        eLpNorm_zero']
+      rw [← toReal_eLpNorm , eLpNorm_congr_ae hae,
+        eLpNorm_fun_zero]
       simp
     rw [hnorm0]
     exact hRHS
@@ -40038,7 +40083,7 @@ theorem fourVertexMarcinkiewicz_of_uniformMeasurable
   obtain ⟨C, hC0, hmain⟩ := hU P r ϑ p R hP hr hrsum hindep hϑpos hϑsum hp hR hR1
   exact ⟨C, hC0, fun f hf ↦ (hmain A hA T hlin hTmeas hweak f hf).2⟩
 
-/-- **`ext:interpolation` on `E3`.**  Lebesgue measure on `E3` is σ-finite, so
+/-- **`ext:interpolation` on `E3`.** Lebesgue measure on `E3` is σ-finite, so
 the four-vertex interpolation theorem holds there with no hypothesis. -/
 theorem fourVertexMarcinkiewiczUniformMeasurable_volume_E3 :
     FourVertexMarcinkiewiczUniformMeasurable (volume : Measure E3) :=
@@ -40056,7 +40101,7 @@ theorem lem_fiber_kernel :
       |ModelCoordinateConvolution j f (activeModelKernel i j u) s x| ≤
         C * dyadicBracketShellConstant * sourceWeight u ^ 10 *
           coordinateDyadicBallMaximal j (fun y ↦ (f y : ℂ)) x :=
-  abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal 
+  abs_activeModelCoordinateConvolution_le_coordinateDyadicBallMaximal
 
 /-- **`lem:fiber_cz`** (Measurable fiber decomposition).
 
@@ -40078,7 +40123,7 @@ theorem lem_fiber_cz
 /-- **`lem:interval_tails`** (Tails of disjoint intervals).
 
 For pairwise disjoint bounded intervals of positive length with
-`∑_I |I| < ∞`, put `h(x) = ∑_I (1 + |x - c_I|/|I|)^{-2}`.  For `1 ≤ p < ∞`,
+`∑_I |I| < ∞`, put `h(x) = ∑_I (1 + |x - c_I|/|I|)^{-2}`. For `1 ≤ p < ∞`,
 `‖h‖_p ≤ C_p (∑_I |I|)^{1/p}`.
 
 This is the case `p > 1`; the endpoint `p = 1` is

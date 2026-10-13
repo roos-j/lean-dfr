@@ -1037,3 +1037,43 @@ simp set is reproduced downstream.
 
 Merged with main on 2026-10-01: the module paths are `DFR.Auto.Twisted.*` and
 `namespace Twisted` wraps the whole development, both as main requires.
+
+## 2026-10-12T19:51:07.5950928-04:00 - Palomar toolchain and warning maintenance
+
+User requests updating this repository to a Palomar-compatible Lean version and fixing all Lean and linter warnings at their causes, without suppression. This authorizes repository-wide compatibility maintenance and dependency-pin updates, superseding the old v4.33.0-rc1 pin. Preserve mathematical statements and existing Lake targets. Mathematical task ownership is unchanged. Exact prompt: raw.md.
+
+## 2026-10-12T21:54:24-04:00 - Palomar compatibility verification
+
+Pinned Lean to `leanprover/lean4:v4.35.0-rc3`, with `lean_spherical` at
+`2b0e2bbf35cdf45ab99d1d77b2dea37b214fe236` and its matching Mathlib revision
+`c55e6e786f49471c72fbddbec5415808896aec1e`. This exceeds Palomar's minimum
+`v4.35.0-rc2` in the official template's
+[verification script](https://raw.githubusercontent.com/PalomarRegistry/PalomarTemplate/main/scripts/verify-comparator.sh).
+Existing Lake targets and the `Auto` namespace are preserved. The user's module
+scaffolding is preserved; `DFR.Defs` now publicly imports Mathlib so that
+`DFR.Theorems` can use `MeasureTheory` through its public import.
+
+Validation:
+
+- `lake build DFR.Auto.Reduction.Reduction`: all generated modules compile;
+  zero warnings from `DFR/` with the configured Mathlib standard linter set.
+- `lake build`: successful for the existing default target.
+- `lake build DFR.Defs DFR.Theorems DFR.Auto.FourierCompatibility`: successful.
+- Every changed generated source also passed direct `lake env lean` checks;
+  the exact required command `lake env lean DFR/Auto/SmoothingIneq2D/Smoothing2D.lean`
+  passed with no output. Other direct checks enabled `linter.mathlibStandardSet`
+  and used the configured `maxSynthPendingDepth=3`.
+- Axiom audits for `Auto.smoothing_theorem5`, `Auto.monomial_smoothing`,
+  `Auto.mainTheorem`, `Auto.Twisted.thm_main`, and `Auto.thm_main` report exactly
+  `propext`, `Classical.choice`, and `Quot.sound`. Their theorem statements are unchanged.
+- No warning suppressions, diagnostic `simp?` probes, placeholders, or extra axioms
+  were introduced. Existing unused-tactic suppression was removed. `git diff --check` passes.
+
+Warnings from the external `LeanSpherical/` dependency remain visible (636 in the
+replayed default build, 243 in the generated-development build). No dependency
+checkout was patched or its diagnostics suppressed. Mathematical task ownership
+and source-completion statuses are unchanged by this maintenance.
+
+## 2026-10-12T21:59:28-04:00 - Publication authorization
+
+The user authorizes committing and pushing the verified Palomar toolchain and warning-cleanup changes on the current branch (`main`) to the configured remote (`origin`, https://github.com/roos-j/lean-dfr). Exact prompt: `ok commit and push`; also recorded in `raw.md`.

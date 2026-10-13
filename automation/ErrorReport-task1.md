@@ -88,3 +88,11 @@ resolutions here as required by the autoformalize skill.
 2026-09-26T10:39:43-04:00 - Section 7, (7.5)-(7.7), lines 1274-1305: the globalization uses a continuous average of translated cutoffs in place of a discrete partition; the global exponent is s = σ/39 (from the (7.3) route above). Only the exponent value changes; (T) is unchanged.
 
 2026-09-26T10:39:43-04:00 - Final fidelity check: `Auto.monomial_smoothing` states (T) with `supp ĝ_j ⊆ {|ξ_j| ≥ λ}` expressed as `𝓕 g_j ξ ≠ 0 → λ ≤ |ξ_j|` (equivalent, the set being closed), `‖ψ‖_∞ = ⨆ t, |ψ t|`, `‖ψ'‖_1 = ∫ |deriv ψ|`, and δ independent of ψ. Its axioms are propext, Classical.choice, Quot.sound.
+
+2026-10-12T21:54:24-04:00 - Toolchain maintenance: migrated supporting proofs to Mathlib's
+measurability-sensitive `eLpNorm` API and current theorem names. Added or derived
+measurability where required, removed genuinely unused hypotheses and tactics,
+and corrected linter-reported formatting. This records API compatibility work,
+not a new discrepancy in the mathematical source. Exported target statements
+are unchanged; direct checks, builds, and the allowed-axiom audit pass. External
+LeanSpherical warnings are tracked in `instructions.md`.

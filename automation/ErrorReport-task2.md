@@ -1793,3 +1793,11 @@ Hoelder with exponents `u_i / 2` and the disjointness of the cubes (`Auto.holder
 the product of the global norms, as in the blueprint.  The statement is for finite-valued inputs of
 bounded support; the extension to all finite-norm inputs is performed once for the final
 estimate.  Status: equivalent argument recorded.
+
+2026-10-12T21:54:24-04:00 - Toolchain maintenance: migrated supporting proofs to Mathlib's
+measurability-sensitive `eLpNorm` API and current theorem names. Added or derived
+measurability where required, removed genuinely unused hypotheses and tactics,
+and corrected linter-reported formatting. This records API compatibility work,
+not a new discrepancy in the mathematical source. Exported target statements
+are unchanged; direct checks, builds, and the allowed-axiom audit pass. External
+LeanSpherical warnings are tracked in `instructions.md`.

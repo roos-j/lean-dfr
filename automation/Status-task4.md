@@ -111,3 +111,9 @@ complete | line 573 | the cases `T^{MH,2}`, `T^{MH,3}` | 2026-09-26T08:33:02-04:
 status | exact source location | brief mathematical step | ISO 8601 timestamp with offset
 --- | --- | --- | ---
 complete | `thm:main`, lines 139-148 | `‖T(f)‖_p ≤ ‖T^L‖ + ∑‖T^{ML,n}‖ + ∑‖T^{MH,n}‖ + ‖T^H‖` | 2026-09-26T08:36:08-04:00
+
+## Palomar toolchain revalidation
+
+Source target | Exported declaration and module | Verification | Local verification time
+--- | --- | --- | ---
+main.tex, thm:main, lines 139-148 | `Auto.thm_main` in `DFR.Auto.Reduction.Reduction` | Lean v4.35.0-rc3; direct checks and full builds pass; zero repository warnings; axioms: propext, Classical.choice, Quot.sound | 2026-10-12T21:54:24-04:00

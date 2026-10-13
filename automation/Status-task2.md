@@ -594,3 +594,9 @@ complete | `new:adjoint-all-exponents`, the convex completion exponents `τ`, `v
 complete | `new:adjoint-all-exponents`, interpolation and extension to full `L^p` | `Auto.allExponentsBdd`, `Auto.eLpNorm_adjT_crude`, `Auto.norm_adjT_le_adjT_norm`, `Auto.ae_lt_top_of_eLpNorm`, `Auto.adjT_truncIn_eventually`, `Auto.allExponentsCont` | 2026-09-25T20:20:43-04:00
 complete | `new:exact-lean-target`, zero, infinite and finite-norm cases, `KoszAdjoint j` | `Auto.Astar_congr`, `Auto.koszSlots`, `Auto.Astar_eq_adjT`, `Auto.sum_three_eq`, `Auto.prod_erase_eq`, `Auto.eq_zero_of_eLpNorm_eq_zero`, `Auto.koszAdjoint` | 2026-09-25T20:31:04-04:00
 complete | `thm:main` in the original formulation, with `KoszAdjoint` and `KoszSubunitScaleOne` discharged | `Auto.mainTheorem` | 2026-09-25T20:31:04-04:00
+
+## Palomar toolchain revalidation
+
+Source target | Exported declaration and module | Verification | Local verification time
+--- | --- | --- | ---
+task_2_smoothingineq3d_blueprint.tex, thm:main | `Auto.mainTheorem` in `DFR.Auto.SmoothingIneq3D.Smoothing3D` | Lean v4.35.0-rc3; direct checks and full builds pass; zero repository warnings; axioms: propext, Classical.choice, Quot.sound | 2026-10-12T21:54:24-04:00

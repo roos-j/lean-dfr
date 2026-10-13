@@ -7,6 +7,7 @@ import DFR.Auto.SmoothingIneq3D.Smoothing3D
 import DFR.Auto.MonomialSmoothing
 import DFR.Auto.Twisted
 import LeanSpherical.Auto.MikhlinHormander
+import LeanSpherical.Auto.CalderonZygmund
 
 /-!
 # Task 4: the 3D simplex Hilbert transform along the moment curve
@@ -33,6 +34,15 @@ open scoped ENNReal SchwartzMap
 
 namespace Auto
 
+/-- Fatou's inequality, with measurability of the limit obtained from the sequence. -/
+theorem eLpNorm_limit_le_liminf {X : Type*} [MeasurableSpace X] {μ : Measure X}
+    {p : ℝ≥0∞} {f : ℕ → X → ℂ} (hf : ∀ n, AEStronglyMeasurable (f n) μ)
+    (g : X → ℂ) (ht : ∀ᵐ x ∂μ, Tendsto (fun n => f n x) atTop (𝓝 (g x))) :
+    eLpNorm g p μ ≤ Filter.liminf (fun n => eLpNorm (f n) p μ) atTop :=
+  Lp.eLpNorm_lim_le_liminf_eLpNorm hf g (aestronglyMeasurable_of_tendsto_ae (u := atTop) hf ht) ht
+
+attribute [local fun_prop] Twisted.coordinateDyadicBallMaximal_measurable
+
 noncomputable section
 
 /-! ## Section 1: the operator `T` -/
@@ -57,7 +67,7 @@ theorem integral_abs_gt_eq_pvOdd {F : ℝ → ℂ} (hc : Continuous F) (hi : Int
     {ε : ℝ} (hε : 0 < ε) :
     ∫ t in {t : ℝ | ε < |t|}, F t / t = ∫ t in Ioi ε, pvOdd F t := by
   have hset : {t : ℝ | ε < |t|} = Iio (-ε) ∪ Ioi ε := by
-    ext t; simp only [mem_setOf_eq, mem_union, mem_Iio, mem_Ioi, lt_abs]; constructor
+    ext t; simp only [mem_ofPred_eq, mem_union, mem_Iio, mem_Ioi, lt_abs]; constructor
     · rintro (h | h) <;> [right; left] <;> linarith
     · rintro (h | h) <;> [right; left] <;> linarith
   have hint : ∀ G : ℝ → ℂ, Continuous G → Integrable G → ∀ s : Set ℝ, MeasurableSet s →
@@ -215,7 +225,7 @@ theorem simplexT_eq (f : Fin 3 → SchwartzMap E3 ℂ) (x : E3) :
 def lpBump : ContDiffBump (0 : ℝ) := ⟨1, 2, by norm_num, by norm_num⟩
 
 /-- The function `φ` of `blueprints/main.tex`, lines 273-276: a smooth even function with
-`1_{|ζ| ≤ 1} ≤ φ ≤ 1_{|ζ| ≤ 2}`.  The source fixes an arbitrary such function; `lpPhi` is one
+`1_{|ζ| ≤ 1} ≤ φ ≤ 1_{|ζ| ≤ 2}`. The source fixes an arbitrary such function; `lpPhi` is one
 (`lpPhi_eq_one`, `lpPhi_eq_zero`, `lpPhi_nonneg`, `lpPhi_le_one`, `lpPhi_neg`, `contDiff_lpPhi`). -/
 def lpPhi (ζ : ℝ) : ℝ := lpBump ζ
 
@@ -345,7 +355,8 @@ theorem hasSum_lpPsiJ {ζ : ℝ} (hζ : ζ ≠ 0) : HasSum (fun j : ℤ => lpPsi
 
 /-- A real function of one variable, smooth with compact support, lifted to the multiplier
 `ξ ↦ m(ξ_ℓ)` on `ℝ^3`, has temperate growth. -/
-theorem hasTemperateGrowth_coord {m : ℝ → ℝ} (hc : HasCompactSupport m) (hd : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) m)
+theorem hasTemperateGrowth_coord {m : ℝ → ℝ} (hc : HasCompactSupport m) (hd : ContDiff ℝ ((⊤ : ℕ∞)
+  : WithTop ℕ∞) m)
     (ℓ : Fin 3) : (fun ξ : E3 => ((m (ξ ℓ) : ℝ) : ℂ)).HasTemperateGrowth := by
   have h1 : (fun t : ℝ => ((m t : ℝ) : ℂ)).HasTemperateGrowth :=
     (hc.comp_left Complex.ofReal_zero).hasTemperateGrowth (Complex.ofRealCLM.contDiff.comp hd)
@@ -814,11 +825,12 @@ theorem norm_lpDelta_le (ℓ : Fin 3) (m : ℤ) (g : 𝓢(E3, ℂ)) (y : E3) :
   refine (norm_integral_le_integral_norm _).trans (le_of_eq ?_)
   unfold deltaMajor
   congr 1; funext ξ
-  rw [Circle.smul_def, smul_eq_mul, norm_mul, Circle.norm_coe, one_mul, norm_mul, psiCoord, Complex.norm_real,
+  rw [Circle.smul_def, smul_eq_mul, norm_mul, Circle.norm_coe, one_mul, norm_mul, psiCoord,
+    Complex.norm_real,
     Real.norm_eq_abs]
 
 theorem deltaMajor_nonneg (ℓ : Fin 3) (m : ℤ) (g : 𝓢(E3, ℂ)) : 0 ≤ deltaMajor ℓ m g :=
-  integral_nonneg fun ξ => mul_nonneg (abs_nonneg _) (norm_nonneg _)
+  integral_nonneg fun _ => mul_nonneg (abs_nonneg _) (norm_nonneg _)
 
 /-- `∑_m ‖Δ^{(ℓ)}_m g‖_∞ ≤ ∑_m c_m ≤ 3 ‖ĝ‖_1 < ∞`. -/
 theorem summable_deltaMajor (ℓ : Fin 3) (g : 𝓢(E3, ℂ)) :
@@ -862,24 +874,27 @@ theorem hasSum_lpDelta (ℓ : Fin 3) (g : 𝓢(E3, ℂ)) (y : E3) :
   rw [hinv]
   refine hasSum_integral_of_dominated_convergence
     (fun m ξ => |lpPsiJ m (ξ ℓ)| * ‖𝓕 (g : E3 → ℂ) ξ‖) (fun m => ?_) (fun m => ?_) ?_ ?_ ?_
-  · exact (Real.continuous_fourierChar.comp (continuous_id.inner continuous_const)).aestronglyMeasurable.smul
+  · exact (Real.continuous_fourierChar.comp (continuous_id.inner
+      continuous_const)).aestronglyMeasurable.smul
       ((Complex.continuous_ofReal.comp ((continuous_lpPsiJ m).comp
         (continuous_evalCoord ℓ))).aestronglyMeasurable.mul
         (𝓕 g).integrable.aestronglyMeasurable)
   · refine Eventually.of_forall fun ξ => le_of_eq ?_
-    rw [Circle.smul_def, smul_eq_mul, norm_mul, Circle.norm_coe, one_mul, norm_mul, psiCoord, Complex.norm_real,
+    rw [Circle.smul_def, smul_eq_mul, norm_mul, Circle.norm_coe, one_mul, norm_mul, psiCoord,
+      Complex.norm_real,
       Real.norm_eq_abs]
   · exact Eventually.of_forall hb
   · refine Integrable.mono' ((𝓕 g).integrable.norm.const_mul 3) ?_
       (Eventually.of_forall fun ξ => ?_)
     · have e : (fun ξ : E3 => ∑' m : ℤ, |lpPsiJ m (ξ ℓ)| * ‖𝓕 (g : E3 → ℂ) ξ‖)
-          = fun ξ => ((∑' m : ℤ, (|lpPsiJ m (ξ ℓ)| * ‖𝓕 (g : E3 → ℂ) ξ‖).toNNReal : NNReal) : ℝ) := by
+          = fun ξ => ((∑' m : ℤ, (|lpPsiJ m (ξ ℓ)| * ‖𝓕 (g : E3 → ℂ) ξ‖).toNNReal : NNReal) : ℝ)
+            := by
         funext ξ
         rw [NNReal.coe_tsum]
         congr 1; funext m
         rw [Real.coe_toNNReal _ (mul_nonneg (abs_nonneg _) (norm_nonneg _))]
       rw [e]
-      refine (Measurable.nnreal_tsum fun m => ?_).coe_nnreal_real.aestronglyMeasurable
+      refine (Measurable.tsum fun m => ?_).coe_nnreal_real.aestronglyMeasurable
       exact ((((continuous_lpPsiJ m).comp (continuous_evalCoord ℓ)).abs.measurable.mul
         (SchwartzMap.continuous (𝓕 g)).norm.measurable)).real_toNNReal
     · rw [Real.norm_eq_abs, abs_of_nonneg (tsum_nonneg fun m =>
@@ -951,7 +966,8 @@ theorem integrable_psi_div (j : ℤ) :
     refine HasCompactSupport.intro (isCompact_Icc (a := -(2 * 2 ^ (-j))) (b := 2 * 2 ^ (-j)))
       fun t ht => lpPsi_eq_zero_of_le_abs ?_
     have hq : (0 : ℝ) < 2 ^ (-j) := zpow_pos two_pos _
-    have e : (2 : ℝ) ^ j * 2 ^ (-j) = 1 := by rw [← zpow_add₀ two_ne_zero, add_neg_cancel, zpow_zero]
+    have e : (2 : ℝ) ^ j * 2 ^ (-j) = 1 :=
+      by rw [← zpow_add₀ two_ne_zero, add_neg_cancel, zpow_zero]
     rw [mem_Icc, not_and_or, not_le, not_le] at ht
     rw [abs_mul, abs_of_pos hp]
     rcases ht with h | h
@@ -1031,7 +1047,7 @@ theorem hasSum_piece (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
   have hbound : ∀ k t, ‖F k t‖ ≤ ‖w t‖ * ∏ n, c n (k n) := by
     intro k t
     rw [hF, norm_mul, norm_prod]
-    exact mul_le_mul_of_nonneg_left (Finset.prod_le_prod (fun n _ => norm_nonneg _)
+    exact mul_le_mul_of_nonneg_left (Finset.prod_le_prod₀ (fun n _ => norm_nonneg _)
       fun n _ => norm_lpDelta_le n _ (f n) _) (norm_nonneg _)
   have hmeas : ∀ k, AEStronglyMeasurable (F k) volume := by
     intro k
@@ -1055,7 +1071,8 @@ theorem hasSum_piece (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
       (hwi.norm.mul_const _) (Eventually.of_forall (hbound k))
 
 /-- The component of a region `R ⊆ ℤ^3` of the truncation `T_J`:
-`T^R_J(f)(x) = ∑_{|j| ≤ J} ∑_{k ∈ R} T_j(Δ^{(1)}_{j+k_1} f_1, Δ^{(2)}_{2j+k_2} f_2, Δ^{(3)}_{3j+k_3} f_3)(x)`,
+`T^R_J(f)(x) = ∑_{|j| ≤ J} ∑_{k ∈ R} T_j(Δ^{(1)}_{j+k_1} f_1, Δ^{(2)}_{2j+k_2} f_2,
+  Δ^{(3)}_{3j+k_3} f_3)(x)`,
 lines 326-329 (`T^ω = ∑_j T^ω_j`, truncated in `j`). -/
 def regComp (R : (Fin 3 → ℤ) → Prop) [DecidablePred R] (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ))
     (x : E3) : ℂ :=
@@ -1112,10 +1129,10 @@ theorem regComp_ML_split (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
   congr 1; funext k
   by_cases h : RegML k
   · obtain ⟨n, hn, hu⟩ := regML_split h
-    rw [if_pos h, Finset.sum_eq_single n (fun m _ hm => if_neg fun h' => hm (hu m h'))
-      (by simp), if_pos hn]
-  · rw [if_neg h]
-    exact (Finset.sum_eq_zero fun n _ => if_neg fun h' => h h'.1).symm
+    rw [ite_eq_left h, Finset.sum_eq_single n (fun m _ hm => ite_eq_right fun h' => hm (hu m h'))
+      (by simp), ite_eq_left hn]
+  · rw [ite_eq_right h]
+    exact (Finset.sum_eq_zero fun n _ => ite_eq_right fun h' => h h'.1).symm
 
 /-- `T^{MH}_J = T^{MH,1}_J + T^{MH,2}_J + T^{MH,3}_J`, line 336. -/
 theorem regComp_MH_split (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
@@ -1127,10 +1144,10 @@ theorem regComp_MH_split (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
   congr 1; funext k
   by_cases h : RegMH k
   · obtain ⟨n, hn, hu⟩ := regMH_split h
-    rw [if_pos h, Finset.sum_eq_single n (fun m _ hm => if_neg fun h' => hm (hu m h'))
-      (by simp), if_pos hn]
-  · rw [if_neg h]
-    exact (Finset.sum_eq_zero fun n _ => if_neg fun h' => h h'.1).symm
+    rw [ite_eq_left h, Finset.sum_eq_single n (fun m _ hm => ite_eq_right fun h' => hm (hu m h'))
+      (by simp), ite_eq_left hn]
+  · rw [ite_eq_right h]
+    exact (Finset.sum_eq_zero fun n _ => ite_eq_right fun h' => h h'.1).symm
 
 /-! ## Section 4 (imported): `thm:main_twist` from Task 3 -/
 
@@ -1153,10 +1170,10 @@ theorem norm_gammaProd_le (g : Fin 3 → 𝓢(E3, ℂ)) {C : Fin 3 → ℝ}
     (hC : ∀ n y, ‖g n y‖ ≤ C n) (x t : E3) :
     ‖∏ n, g n (x + t n • basisVec n)‖ ≤ ∏ n, C n := by
   rw [norm_prod]
-  exact Finset.prod_le_prod (fun n _ => norm_nonneg _) fun n _ => hC n _
+  exact Finset.prod_le_prod₀ (fun n _ => norm_nonneg _) fun n _ => hC n _
 
 /-- `Γ_K(f)` is continuous for Schwartz `K`, `f_n` (dominated by `|K| ∏ ‖f_n‖_∞`). -/
-theorem continuous_gammaOp (K : 𝓢(E3, ℂ)) (g : Fin 3 → 𝓢(E3, ℂ)) :
+@[fun_prop] theorem continuous_gammaOp (K : 𝓢(E3, ℂ)) (g : Fin 3 → 𝓢(E3, ℂ)) :
     Continuous (gammaOp K fun n => g n) := by
   choose C hC0 hC using fun n => exists_bound_schwartz (g n)
   refine continuous_of_dominated (bound := fun t => ‖K t‖ * ∏ n, C n) (fun x => ?_)
@@ -1224,7 +1241,7 @@ theorem eLpNorm_comp_add_const {g : E3 → ℂ} (hg : AEStronglyMeasurable g vol
 theorem memLp_gammaOp (K : 𝓢(E3, ℂ)) (g : Fin 3 → 𝓢(E3, ℂ)) {p : ℝ≥0∞} (hp1 : 1 ≤ p)
     (hptop : p ≠ ⊤) : MemLp (gammaOp K fun n => g n) p volume := by
   choose C hC0 hC using fun n => exists_bound_schwartz (g n)
-  refine ⟨(continuous_gammaOp K g).aestronglyMeasurable, ?_⟩
+  change eLpNorm (gammaOp K fun n => g n) p volume < ⊤
   set D : ℝ := C 1 * C 2 with hD
   have hD0 : 0 ≤ D := mul_nonneg (hC0 1) (hC0 2)
   set a : E3 → ℂ := fun t => ((‖K t‖ * D : ℝ) : ℂ) with ha
@@ -1254,7 +1271,7 @@ theorem memLp_gammaOp (K : 𝓢(E3, ℂ)) (g : Fin 3 → 𝓢(E3, ℂ)) {p : ℝ
     intro t
     have e : F t = fun x => ‖(a t • fun y => g 0 (y + t 0 • basisVec 0)) x‖ₑ := by
       funext x; simp only [hF, Pi.smul_apply, smul_eq_mul]
-    rw [e, eLpNorm_enorm, eLpNorm_const_smul,
+    rw [e, eLpNorm_enorm _ (by fun_prop), eLpNorm_const_smul,
       eLpNorm_comp_add_const (g 0).continuous.aestronglyMeasurable]
   simp_rw [htr] at hmink
   rw [lintegral_mul_const' _ _ ((g 0).memLp p volume).eLpNorm_lt_top.ne] at hmink
@@ -1266,7 +1283,8 @@ theorem memLp_gammaOp (K : 𝓢(E3, ℂ)) (g : Fin 3 → 𝓢(E3, ℂ)) {p : ℝ
     rw [← ofReal_norm, ← ofReal_norm, Complex.norm_real]
   calc eLpNorm (gammaOp K fun n => g n) p volume
       ≤ eLpNorm (fun x => ∫⁻ t, F t x) p volume :=
-        eLpNorm_mono_enorm fun x => by rw [enorm_eq_self]; exact hpt x
+        eLpNorm_mono_enorm (continuous_gammaOp K g).aestronglyMeasurable
+          fun x => by rw [enorm_eq_self]; exact hpt x
     _ ≤ (∫⁻ t, ‖a t‖ₑ) * eLpNorm (g 0) p volume := hmink
     _ < ⊤ := ENNReal.mul_lt_top ha1.lt_top ((g 0).memLp p volume).eLpNorm_lt_top
 
@@ -1366,7 +1384,7 @@ theorem hasSum_lpPsiJ_Iic {ζ : ℝ} (hζ : ζ ≠ 0) (c : ℤ) :
   have e1 : ∀ m ∈ Finset.Icc (-(M : ℤ)) 0,
       (if m ≤ 0 then lpPsiJ (c + m) ζ else 0) = lpPhiJ (c + m) ζ - lpPhiJ (c + m - 1) ζ := by
     intro m hm
-    rw [if_pos (Finset.mem_Icc.mp hm).2, lpPsiJ_eq]
+    rw [ite_eq_left (Finset.mem_Icc.mp hm).2, lpPsiJ_eq]
   rw [Finset.sum_congr rfl e1]
   have h := sum_Icc_sub_telescope (fun m => lpPhiJ (c + m) ζ) (-(M : ℤ)) M
   simp only [neg_add_cancel] at h
@@ -1439,7 +1457,7 @@ theorem hasSum_lpDelta_Iic (ℓ : Fin 3) (c : ℤ) (g : 𝓢(E3, ℂ)) (y : E3) 
         congr 1; funext m
         rw [Real.coe_toNNReal _ (mul_nonneg (abs_nonneg _) (norm_nonneg _))]
       rw [e]
-      refine (Measurable.nnreal_tsum fun m => ?_).coe_nnreal_real.aestronglyMeasurable
+      refine (Measurable.tsum fun m => ?_).coe_nnreal_real.aestronglyMeasurable
       exact ((((continuous_lpPsiJ _).comp (continuous_evalCoord ℓ)).abs.measurable.mul
         (SchwartzMap.continuous (𝓕 g)).norm.measurable)).real_toNNReal
     · rw [Real.norm_eq_abs, abs_of_nonneg (tsum_nonneg fun m =>
@@ -1464,13 +1482,13 @@ theorem prod_ite_three {A : Fin 3 → ℤ → Prop} [∀ n, DecidablePred (A n)]
     ∏ n, (if A n (k n) then b n (k n) else 0)
       = if (∀ n, A n (k n)) then ∏ n, b n (k n) else 0 := by
   by_cases h : ∀ n, A n (k n)
-  · rw [if_pos h]; exact Finset.prod_congr rfl fun n _ => if_pos (h n)
-  · rw [if_neg h]
+  · rw [ite_eq_left h]; exact Finset.prod_congr rfl fun n _ => ite_eq_left (h n)
+  · rw [ite_eq_right h]
     push Not at h
     obtain ⟨n, hn⟩ := h
-    exact Finset.prod_eq_zero (Finset.mem_univ n) (if_neg hn)
+    exact Finset.prod_eq_zero (Finset.mem_univ n) (ite_eq_right hn)
 
-/-- **Masked frequency expansion of a single scale.**  If, for each coordinate `n`, the
+/-- **Masked frequency expansion of a single scale.** If, for each coordinate `n`, the
 Littlewood-Paley pieces `Δ^{(n)}_{(n+1)j+m} f_n` summed over `m ∈ A_n` give `G_n`, then the
 pieces `T_j(Δ^{(1)}_{j+k_1} f_1, ...)` summed over `k ∈ A_1 × A_2 × A_3` give `T_j(G)`. -/
 theorem hasSum_piece_mask (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) (A : Fin 3 → ℤ → Prop)
@@ -1498,17 +1516,17 @@ theorem hasSum_piece_mask (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) (A : 
   have hpiece : ∀ k, (if (∀ n, A n (k n)) then freqPiece j k f x else 0) = ∫ t, F k t := by
     intro k
     by_cases hk : ∀ n, A n (k n)
-    · rw [if_pos hk]
+    · rw [ite_eq_left hk]
       unfold freqPiece simplexTj
       refine integral_congr_ae (Eventually.of_forall fun t => ?_)
-      simp only [hF, hw, hb, prodShift, if_pos (hk _)]
+      simp only [hF, hw, hb, prodShift, ite_eq_left (hk _)]
       ring
-    · rw [if_neg hk]
+    · rw [ite_eq_right hk]
       symm
       refine integral_eq_zero_of_ae (Eventually.of_forall fun t => ?_)
       simp only [hF, hb]
       rw [prod_ite_three (fun n m => lpDelta n ((expo n : ℤ) * j + m) (f n) (x + curve n t)) k,
-        if_neg hk, mul_zero, Pi.zero_apply]
+        ite_eq_right hk, mul_zero, Pi.zero_apply]
   have htot : simplexTj j (fun n => G n) x = ∫ t, w t * ∏ n, G n (x + curve n t) := by
     unfold simplexTj
     refine integral_congr_ae (Eventually.of_forall fun t => ?_)
@@ -1527,7 +1545,7 @@ theorem hasSum_piece_mask (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) (A : 
   have hbound : ∀ k t, ‖F k t‖ ≤ ‖w t‖ * ∏ n, c n (k n) := by
     intro k t
     rw [hF, norm_mul, norm_prod]
-    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod (fun n _ => norm_nonneg _)
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod₀ (fun n _ => norm_nonneg _)
       fun n _ => ?_) (norm_nonneg _)
     simp only [hb]; split_ifs
     · exact norm_lpDelta_le n _ (f n) _
@@ -1871,7 +1889,7 @@ theorem dyadicSum_isAnisotropicMultiplier {κ : E3 → ℂ}
       have hfun : dyadicSum κ J = fun η => ∑ j ∈ Finset.Icc (-(J : ℤ)) J,
           κ (alpha123.dilate ((2 : ℝ) ^ (-j)) η) := rfl
       rw [hfun, iteratedFDeriv_sum fun j _ => (hterm j).of_le (natCast_le_smooth k)]
-      rw [Finset.sum_apply, ContinuousMultilinearMap.sum_apply]
+      rw [Finset.sum_apply, sum_apply]
       refine (norm_sum_le _ _).trans ?_
       have hper : ∀ j ∈ Finset.Icc (-(J : ℤ)) J,
           ‖iteratedFDeriv ℝ k (fun η => κ (alpha123.dilate ((2 : ℝ) ^ (-j)) η)) ξ
@@ -1992,7 +2010,8 @@ theorem dyadic_hyps_of_hasCompactSupport {κ : E3 → ℂ}
     rw [Metric.mem_closedBall, dist_zero_right] at this
     linarith
   -- bounds for the finitely many derivatives
-  have hbd : ∀ k : ℕ, ∃ C : ℝ, ∀ η, ‖iteratedFDeriv ℝ k κ η‖ * (1 + alpha123.radius η ^ 331) ≤ C := by
+  have hbd : ∀ k : ℕ, ∃ C : ℝ, ∀ η, ‖iteratedFDeriv ℝ k κ η‖ * (1 + alpha123.radius η ^ 331) ≤ C
+    := by
     intro k
     have hcont : Continuous fun η => ‖iteratedFDeriv ℝ k κ η‖ * (1 + alpha123.radius η ^ 331) :=
       (hκ.continuous_iteratedFDeriv (natCast_le_smooth k)).norm.mul
@@ -2122,12 +2141,14 @@ theorem contDiff_thetaL : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) thetaL 
         = fun s => ‖gammaCurve s‖ ^ n * ‖wL s‖ := by
       funext s; simp [gammaCurve_zero_coord, Complex.norm_real]
     rw [e]
-    exact ((continuous_gammaCurve.norm.pow n).mul continuous_wL.norm).integrable_of_hasCompactSupport
+    exact ((continuous_gammaCurve.norm.pow n).mul
+      continuous_wL.norm).integrable_of_hasCompactSupport
       hasCompactSupport_wL.norm.mul_left
   · exact ((continuous_norm.pow n).mul (Complex.continuous_ofReal.comp
       (continuous_wL.comp (continuous_evalCoord 0))).norm).aestronglyMeasurable
 
-/-- **`κ̂_L`**, the Fourier transform of `κ_L` (lines 366-374): `κ̂_L(η) = φ(η_1) φ(η_2) φ(η_3) θ(η)`. -/
+/-- **`κ̂_L`**, the Fourier transform of `κ_L` (lines 366-374): `κ̂_L(η) = φ(η_1) φ(η_2) φ(η_3)
+  θ(η)`. -/
 def kappaL (η : E3) : ℂ := (∏ n, ((lpPhi (η n) : ℝ) : ℂ)) * thetaL η
 
 theorem contDiff_kappaL : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) kappaL := by
@@ -2211,7 +2232,8 @@ theorem inner_eq_sum_E3 (ξ t : E3) : inner ℝ ξ t = ∑ n, ξ n * t n := by
 theorem gammaCurve_apply (s : ℝ) (n : Fin 3) : gammaCurve s n = s ^ expo n := by
   fin_cases n <;> simp [gammaCurve, Fin.sum_univ_three, curve_apply, expo]
 
-/-- The per-scale multiplier: `κ̂_L(D_{2^{-j}} ξ) = ∏_n φ_{(n+1)j}(ξ_n) ∫ ψ(2^j s) e(-⟨γ(s), ξ⟩) ds/s`. -/
+/-- The per-scale multiplier: `κ̂_L(D_{2^{-j}} ξ) = ∏_n φ_{(n+1)j}(ξ_n) ∫ ψ(2^j s) e(-⟨γ(s), ξ⟩)
+  ds/s`. -/
 theorem kappaL_dilate (j : ℤ) (ξ : E3) :
     kappaL (alpha123.dilate ((2 : ℝ) ^ (-j)) ξ)
       = (∏ n, ((lpPhiJ ((expo n : ℤ) * j) (ξ n) : ℝ) : ℂ)) *
@@ -2224,7 +2246,7 @@ theorem kappaL_dilate (j : ℤ) (ξ : E3) :
   congr 1
   · refine Finset.prod_congr rfl fun n _ => ?_
     congr 2
-    simp only [Twisted.Anisotropy.dilate, PiLp.toLp_apply, lpPhiJ]
+    simp only [Twisted.Anisotropy.dilate, PiLp.toLp_apply]
     congr 1
     change ((2 : ℝ) ^ (-j)) ^ expo n = (2 : ℝ) ^ (-((expo n : ℤ) * j))
     rw [← zpow_natCast, ← zpow_mul]
@@ -2285,7 +2307,8 @@ theorem fourierInv_kappaL_dilate (j : ℤ) (t : E3) :
     refine Integrable.mono' (hPi.norm.mul_prod hwi.norm) ?_ (Eventually.of_forall fun p => ?_)
     · refine Measurable.aestronglyMeasurable ?_
       have hPc : Continuous P := continuous_finsetProd _ fun n _ =>
-        Complex.continuous_ofReal.comp ((contDiff_lpPhiJ _).continuous.comp (continuous_evalCoord n))
+        Complex.continuous_ofReal.comp ((contDiff_lpPhiJ _).continuous.comp (continuous_evalCoord
+          n))
       have hwm : Measurable w := (Complex.continuous_ofReal.comp (continuous_lpPsi.comp
         (continuous_const.mul continuous_id))).measurable.div Complex.measurable_ofReal
       have hχ : Continuous (fun p : E3 × ℝ =>
@@ -2410,7 +2433,7 @@ theorem gammaOp_kernelLj (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
   have hGi : Integrable G (volume.prod volume) := by
     refine Integrable.mono' hHi hGm.aestronglyMeasurable (Eventually.of_forall fun p => ?_)
     simp only [hG, hH, norm_mul, norm_prod]
-    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod (fun n _ => by positivity)
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod₀ (fun n _ => by positivity)
       fun n _ => ?_) (norm_nonneg _)
     rw [mul_comm]
     exact mul_le_mul_of_nonneg_right (hC n _) (norm_nonneg _)
@@ -2486,7 +2509,7 @@ theorem fourier_kernelLJ (J : ℕ) : 𝓕 (kernelLJ J : E3 → ℂ) = dyadicSum 
     have := map_sum (SchwartzMap.fourierTransformCLM ℂ (V := E3) (E := ℂ)) kernelLjS
       (Finset.Icc (-(J : ℤ)) J)
     simp [kernelLJ] at this ⊢
-  rw [hs, SchwartzMap.sum_apply, dyadicSum]
+  rw [hs, sum_apply, dyadicSum]
   refine Finset.sum_congr rfl fun j _ => ?_
   rw [kernelLjS, FourierInvPair.fourier_fourierInv_eq, kappaLjS_apply]
 
@@ -2497,7 +2520,7 @@ theorem gammaOp_sum (s : Finset ℤ) (K : ℤ → 𝓢(E3, ℂ)) (g : Fin 3 → 
   unfold gammaOp
   rw [← integral_finsetSum]
   · refine integral_congr_ae (Eventually.of_forall fun t => ?_)
-    simp only [SchwartzMap.sum_apply, Finset.sum_mul]
+    simp only [sum_apply, Finset.sum_mul]
   · intro j _
     refine Integrable.mono' ((K j).integrable.norm.mul_const (∏ n, C n))
       ((K j).continuous.mul ((continuous_shiftProd g).comp
@@ -2532,18 +2555,21 @@ theorem lowFreq_bound {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 < p) (hp43 : p < 4 
   exact hT M (kernelLJ J) (by rw [fourier_kernelLJ]; exact hsym J) f
 
 theorem moment_wL_integrable (n : ℕ) :
-    Integrable (fun v : E3 => ‖v‖ ^ n * ‖((wL (v 0) : ℝ) : ℂ)‖) (Measure.map gammaCurve volume) := by
+    Integrable (fun v : E3 => ‖v‖ ^ n * ‖((wL (v 0) : ℝ) : ℂ)‖) (Measure.map gammaCurve volume) :=
+      by
   rw [integrable_map_measure _ continuous_gammaCurve.aemeasurable]
   · have e : ((fun v : E3 => ‖v‖ ^ n * ‖((wL (v 0) : ℝ) : ℂ)‖) ∘ gammaCurve)
         = fun s => ‖gammaCurve s‖ ^ n * ‖wL s‖ := by
       funext s; simp [gammaCurve_zero_coord, Complex.norm_real]
     rw [e]
-    exact ((continuous_gammaCurve.norm.pow n).mul continuous_wL.norm).integrable_of_hasCompactSupport
+    exact ((continuous_gammaCurve.norm.pow n).mul
+      continuous_wL.norm).integrable_of_hasCompactSupport
       hasCompactSupport_wL.norm.mul_left
   · exact ((continuous_norm.pow n).mul (Complex.continuous_ofReal.comp
       (continuous_wL.comp (continuous_evalCoord 0))).norm).aestronglyMeasurable
 
-/-- **Derivatives of `θ`**: `D^k θ(η)(w_1, ..., w_k) = ∫ e(-⟨γ(s), η⟩) (-2πi)^k ∏_i ⟨γ(s), w_i⟩ ψ(s) ds/s`. -/
+/-- **Derivatives of `θ`**: `D^k θ(η)(w_1, ..., w_k) = ∫ e(-⟨γ(s), η⟩) (-2πi)^k ∏_i ⟨γ(s), w_i⟩
+  ψ(s) ds/s`. -/
 theorem iteratedFDeriv_thetaL_apply (k : ℕ) (η : E3) (w : Fin k → E3) :
     iteratedFDeriv ℝ k thetaL η w
       = ∫ s : ℝ, (Real.fourierChar (-(inner ℝ (gammaCurve s) η)) : ℂ) *
@@ -2561,11 +2587,13 @@ theorem iteratedFDeriv_thetaL_apply (k : ℕ) (η : E3) (w : Fin k → E3) :
   rw [VectorFourier.fourierIntegral, ContinuousMultilinearMap.integral_apply]
   · rw [integral_map continuous_gammaCurve.aemeasurable]
     · refine integral_congr_ae (Eventually.of_forall fun s => ?_)
-      simp only [ContinuousMultilinearMap.smul_apply, VectorFourier.fourierPowSMulRight_apply,
+      simp only [smul_apply, VectorFourier.fourierPowSMulRight_apply,
         gammaCurve_zero_coord, Circle.smul_def, smul_eq_mul,
         ContinuousLinearMap.toLinearMap₁₂_apply, Complex.real_smul, Complex.ofReal_prod]
       have hin : ∀ v u : E3, (innerSL ℝ) v u = inner ℝ v u := fun v u => rfl
-      simp only [hin]
+      simp only [LinearMap.comp_apply, ContinuousLinearMap.coeLMₛₗ,
+        ContinuousLinearMap.coe_coe, hin]
+      change (Real.fourierChar (-inner ℝ (gammaCurve s) η) : ℂ) * _ = _
       ring
     · exact (continuous_eval_const w).comp_aestronglyMeasurable hint.aestronglyMeasurable
   · exact hint
@@ -2686,7 +2714,7 @@ theorem tsupport_nspChi {s : ℝ} (hs : s ∈ tsupport nspChi) : 2 / 5 ≤ |s| �
   have hsub : tsupport nspChi ⊆ {s : ℝ | 2 / 5 ≤ |s| ∧ |s| ≤ 21 / 10} := by
     refine closure_minimal (fun s hs => ?_) ?_
     · rw [Function.mem_support] at hs
-      simp only [mem_setOf_eq]
+      simp only [mem_ofPred_eq]
       by_contra h
       rw [not_and_or, not_le, not_le] at h
       apply hs
@@ -2695,8 +2723,8 @@ theorem tsupport_nspChi {s : ℝ} (hs : s ∈ tsupport nspChi) : 2 / 5 ≤ |s| �
       · rw [nspOut.one_of_mem_closedBall (by simp [Metric.mem_closedBall, nspOut]; linarith),
           nspIn.one_of_mem_closedBall (by simp [Metric.mem_closedBall, nspIn]; linarith)]
         ring
-      · rw [nspOut.zero_of_le_dist (by simp [Real.dist_eq, nspOut]; linarith),
-          nspIn.zero_of_le_dist (by simp [Real.dist_eq, nspIn]; linarith)]
+      · rw [nspOut.zero_of_le_dist (by simp [nspOut]; linarith),
+          nspIn.zero_of_le_dist (by simp [nspIn]; linarith)]
         ring
     · exact (isClosed_le continuous_const continuous_abs).inter
         (isClosed_le continuous_abs continuous_const)
@@ -2820,6 +2848,7 @@ def nspB (A : ℝ × Q → ℂ) : ℕ → ℝ × (E3 × Q) → ℂ
 /-- The smooth region for the iterates. -/
 def nspOX : Set (ℝ × (E3 × Q)) := {x | (x.1, x.2.1) ∈ nspO}
 
+omit [NormedSpace ℝ Q] in
 theorem isOpen_nspOX : IsOpen (nspOX (Q := Q)) :=
   isOpen_nspO.preimage (continuous_fst.prodMk (continuous_fst.comp continuous_snd))
 
@@ -2887,7 +2916,8 @@ theorem tsupport_nspB_slice {A : ℝ × Q → ℂ} (hA : ContDiff ℝ ((⊤ : �
 
 theorem nspK_isCompact (n : Fin 3) : IsCompact (nspK n) := by
   refine Metric.isCompact_of_isClosed_isBounded ?_ ?_
-  · have e : nspK n = {e : E3 | e n = 1} ∩ ⋂ m : Fin 3, ⋂ (_ : m ≠ n), {e : E3 | |e m| ≤ 1 / 32} := by
+  · have e : nspK n = {e : E3 | e n = 1} ∩ ⋂ m : Fin 3, ⋂ (_ : m ≠ n), {e : E3 | |e m| ≤ 1 / 32}
+      := by
       ext e; simp [nspK]
     rw [e]
     refine IsClosed.inter (isClosed_eq (continuous_evalCoord n) continuous_const) ?_
@@ -2928,7 +2958,8 @@ theorem nsp_decay {A : ℝ × Q → ℂ} (hA : ContDiff ℝ ((⊤ : ℕ∞) : Wi
   refine ⟨4 * max M 0, by positivity, fun lam hlam e he q hq => ?_⟩
   have hiter : ∀ k : ℕ, ∫ s, A (s, q) * (Real.fourierChar (-(lam * inner ℝ (gammaCurve s) e)) : ℂ)
       = ((2 * Real.pi * Complex.I * lam)⁻¹) ^ k *
-          ∫ s, nspB A k (s, (e, q)) * (Real.fourierChar (-(lam * inner ℝ (gammaCurve s) e)) : ℂ) := by
+          ∫ s, nspB A k (s, (e, q)) * (Real.fourierChar (-(lam * inner ℝ (gammaCurve s) e)) : ℂ)
+            := by
     intro k
     induction k with
     | zero => simp [nspB]
@@ -3101,7 +3132,7 @@ theorem mlCut_apply (n : Fin 3) (κ : ℤ) (η : E3) :
   simp only [mlCut, mlG, mlL_apply, mlScale]
   congr 1
   refine Finset.prod_congr rfl fun m hm => ?_
-  rw [if_neg (Finset.ne_of_mem_erase hm)]
+  rw [ite_eq_right (Finset.ne_of_mem_erase hm)]
 
 theorem contDiff_mlG (n : Fin 3) : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (mlG n) := by
   unfold mlG
@@ -3134,7 +3165,8 @@ def mlRegion (n : Fin 3) (κ : ℤ) : Set E3 :=
     ∀ m, m ≠ n → |η m| ≤ (2 : ℝ) ^ (κ - 100)}
 
 theorem isClosed_mlRegion (n : Fin 3) (κ : ℤ) : IsClosed (mlRegion n κ) := by
-  have e : mlRegion n κ = {η : E3 | (2 : ℝ) ^ (κ - 1) ≤ |η n|} ∩ {η : E3 | |η n| ≤ (2 : ℝ) ^ (κ + 1)} ∩
+  have e : mlRegion n κ = {η : E3 | (2 : ℝ) ^ (κ - 1) ≤ |η n|} ∩ {η : E3 | |η n| ≤ (2 : ℝ) ^ (κ +
+    1)} ∩
       ⋂ m : Fin 3, ⋂ (_ : m ≠ n), {η : E3 | |η m| ≤ (2 : ℝ) ^ (κ - 100)} := by
     ext η; simp [mlRegion, and_assoc]
   rw [e]
@@ -3323,7 +3355,7 @@ theorem mlPiece_bound (n : Fin 3) : ∃ B : ℝ, 0 ≤ B ∧ ∀ κ : ℤ, 1 ≤
       _ ≤ c4 * Bs * (2 * (2 : ℝ) ^ (-κ)) :=
           mul_le_mul (mul_le_mul_of_nonneg_left hBkB hc40) h2k (inv_nonneg.mpr hηn.le)
             (mul_nonneg hc40 hBs0)
-      _ = B * (2 : ℝ) ^ (-κ) := by rw [hB]; ring
+      _ = B * (2 : ℝ) ^ (-κ) := by rw [hB]; ac_rfl
   · -- off the region every derivative of the cutoff vanishes
     have h0 : ‖iteratedFDeriv ℝ k (mlPiece n κ) η‖ = 0 := by
       refine le_antisymm ?_ (norm_nonneg _)
@@ -3677,7 +3709,7 @@ theorem gammaOp_genKernel (χs : Fin 3 → CoordMult) (j : ℤ) (f : Fin 3 → �
   have hGi : Integrable G (volume.prod volume) := by
     refine Integrable.mono' hHi hGm.aestronglyMeasurable (Eventually.of_forall fun p => ?_)
     simp only [hG, hH, norm_mul, norm_prod]
-    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod (fun n _ => by positivity)
+    refine mul_le_mul_of_nonneg_left (Finset.prod_le_prod₀ (fun n _ => by positivity)
       fun n _ => ?_) (norm_nonneg _)
     rw [mul_comm]
     exact mul_le_mul_of_nonneg_right (hC n _) (norm_nonneg _)
@@ -3781,11 +3813,11 @@ theorem mlPiece_dilate (n : Fin 3) (κ j : ℤ) (ξ : E3) :
   rw [← Finset.mul_prod_erase Finset.univ _ (Finset.mem_univ n)]
   push_cast
   congr 1
-  · simp only [mlChis, if_pos rfl, psiCM, lpPsiJ]
+  · simp only [mlChis, psiCM]
     rw [hsc]; congr 3; ring
   · refine Finset.prod_congr rfl fun m hm => ?_
     have hmn := Finset.ne_of_mem_erase hm
-    simp only [mlChis, if_neg hmn, phiCM, lpPhiJ]
+    simp only [mlChis, ite_eq_right hmn, phiCM, lpPhiJ]
     rw [show (101 - κ : ℤ) = -(κ - 101) by ring, hsc]; congr 3; ring
 
 theorem hasCompactSupport_mlCut (n : Fin 3) (κ : ℤ) : HasCompactSupport (mlCut n κ) := by
@@ -3845,16 +3877,16 @@ theorem fourier_kernelML (n : Fin 3) (J K0 : ℕ) :
   funext ξ
   have hs : ∀ (s : Finset ℤ) (K : ℤ → 𝓢(E3, ℂ)), 𝓕 (∑ j ∈ s, K j) = ∑ j ∈ s, 𝓕 (K j) := by
     intro s K
-    have := map_sum (SchwartzMap.fourierTransformCLM ℂ (V := E3) (E := ℂ)) K s
-    simpa using this
-  rw [kernelML, hs, SchwartzMap.sum_apply, dyadicSum]
+    simp
+  rw [kernelML, hs, sum_apply, dyadicSum]
   refine Finset.sum_congr rfl fun j _ => ?_
-  rw [hs, SchwartzMap.sum_apply, kappaML]
+  rw [hs, sum_apply, kappaML]
   refine Finset.sum_congr rfl fun κ _ => ?_
   rw [kernelMLS, FourierInvPair.fourier_fourierInv_eq, mlPieceS_apply]
 
 /-- **The kernel form of `T^{ML,n}`** (lines 389-400), truncated:
-`Γ_{K_{ML,n}}(f) = ∑_{|j| ≤ J} ∑_{κ=1}^{K_0} T_j(Δ^{(n)}_{(n+1)j+κ} f_n, S^{(m)}_{(m+1)j+κ-101} f_m)`. -/
+`Γ_{K_{ML,n}}(f) = ∑_{|j| ≤ J} ∑_{κ=1}^{K_0} T_j(Δ^{(n)}_{(n+1)j+κ} f_n, S^{(m)}_{(m+1)j+κ-101}
+  f_m)`. -/
 theorem gammaOp_kernelML (n : Fin 3) (J K0 : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
     gammaOp (kernelML n J K0) (fun m => f m) x
       = ∑ j ∈ Finset.Icc (-(J : ℤ)) J, ∑ κ ∈ Finset.Icc (1 : ℤ) K0,
@@ -3916,8 +3948,8 @@ theorem hasSum_lpDelta_le (ℓ : Fin 3) (c d : ℤ) (g : 𝓢(E3, ℂ)) (y : E3)
   funext m
   simp only [Function.comp_apply, Equiv.coe_addLeft]
   by_cases hm : m ≤ 0
-  · rw [if_pos (by omega), if_pos hm, add_assoc]
-  · rw [if_neg (by omega), if_neg hm]
+  · rw [ite_eq_left (by omega), ite_eq_left hm, add_assoc]
+  · rw [ite_eq_right (by omega), ite_eq_right hm]
 
 /-- The masks of the `κ`-th mixed-frequency fibre. -/
 def mlMask (n : Fin 3) (κ : ℤ) (m : Fin 3) (t : ℤ) : Prop :=
@@ -3954,13 +3986,13 @@ theorem hasSum_ML_fibre (n : Fin 3) (j κ : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (
     have e : (fun t => if mlMask m κ m t then lpDelta m ((expo m : ℤ) * j + t) (f m) y else 0)
         = fun t => if t = κ then lpDelta m ((expo m : ℤ) * j + t) (f m) y else 0 := by
       funext t; simp [mlMask]
-    rw [e, mlChis, if_pos rfl, psiCM_op]
+    rw [e, mlChis, ite_eq_left rfl, psiCM_op]
     convert hasSum_ite_eq κ (lpDelta m ((expo m : ℤ) * j + κ) (f m) y) using 1
     funext t; split_ifs with h <;> simp [h]
   · have e : (fun t => if mlMask n κ m t then lpDelta m ((expo m : ℤ) * j + t) (f m) y else 0)
         = fun t => if t ≤ κ - 101 then lpDelta m ((expo m : ℤ) * j + t) (f m) y else 0 := by
       funext t; simp [mlMask, hm]
-    rw [e, mlChis, if_neg hm, phiCM_op]
+    rw [e, mlChis, ite_eq_right hm, phiCM_op]
     have := hasSum_lpDelta_le m ((expo m : ℤ) * j) (κ - 101) (f m) y
     rwa [show (expo m : ℤ) * j + (κ - 101) = (expo m : ℤ) * j + κ - 101 by ring] at this
 
@@ -3991,10 +4023,10 @@ theorem hasSum_ML_kappa (n : Fin 3) (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x :
     · rw [indicator_of_notMem (show k ∉ (fun k : Fin 3 → ℤ => k n) ⁻¹' {κ} from hk)]
       have : ¬ (1 ≤ κ ∧ ∀ m, mlMask n κ m (k m)) := fun h =>
         hk ((mlMask_all n κ k).mp h.2).1
-      rw [if_neg this]
+      rw [ite_eq_right this]
   rw [e]
   by_cases hκ : 1 ≤ κ
-  · simp only [hκ, true_and, if_true]
+  · simp only [hκ, true_and, ite_true]
     exact (hasSum_ML_fibre n j κ f x).tsum_eq
   · simp [hκ]
 
@@ -4025,10 +4057,10 @@ theorem tendsto_gammaOp_kernelML (n : Fin 3) (J : ℕ) (f : Fin 3 → 𝓢(E3, �
       (𝓝 (regComp (RegMLn n) J f x)) := by
   simp_rw [gammaOp_kernelML]
   unfold regComp
-  refine tendsto_finset_sum _ fun j _ => ?_
+  refine tendsto_finsetSum _ fun j _ => ?_
   have h := tendsto_sum_Icc_one (hasSum_ML_kappa n j f x) (fun κ hκ => by simp [not_le.mpr hκ])
   refine h.congr fun K0 => Finset.sum_congr rfl fun κ hκ => ?_
-  rw [if_pos (Finset.mem_Icc.mp hκ).1]
+  rw [ite_eq_left (Finset.mem_Icc.mp hκ).1]
 
 /-- **The mixed-frequency bound for `T^{ML,n}`** (lines 423-426, and line 383 for `n = 2, 3`):
 for `p ∈ (1, 4/3)`, `p_m ∈ (1, 4)` with `∑ 1/p_m = 1/p`, `‖T^{ML,n}_J(f)‖_p ≤ C ∏ ‖f_m‖_{p_m}`
@@ -4045,7 +4077,7 @@ theorem mlFreq_bound (n : Fin 3) {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 < p) (hp
   have hbound : ∀ K0 : ℕ, eLpNorm (gammaOp (kernelML n J K0) fun m => f m) (ENNReal.ofReal p) volume
       ≤ ENNReal.ofReal (C0 * M) * ∏ m, eLpNorm (f m) (ENNReal.ofReal (pv m)) volume := fun K0 =>
     hT M (kernelML n J K0) (by rw [fourier_kernelML]; exact hsym K0 J) f
-  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3))
+  have hfatou := eLpNorm_limit_le_liminf (μ := (volume : Measure E3))
     (p := ENNReal.ofReal p)
     (fun K0 => (continuous_gammaOp (kernelML n J K0) f).aestronglyMeasurable)
     (regComp (RegMLn n) J f)
@@ -4060,7 +4092,8 @@ theorem aestronglyMeasurable_regComp_ML (n : Fin 3) (J : ℕ) (f : Fin 3 → �
     fun K0 => (continuous_gammaOp (kernelML n J K0) f).aestronglyMeasurable
   have hlim : ∀ᵐ x ∂(volume : Measure E3), Tendsto
       (fun K0 : ℕ => gammaOp (kernelML n J K0) (fun m => f m) x) atTop
-      (𝓝 (regComp (RegMLn n) J f x)) := Eventually.of_forall fun x => tendsto_gammaOp_kernelML n J f x
+      (𝓝 (regComp (RegMLn n) J f x)) := Eventually.of_forall fun x => tendsto_gammaOp_kernelML n J
+        f x
   exact aestronglyMeasurable_of_tendsto_ae (u := atTop)
     (f := fun K0 : ℕ => gammaOp (kernelML n J K0) fun m => f m) hf hlim
 
@@ -4079,7 +4112,7 @@ theorem mlFreq_total_bound {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 < p) (hp43 : p
     rw [← ENNReal.ofReal_one]; exact ENNReal.ofReal_le_ofReal hp.le
   calc eLpNorm (∑ n : Fin 3, regComp (RegMLn n) J f) (ENNReal.ofReal p) volume
       ≤ ∑ n : Fin 3, eLpNorm (regComp (RegMLn n) J f) (ENNReal.ofReal p) volume :=
-        eLpNorm_sum_le (fun n _ => aestronglyMeasurable_regComp_ML n J f) hp1
+        eLpNorm_sum_le hp1
     _ ≤ ∑ n : Fin 3, ENNReal.ofReal (C n) *
           ∏ m, eLpNorm (f m) (ENNReal.ofReal (pv m)) volume :=
         Finset.sum_le_sum fun n _ => hC n J f
@@ -4092,7 +4125,7 @@ theorem mlFreq_total_bound {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 < p) (hp43 : p
 for Schwartz inputs: for `0 < a < b`, `p ∈ [1, ∞)`, `p_n ∈ (1, ∞)` with `∑ 1/p_n = 1/p`, there
 are `δ ∈ (0,1)` and `C` such that for `ψ ∈ C^1` supported in `[a, b]` with `‖ψ'‖_1 ≤ M`,
 `λ ≥ 1`, and Schwartz `f_n` of which one has `supp f̂_n ⊆ {|ξ_n| ≥ λ}`,
-`‖𝒜_ψ(f)‖_p ≤ C max(1, M) λ^{-δ} ∏ ‖f_n‖_{p_n}`.  (The source's implicit constant depends on
+`‖𝒜_ψ(f)‖_p ≤ C max(1, M) λ^{-δ} ∏ ‖f_n‖_{p_n}`. (The source's implicit constant depends on
 `a, b, ‖ψ'‖_1`; the imported statement makes the dependence on `‖ψ'‖_1` explicit.) -/
 theorem thm_smoothing {a bb : ℝ} (ha : 0 < a) (hab : a < bb)
     {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : ∀ i, 1 < pv i)
@@ -4177,7 +4210,7 @@ theorem fourier_comp_diagCLM {c : Fin 3 → ℝ} (hc : ∀ m, c m ≠ 0) (g : E3
 /-- `L^p` norms under a diagonal change of variables:
 `‖g ∘ diag(c)‖_p = |∏ c|^{-1/p} ‖g‖_p`. -/
 theorem eLpNorm_comp_diagCLM {c : Fin 3 → ℝ} (hc : ∀ m, c m ≠ 0) {g : E3 → ℂ}
-    (hg : AEStronglyMeasurable g volume) {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤) :
+    (hg : AEStronglyMeasurable g volume) {p : ℝ≥0∞} (hp : p ≠ ⊤) :
     eLpNorm (fun x => g (diagCLM c x)) p volume
       = ENNReal.ofReal |∏ m, c m|⁻¹ ^ p.toReal⁻¹ * eLpNorm g p volume := by
   have hdet : LinearMap.det (diagCLM c : E3 →ₗ[ℝ] E3) ≠ 0 := by
@@ -4191,7 +4224,7 @@ theorem eLpNorm_comp_diagCLM {c : Fin 3 → ℝ} (hc : ∀ m, c m ≠ 0) {g : E3
       E3 → E3) from rfl, hmap]; exact hg.smul_measure _) hmeas.aemeasurable]
     rfl
   rw [h1, show (diagCLM c : E3 → E3) = ((diagCLM c : E3 →ₗ[ℝ] E3) : E3 → E3) from rfl, hmap,
-    eLpNorm_smul_measure_of_ne_top hp, det_diagCLM, abs_inv, smul_eq_mul, one_div,
+    eLpNorm_smul_measure_of_ne_top hp g _ hg, det_diagCLM, abs_inv, smul_eq_mul, one_div,
     ENNReal.toReal_inv]
 
 /-- The positive half `w_+(s) = ψ(s)/s` for `s > 0` of the unit-scale weight. -/
@@ -4201,11 +4234,11 @@ theorem wPos_eq_zero_of_le {s : ℝ} (h : s ≤ 0) : wPos s = 0 := by simp [wPos
 
 theorem wL_eq_wPos_sub (s : ℝ) : wL s = wPos s - wPos (-s) := by
   rcases lt_trichotomy s 0 with h | h | h
-  · rw [wPos_eq_zero_of_le h.le, wPos, if_pos (by linarith), wL_neg]; ring
+  · rw [wPos_eq_zero_of_le h.le, wPos, ite_eq_left (by linarith), wL_neg]; ring
   · subst h; simp [wPos, wL]
-  · rw [wPos, if_pos h, wPos_eq_zero_of_le (by linarith), sub_zero]
+  · rw [wPos, ite_eq_left h, wPos_eq_zero_of_le (by linarith), sub_zero]
 
-theorem contDiff_wPos : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) wPos := by
+@[fun_prop] theorem contDiff_wPos : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) wPos := by
   rw [contDiff_iff_contDiffAt]
   intro s
   by_cases hs : 0 < s
@@ -4217,7 +4250,7 @@ theorem contDiff_wPos : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) wPos := b
     have : wPos =ᶠ[𝓝 s] fun _ => 0 := by
       filter_upwards [Iio_mem_nhds (show s < 1 / 2 by linarith)] with t ht
       by_cases ht0 : 0 < t
-      · simp only [wPos, if_pos ht0]
+      · simp only [wPos, ite_eq_left ht0]
         exact wL_eq_zero_of_abs_lt (by rw [abs_of_pos ht0]; exact ht)
       · exact wPos_eq_zero_of_le (not_lt.mp ht0)
     exact contDiffAt_const.congr_of_eventuallyEq this
@@ -4226,7 +4259,7 @@ theorem support_wPos : Function.support wPos ⊆ Icc (1 / 2) 2 := by
   intro s hs
   rw [Function.mem_support] at hs
   have hs0 : 0 < s := by by_contra h; exact hs (wPos_eq_zero_of_le (not_lt.mp h))
-  rw [wPos, if_pos hs0] at hs
+  rw [wPos, ite_eq_left hs0] at hs
   obtain ⟨h1, h2⟩ := wL_ne_zero_band hs
   rw [abs_of_pos hs0] at h1 h2
   exact ⟨h1, h2⟩
@@ -4378,7 +4411,7 @@ theorem fourier_support_diag {c : Fin 3 → ℝ} (hc : ∀ m, c m ≠ 0) (g : �
   have h := hg _ (right_ne_zero_of_mul hξ)
   simp only [diagCLM_apply, abs_mul] at h
   have hpos : 0 < |(c n0)⁻¹| := abs_pos.mpr (inv_ne_zero (hc n0))
-  show lam ≤ |ξ n0|
+  change lam ≤ |ξ n0|
   nlinarith [abs_nonneg (ξ n0)]
 
 theorem continuous_Apsi_wPos (g : Fin 3 → 𝓢(E3, ℂ)) :
@@ -4395,7 +4428,7 @@ theorem continuous_Apsi_wPos (g : Fin 3 → 𝓢(E3, ℂ)) :
   · exact (hw.aestronglyMeasurable.mul
       (continuous_prodShift (fun n => (g n).continuous) x).aestronglyMeasurable)
   · rw [norm_mul, prodShift, norm_prod]
-    exact mul_le_mul_of_nonneg_left (Finset.prod_le_prod (fun n _ => norm_nonneg _)
+    exact mul_le_mul_of_nonneg_left (Finset.prod_le_prod₀ (fun n _ => norm_nonneg _)
       fun n _ => hC n _) (norm_nonneg _)
   · refine continuous_const.mul ?_
     unfold prodShift
@@ -4403,7 +4436,8 @@ theorem continuous_Apsi_wPos (g : Fin 3 → 𝓢(E3, ℂ)) :
       (continuous_id.add continuous_const)
 
 theorem integrable_deriv_wPos : Integrable (deriv wPos) := by
-  refine (contDiff_wPos.continuous_deriv (by exact_mod_cast le_top)).integrable_of_hasCompactSupport ?_
+  refine (contDiff_wPos.continuous_deriv
+    (by exact_mod_cast le_top)).integrable_of_hasCompactSupport ?_
   exact HasCompactSupport.deriv (HasCompactSupport.intro isCompact_Icc
     (fun s hs => by by_contra h; exact hs (support_wPos h)))
 
@@ -4418,7 +4452,8 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
       ∀ (j : ℤ) (g : Fin 3 → 𝓢(E3, ℂ)) (n0 : Fin 3) (lam : ℝ), 1 ≤ lam →
         (∀ ξ, 𝓕 (g n0 : E3 → ℂ) ξ ≠ 0 → lam * (2 : ℝ) ^ ((expo n0 : ℤ) * j) ≤ |ξ n0|) →
         eLpNorm (simplexTj j fun n => g n) (ENNReal.ofReal p) volume
-          ≤ ENNReal.ofReal (C * lam ^ (-δ)) * ∏ n, eLpNorm (g n) (ENNReal.ofReal (pv n)) volume := by
+          ≤ ENNReal.ofReal (C * lam ^ (-δ)) * ∏ n, eLpNorm (g n) (ENNReal.ofReal (pv n)) volume :=
+            by
   obtain ⟨δ, C, hδ, hC, hsm⟩ := thm_smoothing (a := 1 / 2) (bb := 2) (by norm_num) (by norm_num)
     hp hpv hsum
   set M : ℝ := (∫⁻ t, ‖deriv wPos t‖ₑ ∂volume).toReal with hMdef
@@ -4428,7 +4463,8 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
     rw [hMdef, ENNReal.ofReal_toReal hMfin]
   have hderiv : ∀ t, HasDerivAt wPos (deriv wPos t) t := fun t =>
     ((contDiff_wPos.differentiable (by simp)) t).hasDerivAt
-  have hderivc : Continuous (deriv wPos) := contDiff_wPos.continuous_deriv (by exact_mod_cast le_top)
+  have hderivc : Continuous (deriv wPos) := contDiff_wPos.continuous_deriv
+    (by exact_mod_cast le_top)
   refine ⟨δ, 2 * (C * max 1 M), hδ, by positivity, fun j g n0 lam hlam hg => ?_⟩
   have hpos : 0 < p := by linarith
   have hp0 : ENNReal.ofReal p ≠ 0 := by simpa using hpos
@@ -4458,7 +4494,7 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
     obtain ⟨n1, h1⟩ := hlamG
     refine ⟨n1, fourier_support_diag reflC_ne_zero (Gs n1) fun ξ hξ => ?_⟩
     have := h1 (Function.mem_support.mpr hξ)
-    simp only [mem_setOf_eq] at this
+    simp only [mem_ofPred_eq] at this
     have hr : |(reflC n1)⁻¹| = 1 := by fin_cases n1 <;> simp [reflC]
     rw [hr, mul_one]; exact this
   have h1 := hsm wPos (deriv wPos) M hderiv hderivc support_wPos hM0 hMle lam hlam Gs hlamG
@@ -4470,8 +4506,9 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
       = ENNReal.ofReal d ^ (pv n)⁻¹ * eLpNorm (g n) (ENNReal.ofReal (pv n)) volume := by
     intro n
     have hpvn : 0 < pv n := by linarith [hpv n]
-    have := eLpNorm_comp_diagCLM hc (g n).continuous.aestronglyMeasurable (p := ENNReal.ofReal (pv n))
-      (by simpa using hpvn) ENNReal.ofReal_ne_top
+    have := eLpNorm_comp_diagCLM hc (g n).continuous.aestronglyMeasurable (p := ENNReal.ofReal (pv
+      n))
+       ENNReal.ofReal_ne_top
     rw [ENNReal.toReal_ofReal hpvn.le] at this
     rw [show (Gs n : E3 → ℂ) = fun x => g n (diagCLM c x) from rfl, this, hcdef, prod_inv_fun,
       abs_inv, inv_inv]
@@ -4480,7 +4517,7 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
     intro n
     have hpvn : 0 < pv n := by linarith [hpv n]
     have := eLpNorm_comp_diagCLM reflC_ne_zero (Gs n).continuous.aestronglyMeasurable
-      (p := ENNReal.ofReal (pv n)) (by simpa using hpvn) ENNReal.ofReal_ne_top
+      (p := ENNReal.ofReal (pv n)) ENNReal.ofReal_ne_top
     have hr : |∏ m, reflC m|⁻¹ = 1 := by simp [reflC, Fin.prod_univ_three]
     rw [show (Rs n : E3 → ℂ) = fun x => Gs n (diagCLM reflC x) from rfl, this, hr,
       ENNReal.ofReal_one, ENNReal.one_rpow, one_mul]
@@ -4498,7 +4535,7 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
       eLpNorm (fun x => F (diagCLM e x)) (ENNReal.ofReal p) volume
         = ENNReal.ofReal d⁻¹ ^ p⁻¹ * eLpNorm F (ENNReal.ofReal p) volume := by
     intro F e he hde hF
-    rw [eLpNorm_comp_diagCLM he hF hp0 ENNReal.ofReal_ne_top, hde, ENNReal.toReal_ofReal hpos.le]
+    rw [eLpNorm_comp_diagCLM he hF ENNReal.ofReal_ne_top, hde, ENNReal.toReal_ofReal hpos.le]
   have hdR : |∏ m, cR m| = d := by
     simp only [hcR, Finset.prod_mul_distrib, abs_mul, hd]
     simp [reflC, Fin.prod_univ_three]
@@ -4523,7 +4560,7 @@ theorem single_scale_gain {p : ℝ} {pv : Fin 3 → ℝ} (hp : 1 ≤ p) (hpv : �
         rw [hresc]
     _ ≤ eLpNorm (fun x => Apsi wPos (fun n => Gs n) (diagCLM (dilC j) x)) (ENNReal.ofReal p) volume
         + eLpNorm (fun x => Apsi wPos (fun n => Rs n) (diagCLM cR x)) (ENNReal.ofReal p) volume :=
-        eLpNorm_sub_le hc1.aestronglyMeasurable hc2.aestronglyMeasurable hp1
+        eLpNorm_sub_le hp1
     _ = X * eLpNorm (Apsi wPos fun n => Gs n) (ENNReal.ofReal p) volume
         + X * eLpNorm (Apsi wPos fun n => Rs n) (ENNReal.ofReal p) volume := by
         rw [hout _ (dilC j) (dilC_ne_zero j) rfl (continuous_Apsi_wPos Gs).aestronglyMeasurable,
@@ -4551,8 +4588,10 @@ theorem norm_E1 (ξ : E1) : ‖ξ‖ = |ξ 0| := by
 
 theorem continuous_E1_coord : Continuous fun ξ : E1 => ξ 0 := by fun_prop
 
-theorem contDiff_phi1 : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun ξ : E1 => ((lpPhi (ξ 0) : ℝ) : ℂ)) :=
-  Complex.ofRealCLM.contDiff.comp (contDiff_lpPhi.comp (EuclideanSpace.proj (𝕜 := ℝ) (0 : Fin 1)).contDiff)
+theorem contDiff_phi1 : ContDiff ℝ ((⊤ : ℕ∞) : WithTop ℕ∞) (fun ξ : E1 => ((lpPhi (ξ 0) : ℝ) : ℂ))
+  :=
+  Complex.ofRealCLM.contDiff.comp (contDiff_lpPhi.comp (EuclideanSpace.proj (𝕜 := ℝ) (0 : Fin
+    1)).contDiff)
 
 theorem hasCompactSupport_phi1 : HasCompactSupport (fun ξ : E1 => ((lpPhi (ξ 0) : ℝ) : ℂ)) := by
   refine HasCompactSupport.intro (isCompact_closedBall (0 : E1) 2) fun ξ hξ => ?_
@@ -4563,13 +4602,13 @@ theorem hasCompactSupport_phi1 : HasCompactSupport (fun ξ : E1 => ((lpPhi (ξ 0
 def phiCutoffs : Auto.LittlewoodPaley.lpCutoffs 1 where
   cutoff := hasCompactSupport_phi1.toSchwartzMap contDiff_phi1
   cutoff_one := fun ξ hξ => by
-    show ((lpPhi (ξ 0) : ℝ) : ℂ) = 1
+    change ((lpPhi (ξ 0) : ℝ) : ℂ) = 1
     rw [norm_E1] at hξ; simp [lpPhi_eq_one hξ]
   cutoff_zero := fun ξ hξ => by
-    show ((lpPhi (ξ 0) : ℝ) : ℂ) = 0
+    change ((lpPhi (ξ 0) : ℝ) : ℂ) = 0
     rw [norm_E1] at hξ; simp [lpPhi_eq_zero hξ]
   norm_le_one := fun ξ => by
-    show ‖((lpPhi (ξ 0) : ℝ) : ℂ)‖ ≤ 1
+    change ‖((lpPhi (ξ 0) : ℝ) : ℂ)‖ ≤ 1
     rw [Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (lpPhi_nonneg _)]
     exact lpPhi_le_one _
 
@@ -4578,7 +4617,8 @@ theorem phiCutoffs_band (k : ℤ) (ξ : E1) :
     Auto.LittlewoodPaley.intDyadicBandpassMultiplier phiCutoffs.cutoff k ξ
       = ((lpPsiJ (k + 1) (ξ 0) : ℝ) : ℂ) := by
   rw [Auto.LittlewoodPaley.intDyadicBandpassMultiplier_apply, lpPsiJ_eq]
-  show ((lpPhi ((((2 : ℝ) ^ (k + 1))⁻¹ • ξ) 0) : ℝ) : ℂ) - ((lpPhi ((((2 : ℝ) ^ k)⁻¹ • ξ) 0) : ℝ) : ℂ)
+  change ((lpPhi ((((2 : ℝ) ^ (k + 1))⁻¹ • ξ) 0) : ℝ) : ℂ) - ((lpPhi ((((2 : ℝ) ^ k)⁻¹ • ξ) 0) : ℝ)
+    : ℂ)
     = ((lpPhiJ (k + 1) (ξ 0) - lpPhiJ (k + 1 - 1) (ξ 0) : ℝ) : ℂ)
   simp only [PiLp.smul_apply, smul_eq_mul, lpPhiJ, add_sub_cancel_right, zpow_neg]
   push_cast; ring
@@ -4665,7 +4705,7 @@ theorem lintegral_E3_fiber (ℓ : Fin 3) {F : E3 → ℝ≥0∞} (hF : Measurabl
     lintegral_prod _ hF'.aemeasurable, lintegral_lintegral_swap hF'.aemeasurable]
   refine lintegral_congr fun r => lintegral_congr fun s => ?_
   simp only [MeasurableEquiv.piFinSuccAbove_symm_apply]
-  show F (WithLp.toLp 2 (Fin.insertNth ℓ s r)) = _
+  change F (WithLp.toLp 2 (Fin.insertNth ℓ s r)) = _
   rw [insertNth_eq_fiberBase_add]
 
 /-- The line map `v ↦ v_0 e_ℓ` from `E1` to `ℝ^3`. -/
@@ -4679,7 +4719,7 @@ theorem lineMap1_injective (ℓ : Fin 3) : Function.Injective (lineMap1 ℓ) := 
   intro v w h
   have := congrArg (fun z : E3 => z ℓ) h
   simp only [lineMap1_apply, PiLp.smul_apply, smul_eq_mul, basisVec] at this
-  simp at this
+  simp only [Fin.isValue, PiLp.single_eq_same, mul_one] at this
   ext i; fin_cases i; exact this
 
 /-- The fibre `v ↦ g(y + v_0 e_ℓ)` of a Schwartz function, as a Schwartz function on `E1`. -/
@@ -4700,7 +4740,7 @@ theorem projection_fiberS (ℓ : Fin 3) (m : ℤ) (y : E3) (f : 𝓢(E3, ℂ)) (
   simp only [fiberS_apply]
   congr 2
   simp only [PiLp.sub_apply, PiLp.smul_apply, smul_eq_mul, e1, PiLp.single_apply,
-    if_true, mul_one, sub_smul]
+    ite_true, mul_one, sub_smul]
   abel
 
 theorem single_E1_apply (s : ℝ) : (EuclideanSpace.single (0 : Fin 1) s : E1) 0 = s := by simp
@@ -4745,7 +4785,7 @@ theorem measurable_lpDelta_energy (ℓ : Fin 3) (S : Finset ℤ) (f : 𝓢(E3, �
 
 /-- **The partial Littlewood-Paley square function** in coordinate `ℓ` (lines 468-471), for
 Schwartz inputs and every finite family of scales, with a constant independent of the family:
-`∫ (∑_{m∈S} |Δ^{(ℓ)}_m f|^2)^{q/2} ≤ A ∫ |f|^q`, `1 < q < ∞`.  Obtained fibrewise from the
+`∫ (∑_{m∈S} |Δ^{(ℓ)}_m f|^2)^{q/2} ≤ A ∫ |f|^q`, `1 < q < ∞`. Obtained fibrewise from the
 one-dimensional theorem of lean-spherical (`Auto.MikhlinHormander.littlewoodPaley_of_mikhlin`). -/
 theorem partial_littlewoodPaley (ℓ : Fin 3) {q : ℝ} (hq : 1 < q) :
     ∃ A : ℝ, 0 < A ∧ ∀ (S : Finset ℤ) (f : 𝓢(E3, ℂ)),
@@ -4762,7 +4802,7 @@ theorem partial_littlewoodPaley (ℓ : Fin 3) {q : ℝ} (hq : 1 < q) :
         ENNReal.ofReal (‖f (fiberBase ℓ p.1 + p.2 • basisVec ℓ)‖ ^ q)) ?_
       refine ENNReal.measurable_ofReal.comp (Measurable.pow_const ?_ _)
       refine (f.continuous.comp ?_).norm.measurable
-      show Continuous fun p : (Fin 2 → ℝ) × ℝ => fiberBase ℓ p.1 + p.2 • basisVec ℓ
+      change Continuous fun p : (Fin 2 → ℝ) × ℝ => fiberBase ℓ p.1 + p.2 • basisVec ℓ
       unfold fiberBase
       exact ((PiLp.continuous_toLp 2 _).comp (Continuous.finInsertNth (A := fun _ => ℝ) ℓ
         continuous_const continuous_fst)).add (continuous_snd.smul continuous_const))]
@@ -4783,7 +4823,8 @@ theorem partial_littlewoodPaley (ℓ : Fin 3) {q : ℝ} (hq : 1 < q) :
     rw [projection_fiberS, fiberS_apply]
   -- integrability on the fibre
   have hgint : Integrable fun v : E1 => ‖g v‖ ^ q :=
-    (g.memLp (ENNReal.ofReal q) volume).integrable_norm_rpow (by simpa using hq0) ENNReal.ofReal_ne_top
+    (g.memLp (ENNReal.ofReal q) volume).integrable_norm_rpow (by simpa using hq0)
+      ENNReal.ofReal_ne_top
       |>.congr (Eventually.of_forall fun v => by simp [ENNReal.toReal_ofReal hq0.le])
   have heint : Integrable fun v : E1 =>
       (Auto.LittlewoodPaley.finiteIntegerDyadicSquareEnergy phiCutoffs K g v) ^ (q / 2) := by
@@ -4834,7 +4875,7 @@ theorem partial_littlewoodPaley (ℓ : Fin 3) {q : ℝ} (hq : 1 < q) :
 theorem fourier_lpDelta (ℓ : Fin 3) (m : ℤ) (g : 𝓢(E3, ℂ)) (ξ : E3) :
     𝓕 (lpDelta ℓ m g : E3 → ℂ) ξ = ((lpPsiJ m (ξ ℓ) : ℝ) : ℂ) * 𝓕 (g : E3 → ℂ) ξ := by
   have h : 𝓕 (lpDelta ℓ m g) = SchwartzMap.smulLeftCLM ℂ (psiCoord ℓ m) (𝓕 g) := by
-    show 𝓕 (𝓕⁻ (SchwartzMap.smulLeftCLM ℂ (psiCoord ℓ m) (𝓕 g))) = _
+    change 𝓕 (𝓕⁻ (SchwartzMap.smulLeftCLM ℂ (psiCoord ℓ m) (𝓕 g))) = _
     exact FourierInvPair.fourier_fourierInv_eq (E := 𝓢(E3, ℂ)) (F := 𝓢(E3, ℂ)) _
   have h2 := congrArg (fun F : 𝓢(E3, ℂ) => F ξ) h
   simp only [SchwartzMap.fourier_coe] at h2
@@ -4854,7 +4895,7 @@ theorem fourier_lpDelta_support (ℓ : Fin 3) (m : ℤ) (g : 𝓢(E3, ℂ)) (ξ 
   rw [zpow_sub₀ two_ne_zero, zpow_one]; linarith
 
 /-- `T_j(g)` is continuous for Schwartz inputs (dominated convergence). -/
-theorem continuous_simplexTj (j : ℤ) (g : Fin 3 → 𝓢(E3, ℂ)) :
+@[fun_prop] theorem continuous_simplexTj (j : ℤ) (g : Fin 3 → 𝓢(E3, ℂ)) :
     Continuous (simplexTj j fun n => g n) := by
   obtain ⟨Cb, hCb⟩ : ∃ Cb : ℝ, ∀ i x, ‖g i x‖ ≤ Cb := by
     refine ⟨∑ i, ‖(g i).toBoundedContinuousFunction‖, fun i x => ?_⟩
@@ -4863,7 +4904,8 @@ theorem continuous_simplexTj (j : ℤ) (g : Fin 3 → 𝓢(E3, ℂ)) :
       (fun i _ => norm_nonneg _) (Finset.mem_univ i)
   unfold simplexTj
   refine continuous_of_dominated (bound := fun t => ‖(lpPsi ((2 : ℝ) ^ j * t) : ℂ) / t‖ * Cb ^ 3)
-    (fun x => ?_) (fun x => Eventually.of_forall fun t => ?_) ((integrable_psi_div j).norm.mul_const _)
+    (fun x => ?_) (fun x => Eventually.of_forall fun t => ?_) ((integrable_psi_div
+      j).norm.mul_const _)
     (Eventually.of_forall fun t => ?_)
   · refine ((integrable_psi_div j).aestronglyMeasurable.mul
       (continuous_prodShift (fun n => (g n).continuous) x).aestronglyMeasurable).congr
@@ -4873,7 +4915,8 @@ theorem continuous_simplexTj (j : ℤ) (g : Fin 3 → 𝓢(E3, ℂ)) :
     exact mul_le_mul_of_nonneg_left (norm_prodShift_le hCb x t) (norm_nonneg _)
   · have : Continuous fun x => prodShift (fun n => g n) x t := by
       unfold prodShift
-      exact continuous_finsetProd _ fun i _ => (g i).continuous.comp (continuous_id.add continuous_const)
+      exact continuous_finsetProd _ fun i _ => (g i).continuous.comp (continuous_id.add
+        continuous_const)
     exact continuous_const.mul this |>.div_const _
 
 /-- `ℓ^2 ⊆ ℓ^q` for `q ≥ 2`: `∑ a_m^q ≤ (∑ a_m^2)^{q/2}`, `a_m ≥ 0`. -/
@@ -4918,7 +4961,8 @@ theorem sum_lintegral_lpDelta_le (ℓ : Fin 3) {q : ℝ} (hq : 2 ≤ q) :
 /-- `∫ |g|^p = ‖g‖_p^p` for Schwartz `g` and `p > 0`. -/
 theorem lintegral_ofReal_norm_rpow_eq (g : 𝓢(E3, ℂ)) {p : ℝ} (hp : 0 < p) :
     ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ p) = eLpNorm g (ENNReal.ofReal p) volume ^ p := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hp) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hp.le, ← ENNReal.rpow_mul, one_div, inv_mul_cancel₀ hp.ne',
     ENNReal.rpow_one]
   refine lintegral_congr fun x => ?_
@@ -4957,7 +5001,7 @@ theorem sum_toReal_eLpNorm_lpDelta_le (n : Fin 3) {q : ℝ} (hq : 2 ≤ q) :
 /-- **`lem:gain` at `p = 1`** (`eq:gain`, lines 440-447, with the proof of lines 459-472): for
 `p_1, p_2, p_3 ≥ 2` with `∑ 1/p_n = 1` there are `δ > 0`, `C` with
 `‖T^{(k)}_J(f)‖_1 ≤ C 2^{-δ k^{(1)}} ∏ ‖f_n‖_{p_n}` for all `k ∈ F_H`, uniformly in the truncation
-`J`.  (On `F_H`, `2^{-δ k^{(1)}}` is comparable to the source's `2^{-δ|k|}`.) -/
+`J`. (On `F_H`, `2^{-δ k^{(1)}}` is comparable to the source's `2^{-δ|k|}`.) -/
 theorem gain_one {pv : Fin 3 → ℝ} (hpv : ∀ n, 2 ≤ pv n) (hsum : ∑ n, (pv n)⁻¹ = 1) :
     ∃ δ C : ℝ, 0 < δ ∧ 0 < C ∧ ∀ k : Fin 3 → ℤ, 0 < kMax k → ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (kComp k J f) 1 volume
@@ -5032,7 +5076,7 @@ theorem gain_one {pv : Fin 3 → ℝ} (hpv : ∀ n, 2 ≤ pv n) (hsum : ∑ n, (
   have hCl : 0 ≤ C * lam ^ (-δ) := by positivity
   calc eLpNorm (kComp k J f) 1 volume
       ≤ ∑ j ∈ Finset.Icc (-(J : ℤ)) J, eLpNorm (freqPiece j k f) 1 volume := by
-        rw [hkC]; exact eLpNorm_sum_le hmeas le_rfl
+        rw [hkC]; exact eLpNorm_sum_le le_rfl
     _ ≤ ∑ j ∈ Finset.Icc (-(J : ℤ)) J,
           ENNReal.ofReal (C * lam ^ (-δ)) * ∏ n, ENNReal.ofReal (a n j) :=
         Finset.sum_le_sum fun j _ => hpiece j
@@ -5043,7 +5087,7 @@ theorem gain_one {pv : Fin 3 → ℝ} (hpv : ∀ n, 2 ≤ pv n) (hsum : ∑ n, (
         rw [ENNReal.ofReal_prod_of_nonneg fun n _ => ha0 n j]
     _ ≤ ENNReal.ofReal (C * lam ^ (-δ) * ∏ n, (A n ^ (pv n)⁻¹ * N n)) := by
         refine ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_left (hhol.trans ?_) hCl)
-        exact Finset.prod_le_prod (fun n _ => Real.rpow_nonneg (Finset.sum_nonneg fun j _ =>
+        exact Finset.prod_le_prod₀ (fun n _ => Real.rpow_nonneg (Finset.sum_nonneg fun j _ =>
           Real.rpow_nonneg (ha0 n j) _) _) fun n _ => hsq n
     _ = ENNReal.ofReal (Cf * (2 : ℝ) ^ (-(δ * kMax k))) * ∏ n, ENNReal.ofReal (N n) := by
         rw [← ENNReal.ofReal_prod_of_nonneg fun n _ => ENNReal.toReal_nonneg,
@@ -5077,7 +5121,8 @@ theorem abs_lt_of_wJ_ne_zero {j : ℤ} {t : ℝ} (h : wJ j t ≠ 0) : |t| < 2 * 
   rw [e, ← div_eq_mul_inv, lt_div_iff₀ hp]; linarith
 
 /-- **Cauchy-Schwarz in `t`** (Hölder `(∞, 2, 2)`): if `|g_0(x + t e_0)| ≤ a` for
-`|t| ≤ 2 · 2^{-j}`, then `|T_j(g)(x)| ≤ a (∫ w_j |g_1(x+t^2 e_1)|^2)^{1/2} (∫ w_j |g_2(x+t^3 e_2)|^2)^{1/2}`. -/
+`|t| ≤ 2 · 2^{-j}`, then `|T_j(g)(x)| ≤ a (∫ w_j |g_1(x+t^2 e_1)|^2)^{1/2} (∫ w_j |g_2(x+t^3
+  e_2)|^2)^{1/2}`. -/
 theorem enorm_simplexTj_le (j : ℤ) (g : Fin 3 → E3 → ℂ) (hg : ∀ n, Continuous (g n)) (x : E3)
     (a : ℝ≥0∞) (ha : ∀ t : ℝ, |t| < 2 * (2 : ℝ) ^ (-j) → ‖g 0 (x + curve 0 t)‖ₑ ≤ a) :
     ‖simplexTj j g x‖ₑ ≤ a *
@@ -5093,7 +5138,9 @@ theorem enorm_simplexTj_le (j : ℤ) (g : Fin 3 → E3 → ℂ) (hg : ∀ n, Con
     intro t
     have e : ‖(lpPsi ((2 : ℝ) ^ j * t) : ℂ) * prodShift g x t / t‖ₑ
         = wJ j t * (u 0 t * (u 1 t * u 2 t)) := by
-      rw [mul_div_right_comm, enorm_mul, prodShift, Fin.prod_univ_three, enorm_mul, enorm_mul, mul_assoc]; rfl
+      rw [mul_div_right_comm, enorm_mul, prodShift, Fin.prod_univ_three, enorm_mul, enorm_mul,
+        mul_assoc];
+      rfl
     have e2 : (wJ j t ^ (1 / 2 : ℝ) * u 1 t) * (wJ j t ^ (1 / 2 : ℝ) * u 2 t)
         = wJ j t * (u 1 t * u 2 t) := by
       rw [mul_mul_mul_comm, ← ENNReal.rpow_add_of_nonneg _ _ (by norm_num) (by norm_num)]
@@ -5165,7 +5212,8 @@ theorem exists_psiTildeCM_check_decay :
   exact h
 
 /-- The scaled bracket: `|ψ̃̌_c(u)| ≤ K b_{2^{-c}}(u)`, `b_s(u) = s^{-1}(1 + |u|/s)^{-10}`. -/
-theorem norm_psiTildeCM_check_le {K : ℝ} (hK : ∀ u : ℝ, ‖(psiTildeCM 0).check u‖ ≤ K * Twisted.bracketKernel u)
+theorem norm_psiTildeCM_check_le {K : ℝ} (hK : ∀ u : ℝ, ‖(psiTildeCM 0).check u‖ ≤ K *
+  Twisted.bracketKernel u)
     (c : ℤ) (u : ℝ) :
     ‖(psiTildeCM c).check u‖ ≤ K * Twisted.bracketKernelAt ((2 : ℝ) ^ (-c)) 0 u := by
   have hp : (0 : ℝ) < 2 ^ c := zpow_pos two_pos _
@@ -5179,7 +5227,8 @@ theorem norm_psiTildeCM_check_le {K : ℝ} (hK : ∀ u : ℝ, ‖(psiTildeCM 0).
 
 /-- Peetre's shift inequality for the bracket: `b_s(v + t) ≤ (1 + |t|/s)^{10} b_s(v)`. -/
 theorem bracketKernelAt_add_le {s : ℝ} (hs : 0 < s) (v t : ℝ) :
-    Twisted.bracketKernelAt s 0 (v + t) ≤ (1 + |t| / s) ^ (10 : ℝ) * Twisted.bracketKernelAt s 0 v := by
+    Twisted.bracketKernelAt s 0 (v + t) ≤ (1 + |t| / s) ^ (10 : ℝ) * Twisted.bracketKernelAt s 0 v
+      := by
   simp only [Twisted.bracketKernelAt, Twisted.kernelAt, Twisted.kernelDilate, sub_zero,
     smul_eq_mul, Twisted.bracketKernel]
   have h1 : 0 < 1 + |v / s| := by positivity
@@ -5195,7 +5244,8 @@ theorem bracketKernelAt_add_le {s : ℝ} (hs : 0 < s) (v t : ℝ) :
   refine mul_le_mul_of_nonneg_left ?_ (inv_nonneg.mpr hs.le)
   rw [Real.rpow_neg h2.le, Real.rpow_neg h1.le, ← div_eq_mul_inv, le_div_iff₀
     (Real.rpow_pos_of_pos h1 _)]
-  rw [mul_comm, ← div_eq_mul_inv, div_le_iff₀ (Real.rpow_pos_of_pos h2 _), ← Real.mul_rpow h3.le h2.le]
+  rw [mul_comm, ← div_eq_mul_inv, div_le_iff₀ (Real.rpow_pos_of_pos h2 _), ← Real.mul_rpow h3.le
+    h2.le]
   exact Real.rpow_le_rpow h1.le (by linarith [htri, mul_comm (1 + |(v + t) / s|) (1 + |t| / s)])
     (by norm_num)
 
@@ -5205,7 +5255,8 @@ theorem integral_bracket_le_maximal (i : Fin 3) {F : E3 → ℂ} (hF : Measurabl
     (∫ r : ℝ, ‖F (x - r • basisVec i)‖ * Twisted.bracketKernelAt s 0 r)
       ≤ Twisted.dyadicBracketShellConstant * Twisted.coordinateDyadicBallMaximal i F x := by
   have hB0 : 0 ≤ B := (norm_nonneg _).trans (hB x)
-  rw [← coordinateDirection_eq_basisVec, Twisted.displacementBracket_eq_coordinateBracketConvolution]
+  rw [← coordinateDirection_eq_basisVec,
+    Twisted.displacementBracket_eq_coordinateBracketConvolution]
   exact Twisted.coordinateBracketConvolution_le_shell_dyadic i F hF B hB0 hB s x hs
 
 /-- **The `∞` slot** (alternative route, line 456): from `Δ_m = Δ̃_m Δ_m`, Hölder, the decay of
@@ -5249,7 +5300,8 @@ theorem enorm_lpDelta_shift_le (ℓ : Fin 3) {s : ℝ} (hs : 1 < s) :
     have h := CoordMult.op_eq_lineConv χ ℓ G y
     rwa [hχ, psiTildeCM_op, hG, lpDeltaTilde_lpDelta] at h
   have hmeasG : ∀ z : E3, Measurable fun u : ℝ => ‖G (z - u • basisVec ℓ)‖ₑ := fun z =>
-    (G.continuous.comp (continuous_const.sub (continuous_id.smul continuous_const))).measurable.enorm
+    (G.continuous.comp (continuous_const.sub (continuous_id.smul
+      continuous_const))).measurable.enorm
   have hmeasc : Measurable fun u : ℝ => ‖χ.check u‖ₑ := χ.check.continuous.measurable.enorm
   -- Hölder with the measure `|ψ̃̌_m(u)| du`
   have h1 : ‖G y‖ₑ ≤ (∫⁻ u, ‖χ.check u‖ₑ) ^ (1 / s') *
@@ -5308,7 +5360,8 @@ theorem enorm_lpDelta_shift_le (ℓ : Fin 3) {s : ℝ} (hs : 1 < s) :
       linarith
     have hint : Integrable fun v : ℝ => ‖F (x - v • basisVec ℓ)‖ * b v := by
       refine (hbint.const_mul (B ^ s)).mono' ?_ (Eventually.of_forall fun v => ?_)
-      · exact ((hFm.comp (measurable_const.sub (measurable_id.smul_const _))).norm.aestronglyMeasurable).mul
+      · exact ((hFm.comp (measurable_const.sub (measurable_id.smul_const
+          _))).norm.aestronglyMeasurable).mul
           hbint.aestronglyMeasurable
       · rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (norm_nonneg _) (hb0 v))]
         exact mul_le_mul_of_nonneg_right (hFB _) (hb0 v)
@@ -5344,7 +5397,8 @@ theorem enorm_lpDelta_shift_le (ℓ : Fin 3) {s : ℝ} (hs : 1 < s) :
             (ENNReal.ofReal (K * (1 + R) ^ (10 : ℝ)) *
               ENNReal.ofReal (D * Twisted.coordinateDyadicBallMaximal ℓ F x)) ^ (1 / s)
             = ENNReal.ofReal ((K * (2 / 9)) ^ (1 / s') *
-              (K * (1 + R) ^ (10 : ℝ) * (D * Twisted.coordinateDyadicBallMaximal ℓ F x)) ^ (1 / s)) := by
+              (K * (1 + R) ^ (10 : ℝ) * (D * Twisted.coordinateDyadicBallMaximal ℓ F x)) ^ (1 /
+                s)) := by
           rw [← ENNReal.ofReal_mul (by positivity),
             ENNReal.ofReal_rpow_of_nonneg (by positivity) (by positivity),
             ENNReal.ofReal_rpow_of_nonneg (by positivity) (by positivity),
@@ -5353,7 +5407,8 @@ theorem enorm_lpDelta_shift_le (ℓ : Fin 3) {s : ℝ} (hs : 1 < s) :
             ENNReal.ofReal (Twisted.coordinateDyadicBallMaximal ℓ F x) ^ (1 / s)
             = ENNReal.ofReal (C * (1 + R) ^ (10 / s) *
               Twisted.coordinateDyadicBallMaximal ℓ F x ^ (1 / s)) := by
-          rw [ENNReal.ofReal_rpow_of_nonneg hM0 (by positivity), ← ENNReal.ofReal_mul (by positivity)]
+          rw [ENNReal.ofReal_rpow_of_nonneg hM0 (by positivity), ← ENNReal.ofReal_mul
+            (by positivity)]
         rw [eL, eR]
         congr 1
         have h10 : ((1 + R) ^ (10 : ℝ)) ^ (1 / s) = (1 + R) ^ (10 / s) := by
@@ -5487,7 +5542,8 @@ theorem lintegral_wJ_curve_le_maximal (n : Fin 3) :
   -- Step B: fold `t < 0` onto `t > 0`
   have hB' : ∫⁻ t, wJ j t * φ (t ^ e)
       ≤ ENNReal.ofReal (2 / r) * (2 * ∫⁻ t in S, φ (t ^ e)) := by
-    have hind : ∀ t : ℝ, S.indicator (1 : ℝ → ℝ≥0∞) |t| = S.indicator (1 : ℝ → ℝ≥0∞) t + S.indicator (1 : ℝ → ℝ≥0∞) (-t) := by
+    have hind : ∀ t : ℝ, S.indicator (1 : ℝ → ℝ≥0∞) |t| = S.indicator (1 : ℝ → ℝ≥0∞) t +
+      S.indicator (1 : ℝ → ℝ≥0∞) (-t) := by
       intro t
       rcases lt_trichotomy t 0 with ht | ht | ht
       · have : t ∉ S := fun h' => by linarith [h'.1, show 0 < r / 2 by positivity]
@@ -5509,7 +5565,8 @@ theorem lintegral_wJ_curve_le_maximal (n : Fin 3) :
               (hφm.comp (measurable_id.pow_const e))) :
                 Measurable fun t => S.indicator (1 : ℝ → ℝ≥0∞) t * φ (t ^ e))
       _ = ENNReal.ofReal (2 / r) * (2 * ∫⁻ t in S, φ (t ^ e)) := by
-          have e2 : ∫⁻ t, S.indicator (1 : ℝ → ℝ≥0∞) (-t) * φ (t ^ e) = ∫⁻ t, S.indicator (1 : ℝ → ℝ≥0∞) t * φ (t ^ e) := by
+          have e2 : ∫⁻ t, S.indicator (1 : ℝ → ℝ≥0∞) (-t) * φ (t ^ e) = ∫⁻ t, S.indicator (1 : ℝ →
+            ℝ≥0∞) t * φ (t ^ e) := by
             rw [← lintegral_neg_eq_self (fun t => S.indicator (1 : ℝ → ℝ≥0∞) (-t) * φ (t ^ e))]
             refine lintegral_congr fun t => ?_
             simp only [neg_neg]
@@ -5525,7 +5582,8 @@ theorem lintegral_wJ_curve_le_maximal (n : Fin 3) :
           · rw [Set.indicator_of_mem ht, Set.indicator_of_mem ht, Pi.one_apply, one_mul]
           · rw [Set.indicator_of_notMem ht, Set.indicator_of_notMem ht, zero_mul]
   -- Step C: substitute `σ = t^e` and dominate by the bracket
-  have hC : ∫⁻ t in S, φ (t ^ e) ≤ ENNReal.ofReal Kc * (ENNReal.ofReal L * ∫⁻ σ, ENNReal.ofReal (b σ) * φ σ) := by
+  have hC : ∫⁻ t in S, φ (t ^ e) ≤ ENNReal.ofReal Kc * (ENNReal.ofReal L * ∫⁻ σ, ENNReal.ofReal (b
+    σ) * φ σ) := by
     refine (setLIntegral_comp_pow_le he hr0).trans ?_
     gcongr
     calc ∫⁻ σ in Set.Icc 0 ((2 * r) ^ e), φ σ
@@ -5543,7 +5601,8 @@ theorem lintegral_wJ_curve_le_maximal (n : Fin 3) :
   -- Step D, E: reflect and apply the maximal bound
   have hint : Integrable fun σ : ℝ => ‖h (y - σ • basisVec n)‖ * b σ := by
     refine (hbint.const_mul B).mono' ?_ (Eventually.of_forall fun σ => ?_)
-    · exact ((hh.comp (measurable_const.sub (measurable_id.smul_const _))).norm.aestronglyMeasurable).mul
+    · exact ((hh.comp (measurable_const.sub (measurable_id.smul_const
+        _))).norm.aestronglyMeasurable).mul
         hbint.aestronglyMeasurable
     · rw [Real.norm_eq_abs, abs_of_nonneg (mul_nonneg (norm_nonneg _) (hb0 σ))]
       exact mul_le_mul_of_nonneg_right (hB _) (hb0 σ)
@@ -5611,7 +5670,8 @@ theorem measurable_curveAvg (n : Fin 3) (j : ℤ) {G : E3 → ℂ} (hG : Measura
   refine Measurable.lintegral_prod_right' (f := fun p : E3 × ℝ =>
     wJ j p.2 * ‖G (p.1 + curve n p.2)‖ₑ ^ (2 : ℝ)) ?_
   exact ((measurable_wJ j).comp measurable_snd).mul
-    ((hG.comp (measurable_fst.add ((continuous_curve n).measurable.comp measurable_snd))).enorm.pow_const _)
+    ((hG.comp (measurable_fst.add ((continuous_curve n).measurable.comp
+      measurable_snd))).enorm.pow_const _)
 
 /-- **Duality for the curve average** (Tonelli and translation invariance):
 `∫ B_j(G) K = ∫ |G(y)|^2 ∫ w_j(t) K(y - t^{n+1} e_n) dt dy`. -/
@@ -5648,7 +5708,7 @@ theorem lintegral_curveAvg_mul (n : Fin 3) (j : ℤ) {G : E3 → ℂ} (hG : Meas
         exact ((measurable_wJ j).mul (hK.comp (measurable_const.sub hc)))
 
 /-- `|G|^2` of a Schwartz function lies in every `L^ρ`. -/
-theorem memLp_sq_schwartz (G : 𝓢(E3, ℂ)) {ρ : ℝ} (hρ : 0 < ρ) :
+theorem memLp_sq_schwartz (G : 𝓢(E3, ℂ)) {ρ : ℝ} :
     MemLp (fun y => ((‖G y‖ ^ (2 : ℝ) : ℝ) : ℂ)) (ENNReal.ofReal ρ) volume := by
   have h := (G.memLp (ENNReal.ofReal (2 * ρ)) volume).norm_rpow_div 2
   have e : ENNReal.ofReal (2 * ρ) / 2 = ENNReal.ofReal ρ := by
@@ -5663,7 +5723,7 @@ def sqC (G : E3 → ℂ) (y : E3) : ℂ := ((‖G y‖ ^ (2 : ℝ) : ℝ) : ℂ)
 theorem measurable_sqC {G : E3 → ℂ} (hG : Measurable G) : Measurable (sqC G) :=
   Complex.continuous_ofReal.measurable.comp (hG.norm.pow_const _)
 
-theorem norm_sqC_le {G : E3 → ℂ} {B : ℝ} (hB0 : 0 ≤ B) (hB : ∀ y, ‖G y‖ ≤ B) (y : E3) :
+theorem norm_sqC_le {G : E3 → ℂ} {B : ℝ} (hB : ∀ y, ‖G y‖ ≤ B) (y : E3) :
     ‖sqC G y‖ ≤ B ^ (2 : ℝ) := by
   rw [sqC, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
   exact Real.rpow_le_rpow (norm_nonneg _) (hB y) (by norm_num)
@@ -5694,14 +5754,17 @@ theorem lintegral_sum_maximal_sqC_lt_top (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) (
   have hρ0 : 0 < ρ := by linarith
   have hmem : MemLp (fun x => C1 * ∑ j ∈ S, Twisted.coordinateDyadicBallMaximal n (sqC (G j)) x)
       (ENNReal.ofReal ρ) volume := by
-    refine MemLp.const_mul (memLp_finsetSum (f := fun j x => Twisted.coordinateDyadicBallMaximal n (sqC (G j)) x)
+    refine MemLp.const_mul (memLp_finsetSum (f := fun j x => Twisted.coordinateDyadicBallMaximal n
+      (sqC (G j)) x)
       _ fun j _ => ?_) C1
     obtain ⟨B, hB0, hB⟩ := exists_bound_schwartz (G j)
     exact Twisted.coordinateDyadicBallMaximal_memLp n (sqC (G j))
-      (measurable_sqC (G j).continuous.measurable) _ (Real.rpow_nonneg hB0 _) (norm_sqC_le hB0 hB) hρ
-      (memLp_sq_schwartz (G j) hρ0)
+      (measurable_sqC (G j).continuous.measurable) _ (Real.rpow_nonneg hB0 _) (norm_sqC_le hB)
+        hρ
+      (memLp_sq_schwartz (G j) )
   have hlt := hmem.eLpNorm_lt_top
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hρ0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hρ0) ENNReal.ofReal_ne_top
+    hmem.aestronglyMeasurable,
     ENNReal.toReal_ofReal hρ0.le] at hlt
   by_contra hc
   rw [not_lt, top_le_iff] at hc
@@ -5743,7 +5806,7 @@ theorem lintegral_sum_curveAvg_rpow_le (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) :
       fun j _ => mul_nonneg hC10 ENNReal.toReal_nonneg]
     refine Finset.sum_le_sum fun j _ => ?_
     have h := hC1 j (sqC (G j)) (measurable_sqC (G j).continuous.measurable) _
-      (norm_sqC_le (hBd0 j) (hBd j)) x 1 (Or.inl rfl)
+      (norm_sqC_le (hBd j)) x 1 (Or.inl rfl)
     simp only [one_smul, enorm_sqC] at h
     exact h
   set Btot : ℝ := C1 * ∑ j ∈ S, Bd j ^ (2 : ℝ) with hBtot
@@ -5751,7 +5814,7 @@ theorem lintegral_sum_curveAvg_rpow_le (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) :
   have hFB : ∀ x, F x ≤ ENNReal.ofReal Btot := fun x =>
     (hFle x).trans (ENNReal.ofReal_le_ofReal (mul_le_mul_of_nonneg_left
       (Finset.sum_le_sum fun j _ => Twisted.coordinateDyadicBallMaximal_top_bound n (sqC (G j)) _
-        (Real.rpow_nonneg (hBd0 j) _) (norm_sqC_le (hBd0 j) (hBd j)) x) hC10))
+        (Real.rpow_nonneg (hBd0 j) _) (norm_sqC_le (hBd j)) x) hC10))
   have hFfin : ∀ x, F x ≠ ⊤ := fun x => ne_top_of_le_ne_top ENNReal.ofReal_ne_top (hFB x)
   set I := ∫⁻ x, F x ^ ρ with hI
   set J := ∫⁻ x, Φ x ^ ρ with hJ
@@ -5766,7 +5829,8 @@ theorem lintegral_sum_curveAvg_rpow_le (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) :
   have hHm : Measurable H :=
     Complex.continuous_ofReal.measurable.comp (hFm.ennreal_toReal.pow_const _)
   have hHB : ∀ y, ‖H y‖ ≤ Btot ^ (ρ - 1) := fun y => by
-    rw [hH, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg ENNReal.toReal_nonneg _)]
+    rw [hH, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg
+      ENNReal.toReal_nonneg _)]
     refine Real.rpow_le_rpow ENNReal.toReal_nonneg ?_ (by linarith)
     simpa [ENNReal.toReal_ofReal hB0] using ENNReal.toReal_mono ENNReal.ofReal_ne_top (hFB y)
   have hHnorm : ∀ z, ‖H z‖ₑ = F z ^ (ρ - 1) := fun z => by
@@ -5783,7 +5847,8 @@ theorem lintegral_sum_curveAvg_rpow_le (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) :
           conv_lhs => rw [show ρ = 1 + (ρ - 1) by ring]
           rw [ENNReal.rpow_add_of_nonneg _ _ (by norm_num) (by linarith), ENNReal.rpow_one]
       _ = ∑ j ∈ S, ∫⁻ x, curveAvg n j (G j) x * F x ^ (ρ - 1) := by
-          rw [← lintegral_finsetSum (f := fun j x => curveAvg n j (G j) x * F x ^ (ρ - 1)) _ fun j _ =>
+          rw [← lintegral_finsetSum (f := fun j x => curveAvg n j (G j) x * F x ^ (ρ - 1)) _ fun j
+            _ =>
             (measurable_curveAvg n j (G j).continuous.measurable).mul (hFm.pow_const _)]
           refine lintegral_congr fun x => ?_
           rw [hF, Finset.sum_mul]
@@ -5797,20 +5862,24 @@ theorem lintegral_sum_curveAvg_rpow_le (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) :
           simp only [hHnorm, neg_one_smul, ← sub_eq_add_neg] at h
           exact h
       _ = _ := by
-          rw [← lintegral_finsetSum (f := fun j y => ‖G j y‖ₑ ^ (2 : ℝ) * ENNReal.ofReal (C1 * MH y))
+          rw [← lintegral_finsetSum (f := fun j y => ‖G j y‖ₑ ^ (2 : ℝ) * ENNReal.ofReal (C1 * MH
+            y))
             _ fun j _ => ((G j).continuous.measurable.enorm.pow_const _).mul
               (ENNReal.measurable_ofReal.comp (measurable_const.mul hMHm))]
           refine lintegral_congr fun y => ?_
           rw [hΦ, Finset.sum_mul]
   -- Hölder, then the maximal theorem for `H`
   have hMHnorm : ∀ y, ENNReal.ofReal (C1 * MH y) = ENNReal.ofReal C1 * ‖MH y‖ₑ := fun y => by
-    rw [ENNReal.ofReal_mul hC10, ← ofReal_norm, Real.norm_eq_abs, abs_of_nonneg (maximal_nonneg n H y)]
+    rw [ENNReal.ofReal_mul hC10, ← ofReal_norm, Real.norm_eq_abs, abs_of_nonneg (maximal_nonneg n
+      H y)]
   have hHol := ENNReal.lintegral_mul_le_Lp_mul_Lq volume hhol (f := Φ)
     (g := fun y => ENNReal.ofReal (C1 * MH y)) hΦm.aemeasurable
     (ENNReal.measurable_ofReal.comp (measurable_const.mul hMHm)).aemeasurable
   have hMax := Twisted.eLpNorm_coordinateDyadicBallMaximal_le n H hHm _ (by positivity) hHB hρ'1
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hρ'0) ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hρ'0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hρ'0) ENNReal.ofReal_ne_top
+    (by fun_prop),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hρ'0) ENNReal.ofReal_ne_top
+      (by fun_prop),
     ENNReal.toReal_ofReal hρ'0.le] at hMax
   have hHint : ∫⁻ y, ‖H y‖ₑ ^ ρ' = I := by
     refine lintegral_congr fun y => ?_
@@ -5858,7 +5927,8 @@ theorem lintegral_sum_curveAvg_rpow_le (n : Fin 3) {ρ : ℝ} (hρ : 1 < ρ) :
   refine hfinal.trans_eq ?_
   congr 1
   rw [← ENNReal.ofReal_toReal hCMfin, ← ENNReal.ofReal_mul hC10,
-    ENNReal.ofReal_rpow_of_nonneg (by positivity) hρ0.le, ENNReal.toReal_ofReal ENNReal.toReal_nonneg]
+    ENNReal.ofReal_rpow_of_nonneg (by positivity) hρ0.le, ENNReal.toReal_ofReal
+      ENNReal.toReal_nonneg]
 
 /-- The pieces `Δ^{(n)}_{(n+1)j+k_n} f_n` of `T^{(k)}`. -/
 def kDelta (k : Fin 3 → ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (n : Fin 3) (j : ℤ) : 𝓢(E3, ℂ) :=
@@ -5866,6 +5936,11 @@ def kDelta (k : Fin 3 → ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (n : Fin 3) (j : �
 
 theorem freqPiece_eq_kDelta (j : ℤ) (k : Fin 3 → ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
     freqPiece j k f x = simplexTj j (fun n => ⇑(kDelta k f n j)) x := rfl
+
+@[fun_prop] theorem measurable_kComp (k : Fin 3 → ℤ) (J : ℕ)
+    (f : Fin 3 → 𝓢(E3, ℂ)) : Measurable (kComp k J f) := by
+  unfold kComp freqPiece
+  exact Finset.measurable_sum _ fun j _ => (continuous_simplexTj j _).measurable
 
 /-- **The pointwise bound behind the small-loss estimate**: Hölder `(∞, 2, 2)` in `t` for each
 `j`, then `(∞, 2, 2)` in `j`, with the `∞` slot controlled by `Auto.enorm_lpDelta_shift_le`. -/
@@ -5893,7 +5968,8 @@ theorem enorm_kComp_le {s : ℝ} (hs : 1 < s) :
     refine enorm_simplexTj_le j _ (fun n => (kDelta k f n j).continuous) x (a j) fun t ht => ?_
     have hR : (0 : ℝ) ≤ (2 : ℝ) ^ (k 0 + 1) := (zpow_pos two_pos _).le
     have ht' : |t| ≤ (2 : ℝ) ^ (k 0 + 1) * (2 : ℝ) ^ (-((expo 0 : ℤ) * j + k 0)) := by
-      have e : (2 : ℝ) ^ (k 0 + 1) * (2 : ℝ) ^ (-((expo 0 : ℤ) * j + k 0)) = 2 * (2 : ℝ) ^ (-j) := by
+      have e : (2 : ℝ) ^ (k 0 + 1) * (2 : ℝ) ^ (-((expo 0 : ℤ) * j + k 0)) = 2 * (2 : ℝ) ^ (-j) :=
+        by
         rw [← zpow_add₀ two_ne_zero, show expo 0 = 1 from rfl]
         rw [show k 0 + 1 + -((((1 : ℕ) : ℤ)) * j + k 0) = 1 + -j by push_cast; ring,
           zpow_add₀ two_ne_zero, zpow_one]
@@ -5928,7 +6004,8 @@ theorem enorm_kComp_le {s : ℝ} (hs : 1 < s) :
         rw [Finset.mul_sum]
     _ ≤ _ := by gcongr
 
-/-- **The `∞`-slot integral**: `∑_{|j| ≤ J} ‖M^{(0)} |Δ^{(0)}_{j+k_0} g|^{q/2}‖_2^2 ≲ ‖g‖_q^q`, `q > 2`. -/
+/-- **The `∞`-slot integral**: `∑_{|j| ≤ J} ‖M^{(0)} |Δ^{(0)}_{j+k_0} g|^{q/2}‖_2^2 ≲ ‖g‖_q^q`, `q
+  > 2`. -/
 theorem sum_lintegral_maximal_slot_le {q : ℝ} (hq : 2 < q) :
     ∃ A : ℝ, 0 ≤ A ∧ ∀ (kn : ℤ) (J : ℕ) (g : 𝓢(E3, ℂ)),
       ∑ j ∈ Finset.Icc (-(J : ℤ)) J, ∫⁻ x, ENNReal.ofReal (Twisted.coordinateDyadicBallMaximal 0
@@ -5948,11 +6025,13 @@ theorem sum_lintegral_maximal_slot_le {q : ℝ} (hq : 2 < q) :
       Complex.continuous_ofReal.measurable.comp (G.continuous.norm.measurable.pow_const _)
     obtain ⟨B, hB0, hB⟩ := exists_bound_schwartz G
     have hHB : ∀ y, ‖H y‖ ≤ B ^ (q / 2) := fun y => by
-      rw [hH, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _) _)]
+      rw [hH, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (Real.rpow_nonneg (norm_nonneg _)
+        _)]
       exact Real.rpow_le_rpow (norm_nonneg _) (hB y) (by positivity)
-    have hMax := Twisted.eLpNorm_coordinateDyadicBallMaximal_le 0 H hHm _ (by positivity) hHB one_lt_two
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top,
-      eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top,
+    have hMax := Twisted.eLpNorm_coordinateDyadicBallMaximal_le 0 H hHm _ (by positivity) hHB
+      one_lt_two
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top (by fun_prop),
+      eLpNorm_eq_lintegral_rpow_enorm_toReal (by simp) ENNReal.ofReal_ne_top (by fun_prop),
       ENNReal.toReal_ofReal zero_le_two] at hMax
     have h2 : ∫⁻ x, ‖Twisted.coordinateDyadicBallMaximal 0 H x‖ₑ ^ (2 : ℝ)
         ≤ CM ^ (2 : ℝ) * ∫⁻ x, ‖H x‖ₑ ^ (2 : ℝ) := by
@@ -5984,11 +6063,13 @@ theorem sum_lintegral_maximal_slot_le {q : ℝ} (hq : 2 < q) :
     _ = ENNReal.ofReal (CM.toReal ^ 2) * ∑ m ∈ (Finset.Icc (-(J : ℤ)) J).image
           (fun j => (expo 0 : ℤ) * j + kn), ∫⁻ x, ENNReal.ofReal (‖lpDelta 0 m g x‖ ^ q) := by
         rw [Finset.sum_image hinj, Finset.mul_sum]
-    _ ≤ ENNReal.ofReal (CM.toReal ^ 2) * (ENNReal.ofReal A0 * ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ q)) := by
+    _ ≤ ENNReal.ofReal (CM.toReal ^ 2) * (ENNReal.ofReal A0 * ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ q)) :=
+      by
         gcongr; exact hS _ g
     _ = _ := by rw [← mul_assoc, ← ENNReal.ofReal_mul (by positivity)]
 
-/-- **The `L^2`-slot integral**: `∫ (∑_{|j| ≤ J} B_j(Δ^{(n)}_{(n+1)j+k_n} g))^{q/2} ≲ ‖g‖_q^q`, `q > 2`. -/
+/-- **The `L^2`-slot integral**: `∫ (∑_{|j| ≤ J} B_j(Δ^{(n)}_{(n+1)j+k_n} g))^{q/2} ≲ ‖g‖_q^q`, `q
+  > 2`. -/
 theorem lintegral_curveAvg_slot_le (n : Fin 3) {q : ℝ} (hq : 2 < q) :
     ∃ A : ℝ, 0 ≤ A ∧ ∀ (kn : ℤ) (J : ℕ) (g : 𝓢(E3, ℂ)),
       ∫⁻ x, (∑ j ∈ Finset.Icc (-(J : ℤ)) J,
@@ -6051,13 +6132,15 @@ theorem smallLoss_bound {q : ℝ} (hq : 3 ≤ q) :
   set M : ℤ → E3 → ℝ := fun j => Twisted.coordinateDyadicBallMaximal 0
     (fun y => ((‖kDelta k f 0 j y‖ ^ (q / 2) : ℝ) : ℂ)) with hM
   have hMm : ∀ j, Measurable (M j) := fun j => Twisted.coordinateDyadicBallMaximal_measurable 0 _
-    (Complex.continuous_ofReal.measurable.comp ((kDelta k f 0 j).continuous.norm.measurable.pow_const _))
+    (Complex.continuous_ofReal.measurable.comp ((kDelta k f 0
+      j).continuous.norm.measurable.pow_const _))
   set A : E3 → ℝ≥0∞ := fun x =>
     (∑ j ∈ Sj, (ENNReal.ofReal c * ENNReal.ofReal (M j x) ^ (1 / (q / 2))) ^ q) ^ (1 / q) with hA
   set P : E3 → ℝ≥0∞ := fun x => (∑ j ∈ Sj, curveAvg 1 j (kDelta k f 1 j) x) ^ (1 / 2 : ℝ) with hP
   set Q : E3 → ℝ≥0∞ := fun x => (∑ j ∈ Sj, curveAvg 2 j (kDelta k f 2 j) x) ^ (1 / 2 : ℝ) with hQ
   have hAm : Measurable A := (Finset.measurable_sum _ fun j _ =>
-    (measurable_const.mul ((ENNReal.measurable_ofReal.comp (hMm j)).pow_const _)).pow_const _).pow_const _
+    (measurable_const.mul ((ENNReal.measurable_ofReal.comp (hMm j)).pow_const _)).pow_const
+      _).pow_const _
   have hPm : Measurable P := (Finset.measurable_sum _ fun j _ =>
     measurable_curveAvg 1 j (kDelta k f 1 j).continuous.measurable).pow_const _
   have hQm : Measurable Q := (Finset.measurable_sum _ fun j _ =>
@@ -6091,7 +6174,8 @@ theorem smallLoss_bound {q : ℝ} (hq : 3 ≤ q) :
   have hH2 := ENNReal.lintegral_Lp_mul_le_Lq_mul_Lr (p := q / 2) (q := q) (r := q)
     (by positivity) (by linarith) (by field_simp; norm_num) volume hPm.aemeasurable hQm.aemeasurable
   have hr0 : 0 < q / 3 := by positivity
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hr0.le]
   set N : Fin 3 → ℝ≥0∞ := fun n => eLpNorm (f n) (ENNReal.ofReal q) volume with hN
   have hNint : ∀ n, (∫⁻ x, ENNReal.ofReal (‖f n x‖ ^ q)) = N n ^ q := fun n =>
@@ -6125,7 +6209,8 @@ theorem smallLoss_bound {q : ℝ} (hq : 3 ≤ q) :
         refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left ?_ hC00) (by positivity)
         have hk0 : k 0 ≤ kMax k := by simp only [kMax]; omega
         have hkm : 0 ≤ kMax k := by omega
-        calc (1 + (2 : ℝ) ^ (k 0 + 1)) ^ (10 / (q / 2)) ≤ ((2 : ℝ) ^ (kMax k + 2)) ^ (10 / (q / 2)) :=
+        calc (1 + (2 : ℝ) ^ (k 0 + 1)) ^ (10 / (q / 2)) ≤ ((2 : ℝ) ^ (kMax k + 2)) ^ (10 / (q /
+          2)) :=
               Real.rpow_le_rpow (by positivity) (one_add_zpow_le hk0 hkm) (by positivity)
           _ = (2 : ℝ) ^ (20 * ((kMax k : ℝ) + 2) / q) := by
               rw [← Real.rpow_intCast, ← Real.rpow_mul (by norm_num)]
@@ -6167,13 +6252,15 @@ theorem smallLoss_bound' {q q1 q2 r : ℝ} (hq : 2 < q) (hq1 : 2 < q1) (hq2 : 2 
   set M : ℤ → E3 → ℝ := fun j => Twisted.coordinateDyadicBallMaximal 0
     (fun y => ((‖kDelta k f 0 j y‖ ^ (q / 2) : ℝ) : ℂ)) with hM
   have hMm : ∀ j, Measurable (M j) := fun j => Twisted.coordinateDyadicBallMaximal_measurable 0 _
-    (Complex.continuous_ofReal.measurable.comp ((kDelta k f 0 j).continuous.norm.measurable.pow_const _))
+    (Complex.continuous_ofReal.measurable.comp ((kDelta k f 0
+      j).continuous.norm.measurable.pow_const _))
   set A : E3 → ℝ≥0∞ := fun x =>
     (∑ j ∈ Sj, (ENNReal.ofReal c * ENNReal.ofReal (M j x) ^ (1 / (q / 2))) ^ q) ^ (1 / q) with hA
   set P : E3 → ℝ≥0∞ := fun x => (∑ j ∈ Sj, curveAvg 1 j (kDelta k f 1 j) x) ^ (1 / 2 : ℝ) with hP
   set Q : E3 → ℝ≥0∞ := fun x => (∑ j ∈ Sj, curveAvg 2 j (kDelta k f 2 j) x) ^ (1 / 2 : ℝ) with hQ
   have hAm : Measurable A := (Finset.measurable_sum _ fun j _ =>
-    (measurable_const.mul ((ENNReal.measurable_ofReal.comp (hMm j)).pow_const _)).pow_const _).pow_const _
+    (measurable_const.mul ((ENNReal.measurable_ofReal.comp (hMm j)).pow_const _)).pow_const
+      _).pow_const _
   have hPm : Measurable P := (Finset.measurable_sum _ fun j _ =>
     measurable_curveAvg 1 j (kDelta k f 1 j).continuous.measurable).pow_const _
   have hQm : Measurable Q := (Finset.measurable_sum _ fun j _ =>
@@ -6218,22 +6305,27 @@ theorem smallLoss_bound' {q q1 q2 r : ℝ} (hq : 2 < q) (hq1 : 2 < q1) (hq2 : 2 
     hr0 hrq hrr' volume hAm.aemeasurable (hPm.mul hQm).aemeasurable
   have hH2 := ENNReal.lintegral_Lp_mul_le_Lq_mul_Lr (p := r') (q := q1) (r := q2)
     hr'0 hr'q1 (by rw [hr', one_div_one_div]) volume hPm.aemeasurable hQm.aemeasurable
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hr0.le]
   calc (∫⁻ x, ‖kComp k J f x‖ₑ ^ r) ^ (1 / r)
       ≤ (∫⁻ x, (A x * (P x * Q x)) ^ r) ^ (1 / r) := by
         gcongr with x; exact hpt x
-    _ ≤ (∫⁻ x, A x ^ q) ^ (1 / q) * ((∫⁻ x, P x ^ q1) ^ (1 / q1) * (∫⁻ x, Q x ^ q2) ^ (1 / q2)) := by
+    _ ≤ (∫⁻ x, A x ^ q) ^ (1 / q) * ((∫⁻ x, P x ^ q1) ^ (1 / q1) * (∫⁻ x, Q x ^ q2) ^ (1 / q2)) :=
+      by
         refine hH1.trans ?_
         gcongr
     _ ≤ (ENNReal.ofReal c ^ q * (ENNReal.ofReal A0 * N0 ^ q)) ^ (1 / q) *
-          ((ENNReal.ofReal A1 * N1 ^ q1) ^ (1 / q1) * (ENNReal.ofReal A2 * N2 ^ q2) ^ (1 / q2)) := by
+          ((ENNReal.ofReal A1 * N1 ^ q1) ^ (1 / q1) * (ENNReal.ofReal A2 * N2 ^ q2) ^ (1 / q2)) :=
+            by
         gcongr
     _ = ENNReal.ofReal c * (ENNReal.ofReal (A0 ^ (1 / q)) *
-          (ENNReal.ofReal (A1 ^ (1 / q1)) * ENNReal.ofReal (A2 ^ (1 / q2)))) * (N0 * (N1 * N2)) := by
+          (ENNReal.ofReal (A1 ^ (1 / q1)) * ENNReal.ofReal (A2 ^ (1 / q2)))) * (N0 * (N1 * N2)) :=
+            by
         have e0 : (ENNReal.ofReal c ^ q * (ENNReal.ofReal A0 * N0 ^ q)) ^ (1 / q)
             = ENNReal.ofReal c * (ENNReal.ofReal A0 ^ (1 / q) * N0) := by
-          rw [← mul_assoc, rpow_one_div_mul_self hq0, ENNReal.mul_rpow_of_nonneg _ _ (by positivity),
+          rw [← mul_assoc, rpow_one_div_mul_self hq0, ENNReal.mul_rpow_of_nonneg _ _
+            (by positivity),
             ← ENNReal.rpow_mul, mul_one_div_cancel hq0.ne', ENNReal.rpow_one, mul_assoc]
         rw [e0, rpow_one_div_mul_self hq10, rpow_one_div_mul_self hq20,
           ENNReal.ofReal_rpow_of_nonneg hA00 (by positivity),
@@ -6252,7 +6344,8 @@ theorem smallLoss_bound' {q q1 q2 r : ℝ} (hq : 2 < q) (hq1 : 2 < q1) (hq2 : 2 
         refine mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left ?_ hC00) (by positivity)
         have hk0 : k 0 ≤ kMax k := by simp only [kMax]; omega
         have hkm : 0 ≤ kMax k := by omega
-        calc (1 + (2 : ℝ) ^ (k 0 + 1)) ^ (10 / (q / 2)) ≤ ((2 : ℝ) ^ (kMax k + 2)) ^ (10 / (q / 2)) :=
+        calc (1 + (2 : ℝ) ^ (k 0 + 1)) ^ (10 / (q / 2)) ≤ ((2 : ℝ) ^ (kMax k + 2)) ^ (10 / (q /
+          2)) :=
               Real.rpow_le_rpow (by positivity) (one_add_zpow_le hk0 hkm) (by positivity)
           _ = (2 : ℝ) ^ (20 * ((kMax k : ℝ) + 2) / q) := by
               rw [← Real.rpow_intCast, ← Real.rpow_mul (by norm_num)]
@@ -6330,7 +6423,7 @@ theorem lineDelta_schwartz (ℓ : Fin 3) (m : ℤ) (g : 𝓢(E3, ℂ)) :
 theorem measurable_lineShift (ℓ : Fin 3) : Measurable fun p : E3 × ℝ => p.1 - p.2 • basisVec ℓ :=
   measurable_fst.sub (measurable_snd.smul_const _)
 
-theorem measurable_lineDelta (ℓ : Fin 3) (m : ℤ) {g : E3 → ℂ} (hg : Measurable g) :
+@[fun_prop] theorem measurable_lineDelta (ℓ : Fin 3) (m : ℤ) {g : E3 → ℂ} (hg : Measurable g) :
     Measurable (lineDelta ℓ m g) := by
   have h : StronglyMeasurable (Function.uncurry fun (y : E3) (u : ℝ) =>
       (psiCM m).check u * g (y - u • basisVec ℓ)) :=
@@ -6351,7 +6444,8 @@ theorem eLpNorm_lineDelta_le (ℓ : Fin 3) (m : ℤ) {g : E3 → ℂ} (hg : Meas
       ≤ (∫⁻ u, ‖(psiCM m).check u‖ₑ) * eLpNorm g (ENNReal.ofReal P) volume := by
   have hP0 : 0 < P := by linarith
   set W := ∫⁻ u, ‖(psiCM m).check u‖ₑ with hW
-  have hwm : Measurable fun u : ℝ => ‖(psiCM m).check u‖ₑ := (psiCM m).check.continuous.measurable.enorm
+  have hwm : Measurable fun u : ℝ => ‖(psiCM m).check u‖ₑ := (psiCM
+    m).check.continuous.measurable.enorm
   have hF : Measurable (Function.uncurry fun (y : E3) (u : ℝ) => ‖g (y - u • basisVec ℓ)‖ₑ) :=
     (hg.comp (measurable_lineShift ℓ)).enorm
   have hMJ := lintegral_rpow_lintegral_le volume volume hwm hF hP
@@ -6359,8 +6453,9 @@ theorem eLpNorm_lineDelta_le (ℓ : Fin 3) (m : ℤ) {g : E3 → ℂ} (hg : Meas
     lintegral_sub_right_eq_self (fun y => ‖g y‖ₑ ^ P) (u • basisVec ℓ)
   simp only [htr] at hMJ
   rw [lintegral_mul_const _ hwm] at hMJ
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top
+    (by fun_prop),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top (by fun_prop),
     ENNReal.toReal_ofReal hP0.le]
   calc (∫⁻ y, ‖lineDelta ℓ m g y‖ₑ ^ P) ^ (1 / P)
       ≤ (∫⁻ y, (∫⁻ u, ‖(psiCM m).check u‖ₑ * ‖g (y - u • basisVec ℓ)‖ₑ) ^ P) ^ (1 / P) := by
@@ -6400,7 +6495,7 @@ theorem lintegral_mul3_rpow_le {α : Type*} [MeasurableSpace α] (μ : Measure �
     hr'0 hr'q1 (by rw [hr', one_div_one_div]) μ hg hh
   exact hH1.trans (by gcongr)
 
-theorem measurable_wJ_prod (j : ℤ) {h : Fin 3 → E3 → ℂ} (hh : ∀ n, Measurable (h n)) :
+theorem measurable_wJ_prod {h : Fin 3 → E3 → ℂ} (hh : ∀ n, Measurable (h n)) :
     Measurable (Function.uncurry fun (x : E3) (t : ℝ) =>
       ‖h 0 (x + curve 0 t)‖ₑ * (‖h 1 (x + curve 1 t)‖ₑ * ‖h 2 (x + curve 2 t)‖ₑ)) := by
   have hc : ∀ n, Measurable fun p : E3 × ℝ => p.1 + curve n p.2 := fun n =>
@@ -6409,17 +6504,32 @@ theorem measurable_wJ_prod (j : ℤ) {h : Fin 3 → E3 → ℂ} (hh : ∀ n, Mea
 
 /-- **The crude bound for `T_j`** (Minkowski and Hölder): for `1/r = ∑ 1/P_n`, `r ≥ 1`,
 `‖T_j(h)‖_r ≤ ‖ψ(2^j ·)/·‖_1 ∏ ‖h_n‖_{P_n}`. -/
+@[fun_prop] theorem measurable_simplexTj (j : ℤ) {h : Fin 3 → E3 → ℂ} (hh : ∀ n, Measurable (h n)) :
+    Measurable (simplexTj j h) := by
+  have hc : ∀ n, Measurable fun p : E3 × ℝ => p.1 + curve n p.2 := fun n =>
+    measurable_fst.add ((continuous_curve n).measurable.comp measurable_snd)
+  have hjoint : StronglyMeasurable (Function.uncurry fun (x : E3) (t : ℝ) =>
+      (lpPsi ((2 : ℝ) ^ j * t) : ℂ) * prodShift h x t / t) := by
+    refine Measurable.stronglyMeasurable ?_
+    refine ((Complex.continuous_ofReal.comp (continuous_lpPsi.comp
+      (continuous_const.mul continuous_id))).measurable.comp measurable_snd |>.mul ?_).div
+      (Complex.measurable_ofReal.comp measurable_snd)
+    unfold prodShift
+    exact Finset.measurable_prod _ fun n _ => (hh n).comp (hc n)
+  exact hjoint.integral_prod_right'.measurable
+
 theorem eLpNorm_simplexTj_le (j : ℤ) {h : Fin 3 → E3 → ℂ} (hh : ∀ n, Measurable (h n))
     {r : ℝ} (hr1 : 1 ≤ r) {P : Fin 3 → ℝ} (hP : ∀ n, 0 < P n)
     (hsum : 1 / r = 1 / P 0 + 1 / P 1 + 1 / P 2) :
     eLpNorm (simplexTj j h) (ENNReal.ofReal r) volume
       ≤ (∫⁻ t, wJ j t) * (eLpNorm (h 0) (ENNReal.ofReal (P 0)) volume *
-          (eLpNorm (h 1) (ENNReal.ofReal (P 1)) volume * eLpNorm (h 2) (ENNReal.ofReal (P 2)) volume)) := by
+          (eLpNorm (h 1) (ENNReal.ofReal (P 1)) volume * eLpNorm (h 2) (ENNReal.ofReal (P 2))
+            volume)) := by
   have hr0 : 0 < r := by linarith
   set W := ∫⁻ t, wJ j t with hW
   set F : E3 → ℝ → ℝ≥0∞ := fun x t =>
     ‖h 0 (x + curve 0 t)‖ₑ * (‖h 1 (x + curve 1 t)‖ₑ * ‖h 2 (x + curve 2 t)‖ₑ) with hFdef
-  have hF : Measurable (Function.uncurry F) := measurable_wJ_prod j hh
+  have hF : Measurable (Function.uncurry F) := measurable_wJ_prod hh
   have hpt : ∀ x, ‖simplexTj j h x‖ₑ ≤ ∫⁻ t, wJ j t * F x t := by
     intro x
     refine (enorm_integral_le_lintegral_enorm _).trans (le_of_eq (lintegral_congr fun t => ?_))
@@ -6440,10 +6550,12 @@ theorem eLpNorm_simplexTj_le (j : ℤ) {h : Fin 3 → E3 → ℂ} (hh : ∀ n, M
     rw [hc 0, hc 1, hc 2] at h3
     have h4 := ENNReal.rpow_le_rpow h3 hr0.le
     rwa [← ENNReal.rpow_mul, one_div_mul_cancel hr0.ne', ENNReal.rpow_one] at h4
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top
+    (by fun_prop),
     ENNReal.toReal_ofReal hr0.le]
   have hNe : ∀ n, eLpNorm (h n) (ENNReal.ofReal (P n)) volume = N n := fun n => by
-    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP n) ENNReal.ofReal_ne_top,
+    rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP n) ENNReal.ofReal_ne_top
+      (by fun_prop),
       ENNReal.toReal_ofReal (hP n).le]
   rw [hNe 0, hNe 1, hNe 2]
   calc (∫⁻ x, ‖simplexTj j h x‖ₑ ^ r) ^ (1 / r)
@@ -6483,19 +6595,6 @@ theorem kComp0_self (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) 
     kComp0 k J f (f 0) = kComp k J f := by
   rw [kComp0_schwartz, Function.update_eq_self]
 
-theorem measurable_simplexTj (j : ℤ) {h : Fin 3 → E3 → ℂ} (hh : ∀ n, Measurable (h n)) :
-    Measurable (simplexTj j h) := by
-  have hc : ∀ n, Measurable fun p : E3 × ℝ => p.1 + curve n p.2 := fun n =>
-    measurable_fst.add ((continuous_curve n).measurable.comp measurable_snd)
-  have hjoint : StronglyMeasurable (Function.uncurry fun (x : E3) (t : ℝ) =>
-      (lpPsi ((2 : ℝ) ^ j * t) : ℂ) * prodShift h x t / t) := by
-    refine Measurable.stronglyMeasurable ?_
-    refine ((Complex.continuous_ofReal.comp (continuous_lpPsi.comp
-      (continuous_const.mul continuous_id))).measurable.comp measurable_snd |>.mul ?_).div
-      (Complex.measurable_ofReal.comp measurable_snd)
-    unfold prodShift
-    exact Finset.measurable_prod _ fun n _ => (hh n).comp (hc n)
-  exact hjoint.integral_prod_right'.measurable
 
 theorem measurable_kComp0 (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) {g : E3 → ℂ}
     (hg : Measurable g) : Measurable (kComp0 k J f g) := by
@@ -6596,7 +6695,8 @@ theorem kComp0_add (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) {
   rw [lineDelta_add 0 m h₁ h₂ hB₁ hB₂]
   exact simplexTj_add0 j (measurable_lineDelta 0 m h₁) (measurable_lineDelta 0 m h₂)
     (kDelta k f 1 j).continuous.measurable (kDelta k f 2 j).continuous.measurable
-    (B := B) (fun y => (norm_lineDelta_le 0 m hB₁ y).trans ((le_max_left _ _).trans (le_max_left _ _)))
+    (B := B) (fun y => (norm_lineDelta_le 0 m hB₁ y).trans ((le_max_left _ _).trans (le_max_left _
+      _)))
     (fun y => (norm_lineDelta_le 0 m hB₂ y).trans ((le_max_right _ _).trans (le_max_left _ _)))
     (fun y => (hBb y).trans ((le_max_left _ _).trans (le_max_right _ _)))
     (fun y => (hBc y).trans ((le_max_right _ _).trans (le_max_right _ _))) x
@@ -6637,7 +6737,7 @@ theorem kComp0_crude (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ))
       ![lineDelta 0 (m j) g, ⇑(kDelta k f 1 j), ⇑(kDelta k f 2 j)] := by
     funext x; simp [kComp0, Finset.sum_apply, m, Sj]
   rw [hfun]
-  refine (eLpNorm_sum_le (fun j _ => (measurable_simplexTj j (hmeas j)).aestronglyMeasurable)
+  refine (eLpNorm_sum_le
     (by simpa using hr1)).trans ?_
   rw [Finset.sum_mul]
   refine Finset.sum_le_sum fun j _ => ?_
@@ -6677,7 +6777,7 @@ theorem isBdd_simpleFunc (s : SimpleFunc E3 ℂ) : IsBdd s := by
 bounded `g ∈ L^P`, then `‖T g‖_r ≤ M ‖g‖_P`. -/
 theorem eLpNorm_bound_transfer {T : (E3 → ℂ) → E3 → ℂ}
     (hadd : ∀ a b : E3 → ℂ, Measurable a → Measurable b → IsBdd a → IsBdd b → T (a + b) = T a + T b)
-    (hmeas : ∀ a, Measurable a → Measurable (T a)) {r P : ℝ} (hr : 1 ≤ r) (hP : 1 ≤ P)
+     {r P : ℝ} (hr : 1 ≤ r) (hP : 1 ≤ P)
     {C : ℝ≥0∞} (hC : C ≠ ⊤)
     (hcrude : ∀ a, Measurable a → eLpNorm (T a) (ENNReal.ofReal r) volume
       ≤ C * eLpNorm a (ENNReal.ofReal P) volume)
@@ -6702,13 +6802,13 @@ theorem eLpNorm_bound_transfer {T : (E3 → ℂ) → E3 → ℂ}
     calc eLpNorm φ (ENNReal.ofReal P) volume = eLpNorm (g - (g - φ)) (ENNReal.ofReal P) volume := by
           rw [sub_sub_cancel]
       _ ≤ eLpNorm g (ENNReal.ofReal P) volume + eLpNorm (g - φ) (ENNReal.ofReal P) volume :=
-          eLpNorm_sub_le hg.aestronglyMeasurable (hg.sub hφm).aestronglyMeasurable hP1
+          eLpNorm_sub_le hP1
       _ ≤ _ := by gcongr
   calc eLpNorm (T g) (ENNReal.ofReal r) volume
-      ≤ eLpNorm (T φ) (ENNReal.ofReal r) volume + eLpNorm (T (g - φ)) (ENNReal.ofReal r) volume := by
+      ≤ eLpNorm (T φ) (ENNReal.ofReal r) volume + eLpNorm (T (g - φ)) (ENNReal.ofReal r) volume :=
+        by
         rw [hsplit]
-        exact eLpNorm_add_le (hmeas φ hφm).aestronglyMeasurable
-          (hmeas _ (hg.sub hφm)).aestronglyMeasurable hr1
+        exact eLpNorm_add_le hr1
     _ ≤ M * (eLpNorm g (ENNReal.ofReal P) volume + δ) + C * δ := by
         gcongr
         · exact hφM.trans (by gcongr)
@@ -6725,7 +6825,8 @@ theorem kComp0_add' (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) 
   intro a b ha hb ⟨A, hA⟩ ⟨B, hB⟩
   exact kComp0_add k J f ha hb hA hB
 
-theorem exists_real_pos_ofReal_le {δ : ℝ≥0∞} (hδ : 0 < δ) : ∃ ε : ℝ, 0 < ε ∧ ENNReal.ofReal ε ≤ δ := by
+theorem exists_real_pos_ofReal_le {δ : ℝ≥0∞} (hδ : 0 < δ) : ∃ ε : ℝ, 0 < ε ∧ ENNReal.ofReal ε ≤ δ
+  := by
   refine ⟨(min δ 1).toReal, ENNReal.toReal_pos (by positivity) (by simp), ?_⟩
   rw [ENNReal.ofReal_toReal (by simp)]
   exact min_le_left _ _
@@ -6738,9 +6839,10 @@ theorem kComp0_bound_of_schwartz (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → �
     (hS : ∀ φ : 𝓢(E3, ℂ), eLpNorm (kComp0 k J f φ) (ENNReal.ofReal r) volume
       ≤ M * eLpNorm φ (ENNReal.ofReal P) volume)
     {g : E3 → ℂ} (hg : Measurable g) (hgB : IsBdd g) (hgP : MemLp g (ENNReal.ofReal P) volume) :
-    eLpNorm (kComp0 k J f g) (ENNReal.ofReal r) volume ≤ M * eLpNorm g (ENNReal.ofReal P) volume := by
+    eLpNorm (kComp0 k J f g) (ENNReal.ofReal r) volume ≤ M * eLpNorm g (ENNReal.ofReal P) volume
+      := by
   obtain ⟨C, hC, hcrude⟩ := kComp0_crude k J f hr1 hP hP1 hP2 hsum
-  refine eLpNorm_bound_transfer (kComp0_add' k J f) (fun a ha => measurable_kComp0 k J f ha)
+  refine eLpNorm_bound_transfer (kComp0_add' k J f)
     hr1 hP hC hcrude hM hg hgB fun δ hδ => ?_
   obtain ⟨ε, hε, hεδ⟩ := exists_real_pos_ofReal_le hδ
   obtain ⟨ψ, hψc, hψd, hψε⟩ := hgP.exist_eLpNorm_sub_le ENNReal.ofReal_ne_top (by simpa using hP) hε
@@ -6756,9 +6858,10 @@ theorem kComp0_bound_of_simple (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢
     (hsum : 1 / r = 1 / P + 1 / P1 + 1 / P2) {M : ℝ≥0∞} (hM : M ≠ ⊤)
     (hS : ∀ s : SimpleFunc E3 ℂ, Integrable s → eLpNorm (kComp0 k J f s) (ENNReal.ofReal r) volume
       ≤ M * eLpNorm s (ENNReal.ofReal P) volume) (φ : 𝓢(E3, ℂ)) :
-    eLpNorm (kComp0 k J f φ) (ENNReal.ofReal r) volume ≤ M * eLpNorm φ (ENNReal.ofReal P) volume := by
+    eLpNorm (kComp0 k J f φ) (ENNReal.ofReal r) volume ≤ M * eLpNorm φ (ENNReal.ofReal P) volume
+      := by
   obtain ⟨C, hC, hcrude⟩ := kComp0_crude k J f hr1 hP hP1 hP2 hsum
-  refine eLpNorm_bound_transfer (kComp0_add' k J f) (fun a ha => measurable_kComp0 k J f ha)
+  refine eLpNorm_bound_transfer (kComp0_add' k J f)
     hr1 hP hC hcrude hM φ.continuous.measurable (isBdd_schwartz φ) fun δ hδ => ?_
   have hP0 : ENNReal.ofReal P ≠ 0 := by simpa using (by linarith : (0 : ℝ) < P)
   obtain ⟨s, hsε, hsP⟩ := (φ.memLp (ENNReal.ofReal P) volume).exists_simpleFunc_eLpNorm_sub_lt
@@ -6769,7 +6872,7 @@ theorem kComp0_bound_of_simple (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢
 /-- A Schwartz function with vanishing `L^p` norm vanishes. -/
 theorem schwartz_eq_zero_of_eLpNorm (g : 𝓢(E3, ℂ)) {p : ℝ} (hp : 0 < p)
     (h : eLpNorm g (ENNReal.ofReal p) volume = 0) : (g : E3 → ℂ) = 0 := by
-  rw [eLpNorm_eq_zero_iff g.continuous.aestronglyMeasurable (by simpa using hp)] at h
+  rw [eLpNorm_eq_zero_iff (by simpa using hp)] at h
   exact (g.continuous.ae_eq_iff_eq volume continuous_const).mp h
 
 /-- `T^{(k)}_J(f) = 0` as soon as one input vanishes. -/
@@ -6836,7 +6939,8 @@ theorem ennreal_interp_exp {a b c θ : ℝ} (ha : 0 < a) (hb : 0 < b) (hc : 0 < 
     (hθ1 : θ ≤ 1) (h : 1 / c = (1 - θ) * (1 / a) + θ * (1 / b)) :
     (ENNReal.ofReal c)⁻¹ = ENNReal.ofReal (1 - θ) * (ENNReal.ofReal a)⁻¹ +
       ENNReal.ofReal θ * (ENNReal.ofReal b)⁻¹ := by
-  rw [← ENNReal.ofReal_inv_of_pos ha, ← ENNReal.ofReal_inv_of_pos hb, ← ENNReal.ofReal_inv_of_pos hc,
+  rw [← ENNReal.ofReal_inv_of_pos ha, ← ENNReal.ofReal_inv_of_pos hb, ← ENNReal.ofReal_inv_of_pos
+    hc,
     ← ENNReal.ofReal_mul (by linarith), ← ENNReal.ofReal_mul hθ0,
     ← ENNReal.ofReal_add (by positivity) (by positivity)]
   congr 1
@@ -6852,7 +6956,8 @@ theorem H_gain {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp0 : 0 < pv 0) (hp1
     ∃ δ' C : ℝ, 0 < δ' ∧ 0 ≤ C ∧ ∀ k : Fin 3 → ℤ, 0 < kMax k → ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (kComp k J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal (C * (2 : ℝ) ^ (-(δ' * kMax k))) *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) := by
   set a := 1 / pv 1 + 1 / pv 2 with ha
   set x0 := 1 / pv 0 with hx0
@@ -6990,7 +7095,8 @@ theorem H_gain {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp0 : 0 < pv 0) (hp1
     (ennreal_interp_exp one_pos (by linarith) (by linarith) hθ0.le hθ1.le hint1)
     (fun s t _ _ => by
       rw [SimpleFunc.coe_add]
-      exact kComp0_add' k J f _ _ s.measurable t.measurable (isBdd_simpleFunc s) (isBdd_simpleFunc t))
+      exact kComp0_add' k J f _ _ s.measurable t.measurable (isBdd_simpleFunc s) (isBdd_simpleFunc
+        t))
     (fun c s _ => by rw [SimpleFunc.coe_smul]; exact kComp0_smul k J f c s)
     (fun s _ => measurable_kComp0 k J f s.measurable) hM₀0 hM₁0 hB₀ hB₁
   have hfinal := kComp0_bound_of_simple k J f (r := p) (P := pv 0) (P1 := pv 1) (P2 := pv 2)
@@ -6998,7 +7104,8 @@ theorem H_gain {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp0 : 0 < pv 0) (hp1
     (fun s hs => (hRT s hs).2) (f 0)
   rw [kComp0_self] at hfinal
   refine hfinal.trans ?_
-  have hic := interp_const_le (n := n1 * n2) hCg hCv (by positivity) hθ0.le hθ1.le hθx hK0 hε0.le hδ hεδ
+  have hic := interp_const_le (n := n1 * n2) hCg hCv (by positivity) hθ0.le hθ1.le hθx hK0 hε0.le
+    hδ hεδ
   calc ENNReal.ofReal (Real.rpow M₀ (1 - θ) * Real.rpow M₁ θ) * N0
       ≤ ENNReal.ofReal (max Cg 1 * (Cv + 1) * (2 : ℝ) ^ (40 * ε) * (2 : ℝ) ^ (-(δ * x0 / 2 * K)) *
           (n1 * n2)) * N0 := by
@@ -7065,18 +7172,22 @@ theorem sum_Icc_rpow_le {δ : ℝ} (hδ : 0 < δ) (N : ℕ) :
 theorem le_kMax (k : Fin 3 → ℤ) (i : Fin 3) : k i ≤ kMax k := by
   unfold kMax
   fin_cases i
-  exacts [le_max_of_le_left (le_max_left _ _), le_max_of_le_left (le_max_right _ _), le_max_right _ _]
+  exacts [le_max_of_le_left (le_max_left _ _), le_max_of_le_left (le_max_right _ _), le_max_right
+    _ _]
 
 theorem kMin_le (k : Fin 3 → ℤ) (i : Fin 3) : kMin k ≤ k i := by
   unfold kMin
   fin_cases i
-  exacts [min_le_of_left_le (min_le_left _ _), min_le_of_left_le (min_le_right _ _), min_le_right _ _]
+  exacts [min_le_of_left_le (min_le_left _ _), min_le_of_left_le (min_le_right _ _), min_le_right
+    _ _]
 
-/-- **The summability over `F_H`**: `∑_{k ∈ F_H ∩ [-N,N]^3} 2^{-δ k^{(1)}} ≤ S`, uniformly in `N`. -/
+/-- **The summability over `F_H`**: `∑_{k ∈ F_H ∩ [-N,N]^3} 2^{-δ k^{(1)}} ≤ S`, uniformly in `N`.
+-/
 theorem sum_regH_le {δ : ℝ} (hδ : 0 < δ) :
     ∃ S : ℝ, 0 ≤ S ∧ ∀ N : ℕ, ∑ k ∈ (kBox N).filter RegH, (2 : ℝ) ^ (-(δ * kMax k)) ≤ S := by
   set T : ℝ := (2 : ℝ) ^ (33 * δ) / (1 - (2 : ℝ) ^ (-(δ / 3))) with hT
-  have hc1 : (2 : ℝ) ^ (-(δ / 3)) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+  have hc1 : (2 : ℝ) ^ (-(δ / 3)) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num)
+    (by linarith)
   have hT0 : 0 ≤ T := div_nonneg (by positivity) (by linarith)
   refine ⟨T ^ 3, by positivity, fun N => ?_⟩
   have hbound : ∀ k ∈ (kBox N).filter RegH,
@@ -7100,10 +7211,13 @@ theorem sum_regH_le {δ : ℝ} (hδ : 0 < δ) :
       ≤ ∑ k ∈ (kBox N).filter RegH, ∏ i, (2 : ℝ) ^ (-(δ / 3) * k i) := Finset.sum_le_sum hbound
     _ ≤ ∑ k ∈ Fintype.piFinset (fun _ : Fin 3 => Finset.Icc (-99 : ℤ) N),
           ∏ i, (2 : ℝ) ^ (-(δ / 3) * k i) :=
-        Finset.sum_le_sum_of_subset_of_nonneg hsub fun k _ _ => Finset.prod_nonneg fun i _ => by positivity
+        Finset.sum_le_sum_of_subset_of_nonneg hsub fun k _ _ => Finset.prod_nonneg fun i _ =>
+          by positivity
     _ = ∏ _i : Fin 3, ∑ m ∈ Finset.Icc (-99 : ℤ) N, (2 : ℝ) ^ (-(δ / 3) * m) :=
-        Finset.sum_prod_piFinset (Finset.Icc (-99 : ℤ) N) (fun (_ : Fin 3) (m : ℤ) => (2 : ℝ) ^ (-(δ / 3) * m))
-    _ ≤ ∏ _i : Fin 3, T := Finset.prod_le_prod (fun i _ => Finset.sum_nonneg fun m _ => by positivity)
+        Finset.sum_prod_piFinset (Finset.Icc (-99 : ℤ) N) (fun (_ : Fin 3) (m : ℤ) => (2 : ℝ) ^
+          (-(δ / 3) * m))
+    _ ≤ ∏ _i : Fin 3, T := Finset.prod_le_prod₀ (fun i _ => Finset.sum_nonneg fun m _ =>
+      by positivity)
           fun i _ => sum_Icc_rpow_le hδ N
     _ = T ^ 3 := by rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
 
@@ -7127,26 +7241,24 @@ theorem tendsto_regComp_kBox (R : (Fin 3 → ℤ) → Prop) [DecidablePred R] (J
   refine h.congr fun N => ?_
   simp only [Function.comp_apply, Finset.sum_filter]
 
-theorem measurable_kComp (k : Fin 3 → ℤ) (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)) :
-    Measurable (kComp k J f) := by
-  rw [← kComp0_self]; exact measurable_kComp0 k J f (f 0).continuous.measurable
 
-/-- **`eq:final_gain`** (lines 430-437, 456) in the range of `thm:main`: for `p > 1`, `p_1, p_2 > 2`,
-`1/p_1 + 1/p_2 ≥ 1/2`, `1/p = ∑ 1/p_n`: `‖T^H_J(f)‖_p ≤ C ∏ ‖f_n‖_{p_n}`, uniformly in `J`. -/
 theorem H_bound {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp0 : 0 < pv 0) (hp1 : 2 < pv 1)
     (hp2 : 2 < pv 2) (hsum : 1 / p = 1 / pv 0 + 1 / pv 1 + 1 / pv 2)
     (hhalf : 1 / 2 ≤ 1 / pv 1 + 1 / pv 2) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (regComp RegH J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal C *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) := by
   obtain ⟨δ', C, hδ', hC, hg⟩ := H_gain hp hp0 hp1 hp2 hsum hhalf
   obtain ⟨S, hS0, hS⟩ := sum_regH_le hδ'
   refine ⟨C * S, by positivity, fun J f => ?_⟩
-  set Np := eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+  set Np := eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+    volume *
     eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)
-  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3)) (p := ENNReal.ofReal p)
+  have hfatou := eLpNorm_limit_le_liminf (μ := (volume : Measure E3)) (p :=
+    ENNReal.ofReal p)
     (fun N => (Finset.measurable_sum ((kBox N).filter RegH) fun k _ =>
       measurable_kComp k J f).aestronglyMeasurable)
     (regComp RegH J f) (Eventually.of_forall fun x => tendsto_regComp_kBox RegH J f x)
@@ -7158,7 +7270,7 @@ theorem H_bound {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp0 : 0 < pv 0) (hp
             = ∑ k ∈ (kBox N).filter RegH, kComp k J f := by
           funext x; simp [Finset.sum_apply]
         rw [e]
-        exact eLpNorm_sum_le (fun k _ => (measurable_kComp k J f).aestronglyMeasurable) hp1'
+        exact eLpNorm_sum_le hp1'
     _ ≤ ∑ k ∈ (kBox N).filter RegH, ENNReal.ofReal (C * (2 : ℝ) ^ (-(δ' * kMax k))) * Np :=
         Finset.sum_le_sum fun k hk => hg k (Finset.mem_filter.mp hk).2.1 J f
     _ = ENNReal.ofReal (C * ∑ k ∈ (kBox N).filter RegH, (2 : ℝ) ^ (-(δ' * kMax k))) * Np := by
@@ -7171,7 +7283,8 @@ theorem sum_region_le {δ : ℝ} (hδ : 0 < δ) (R : (Fin 3 → ℤ) → Prop) [
     (hR : ∀ k, R k → ∀ i, -99 ≤ k i) :
     ∃ S : ℝ, 0 ≤ S ∧ ∀ N : ℕ, ∑ k ∈ (kBox N).filter R, (2 : ℝ) ^ (-(δ * kMax k)) ≤ S := by
   set T : ℝ := (2 : ℝ) ^ (33 * δ) / (1 - (2 : ℝ) ^ (-(δ / 3))) with hT
-  have hc1 : (2 : ℝ) ^ (-(δ / 3)) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+  have hc1 : (2 : ℝ) ^ (-(δ / 3)) < 1 := Real.rpow_lt_one_of_one_lt_of_neg (by norm_num)
+    (by linarith)
   have hT0 : 0 ≤ T := div_nonneg (by positivity) (by linarith)
   refine ⟨T ^ 3, by positivity, fun N => ?_⟩
   have hbound : ∀ k ∈ (kBox N).filter R,
@@ -7192,10 +7305,13 @@ theorem sum_region_le {δ : ℝ} (hδ : 0 < δ) (R : (Fin 3 → ℤ) → Prop) [
       ≤ ∑ k ∈ (kBox N).filter R, ∏ i, (2 : ℝ) ^ (-(δ / 3) * k i) := Finset.sum_le_sum hbound
     _ ≤ ∑ k ∈ Fintype.piFinset (fun _ : Fin 3 => Finset.Icc (-99 : ℤ) N),
           ∏ i, (2 : ℝ) ^ (-(δ / 3) * k i) :=
-        Finset.sum_le_sum_of_subset_of_nonneg hsub fun k _ _ => Finset.prod_nonneg fun i _ => by positivity
+        Finset.sum_le_sum_of_subset_of_nonneg hsub fun k _ _ => Finset.prod_nonneg fun i _ =>
+          by positivity
     _ = ∏ _i : Fin 3, ∑ m ∈ Finset.Icc (-99 : ℤ) N, (2 : ℝ) ^ (-(δ / 3) * m) :=
-        Finset.sum_prod_piFinset (Finset.Icc (-99 : ℤ) N) (fun (_ : Fin 3) (m : ℤ) => (2 : ℝ) ^ (-(δ / 3) * m))
-    _ ≤ ∏ _i : Fin 3, T := Finset.prod_le_prod (fun i _ => Finset.sum_nonneg fun m _ => by positivity)
+        Finset.sum_prod_piFinset (Finset.Icc (-99 : ℤ) N) (fun (_ : Fin 3) (m : ℤ) => (2 : ℝ) ^
+          (-(δ / 3) * m))
+    _ ≤ ∏ _i : Fin 3, T := Finset.prod_le_prod₀ (fun i _ => Finset.sum_nonneg fun m _ =>
+      by positivity)
           fun i _ => sum_Icc_rpow_le hδ N
     _ = T ^ 3 := by rw [Finset.prod_const, Finset.card_univ, Fintype.card_fin]
 
@@ -7209,14 +7325,17 @@ theorem regComp_gain_bound (R : (Fin 3 → ℤ) → Prop) [DecidablePred R]
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (regComp R J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal C *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) := by
   obtain ⟨δ', C, hδ', hC, hg⟩ := H_gain hp hp0 hp1 hp2 hsum hhalf
   obtain ⟨S, hS0, hS⟩ := sum_region_le hδ' R hRlow
   refine ⟨C * S, by positivity, fun J f => ?_⟩
-  set Np := eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+  set Np := eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+    volume *
     eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)
-  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3)) (p := ENNReal.ofReal p)
+  have hfatou := eLpNorm_limit_le_liminf (μ := (volume : Measure E3)) (p :=
+    ENNReal.ofReal p)
     (fun N => (Finset.measurable_sum ((kBox N).filter R) fun k _ =>
       measurable_kComp k J f).aestronglyMeasurable)
     (regComp R J f) (Eventually.of_forall fun x => tendsto_regComp_kBox R J f x)
@@ -7228,7 +7347,7 @@ theorem regComp_gain_bound (R : (Fin 3 → ℤ) → Prop) [DecidablePred R]
             = ∑ k ∈ (kBox N).filter R, kComp k J f := by
           funext x; simp [Finset.sum_apply]
         rw [e]
-        exact eLpNorm_sum_le (fun k _ => (measurable_kComp k J f).aestronglyMeasurable) hp1'
+        exact eLpNorm_sum_le hp1'
     _ ≤ ∑ k ∈ (kBox N).filter R, ENNReal.ofReal (C * (2 : ℝ) ^ (-(δ' * kMax k))) * Np :=
         Finset.sum_le_sum fun k hk => hg k (hRpos k (Finset.mem_filter.mp hk).2) J f
     _ = ENNReal.ofReal (C * ∑ k ∈ (kBox N).filter R, (2 : ℝ) ^ (-(δ' * kMax k))) * Np := by
@@ -7271,7 +7390,8 @@ theorem MHplus_bound (n : Fin 3) {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (regComp (RegMHnPlus n) J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal C *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) :=
   regComp_gain_bound (RegMHnPlus n) (fun k hk => hk.1.1.1)
     (fun k hk i => by
@@ -7285,6 +7405,15 @@ theorem MHplus_bound (n : Fin 3) {pv : Fin 3 → ℝ} {p : ℝ} (hp : 1 < p) (hp
 def monomialAverage (α : Fin 2 → ℕ) (ψ : ℝ → ℝ) (g : Fin 2 → EuclideanSpace ℝ (Fin 2) → ℂ)
     (x : EuclideanSpace ℝ (Fin 2)) : ℂ :=
   ∫ t : ℝ, (ψ t : ℂ) * ∏ n, g n (x + (t ^ α n) • EuclideanSpace.single n (1 : ℝ))
+
+/-- Measurability of the bilinear monomial average for Borel inputs. -/
+@[fun_prop] theorem measurable_monomialAverage (α : Fin 2 → ℕ)
+    {ψ : ℝ → ℝ} (hψ : Measurable ψ) {g : Fin 2 → EuclideanSpace ℝ (Fin 2) → ℂ}
+    (hg : ∀ n, Measurable (g n)) : Measurable (monomialAverage α ψ g) := by
+  have hm : Measurable (fun q : EuclideanSpace ℝ (Fin 2) × ℝ => (ψ q.2 : ℂ) *
+      ∏ n, g n (q.1 + (q.2 ^ α n) • EuclideanSpace.single n (1 : ℝ))) := by
+    fun_prop
+  exact hm.stronglyMeasurable.integral_prod_right'.measurable
 
 /-- **`thm:smoothing_2`** (`blueprints/main.tex` lines 211-221), as stated in the source: let
 `α_1, α_2` be distinct positive integers, `0 < a < b`. There is a constant `C` and, for every value
@@ -7405,9 +7534,9 @@ theorem hasSum_MH_fibre (n0 : Fin 3) (j : ℤ) (p : Fin 3 → ℤ) (f : Fin 3 �
   refine hasSum_piece_mask j f x (lowMask n0 p) G fun n y => ?_
   by_cases hn : n = n0
   · subst hn
-    simp only [lowMask, if_true, hG]
+    simp only [lowMask, ite_true, hG]
     exact hasSum_lpDelta_le n ((expo n : ℤ) * j) (lowCut p) (f n) y
-  · simp only [lowMask, hn, if_false, hG]
+  · simp only [lowMask, hn, ite_false, hG]
     convert hasSum_ite_eq (p n) (lpDelta n ((expo n : ℤ) * j + p n) (f n) y) using 1
     funext t; split_ifs with h <;> simp [h]
 
@@ -7428,11 +7557,11 @@ theorem fibre_MHminus_iff (n0 : Fin 3) (p k : Fin 3 → ℤ) :
       by_cases hn : n = n0
       · subst hn; rw [Function.update_self]; exact hP.1.symm
       · rw [Function.update_of_ne hn]
-        have := hm n; simp only [lowMask, hn, if_false] at this; exact this
+        have := hm n; simp only [lowMask, hn, ite_false] at this; exact this
     refine ⟨hk, (regMHnMinus_iff n0 k).mpr ?_⟩
     rw [hk]
     refine ⟨hP, ?_⟩
-    have := hm n0; simp only [lowMask, if_true] at this; exact this
+    have := hm n0; simp only [lowMask, ite_true] at this; exact this
 
 /-- **`T^{MH,n_0,-}` at scale `j` as a series of grouped pieces** (lines 590-593). -/
 theorem hasSum_MH_pairs (n0 : Fin 3) (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x : E3) :
@@ -7455,18 +7584,18 @@ theorem hasSum_MH_pairs (n0 : Fin 3) (j : ℤ) (f : Fin 3 → 𝓢(E3, ℂ)) (x 
     by_cases h : PairReg n0 q ∧ (∀ n, lowMask n0 q n (k n))
     · have h' := (fibre_MHminus_iff n0 q k).mpr h
       rw [indicator_of_mem (show k ∈ (fun k : Fin 3 → ℤ => Function.update k n0 0) ⁻¹' {q}
-        from h'.1), if_pos h'.2, if_pos h]
-    · rw [if_neg h]
+        from h'.1), ite_eq_left h'.2, ite_eq_left h]
+    · rw [ite_eq_right h]
       by_cases hk : Function.update k n0 0 = q
       · rw [indicator_of_mem (show k ∈ (fun k : Fin 3 → ℤ => Function.update k n0 0) ⁻¹' {q}
           from hk)]
         have : ¬ RegMHnMinus n0 k := fun hR => h ((fibre_MHminus_iff n0 q k).mp ⟨hk, hR⟩)
-        rw [if_neg this]
+        rw [ite_eq_right this]
       · rw [indicator_of_notMem (show k ∉ (fun k : Fin 3 → ℤ => Function.update k n0 0) ⁻¹' {q}
           from hk)]
   rw [e]
   by_cases hq : PairReg n0 q
-  · simp only [hq, true_and, if_true]
+  · simp only [hq, true_and, ite_true]
     exact (hasSum_MH_fibre n0 j q f x).tsum_eq
   · simp [hq]
 
@@ -7546,13 +7675,23 @@ theorem integrable_wPos : Integrable wPos :=
     (HasCompactSupport.intro isCompact_Icc (fun s hs => by
       by_contra h; exact hs (support_wPos (by simpa using h))))
 
-theorem measurable_lineConvC (χ : CoordMult) (ℓ : Fin 3) {g : E3 → ℂ} (hg : Measurable g) :
+@[fun_prop] theorem measurable_lineConvC (χ : CoordMult) (ℓ : Fin 3) {g : E3 → ℂ}
+    (hg : Measurable g) :
     Measurable (lineConvC χ ℓ g) := by
   have h : StronglyMeasurable (Function.uncurry fun (y : E3) (u : ℝ) =>
       χ.check u * g (y - u • basisVec ℓ)) :=
     ((χ.check.continuous.measurable.comp measurable_snd).mul
       (hg.comp (measurable_lineShift ℓ))).stronglyMeasurable
   exact h.integral_prod_right'.measurable
+
+/-- Borel measurability is preserved by inserting one input into the other two. -/
+@[fun_prop] theorem measurable_insertNth_E3 (n0 : Fin 3) {g0 : E3 → ℂ}
+    {G : Fin 2 → E3 → ℂ} (hg0 : Measurable g0) (hG : ∀ i, Measurable (G i))
+    (n : Fin 3) : Measurable ((Fin.insertNth n0 g0 G : Fin 3 → E3 → ℂ) n) := by
+  rcases Fin.eq_self_or_eq_succAbove n0 n with h | ⟨i, rfl⟩
+  · subst h
+    simpa only [Fin.insertNth_apply_same] using hg0
+  · simpa only [Fin.insertNth_apply_succAbove] using hG i
 
 /-- The substitution `s = t^{n_0+1} - u` in the low-pass line convolution. -/
 theorem lineConvC_shift_eq (χ : CoordMult) (ℓ : Fin 3) (g : E3 → ℂ) (y : E3) (a : ℝ) :
@@ -7582,7 +7721,7 @@ theorem Apsi_low_eq (n0 : Fin 3) {g0 : E3 → ℂ} (hg0 : Measurable g0) {B : �
   have hPB : ∀ t, ‖P t‖ ≤ BG ^ 2 := fun t => by
     rw [hP, norm_prod]
     calc ∏ i, ‖G i (y + curve (n0.succAbove i) t)‖ ≤ ∏ _i : Fin 2, BG :=
-          Finset.prod_le_prod (fun i _ => norm_nonneg _) fun i _ => hBG i _
+          Finset.prod_le_prod₀ (fun i _ => norm_nonneg _) fun i _ => hBG i _
       _ = BG ^ 2 := by simp
   set K : ℝ × ℝ → ℂ := fun q => (wPos q.1 : ℂ) * (φc (q.1 ^ expo n0 - q.2) *
     g0 (y + q.2 • basisVec n0)) * P q.1 with hK
@@ -7599,13 +7738,15 @@ theorem Apsi_low_eq (n0 : Fin 3) {g0 : E3 → ℂ} (hg0 : Measurable g0) {B : �
       refine Integrable.const_mul ?_ _
       refine (integrable_prod_iff ?_).mpr ⟨Eventually.of_forall fun t => ?_, ?_⟩
       · exact (((continuous_abs.comp contDiff_wPos.continuous).comp continuous_fst).mul
-          (φc.continuous.norm.comp ((continuous_fst.pow _).sub continuous_snd))).aestronglyMeasurable
+          (φc.continuous.norm.comp ((continuous_fst.pow _).sub
+            continuous_snd))).aestronglyMeasurable
       · exact ((φc.integrable (μ := volume)).norm.comp_sub_left (t ^ expo n0)).const_mul |wPos t|
       · have e : (fun t => ∫ s, ‖|wPos t| * ‖φc (t ^ expo n0 - s)‖‖)
             = fun t => |wPos t| * ∫ u, ‖φc u‖ := by
           funext t
           simp only [norm_mul, Real.norm_eq_abs, abs_abs, abs_norm]
-          rw [integral_const_mul, integral_sub_left_eq_self (fun u => ‖φc u‖) (μ := volume) (t ^ expo n0)]
+          rw [integral_const_mul, integral_sub_left_eq_self (fun u => ‖φc u‖) (μ := volume) (t ^
+            expo n0)]
         rw [e]; exact integrable_wPos.abs.mul_const _
     refine hMi.mono' hKm (Eventually.of_forall fun q => ?_)
     simp only [hK, hM, norm_mul, Complex.norm_real, Real.norm_eq_abs]
@@ -7658,13 +7799,13 @@ theorem slotEmb_apply (n0 : Fin 3) (z : E2) :
 
 theorem slotEmb_apply_self (n0 : Fin 3) (z : E2) : slotEmb n0 z n0 = 0 := by
   rw [slotEmb_apply]
-  simp [basisVec_apply, Fin.succAbove_ne]
+  simp [basisVec_apply]
 
 theorem slotEmb_apply_succAbove (n0 : Fin 3) (z : E2) (i : Fin 2) :
     slotEmb n0 z (n0.succAbove i) = z i := by
   rw [slotEmb_apply]
-  simp [basisVec_apply]
-  fin_cases i <;> simp
+  simp only [Fin.sum_univ_two, Fin.isValue, PiLp.add_apply, PiLp.smul_apply, smul_eq_mul]
+  fin_cases i <;> simp [basisVec_apply]
 
 theorem slotEmb_injective (n0 : Fin 3) : Function.Injective (slotEmb n0) := by
   intro z z' h
@@ -7676,7 +7817,7 @@ theorem slotEmb_single (n0 : Fin 3) (i : Fin 2) (c : ℝ) :
     slotEmb n0 (EuclideanSpace.single i c) = c • basisVec (n0.succAbove i) := by
   ext m
   rw [slotEmb_apply]
-  simp only [PiLp.add_apply, PiLp.smul_apply, smul_eq_mul, basisVec_apply, PiLp.single_apply,
+  simp only [PiLp.smul_apply, smul_eq_mul, basisVec_apply, PiLp.single_apply,
     WithLp.ofLp_sum, Finset.sum_apply]
   rw [Finset.sum_eq_single i]
   · simp
@@ -7709,7 +7850,8 @@ theorem slotExpo_pos (n0 : Fin 3) (i : Fin 2) : 0 < slotExpo n0 i := expo_pos _
 theorem slotExpo_ne (n0 : Fin 3) : slotExpo n0 0 ≠ slotExpo n0 1 := by
   unfold slotExpo expo
   intro h
-  have := Fin.succAbove_right_injective (p := n0) (Fin.ext (by omega : ((n0.succAbove 0 : Fin 3) : ℕ)
+  have := Fin.succAbove_right_injective (p := n0) (Fin.ext
+    (by omega : ((n0.succAbove 0 : Fin 3) : ℕ)
     = (n0.succAbove 1 : Fin 3)) |> fun h' => h')
   exact absurd this (by decide)
 
@@ -7729,7 +7871,7 @@ theorem fibrePt_sub (n0 : Fin 3) (w : ℝ) (z : E2) (i : Fin 2) (u : ℝ) :
 
 theorem inner_single_E2 (η : E2) (i : Fin 2) (u : ℝ) :
     inner ℝ (u • EuclideanSpace.single i (1 : ℝ)) η = u * η i := by
-  rw [inner_smul_left, EuclideanSpace.inner_single_left]; simp [mul_comm]
+  rw [inner_smul_left, EuclideanSpace.inner_single_left]; simp
 
 /-- **The Fourier transform of a line convolution on the plane**:
 `𝓕(z ↦ ∫ ȟ(u) F(z - u e_i) du)(η) = h(η_i) F̂(η)`. -/
@@ -7751,7 +7893,7 @@ theorem fourier_lineConv_E2 (χ : CoordMult) (i : Fin 2) (F : 𝓢(E2, ℂ)) (η
     · refine ((F.integrable (μ := volume)).comp_sub_right (u • e)).const_mul (χ.check u) |>.norm
         |>.mono' ((hKc.comp (continuous_id.prodMk continuous_const)).aestronglyMeasurable)
           (Eventually.of_forall fun z => ?_)
-      simp [hK, norm_mul, Circle.norm_coe]
+      simp [hK, Circle.norm_coe]
     · have e1 : (fun u => ∫ z, ‖K (z, u)‖) = fun u => ‖χ.check u‖ * ∫ z, ‖F z‖ := by
         funext u
         simp only [hK, norm_mul, Circle.norm_coe, one_mul]
@@ -7761,7 +7903,7 @@ theorem fourier_lineConv_E2 (χ : CoordMult) (i : Fin 2) (F : 𝓢(E2, ℂ)) (η
         ∫ u, χ.check u * F (z - u • e)
       = ∫ z, ∫ u, K (z, u) := by
         refine integral_congr_ae (Eventually.of_forall fun z => ?_)
-        simp only [hK, Circle.smul_def, smul_eq_mul]; rw [integral_const_mul]
+        simp only [hK, smul_eq_mul]; rw [integral_const_mul]
     _ = ∫ u, ∫ z, K (z, u) := integral_integral_swap hKi
     _ = ∫ u, (Real.fourierChar (-(u * η i)) : ℂ) * χ.check u *
           ∫ z, (Real.fourierChar (-(inner ℝ z η)) : ℂ) * F z := by
@@ -7777,7 +7919,6 @@ theorem fourier_lineConv_E2 (χ : CoordMult) (i : Fin 2) (F : 𝓢(E2, ℂ)) (η
     _ = _ := by
         rw [integral_mul_const, χ.h_eq_fourier_check (η i)]
         congr 1
-        all_goals (refine integral_congr_ae (Eventually.of_forall fun _ => ?_); simp [Circle.smul_def])
 
 /-- The fibre of `Δ^{(σ(i))}_m f` is the line convolution of the fibre of `f`. -/
 theorem fibreS2_lpDelta (n0 : Fin 3) (w : ℝ) (i : Fin 2) (m : ℤ) (f : 𝓢(E3, ℂ)) :
@@ -7817,7 +7958,8 @@ theorem decay_shift_le (e : ℕ) {t : ℝ} (ht : t ∈ Icc (1 / 2 : ℝ) 2) (s :
     rw [abs_of_nonneg (pow_nonneg ht0 e)]; exact pow_le_pow_left₀ ht0 ht.2 e
   have htri : 1 + |s| ≤ (1 + |t ^ e - s|) * (1 + 2 ^ e) := by
     have : |s| ≤ |t ^ e - s| + |t ^ e| := by
-      rw [show s = t ^ e - (t ^ e - s) by ring]; rw [show t ^ e - (t ^ e - (t ^ e - s)) = t ^ e - s by ring]
+      rw [show s = t ^ e - (t ^ e - s) by
+        ring]; rw [show t ^ e - (t ^ e - (t ^ e - s)) = t ^ e - s by ring]
       exact (abs_sub _ _).trans (by rw [add_comm])
     nlinarith [abs_nonneg (t ^ e - s), abs_nonneg s, hte,
       mul_nonneg (abs_nonneg (t ^ e - s)) (by positivity : (0 : ℝ) ≤ 2 ^ e)]
@@ -7854,7 +7996,8 @@ theorem hasDerivAt_rhoCut (n0 : Fin 3) (s t : ℝ) :
     ((contDiff_wPos.differentiable (by simp)) t).hasDerivAt
   have hin : HasDerivAt (fun t : ℝ => t ^ expo n0 - s) ((expo n0 : ℝ) * t ^ (expo n0 - 1)) t := by
     simpa using (hasDerivAt_pow (expo n0) t).sub_const s
-  have hc : HasDerivAt (phiCM 0).check (deriv (phiCM 0).check (t ^ expo n0 - s)) (t ^ expo n0 - s) :=
+  have hc : HasDerivAt (phiCM 0).check (deriv (phiCM 0).check (t ^ expo n0 - s)) (t ^ expo n0 - s)
+    :=
     ((phiCM 0).check.differentiableAt).hasDerivAt
   have hcomp := hc.scomp t hin
   have hre := (Complex.reCLM.hasFDerivAt.comp_hasDerivAt t hcomp)
@@ -7862,7 +8005,7 @@ theorem hasDerivAt_rhoCut (n0 : Fin 3) (s t : ℝ) :
   have := hw.mul hre
   rw [show rhoCut n0 s = wPos * fun x => ((phiCM 0).check (x ^ expo n0 - s)).re from rfl]
   refine this.congr_deriv ?_
-  simp only [Complex.smul_re, smul_eq_mul, Pi.mul_apply]; ring
+  simp only [Complex.smul_re, smul_eq_mul]; ring
 
 /-- **The decay of the fibre cutoffs** (line 651, "the rapid decay of `φ̌`"):
 `‖ρ_s‖_∞ + ‖ρ_s'‖_1 ≲ (1 + |s|)^{-2}`. -/
@@ -7930,7 +8073,8 @@ theorem rhoCut_bound (n0 : Fin 3) :
     calc ∫ t, |deriv (rhoCut n0 s) t|
         ≤ ∫ t, (Icc (1 / 2 : ℝ) 2).indicator (fun _ => M * v) t :=
           integral_mono_of_nonneg (Eventually.of_forall fun t => abs_nonneg _)
-            ((integrableOn_const (C := M * v) measure_Icc_lt_top.ne).integrable_indicator measurableSet_Icc) (Eventually.of_forall hder)
+            ((integrableOn_const (C := M * v) measure_Icc_lt_top.ne).integrable_indicator
+              measurableSet_Icc) (Eventually.of_forall hder)
       _ = (3 / 2) * (M * v) := by
           rw [integral_indicator measurableSet_Icc, setIntegral_const, Real.volume_real_Icc]
           norm_num
@@ -8008,7 +8152,8 @@ theorem smoothingTwo_uniform (hS : SmoothingTwo) (α : Fin 2 → ℕ) (hα : ∀
   have hsup : (⨆ t, |ψ' t|) ≤ c⁻¹ * ⨆ t, |ψ t| := ciSup_le fun t => by
     simp only [hψ', abs_mul, abs_inv, abs_of_pos h]
     exact mul_le_mul_of_nonneg_left (le_ciSup hbdd t) (by positivity)
-  have hsup0 : 0 ≤ ⨆ t, |ψ' t| := (abs_nonneg _).trans (le_ciSup (bddAbove_abs_of_contDiff hψ'c hψ's) 0)
+  have hsup0 : 0 ≤ ⨆ t, |ψ' t| := (abs_nonneg _).trans (le_ciSup (bddAbove_abs_of_contDiff hψ'c
+    hψ's) 0)
   have heq : monomialAverage α ψ (fun n => ⇑(g n))
       = (c : ℂ) • monomialAverage α ψ' (fun n => ⇑(g n)) := by
     rw [hψ', monomialAverage_smul, smul_smul, ← Complex.ofReal_mul, mul_inv_cancel₀ h.ne',
@@ -8063,7 +8208,8 @@ theorem lintegral_E3_fibrePt (n0 : Fin 3) {F : E3 → ℝ≥0∞} (hF : Measurab
         refine lintegral_congr fun r => lintegral_congr fun w => ?_
         rw [fibrePt_toLp]
     _ = ∫⁻ w : ℝ, ∫⁻ r : Fin 2 → ℝ, F (fibrePt n0 w (WithLp.toLp 2 r)) :=
-        lintegral_lintegral_swap (f := fun r w => F (fibrePt n0 w (WithLp.toLp 2 r))) hm.aemeasurable
+        lintegral_lintegral_swap (f := fun r w => F (fibrePt n0 w (WithLp.toLp 2 r)))
+          hm.aemeasurable
     _ = _ := by
         refine lintegral_congr fun w => ?_
         exact (PiLp.volume_preserving_toLp (Fin 2)).lintegral_comp_emb
@@ -8087,9 +8233,10 @@ theorem measurable_fibreAvg (n0 : Fin 3) {G : Fin 2 → E3 → ℂ} (hG : ∀ i,
       ((continuous_snd.comp continuous_fst).add ((continuous_curve _).comp continuous_snd))
   exact hc.measurable.stronglyMeasurable.integral_prod_right'.measurable
 
-theorem eLpNorm_two_sq_eq {X : Type*} [MeasurableSpace X] {μ : Measure X} (g : X → ℂ) :
+theorem eLpNorm_two_sq_eq {X : Type*} [MeasurableSpace X] {μ : Measure X} (g : X → ℂ)
+    (hg : AEStronglyMeasurable g μ) :
     eLpNorm g 2 μ = (∫⁻ x, ‖g x‖ₑ ^ (2 : ℝ) ∂μ) ^ (1 / 2 : ℝ) := by
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num)]; norm_num
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by norm_num) (by norm_num) (by fun_prop)]; norm_num
 
 /-- The fibrewise `L^2` identity: `∫_w ‖G(ι_w ·)‖_2^2 dw = ‖G‖_2^2`. -/
 theorem lintegral_fibre_sq (n0 : Fin 3) {G : E3 → ℂ} (hG : Continuous G) :
@@ -8116,7 +8263,8 @@ theorem gain2_pos (hS : SmoothingTwo) (n0 : Fin 3) :
     have h := integrable_one_add_norm (E := ℝ) (μ := volume) (r := 2) (by simp)
     refine h.congr (Eventually.of_forall fun s => ?_)
     simp only [Real.norm_eq_abs]
-    rw [Real.rpow_neg (by positivity), show ((2 : ℝ)) = ((2 : ℕ) : ℝ) by norm_num, Real.rpow_natCast]
+    rw [Real.rpow_neg (by positivity), show ((2 : ℝ)) = ((2 : ℕ) : ℝ)
+      by norm_num, Real.rpow_natCast]
   have hI00 : 0 ≤ I0 := integral_nonneg fun s => by positivity
   refine ⟨C * K * I0 + 1, δ, by positivity, hδ, fun g0 hg0 B hB f m i0 lam hlam hlm => ?_⟩
   have hB0 : 0 ≤ B := (norm_nonneg _).trans (hB 0)
@@ -8132,7 +8280,8 @@ theorem gain2_pos (hS : SmoothingTwo) (n0 : Fin 3) :
   set F : ℝ × E3 → ℝ≥0∞ := fun q => ‖fibreAvg n0 (fun i => ⇑(G i)) q.1 q.2‖ₑ with hF
   have hFm : Measurable F := (measurable_fibreAvg n0 hGc).enorm
   -- the fibre functions
-  set a : Fin 2 → ℝ → ℝ≥0∞ := fun i w => (∫⁻ z : E2, ‖G i (fibrePt n0 w z)‖ₑ ^ (2 : ℝ)) ^ (1 / 2 : ℝ)
+  set a : Fin 2 → ℝ → ℝ≥0∞ := fun i w => (∫⁻ z : E2, ‖G i (fibrePt n0 w z)‖ₑ ^ (2 : ℝ)) ^ (1 / 2 :
+    ℝ)
     with ha
   have ham : ∀ i, Measurable (a i) := fun i => by
     refine Measurable.pow_const ?_ _
@@ -8147,15 +8296,20 @@ theorem gain2_pos (hS : SmoothingTwo) (n0 : Fin 3) :
       ⟨i0, fun ξ hξ => hlm.trans (fourier_fibreS2_lpDelta_support n0 w i0 (m i0) (f i0) ξ hξ)⟩
     have h := hsm (rhoCut n0 s) (contDiff_rhoCut n0 s) (tsupport_rhoCut n0 s) lam hlam
       (fun i => fibreS2 n0 w (G i)) hfreq
-    have e1 : (fun i => ⇑(fibreS2 n0 w (G i))) = fun i v => G i (fibrePt n0 w v) := by
-      funext i v; exact fibreS2_apply n0 w (G i) v
-    rw [e1, eLpNorm_one_eq_lintegral_enorm] at h
-    simp only [eLpNorm_two_sq_eq, fibreS2_apply] at h
+    rw [eLpNorm_one_eq_lintegral_enorm
+      (measurable_monomialAverage _ (contDiff_rhoCut n0 s).continuous.measurable
+        (fun i => (fibreS2 n0 w (G i)).continuous.measurable)).aestronglyMeasurable] at h
+    simp only [eLpNorm_two_sq_eq _ (SchwartzMap.continuous _).aestronglyMeasurable,
+      fibreS2_apply] at h
     have e2 : ∫⁻ z : E2, F (s, fibrePt n0 w z)
         = ∫⁻ z : E2, ‖monomialAverage (slotExpo n0) (rhoCut n0 s)
             (fun i v => G i (fibrePt n0 w v)) z‖ₑ := by
       refine lintegral_congr fun z => ?_
       simp only [hF, fibreAvg_fibrePt]
+    have e1 : (fun i => ⇑(fibreS2 n0 w (G i))) = fun i v => G i (fibrePt n0 w v) := by
+      funext i v
+      exact fibreS2_apply n0 w (G i) v
+    rw [e1] at h
     rw [e2]
     refine h.trans (mul_le_mul' (ENNReal.ofReal_le_ofReal ?_) le_rfl)
     have hlp : 0 ≤ lam ^ (-δ) := Real.rpow_nonneg (by linarith) _
@@ -8167,7 +8321,8 @@ theorem gain2_pos (hS : SmoothingTwo) (n0 : Fin 3) :
     have h := ENNReal.lintegral_mul_le_Lp_mul_Lq volume Real.HolderConjugate.two_two
       (ham 0).aemeasurable (ham 1).aemeasurable
     have e : ∀ i, (∫⁻ w, a i w ^ (2 : ℝ)) ^ (1 / 2 : ℝ) = eLpNorm (G i) 2 volume := fun i => by
-      rw [eLpNorm_two_sq_eq, ← lintegral_fibre_sq n0 (G i).continuous]
+      rw [eLpNorm_two_sq_eq _ (G i).continuous.aestronglyMeasurable,
+        ← lintegral_fibre_sq n0 (G i).continuous]
       congr 1
       refine lintegral_congr fun w => ?_
       rw [ha, ← ENNReal.rpow_mul]; norm_num
@@ -8182,7 +8337,10 @@ theorem gain2_pos (hS : SmoothingTwo) (n0 : Fin 3) :
     rw [enorm_mul]
     exact mul_le_mul' (by rw [← ofReal_norm]; exact ENNReal.ofReal_le_ofReal (hB _)) le_rfl
   have hlp : 0 ≤ lam ^ (-δ) := Real.rpow_nonneg (by linarith) _
-  rw [eLpNorm_one_eq_lintegral_enorm]
+  rw [eLpNorm_one_eq_lintegral_enorm
+    (measurable_Apsi contDiff_wPos.continuous.measurable
+      (measurable_insertNth_E3 n0 (measurable_lineConvC _ _ hg0)
+        (fun i => (G i).continuous.measurable))).aestronglyMeasurable]
   calc ∫⁻ y, ‖Apsi wPos (Fin.insertNth n0 (lineConvC (phiCM 0) n0 g0) fun i => ⇑(G i)) y‖ₑ
       ≤ ∫⁻ y, ∫⁻ s, ENNReal.ofReal B * F (s, y) := lintegral_mono hpt
     _ = ∫⁻ s, ∫⁻ y, ENNReal.ofReal B * F (s, y) :=
@@ -8442,22 +8600,11 @@ def lowInputs (n0 : Fin 3) (c : ℤ) (g0 : E3 → ℂ) (G : Fin 2 → E3 → ℂ
   Fin.insertNth n0 (lineConvC (phiCM c) n0 g0) G
 
 theorem eLpNorm_comp_dilInv {g : E3 → ℂ} (hg : AEStronglyMeasurable g volume) (j : ℤ)
-    {p : ℝ≥0∞} (hp0 : p ≠ 0) (hp : p ≠ ⊤) :
+    {p : ℝ≥0∞} (hp : p ≠ ⊤) :
     eLpNorm (fun x => g (dilInv j x)) p volume
       = ENNReal.ofReal |∏ m, (dilC j m)⁻¹|⁻¹ ^ p.toReal⁻¹ * eLpNorm g p volume :=
-  eLpNorm_comp_diagCLM (fun m => inv_ne_zero (dilC_ne_zero j m)) hg hp0 hp
+  eLpNorm_comp_diagCLM (fun m => inv_ne_zero (dilC_ne_zero j m)) hg hp
 
-theorem measurable_Apsi {ψ : ℝ → ℝ} (hψ : Measurable ψ) {h : Fin 3 → E3 → ℂ}
-    (hh : ∀ n, Measurable (h n)) : Measurable (Apsi ψ h) := by
-  have hc : ∀ n, Measurable fun p : E3 × ℝ => p.1 + curve n p.2 := fun n =>
-    measurable_fst.add ((continuous_curve n).measurable.comp measurable_snd)
-  have hjoint : StronglyMeasurable (Function.uncurry fun (x : E3) (t : ℝ) =>
-      (ψ t : ℂ) * prodShift h x t) := by
-    refine Measurable.stronglyMeasurable ?_
-    refine (Complex.measurable_ofReal.comp (hψ.comp measurable_snd)).mul ?_
-    unfold prodShift
-    exact Finset.measurable_prod _ fun n _ => (hh n).comp (hc n)
-  exact hjoint.integral_prod_right'.measurable
 
 theorem abs_prod_reflC_dilC (j : ℤ) :
     |∏ m, reflC m * dilC j m| = |∏ m, dilC j m| := by
@@ -8571,12 +8718,11 @@ theorem gain2_single (hS : SmoothingTwo) (n0 : Fin 3) :
   have hL1 : eLpNorm (simplexTj j g) 1 volume
       ≤ ENNReal.ofReal Dd⁻¹ * eLpNorm A1 1 volume + ENNReal.ofReal Dd⁻¹ * eLpNorm A2 1 volume := by
     rw [hT]
-    refine (eLpNorm_sub_le (hA1m.comp (diagCLM (dilC j)).continuous.measurable).aestronglyMeasurable
-      (hA2m.comp (diagCLM _).continuous.measurable).aestronglyMeasurable le_rfl).trans (le_of_eq ?_)
-    simp only [Function.comp_def]
-    rw [eLpNorm_comp_diagCLM (dilC_ne_zero j) hA1m.aestronglyMeasurable one_ne_zero ENNReal.one_ne_top,
+    refine (eLpNorm_sub_le le_rfl).trans (le_of_eq ?_)
+    rw [eLpNorm_comp_diagCLM (dilC_ne_zero j) hA1m.aestronglyMeasurable
+      ENNReal.one_ne_top,
       eLpNorm_comp_diagCLM (fun m => mul_ne_zero (reflC_ne_zero m) (dilC_ne_zero j m))
-        hA2m.aestronglyMeasurable one_ne_zero ENNReal.one_ne_top, abs_prod_reflC_dilC]
+        hA2m.aestronglyMeasurable ENNReal.one_ne_top, abs_prod_reflC_dilC]
     simp [hDd]
   -- the L^2 side
   have hΔd : ∀ i, eLpNorm (lpDelta (σ i) (k i) (fd i)) 2 volume
@@ -8584,7 +8730,7 @@ theorem gain2_single (hS : SmoothingTwo) (n0 : Fin 3) :
     intro i
     have e : ⇑(lpDelta (σ i) (k i) (fd i)) = fun y => Δf i (dilInv j y) := by
       funext y; exact (lpDelta_dilInv j (k i) (σ i) (f i) y).symm
-    rw [e, eLpNorm_comp_dilInv (Δf i).continuous.aestronglyMeasurable j (by norm_num) (by norm_num),
+    rw [e, eLpNorm_comp_dilInv (Δf i).continuous.aestronglyMeasurable j (by norm_num),
       hinvprod]
     norm_num
   have hΔr : ∀ i, eLpNorm (lpDelta (σ i) (k i) (fr i)) 2 volume
@@ -8595,7 +8741,7 @@ theorem gain2_single (hS : SmoothingTwo) (n0 : Fin 3) :
     rw [e, show (fun y => lpDelta (σ i) (k i) (fd i) (reflR y))
         = fun y => lpDelta (σ i) (k i) (fd i) (diagCLM reflC y) from rfl,
       eLpNorm_comp_diagCLM reflC_ne_zero (lpDelta _ _ _).continuous.aestronglyMeasurable
-        (by norm_num) (by norm_num)]
+         (by norm_num)]
     have : |∏ m, reflC m|⁻¹ = 1 := by simp [reflC, Fin.prod_univ_three]
     rw [this]; simp
   -- the two halves
@@ -8609,15 +8755,19 @@ theorem gain2_single (hS : SmoothingTwo) (n0 : Fin 3) :
   rw [hΔd 0, hΔd 1] at h1 h2
   set N := eLpNorm (Δf 0) 2 volume * eLpNorm (Δf 1) 2 volume
   set X := ENNReal.ofReal (C * B * lam ^ (-δ))
-  have hkey : ENNReal.ofReal Dd⁻¹ * (X * (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * eLpNorm (Δf 0) 2 volume *
+  have hkey : ENNReal.ofReal Dd⁻¹ * (X * (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * eLpNorm (Δf 0) 2
+    volume *
       (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * eLpNorm (Δf 1) 2 volume))) = X * N := by
-    have hsq : ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * ENNReal.ofReal Dd ^ (1 / 2 : ℝ) = ENNReal.ofReal Dd := by
+    have hsq : ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * ENNReal.ofReal Dd ^ (1 / 2 : ℝ) = ENNReal.ofReal
+      Dd := by
       rw [← ENNReal.rpow_add_of_nonneg _ _ (by norm_num) (by norm_num)]; norm_num
     have hone : ENNReal.ofReal Dd⁻¹ * ENNReal.ofReal Dd = 1 := by
-      rw [← ENNReal.ofReal_mul (inv_nonneg.mpr hDd0.le), inv_mul_cancel₀ hDd0.ne', ENNReal.ofReal_one]
+      rw [← ENNReal.ofReal_mul (inv_nonneg.mpr hDd0.le), inv_mul_cancel₀ hDd0.ne',
+        ENNReal.ofReal_one]
     calc ENNReal.ofReal Dd⁻¹ * (X * (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * eLpNorm (Δf 0) 2 volume *
           (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * eLpNorm (Δf 1) 2 volume)))
-        = (ENNReal.ofReal Dd⁻¹ * (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * ENNReal.ofReal Dd ^ (1 / 2 : ℝ))) *
+        = (ENNReal.ofReal Dd⁻¹ * (ENNReal.ofReal Dd ^ (1 / 2 : ℝ) * ENNReal.ofReal Dd ^ (1 / 2 :
+          ℝ))) *
             (X * N) := by ring
       _ = X * N := by rw [hsq, hone, one_mul]
   calc eLpNorm (simplexTj j g) 1 volume
@@ -8641,12 +8791,14 @@ theorem lowFam_inputs (n0 : Fin 3) {p : Fin 3 → ℤ} (hp : 100 < kMax p) (j : 
     (f : Fin 2 → 𝓢(E3, ℂ)) :
     (fun n => lineConvC (lowFam n0 p n j) n (insIn n0 g0 (fun i => ⇑(f i)) n))
       = lowInputs n0 ((expo n0 : ℤ) * j) g0 fun i =>
-          ⇑(lpDelta (n0.succAbove i) ((expo (n0.succAbove i) : ℤ) * j + p (n0.succAbove i)) (f i)) := by
+          ⇑(lpDelta (n0.succAbove i) ((expo (n0.succAbove i) : ℤ) * j + p (n0.succAbove i)) (f i))
+            := by
   funext n
   rcases Fin.eq_self_or_eq_succAbove n0 n with h | ⟨i, rfl⟩
   · subst h
-    simp only [lowFam, if_true, lowCut_eq_zero hp, add_zero, lowInputs, insIn, Fin.insertNth_apply_same]
-  · simp only [lowFam, Fin.succAbove_ne, if_false, lowInputs, insIn, Fin.insertNth_apply_succAbove,
+    simp only [lowFam, ite_true, lowCut_eq_zero hp, add_zero, lowInputs, insIn,
+      Fin.insertNth_apply_same]
+  · simp only [lowFam, Fin.succAbove_ne, ite_false, lowInputs, insIn, Fin.insertNth_apply_succAbove,
       lineConvC_schwartz, psiCM_op]
 
 theorem exists_slot_eq_kMax (n0 : Fin 3) {p : Fin 3 → ℤ} (h0 : p n0 = 0) (hp : 0 < kMax p) :
@@ -8687,8 +8839,10 @@ theorem sum_mul_eLpNorm_lpDelta_le (n m : Fin 3) :
   have hne' : ∀ h : 𝓢(E3, ℂ), eLpNorm h 2 volume ≠ ⊤ :=
     fun h => by simpa [e2] using eLpNorm_schwartz_ne_top h 2
   have hL : ∑ j ∈ S, eLpNorm (lpDelta n ((expo n : ℤ) * j + kn) f) 2 volume *
-      eLpNorm (lpDelta m ((expo m : ℤ) * j + km) g) 2 volume = ENNReal.ofReal (∑ j ∈ S, a j * b j) := by
-    rw [ENNReal.ofReal_sum_of_nonneg fun j _ => mul_nonneg ENNReal.toReal_nonneg ENNReal.toReal_nonneg]
+      eLpNorm (lpDelta m ((expo m : ℤ) * j + km) g) 2 volume = ENNReal.ofReal (∑ j ∈ S, a j * b j)
+        := by
+    rw [ENNReal.ofReal_sum_of_nonneg fun j _ => mul_nonneg ENNReal.toReal_nonneg
+      ENNReal.toReal_nonneg]
     refine Finset.sum_congr rfl fun j _ => ?_
     rw [ENNReal.ofReal_mul ENNReal.toReal_nonneg, ENNReal.ofReal_toReal (hne _ _ _),
       ENNReal.ofReal_toReal (hne _ _ _)]
@@ -8710,7 +8864,8 @@ theorem sum_mul_eLpNorm_lpDelta_le (n m : Fin 3) :
 
 /-- **`lem:gain_2-`** (`eq:gain_2-`, lines 603-608, with the proof of lines 631-651): for the
 grouped operators with `k^{(1)} > 100`,
-`‖T^{(k_2,k_3)}_J(g_0, f_1, f_2)‖_1 ≤ C 2^{-δ k^{(1)}} ‖g_0‖_∞ ‖f_1‖_2 ‖f_2‖_2`, uniformly in `J`. -/
+`‖T^{(k_2,k_3)}_J(g_0, f_1, f_2)‖_1 ≤ C 2^{-δ k^{(1)}} ‖g_0‖_∞ ‖f_1‖_2 ‖f_2‖_2`, uniformly in `J`.
+-/
 theorem gain2_grouped (hS : SmoothingTwo) (n0 : Fin 3) :
     ∃ C δ : ℝ, 0 < C ∧ 0 < δ ∧ ∀ p : Fin 3 → ℤ, PairReg n0 p → 100 < kMax p →
       ∀ (J : ℕ) (g0 : E3 → ℂ), Measurable g0 → ∀ B : ℝ, (∀ y, ‖g0 y‖ ≤ B) →
@@ -8756,12 +8911,13 @@ theorem gain2_grouped (hS : SmoothingTwo) (n0 : Fin 3) :
         (insIn n0 g0 (fun i => ⇑(f i)) n))) 1 volume
       ≤ ∑ j ∈ Sj, eLpNorm (simplexTj j (fun n => lineConvC (lowFam n0 p n j) n
           (insIn n0 g0 (fun i => ⇑(f i)) n))) 1 volume :=
-        eLpNorm_sum_le (fun j _ => (hmeas j).aestronglyMeasurable) le_rfl
+        eLpNorm_sum_le le_rfl
     _ ≤ ∑ j ∈ Sj, ENNReal.ofReal X *
           (eLpNorm (lpDelta (σ 0) ((expo (σ 0) : ℤ) * j + k 0) (f 0)) 2 volume *
             eLpNorm (lpDelta (σ 1) ((expo (σ 1) : ℤ) * j + k 1) (f 1)) 2 volume) :=
         Finset.sum_le_sum fun j _ => hpiece j
-    _ ≤ ENNReal.ofReal X * (ENNReal.ofReal A * (eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume)) := by
+    _ ≤ ENNReal.ofReal X * (ENNReal.ofReal A * (eLpNorm (f 0) 2 volume * eLpNorm (f 1) 2 volume))
+      := by
         rw [← Finset.mul_sum]
         exact mul_le_mul' le_rfl (hCS (k 0) (k 1) J (f 0) (f 1))
     _ = ENNReal.ofReal (2 * C * (2 : ℝ) ^ δ * A * B * (2 : ℝ) ^ (-(δ * kMax p))) *
@@ -8824,8 +8980,9 @@ theorem eLpNorm_lineConvC_le (χ : CoordMult) (ℓ : Fin 3) {g : E3 → ℂ} (hg
     lintegral_sub_right_eq_self (fun y => ‖g y‖ₑ ^ P) (u • basisVec ℓ)
   simp only [htr] at hMJ
   rw [lintegral_mul_const _ hwm] at hMJ
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top,
-    eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top
+    (by fun_prop),
+    eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hP0) ENNReal.ofReal_ne_top (by fun_prop),
     ENNReal.toReal_ofReal hP0.le]
   have hpt : ∀ y, ‖lineConvC χ ℓ g y‖ₑ ≤ ∫⁻ u, ‖χ.check u‖ₑ * ‖g (y - u • basisVec ℓ)‖ₑ := by
     intro y
@@ -8874,7 +9031,8 @@ theorem simplexTj_update_add (j : ℤ) (h : Fin 3 → E3 → ℂ) (n : Fin 3)
     simplexTj j (Function.update h n (a + b)) x
       = simplexTj j (Function.update h n a) x + simplexTj j (Function.update h n b) x := by
   unfold simplexTj
-  rw [← integral_add (integrable_simplexTj_integrand j (measurable_update hh ha) (bound_update hB haB) x)
+  rw [← integral_add (integrable_simplexTj_integrand j (measurable_update hh ha) (bound_update hB
+    haB) x)
     (integrable_simplexTj_integrand j (measurable_update hh hb) (bound_update hB hbB) x)]
   congr 1; funext t
   simp only [prodShift_update', Pi.add_apply]
@@ -8897,7 +9055,7 @@ theorem lineConvC_update (χ : Fin 3 → CoordMult) (g : Fin 3 → E3 → ℂ) (
   · subst hm; simp only [Function.update_self]
   · simp only [Function.update_of_ne hm]
 
-theorem measurable_gOp (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) {g : Fin 3 → E3 → ℂ}
+@[fun_prop] theorem measurable_gOp (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) {g : Fin 3 → E3 → ℂ}
     (hg : ∀ m, Measurable (g m)) : Measurable (gOp χ J g) := by
   unfold gOp
   refine Finset.measurable_sum _ fun j _ => measurable_simplexTj j fun m => ?_
@@ -8930,7 +9088,7 @@ theorem gOp_update_add (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (g : Fin 3 �
     (measurable_lineConvC _ _ ha) (measurable_lineConvC _ _ hb) (B := Bt) ?_ ?_ ?_ x
   · intro m hm y
     refine (norm_lineConvC_le (χ m j) m (fun y => (hBm m hm y).trans (le_abs_self _)) y).trans ?_
-    have h1 : K m * |Bm m hm| = K m * Bm' m := by simp only [Bm', dif_neg hm]
+    have h1 : K m * |Bm m hm| = K m * Bm' m := by simp only [Bm', dite_eq_right hm]
     have h2 : K m * Bm' m ≤ ∑ m, K m * Bm' m :=
       Finset.single_le_sum (f := fun m => K m * Bm' m) (fun m _ => hBm'0 m) (Finset.mem_univ m)
     have : 0 ≤ K n * |Ba| + K n * |Bb| := by have := hK0 n; positivity
@@ -8972,14 +9130,15 @@ theorem eLpNorm_gOp_le (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) {g : Fin 3 �
     (hsum : 1 / r = 1 / P 0 + 1 / P 1 + 1 / P 2) :
     eLpNorm (gOp χ J g) (ENNReal.ofReal r) volume
       ≤ gOpConst χ J * (eLpNorm (g 0) (ENNReal.ofReal (P 0)) volume *
-          (eLpNorm (g 1) (ENNReal.ofReal (P 1)) volume * eLpNorm (g 2) (ENNReal.ofReal (P 2)) volume)) := by
+          (eLpNorm (g 1) (ENNReal.ofReal (P 1)) volume * eLpNorm (g 2) (ENNReal.ofReal (P 2))
+            volume)) := by
   set Sj := Finset.Icc (-(J : ℤ)) J
   have hmeas : ∀ j, ∀ m, Measurable (lineConvC (χ m j) m (g m)) := fun j m =>
     measurable_lineConvC _ _ (hg m)
   have hfun : gOp χ J g = ∑ j ∈ Sj, simplexTj j (fun m => lineConvC (χ m j) m (g m)) := by
     funext x; simp [gOp, Finset.sum_apply, Sj]
   rw [hfun]
-  refine (eLpNorm_sum_le (fun j _ => (measurable_simplexTj j (hmeas j)).aestronglyMeasurable)
+  refine (eLpNorm_sum_le
     (by simpa using hr1)).trans ?_
   unfold gOpConst
   rw [Finset.sum_mul]
@@ -8992,7 +9151,8 @@ theorem eLpNorm_gOp_le (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) {g : Fin 3 �
   calc (∫⁻ t, wJ j t) * (eLpNorm (lineConvC (χ 0 j) 0 (g 0)) (ENNReal.ofReal (P 0)) volume *
         (eLpNorm (lineConvC (χ 1 j) 1 (g 1)) (ENNReal.ofReal (P 1)) volume *
           eLpNorm (lineConvC (χ 2 j) 2 (g 2)) (ENNReal.ofReal (P 2)) volume))
-      ≤ (∫⁻ t, wJ j t) * (((∫⁻ u, ‖(χ 0 j).check u‖ₑ) * eLpNorm (g 0) (ENNReal.ofReal (P 0)) volume) *
+      ≤ (∫⁻ t, wJ j t) * (((∫⁻ u, ‖(χ 0 j).check u‖ₑ) * eLpNorm (g 0) (ENNReal.ofReal (P 0))
+        volume) *
         (((∫⁻ u, ‖(χ 1 j).check u‖ₑ) * eLpNorm (g 1) (ENNReal.ofReal (P 1)) volume) *
           ((∫⁻ u, ‖(χ 2 j).check u‖ₑ) * eLpNorm (g 2) (ENNReal.ofReal (P 2)) volume))) := by
         gcongr
@@ -9007,7 +9167,8 @@ theorem gOp_slot_transfer (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n : Fin 
     (A : (E3 → ℂ) → Prop)
     (hA : ∀ a, GoodIn a → ∀ ε : ℝ≥0∞, 0 < ε → ∃ φ, A φ ∧ GoodIn φ ∧
       eLpNorm (a - φ) (ENNReal.ofReal (P n)) volume ≤ ε)
-    (hbound : ∀ φ, A φ → GoodIn φ → eLpNorm (gOp χ J (Function.update g n φ)) (ENNReal.ofReal r) volume
+    (hbound : ∀ φ, A φ → GoodIn φ → eLpNorm (gOp χ J (Function.update g n φ)) (ENNReal.ofReal r)
+      volume
       ≤ M * eLpNorm φ (ENNReal.ofReal (P n)) volume)
     {a : E3 → ℂ} (ha : GoodIn a) :
     eLpNorm (gOp χ J (Function.update g n a)) (ENNReal.ofReal r) volume
@@ -9020,7 +9181,8 @@ theorem gOp_slot_transfer (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n : Fin 
   set C : ℝ≥0∞ := gOpConst χ J * (N 0 * (N 1 * N 2))
   have hC : C ≠ ⊤ := ENNReal.mul_ne_top (gOpConst_ne_top χ J)
     (ENNReal.mul_ne_top (hN 0) (ENNReal.mul_ne_top (hN 1) (hN 2)))
-  have hcrude : ∀ b, Measurable b → eLpNorm (gOp χ J (Function.update g n b)) (ENNReal.ofReal r) volume
+  have hcrude : ∀ b, Measurable b → eLpNorm (gOp χ J (Function.update g n b)) (ENNReal.ofReal r)
+    volume
       ≤ C * eLpNorm b (ENNReal.ofReal (P n)) volume := by
     intro b hb
     refine (eLpNorm_gOp_le χ J (measurable_update (fun m hm => (hg m hm).1) hb) hr1 hP hsum).trans
@@ -9031,7 +9193,6 @@ theorem gOp_slot_transfer (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n : Fin 
   refine eLpNorm_bound_transfer (T := fun b => gOp χ J (Function.update g n b))
     (fun b c hb hc hbB hcB => gOp_update_add χ J g n (fun m hm => (hg m hm).1)
       (fun m hm => (hg m hm).2.1) hb hc hbB hcB)
-    (fun b hb => measurable_gOp χ J (measurable_update (fun m hm => (hg m hm).1) hb))
     hr1 (hP n) hC hcrude hM ha.1 ha.2.1 fun ε hε => ?_
   obtain ⟨φ, hAφ, hφ, hφε⟩ := hA a ha ε hε
   exact ⟨φ, hφ.1, hφ.2.1, hφε, hbound φ hAφ hφ⟩
@@ -9052,16 +9213,17 @@ theorem goodIn_approx_simple {a : E3 → ℂ} (ha : GoodIn a) {P : ℝ} (hP : 1 
     (ε : ℝ≥0∞) (hε : 0 < ε) : ∃ φ : E3 → ℂ, (∃ s : SimpleFunc E3 ℂ, Integrable s ∧ ⇑s = φ) ∧
       GoodIn φ ∧ eLpNorm (a - φ) (ENNReal.ofReal P) volume ≤ ε := by
   have hP0 : ENNReal.ofReal P ≠ 0 := by simpa using (by linarith : (0 : ℝ) < P)
-  obtain ⟨s, hsε, hsP⟩ := (ha.2.2 P hP).exists_simpleFunc_eLpNorm_sub_lt ENNReal.ofReal_ne_top hε.ne'
+  obtain ⟨s, hsε, hsP⟩ := (ha.2.2 P hP).exists_simpleFunc_eLpNorm_sub_lt ENNReal.ofReal_ne_top
+    hε.ne'
   have hsI : Integrable s := (SimpleFunc.memLp_iff_integrable hP0 ENNReal.ofReal_ne_top).mp hsP
   exact ⟨s, ⟨s, hsI, rfl⟩, goodIn_simple s hsI, hsε.le⟩
 
 /-! ### The loss-free bound for the grouped operators (alternative route, line 620) -/
-
 theorem lintegral_wJ_le (j : ℤ) : ∫⁻ t, wJ j t ≤ 8 := by
   set r : ℝ := (2 : ℝ) ^ (-j) with hr
   have hr0 : 0 < r := zpow_pos two_pos _
-  have hle : ∀ t, wJ j t ≤ ENNReal.ofReal (2 / r) * Set.indicator (Set.Icc (-(2 * r)) (2 * r)) 1 t := by
+  have hle : ∀ t, wJ j t ≤ ENNReal.ofReal (2 / r) * Set.indicator (Set.Icc (-(2 * r)) (2 * r)) 1 t
+    := by
     intro t
     refine (wJ_le_indicator j t).trans ?_
     gcongr
@@ -9069,7 +9231,9 @@ theorem lintegral_wJ_le (j : ℤ) : ∫⁻ t, wJ j t ≤ 8 := by
     · rw [Set.indicator_of_mem ht, Set.indicator_of_mem (Set.mem_Icc.mpr (abs_le.mp ht.2))]
       simp
     · rw [Set.indicator_of_notMem ht]; exact bot_le
-  calc ∫⁻ t, wJ j t ≤ ∫⁻ t, ENNReal.ofReal (2 / r) * Set.indicator (Set.Icc (-(2 * r)) (2 * r)) 1 t :=
+  calc
+    ∫⁻ t, wJ j t ≤ ∫⁻ t, ENNReal.ofReal (2 / r) *
+        Set.indicator (Set.Icc (-(2 * r)) (2 * r)) 1 t :=
         lintegral_mono hle
     _ = ENNReal.ofReal (2 / r) * volume (Set.Icc (-(2 * r)) (2 * r)) := by
         rw [lintegral_const_mul _ (measurable_one.indicator measurableSet_Icc),
@@ -9097,7 +9261,8 @@ theorem lintegral_curveAvg_slot_le' (n : Fin 3) {q : ℝ} (hq : 2 ≤ q) :
   have h2 := hS ((Finset.Icc (-(J : ℤ)) J).image fun j => (expo n : ℤ) * j + kn) g
   rw [Finset.sum_image hinj] at h2
   simp only [div_self (two_ne_zero' ℝ), ENNReal.rpow_one]
-  rw [lintegral_finsetSum _ fun j _ => measurable_curveAvg n j (lpDelta _ _ g).continuous.measurable]
+  rw [lintegral_finsetSum _ fun j _ => measurable_curveAvg n j (lpDelta _ _
+    g).continuous.measurable]
   have hj : ∀ j, ∫⁻ x, curveAvg n j (lpDelta n ((expo n : ℤ) * j + kn) g) x
       ≤ 8 * ∫⁻ x, ENNReal.ofReal (‖lpDelta n ((expo n : ℤ) * j + kn) g x‖ ^ (2 : ℝ)) := by
     intro j
@@ -9109,7 +9274,8 @@ theorem lintegral_curveAvg_slot_le' (n : Fin 3) {q : ℝ} (hq : 2 ≤ q) :
         ≤ ∫⁻ y, ‖lpDelta n ((expo n : ℤ) * j + kn) g y‖ₑ ^ (2 : ℝ) * 8 := by
           gcongr; exact lintegral_wJ_le j
       _ = 8 * ∫⁻ x, ENNReal.ofReal (‖lpDelta n ((expo n : ℤ) * j + kn) g x‖ ^ (2 : ℝ)) := by
-          rw [lintegral_mul_const _ ((lpDelta _ _ g).continuous.measurable.enorm.pow_const _), mul_comm]
+          rw [lintegral_mul_const _ ((lpDelta _ _ g).continuous.measurable.enorm.pow_const _),
+            mul_comm]
           congr 1
           refine lintegral_congr fun x => ?_
           rw [← ofReal_norm, ENNReal.ofReal_rpow_of_nonneg (norm_nonneg _) (by norm_num)]
@@ -9177,7 +9343,8 @@ theorem norm_lineConvC_shift_le {χ : ℤ → CoordMult} (hχ : IsDyadicFam χ) 
   have hcv : lineConvC (χ c) ℓ g (y + s • basisVec ℓ)
       = ∫ v : ℝ, (χ c).check (v + s) * g (y - v • basisVec ℓ) := by
     unfold lineConvC
-    rw [← integral_add_right_eq_self (fun u => (χ c).check u * g (y + s • basisVec ℓ - u • basisVec ℓ)) s]
+    rw [← integral_add_right_eq_self (fun u => (χ c).check u * g (y + s • basisVec ℓ - u •
+      basisVec ℓ)) s]
     refine integral_congr_ae (Eventually.of_forall fun v => ?_)
     simp only
     congr 2
@@ -9271,9 +9438,11 @@ theorem enorm_gOp_le_slot (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin
     (ha : ∀ j : ℤ, ∀ t : ℝ, |t| < 2 * (2 : ℝ) ^ (-j) →
       ‖lineConvC (χ n0 j) n0 (g n0) (x + curve n0 t)‖ₑ ≤ a) :
     ‖gOp χ J g x‖ₑ ≤ a * ((∑ j ∈ Finset.Icc (-(J : ℤ)) J, curveAvg (n0.succAbove 0) j
-          (lineConvC (χ (n0.succAbove 0) j) (n0.succAbove 0) (g (n0.succAbove 0))) x) ^ (1 / 2 : ℝ) *
+          (lineConvC (χ (n0.succAbove 0) j) (n0.succAbove 0) (g (n0.succAbove 0))) x) ^ (1 / 2 :
+            ℝ) *
         (∑ j ∈ Finset.Icc (-(J : ℤ)) J, curveAvg (n0.succAbove 1) j
-          (lineConvC (χ (n0.succAbove 1) j) (n0.succAbove 1) (g (n0.succAbove 1))) x) ^ (1 / 2 : ℝ)) := by
+          (lineConvC (χ (n0.succAbove 1) j) (n0.succAbove 1) (g (n0.succAbove 1))) x) ^ (1 / 2 :
+            ℝ)) := by
   set Sj := Finset.Icc (-(J : ℤ)) J
   set σ := n0.succAbove
   set B1 : ℤ → ℝ≥0∞ := fun j => curveAvg (σ 0) j (lineConvC (χ (σ 0) j) (σ 0) (g (σ 0))) x
@@ -9291,22 +9460,26 @@ theorem enorm_gOp_le_slot (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin
     exact h
   calc ‖gOp χ J g x‖ₑ ≤ ∑ j ∈ Sj, ‖simplexTj j (fun n => lineConvC (χ n j) n (g n)) x‖ₑ :=
         enorm_sum_le _ _
-    _ ≤ ∑ j ∈ Sj, a * (B1 j ^ (1 / 2 : ℝ) * B2 j ^ (1 / 2 : ℝ)) := Finset.sum_le_sum fun j _ => hpiece j
+    _ ≤ ∑ j ∈ Sj, a * (B1 j ^ (1 / 2 : ℝ) * B2 j ^ (1 / 2 : ℝ)) := Finset.sum_le_sum fun j _ =>
+      hpiece j
     _ = a * ∑ j ∈ Sj, B1 j ^ (1 / 2 : ℝ) * B2 j ^ (1 / 2 : ℝ) := by rw [Finset.mul_sum]
     _ ≤ _ := by gcongr
 
 /-- The square function of the `L^2` slot `n`: `(∑_{|j| ≤ J} B_j(Δ^{(n)}_{(n+1)j+k_n} g))^{1/2}`. -/
 def slotU (n : Fin 3) (kn : ℤ) (J : ℕ) (g : 𝓢(E3, ℂ)) (x : E3) : ℝ≥0∞ :=
-  (∑ j ∈ Finset.Icc (-(J : ℤ)) J, curveAvg n j (lpDelta n ((expo n : ℤ) * j + kn) g) x) ^ (1 / 2 : ℝ)
+  (∑ j ∈ Finset.Icc (-(J : ℤ)) J, curveAvg n j (lpDelta n ((expo n : ℤ) * j + kn) g) x) ^ (1 / 2 :
+    ℝ)
 
-theorem measurable_slotU (n : Fin 3) (kn : ℤ) (J : ℕ) (g : 𝓢(E3, ℂ)) : Measurable (slotU n kn J g) :=
+theorem measurable_slotU (n : Fin 3) (kn : ℤ) (J : ℕ) (g : 𝓢(E3, ℂ)) : Measurable (slotU n kn J g)
+  :=
   (Finset.measurable_sum _ fun j _ =>
     measurable_curveAvg n j (lpDelta _ _ g).continuous.measurable).pow_const _
 
 /-- `‖U^{(n)} g‖_q ≲ ‖g‖_q`, `q ≥ 2`, uniformly in `k_n` and `J`. -/
 theorem lintegral_slotU_le (n : Fin 3) {q : ℝ} (hq : 2 ≤ q) :
     ∃ A : ℝ, 0 ≤ A ∧ ∀ (kn : ℤ) (J : ℕ) (g : 𝓢(E3, ℂ)),
-      (∫⁻ x, slotU n kn J g x ^ q) ^ (1 / q) ≤ ENNReal.ofReal A * eLpNorm g (ENNReal.ofReal q) volume := by
+      (∫⁻ x, slotU n kn J g x ^ q) ^ (1 / q) ≤ ENNReal.ofReal A * eLpNorm g (ENNReal.ofReal q)
+        volume := by
   obtain ⟨A, hA, h⟩ := lintegral_curveAvg_slot_le' n hq
   have hq0 : 0 < q := by linarith
   refine ⟨A ^ (1 / q), by positivity, fun kn J g => ?_⟩
@@ -9319,12 +9492,14 @@ theorem lintegral_slotU_le (n : Fin 3) {q : ℝ} (hq : 2 ≤ q) :
       ≤ (ENNReal.ofReal A * ∫⁻ x, ENNReal.ofReal (‖g x‖ ^ q)) ^ (1 / q) := by
         gcongr; exact h kn J g
     _ = ENNReal.ofReal (A ^ (1 / q)) * eLpNorm g (ENNReal.ofReal q) volume := by
-        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), lintegral_ofReal_norm_rpow_rpow_inv g hq0,
+        rw [ENNReal.mul_rpow_of_nonneg _ _ (by positivity), lintegral_ofReal_norm_rpow_rpow_inv g
+          hq0,
           ENNReal.ofReal_rpow_of_nonneg hA (by positivity)]
 
 theorem lowCut_nonpos (p : Fin 3 → ℤ) : lowCut p ≤ 0 := min_le_left _ _
 
-theorem abs_curve_pow_le (n : Fin 3) (j c : ℤ) (hc : c ≤ 0) {t : ℝ} (ht : |t| < 2 * (2 : ℝ) ^ (-j)) :
+theorem abs_curve_pow_le (n : Fin 3) (j c : ℤ) (hc : c ≤ 0) {t : ℝ} (ht : |t| < 2 * (2 : ℝ) ^
+  (-j)) :
     |t ^ expo n| ≤ (2 : ℝ) ^ expo n * (2 : ℝ) ^ (-((expo n : ℤ) * j + c)) := by
   rw [abs_pow]
   have h1 : |t| ^ expo n ≤ (2 * (2 : ℝ) ^ (-j)) ^ expo n :=
@@ -9337,7 +9512,8 @@ theorem abs_curve_pow_le (n : Fin 3) (j c : ℤ) (hc : c ≤ 0) {t : ℝ} (ht : 
   nlinarith
 
 /-- **The pointwise bound for the grouped operators**: the low-pass slot `n_0` at bounded shifts
-(`|S g(x + t^{n_0+1} e_{n_0})| ≲ M g(x)`, no loss since `k_{n_0} ≤ 0`), Cauchy-Schwarz in `t` and `j`. -/
+(`|S g(x + t^{n_0+1} e_{n_0})| ≲ M g(x)`, no loss since `k_{n_0} ≤ 0`), Cauchy-Schwarz in `t` and
+  `j`. -/
 theorem enorm_gOp_low_le (n0 : Fin 3) :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (p : Fin 3 → ℤ) (J : ℕ) (g0 : E3 → ℂ), Measurable g0 → ∀ B : ℝ,
       (∀ y, ‖g0 y‖ ≤ B) → ∀ (f : Fin 2 → 𝓢(E3, ℂ)) (x : E3),
@@ -9359,14 +9535,14 @@ theorem enorm_gOp_low_le (n0 : Fin 3) :
   have hslot : ∀ i : Fin 2, ∀ j : ℤ, lineConvC (lowFam n0 p (σ i) j) (σ i) (g (σ i))
       = ⇑(lpDelta (σ i) ((expo (σ i) : ℤ) * j + p (σ i)) (f i)) := by
     intro i j
-    simp only [g, insIn, Fin.insertNth_apply_succAbove, lowFam, σ, Fin.succAbove_ne, if_false,
+    simp only [g, insIn, Fin.insertNth_apply_succAbove, lowFam, σ, Fin.succAbove_ne, ite_false,
       lineConvC_schwartz, psiCM_op]
   have h := enorm_gOp_le_slot (lowFam n0 p) J n0 hg x
     (ENNReal.ofReal (C * (1 + R) ^ (10 : ℝ) * Twisted.coordinateDyadicBallMaximal n0 g0 x))
     (fun j t ht => by
       have e0 : g n0 = g0 := by simp only [g, insIn, Fin.insertNth_apply_same]
       have el : lowFam n0 p n0 j = phiCM ((expo n0 : ℤ) * j + lowCut p) := by
-        simp only [lowFam, if_true]
+        simp only [lowFam, ite_true]
       rw [e0, el, curve, ← ofReal_norm]
       refine ENNReal.ofReal_le_ofReal (hC _ g0 hg0 B hB x _ R hR ?_)
       exact abs_curve_pow_le n0 j (lowCut p) (lowCut_nonpos p) ht)
@@ -9389,7 +9565,8 @@ theorem lossFree_inf (n0 : Fin 3) {q1 q2 r : ℝ} (hq1 : 2 ≤ q1) (hq2 : 2 ≤ 
       (∀ y, ‖g0 y‖ ≤ B) → ∀ f : Fin 2 → 𝓢(E3, ℂ),
         eLpNorm (gOp (lowFam n0 p) J (insIn n0 g0 fun i => ⇑(f i))) (ENNReal.ofReal r) volume
           ≤ ENNReal.ofReal (C * B) *
-            (eLpNorm (f 0) (ENNReal.ofReal q1) volume * eLpNorm (f 1) (ENNReal.ofReal q2) volume) := by
+            (eLpNorm (f 0) (ENNReal.ofReal q1) volume * eLpNorm (f 1) (ENNReal.ofReal q2) volume)
+              := by
   obtain ⟨C, hC0, hpt⟩ := enorm_gOp_low_le n0
   obtain ⟨A1, hA1, hU1⟩ := lintegral_slotU_le (n0.succAbove 0) hq1
   obtain ⟨A2, hA2, hU2⟩ := lintegral_slotU_le (n0.succAbove 1) hq2
@@ -9411,9 +9588,14 @@ theorem lossFree_inf (n0 : Fin 3) {q1 q2 r : ℝ} (hq1 : 2 ≤ q1) (hq2 : 2 ≤ 
   have hle : ∀ x, ‖gOp (lowFam n0 p) J (insIn n0 g0 fun i => ⇑(f i)) x‖ₑ ≤ a * (U1 x * U2 x) := by
     intro x
     refine (hpt p J g0 hg0 B hB f x).trans (mul_le_mul' (ENNReal.ofReal_le_ofReal
-      (mul_le_mul_of_nonneg_left (Twisted.coordinateDyadicBallMaximal_top_bound n0 g0 B hB0 hB x) hC0))
+      (mul_le_mul_of_nonneg_left (Twisted.coordinateDyadicBallMaximal_top_bound n0 g0 B hB0 hB x)
+        hC0))
       le_rfl)
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top
+    (show AEStronglyMeasurable (gOp (lowFam n0 p) J
+      (insIn n0 g0 fun i => ⇑(f i))) volume from
+      (measurable_gOp _ _ (measurable_insertNth_E3 n0 hg0
+        (fun i => (f i).continuous.measurable))).aestronglyMeasurable),
     ENNReal.toReal_ofReal hr0.le]
   have hH := ENNReal.lintegral_Lp_mul_le_Lq_mul_Lr hr0 hrq hr volume
     (measurable_slotU (σ 0) (p (σ 0)) J (f 0)).aemeasurable
@@ -9433,10 +9615,12 @@ theorem lossFree_inf (n0 : Fin 3) {q1 q2 r : ℝ} (hq1 : 2 ≤ q1) (hq2 : 2 ≤ 
         · exact hU1 _ J (f 0)
         · exact hU2 _ J (f 1)
     _ = ENNReal.ofReal (C * A1 * A2 * B) *
-          (eLpNorm (f 0) (ENNReal.ofReal q1) volume * eLpNorm (f 1) (ENNReal.ofReal q2) volume) := by
+          (eLpNorm (f 0) (ENNReal.ofReal q1) volume * eLpNorm (f 1) (ENNReal.ofReal q2) volume) :=
+            by
         simp only [a]
         rw [ENNReal.ofReal_mul (show 0 ≤ C * A1 * A2 by positivity),
-          ENNReal.ofReal_mul (show 0 ≤ C * A1 by positivity), ENNReal.ofReal_mul (p := C) (q := A1) hC0,
+          ENNReal.ofReal_mul (show 0 ≤ C * A1 by positivity), ENNReal.ofReal_mul (p := C) (q :=
+            A1) hC0,
           ENNReal.ofReal_mul (p := C) (q := B) hC0]
         ring
 
@@ -9450,7 +9634,8 @@ theorem lossFree_fin (n0 : Fin 3) {q0 q1 q2 r : ℝ} (hq0 : 1 < q0) (hq1 : 2 ≤
       (∀ y, ‖g0 y‖ ≤ B) → ∀ f : Fin 2 → 𝓢(E3, ℂ),
         eLpNorm (gOp (lowFam n0 p) J (insIn n0 g0 fun i => ⇑(f i))) (ENNReal.ofReal r) volume
           ≤ ENNReal.ofReal C * (eLpNorm g0 (ENNReal.ofReal q0) volume *
-            (eLpNorm (f 0) (ENNReal.ofReal q1) volume * eLpNorm (f 1) (ENNReal.ofReal q2) volume)) := by
+            (eLpNorm (f 0) (ENNReal.ofReal q1) volume * eLpNorm (f 1) (ENNReal.ofReal q2) volume))
+              := by
   obtain ⟨C, hC0, hpt⟩ := enorm_gOp_low_le n0
   obtain ⟨A1, hA1, hU1⟩ := lintegral_slotU_le (n0.succAbove 0) hq1
   obtain ⟨A2, hA2, hU2⟩ := lintegral_slotU_le (n0.succAbove 1) hq2
@@ -9473,16 +9658,23 @@ theorem lossFree_fin (n0 : Fin 3) {q0 q1 q2 r : ℝ} (hq0 : 1 < q0) (hq1 : 2 ≤
   have ham : Measurable a := ENNReal.measurable_ofReal.comp (measurable_const.mul hMm)
   have hle : ∀ x, ‖gOp (lowFam n0 p) J (insIn n0 g0 fun i => ⇑(f i)) x‖ₑ ≤ a x * (U1 x * U2 x) :=
     fun x => hpt p J g0 hg0 B hB f x
-  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top,
+  rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hr0) ENNReal.ofReal_ne_top
+    (show AEStronglyMeasurable (gOp (lowFam n0 p) J
+      (insIn n0 g0 fun i => ⇑(f i))) volume from
+      (measurable_gOp _ _ (measurable_insertNth_E3 n0 hg0
+        (fun i => (f i).continuous.measurable))).aestronglyMeasurable),
     ENNReal.toReal_ofReal hr0.le]
   have hH := lintegral_mul3_rpow_le volume ham.aemeasurable
     (measurable_slotU (σ 0) (p (σ 0)) J (f 0)).aemeasurable
     (measurable_slotU (σ 1) (p (σ 1)) J (f 1)).aemeasurable
     hq00 hq10 hq20 hr
   -- the maximal slot
-  have ha : (∫⁻ x, a x ^ q0) ^ (1 / q0) ≤ ENNReal.ofReal C * (CM * eLpNorm g0 (ENNReal.ofReal q0) volume) := by
-    have e : (∫⁻ x, a x ^ q0) ^ (1 / q0) = eLpNorm (fun x => C * Mg x) (ENNReal.ofReal q0) volume := by
-      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hq00) ENNReal.ofReal_ne_top,
+  have ha : (∫⁻ x, a x ^ q0) ^ (1 / q0) ≤ ENNReal.ofReal C * (CM * eLpNorm g0 (ENNReal.ofReal q0)
+    volume) := by
+    have e : (∫⁻ x, a x ^ q0) ^ (1 / q0) = eLpNorm (fun x => C * Mg x) (ENNReal.ofReal q0) volume
+      := by
+      rw [eLpNorm_eq_lintegral_rpow_enorm_toReal (by simpa using hq00) ENNReal.ofReal_ne_top
+        (by fun_prop),
         ENNReal.toReal_ofReal hq00.le]
       congr 1
       refine lintegral_congr fun x => ?_
@@ -9492,7 +9684,8 @@ theorem lossFree_fin (n0 : Fin 3) {q0 q1 q2 r : ℝ} (hq0 : 1 < q0) (hq1 : 2 ≤
     exact Twisted.eLpNorm_coordinateDyadicBallMaximal_le n0 g0 hg0 B hB0 hB hq0
   calc (∫⁻ x, ‖gOp (lowFam n0 p) J (insIn n0 g0 fun i => ⇑(f i)) x‖ₑ ^ r) ^ (1 / r)
       ≤ (∫⁻ x, (a x * (U1 x * U2 x)) ^ r) ^ (1 / r) := by gcongr with x; exact hle x
-    _ ≤ (∫⁻ x, a x ^ q0) ^ (1 / q0) * ((∫⁻ x, U1 x ^ q1) ^ (1 / q1) * (∫⁻ x, U2 x ^ q2) ^ (1 / q2)) := hH
+    _ ≤ (∫⁻ x, a x ^ q0) ^ (1 / q0) * ((∫⁻ x, U1 x ^ q1) ^ (1 / q1) * (∫⁻ x, U2 x ^ q2) ^ (1 /
+      q2)) := hH
     _ ≤ (ENNReal.ofReal C * (CM * eLpNorm g0 (ENNReal.ofReal q0) volume)) *
           ((ENNReal.ofReal A1 * eLpNorm (f 0) (ENNReal.ofReal q1) volume) *
             (ENNReal.ofReal A2 * eLpNorm (f 1) (ENNReal.ofReal q2) volume)) := by
@@ -9504,7 +9697,8 @@ theorem lossFree_fin (n0 : Fin 3) {q0 q1 q2 r : ℝ} (hq0 : 1 < q0) (hq1 : 2 ≤
           ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_toReal hCM]
         ring
 
-theorem insIn_apply_self (n0 : Fin 3) (g0 : E3 → ℂ) (G : Fin 2 → E3 → ℂ) : insIn n0 g0 G n0 = g0 := by
+theorem insIn_apply_self (n0 : Fin 3) (g0 : E3 → ℂ) (G : Fin 2 → E3 → ℂ) : insIn n0 g0 G n0 = g0
+  := by
   simp only [insIn, Fin.insertNth_apply_same]
 
 theorem insIn_apply_succAbove (n0 : Fin 3) (g0 : E3 → ℂ) (G : Fin 2 → E3 → ℂ) (i : Fin 2) :
@@ -9544,7 +9738,8 @@ theorem gOp_sigma_transfer (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fi
     {φ : E3 → ℂ} (hφ : GoodIn φ) :
     eLpNorm (gOp χ J (insIn n0 g0 (Function.update G i φ))) (ENNReal.ofReal r) volume
       ≤ M * eLpNorm φ (ENNReal.ofReal a) volume := by
-  set P : Fin 3 → ℝ := Fin.insertNth (α := fun _ => ℝ) n0 c0 fun k => if k = i then a else c1 with hPdef
+  set P : Fin 3 → ℝ := Fin.insertNth (α := fun _ => ℝ) n0 c0 fun k => if k = i then a else c1 with
+    hPdef
   have hPn0 : P n0 = c0 := by simp only [hPdef, Fin.insertNth_apply_same]
   have hPs : ∀ k, P (n0.succAbove k) = if k = i then a else c1 := fun k => by
     simp only [hPdef, Fin.insertNth_apply_succAbove]
@@ -9557,7 +9752,7 @@ theorem gOp_sigma_transfer (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fi
     have e : 1 / P 0 + 1 / P 1 + 1 / P 2 = ∑ m, 1 / P m := by rw [Fin.sum_univ_three]
     rw [e, Fin.sum_univ_succAbove _ n0, Fin.sum_univ_two, hPn0, hPs, hPs, hsum]
     fin_cases i <;> simp <;> ring
-  have hPi : P (n0.succAbove i) = a := by rw [hPs, if_pos rfl]
+  have hPi : P (n0.succAbove i) = a := by rw [hPs, ite_eq_left rfl]
   have key := gOp_slot_transfer χ J (n0.succAbove i) (g := insIn n0 g0 G)
     (goodIn_insIn hg0 i hG) hr1 hP hPsum hM A (by rw [hPi]; exact hA)
     (fun ψ hAψ hψ => by rw [insIn_update, hPi]; exact hbound ψ hAψ hψ) hφ
@@ -9573,7 +9768,8 @@ theorem gOp_sigma_good (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
         ≤ K * (eLpNorm (f 0) (ENNReal.ofReal a0) volume * eLpNorm (f 1) (ENNReal.ofReal a1) volume))
     {G : Fin 2 → E3 → ℂ} (hG : ∀ k, GoodIn (G k)) :
     eLpNorm (gOp χ J (insIn n0 g0 G)) (ENNReal.ofReal r) volume
-      ≤ K * (eLpNorm (G 0) (ENNReal.ofReal a0) volume * eLpNorm (G 1) (ENNReal.ofReal a1) volume) := by
+      ≤ K * (eLpNorm (G 0) (ENNReal.ofReal a0) volume * eLpNorm (G 1) (ENNReal.ofReal a1) volume)
+        := by
   -- stage 1: slot `σ_0`, with a Schwartz function in slot `σ_1`
   have stage1 : ∀ (F1 : 𝓢(E3, ℂ)) (φ : E3 → ℂ), GoodIn φ →
       eLpNorm (gOp χ J (insIn n0 g0 ![φ, ⇑F1])) (ENNReal.ofReal r) volume
@@ -9594,7 +9790,7 @@ theorem gOp_sigma_good (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
           funext k; fin_cases k <;> simp
         rw [hf]
         refine (hS ![F, F1]).trans (le_of_eq ?_)
-        simp only [Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons]
+        simp only [Matrix.cons_val_zero, Matrix.cons_val_one]
         ring) hφ
     rw [← e] at h
     refine h.trans (le_of_eq ?_)
@@ -9626,7 +9822,8 @@ theorem gain2_good (hS : SmoothingTwo) (n0 : Fin 3) :
       ∀ G : Fin 2 → E3 → ℂ, (∀ k, GoodIn (G k)) →
         eLpNorm (gOp (lowFam n0 p) J (insIn n0 g0 G)) (ENNReal.ofReal 1) volume
           ≤ ENNReal.ofReal (C * B * (2 : ℝ) ^ (-(δ * kMax p))) *
-            (eLpNorm (G 0) (ENNReal.ofReal 2) volume * eLpNorm (G 1) (ENNReal.ofReal 2) volume) := by
+            (eLpNorm (G 0) (ENNReal.ofReal 2) volume * eLpNorm (G 1) (ENNReal.ofReal 2) volume) :=
+              by
   obtain ⟨C, δ, hC, hδ, h⟩ := gain2_grouped hS n0
   refine ⟨C, δ, hC, hδ, fun p hp hK J g0 hg0 B hB G hG => ?_⟩
   refine gOp_sigma_good _ J n0 hg0 ENNReal.ofReal_ne_top le_rfl (by norm_num) (by norm_num)
@@ -9643,7 +9840,8 @@ theorem lossFree_inf_good (n0 : Fin 3) {q1 q2 r : ℝ} (hq1 : 2 ≤ q1) (hq2 : 2
       (∀ y, ‖g0 y‖ ≤ B) → ∀ G : Fin 2 → E3 → ℂ, (∀ k, GoodIn (G k)) →
         eLpNorm (gOp (lowFam n0 p) J (insIn n0 g0 G)) (ENNReal.ofReal r) volume
           ≤ ENNReal.ofReal (C * B) *
-            (eLpNorm (G 0) (ENNReal.ofReal q1) volume * eLpNorm (G 1) (ENNReal.ofReal q2) volume) := by
+            (eLpNorm (G 0) (ENNReal.ofReal q1) volume * eLpNorm (G 1) (ENNReal.ofReal q2) volume)
+              := by
   obtain ⟨C, hC, h⟩ := lossFree_inf n0 hq1 hq2 hr
   have hr0 : 0 < r := by
     have : 0 < 1 / r := by rw [hr]; positivity
@@ -9668,7 +9866,8 @@ theorem lossFree_fin_good (n0 : Fin 3) {q0 q1 q2 r : ℝ} (hq0 : 1 < q0) (hq1 : 
       ∀ G : Fin 2 → E3 → ℂ, (∀ k, GoodIn (G k)) →
         eLpNorm (gOp (lowFam n0 p) J (insIn n0 g0 G)) (ENNReal.ofReal r) volume
           ≤ ENNReal.ofReal C * eLpNorm g0 (ENNReal.ofReal q0) volume *
-            (eLpNorm (G 0) (ENNReal.ofReal q1) volume * eLpNorm (G 1) (ENNReal.ofReal q2) volume) := by
+            (eLpNorm (G 0) (ENNReal.ofReal q1) volume * eLpNorm (G 1) (ENNReal.ofReal q2) volume)
+              := by
   obtain ⟨C, hC, h⟩ := lossFree_fin n0 hq0 hq1 hq2 hr
   refine ⟨C, hC, fun p J g0 hg0 G hG => ?_⟩
   obtain ⟨B, hB⟩ := hg0.2.1
@@ -9679,7 +9878,6 @@ theorem lossFree_fin_good (n0 : Fin 3) {q0 q1 q2 r : ℝ} (hq0 : 1 < q0) (hq1 : 
     (fun f => (h p J g0 hg0.1 B hB f).trans (le_of_eq (by ring))) hG
 
 /-! ### Interpolation for the grouped operators (alternative route, line 620) -/
-
 theorem le_ofReal_mul_of_tendsto {X S : ℝ≥0∞} (hS : S ≠ ⊤) {a : ℕ → ℝ} {a' : ℝ}
     (ha : Tendsto a atTop (𝓝 a')) (h : ∀ n, X ≤ ENNReal.ofReal (a n) * S) :
     X ≤ ENNReal.ofReal a' * S :=
@@ -9710,7 +9908,8 @@ theorem one_le_of_interp {r r₀ r₁ θ : ℝ} (hθ0 : 0 ≤ θ) (hθ1 : θ ≤
   have hr : 0 < r := one_div_pos.mp hpos
   exact ⟨hr, by rwa [div_le_one hr] at hle⟩
 
-/-- **Riesz-Thorin in one slot of the grouped operator** (`Auto.SteinInterpolation.riesz_thorin`). -/
+/-- **Riesz-Thorin in one slot of the grouped operator** (`Auto.SteinInterpolation.riesz_thorin`).
+-/
 theorem gOp_slot_rt (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n : Fin 3) {g : Fin 3 → E3 → ℂ}
     (hg : ∀ m, m ≠ n → GoodIn (g m)) {p₀ p₁ p q₀ q₁ q : ℝ≥0∞} {θ M₀ M₁ : ℝ}
     (hp₀ : 1 ≤ p₀) (hp₁ : 1 ≤ p₁) (hq₀ : 1 ≤ q₀) (hq₁ : 1 ≤ q₁) (hθ : θ ∈ Set.Ioo 0 1)
@@ -9794,7 +9993,8 @@ theorem rt_sigma_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3) 
             ≤ ENNReal.ofReal (A * (B + η)) * (eLpNorm (G i) (ENNReal.ofReal a') volume *
                 eLpNorm (G i.rev) (ENNReal.ofReal b) volume)) →
         ∀ s : SimpleFunc E3 ℂ, Integrable s →
-          eLpNorm (gOp χ J (Function.update (insIn n0 g0 G) (n0.succAbove i) s)) (ENNReal.ofReal r') volume
+          eLpNorm (gOp χ J (Function.update (insIn n0 g0 G) (n0.succAbove i) s)) (ENNReal.ofReal
+            r') volume
             ≤ ENNReal.ofReal (A * Z) * eLpNorm s (ENNReal.ofReal a') volume := by
       intro A a' r' hA hE s hs
       rw [insIn_update]
@@ -9807,7 +10007,8 @@ theorem rt_sigma_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3) 
             rw [show A * ((B + η) * (N + η)) = A * (B + η) * (N + η) by ring,
               ENNReal.ofReal_mul (show 0 ≤ A * (B + η) by positivity)]
             ring
-    have hRT := gOp_slot_rt χ J (n0.succAbove i) (g := insIn n0 g0 G) (goodIn_insIn hg0 i fun k _ => hG k)
+    have hRT := gOp_slot_rt χ J (n0.succAbove i) (g := insIn n0 g0 G) (goodIn_insIn hg0 i fun k _
+      => hG k)
       (p₀ := ENNReal.ofReal a₀) (p₁ := ENNReal.ofReal a₁) (p := ENNReal.ofReal a)
       (q₀ := ENNReal.ofReal r₀) (q₁ := ENNReal.ofReal r₁) (q := ENNReal.ofReal r) (θ := θ)
       (M₀ := A₀ * Z) (M₁ := A₁ * Z) (by simpa using ha₀) (by simpa using ha₁) (by simpa using hr₀)
@@ -9829,7 +10030,8 @@ theorem rt_sigma_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3) 
     have ht : Tendsto (fun n : ℕ => Aθ * ((B + 1 / ((n : ℝ) + 1)) * (N + 1 / ((n : ℝ) + 1))))
         atTop (𝓝 (Aθ * ((B + 0) * (N + 0)))) :=
       ((tendsto_const_nhds.add tendsto_eta).mul (tendsto_const_nhds.add tendsto_eta)).const_mul _
-    have h := le_ofReal_mul_of_tendsto ((goodIn_simple s hs).eLpNorm_ne_top ha1) ht fun n => hsimple n s hs
+    have h := le_ofReal_mul_of_tendsto ((goodIn_simple s hs).eLpNorm_ne_top ha1) ht fun n =>
+      hsimple n s hs
     refine h.trans (le_of_eq ?_)
     rw [add_zero, add_zero, ← mul_assoc, ENNReal.ofReal_mul (by positivity)]
   -- simple to admissible in slot `σ_i`
@@ -9889,7 +10091,8 @@ theorem rt_low_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
     ∀ g0, GoodIn g0 → ∀ G : Fin 2 → E3 → ℂ, (∀ k, GoodIn (G k)) →
       eLpNorm (gOp χ J (insIn n0 g0 G)) (ENNReal.ofReal r) volume
         ≤ ENNReal.ofReal (A₀ ^ (1 - θ) * A₁ ^ θ) * eLpNorm g0 (ENNReal.ofReal c) volume *
-            (eLpNorm (G 0) (ENNReal.ofReal b0) volume * eLpNorm (G 1) (ENNReal.ofReal b1) volume) := by
+            (eLpNorm (G 0) (ENNReal.ofReal b0) volume * eLpNorm (G 1) (ENNReal.ofReal b1) volume)
+              := by
   intro g0 hg0 G hG
   obtain ⟨hr0, hr1⟩ := one_le_of_interp hθ0.le hθ1.le hr₀ hr₁ hintr
   have hc0 : 0 < c := by
@@ -9940,12 +10143,13 @@ theorem rt_low_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
       by_cases hy : y ∈ S
       · simp only [s', Set.indicator_of_mem hy]; exact hy
       · simp only [s', Set.indicator_of_notMem hy, norm_zero]; exact hE0
-    have hs'g : GoodIn s' := ⟨s.measurable.indicator hSm, ⟨E, hs'B⟩, fun P hP => (hsg.2.2 P hP).indicator hSm⟩
+    have hs'g : GoodIn s' := ⟨s.measurable.indicator hSm, ⟨E, hs'B⟩, fun P hP => (hsg.2.2 P
+      hP).indicator hSm⟩
     have hae : s' =ᵐ[volume] s := by
       have h := ae_le_eLpNormEssSup (μ := volume) (f := (s : E3 → ℂ))
       filter_upwards [h] with y hy
       have hy' : ‖s y‖ ≤ E := by
-        rw [← eLpNorm_exponent_top] at hy
+        rw [← eLpNorm_exponent_top (s.measurable.aestronglyMeasurable (μ := volume))] at hy
         have := ENNReal.toReal_mono htop hy
         rwa [toReal_enorm] at this
       simp only [s', Set.indicator_of_mem (show y ∈ S from hy')]
@@ -9963,14 +10167,12 @@ theorem rt_low_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
         = eLpNorm (gOp χ J (insIn n0 s' G)) (ENNReal.ofReal r₀) volume := by
       rw [hadd]
       refine le_antisymm ?_ ?_
-      · refine (eLpNorm_add_le (measurable_gOp χ J (hmeasG _ hs'g.1)).aestronglyMeasurable
-          (measurable_gOp χ J (hmeasG _ (s.measurable.sub hs'g.1))).aestronglyMeasurable
+      · refine (eLpNorm_add_le
           (by simpa using hr₀)).trans ?_
         rw [hz, add_zero]
       · have h2 := eLpNorm_sub_le (μ := volume) (p := ENNReal.ofReal r₀)
-          ((measurable_gOp χ J (hmeasG _ hs'g.1)).add
-            (measurable_gOp χ J (hmeasG _ (s.measurable.sub hs'g.1)))).aestronglyMeasurable
-          (measurable_gOp χ J (hmeasG _ (s.measurable.sub hs'g.1))).aestronglyMeasurable
+          (f := gOp χ J (insIn n0 s' G) + gOp χ J (insIn n0 (⇑s - s') G))
+          (g := gOp χ J (insIn n0 (⇑s - s') G))
           (by simpa using hr₀)
         rw [add_sub_cancel_right, hz, add_zero] at h2
         exact h2
@@ -9984,7 +10186,9 @@ theorem rt_low_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
     set η := 1 / ((n : ℝ) + 1)
     have hη : 0 < η := eta_pos n
     have hZ0 : 0 < N + η := by positivity
-    have hle : NG ≤ ENNReal.ofReal (N + η) := by rw [hNe]; exact ENNReal.ofReal_le_ofReal (by linarith)
+    have hle : NG ≤ ENNReal.ofReal (N + η) := by
+      rw [hNe];
+      exact ENNReal.ofReal_le_ofReal (by linarith)
     have hRT := gOp_slot_rt χ J n0 (g := insIn n0 0 G) hGσ
       (p₀ := ⊤) (p₁ := ENNReal.ofReal c₁) (p := ENNReal.ofReal c)
       (q₀ := ENNReal.ofReal r₀) (q₁ := ENNReal.ofReal r₁) (q := ENNReal.ofReal r) (θ := θ)
@@ -10046,9 +10250,10 @@ theorem rt_low_step (χ : Fin 3 → ℤ → CoordMult) (J : ℕ) (n0 : Fin 3)
 theorem prod_slots {α : Type*} [CommMonoid α] (n0 : Fin 3) (F : Fin 3 → α) :
     F n0 * (F (n0.succAbove 0) * F (n0.succAbove 1)) = F 0 * (F 1 * F 2) := by
   fin_cases n0
-  · simp [Fin.succAbove]
-  · simp [Fin.succAbove]; exact mul_left_comm _ _ _
-  · simp [Fin.succAbove]; rw [mul_comm, mul_assoc]
+  · rfl
+  · exact mul_left_comm _ _ _
+  · change F 2 * (F 0 * F 1) = F 0 * (F 1 * F 2)
+    ac_rfl
 
 theorem insIn_self (n0 : Fin 3) (g : Fin 3 → E3 → ℂ) :
     insIn n0 (g n0) (fun i => g (n0.succAbove i)) = g := by
@@ -10057,7 +10262,7 @@ theorem insIn_self (n0 : Fin 3) (g : Fin 3 → E3 → ℂ) :
   · subst h; rw [insIn_apply_self]
   · rw [insIn_apply_succAbove]
 
-theorem rpow_gain {D E γ K θ : ℝ} (hD : 0 ≤ D) (hE : 0 ≤ E) :
+theorem rpow_gain {D E γ K θ : ℝ} (hD : 0 ≤ D) :
     (D * (2 : ℝ) ^ (-(γ * K))) ^ (1 - θ) * E ^ θ
       = D ^ (1 - θ) * E ^ θ * (2 : ℝ) ^ (-((γ * (1 - θ)) * K)) := by
   rw [Real.mul_rpow hD (by positivity), ← Real.rpow_mul (by norm_num),
@@ -10076,7 +10281,8 @@ theorem interp_exponents {x0 x1 x2 : ℝ} (hx00 : 0 < x0) (hx10 : 0 < x1) (hx20 
       1 / (1 / (x1 + x2)) = (1 - θ2) * (1 / (1 / (x1 + 1 / 2))) + θ2 * (1 / (1 / (x1 + x2 / 2))) ∧
       1 / (1 / (x1 + x2)) = 1 / (1 / x2) + 1 / (1 / x1) ∧
       1 / (1 / x0) = θ3 * (1 / (1 / u0)) ∧
-      1 / (1 / (x0 + x1 + x2)) = (1 - θ3) * (1 / (1 / (x1 + x2))) + θ3 * (1 / (1 / (u0 + x1 + x2))) ∧
+      1 / (1 / (x0 + x1 + x2)) = (1 - θ3) * (1 / (1 / (x1 + x2))) + θ3 * (1 / (1 / (u0 + x1 +
+        x2))) ∧
       1 / (1 / (x0 + x1 + x2)) = 1 / (1 / x0) + 1 / (1 / x1) + 1 / (1 / x2) := by
   set u0 := (x0 + (1 - x1 - x2)) / 2 with hu0
   have hu0x : x0 < u0 := by rw [hu0]; linarith
@@ -10090,11 +10296,12 @@ theorem interp_exponents {x0 x1 x2 : ℝ} (hx00 : 0 < x0) (hx10 : 0 < x1) (hx20 
     div_pos (by linarith) h1x1, by rw [div_lt_one h1x1]; linarith,
     div_pos (by linarith) h1x2, by rw [div_lt_one h1x2]; linarith,
     div_pos hx00 hu00, by rw [div_lt_one hu00]; exact hu0x, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  all_goals simp only [one_div_one_div, one_div_div]
+  all_goals simp only [one_div_div]
   all_goals field_simp
   all_goals ring
 
 set_option maxHeartbeats 1000000 in
+-- The extended analytic estimates below require additional elaboration steps.
 /-- **`lem:gain_2-` at the exponents of `thm:main`** (alternative route, line 620): three
 successive single-slot Riesz-Thorin steps (slots `σ_0`, `σ_1` with `L^∞` in slot `n_0`, then slot
 `n_0`) between `lem:gain_2-` and the loss-free bounds. For `0 < x_0`, `0 < x_1, x_2 < 1/2`,
@@ -10123,9 +10330,9 @@ theorem gain2_interp (hS : SmoothingTwo) (n0 : Fin 3) {x0 x1 x2 : ℝ} (hx00 : 0
   have l9 : (1 : ℝ) ≤ 1 / (x1 + x2 / 2) := by rw [le_div_iff₀ (by positivity)]; linarith
   have l10 : (1 : ℝ) ≤ 1 / (x1 + x2) := by rw [le_div_iff₀ (by positivity)]; linarith
   have e1 : 1 / (1 / (x1 / 2 + 1 / 2)) = 1 / (2 / x1) + 1 / 2 := by
-    simp only [one_div_one_div, one_div_div]; field_simp
+    simp only [one_div_div]; field_simp
   have e2 : 1 / (1 / (x1 + x2 / 2)) = 1 / (1 / x1) + 1 / (2 / x2) := by
-    simp only [one_div_one_div, one_div_div]; field_simp
+    simp only [one_div_div]; field_simp
   have e3 : 1 / (1 / (u0 + x1 + x2)) = 1 / (1 / u0) + 1 / (1 / x1) + 1 / (1 / x2) := by
     simp only [one_div_one_div]
   obtain ⟨CG, δ, hCG, hδ, hG⟩ := gain2_good hS n0
@@ -10164,7 +10371,7 @@ theorem gain2_interp (hS : SmoothingTwo) (n0 : Fin 3) {x0 x1 x2 : ℝ} (hx00 : 0
       refine (hF1 p J g0 hg0 B hB G hG').trans ?_
       have hB0 : 0 ≤ B := (norm_nonneg _).trans (hB 0)
       exact mul_le_mul' (ENNReal.ofReal_le_ofReal (by nlinarith)) le_rfl)
-  rw [rpow_gain hCG.le (by positivity)] at stepA
+  rw [rpow_gain hCG.le] at stepA
   -- step B: slot `σ_1`
   have stepB := rt_sigma_step (lowFam n0 p) J n0 1 (r₀ := 1 / (x1 + 1 / 2))
     (r₁ := 1 / (x1 + x2 / 2)) (r := 1 / (x1 + x2)) (a₀ := 2) (a₁ := 2 / x2) (a := 1 / x2)
@@ -10180,7 +10387,7 @@ theorem gain2_interp (hS : SmoothingTwo) (n0 : Fin 3) {x0 x1 x2 : ℝ} (hx00 : 0
       have hB0 : 0 ≤ B := (norm_nonneg _).trans (hB 0)
       rw [mul_comm (eLpNorm (G 0) _ _)]
       exact mul_le_mul' (ENNReal.ofReal_le_ofReal (by nlinarith)) le_rfl)
-  rw [rpow_gain hD1.le (by positivity)] at stepB
+  rw [rpow_gain hD1.le] at stepB
   -- step C: slot `n_0`
   have stepC := rt_low_step (lowFam n0 p) J n0 (r₀ := 1 / (x1 + x2)) (r₁ := 1 / (u0 + x1 + x2))
     (r := 1 / (x0 + x1 + x2)) (c₁ := 1 / u0) (c := 1 / x0) (b0 := 1 / x1) (b1 := 1 / x2)
@@ -10192,7 +10399,7 @@ theorem gain2_interp (hS : SmoothingTwo) (n0 : Fin 3) {x0 x1 x2 : ℝ} (hx00 : 0
     (fun g0 hg0 G hG' => by
       refine (hF3 p J g0 hg0 G hG').trans ?_
       exact mul_le_mul' (mul_le_mul' (ENNReal.ofReal_le_ofReal (by linarith)) le_rfl) le_rfl)
-  rw [rpow_gain hD2.le (by positivity)] at stepC
+  rw [rpow_gain hD2.le] at stepC
   exact stepC
 
 theorem pairReg_ge (n0 : Fin 3) {q : Fin 3 → ℤ} (hq : PairReg n0 q) (i : Fin 3) : -99 ≤ q i := by
@@ -10222,7 +10429,8 @@ theorem lowComp_pair_bound (hS : SmoothingTwo) (n0 : Fin 3) {pv : Fin 3 → ℝ}
     ∃ C δ' : ℝ, 0 ≤ C ∧ 0 < δ' ∧ ∀ q : Fin 3 → ℤ, PairReg n0 q → ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (lowComp n0 q J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal (C * (2 : ℝ) ^ (-(δ' * kMax q))) *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) := by
   set σ := n0.succAbove
   have hpv0 : ∀ n, 0 < pv n := fun n => by linarith [hpv n]
@@ -10277,29 +10485,36 @@ theorem MHminus_bound (hS : SmoothingTwo) (n0 : Fin 3) {pv : Fin 3 → ℝ} {p :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (regComp (RegMHnMinus n0) J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal C *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) := by
   obtain ⟨C, δ', hC, hδ', hg⟩ := lowComp_pair_bound hS n0 hp hpv hsum
   obtain ⟨S, hS0, hSb⟩ := sum_region_le hδ' (PairReg n0) (fun q hq i => pairReg_ge n0 hq i)
   refine ⟨C * S, by positivity, fun J f => ?_⟩
-  set Np := eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+  set Np := eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+    volume *
     eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)
-  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3)) (p := ENNReal.ofReal p)
+  have hfatou := eLpNorm_limit_le_liminf (μ := (volume : Measure E3)) (p :=
+    ENNReal.ofReal p)
     (fun N => (Finset.measurable_sum ((kBox N).filter (PairReg n0)) fun q _ =>
       measurable_lowComp n0 q J f).aestronglyMeasurable)
     (regComp (RegMHnMinus n0) J f) (Eventually.of_forall fun x => tendsto_lowComp_kBox n0 J f x)
   refine hfatou.trans (Filter.liminf_le_of_frequently_le' (Frequently.of_forall fun N => ?_))
   have hp1' : (1 : ℝ≥0∞) ≤ ENNReal.ofReal p := by simpa using hp.le
-  calc eLpNorm (fun x => ∑ q ∈ (kBox N).filter (PairReg n0), lowComp n0 q J f x) (ENNReal.ofReal p) volume
-      ≤ ∑ q ∈ (kBox N).filter (PairReg n0), eLpNorm (lowComp n0 q J f) (ENNReal.ofReal p) volume := by
+  calc
+    eLpNorm (fun x => ∑ q ∈ (kBox N).filter (PairReg n0), lowComp n0 q J f x)
+        (ENNReal.ofReal p) volume
+      ≤ ∑ q ∈ (kBox N).filter (PairReg n0), eLpNorm (lowComp n0 q J f) (ENNReal.ofReal p) volume
+        := by
         have e : (fun x => ∑ q ∈ (kBox N).filter (PairReg n0), lowComp n0 q J f x)
             = ∑ q ∈ (kBox N).filter (PairReg n0), lowComp n0 q J f := by
           funext x; simp [Finset.sum_apply]
         rw [e]
-        exact eLpNorm_sum_le (fun q _ => (measurable_lowComp n0 q J f).aestronglyMeasurable) hp1'
+        exact eLpNorm_sum_le hp1'
     _ ≤ ∑ q ∈ (kBox N).filter (PairReg n0), ENNReal.ofReal (C * (2 : ℝ) ^ (-(δ' * kMax q))) * Np :=
         Finset.sum_le_sum fun q hq => hg q (Finset.mem_filter.mp hq).2 J f
-    _ = ENNReal.ofReal (C * ∑ q ∈ (kBox N).filter (PairReg n0), (2 : ℝ) ^ (-(δ' * kMax q))) * Np := by
+    _ = ENNReal.ofReal (C * ∑ q ∈ (kBox N).filter (PairReg n0), (2 : ℝ) ^ (-(δ' * kMax q))) * Np
+      := by
         rw [← Finset.sum_mul, Finset.mul_sum, ENNReal.ofReal_sum_of_nonneg fun q _ => by positivity]
     _ ≤ ENNReal.ofReal (C * S) * Np := by
         gcongr; exact hSb N
@@ -10311,7 +10526,8 @@ theorem MH_bound (hS : SmoothingTwo) (n : Fin 3) {pv : Fin 3 → ℝ} {p : ℝ} 
     ∃ C : ℝ, 0 ≤ C ∧ ∀ (J : ℕ) (f : Fin 3 → 𝓢(E3, ℂ)),
       eLpNorm (regComp (RegMHn n) J f) (ENNReal.ofReal p) volume
         ≤ ENNReal.ofReal C *
-          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+          (eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+            volume *
             eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume)) := by
   obtain ⟨C1, hC1, h1⟩ := MHplus_bound n hp (by linarith [hpv 0]) (hpv 1) (hpv 2) hsum hhalf
   obtain ⟨C2, hC2, h2⟩ := MHminus_bound hS n hp hpv hsum
@@ -10322,19 +10538,18 @@ theorem MH_bound (hS : SmoothingTwo) (n : Fin 3) {pv : Fin 3 → ℝ} {p : ℝ} 
   have hm : ∀ R : (Fin 3 → ℤ) → Prop, ∀ [DecidablePred R], Measurable (regComp R J f) := by
     intro R _
     exact measurable_of_tendsto_metrizable (f := fun N x => ∑ k ∈ (kBox N).filter R, kComp k J f x)
-      (fun N => Finset.measurable_sum _ fun k _ => measurable_kComp k J f)
+      (fun _ => Finset.measurable_sum _ fun k _ => measurable_kComp k J f)
       (tendsto_pi_nhds.mpr fun x => tendsto_regComp_kBox R J f x)
   rw [e]
-  refine (eLpNorm_add_le (hm _).aestronglyMeasurable (hm _).aestronglyMeasurable hp1').trans ?_
+  refine (eLpNorm_add_le hp1').trans ?_
   rw [ENNReal.ofReal_add hC1 hC2, add_mul]
   exact add_le_add (h1 J f) (h2 J f)
 
 /-! ### Assembly (lines 139-148) -/
-
 theorem measurable_regComp (R : (Fin 3 → ℤ) → Prop) [DecidablePred R] (J : ℕ)
     (f : Fin 3 → 𝓢(E3, ℂ)) : Measurable (regComp R J f) :=
   measurable_of_tendsto_metrizable (f := fun N x => ∑ k ∈ (kBox N).filter R, kComp k J f x)
-    (fun N => Finset.measurable_sum _ fun k _ => measurable_kComp k J f)
+    (fun _ => Finset.measurable_sum _ fun k _ => measurable_kComp k J f)
     (tendsto_pi_nhds.mpr fun x => tendsto_regComp_kBox R J f x)
 
 /-- In the range of `thm:main` every `p_n > 2` and `1/p_m + 1/p_n > 1/2`. -/
@@ -10370,11 +10585,13 @@ theorem thm_main_of_smoothingTwo (hS : SmoothingTwo) {p : ℝ} {pv : Fin 3 → �
     have := Finset.sum_nonneg fun n (_ : n ∈ Finset.univ) => hCMH n
     positivity, fun f => ?_⟩
   set Np := ∏ n, eLpNorm (f n) (ENNReal.ofReal (pv n)) volume
-  have hNp : eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1)) volume *
+  have hNp : eLpNorm (f 0) (ENNReal.ofReal (pv 0)) volume * (eLpNorm (f 1) (ENNReal.ofReal (pv 1))
+    volume *
       eLpNorm (f 2) (ENNReal.ofReal (pv 2)) volume) = Np := by
     simp only [Np, Fin.prod_univ_three, mul_assoc]
   have hp1' : (1 : ℝ≥0∞) ≤ ENNReal.ofReal p := by simpa using hp.le
-  have hfatou := Lp.eLpNorm_lim_le_liminf_eLpNorm (μ := (volume : Measure E3)) (p := ENNReal.ofReal p)
+  have hfatou := eLpNorm_limit_le_liminf (μ := (volume : Measure E3)) (p :=
+    ENNReal.ofReal p)
     (fun J => (Finset.measurable_sum (Finset.Icc (-(J : ℤ)) J) fun j _ =>
       measurable_simplexTj j fun n => (f n).continuous.measurable).aestronglyMeasurable)
     (simplexT fun n => ⇑(f n)) (Eventually.of_forall fun x => by
@@ -10391,31 +10608,24 @@ theorem thm_main_of_smoothingTwo (hS : SmoothingTwo) {p : ℝ} {pv : Fin 3 → �
     rw [h, regComp_MH_split]
     simp [Finset.sum_apply]
   rw [e]
-  have hmMH : AEStronglyMeasurable (∑ n : Fin 3, regComp (RegMHn n) J f) volume :=
-    (Finset.measurable_sum (f := fun n => regComp (RegMHn n) J f) Finset.univ
-      fun n _ => measurable_regComp _ J f).aestronglyMeasurable.congr
-      (Eventually.of_forall fun x => by simp [Finset.sum_apply])
   have hMHs : eLpNorm (∑ n : Fin 3, regComp (RegMHn n) J f) (ENNReal.ofReal p) volume
       ≤ ENNReal.ofReal (∑ n, CMH n) * Np := by
-    refine (eLpNorm_sum_le (fun n _ => (measurable_regComp _ J f).aestronglyMeasurable) hp1').trans ?_
+    refine (eLpNorm_sum_le hp1').trans ?_
     rw [ENNReal.ofReal_sum_of_nonneg fun n _ => hCMH n, Finset.sum_mul]
     exact Finset.sum_le_sum fun n _ => (hMH n J f).trans (le_of_eq (by rw [hNp]))
-  have hmL := (measurable_regComp RegL J f).aestronglyMeasurable (μ := volume)
-  have hmML := (measurable_regComp RegML J f).aestronglyMeasurable (μ := volume)
-  have hmH := (measurable_regComp RegH J f).aestronglyMeasurable (μ := volume)
   calc eLpNorm (regComp RegL J f + regComp RegML J f + ∑ n : Fin 3, regComp (RegMHn n) J f
         + regComp RegH J f) (ENNReal.ofReal p) volume
       ≤ eLpNorm (regComp RegL J f + regComp RegML J f + ∑ n : Fin 3, regComp (RegMHn n) J f)
           (ENNReal.ofReal p) volume + eLpNorm (regComp RegH J f) (ENNReal.ofReal p) volume :=
-        eLpNorm_add_le ((hmL.add hmML).add hmMH) hmH hp1'
+        eLpNorm_add_le hp1'
     _ ≤ eLpNorm (regComp RegL J f) (ENNReal.ofReal p) volume
           + eLpNorm (regComp RegML J f) (ENNReal.ofReal p) volume
           + eLpNorm (∑ n : Fin 3, regComp (RegMHn n) J f) (ENNReal.ofReal p) volume
           + eLpNorm (regComp RegH J f) (ENNReal.ofReal p) volume := by
         gcongr
-        refine (eLpNorm_add_le (hmL.add hmML) hmMH hp1').trans ?_
+        refine (eLpNorm_add_le hp1').trans ?_
         gcongr
-        exact eLpNorm_add_le hmL hmML hp1'
+        exact eLpNorm_add_le hp1'
     _ ≤ ENNReal.ofReal CL * Np + ENNReal.ofReal CML * Np + ENNReal.ofReal (∑ n, CMH n) * Np
           + ENNReal.ofReal CH * Np := by
         gcongr

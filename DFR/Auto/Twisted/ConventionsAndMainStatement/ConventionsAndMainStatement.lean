@@ -27,12 +27,10 @@ import Mathlib.Topology.Order.Compact
 import Mathlib.Order.Interval.Set.Union
 import Mathlib.Algebra.Module.ZLattice.Summable
 import LeanSpherical.Auto.HardyLittlewoodMaximal
-import LeanSpherical.Auto.Spherical.PowerWeights
+import LeanSpherical.Auto.Spherical.PowerWeights.LacunaryCalderonZygmund
 import LeanSpherical.Auto.LpSpaceFacts
 import Mathlib.Data.Int.Log
 import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
-
-universe u
 
 /-!
 # Conventions and the main statement
@@ -41,9 +39,11 @@ Section 1 of `blueprints/task_3_twisted_blueprint.tex`.
 
 This module carries this section's formalization: its labelled
 definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 -/
+
+universe u
 
 namespace Auto
 
@@ -51,7 +51,8 @@ open MeasureTheory Filter Metric Set FourierTransform TopologicalSpace Topology
 open Auto.HardyLittlewoodMaximal
 open Auto.Spherical.Auxiliary
 open Auto.Spherical.PowerWeights
-open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal RealInnerProductSpace Topology
+open scoped BigOperators Convolution ENNReal FourierTransform LineDeriv NNReal
+  RealInnerProductSpace Topology
 
 noncomputable section
 
@@ -69,7 +70,7 @@ namespace Anisotropy
 def radius (α : Anisotropy) (x : E3) : ℝ :=
   ∑ i, |x i| ^ ((α.weight i : ℝ)⁻¹)
 
-/-- The anisotropic order of an ordered coordinate derivative.  This is the
+/-- The anisotropic order of an ordered coordinate derivative. This is the
 source quantity `α \cdot β`, expressed through an ordered list of coordinate
 directions; smoothness makes this equivalent to the usual multi-index form. -/
 def derivativeWeight (α : Anisotropy) {k : ℕ} (σ : Fin k → Fin 3) : ℕ :=
@@ -80,7 +81,7 @@ def coordinateDirection (i : Fin 3) : E3 :=
   EuclideanSpace.basisFun (Fin 3) ℝ i
 
 /-- The source's order-110 anisotropic multiplier hypothesis from
-Definition `def:multiplier`.  Ordered coordinate derivatives are used in
+Definition `def:multiplier`. Ordered coordinate derivatives are used in
 place of multi-indices, with the same anisotropic weight. -/
 def IsAnisotropicMultiplier (α : Anisotropy) (M : ℝ) (m : E3 → ℂ) : Prop :=
   0 ≤ M ∧ Measurable m ∧ m 0 = 0 ∧
@@ -155,7 +156,7 @@ theorem schwartz_denseRange_toLp {p : ℝ≥0∞} (hp : p ≠ ⊤) [Fact (1 ≤ 
 
 /-- The injective affine pullback from item (3) of Lemma `lem:schwartz`.
 
-Mathlib supplies the Schwartz pullback operator for anti-Lipschitz maps.  In
+Mathlib supplies the Schwartz pullback operator for anti-Lipschitz maps. In
 finite dimension, an injective linear map is anti-Lipschitz, so this is the
 source's affine-pullback statement with its finite-dimensional norm comparison
 made explicit. -/
@@ -184,7 +185,7 @@ theorem schwartzAffinePullbackOfInjective_apply
   simp [schwartzAffinePullbackOfInjective]
 
 /-- Derivatives of a Schwartz function pulled back by a coordinate projection
-do not grow.  This elementary estimate is the analytic input for the external
+do not grow. This elementary estimate is the analytic input for the external
 product construction below. -/
 theorem norm_iteratedFDeriv_fst_comp_le
     {D E : Type*} [NormedAddCommGroup D] [NormedSpace ℝ D]
@@ -201,7 +202,7 @@ theorem norm_iteratedFDeriv_fst_comp_le
       ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _
     _ ≤ ‖iteratedFDeriv ℝ n f z.1‖ * 1 := by
       gcongr
-      apply Finset.prod_le_one
+      apply Finset.prod_le_one₀
       · intro i hi
         exact norm_nonneg _
       · intro i hi
@@ -224,7 +225,7 @@ theorem norm_iteratedFDeriv_snd_comp_le
       ContinuousMultilinearMap.norm_compContinuousLinearMap_le _ _
     _ ≤ ‖iteratedFDeriv ℝ n g z.2‖ * 1 := by
       gcongr
-      apply Finset.prod_le_one
+      apply Finset.prod_le_one₀
       · intro i hi
         exact norm_nonneg _
       · intro i hi
@@ -248,7 +249,7 @@ theorem norm_prod_pow_le_product_one_add_pow
     nlinarith [mul_nonneg (show 0 ≤ ‖z.2‖ by positivity)
       (show 0 ≤ 1 + ‖z.1‖ by positivity)]
 
-/-- The external product of two complex Schwartz functions.  This formalizes
+/-- The external product of two complex Schwartz functions. This formalizes
 the finite tensor-product closure used in item (2) of Lemma `lem:schwartz`.
 The proof keeps the source's rapid-decay argument explicit rather than pulling
 back along either coordinate projection, which would not be injective. -/
@@ -342,7 +343,7 @@ theorem schwartzExternalProduct_apply
     schwartzExternalProduct f g z = f z.1 * g z.2 := rfl
 
 /-- Restriction of a joint Schwartz function to a fixed first-coordinate
-fibre.  This is item (4)'s fixed-fibre assertion, obtained from the injective
+fibre. This is item (4)'s fixed-fibre assertion, obtained from the injective
 affine-pullback theorem rather than from an invalid projection pullback. -/
 noncomputable def schwartzFixedFiber
     {D E V : Type*} [NormedAddCommGroup D] [NormedSpace ℝ D]
@@ -368,7 +369,7 @@ theorem schwartzFixedFiber_apply
   simp [schwartzFixedFiber, schwartzAffinePullbackOfInjective]
 
 /-- A joint Schwartz estimate gives a uniform rapid-decay majorant in its
-second coordinate.  This is the quantitative domination needed to justify
+second coordinate. This is the quantitative domination needed to justify
 the parameter integral in item (4) of Lemma `lem:schwartz`. -/
 theorem schwartz_uniform_second_decay
     {D E V : Type*}
@@ -497,7 +498,7 @@ theorem hasFDerivAt_schwartzFiberSlice
   · ext h
     rfl
 
-/-- Integrate a joint Schwartz function in its second variable.  The following
+/-- Integrate a joint Schwartz function in its second variable. The following
 dominated-differentiation theorem supplies its first derivative; the full
 Schwartz construction below iterates this identity. -/
 noncomputable def schwartzFiberIntegral
@@ -510,7 +511,7 @@ noncomputable def schwartzFiberIntegral
   fun u ↦ ∫ v, F (u, v) ∂μ
 
 /-- Differentiation under the parameter integral for a joint Schwartz
-function.  Its majorant is the explicit dimension-plus-one reciprocal weight
+function. Its majorant is the explicit dimension-plus-one reciprocal weight
 proved above, so no unrecorded Fubini or domination assumption is used. -/
 theorem schwartzFiberIntegral_hasFDerivAt
     {D E V : Type*}
@@ -552,7 +553,7 @@ theorem schwartzFiberIntegral_hasFDerivAt
   exact hasFDerivAt_integral_of_dominated_of_fderiv_le (s := Set.univ)
     univ_mem hF_meas hF_int hF'_meas hbound hbound_int hdiff
 
-/-- Finite-order smoothness of the fiber integral.  The induction feeds the
+/-- Finite-order smoothness of the fiber integral. The induction feeds the
 Schwartz-valued first-coordinate derivative back into the same dominated
 parameter-integral theorem. -/
 theorem schwartzFiberIntegral_contDiff_nat
@@ -887,7 +888,7 @@ theorem multiplier_mul_schwartz_integrable
   f.integrable.bdd_mul hm.measurable.aestronglyMeasurable
     (Filter.Eventually.of_forall fun ξ ↦ hm.norm_le_all ξ)
 
-/-- The bounded multiplier as an `L^∞` representative.  Using the `L^∞`
+/-- The bounded multiplier as an `L^∞` representative. Using the `L^∞`
 embedding is essential here: the source does not impose global smoothness at
 the origin, so the smooth temperate-growth embedding is not applicable. -/
 noncomputable def multiplierLp
@@ -952,11 +953,11 @@ theorem inverseMultiplierDistribution_apply_eq_multiplierForm
   ring
 
 /-- The nested product carrier used for the source's nine frequency
-coordinates.  Product-coordinate identifications are made explicit below. -/
+coordinates. Product-coordinate identifications are made explicit below. -/
 abbrev Frequency9 := (E3 × E3) × E3
 
 /-- The source's `E_9` integral, written with its nested product Lebesgue
-measure.  This makes the blueprint's product-coordinate convention explicit
+measure. This makes the blueprint's product-coordinate convention explicit
 instead of relying on an unmentioned identification. -/
 abbrev frequencyMeasure : Measure Frequency9 :=
   ((volume : Measure E3).prod volume).prod volume
@@ -1045,7 +1046,7 @@ theorem frequencyKernel_apply
 coordinates. -/
 abbrev FrequencyRemainder := WithLp 2 (E3 × E3)
 
-/-- The nine frequency coordinates arranged as `(η, remainder)`.  This is an
+/-- The nine frequency coordinates arranged as `(η, remainder)`. This is an
 honest Euclidean space; the map below records its measure-preserving
 identification with the nested source product carrier. -/
 abbrev FrequencySplit9 := WithLp 2 (E3 × FrequencyRemainder)
@@ -1065,7 +1066,7 @@ noncomputable def frequencyIndexGrouping :
     (Equiv.sumCongr (Equiv.refl _) (finSumFinEquiv (m := 3) (n := 3)).symm)
 
 /-- The coordinate permutation which puts the three diagonal frequency
-coordinates first.  Its explicit inverse makes the subsequent coordinate
+coordinates first. Its explicit inverse makes the subsequent coordinate
 calculation reducible. -/
 def frequencyIndexPermutation : Fin 9 ≃ Fin 9 where
   toFun i :=
@@ -1259,7 +1260,7 @@ theorem frequency_phase_scalar_identity (x t : E3) (ζ : Frequency9) :
         (⟪ζ.1.2, x + t 1 • Anisotropy.coordinateDirection 1⟫ +
           ⟪ζ.2, x + t 2 • Anisotropy.coordinateDirection 2⟫) := by
   rw [inner_frequencyDiagonal]
-  simp [inner_add_right, inner_smul_right]
+  simp only [Fin.isValue, inner_add_right, inner_smul_right, inner_coordinateDirection_right]
   rw [real_inner_comm x ζ.1.1, real_inner_comm x ζ.1.2, real_inner_comm x ζ.2]
   ring
 
@@ -1375,9 +1376,9 @@ theorem schwartzFourierInv_frequencyFiber_apply
     schwartzFourierInv (frequencyFiber f₀ f₁ f₂ f₃) t =
       ∫ ζ : Frequency9,
         frequencyPhase (frequencyDiagonal ζ) t * frequencyKernel f₀ f₁ f₂ f₃ ζ := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   let g : Frequency9 → ℂ := fun ζ ↦
     frequencyPhase (frequencyDiagonal ζ) t * frequencyKernel f₀ f₁ f₂ f₃ ζ
@@ -1432,7 +1433,7 @@ theorem schwartzFourierInv_frequencyFiber_apply
     _ = ∫ ζ : Frequency9,
         frequencyPhase (frequencyDiagonal ζ) t * frequencyKernel f₀ f₁ f₂ f₃ ζ := rfl
 
-/-- The full source frequency integral is the translated product.  The only
+/-- The full source frequency integral is the translated product. The only
 interchange of integrations is justified by the displayed product majorant
 `‖H(ζ)‖ ‖f₀(x)‖`. -/
 theorem frequencyKernel_phase_integral_eq_twistedProduct
@@ -1440,9 +1441,9 @@ theorem frequencyKernel_phase_integral_eq_twistedProduct
     (∫ ζ : Frequency9,
       frequencyPhase (frequencyDiagonal ζ) t * frequencyKernel f₀ f₁ f₂ f₃ ζ) =
       twistedProduct f₀ f₁ f₂ f₃ t := by
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   let H : Frequency9 → ℂ := fun ζ ↦
     ((schwartzFourier f₁ ζ.1.1 * schwartzFourier f₂ ζ.1.2) *
@@ -1549,9 +1550,9 @@ theorem frequencyForm_integrable
     Integrable (fun ζ : Frequency9 ↦
       m (-frequencyDiagonal ζ) * frequencyKernel f₀ f₁ f₂ f₃ ζ) frequencyMeasure := by
   rw [frequencyMeasure_eq_volume]
-  letI : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
+  let : (volume : Measure (E3 × E3)).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure volume volume
-  letI : (volume : Measure Frequency9).IsAddHaarMeasure :=
+  let : (volume : Measure Frequency9).IsAddHaarMeasure :=
     Measure.prod.instIsAddHaarMeasure (volume : Measure (E3 × E3)) volume
   let F : SchwartzMap Frequency9 ℂ := frequencyKernel f₀ f₁ f₂ f₃
   have hFint : Integrable F (volume : Measure Frequency9) := F.integrable
@@ -1644,7 +1645,7 @@ theorem multiplierForm_eq_frequencyForm
     _ = frequencyForm m f₀ f₁ f₂ f₃ :=
       (frequencyForm_eq_fiberIntegral α M m hm f₀ f₁ f₂ f₃).symm
 
-/-- The multiplier-form integrand is absolutely integrable.  This is the
+/-- The multiplier-form integrand is absolutely integrable. This is the
 analytic well-definedness assertion in Lemma `lem:pairing`; its only use of
 the symbol hypothesis is the order-zero uniform bound. -/
 theorem multiplierForm_integrable

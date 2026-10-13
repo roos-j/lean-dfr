@@ -8,7 +8,8 @@ import DFR.Auto.Twisted.FunctionSpacesAndFixedBumps.FunctionSpacesAndFixedBumps
 import DFR.Auto.Twisted.DyadicGeometryAndLocalSizes.DyadicGeometryAndLocalSizes
 import DFR.Auto.Twisted.CubicalTelescopingWithBoundaryTerms.CubicalTelescopingWithBoundaryTerms
 import DFR.Auto.Twisted.TheModelFormAndItsLocalization.TheModelFormAndItsLocalization
-import DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
+import
+  DFR.Auto.Twisted.StoppingTimeAndTheInitialExponentRange.StoppingTimeAndTheInitialExponentRange
 import DFR.Auto.Twisted.FiberwiseCalderonZygmundDecomposition.FiberwiseCalderonZygmundDecomposition
 import DFR.Auto.Twisted.ConeDecompositionMultiplierTheorem.ConeDecompositionMultiplierTheorem
 
@@ -20,7 +21,7 @@ Top-level module for the formalization of
 
 One module per blueprint section carries that section's formalization: its
 labelled definitions and theorems, the auxiliary development they rest on, and
-the section's results restated in the blueprint's own wording.  See
+the section's results restated in the blueprint's own wording. See
 `automation/Status.md` for the label-to-Lean map.
 
 The modules import one another in dependency order
