@@ -1,20 +1,6 @@
-module
+import DFR.Theorems
 
-public import LeanSpherical.Theorems
+open DFR
 
-/-!
-# DFR
-
-This project depends on the formalization in `lean-spherical`.
--/
-
-@[expose] public section
-
-namespace DFR
-
--- Dependency smoke test; replace this with the project's formalization.
-#check Spherical.eLpNorm_sphericalMaximal_le
-
-end DFR
-
-end
+#check main_result
+#print axioms main_result
